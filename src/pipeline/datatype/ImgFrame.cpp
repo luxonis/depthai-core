@@ -372,5 +372,7 @@ std::vector<std::uint8_t> ImgFrame::serializeProto(bool metadataOnly) const {
 void ImgFrame::deserializeProto(const std::vector<std::uint8_t>& bytes) {
     utility::deserializeProtoMessage(*this, bytes);
 }
+
 #endif
+
 }  // namespace dai

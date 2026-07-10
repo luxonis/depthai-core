@@ -21,14 +21,14 @@
 #include "pipeline/datatype/SegmentationMask.hpp"
 
 #ifndef DEPTHAI_PROTO_IMPL
-#define DEPTHAI_PROTO_IMPL(daiMsg, protoMsg)\
-    void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes) {\
-        protoMsg protoMessage;\
-        if(!protoMessage.ParseFromArray(bytes.data(), static_cast<int>(bytes.size()))) {\
-            throw std::runtime_error("Failed to parse " #daiMsg " protobuf");\
-        }\
-        setProtoMessage(obj, &protoMessage);\
-    }
+    #define DEPTHAI_PROTO_IMPL(daiMsg, protoMsg)                                             \
+        void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes) {  \
+            protoMsg protoMessage;                                                           \
+            if(!protoMessage.ParseFromArray(bytes.data(), static_cast<int>(bytes.size()))) { \
+                throw std::runtime_error("Failed to parse " #daiMsg " protobuf");            \
+            }                                                                                \
+            setProtoMessage(obj, &protoMessage);                                             \
+        }
 #endif
 
 namespace dai {
@@ -346,10 +346,7 @@ KeypointsList deserializeKeypointsList(const proto::common::KeypointsList& proto
     keypoints.reserve(protoKeypoints.keypoints_size());
     for(const auto& protoKeypoint : protoKeypoints.keypoints()) {
         keypoints.emplace_back(
-            deserializePoint3f(protoKeypoint.imagecoordinates()),
-            protoKeypoint.confidence(),
-            protoKeypoint.label(),
-            protoKeypoint.labelname());
+            deserializePoint3f(protoKeypoint.imagecoordinates()), protoKeypoint.confidence(), protoKeypoint.label(), protoKeypoint.labelname());
     }
     return KeypointsList(std::move(keypoints), deserializeEdges(protoKeypoints.edges()));
 }
@@ -358,17 +355,13 @@ SpatialKeypointsList deserializeSpatialKeypointsList(const proto::common::Spatia
     std::vector<SpatialKeypoint> keypoints;
     keypoints.reserve(protoKeypoints.keypoints_size());
     for(const auto& protoKeypoint : protoKeypoints.keypoints()) {
-        keypoints.emplace_back(
-            deserializePoint3f(protoKeypoint.imagecoordinates()),
-            deserializePoint3f(protoKeypoint.spatialcoordinates()),
-            protoKeypoint.confidence(),
-            protoKeypoint.label(),
-            protoKeypoint.labelname());
+        keypoints.emplace_back(deserializePoint3f(protoKeypoint.imagecoordinates()),
+                               deserializePoint3f(protoKeypoint.spatialcoordinates()),
+                               protoKeypoint.confidence(),
+                               protoKeypoint.label(),
+                               protoKeypoint.labelname());
     }
-    return SpatialKeypointsList(
-        std::move(keypoints),
-        deserializeEdges(protoKeypoints.edges()),
-        static_cast<LengthUnit>(protoKeypoints.unit()));
+    return SpatialKeypointsList(std::move(keypoints), deserializeEdges(protoKeypoints.edges()), static_cast<LengthUnit>(protoKeypoints.unit()));
 }
 
 void populateImgDetection(ImgDetection& detection, const proto::img_detections::ImgDetection& protoDetection) {
@@ -1191,8 +1184,8 @@ void setProtoMessage(ImgAnnotations& obj, const google::protobuf::Message* msg, 
     }
 
     populateBufferMetadata(obj, *imageAnnotations);
-    obj.transformation = imageAnnotations->has_transformation() ? std::make_optional(deserializeImgTransformation(imageAnnotations->transformation()))
-                                                                : std::nullopt;
+    obj.transformation =
+        imageAnnotations->has_transformation() ? std::make_optional(deserializeImgTransformation(imageAnnotations->transformation())) : std::nullopt;
 
     obj.annotations.clear();
     obj.annotations.reserve(imageAnnotations->annotations_size());
@@ -1251,9 +1244,8 @@ void setProtoMessage(SpatialImgDetections& obj, const google::protobuf::Message*
     }
 
     populateBufferMetadata(obj, *spatialImgDetections);
-    obj.transformation = spatialImgDetections->has_transformation()
-                             ? std::make_optional(deserializeImgTransformation(spatialImgDetections->transformation()))
-                             : std::nullopt;
+    obj.transformation =
+        spatialImgDetections->has_transformation() ? std::make_optional(deserializeImgTransformation(spatialImgDetections->transformation())) : std::nullopt;
     obj.unit = static_cast<LengthUnit>(spatialImgDetections->unit());
     obj.segmentationMaskWidth = static_cast<size_t>(spatialImgDetections->segmentationmaskwidth());
     obj.segmentationMaskHeight = static_cast<size_t>(spatialImgDetections->segmentationmaskheight());
@@ -1290,8 +1282,7 @@ void setProtoMessage(SpatialImgDetections& obj, const google::protobuf::Message*
             detection.boundingBoxMapping.roi.height = protoMapping.roi().height();
             detection.boundingBoxMapping.depthThresholds.lowerThreshold = protoMapping.depththresholds().lowerthreshold();
             detection.boundingBoxMapping.depthThresholds.upperThreshold = protoMapping.depththresholds().upperthreshold();
-            detection.boundingBoxMapping.calculationAlgorithm =
-                static_cast<SpatialLocationCalculatorAlgorithm>(protoMapping.calculationalgorithm());
+            detection.boundingBoxMapping.calculationAlgorithm = static_cast<SpatialLocationCalculatorAlgorithm>(protoMapping.calculationalgorithm());
             detection.boundingBoxMapping.stepSize = protoMapping.stepsize();
         }
 
@@ -1318,8 +1309,7 @@ void setProtoMessage(ImgDetections& obj, const google::protobuf::Message* msg, b
     }
 
     populateBufferMetadata(obj, *imgDetections);
-    obj.transformation = imgDetections->has_transformation() ? std::make_optional(deserializeImgTransformation(imgDetections->transformation()))
-                                                             : std::nullopt;
+    obj.transformation = imgDetections->has_transformation() ? std::make_optional(deserializeImgTransformation(imgDetections->transformation())) : std::nullopt;
     obj.segmentationMaskWidth = static_cast<size_t>(imgDetections->segmentationmaskwidth());
     obj.segmentationMaskHeight = static_cast<size_t>(imgDetections->segmentationmaskheight());
 
@@ -1511,8 +1501,8 @@ void setProtoMessage(SegmentationMask& obj, const google::protobuf::Message* msg
     }
 
     populateBufferMetadata(obj, *segmentationMask);
-    obj.transformation = segmentationMask->has_transformation() ? std::make_optional(deserializeImgTransformation(segmentationMask->transformation()))
-                                                                : std::nullopt;
+    obj.transformation =
+        segmentationMask->has_transformation() ? std::make_optional(deserializeImgTransformation(segmentationMask->transformation())) : std::nullopt;
     obj.setSize(static_cast<size_t>(segmentationMask->width()), static_cast<size_t>(segmentationMask->height()));
     obj.setLabels(std::vector<std::string>(segmentationMask->labels().begin(), segmentationMask->labels().end()));
 

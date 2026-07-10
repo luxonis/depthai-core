@@ -1,7 +1,6 @@
 #include "DatatypeBindings.hpp"
-#include "pipeline/CommonBindings.hpp"
-
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "pipeline/CommonBindings.hpp"
 
 void bind_protoserializable(pybind11::module& m, void* pCallstack) {
     using namespace dai;

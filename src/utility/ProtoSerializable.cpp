@@ -7,6 +7,7 @@ namespace dai {
 ProtoSerializable::~ProtoSerializable() = default;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+
 namespace {
 
 std::filesystem::path resolveDataPath(const std::filesystem::path& path) {
@@ -63,6 +64,7 @@ void ProtoSerializable::save(const std::filesystem::path& path, bool metadataOnl
 void ProtoSerializable::load(const std::filesystem::path& path) {
     deserializeProto(readBinaryFile(resolveDataPath(path)));
 }
+
 #endif
 
 }  // namespace dai
