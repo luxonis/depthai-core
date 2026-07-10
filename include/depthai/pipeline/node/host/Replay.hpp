@@ -91,5 +91,7 @@ class ReplayMetadataOnly : public NodeCRTP<ThreadedHostNode, ReplayMetadataOnly>
     ReplayMetadataOnly& setLoop(bool loop);
 };
 
+using ReplayBuffer = ReplayMetadataOnly; // Better named class for replaying buffers
+
 }  // namespace node
 }  // namespace dai

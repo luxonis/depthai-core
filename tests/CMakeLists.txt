@@ -852,6 +852,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
     dai_set_test_labels(replay_test onhost ci)
     target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
+    target_include_directories(replay_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include/depthai)
 endif()
 
 # Camera tests

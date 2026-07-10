@@ -5,6 +5,7 @@
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
+#include "depthai/pipeline/datatype/RGBDData.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #define _USE_MATH_DEFINES
@@ -30,6 +31,7 @@
     #include "depthai/schemas/ImgDetections.pb.h"
     #include "depthai/schemas/ImgFrame.pb.h"
     #include "depthai/schemas/PointCloudData.pb.h"
+    #include "depthai/schemas/RGBDData.pb.h"
     #include "depthai/schemas/SegmentationMask.pb.h"
     #include "depthai/schemas/SpatialImgDetections.pb.h"
     #include "utility/ProtoSerialize.hpp"
@@ -92,6 +94,11 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
             utility::setProtoMessage(*mask, metadata.get(), false);
             return mask;
         }
+        case DatatypeEnum::RGBDData: {
+            auto rgbdData = std::make_shared<RGBDData>();
+            utility::setProtoMessage(*rgbdData, metadata.get(), false);
+            return rgbdData;
+        }
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
@@ -122,7 +129,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
-        case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
@@ -263,6 +269,35 @@ inline std::chrono::milliseconds getReplayFallbackInterval(const std::optional<f
         return std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value()));
     }
     return std::chrono::milliseconds(33);
+}
+
+inline void offsetRGBDChildFrameMetadata(const std::shared_ptr<Buffer>& buffer,
+                                         int64_t sequenceNumOffset,
+                                         std::chrono::steady_clock::duration timestampOffset,
+                                         std::chrono::steady_clock::duration deviceTimestampOffset) {
+    auto rgbdData = std::dynamic_pointer_cast<RGBDData>(buffer);
+    if(rgbdData == nullptr) {
+        return;
+    }
+
+    const auto offsetFrameMetadata = [&](const std::optional<RGBDData::FrameVariant>& frame) {
+        if(!frame.has_value()) {
+            return;
+        }
+
+        std::visit(
+            [&](const auto& typedFrame) {
+                if(typedFrame != nullptr) {
+                    typedFrame->setSequenceNum(typedFrame->getSequenceNum() + sequenceNumOffset);
+                    typedFrame->setTimestamp(typedFrame->getTimestamp() + timestampOffset);
+                    typedFrame->setTimestampDevice(typedFrame->getTimestampDevice() + deviceTimestampOffset);
+                }
+            },
+            frame.value());
+    };
+
+    offsetFrameMetadata(rgbdData->getRGBFrame());
+    offsetFrameMetadata(rgbdData->getDepthFrame());
 }
 
 inline std::chrono::milliseconds ensureReplayInterval(std::chrono::milliseconds interval, const std::optional<float>& fps) {
@@ -512,6 +547,10 @@ void ReplayMetadataOnly::run() {
             loopState.tsOffset = loopState.firstTs;
         }
 
+        const auto originalSequenceNum = buffer->getSequenceNum();
+        const auto originalTimestamp = buffer->getTimestamp();
+        const auto originalTimestampDevice = buffer->getTimestampDevice();
+
         // Update sequence num and timestamps for looping
         buffer->setSequenceNum(buffer->getSequenceNum() - loopState.firstSeqNum + loopState.seqNumOffset);
         loopState.lastSeqNum = buffer->getSequenceNum();
@@ -522,6 +561,10 @@ void ReplayMetadataOnly::run() {
             loopState.lastInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestamp() - loopState.lastTs);
         }
         loopState.lastTs = buffer->getTimestamp();
+        offsetRGBDChildFrameMetadata(buffer,
+                                     buffer->getSequenceNum() - originalSequenceNum,
+                                     buffer->getTimestamp() - originalTimestamp,
+                                     buffer->getTimestampDevice() - originalTimestampDevice);
 
         if(!(fps.has_value() && fps.value() > 0.1f)) {
             auto sleepInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestampDevice() - prevMsgTs);

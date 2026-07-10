@@ -843,8 +843,8 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
         }
     }
 
-    proto::common::ImgTransformation* imgTransformation = spatialImgDetections->mutable_transformation();
     if(message->transformation.has_value()) {
+        proto::common::ImgTransformation* imgTransformation = spatialImgDetections->mutable_transformation();
         utility::serializeImgTransformation(imgTransformation, message->transformation.value());
     }
 
@@ -1026,8 +1026,8 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
     imgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
     imgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
 
-    proto::common::ImgTransformation* imgTransformation = imgDetections->mutable_transformation();
     if(message->transformation.has_value()) {
+        proto::common::ImgTransformation* imgTransformation = imgDetections->mutable_transformation();
         utility::serializeImgTransformation(imgTransformation, message->transformation.value());
     }
 
