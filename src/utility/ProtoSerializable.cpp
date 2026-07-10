@@ -9,6 +9,15 @@ ProtoSerializable::~ProtoSerializable() = default;
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 namespace {
 
+std::filesystem::path resolveDataPath(const std::filesystem::path& path) {
+    if(path.has_extension() && path.extension() == ".dai") {
+        return path;
+    }
+    auto resolved = path;
+    resolved += ".dai";
+    return resolved;
+}
+
 std::vector<std::uint8_t> readBinaryFile(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
     if(!file) {
@@ -48,11 +57,11 @@ void writeBinaryFile(const std::filesystem::path& path, const std::vector<std::u
 }  // namespace
 
 void ProtoSerializable::save(const std::filesystem::path& path, bool metadataOnly) const {
-    writeBinaryFile(path, serializeProto(metadataOnly));
+    writeBinaryFile(resolveDataPath(path), serializeProto(metadataOnly));
 }
 
 void ProtoSerializable::load(const std::filesystem::path& path) {
-    deserializeProto(readBinaryFile(path));
+    deserializeProto(readBinaryFile(resolveDataPath(path)));
 }
 #endif
 

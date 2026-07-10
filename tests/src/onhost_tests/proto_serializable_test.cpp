@@ -35,10 +35,17 @@ class ScopedTempDir {
     fs::path path;
 };
 
+fs::path resolveSavedPath(const fs::path& path) {
+    if(path.has_extension()) return path;
+    auto resolved = path;
+    resolved += ".dai";
+    return resolved;
+}
+
 template <typename T>
 T saveLoad(const T& source, const fs::path& path, bool metadataOnly = false) {
     source.save(path, metadataOnly);
-    REQUIRE(fs::exists(path));
+    REQUIRE(fs::exists(resolveSavedPath(path)));
     T restored;
     restored.load(path);
     return restored;
@@ -203,7 +210,7 @@ TEST_CASE("ProtoSerializable save/load roundtrip for EncodedFrame", "[ProtoSeria
 
     source.save(path, false);
     source.save(metadataPath, true);
-    REQUIRE(fs::file_size(metadataPath) < fs::file_size(path));
+    REQUIRE(fs::file_size(resolveSavedPath(metadataPath)) < fs::file_size(resolveSavedPath(path)));
 
     const auto metadataOnly = saveLoad(source, metadataPath, true);
     requireEncodedFrame(metadataOnly, source, false);
@@ -237,7 +244,7 @@ TEST_CASE("ProtoSerializable save/load roundtrip for PointCloudData", "[ProtoSer
 
     source.save(path, false);
     source.save(metadataPath, true);
-    REQUIRE(fs::file_size(metadataPath) < fs::file_size(path));
+    REQUIRE(fs::file_size(resolveSavedPath(metadataPath)) < fs::file_size(resolveSavedPath(path)));
 
     const auto metadataOnly = saveLoad(source, metadataPath, true);
     requireBufferMetadata(metadataOnly, source);
@@ -458,7 +465,7 @@ TEST_CASE("ProtoSerializable save/load roundtrip for RGBDData", "[ProtoSerializa
 
     source.save(path, false);
     source.save(metadataPath, true);
-    REQUIRE(fs::file_size(metadataPath) < fs::file_size(path));
+    REQUIRE(fs::file_size(resolveSavedPath(metadataPath)) < fs::file_size(resolveSavedPath(path)));
 
     const auto metadataOnly = saveLoad(source, metadataPath, true);
     requireBufferMetadata(metadataOnly, source);
