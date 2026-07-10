@@ -22,9 +22,9 @@ Replay pipeline (no Camera node, raw frames fed from disk):
   raw_<ts>.npz --> rawInput queue --> ToFBase --> .depth --> depth_q --> matplotlib
 
 Usage:
-    python tof_raw_depth_test.py
-    python tof_raw_depth_test.py --socket CAM_D --frames 5
-    python tof_raw_depth_test.py --ip 192.168.1.100
+    python tof_raw_rvc4.py
+    python tof_raw_rvc4.py --socket CAM_D --frames 5
+    python tof_raw_rvc4.py --ip 192.168.1.100
 """
 
 import argparse
