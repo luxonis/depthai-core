@@ -45,9 +45,12 @@ std::vector<std::uint8_t> readMsgBinaryFile(const std::filesystem::path& path, D
     if(size < 0) {
         throw std::runtime_error("Failed to determine file size: " + path.string());
     }
+    if(static_cast<size_t>(size) < sizeof(datatype)) {
+        throw std::runtime_error("Invalid file: " + path.string());
+    }
     file.seekg(0, std::ios::beg);
 
-    size -= sizeof(datatype);  // Subtract the size of the datatype enum
+    size -= sizeof(datatype);  // Subtract the size of the prepended datatype enum
     std::vector<std::uint8_t> buffer(static_cast<size_t>(size));
     if(!buffer.empty()) {
         DatatypeEnum readDatatype = DatatypeEnum::ADatatype;
