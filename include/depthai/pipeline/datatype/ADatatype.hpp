@@ -9,7 +9,19 @@
 namespace dai {
 
 /// Abstract message
-class ADatatype {
+class ADatatypeInterface {
+   public:
+    explicit ADatatypeInterface() = default;
+    virtual ~ADatatypeInterface();
+
+    /**
+     * @brief Get the datatype of this specific message
+     * @return DatatypeEnum
+     */
+    virtual DatatypeEnum getDatatype() const = 0;
+};
+
+class ADatatype : ADatatypeInterface {
    protected:
     friend class DataInputQueue;
     friend class StreamMessageParser;
@@ -21,14 +33,14 @@ class ADatatype {
     explicit ADatatype() : data{std::make_shared<VectorMemory>(std::vector<uint8_t>())} {};
 #endif
 
-    virtual ~ADatatype();
+    ~ADatatype() override;
     virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const;
 
     /**
      * @brief Get the datatype of this specific message
      * @return DatatypeEnum
      */
-    virtual DatatypeEnum getDatatype() const {
+    DatatypeEnum getDatatype() const override {
         return DatatypeEnum::ADatatype;
     }
 
