@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/datatype/AutoCalibrationResult.hpp>
@@ -9,6 +10,8 @@
 #include <depthai/pipeline/node/DynamicCalibrationNode.hpp>
 #include <depthai/pipeline/node/Gate.hpp>
 #include <depthai/properties/AutoCalibrationProperties.hpp>
+#include <map>
+#include <nlohmann/json.hpp>
 
 namespace spdlog {
 class async_logger;
@@ -55,19 +58,22 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     Properties& getProperties() override;
 
    private:
+    struct TelemetryAggregateState;
+
     // report for logging purposes
     struct Report {
         double dataConfidence = 0.;
         double calibrationConfidence = 0.;
         double dataQualityAfterRecalibration = 0.;
         unsigned int numIterationPerRecalibration = 0;
+        unsigned int numImagesLoadedForSuccessfulRecalibration = 0;
         bool recalibrating = false;
         bool recalibrationPassed = false;
         bool calibrationUpdated = false;
         double elapsedSeconds = 0.;
         double elapsedRecalibrationSeconds = 0.;
         std::vector<std::pair<double, double>> coveragesAcquired;
-        std::array<float, 3> rotationDifference;
+        std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>> pairwiseRotationDifference;
     };
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /**
@@ -103,7 +109,17 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void loadData(unsigned int numImages);
 
-    std::shared_ptr<dai::CalibrationMetrics> getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration);
+    std::shared_ptr<dai::CalibrationMetrics> getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration);
+
+    static void appendTelemetryAggregateProperties(nlohmann::json& properties, const TelemetryAggregateState& telemetryAggregateState);
+
+    void recordAggregateCycle(double elapsedSeconds);
+
+    void recordAggregateRecalibration(bool passed, double elapsedSeconds);
+
+    void recordAggregateValidationMetrics(double dataConfidence, double calibrationConfidence);
+
+    void recordAggregateRotationDifference(const std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>>& pairwiseRotationDifference);
 
     AutoCalibrationProperties properties;
 
@@ -121,6 +137,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     Input gateOutput{*this, {"gateOutput", DEFAULT_GROUP, false, 1, {{DatatypeEnum::Buffer, true}}}};
 
     bool runOnHostVar = true;
+    std::shared_ptr<TelemetryAggregateState> telemetryAggregateState;
+    std::uint64_t telemetryAggregateMetricsHandle = 0;
 
     // logger
     std::shared_ptr<::spdlog::async_logger> logger;

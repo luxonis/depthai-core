@@ -63,7 +63,7 @@ class RGBDData : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(RGBDData, colorFrame, depthFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE(RGBDData, colorFrame, depthFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
 };
 
 }  // namespace dai

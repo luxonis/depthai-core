@@ -46,7 +46,7 @@ class PipelineEvent : public Buffer {
         return DatatypeEnum::PipelineEvent;
     }
 
-    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, status, queueSize, interval, type, source);
+    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeId, status, queueSize, interval, type, source);
 };
 
 }  // namespace dai

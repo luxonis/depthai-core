@@ -302,8 +302,7 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
                                                  const int instanceIndex,
                                                  const dai::ImgTransformation& detectionsTransformation,
                                                  const int segMaskWidth,
-                                                 const int segMaskHeight,
-                                                 const std::shared_ptr<spdlog::async_logger>& logger) {
+                                                 const int segMaskHeight) {
     const uint32_t lowerThreshold = config.globalLowerThreshold;
     const uint32_t upperThreshold = config.globalUpperThreshold;
     const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
@@ -454,8 +453,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                                                                                i,
                                                                                *detectionsTransformation,
                                                                                static_cast<int>(segmentationMaskWidth),
-                                                                               static_cast<int>(segmentationMaskHeight),
-                                                                               logger);
+                                                                               static_cast<int>(segmentationMaskHeight));
         spatialDetections.detections[i] = spatialImgDetection;
     }
 }

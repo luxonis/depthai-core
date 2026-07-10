@@ -1,21 +1,69 @@
 #include "depthai/pipeline/node/AutoCalibration.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <mutex>
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <pipeline/datatype/MessageGroup.hpp>
 #include <stdexcept>
 
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
+#include "utility/Telemetry.hpp"
 
 namespace dai {
 namespace node {
+
+namespace {
+
+void addAutoCalibrationAggregateRotationDifference(
+    nlohmann::json& properties, const std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::array<double, 3>>& pairwiseRotationDifferenceSums) {
+    auto pairwiseRotationDifferenceJson = nlohmann::json::array();
+    for(const auto& [socketPair, rotationSum] : pairwiseRotationDifferenceSums) {
+        pairwiseRotationDifferenceJson.push_back({{"socket_a", dai::toString(socketPair.first)},
+                                                  {"socket_b", dai::toString(socketPair.second)},
+                                                  {"rotation_difference_sum", {rotationSum[0], rotationSum[1], rotationSum[2]}}});
+    }
+    properties["auto_calibration_pairwise_rotation_difference_sums"] = std::move(pairwiseRotationDifferenceJson);
+}
+
+}  // namespace
+
+struct AutoCalibration::TelemetryAggregateState {
+    std::mutex mutex;
+    std::uint64_t cyclesCompleted = 0;
+    std::uint64_t recalibrationTriggered = 0;
+    std::uint64_t recalibrationSucceeded = 0;
+    std::uint64_t recalibrationFailed = 0;
+    std::uint64_t calibrationUpdated = 0;
+    std::uint64_t outputSent = 0;
+    double cycleDurationSum = 0.0;
+    double recalibrationDurationSum = 0.0;
+    double latestCycleDuration = 0.0;
+    double dataConfidenceSum = 0.0;
+    std::uint64_t dataConfidenceSamples = 0;
+    double calibrationConfidenceSum = 0.0;
+    std::uint64_t calibrationConfidenceSamples = 0;
+    std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::array<double, 3>> pairwiseRotationDifferenceSums;
+};
+
+const char* telemetryAutoCalibrationModeName(const AutoCalibrationConfig::Mode mode) {
+    switch(mode) {
+        case AutoCalibrationConfig::Mode::ON_START:
+            return "ON_START";
+        case AutoCalibrationConfig::Mode::CONTINUOUS:
+            return "CONTINUOUS";
+    }
+    return "UNKNOWN";
+}
 
 constexpr int MAX_FAILS_PER_RECALIBRATION_DEFAULT = 5;
 constexpr int GATE_FPS_DEFAULT = 5;
 constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2;
 constexpr int PACKET_SIZE_DEFAULT = 100000;
 
-bool areLensesWide(std::shared_ptr<Device> device) {
+bool areLensesWide(const std::shared_ptr<Device>& device) {
     auto handler = device->getCalibration();
     auto eepromData = handler.getEepromData();
     const auto& hardwareConf = eepromData.hardwareConf;
@@ -55,10 +103,15 @@ void AutoCalibration::logReport(const Report& report, unsigned int iteration) co
         if(report.recalibrationPassed) {
             logger->info("    Recalibration time:   {:.2f}s", report.elapsedRecalibrationSeconds);
             logger->info("    number of iterations  {}", report.numIterationPerRecalibration);
-            logger->info("    rotation difference   {:.4f}  {:.4f}  {:.4f}",
-                         report.rotationDifference.at(0),
-                         report.rotationDifference.at(1),
-                         report.rotationDifference.at(2));
+            for(const auto& [socketPair, rotationDifference] : report.pairwiseRotationDifference) {
+                if(rotationDifference.size() < 3) continue;
+                logger->info("    pairwise rotation difference {} -> {}   {:.4f}  {:.4f}  {:.4f}",
+                             toString(socketPair.first),
+                             toString(socketPair.second),
+                             rotationDifference[0],
+                             rotationDifference[1],
+                             rotationDifference[2]);
+            }
             logger->info("    dataQuality           {:.4f}", report.dataQualityAfterRecalibration);
         }
         unsigned i = 0;
@@ -86,10 +139,92 @@ void AutoCalibration::logConfig() const {
     logger->info("===========================================");
 }
 
-AutoCalibration::~AutoCalibration() = default;
+AutoCalibration::~AutoCalibration() {
+    if(telemetryAggregateMetricsHandle != 0) {
+        utility::Telemetry::getInstance().removeAggregateMetrics(telemetryAggregateMetricsHandle);
+        telemetryAggregateMetricsHandle = 0;
+    }
+}
 
 AutoCalibration::Properties& AutoCalibration::getProperties() {
     return properties;
+}
+
+void AutoCalibration::appendTelemetryAggregateProperties(nlohmann::json& properties, const TelemetryAggregateState& telemetryAggregateState) {
+    properties["auto_calibration_cycles_completed"] = telemetryAggregateState.cyclesCompleted;
+    properties["auto_calibration_recalibration_triggered"] = telemetryAggregateState.recalibrationTriggered;
+    properties["auto_calibration_recalibration_succeeded"] = telemetryAggregateState.recalibrationSucceeded;
+    properties["auto_calibration_recalibration_failed"] = telemetryAggregateState.recalibrationFailed;
+    properties["auto_calibration_calibration_updated"] = telemetryAggregateState.calibrationUpdated;
+    properties["auto_calibration_output_sent"] = telemetryAggregateState.outputSent;
+    properties["auto_calibration_cycle_duration_latest_s"] = telemetryAggregateState.latestCycleDuration;
+    properties["auto_calibration_cycle_duration_avg_s"] =
+        telemetryAggregateState.cyclesCompleted == 0 ? 0.0 : telemetryAggregateState.cycleDurationSum / telemetryAggregateState.cyclesCompleted;
+    const auto recalibrationCount = telemetryAggregateState.recalibrationSucceeded + telemetryAggregateState.recalibrationFailed;
+    properties["auto_calibration_recalibration_duration_avg_s"] =
+        recalibrationCount == 0 ? 0.0 : telemetryAggregateState.recalibrationDurationSum / static_cast<double>(recalibrationCount);
+    properties["auto_calibration_avg_data_confidence"] =
+        telemetryAggregateState.dataConfidenceSamples == 0
+            ? 0.0
+            : telemetryAggregateState.dataConfidenceSum / static_cast<double>(telemetryAggregateState.dataConfidenceSamples);
+    properties["auto_calibration_avg_calibration_confidence"] =
+        telemetryAggregateState.calibrationConfidenceSamples == 0
+            ? 0.0
+            : telemetryAggregateState.calibrationConfidenceSum / static_cast<double>(telemetryAggregateState.calibrationConfidenceSamples);
+    addAutoCalibrationAggregateRotationDifference(properties, telemetryAggregateState.pairwiseRotationDifferenceSums);
+}
+
+void AutoCalibration::recordAggregateCycle(double elapsedSeconds) {
+    if(!telemetryAggregateState) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(telemetryAggregateState->mutex);
+    telemetryAggregateState->cyclesCompleted += 1;
+    telemetryAggregateState->cycleDurationSum += elapsedSeconds;
+    telemetryAggregateState->latestCycleDuration = elapsedSeconds;
+}
+
+void AutoCalibration::recordAggregateRecalibration(bool passed, double elapsedSeconds) {
+    if(!telemetryAggregateState) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(telemetryAggregateState->mutex);
+    if(passed) {
+        telemetryAggregateState->recalibrationSucceeded += 1;
+    } else {
+        telemetryAggregateState->recalibrationFailed += 1;
+    }
+    telemetryAggregateState->recalibrationDurationSum += elapsedSeconds;
+}
+
+void AutoCalibration::recordAggregateValidationMetrics(double dataConfidence, double calibrationConfidence) {
+    if(!telemetryAggregateState) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(telemetryAggregateState->mutex);
+    telemetryAggregateState->dataConfidenceSum += dataConfidence;
+    telemetryAggregateState->dataConfidenceSamples += 1;
+    telemetryAggregateState->calibrationConfidenceSum += calibrationConfidence;
+    telemetryAggregateState->calibrationConfidenceSamples += 1;
+}
+
+void AutoCalibration::recordAggregateRotationDifference(
+    const std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>>& pairwiseRotationDifference) {
+    if(!telemetryAggregateState) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(telemetryAggregateState->mutex);
+    for(const auto& [socketPair, rotationDifference] : pairwiseRotationDifference) {
+        auto& rotationSum = telemetryAggregateState->pairwiseRotationDifferenceSums[socketPair];
+        const auto copyCount = std::min<std::size_t>(3, rotationDifference.size());
+        for(std::size_t axis = 0; axis < copyCount; ++axis) {
+            rotationSum[axis] += static_cast<double>(rotationDifference[axis]);
+        }
+    }
 }
 
 void AutoCalibration::setRunOnHost(bool runOnHost) {
@@ -168,13 +303,19 @@ void AutoCalibration::loadData(unsigned int numImages) {
     dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
 }
 
-std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration) {
+std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration) {
     dynamicCalibrationCommandQueue.send(DCC::computeCalibrationMetrics(*calibration));
     return metricsQueue.get<dai::CalibrationMetrics>();
 }
 
 void AutoCalibration::buildInternal() {
     logger = pimpl->logger;
+    telemetryAggregateState = std::make_shared<TelemetryAggregateState>();
+    auto telemetryState = telemetryAggregateState;
+    telemetryAggregateMetricsHandle = utility::Telemetry::getInstance().addAggregateMetrics([telemetryState](nlohmann::json& properties) {
+        std::lock_guard<std::mutex> lock(telemetryState->mutex);
+        appendTelemetryAggregateProperties(properties, *telemetryState);
+    });
     if(initialConfig->dataConfidenceThreshold < 0.0) {
         initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
     }
@@ -186,6 +327,11 @@ return calibration from DynamicCalibration node
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
     auto startTime = std::chrono::steady_clock::now();  // Start timer
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
+    {
+        auto& state = *telemetryAggregateState;
+        std::lock_guard<std::mutex> lock(state.mutex);
+        state.recalibrationTriggered += 1;
+    }
     std::shared_ptr<CoverageData> coverage;
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         logger->info("=== AutoCalibration: START recalib {}/{}", i + 1, maxNumIteration);
@@ -208,13 +354,16 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
                     dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
                     dynamicCalibrationCommandQueue.send(DCC::resetData());
                     report.numIterationPerRecalibration = i + 1;
+                    report.numImagesLoadedForSuccessfulRecalibration = numLoadedImages + 1;
                     report.dataQualityAfterRecalibration = dynCalibrationResult->calibrationData.value().dataConfidence;
                     report.recalibrationPassed = true;
-                    report.rotationDifference = dynCalibrationResult->calibrationData.value().calibrationDifference.rotationChange;
+                    report.pairwiseRotationDifference = dynCalibrationResult->calibrationData.value().calibrationDifference.pairwiseRotationDifference;
                     auto endTime = std::chrono::steady_clock::now();
                     std::chrono::duration<double> elapsed = endTime - startTime;
                     report.elapsedRecalibrationSeconds = elapsed.count();
                     report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
+                    recordAggregateRecalibration(true, report.elapsedRecalibrationSeconds);
+                    recordAggregateRotationDifference(report.pairwiseRotationDifference);
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
                 }
                 dynamicCalibrationCommandQueue.send(DCC::resetData());
@@ -238,6 +387,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     report.elapsedRecalibrationSeconds = elapsed.count();
+    recordAggregateRecalibration(false, report.elapsedRecalibrationSeconds);
     return nullptr;
 }
 
@@ -268,6 +418,12 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
+                {
+                    auto& state = *telemetryAggregateState;
+                    std::lock_guard<std::mutex> lock(state.mutex);
+                    state.calibrationUpdated += 1;
+                    state.outputSent += 1;
+                }
                 report.calibrationUpdated = true;
                 auto endTime = std::chrono::steady_clock::now();
                 std::chrono::duration<double> elapsed = endTime - startTime;
@@ -281,11 +437,18 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
             auto metrics = getMetrics(calibration);
             report.dataConfidence = metrics->dataConfidence;
             report.calibrationConfidence = metrics->calibrationConfidence;
+            recordAggregateValidationMetrics(report.dataConfidence, report.calibrationConfidence);
             if(metrics->dataConfidence > initialConfig->dataConfidenceThreshold) {
                 if(metrics->calibrationConfidence > initialConfig->calibrationConfidenceThreshold) {
                     dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
+                    {
+                        auto& state = *telemetryAggregateState;
+                        std::lock_guard<std::mutex> lock(state.mutex);
+                        state.calibrationUpdated += 1;
+                        state.outputSent += 1;
+                    }
                     report.calibrationUpdated = true;
                     auto endTime = std::chrono::steady_clock::now();
                     std::chrono::duration<double> elapsed = endTime - startTime;
@@ -310,6 +473,11 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
     if(mainLoop() && calibration) {
         auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., false, *calibration);
         output.send(resultOutput);
+        {
+            auto& state = *telemetryAggregateState;
+            std::lock_guard<std::mutex> lock(state.mutex);
+            state.outputSent += 1;
+        }
     }
     return false;
 }
@@ -317,9 +485,13 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
 void AutoCalibration::runContinuousMode() {
     while(mainLoop()) {
         auto startTime = std::chrono::steady_clock::now();
-        updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+        const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
         auto endTime = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed = endTime - startTime;
+        recordAggregateCycle(elapsed.count());
+        utility::Telemetry::getInstance().event(
+            "depthai_auto_calibration_run_finished",
+            nlohmann::json{{"mode", telemetryAutoCalibrationModeName(initialConfig->mode)}, {"passed", passed}, {"elapsed_seconds", elapsed.count()}});
         logger->info("AutoCalibration update took: {:.2f}s", elapsed.count());
         int elapsedSleeping = 0;
         // Continue sleeping only if total time isn't met AND mainLoop is still true
@@ -332,9 +504,13 @@ void AutoCalibration::runContinuousMode() {
 
 void AutoCalibration::runOnStartMode() {
     auto startTime = std::chrono::steady_clock::now();
-    updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+    const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
+    recordAggregateCycle(elapsed.count());
+    utility::Telemetry::getInstance().event(
+        "depthai_auto_calibration_run_finished",
+        nlohmann::json{{"mode", telemetryAutoCalibrationModeName(initialConfig->mode)}, {"passed", passed}, {"elapsed_seconds", elapsed.count()}});
     logger->info("AutoCalibration update took: {:.2f}s", elapsed.count());
 }
 
@@ -383,6 +559,15 @@ void AutoCalibration::run() {
     if(!validateIncomingData()) {
         return;
     }
+    utility::Telemetry::getInstance().event("depthai_auto_calibration_node_started",
+                                            nlohmann::json{{"mode", telemetryAutoCalibrationModeName(initialConfig->mode)},
+                                                           {"sleeping_time_s", initialConfig->sleepingTime},
+                                                           {"max_iterations", initialConfig->maxIterations},
+                                                           {"max_images_per_recalibration", initialConfig->maxImagesPerRecalibration},
+                                                           {"validation_set_size", initialConfig->validationSetSize},
+                                                           {"data_confidence_threshold", initialConfig->dataConfidenceThreshold},
+                                                           {"calibration_confidence_threshold", initialConfig->calibrationConfidenceThreshold},
+                                                           {"flash_calibration", initialConfig->flashCalibration}});
     logConfig();
     switch(initialConfig->mode) {
         case AutoCalibrationConfig::Mode::CONTINUOUS:

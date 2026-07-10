@@ -72,6 +72,15 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
                dai::filters::params::TemporalFilter::PersistencyMode::PERSISTENCY_INDEFINITELY,
                DOC(dai, filters, params, TemporalFilter, PersistencyMode, PERSISTENCY_INDEFINITELY));
 
+    // -- Threshold filter --
+    py::class_<dai::filters::params::ThresholdFilter> thresholdFilter(params, "ThresholdFilter", DOC(dai, filters, params, ThresholdFilter));
+    thresholdFilter.def(py::init<>())
+        .def_readwrite("minRange", &dai::filters::params::ThresholdFilter::minRange, DOC(dai, filters, params, ThresholdFilter, minRange))
+        .def_readwrite("maxRange", &dai::filters::params::ThresholdFilter::maxRange, DOC(dai, filters, params, ThresholdFilter, maxRange))
+        .def("__str__", [](const dai::filters::params::ThresholdFilter& self) {
+            return py::str("ThresholdFilter(minRange={}, maxRange={})").format(self.minRange, self.maxRange);
+        });
+
     // -- Speckle filter --
     py::class_<dai::filters::params::SpeckleFilter> speckleFilter(params, "SpeckleFilter");
     speckleFilter.def(py::init<>())
@@ -90,7 +99,10 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("MedianFilter") = medianFilter;
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpatialFilter") = spatialFilter;
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter") = temporalFilter;
+    m.attr("StereoDepthConfig").attr("PostProcessing").attr("ThresholdFilter") = thresholdFilter;
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpeckleFilter") = speckleFilter;
+    m.attr("NeuralDepthConfig").attr("PostProcessing").attr("TemporalFilter") = temporalFilter;
+    m.attr("NeuralDepthConfig").attr("PostProcessing").attr("ThresholdFilter") = thresholdFilter;
 
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
