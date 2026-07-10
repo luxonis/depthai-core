@@ -20,7 +20,8 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
     // py::class_<RawSpatialImgDetections, RawBuffer, std::shared_ptr<RawSpatialImgDetections>> rawSpatialImgDetections(m, "RawSpatialImgDetections", DOC(dai,
     // RawSpatialImgDetections));
     py::class_<SpatialImgDetection> spatialImgDetection(m, "SpatialImgDetection", DOC(dai, SpatialImgDetection));
-    py::class_<SpatialImgDetections, Py<SpatialImgDetections>, Buffer, Transformable, std::shared_ptr<SpatialImgDetections>> spatialImgDetections(
+    py::class_<SpatialImgDetections, Py<SpatialImgDetections>, Buffer, ProtoSerializable, Transformable, std::shared_ptr<SpatialImgDetections>>
+        spatialImgDetections(
         m, "SpatialImgDetections", DOC(dai, SpatialImgDetections));
 
     ///////////////////////////////////////////////////////////////////////
