@@ -43,15 +43,10 @@ void bind_segmentationparser(pybind11::module& m, void* pCallstack) {
             py::arg("model"),
             DOC(dai, node, SegmentationParser, build))
         .def("build",
-             py::overload_cast<Node::Output&, const NNArchive&>(&SegmentationParser::build),
-             py::arg("input"),
-             py::arg("nnArchive"),
-             DOC(dai, node, SegmentationParser, build, 2))
-        .def("build",
              py::overload_cast<Node::Output&, const dai::nn_archive::v1::Head&>(&SegmentationParser::build),
              py::arg("input"),
              py::arg("head"),
-             DOC(dai, node, SegmentationParser, build, 3))
+             DOC(dai, node, SegmentationParser, build, 2))
         .def("setNNArchive",
              py::overload_cast<const NNArchive&>(&SegmentationParser::setNNArchive),
              py::arg("nnArchive"),
