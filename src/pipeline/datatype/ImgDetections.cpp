@@ -199,8 +199,8 @@ ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));
 }
 
-std::vector<std::uint8_t> ImgDetections::serializeProto(bool) const {
-    return utility::serializeProto(utility::getProtoMessage(this));
+std::vector<std::uint8_t> ImgDetections::serializeProto(bool metadataOnly) const {
+    return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }
 
 void ImgDetections::deserializeProto(const std::vector<std::uint8_t>& bytes) {

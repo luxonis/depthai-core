@@ -98,6 +98,7 @@ message Color {
 message Point2f {
     float x = 1;
     float y = 2;
+    optional bool normalized = 3;
 }
 
 message Point3f {
@@ -109,6 +110,7 @@ message Point3f {
 message Size2f {
     float width = 1;
     float height = 2;
+    optional bool normalized = 3;
 }
 
 message RotatedRect {

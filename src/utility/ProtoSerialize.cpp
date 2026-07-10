@@ -78,6 +78,59 @@ ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::
     return returnPair;
 }
 
+void serializePoint2f(proto::common::Point2f* protoPoint, const Point2f& point) {
+    protoPoint->set_x(point.x);
+    protoPoint->set_y(point.y);
+    if(point.hasNormalized) {
+        protoPoint->set_normalized(point.normalized);
+    } else {
+        protoPoint->clear_normalized();
+    }
+}
+
+Point2f deserializePoint2f(const proto::common::Point2f& point) {
+    if(point.has_normalized()) {
+        return Point2f{point.x(), point.y(), point.normalized()};
+    }
+    return Point2f{point.x(), point.y()};
+}
+
+void serializeSize2f(proto::common::Size2f* protoSize, const Size2f& size) {
+    protoSize->set_width(size.width);
+    protoSize->set_height(size.height);
+    if(size.hasNormalized) {
+        protoSize->set_normalized(size.normalized);
+    } else {
+        protoSize->clear_normalized();
+    }
+}
+
+Size2f deserializeSize2f(const proto::common::Size2f& size) {
+    if(size.has_normalized()) {
+        return Size2f{size.width(), size.height(), size.normalized()};
+    }
+    return Size2f{size.width(), size.height()};
+}
+
+void serializeSpatialRect(proto::spatial_img_detections::Rect* protoRect, const Rect& rect) {
+    protoRect->set_x(rect.x);
+    protoRect->set_y(rect.y);
+    protoRect->set_width(rect.width);
+    protoRect->set_height(rect.height);
+    if(rect.hasNormalized) {
+        protoRect->set_normalized(rect.normalized);
+    } else {
+        protoRect->clear_normalized();
+    }
+}
+
+Rect deserializeSpatialRect(const proto::spatial_img_detections::Rect& rect) {
+    if(rect.has_normalized()) {
+        return Rect{rect.x(), rect.y(), rect.width(), rect.height(), rect.normalized()};
+    }
+    return Rect{rect.x(), rect.y(), rect.width(), rect.height()};
+}
+
 void serializeImgTransformation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation) {
     const auto [width, height] = transformation.getSize();
     const auto [srcWidth, srcHeight] = transformation.getSourceSize();
@@ -127,10 +180,8 @@ void serializeImgTransformation(proto::common::ImgTransformation* imgTransformat
 
     for(const auto& crop : transformation.getSrcCrops()) {
         auto* protoCrop = imgTransformation->add_srccrops();
-        protoCrop->mutable_center()->set_x(crop.center.x);
-        protoCrop->mutable_center()->set_y(crop.center.y);
-        protoCrop->mutable_size()->set_width(crop.size.width);
-        protoCrop->mutable_size()->set_height(crop.size.height);
+        serializePoint2f(protoCrop->mutable_center(), crop.center);
+        serializeSize2f(protoCrop->mutable_size(), crop.size);
         protoCrop->set_angle(crop.angle);
     }
 }
@@ -181,12 +232,8 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
     std::vector<dai::RotatedRect> srcCrops;
     srcCrops.reserve(imgTransformation.srccrops_size());
     for(const auto& crop : imgTransformation.srccrops()) {
-        dai::Point2f center;
-        center.x = crop.center().x();
-        center.y = crop.center().y();
-        dai::Size2f size;
-        size.width = crop.size().width();
-        size.height = crop.size().height();
+        dai::Point2f center = deserializePoint2f(crop.center());
+        dai::Size2f size = deserializeSize2f(crop.size());
         srcCrops.emplace_back(center, size, crop.angle());
     }
     ImgTransformation transformation;
@@ -209,21 +256,21 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
 }
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
-    if(schemaName == "dai.proto.encoded_frame.EncodedFrame") {
+    if(schemaName == proto::encoded_frame::EncodedFrame::descriptor()->full_name()) {
         return DatatypeEnum::EncodedFrame;
-    } else if(schemaName == "dai.proto.imu_data.IMUData") {
+    } else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
         return DatatypeEnum::IMUData;
-    } else if(schemaName == "dai.proto.image_annotations.ImageAnnotations") {
+    } else if(schemaName == proto::image_annotations::ImageAnnotations::descriptor()->full_name()) {
         return DatatypeEnum::ImgAnnotations;
-    } else if(schemaName == "dai.proto.img_detections.ImgDetections") {
+    } else if(schemaName == proto::img_detections::ImgDetections::descriptor()->full_name()) {
         return DatatypeEnum::ImgDetections;
-    } else if(schemaName == "dai.proto.img_frame.ImgFrame") {
+    } else if(schemaName == proto::img_frame::ImgFrame::descriptor()->full_name()) {
         return DatatypeEnum::ImgFrame;
-    } else if(schemaName == "dai.proto.segmentation_mask.SegmentationMask") {
+    } else if(schemaName == proto::segmentation_mask::SegmentationMask::descriptor()->full_name()) {
         return DatatypeEnum::SegmentationMask;
-    } else if(schemaName == "dai.proto.point_cloud_data.PointCloudData") {
+    } else if(schemaName == proto::point_cloud_data::PointCloudData::descriptor()->full_name()) {
         return DatatypeEnum::PointCloudData;
-    } else if(schemaName == "dai.proto.spatial_img_detections.SpatialImgDetections") {
+    } else if(schemaName == proto::spatial_img_detections::SpatialImgDetections::descriptor()->full_name()) {
         return DatatypeEnum::SpatialImgDetections;
     } else if(schemaName == proto::rgbd_data::RGBDData::descriptor()->full_name()) {
         return DatatypeEnum::RGBDData;
@@ -315,10 +362,6 @@ Point3f deserializePoint3f(const ProtoPointT& point) {
     return Point3f{point.x(), point.y(), point.z()};
 }
 
-Point2f deserializePoint2f(const proto::common::Point2f& point) {
-    return Point2f{point.x(), point.y()};
-}
-
 Color deserializeColor(const proto::common::Color& color) {
     return Color{color.r(), color.g(), color.b(), color.a()};
 }
@@ -326,7 +369,7 @@ Color deserializeColor(const proto::common::Color& color) {
 RotatedRect deserializeRotatedRect(const proto::common::RotatedRect& bbox) {
     return RotatedRect{
         deserializePoint2f(bbox.center()),
-        Size2f{bbox.size().width(), bbox.size().height()},
+        deserializeSize2f(bbox.size()),
         bbox.angle(),
     };
 }
@@ -554,9 +597,9 @@ void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encoded_frame
 
     obj.transformation = deserializeImgTransformation(encFrame.transformation());
 
-    if(!metadataOnly && !encFrame.data().empty() && encFrame.data().data() != nullptr) {
+    if(!metadataOnly) {
         std::vector<uint8_t> data(encFrame.data().begin(), encFrame.data().end());
-        obj.setData(data);
+        obj.setData(std::move(data));
     }
 }
 
@@ -613,7 +656,7 @@ void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& 
 
     if(!metadataOnly) {
         std::vector<uint8_t> data(imgFrame.data().begin(), imgFrame.data().end());
-        obj.setData(data);
+        obj.setData(std::move(data));
     }
 }
 
@@ -648,8 +691,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
         proto::image_annotations::ImageAnnotation* imageAnnotation = imageAnnotations->add_annotations();
         for(const auto& circle : annotation.circles) {
             proto::image_annotations::CircleAnnotation* circleAnnotation = imageAnnotation->add_circles();
-            circleAnnotation->mutable_position()->set_x(circle.position.x);
-            circleAnnotation->mutable_position()->set_y(circle.position.y);
+            serializePoint2f(circleAnnotation->mutable_position(), circle.position);
             circleAnnotation->set_diameter(circle.diameter);
             circleAnnotation->set_thickness(circle.thickness);
             circleAnnotation->mutable_fillcolor()->set_r(circle.fillColor.r);
@@ -667,8 +709,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
             pointsAnnotation->set_type(static_cast<proto::image_annotations::PointsAnnotationType>(type));
             for(const auto& point : points.points) {
                 proto::common::Point2f* protoPoint = pointsAnnotation->add_points();
-                protoPoint->set_x(point.x);
-                protoPoint->set_y(point.y);
+                serializePoint2f(protoPoint, point);
             }
             pointsAnnotation->mutable_outlinecolor()->set_r(points.outlineColor.r);
             pointsAnnotation->mutable_outlinecolor()->set_g(points.outlineColor.g);
@@ -689,8 +730,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
         }
         for(const auto& text : annotation.texts) {
             proto::image_annotations::TextAnnotation* textAnnotation = imageAnnotation->add_texts();
-            textAnnotation->mutable_position()->set_x(text.position.x);
-            textAnnotation->mutable_position()->set_y(text.position.y);
+            serializePoint2f(textAnnotation->mutable_position(), text.position);
             textAnnotation->set_text(text.text);
             textAnnotation->set_fontsize(text.fontSize);
             textAnnotation->mutable_textcolor()->set_r(text.textColor.r);
@@ -743,12 +783,8 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
         if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
             const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
             auto* bboxProto = protoDetection->mutable_boundingbox();
-            auto* center = bboxProto->mutable_center();
-            center->set_x(bbox.center.x);
-            center->set_y(bbox.center.y);
-            auto* size = bboxProto->mutable_size();
-            size->set_width(bbox.size.width);
-            size->set_height(bbox.size.height);
+            serializePoint2f(bboxProto->mutable_center(), bbox.center);
+            serializeSize2f(bboxProto->mutable_size(), bbox.size);
             bboxProto->set_angle(bbox.angle);
         }
 
@@ -762,11 +798,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
         auto* boundingBoxMapping = spatialImgDetection->mutable_boundingboxmapping();
 
         // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.Rect
-        auto* roi = boundingBoxMapping->mutable_roi();
-        roi->set_x(detection.boundingBoxMapping.roi.x);
-        roi->set_y(detection.boundingBoxMapping.roi.y);
-        roi->set_width(detection.boundingBoxMapping.roi.width);
-        roi->set_height(detection.boundingBoxMapping.roi.height);
+        serializeSpatialRect(boundingBoxMapping->mutable_roi(), detection.boundingBoxMapping.roi);
 
         // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorConfigThresholds
         auto* depthTresholds = boundingBoxMapping->mutable_depththresholds();
@@ -963,12 +995,8 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
         if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
             const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
             proto::common::RotatedRect* bboxProto = imgDetection->mutable_boundingbox();
-            proto::common::Point2f* center = bboxProto->mutable_center();
-            center->set_x(bbox.center.x);
-            center->set_y(bbox.center.y);
-            proto::common::Size2f* size = bboxProto->mutable_size();
-            size->set_width(bbox.size.width);
-            size->set_height(bbox.size.height);
+            serializePoint2f(bboxProto->mutable_center(), bbox.center);
+            serializeSize2f(bboxProto->mutable_size(), bbox.size);
             bboxProto->set_angle(bbox.angle);
         }
 
@@ -1276,10 +1304,7 @@ void setProtoMessage(SpatialImgDetections& obj, const google::protobuf::Message*
 
         if(protoSpatialDetection.has_boundingboxmapping()) {
             const auto& protoMapping = protoSpatialDetection.boundingboxmapping();
-            detection.boundingBoxMapping.roi.x = protoMapping.roi().x();
-            detection.boundingBoxMapping.roi.y = protoMapping.roi().y();
-            detection.boundingBoxMapping.roi.width = protoMapping.roi().width();
-            detection.boundingBoxMapping.roi.height = protoMapping.roi().height();
+            detection.boundingBoxMapping.roi = deserializeSpatialRect(protoMapping.roi());
             detection.boundingBoxMapping.depthThresholds.lowerThreshold = protoMapping.depththresholds().lowerthreshold();
             detection.boundingBoxMapping.depthThresholds.upperThreshold = protoMapping.depththresholds().upperthreshold();
             detection.boundingBoxMapping.calculationAlgorithm = static_cast<SpatialLocationCalculatorAlgorithm>(protoMapping.calculationalgorithm());
@@ -1295,9 +1320,14 @@ void setProtoMessage(SpatialImgDetections& obj, const google::protobuf::Message*
         obj.detections.push_back(std::move(detection));
     }
 
-    if(!metadataOnly && !spatialImgDetections->maskdata().empty() && spatialImgDetections->maskdata().data() != nullptr) {
-        std::vector<std::uint8_t> maskData(spatialImgDetections->maskdata().begin(), spatialImgDetections->maskdata().end());
-        obj.setSegmentationMask(maskData, obj.segmentationMaskWidth, obj.segmentationMaskHeight);
+    if(!metadataOnly) {
+        if(!spatialImgDetections->maskdata().empty() && spatialImgDetections->maskdata().data() != nullptr) {
+            std::vector<std::uint8_t> maskData(spatialImgDetections->maskdata().begin(), spatialImgDetections->maskdata().end());
+            obj.setSegmentationMask(maskData, obj.segmentationMaskWidth, obj.segmentationMaskHeight);
+        } else {
+            std::vector<std::uint8_t> emptyData;
+            obj.setData(std::move(emptyData));
+        }
     }
 }
 
@@ -1321,9 +1351,14 @@ void setProtoMessage(ImgDetections& obj, const google::protobuf::Message* msg, b
         obj.detections.push_back(std::move(detection));
     }
 
-    if(!metadataOnly && !imgDetections->maskdata().empty() && imgDetections->maskdata().data() != nullptr) {
-        std::vector<std::uint8_t> maskData(imgDetections->maskdata().begin(), imgDetections->maskdata().end());
-        obj.setSegmentationMask(maskData, obj.segmentationMaskWidth, obj.segmentationMaskHeight);
+    if(!metadataOnly) {
+        if(!imgDetections->maskdata().empty() && imgDetections->maskdata().data() != nullptr) {
+            std::vector<std::uint8_t> maskData(imgDetections->maskdata().begin(), imgDetections->maskdata().end());
+            obj.setSegmentationMask(maskData, obj.segmentationMaskWidth, obj.segmentationMaskHeight);
+        } else {
+            std::vector<std::uint8_t> emptyData;
+            obj.setData(std::move(emptyData));
+        }
     }
 }
 
@@ -1488,9 +1523,9 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
 
     obj.transformation = deserializeImgTransformation(imgFrame->transformation());
 
-    if(!metadataOnly && !imgFrame->data().empty() && imgFrame->data().data() != nullptr) {
+    if(!metadataOnly) {
         std::vector<uint8_t> data(imgFrame->data().begin(), imgFrame->data().end());
-        obj.setData(data);
+        obj.setData(std::move(data));
     }
 }
 template <>
@@ -1506,10 +1541,15 @@ void setProtoMessage(SegmentationMask& obj, const google::protobuf::Message* msg
     obj.setSize(static_cast<size_t>(segmentationMask->width()), static_cast<size_t>(segmentationMask->height()));
     obj.setLabels(std::vector<std::string>(segmentationMask->labels().begin(), segmentationMask->labels().end()));
 
-    if(!metadataOnly && !segmentationMask->data().empty() && segmentationMask->data().data() != nullptr) {
-        obj.setMask(span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(segmentationMask->data().data()), segmentationMask->data().size()),
-                    obj.getWidth(),
-                    obj.getHeight());
+    if(!metadataOnly) {
+        if(!segmentationMask->data().empty() && segmentationMask->data().data() != nullptr) {
+            obj.setMask(span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(segmentationMask->data().data()), segmentationMask->data().size()),
+                        obj.getWidth(),
+                        obj.getHeight());
+        } else {
+            std::vector<std::uint8_t> emptyData;
+            obj.setData(std::move(emptyData));
+        }
     }
 }
 
@@ -1556,9 +1596,9 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
     obj.setMaxZ(pcl->maxz());
     obj.setColor(pcl->color());
 
-    if(!metadataOnly && !pcl->data().empty() && pcl->data().data() != nullptr) {
+    if(!metadataOnly) {
         std::vector<uint8_t> data(pcl->data().begin(), pcl->data().end());
-        obj.setData(data);
+        obj.setData(std::move(data));
     }
 }
 
@@ -1595,6 +1635,7 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
             break;
         }
         case proto::rgbd_data::RGBDData::COLOR_FRAME_NOT_SET:
+            obj.setRGBFrame(std::shared_ptr<ImgFrame>{});
             break;
     }
 
@@ -1613,6 +1654,7 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
             break;
         }
         case proto::rgbd_data::RGBDData::DEPTH_FRAME_NOT_SET:
+            obj.setDepthFrame(std::shared_ptr<ImgFrame>{});
             break;
     }
 }
