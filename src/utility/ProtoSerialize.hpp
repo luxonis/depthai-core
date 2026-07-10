@@ -17,8 +17,8 @@
 #include "depthai/schemas/ImgFrame.pb.h"
 #include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/schemas/RGBDData.pb.h"
-#include "depthai/schemas/SpatialImgDetections.pb.h"
 #include "depthai/schemas/SegmentationMask.pb.h"
+#include "depthai/schemas/SpatialImgDetections.pb.h"
 #include "depthai/schemas/common.pb.h"
 #include "pipeline/datatype/EncodedFrame.hpp"
 #include "pipeline/datatype/IMUData.hpp"
@@ -28,10 +28,12 @@
 #include "utility/ProtoSerializable.hpp"
 
 #ifndef DEPTHAI_PROTO_DECLARE
-#define DEPTHAI_PROTO_DECLARE(daiMsg)\
-    template <> std::unique_ptr<google::protobuf::Message> getProtoMessage(const daiMsg* message, bool);\
-    template <> void setProtoMessage(daiMsg& obj, const google::protobuf::Message* msg, bool);\
-    void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes);
+    #define DEPTHAI_PROTO_DECLARE(daiMsg)                                                        \
+        template <>                                                                              \
+        std::unique_ptr<google::protobuf::Message> getProtoMessage(const daiMsg* message, bool); \
+        template <>                                                                              \
+        void setProtoMessage(daiMsg& obj, const google::protobuf::Message* msg, bool);           \
+        void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes);
 #endif
 
 namespace dai {

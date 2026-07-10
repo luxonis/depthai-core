@@ -253,4 +253,5 @@ void SpatialImgDetections::deserializeProto(const std::vector<std::uint8_t>& byt
 }
 
 #endif
+
 }  // namespace dai

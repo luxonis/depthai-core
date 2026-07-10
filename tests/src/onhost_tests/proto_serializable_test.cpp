@@ -1,12 +1,10 @@
 #include <catch2/catch_all.hpp>
-
 #include <chrono>
+#include <depthai/depthai.hpp>
+#include <depthai/pipeline/datatype/ImgAnnotations.hpp>
 #include <filesystem>
 #include <sstream>
 #include <variant>
-
-#include <depthai/depthai.hpp>
-#include <depthai/pipeline/datatype/ImgAnnotations.hpp>
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 namespace {
@@ -283,13 +281,12 @@ TEST_CASE("ProtoSerializable save/load roundtrip for ImgAnnotations", "[ProtoSer
 
     dai::ImgAnnotation annotation;
     annotation.circles.push_back({dai::Point2f{0.2F, 0.3F, true}, 0.1F, 2.0F, dai::Color{0.1F, 0.2F, 0.3F, 1.0F}, dai::Color{0.4F, 0.5F, 0.6F, 1.0F}});
-    annotation.points.push_back(
-        {dai::PointsAnnotationType::LINE_STRIP,
-         {{0.1F, 0.2F, true}, {0.3F, 0.4F, true}},
-         dai::Color{0.7F, 0.2F, 0.1F, 1.0F},
-         {dai::Color{0.2F, 0.8F, 0.1F, 1.0F}},
-         dai::Color{0.1F, 0.1F, 0.9F, 0.5F},
-         3.0F});
+    annotation.points.push_back({dai::PointsAnnotationType::LINE_STRIP,
+                                 {{0.1F, 0.2F, true}, {0.3F, 0.4F, true}},
+                                 dai::Color{0.7F, 0.2F, 0.1F, 1.0F},
+                                 {dai::Color{0.2F, 0.8F, 0.1F, 1.0F}},
+                                 dai::Color{0.1F, 0.1F, 0.9F, 0.5F},
+                                 3.0F});
     annotation.texts.push_back({dai::Point2f{0.6F, 0.7F, true}, "label", 18.0F, dai::Color{1.0F, 1.0F, 1.0F, 1.0F}, dai::Color{0.0F, 0.0F, 0.0F, 1.0F}});
     source.annotations.push_back(annotation);
 
@@ -319,8 +316,7 @@ TEST_CASE("ProtoSerializable save/load roundtrip for ImgDetections", "[ProtoSeri
     detection.labelName = "person";
     detection.confidence = 0.75F;
     detection.setBoundingBox(dai::RotatedRect(dai::Point2f{0.5F, 0.5F, true}, dai::Size2f{0.25F, 0.4F, true}, 15.0F));
-    detection.setKeypoints({dai::Keypoint(dai::Point3f{0.1F, 0.2F, 0.0F}, 0.9F, 1), dai::Keypoint(dai::Point3f{0.3F, 0.4F, 0.0F}, 0.8F, 2)},
-                           {dai::Edge{0, 1}});
+    detection.setKeypoints({dai::Keypoint(dai::Point3f{0.1F, 0.2F, 0.0F}, 0.9F, 1), dai::Keypoint(dai::Point3f{0.3F, 0.4F, 0.0F}, 0.8F, 2)}, {dai::Edge{0, 1}});
     source.detections.push_back(detection);
     source.setSegmentationMask(std::vector<std::uint8_t>{0, 0, 1, 255}, 2, 2);
 
@@ -359,9 +355,9 @@ TEST_CASE("ProtoSerializable save/load roundtrip for SpatialImgDetections", "[Pr
     detection.boundingBoxMapping.depthThresholds.upperThreshold = 999;
     detection.boundingBoxMapping.calculationAlgorithm = dai::SpatialLocationCalculatorAlgorithm::MAX;
     detection.boundingBoxMapping.stepSize = 3;
-    detection.setKeypoints({dai::SpatialKeypoint(0.1F, 0.2F, 0.0F, 1.0F, 2.0F, 3.0F, 0.9F, 7, "nose"),
-                            dai::SpatialKeypoint(0.3F, 0.4F, 0.0F, 4.0F, 5.0F, 6.0F, 0.8F, 8, "eye")},
-                           {dai::Edge{0, 1}});
+    detection.setKeypoints(
+        {dai::SpatialKeypoint(0.1F, 0.2F, 0.0F, 1.0F, 2.0F, 3.0F, 0.9F, 7, "nose"), dai::SpatialKeypoint(0.3F, 0.4F, 0.0F, 4.0F, 5.0F, 6.0F, 0.8F, 8, "eye")},
+        {dai::Edge{0, 1}});
     source.detections.push_back(detection);
     source.setSegmentationMask(std::vector<std::uint8_t>{0, 255, 1, 1}, 2, 2);
 
@@ -374,10 +370,8 @@ TEST_CASE("ProtoSerializable save/load roundtrip for SpatialImgDetections", "[Pr
     REQUIRE(restored.detections[0].labelName == source.detections[0].labelName);
     requireRotatedRect(restored.detections[0].getBoundingBox(), source.detections[0].getBoundingBox());
     requirePoint3f(restored.detections[0].spatialCoordinates, source.detections[0].spatialCoordinates);
-    REQUIRE(restored.detections[0].boundingBoxMapping.depthThresholds.lowerThreshold
-            == source.detections[0].boundingBoxMapping.depthThresholds.lowerThreshold);
-    REQUIRE(restored.detections[0].boundingBoxMapping.depthThresholds.upperThreshold
-            == source.detections[0].boundingBoxMapping.depthThresholds.upperThreshold);
+    REQUIRE(restored.detections[0].boundingBoxMapping.depthThresholds.lowerThreshold == source.detections[0].boundingBoxMapping.depthThresholds.lowerThreshold);
+    REQUIRE(restored.detections[0].boundingBoxMapping.depthThresholds.upperThreshold == source.detections[0].boundingBoxMapping.depthThresholds.upperThreshold);
     REQUIRE(restored.detections[0].boundingBoxMapping.calculationAlgorithm == source.detections[0].boundingBoxMapping.calculationAlgorithm);
     REQUIRE(restored.detections[0].boundingBoxMapping.stepSize == source.detections[0].boundingBoxMapping.stepSize);
     REQUIRE(restored.detections[0].getKeypoints().size() == source.detections[0].getKeypoints().size());

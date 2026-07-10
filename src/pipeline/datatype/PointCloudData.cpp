@@ -257,6 +257,8 @@ void PointCloudData::deserializeProto(const std::vector<std::uint8_t>& bytes) {
 }
 
 #endif
+
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");
 static_assert(sizeof(Point3fRGBA) == 16, "Point3fRGBA size must be 16 bytes");
+
 }  // namespace dai
