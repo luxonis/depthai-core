@@ -171,6 +171,7 @@ std::vector<std::uint8_t> EncodedFrame::serializeProto(bool metadataOnly) const 
 void EncodedFrame::deserializeProto(const std::vector<std::uint8_t>& bytes) {
     utility::deserializeProtoMessage(*this, bytes);
 }
+
 #endif
 
 }  // namespace dai
