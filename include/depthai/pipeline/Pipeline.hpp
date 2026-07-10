@@ -264,6 +264,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Add a node to nodeMap
     void add(const std::shared_ptr<Node>& node);
 
+    /**
+     * Wire subtree into this pipeline (assign ids, parent weak_ptr, default device).
+     * Used when a node that is already in the pipeline gains new children (lazy subgraphs).
+     */
+    void adoptSubtree(std::shared_ptr<Node> root);
+
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
     bool isBuilt() const;

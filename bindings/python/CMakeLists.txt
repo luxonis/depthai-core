@@ -112,6 +112,7 @@ set(SOURCE_LIST
     src/pipeline/node/RectificationBindings.cpp
     src/pipeline/node/NeuralDepthBindings.cpp
     src/pipeline/node/GPUStereoBindings.cpp
+    src/pipeline/node/DepthBindings.cpp
     src/pipeline/node/NeuralAssistedStereoBindings.cpp
     src/pipeline/FilterParamsBindings.cpp
     src/pipeline/node/VppBindings.cpp
