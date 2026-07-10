@@ -11,7 +11,7 @@ ProtoSerializable::~ProtoSerializable() = default;
 namespace {
 
 std::filesystem::path resolveDataPath(const std::filesystem::path& path) {
-    if(path.has_extension() && path.extension() == ".dai") {
+    if(path.has_extension()) {
         return path;
     }
     auto resolved = path;
