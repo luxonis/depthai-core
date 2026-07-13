@@ -79,13 +79,16 @@ def main() -> int:
     pipeline = dai.Pipeline()
 
     # Detection network on the default color camera.
-    camera = pipeline.create(dai.node.Camera).build()
+    camera = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(camera, dai.NNModelDescription(args.model))
+    detectionNetwork.setConfidenceThreshold(0.5)
 
     # Depth node with focused-depth input.
     depth = pipeline.create(dai.node.Depth)
     if args.fps is not None:
         depth.build(args.fps)
+    else:
+        depth.build()
     detectionNetwork.out.link(depth.inputDetections)
 
     # Output queues.
