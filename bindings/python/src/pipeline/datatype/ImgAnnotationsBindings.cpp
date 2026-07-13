@@ -95,10 +95,6 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack) {
     imageAnnotations.def(py::init<>(), DOC(dai, ImgAnnotations, ImgAnnotations))
         .def(py::init<const std::vector<ImgAnnotation>&>(), DOC(dai, ImgAnnotations, ImgAnnotations, 2))
         .def_readwrite("annotations", &ImgAnnotations::annotations)
-        .def("getTimestamp", &ImgAnnotations::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &ImgAnnotations::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getTimestampSystem", &ImgAnnotations::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
-        .def("getSequenceNum", &ImgAnnotations::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](ImgAnnotations& msg) { return msg.transformation; })
         .def("setTransformation", [](ImgAnnotations& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; });
 }
