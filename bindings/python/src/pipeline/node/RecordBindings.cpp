@@ -40,4 +40,6 @@ void bind_record(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, RecordMetadataOnly, setCompressionLevel))
         .def("getRecordFile", &RecordMetadataOnly::getRecordFile, DOC(dai, node, RecordMetadataOnly, getRecordFile))
         .def("getCompressionLevel", &RecordMetadataOnly::getCompressionLevel, DOC(dai, node, RecordMetadataOnly, getCompressionLevel));
+
+    daiNodeModule.attr("RecordMessage") = recordMessage;
 }
