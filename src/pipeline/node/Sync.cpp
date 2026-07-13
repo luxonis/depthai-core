@@ -24,8 +24,8 @@ ProcessorType Sync::getProcessor() const {
     return properties.processor;
 }
 
-void Sync::setTimestampSource(TimestampSource type) {
-    properties.timestampSource = type;
+void Sync::setTimestampSource(TimestampSource source) {
+    properties.timestampSource = source;
 }
 
 Sync::TimestampSource Sync::getTimestampSource() const {
