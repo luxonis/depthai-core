@@ -146,7 +146,7 @@ void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileTag
 //     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileTag));
 // }
 
-std::string calculateSHA256Checksum(const std::string& data) {
+std::string FileData::calculateSHA256Checksum(const std::string& data) {
     unsigned char digest[SHA256_DIGEST_LENGTH];
     SHA256(reinterpret_cast<const unsigned char*>(data.data()), data.size(), digest);
 
@@ -194,25 +194,12 @@ FileData::FileData(std::filesystem::path filePath, std::string fileTag) : fileTa
     }
 }
 
-FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileTag)
+#ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
+FileData::FileData(const std::shared_ptr<ImgFrame>&, std::string fileTag)
     : mimeType("image/jpeg"), fileTag(std::move(fileTag)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
-    // Convert ImgFrame to bytes
-    std::vector<uchar> buffer;
-    try {
-        cv::Mat cvFrame = imgFrame->getCvFrame();
-        if(!cv::imencode(".jpg", cvFrame, buffer)) {
-            throw std::runtime_error("ImgFrame encoding failed");
-        }
-    } catch(const cv::Exception& e) {
-        throw std::runtime_error(std::string("ImgFrame encoding failed due to OpenCV error: ") + e.what());
-    }
-
-    std::stringstream ss;
-    ss.write((const char*)buffer.data(), buffer.size());
-    data = ss.str();
-    size = data.size();
-    checksum = calculateSHA256Checksum(data);
+    throw std::runtime_error("FileData requires OpenCV support");
 }
+#endif
 
 FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileTag)
     : mimeType("image/jpeg"), fileTag(std::move(fileTag)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {

@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <deque>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -38,6 +39,8 @@ class FileData {
     bool toFile(const std::filesystem::path& inputPath);
 
    private:
+    static std::string calculateSHA256Checksum(const std::string& data);
+
     std::string mimeType;
     std::string fileTag;
     std::string data;
