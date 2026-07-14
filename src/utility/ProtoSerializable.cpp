@@ -25,8 +25,8 @@ void writeMsgBinaryFile(const std::filesystem::path& path, const std::vector<std
     if(!file) {
         throw std::runtime_error("Failed to open file for writing: " + path.string());
     }
+    file.write(reinterpret_cast<const char*>(&datatype), sizeof(datatype));
     if(!bytes.empty()) {
-        file.write(reinterpret_cast<const char*>(&datatype), sizeof(datatype));
         file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
         if(!file) {
             throw std::runtime_error("Failed to write file: " + path.string());
@@ -50,14 +50,15 @@ std::vector<std::uint8_t> readMsgBinaryFile(const std::filesystem::path& path, D
     }
     file.seekg(0, std::ios::beg);
 
+    DatatypeEnum readDatatype = DatatypeEnum::ADatatype;
+    file.read(reinterpret_cast<char*>(&readDatatype), sizeof(readDatatype));
+    if(readDatatype != datatype) {
+        throw std::runtime_error("Datatype mismatch when reading file: " + path.string());
+    }
+
     size -= sizeof(datatype);  // Subtract the size of the prepended datatype enum
     std::vector<std::uint8_t> buffer(static_cast<size_t>(size));
     if(!buffer.empty()) {
-        DatatypeEnum readDatatype = DatatypeEnum::ADatatype;
-        file.read(reinterpret_cast<char*>(&readDatatype), sizeof(readDatatype));
-        if(readDatatype != datatype) {
-            throw std::runtime_error("Datatype mismatch when reading file: " + path.string());
-        }
         file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
         if(!file) {
             throw std::runtime_error("Failed to read file: " + path.string());
