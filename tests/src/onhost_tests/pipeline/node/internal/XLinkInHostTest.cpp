@@ -4,6 +4,7 @@
 
 #include "../../../../../../src/pipeline/datatype/PacketizedData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MessageBatch.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 
@@ -13,6 +14,7 @@ namespace internal {
 
 class XLinkInHostTestable : public XLinkInHost {
    public:
+    using dai::node::internal::XLinkInHost::parseMessageBatch;
     using dai::node::internal::XLinkInHost::parseMessageGroup;
     using dai::node::internal::XLinkInHost::parsePacketizedData;
     using dai::node::internal::XLinkInHost::readData;
@@ -39,6 +41,32 @@ dai::StreamPacketDesc getRawBuffer(std::shared_ptr<dai::ImgFrame> frame) {
     packetFrame.length = totalSize;
     packetFrame.fd = -1;
     return packetFrame;
+}
+
+dai::StreamPacketDesc getRawBuffer(std::shared_ptr<dai::Buffer> buffer) {
+    auto span = buffer->getData();
+    std::vector<std::uint8_t> data(span.begin(), span.end());
+    std::vector<std::uint8_t> metadata = dai::StreamMessageParser::serializeMetadata(buffer);
+
+    void* rawBuffer = std::malloc(data.size() + metadata.size());
+    if(!data.empty()) std::memcpy(rawBuffer, data.data(), data.size());
+    std::memcpy(static_cast<uint8_t*>(rawBuffer) + data.size(), metadata.data(), metadata.size());
+    dai::StreamPacketDesc packet;
+    packet.data = static_cast<uint8_t*>(rawBuffer);
+    packet.length = data.size() + metadata.size();
+    packet.fd = -1;
+    return packet;
+}
+
+dai::StreamPacketDesc getRawBuffer(std::shared_ptr<dai::MessageBatch> bufferVector) {
+    std::vector<std::uint8_t> metadata = dai::StreamMessageParser::serializeMetadata(bufferVector);
+    void* rawBuffer = std::malloc(metadata.size());
+    std::memcpy(rawBuffer, metadata.data(), metadata.size());
+    dai::StreamPacketDesc packet;
+    packet.data = static_cast<uint8_t*>(rawBuffer);
+    packet.length = metadata.size();
+    packet.fd = -1;
+    return packet;
 }
 
 dai::StreamPacketDesc getRawBuffer(std::shared_ptr<dai::MessageGroup> messageGroup) {
@@ -166,6 +194,35 @@ TEST_CASE("XLinkInHost - readData") {
 
         REQUIRE(cv::countNonZero(cvFrame1 != mat1) == 0);
         REQUIRE(cv::countNonZero(cvFrame2 != mat2) == 0);
+    }
+
+    SECTION("MessageBatch") {
+        auto frame1 = std::make_shared<dai::ImgFrame>();
+        frame1->setCvFrame(cv::Mat(2, 2, CV_8UC1, cv::Scalar(1)), dai::ImgFrame::Type::GRAY8);
+        auto frame2 = std::make_shared<dai::ImgFrame>();
+        frame2->setCvFrame(cv::Mat(2, 2, CV_8UC1, cv::Scalar(2)), dai::ImgFrame::Type::GRAY8);
+        auto empty = std::make_shared<dai::Buffer>();
+        auto bufferVector = std::make_shared<dai::MessageBatch>(std::vector<std::shared_ptr<dai::Buffer>>{frame1, nullptr, frame2});
+
+        auto headerPacket = getRawBuffer(bufferVector);
+        auto frame1Packet = getRawBuffer(frame1);
+        auto emptyPacket = getRawBuffer(empty);
+        auto frame2Packet = getRawBuffer(frame2);
+
+        trompeloeil::sequence seq;
+        REQUIRE_CALL(xlinkIn, readStreamMessage()).IN_SEQUENCE(seq).LR_RETURN(std::move(headerPacket));
+        REQUIRE_CALL(xlinkIn, readStreamMessage()).IN_SEQUENCE(seq).LR_RETURN(std::move(frame1Packet));
+        REQUIRE_CALL(xlinkIn, readStreamMessage()).IN_SEQUENCE(seq).LR_RETURN(std::move(emptyPacket));
+        REQUIRE_CALL(xlinkIn, readStreamMessage()).IN_SEQUENCE(seq).LR_RETURN(std::move(frame2Packet));
+
+        auto result = std::dynamic_pointer_cast<dai::MessageBatch>(xlinkIn.readData());
+        REQUIRE(result != nullptr);
+        REQUIRE(result->size() == 3);
+        REQUIRE(result->at(0) != nullptr);
+        REQUIRE(result->at(1) == nullptr);
+        REQUIRE(result->at(2) != nullptr);
+        REQUIRE(result->at(0)->getData()[0] == 1);
+        REQUIRE(result->at(2)->getData()[0] == 2);
     }
 
     SECTION("PacketizedFrame") {

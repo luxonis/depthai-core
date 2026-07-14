@@ -131,3 +131,33 @@ TEST_CASE("Raw - Incorrect message too small size 2") {
 
     REQUIRE_THROWS(dai::StreamMessageParser::parseMessage(&packet));
 }
+
+TEST_CASE("BatchItem message round-trips through stream parser") {
+    auto payload = std::make_shared<dai::ImgFrame>();
+    payload->setSequenceNum(42);
+    payload->setData(std::vector<std::uint8_t>{1, 2, 3, 4});
+
+    dai::BatchItem iterable(payload, 10, 2, 7);
+    REQUIRE(iterable.getSequenceNum() == 42);
+    auto metadata = dai::StreamMessageParser::serializeMetadata(iterable);
+
+    std::vector<std::uint8_t> packetBytes(payload->getData().begin(), payload->getData().end());
+    packetBytes.insert(packetBytes.end(), metadata.begin(), metadata.end());
+
+    streamPacketDesc_t packet;
+    packet.data = packetBytes.data();
+    packet.length = packetBytes.size();
+    packet.fd = -1;
+
+    auto parsed = std::dynamic_pointer_cast<dai::BatchItem>(dai::StreamMessageParser::parseMessage(&packet));
+    REQUIRE(parsed != nullptr);
+    REQUIRE(parsed->batchSize == 10);
+    REQUIRE(parsed->batchIndex == 2);
+    REQUIRE(parsed->itemIndex == 7);
+    REQUIRE(parsed->getSequenceNum() == 42);
+
+    auto parsedPayload = parsed->getPayload<dai::ImgFrame>();
+    REQUIRE(parsedPayload != nullptr);
+    REQUIRE(parsedPayload->getSequenceNum() == 42);
+    REQUIRE(parsedPayload->getData().size() == 4);
+}

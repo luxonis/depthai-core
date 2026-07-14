@@ -4,6 +4,7 @@
 #include <depthai/pipeline/MessageQueue.hpp>
 #include <depthai/pipeline/ThreadedHostNode.hpp>
 #include <depthai/pipeline/datatype/ADatatype.hpp>
+#include <depthai/pipeline/datatype/StreamMessageParser.hpp>
 #include <depthai/utility/PipelineEventDispatcher.hpp>
 #include <memory>
 #include <thread>
@@ -156,6 +157,223 @@ TEST_CASE("MessageQueue - tryGetAll", "[MessageQueue]") {
     REQUIRE(messages[0] == msg1);
     REQUIRE(messages[1] == msg2);
     REQUIRE(messages[2] == msg3);
+}
+
+TEST_CASE("MessageQueue - BatchItem payload survives queue transport", "[MessageQueue]") {
+    MessageQueue queue(10);
+
+    auto payload = std::make_shared<Buffer>();
+    payload->setSequenceNum(9);
+    auto iterable = std::make_shared<BatchItem>(payload, 10, 1, 3);
+    queue.send(iterable);
+
+    auto received = queue.get<BatchItem>();
+    REQUIRE(received != nullptr);
+    REQUIRE(received->batchSize == 10);
+    REQUIRE(received->batchIndex == 1);
+    REQUIRE(received->itemIndex == 3);
+
+    auto receivedPayload = received->getPayload<Buffer>();
+    REQUIRE(receivedPayload != nullptr);
+    REQUIRE(receivedPayload->getSequenceNum() == 9);
+}
+
+TEST_CASE("MessageQueue - gatherBatchItemData returns payloads in item order", "[MessageQueue]") {
+    MessageQueue queue(10);
+
+    auto payload2 = std::make_shared<Buffer>();
+    payload2->setSequenceNum(2);
+    queue.send(std::make_shared<BatchItem>(payload2, 3, 0, 2));
+
+    auto payload0 = std::make_shared<Buffer>();
+    payload0->setSequenceNum(0);
+    queue.send(std::make_shared<BatchItem>(payload0, 3, 0, 0));
+
+    auto payload1 = std::make_shared<Buffer>();
+    payload1->setSequenceNum(1);
+    queue.send(std::make_shared<BatchItem>(payload1, 3, 0, 1));
+
+    auto payloads = queue.gatherBatchItemData<Buffer>();
+    REQUIRE(payloads.size() == 3);
+    REQUIRE(payloads[0] == payload0);
+    REQUIRE(payloads[1] == payload1);
+    REQUIRE(payloads[2] == payload2);
+}
+
+TEST_CASE("MessageQueue - gatherBatchItemData leaves missing indices as nullptr", "[MessageQueue]") {
+    MessageQueue queue(10);
+
+    auto payload0 = std::make_shared<Buffer>();
+    payload0->setSequenceNum(0);
+    queue.send(std::make_shared<BatchItem>(payload0, 3, 0, 0));
+
+    auto payload2 = std::make_shared<Buffer>();
+    payload2->setSequenceNum(2);
+    queue.send(std::make_shared<BatchItem>(payload2, 3, 0, 2));
+
+    auto otherBatch = std::make_shared<Buffer>();
+    otherBatch->setSequenceNum(99);
+    queue.send(std::make_shared<BatchItem>(otherBatch, 3, 1, 0));
+
+    auto payloads = queue.gatherBatchItemData<Buffer>();
+    REQUIRE(payloads.size() == 3);
+    REQUIRE(payloads[0] == payload0);
+    REQUIRE(payloads[1] == nullptr);
+    REQUIRE(payloads[2] == payload2);
+}
+
+TEST_CASE("StreamMessageParser - MessageBatch header preserves slots", "[MessageQueue]") {
+    auto payload0 = std::make_shared<Buffer>();
+    payload0->setSequenceNum(10);
+
+    auto payload2 = std::make_shared<Buffer>();
+    payload2->setSequenceNum(20);
+
+    auto bufferVector = std::make_shared<MessageBatch>(std::vector<std::shared_ptr<Buffer>>{payload0, nullptr, payload2});
+    auto serializedMetadata = StreamMessageParser::serializeMetadata(bufferVector);
+
+    streamPacketDesc_t packet{};
+    packet.data = serializedMetadata.data();
+    packet.length = static_cast<std::uint32_t>(serializedMetadata.size());
+    packet.fd = -1;
+
+    auto parsed = std::dynamic_pointer_cast<MessageBatch>(StreamMessageParser::parseMessage(&packet));
+    REQUIRE(parsed != nullptr);
+    REQUIRE(parsed->size() == 3);
+    REQUIRE(parsed->at(0) == nullptr);
+    REQUIRE(parsed->at(1) == nullptr);
+    REQUIRE(parsed->at(2) == nullptr);
+    REQUIRE((parsed->itemPresent == std::vector<std::uint8_t>{1, 0, 1}));
+}
+
+TEST_CASE("Host BatchAssembler node - collects BatchItem payloads into MessageBatch", "[MessageQueue]") {
+    Pipeline pipeline(false);
+    auto gather = pipeline.create<node::BatchAssembler>();
+    auto inputQueue = gather->input.createInputQueue();
+    auto outputQueue = gather->output.createOutputQueue();
+
+    auto payload0 = std::make_shared<Buffer>();
+    payload0->setSequenceNum(100);
+    auto payload2 = std::make_shared<Buffer>();
+    payload2->setSequenceNum(200);
+    const auto batchTimestamp = std::chrono::steady_clock::time_point(std::chrono::milliseconds(123));
+    payload0->setTimestamp(batchTimestamp);
+    payload2->setTimestamp(batchTimestamp);
+    auto nextBatchPayload = std::make_shared<Buffer>();
+    nextBatchPayload->setSequenceNum(300);
+    pipeline.start();
+    inputQueue->send(std::make_shared<BatchItem>(payload0, 3, 7, 0));
+    inputQueue->send(std::make_shared<BatchItem>(payload2, 3, 7, 2));
+    inputQueue->send(std::make_shared<BatchItem>(nextBatchPayload, 3, 8, 0));
+
+    auto gathered = outputQueue->get<MessageBatch>();
+    REQUIRE(gathered != nullptr);
+    REQUIRE(gathered->size() == 3);
+    REQUIRE(gathered->at(0) != nullptr);
+    REQUIRE(gathered->at(1) == nullptr);
+    REQUIRE(gathered->at(2) != nullptr);
+    REQUIRE(gathered->at(0)->getSequenceNum() == 100);
+    REQUIRE(gathered->at(2)->getSequenceNum() == 200);
+    REQUIRE(gathered->getTimestamp() == batchTimestamp);
+
+    pipeline.stop();
+    pipeline.wait();
+}
+
+TEST_CASE("Host BatchAssembler node - leaves MessageBatch timestamp unset when BatchItem timestamps differ", "[MessageQueue]") {
+    Pipeline pipeline(false);
+    auto gather = pipeline.create<node::BatchAssembler>();
+    auto inputQueue = gather->input.createInputQueue();
+    auto outputQueue = gather->output.createOutputQueue();
+
+    auto payload0 = std::make_shared<Buffer>();
+    payload0->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::milliseconds(1)));
+    auto payload1 = std::make_shared<Buffer>();
+    payload1->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::milliseconds(2)));
+
+    pipeline.start();
+    inputQueue->send(std::make_shared<BatchItem>(payload0, 2, 0, 0));
+    inputQueue->send(std::make_shared<BatchItem>(payload1, 2, 0, 1));
+
+    auto gathered = outputQueue->get<MessageBatch>();
+    REQUIRE(gathered != nullptr);
+    REQUIRE(gathered->getTimestamp() == std::chrono::steady_clock::time_point{});
+
+    pipeline.stop();
+    pipeline.wait();
+}
+
+TEST_CASE("Host ImageManip node preserves BatchItem metadata", "[MessageQueue]") {
+    Pipeline pipeline(false);
+    auto manip = pipeline.create<node::ImageManip>();
+    manip->setRunOnHost(true);
+    manip->initialConfig->setOutputSize(4, 4);
+    manip->initialConfig->setFrameType(ImgFrame::Type::GRAY8);
+    manip->setMaxOutputFrameSize(4096);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    auto frame = std::make_shared<ImgFrame>();
+    frame->setType(ImgFrame::Type::GRAY8);
+    frame->setWidth(2);
+    frame->setHeight(2);
+    frame->setSize(2, 2);
+    frame->setStride(2);
+    frame->setData(std::vector<std::uint8_t>{1, 2, 3, 4});
+
+    pipeline.start();
+    inputQueue->send(std::make_shared<BatchItem>(frame, 3, 11, 1));
+
+    auto output = outputQueue->get<BatchItem>();
+    REQUIRE(output != nullptr);
+    REQUIRE(output->batchSize == 3);
+    REQUIRE(output->batchIndex == 11);
+    REQUIRE(output->itemIndex == 1);
+
+    auto payload = output->getPayload<ImgFrame>();
+    REQUIRE(payload != nullptr);
+    REQUIRE(payload->getWidth() == 4);
+    REQUIRE(payload->getHeight() == 4);
+
+    pipeline.stop();
+    pipeline.wait();
+}
+
+TEST_CASE("Host DetectionParser node preserves BatchItem metadata", "[MessageQueue]") {
+    Pipeline pipeline(false);
+    auto parser = pipeline.create<node::DetectionParser>();
+    parser->setRunOnHost(true);
+    parser->setNNFamily(DetectionNetworkType::MOBILENET);
+    parser->setInputImageSize(640, 640);
+    parser->setConfidenceThreshold(0.5f);
+
+    auto inputQueue = parser->input.createInputQueue();
+    auto outputQueue = parser->out.createOutputQueue();
+
+    auto nnData = std::make_shared<NNData>();
+    nnData->addTensor("dets", std::vector<float>{0.0f, 7.0f, 0.9f, 0.1f, 0.2f, 0.4f, 0.5f});
+    nnData->setSequenceNum(123);
+
+    pipeline.start();
+    inputQueue->send(std::make_shared<BatchItem>(nnData, 4, 9, 2));
+
+    auto output = outputQueue->get<BatchItem>();
+    REQUIRE(output != nullptr);
+    REQUIRE(output->batchSize == 4);
+    REQUIRE(output->batchIndex == 9);
+    REQUIRE(output->itemIndex == 2);
+
+    auto payload = output->getPayload<ImgDetections>();
+    REQUIRE(payload != nullptr);
+    REQUIRE(payload->getSequenceNum() == 123);
+    REQUIRE(payload->detections.size() == 1);
+    REQUIRE(payload->detections[0].label == 7);
+    REQUIRE(payload->detections[0].confidence > 0.89f);
+    REQUIRE(payload->detections[0].confidence < 0.91f);
+
+    pipeline.stop();
+    pipeline.wait();
 }
 
 TEST_CASE("MessageQueue - getAll", "[MessageQueue]") {
