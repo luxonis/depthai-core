@@ -185,6 +185,8 @@ void bind_replay(pybind11::module& m, void* pCallstack);
 void bind_imagealign(pybind11::module& m, void* pCallstack);
 void bind_rgbd(pybind11::module& m, void* pCallstack);
 void bind_rectification(pybind11::module& m, void* pCallstack);
+void bind_testnode(pybind11::module& m, void* pCallstack);
+void bind_testnode2(pybind11::module& m, void* pCallstack);
 void bind_neuraldepth(pybind11::module& m, void* pCallstack);
 void bind_gpustereo(pybind11::module& m, void* pCallstack);
 void bind_depth(pybind11::module& m, void* pCallstack);
@@ -243,6 +245,8 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imagealign);
     callstack.push_front(bind_rgbd);
     callstack.push_front(bind_rectification);
+    callstack.push_front(bind_testnode);
+    callstack.push_front(bind_testnode2);
     callstack.push_front(bind_neuraldepth);
     callstack.push_front(bind_gpustereo);
     callstack.push_front(bind_depth);
@@ -485,6 +489,13 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())
+        .def("sendAsBatchItem",
+             &Node::Output::sendAsBatchItem,
+             py::arg("msg"),
+             py::arg("batchSize"),
+             py::arg("batchIndex"),
+             py::arg("itemIndex"),
+             py::call_guard<py::gil_scoped_release>())
         .def("getName", &Node::Output::getName, DOC(dai, Node, Output, getName))
         .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend))
         .def("getXLinkBridge", &Node::Output::getXLinkBridge, DOC(dai, Node, Output, getXLinkBridge));

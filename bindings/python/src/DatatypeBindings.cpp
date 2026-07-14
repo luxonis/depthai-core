@@ -16,6 +16,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack);
 void bind_imgdetections(pybind11::module& m, void* pCallstack);
 void bind_imgframe(pybind11::module& m, void* pCallstack);
+void bind_iterable(pybind11::module& m, void* pCallstack);
 void bind_encodedframe(pybind11::module& m, void* pCallstack);
 void bind_imudata(pybind11::module& m, void* pCallstack);
 void bind_message_group(pybind11::module& m, void* pCallstack);
@@ -69,6 +70,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imagemanipconfig);
     callstack.push_front(bind_imgdetections);
     callstack.push_front(bind_imgframe);
+    callstack.push_front(bind_iterable);
     callstack.push_front(bind_encodedframe);
     callstack.push_front(bind_imudata);
     callstack.push_front(bind_message_group);
@@ -155,6 +157,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("TrackedFeatures", DatatypeEnum::TrackedFeatures)
         .value("BenchmarkReport", DatatypeEnum::BenchmarkReport)
         .value("MessageGroup", DatatypeEnum::MessageGroup)
+        .value("BatchItem", DatatypeEnum::BatchItem)
         .value("TransformData", DatatypeEnum::TransformData)
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)

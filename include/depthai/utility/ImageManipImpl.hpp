@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "depthai/common/RotatedRect.hpp"
+#include "depthai/pipeline/datatype/BatchItem.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/properties/ImageManipProperties.hpp"
@@ -61,6 +62,7 @@ void loop(N& node,
     auto config = initialConfig;
 
     std::shared_ptr<ImgFrame> inImage;
+    std::shared_ptr<BatchItem> inputBatchItem;
 
     while(node.mainLoop()) {
         std::shared_ptr<ImageManipConfig> pConfig;
@@ -85,7 +87,13 @@ void loop(N& node,
             }
 
             if(needsImage) {
-                inImage = node.inputImage.template get<ImgFrame>();
+                auto inputMessage = node.inputImage.template get<Buffer>();
+                inputBatchItem = std::dynamic_pointer_cast<BatchItem>(inputMessage);
+                if(inputBatchItem) {
+                    inImage = inputBatchItem->template getPayload<ImgFrame>();
+                } else {
+                    inImage = std::dynamic_pointer_cast<ImgFrame>(inputMessage);
+                }
                 if(inImage == nullptr) {
                     logger->warn("No input image, skipping frame");
                     continue;
@@ -119,7 +127,12 @@ void loop(N& node,
 
         // Check the output image size requirements, and check whether pool has the size required
         if(outputSize == 0) {
-            node.out.send(inImage);
+            auto blockEvent = node.outputBlockEvent();
+            if(inputBatchItem) {
+                node.out.sendAsBatchItem(inImage, inputBatchItem->batchSize, inputBatchItem->batchIndex, inputBatchItem->itemIndex);
+            } else {
+                node.out.send(inImage);
+            }
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
             auto outImage = getFrame(node.properties.outputFrameSize);
 
@@ -142,8 +155,11 @@ void loop(N& node,
             }
             {
                 auto blockEvent = node.outputBlockEvent();
-
-                node.out.send(outImage);
+                if(inputBatchItem) {
+                    node.out.sendAsBatchItem(outImage, inputBatchItem->batchSize, inputBatchItem->batchIndex, inputBatchItem->itemIndex);
+                } else {
+                    node.out.send(outImage);
+                }
             }
         } else {
             logger->error(

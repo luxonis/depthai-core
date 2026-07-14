@@ -16,6 +16,7 @@
 #include "nn_archive/v1/Head.hpp"
 #include "nn_archive/v1/Metadata.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "pipeline/datatype/BatchItem.hpp"
 #include "pipeline/datatype/NNData.hpp"
 #include "pipeline/utilities/DetectionParser/DetectionParserUtils.hpp"
 
@@ -477,9 +478,16 @@ void DetectionParser::run() {
     while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<dai::NNData> sharedInputData;
+        std::shared_ptr<dai::BatchItem> inputBatchItem;
         {
             auto blockEvent = this->inputBlockEvent();
-            sharedInputData = input.get<dai::NNData>();
+            auto inputMessage = input.get<dai::Buffer>();
+            inputBatchItem = std::dynamic_pointer_cast<dai::BatchItem>(inputMessage);
+            if(inputBatchItem) {
+                sharedInputData = inputBatchItem->getPayload<dai::NNData>();
+            } else {
+                sharedInputData = std::dynamic_pointer_cast<dai::NNData>(inputMessage);
+            }
         }
         auto outDetections = std::make_shared<dai::ImgDetections>();
 
@@ -526,8 +534,11 @@ void DetectionParser::run() {
 
         {
             auto blockEvent = this->outputBlockEvent();
-            // Send detections
-            out.send(outDetections);
+            if(inputBatchItem) {
+                out.sendAsBatchItem(outDetections, inputBatchItem->batchSize, inputBatchItem->batchIndex, inputBatchItem->itemIndex);
+            } else {
+                out.send(outDetections);
+            }
         }
 
         auto tAbsoluteEnd = steady_clock::now();

@@ -34,6 +34,7 @@ enum class DatatypeEnum : std::int32_t {
     TrackedFeatures,
     BenchmarkReport,
     MessageGroup,
+    BatchItem,
     MapData,
     TransformData,
     PointCloudConfig,

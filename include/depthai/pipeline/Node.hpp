@@ -321,6 +321,15 @@ class Node : public std::enable_shared_from_this<Node> {
         void send(const std::shared_ptr<ADatatype>& msg);
 
         /**
+         * Sends a message wrapped as an BatchItem item.
+         * @param msg Payload to send
+         * @param batchSize Total number of items in the batch
+         * @param batchIndex Batch index of this payload
+         * @param itemIndex Item index within the batch
+         */
+        void sendAsBatchItem(const std::shared_ptr<ADatatype>& msg, unsigned int batchSize, unsigned int batchIndex, unsigned int itemIndex);
+
+        /**
          * Try sending a message to all connected inputs
          * @param msg Message to send to all connected inputs
          * @returns True if ALL connected inputs got the message, false otherwise

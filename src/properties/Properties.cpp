@@ -32,6 +32,7 @@
 #include "depthai/properties/StereoDepthProperties.hpp"
 #include "depthai/properties/SyncProperties.hpp"
 #include "depthai/properties/SystemLoggerProperties.hpp"
+#include "depthai/properties/TestNodeProperties.hpp"
 #include "depthai/properties/ThermalProperties.hpp"
 #include "depthai/properties/ToFProperties.hpp"
 #include "depthai/properties/UVCProperties.hpp"
@@ -92,6 +93,7 @@ SegmentationParserProperties::~SegmentationParserProperties() = default;
 StereoDepthProperties::~StereoDepthProperties() = default;
 SyncProperties::~SyncProperties() = default;
 SystemLoggerProperties::~SystemLoggerProperties() = default;
+TestNodeProperties::~TestNodeProperties() = default;
 ThermalProperties::~ThermalProperties() = default;
 ToFProperties::~ToFProperties() = default;
 UVCProperties::~UVCProperties() = default;

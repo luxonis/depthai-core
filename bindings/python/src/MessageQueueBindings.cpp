@@ -198,6 +198,20 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             py::arg("timeout"),
             DOC(dai, MessageQueue, get))
+        .def("gatherBatchItemData",
+             [](MessageQueue& obj) {
+                 std::vector<std::shared_ptr<ADatatype>> vec;
+                 bool timedout = true;
+                 do {
+                     {
+                         py::gil_scoped_release release;
+                         vec = obj.gatherBatchItemData();
+                         timedout = false;
+                     }
+                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                 } while(timedout);
+                 return vec;
+             })
         .def("tryGetAll", static_cast<std::vector<std::shared_ptr<ADatatype>> (MessageQueue::*)()>(&MessageQueue::tryGetAll), DOC(dai, MessageQueue, tryGetAll))
         .def(
             "getAll",

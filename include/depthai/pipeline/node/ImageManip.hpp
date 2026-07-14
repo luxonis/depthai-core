@@ -45,13 +45,19 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     /**
      * Input image to be modified
      */
-    Input inputImage{*this, {"inputImage", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input inputImage{*this,
+                     {"inputImage",
+                      DEFAULT_GROUP,
+                      DEFAULT_BLOCKING,
+                      DEFAULT_QUEUE_SIZE,
+                      {{DatatypeEnum::ImgFrame, true}, {DatatypeEnum::BatchItem, false}},
+                      DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries modified image.
      */
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, true}, {DatatypeEnum::BatchItem, false}}}};
 
     /**
      * Specify number of frames in pool.

@@ -110,6 +110,8 @@ set(SOURCE_LIST
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
     src/pipeline/node/RectificationBindings.cpp
+    src/pipeline/node/TestNodeBindings.cpp
+    src/pipeline/node/TestNode2Bindings.cpp
     src/pipeline/node/NeuralDepthBindings.cpp
     src/pipeline/node/GPUStereoBindings.cpp
     src/pipeline/node/DepthBindings.cpp
@@ -132,6 +134,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/SegmentationParserConfigBindings.cpp
     src/pipeline/datatype/SegmentationMaskBindings.cpp
     src/pipeline/datatype/ImgFrameBindings.cpp
+    src/pipeline/datatype/BatchItemBindings.cpp
     src/pipeline/datatype/EncodedFrameBindings.cpp
     src/pipeline/datatype/IMUDataBindings.cpp
     src/pipeline/datatype/MapDataBindings.cpp

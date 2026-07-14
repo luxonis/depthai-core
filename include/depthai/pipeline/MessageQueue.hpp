@@ -8,6 +8,7 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/BatchItem.hpp"
 #include "depthai/utility/LockingQueue.hpp"
 #include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 #include "depthai/utility/WaitAnyNotifier.hpp"
@@ -62,14 +63,14 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
           name(c.name),
           callbacks(c.callbacks),
           uniqueCallbackId(c.uniqueCallbackId),
-          pipelineEventDispatcher(c.pipelineEventDispatcher){};
+          pipelineEventDispatcher(c.pipelineEventDispatcher) {};
     MessageQueue(MessageQueue&& m) noexcept
         : enable_shared_from_this(m),
           queue(std::move(m.queue)),
           name(std::move(m.name)),
           callbacks(std::move(m.callbacks)),
           uniqueCallbackId(m.uniqueCallbackId),
-          pipelineEventDispatcher(m.pipelineEventDispatcher){};
+          pipelineEventDispatcher(m.pipelineEventDispatcher) {};
 
     MessageQueue& operator=(const MessageQueue& c) {
         queue = c.queue;
@@ -339,6 +340,68 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     std::shared_ptr<ADatatype> get() {
         return get<ADatatype>();
+    }
+
+    /**
+     * Block until an BatchItem batch is available.
+     * Then return its payloads ordered by itemIndex.
+     *
+     * Missing item indices are left as nullptr.
+     * If an item from a different batchIndex arrives, collection stops and the current state is returned.
+     *
+     * @returns Vector of BatchItem payloads cast to T, or empty if the first message isn't BatchItem
+     */
+    template <class T>
+    std::vector<std::shared_ptr<T>> gatherBatchItemData() {
+        auto first = get<BatchItem>();
+        if(!first) {
+            return {};
+        }
+
+        std::vector<std::shared_ptr<T>> payloads(first->batchSize);
+        const auto expectedBatchIndex = first->batchIndex;
+        const auto expectedBatchSize = first->batchSize;
+        auto storePayload = [&payloads, expectedBatchIndex, expectedBatchSize](const std::shared_ptr<BatchItem>& iterable) {
+            if(!iterable) {
+                throw std::runtime_error("Expected BatchItem message while collecting iterable batch");
+            }
+            if(iterable->batchIndex != expectedBatchIndex) {
+                return false;
+            }
+            if(iterable->batchSize != expectedBatchSize) {
+                throw std::runtime_error("Encountered BatchItem item with a different batchSize while collecting iterable batch");
+            }
+            if(iterable->itemIndex >= payloads.size()) {
+                throw std::runtime_error("BatchItem itemIndex exceeds declared batchSize");
+            }
+            payloads[iterable->itemIndex] = iterable->getPayload<T>();
+
+            if(iterable->itemIndex == payloads.size() - 1) {
+                return false;
+            }
+            return true;
+        };
+
+        if(!storePayload(first)) {
+            return payloads;
+        }
+        for(std::uint32_t collected = 1; collected < first->batchSize; collected++) {
+            if(!storePayload(get<BatchItem>())) {
+                break;
+            }
+        }
+
+        return payloads;
+    }
+
+    /**
+     * Block until an BatchItem batch is available.
+     * Then return its payloads ordered by itemIndex.
+     *
+     * @returns Vector of BatchItem payloads
+     */
+    std::vector<std::shared_ptr<ADatatype>> gatherBatchItemData() {
+        return gatherBatchItemData<ADatatype>();
     }
 
     /**

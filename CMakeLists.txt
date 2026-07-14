@@ -313,6 +313,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/BenchmarkOut.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
+    src/pipeline/node/TestNode.cpp
+    src/pipeline/node/TestNode2.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/AprilTag.cpp
     src/pipeline/node/ObjectTracker.cpp
@@ -346,6 +348,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
+    src/pipeline/datatype/BatchItem.cpp
     src/pipeline/datatype/Transformable.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp

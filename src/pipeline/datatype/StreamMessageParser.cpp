@@ -26,6 +26,7 @@
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "PacketizedData.hpp"
+#include "depthai/pipeline/datatype/BatchItem.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
@@ -94,6 +95,31 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
     }
 
     return tmp;
+}
+
+inline std::shared_ptr<ADatatype> parseEmbeddedMessage(const std::shared_ptr<Memory>& data, const std::vector<std::uint8_t>& metadata, DatatypeEnum datatype) {
+    std::array<std::uint8_t, 4> leDatatype{};
+    std::array<std::uint8_t, 4> leMetadataSize{};
+    const auto metadataSize = static_cast<std::uint32_t>(metadata.size());
+    for(int i = 0; i < 4; i++) leDatatype[i] = (static_cast<std::int32_t>(datatype) >> (i * 8)) & 0xFF;
+    for(int i = 0; i < 4; i++) leMetadataSize[i] = (metadataSize >> (i * 8)) & 0xFF;
+
+    std::vector<std::uint8_t> serialized;
+    serialized.reserve((data ? data->getData().size() : 0) + metadata.size() + leDatatype.size() + leMetadataSize.size() + endOfPacketMarker.size());
+    if(data) {
+        auto payloadData = data->getData();
+        serialized.insert(serialized.end(), payloadData.begin(), payloadData.end());
+    }
+    serialized.insert(serialized.end(), metadata.begin(), metadata.end());
+    serialized.insert(serialized.end(), leDatatype.begin(), leDatatype.end());
+    serialized.insert(serialized.end(), leMetadataSize.begin(), leMetadataSize.end());
+    serialized.insert(serialized.end(), endOfPacketMarker.begin(), endOfPacketMarker.end());
+
+    streamPacketDesc_t packet{};
+    packet.data = serialized.data();
+    packet.length = static_cast<std::uint32_t>(serialized.size());
+    packet.fd = -1;
+    return StreamMessageParser::parseMessage(&packet);
 }
 
 static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet) {
@@ -302,6 +328,15 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::MessageGroup:
             return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::BatchItem: {
+            auto iterable = parseDatatype<BatchItem>(metadataStart, serializedObjectSize, data, fd);
+            const bool hasPayload =
+                iterable->payloadDatatype != DatatypeEnum::ADatatype || !iterable->payloadMetadata.empty() || !iterable->data->getData().empty();
+            if(hasPayload) {
+                iterable->setPayload(parseEmbeddedMessage(iterable->data, iterable->payloadMetadata, iterable->payloadDatatype));
+            }
+            return iterable;
+        }
         case DatatypeEnum::TransformData:
             return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data, fd);
             break;

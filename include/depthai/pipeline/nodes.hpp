@@ -34,6 +34,8 @@
 #include "node/StereoDepth.hpp"
 #include "node/Sync.hpp"
 #include "node/SystemLogger.hpp"
+#include "node/TestNode.hpp"
+#include "node/TestNode2.hpp"
 #include "node/Thermal.hpp"
 #include "node/ToF.hpp"
 #include "node/UVC.hpp"

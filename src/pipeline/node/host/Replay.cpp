@@ -90,6 +90,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::TrackedFeatures:
         case DatatypeEnum::BenchmarkReport:
         case DatatypeEnum::MessageGroup:
+        case DatatypeEnum::BatchItem:
         case DatatypeEnum::MapData:
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
@@ -175,6 +176,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::TrackedFeatures:
         case DatatypeEnum::BenchmarkReport:
         case DatatypeEnum::MessageGroup:
+        case DatatypeEnum::BatchItem:
         case DatatypeEnum::MapData:
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
