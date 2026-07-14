@@ -11,7 +11,7 @@
 
 namespace dai {
 
-class ProtoSerializable : ADatatypeInterface {
+class ProtoSerializable : public ADatatypeInterface {
    public:
     struct SchemaPair {
         std::string schemaName;
@@ -48,7 +48,6 @@ class ProtoSerializable : ADatatypeInterface {
     /**
      * @brief Load this object from a serialized protobuf file on disk
      * @param path Input file path.
-     * @param metadataOnly If true, load only metadata and omit payload data where supported by the concrete type.
      */
     void load(const std::filesystem::path& path);
 

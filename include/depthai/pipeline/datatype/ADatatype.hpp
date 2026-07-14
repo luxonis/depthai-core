@@ -21,7 +21,7 @@ class ADatatypeInterface {
     virtual DatatypeEnum getDatatype() const = 0;
 };
 
-class ADatatype : ADatatypeInterface {
+class ADatatype : public ADatatypeInterface {
    protected:
     friend class DataInputQueue;
     friend class StreamMessageParser;
