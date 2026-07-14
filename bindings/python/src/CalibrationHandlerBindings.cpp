@@ -109,7 +109,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              &CalibrationHandler::getCameraTranslationVector,
              py::arg("srcCamera"),
              py::arg("dstCamera"),
-             py::arg("useSpecTranslation") = true,
+             py::arg("useSpecTranslation") = false,
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getCameraTranslationVector))
         .def("getCameraRotationMatrix",
@@ -121,7 +121,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              &CalibrationHandler::getBaselineDistance,
              py::arg("cam1") = dai::CameraBoardSocket::CAM_C,
              py::arg("cam2") = dai::CameraBoardSocket::CAM_B,
-             py::arg("useSpecTranslation") = true,
+             py::arg("useSpecTranslation") = false,
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getBaselineDistance))
 

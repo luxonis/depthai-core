@@ -28,8 +28,8 @@ struct EepromData {
     Extrinsics imuExtrinsics;
     Extrinsics housingExtrinsics;
     std::vector<uint8_t> miscellaneousData;
-    bool stereoUseSpecTranslation{true};
-    bool stereoEnableDistortionCorrection{false};
+    bool stereoUseSpecTranslation{false};
+    bool stereoEnableDistortionCorrection{true};
     CameraBoardSocket verticalCameraSocket = dai::CameraBoardSocket::AUTO;
     // IMU calibration payload serialized with EepromData via DEPTHAI_SERIALIZE_OPTIONAL_EXT;
     // includes biases, scale/shear/rotation decomposition, and IMU noise parameters.

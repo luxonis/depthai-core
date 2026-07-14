@@ -318,7 +318,7 @@ class CalibrationHandler {
      */
     std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera,
                                                   CameraBoardSocket dstCamera,
-                                                  bool useSpecTranslation = true,
+                                                  bool useSpecTranslation = false,
                                                   LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
@@ -348,7 +348,7 @@ class CalibrationHandler {
      */
     float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::CAM_C,
                               CameraBoardSocket cam2 = CameraBoardSocket::CAM_B,
-                              bool useSpecTranslation = true,
+                              bool useSpecTranslation = false,
                               LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
