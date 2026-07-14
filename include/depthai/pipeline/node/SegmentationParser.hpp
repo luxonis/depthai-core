@@ -43,7 +43,7 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     /**
      * Input NN results with segmentation data to parser
      */
-    Input input{*this, {"input", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::NNData, true}}}, true}};
+    Input input{*this, {"input", DEFAULT_GROUP, true, 5, {{DatatypeEnum::NNData, true}, {DatatypeEnum::BatchItem, false}}, true}};
 
     /**
      * Input SegmentationParserConfig message with ability to modify parameters in runtime.
@@ -53,7 +53,7 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     /**
      * Outputs segmentation mask
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SegmentationMask, false}}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{DatatypeEnum::SegmentationMask, false}, {DatatypeEnum::BatchItem, false}}}};
 
     /**
      * @brief Build SegmentationParser node

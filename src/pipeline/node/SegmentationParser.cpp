@@ -13,6 +13,7 @@
 #include "depthai/nn_archive/v1/Head.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "pipeline/datatype/BatchItem.hpp"
 #include "pipeline/datatype/NNData.hpp"
 #include "pipeline/datatype/SegmentationMask.hpp"
 #include "pipeline/datatype/SegmentationParserConfig.hpp"
@@ -228,6 +229,7 @@ void SegmentationParser::run() {
     while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<dai::NNData> sharedNNData;
+        std::shared_ptr<dai::BatchItem> inputBatchItem;
         {
             auto blockEvent = this->inputBlockEvent();
             auto cfg = inputConfigSync ? inputConfig.get<dai::SegmentationParserConfig>() : inputConfig.tryGet<dai::SegmentationParserConfig>();
@@ -237,9 +239,11 @@ void SegmentationParser::run() {
                 logger->error("Invalid input config.");
             }
 
-            sharedNNData = input.get<dai::NNData>();
+            auto inputMessage = input.get<dai::Buffer>();
+            inputBatchItem = std::dynamic_pointer_cast<dai::BatchItem>(inputMessage);
+            sharedNNData = inputBatchItem ? inputBatchItem->getPayload<dai::NNData>() : std::dynamic_pointer_cast<dai::NNData>(inputMessage);
             if(!sharedNNData) {
-                logger->error("NN Data is empty. Skipping processing.");
+                logger->error("SegmentationParser input must be NNData or BatchItem containing NNData. Skipping processing.");
                 continue;
             }
         }
@@ -279,7 +283,14 @@ void SegmentationParser::run() {
 
         {
             auto blockEvent = this->outputBlockEvent();
-            out.send(outMask);
+            if(inputBatchItem) {
+                auto outputBatchItem =
+                    std::make_shared<dai::BatchItem>(outMask, inputBatchItem->batchSize, inputBatchItem->batchIndex, inputBatchItem->itemIndex);
+                outputBatchItem->setBufferMetadataFrom(inputBatchItem);
+                out.send(outputBatchItem);
+            } else {
+                out.send(outMask);
+            }
         }
 
         auto tAbsoluteEnd = steady_clock::now();
