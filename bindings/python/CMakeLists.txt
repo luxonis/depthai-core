@@ -110,6 +110,7 @@ set(SOURCE_LIST
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
     src/pipeline/node/RectificationBindings.cpp
+    src/pipeline/node/BatchAssemblerBindings.cpp
     src/pipeline/node/TestNodeBindings.cpp
     src/pipeline/node/TestNode2Bindings.cpp
     src/pipeline/node/NeuralDepthBindings.cpp

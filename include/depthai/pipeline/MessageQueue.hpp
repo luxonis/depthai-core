@@ -359,9 +359,11 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         }
 
         std::vector<std::shared_ptr<T>> payloads(first->batchSize);
+        std::vector<bool> received(first->batchSize, false);
+        std::size_t receivedCount = 0;
         const auto expectedBatchIndex = first->batchIndex;
         const auto expectedBatchSize = first->batchSize;
-        auto storePayload = [&payloads, expectedBatchIndex, expectedBatchSize](const std::shared_ptr<BatchItem>& iterable) {
+        auto storePayload = [&payloads, &received, &receivedCount, expectedBatchIndex, expectedBatchSize](const std::shared_ptr<BatchItem>& iterable) {
             if(!iterable) {
                 throw std::runtime_error("Expected BatchItem message while collecting iterable batch");
             }
@@ -375,19 +377,18 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
                 throw std::runtime_error("BatchItem itemIndex exceeds declared batchSize");
             }
             payloads[iterable->itemIndex] = iterable->getPayload<T>();
-
-            if(iterable->itemIndex == payloads.size() - 1) {
-                return false;
+            if(!received[iterable->itemIndex]) {
+                received[iterable->itemIndex] = true;
+                receivedCount++;
             }
-            return true;
+            return receivedCount < payloads.size();
         };
 
-        if(!storePayload(first)) {
-            return payloads;
-        }
-        for(std::uint32_t collected = 1; collected < first->batchSize; collected++) {
-            if(!storePayload(get<BatchItem>())) {
-                break;
+        if(storePayload(first)) {
+            for(std::uint32_t collected = 1; collected < first->batchSize; collected++) {
+                if(!storePayload(get<BatchItem>())) {
+                    break;
+                }
             }
         }
 

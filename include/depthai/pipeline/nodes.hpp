@@ -15,6 +15,7 @@
     #include "node/AutoCalibration.hpp"
     #include "node/DynamicCalibrationNode.hpp"
 #endif
+#include "node/BatchAssembler.hpp"
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"
 #include "node/GPUStereo.hpp"

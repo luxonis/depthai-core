@@ -339,6 +339,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/node/Vpp.cpp
     src/pipeline/node/Gate.cpp
+    src/pipeline/node/BatchAssembler.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp

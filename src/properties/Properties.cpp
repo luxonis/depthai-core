@@ -1,6 +1,7 @@
 #include "depthai/properties/Properties.hpp"
 
 #include "depthai/properties/AprilTagProperties.hpp"
+#include "depthai/properties/BatchAssemblerProperties.hpp"
 #include "depthai/properties/BenchmarkInProperties.hpp"
 #include "depthai/properties/BenchmarkOutProperties.hpp"
 #include "depthai/properties/CameraProperties.hpp"
@@ -70,6 +71,7 @@ ColorCameraProperties::~ColorCameraProperties() = default;
 DetectionParserProperties::~DetectionParserProperties() = default;
 EdgeDetectorProperties::~EdgeDetectorProperties() = default;
 GateProperties::~GateProperties() = default;
+BatchAssemblerProperties::~BatchAssemblerProperties() = default;
 RectificationProperties::~RectificationProperties() = default;
 NeuralDepthProperties::~NeuralDepthProperties() = default;
 GPUStereoProperties::~GPUStereoProperties() = default;
