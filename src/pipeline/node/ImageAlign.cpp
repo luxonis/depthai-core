@@ -6,6 +6,7 @@
 #include <unordered_set>
 
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/datatype/BatchItem.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
@@ -360,12 +361,19 @@ void ImageAlign::run() {
 
     while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputImg = nullptr;
+        std::shared_ptr<BatchItem> inputBatchItem = nullptr;
         std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
         bool hasConfig = false;
         {
             auto blockEvent = this->inputBlockEvent();
 
-            inputImg = input.get<ImgFrame>();
+            auto inputMessage = input.get<Buffer>();
+            inputBatchItem = std::dynamic_pointer_cast<BatchItem>(inputMessage);
+            inputImg = inputBatchItem ? inputBatchItem->getPayload<ImgFrame>() : std::dynamic_pointer_cast<ImgFrame>(inputMessage);
+            if(!inputImg) {
+                logger->error("ImageAlign input must be an ImgFrame or BatchItem containing an ImgFrame. Skipping processing.");
+                continue;
+            }
 
             if(!initialized) {
                 initialized = true;
@@ -606,8 +614,16 @@ void ImageAlign::run() {
 
         {
             auto blockEvent = this->outputBlockEvent();
-            outputAligned.send(alignedImg);
-            passthroughInput.send(inputImg);
+            if(inputBatchItem) {
+                auto alignedBatchItem =
+                    std::make_shared<BatchItem>(alignedImg, inputBatchItem->batchSize, inputBatchItem->batchIndex, inputBatchItem->itemIndex);
+                alignedBatchItem->setBufferMetadataFrom(inputBatchItem);
+                outputAligned.send(alignedBatchItem);
+                passthroughInput.send(inputBatchItem);
+            } else {
+                outputAligned.send(alignedImg);
+                passthroughInput.send(inputImg);
+            }
         }
     }
 }
