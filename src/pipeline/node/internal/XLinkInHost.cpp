@@ -46,6 +46,9 @@ std::shared_ptr<ADatatype> XLinkInHost::readData() const {
     if(auto packetizedData = std::dynamic_pointer_cast<PacketizedData>(msg)) {
         return parsePacketizedData(packetizedData);
     }
+    if(auto bufferVector = std::dynamic_pointer_cast<MessageBatch>(msg)) {
+        parseMessageBatch(bufferVector);
+    }
     return msg;
 }
 
@@ -81,6 +84,17 @@ std::shared_ptr<ADatatype> XLinkInHost::parsePacketizedData(const std::shared_pt
 void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& messageGroup) const {
     for(auto& msg : messageGroup->group) {
         msg.second = readData();
+    }
+}
+
+void XLinkInHost::parseMessageBatch(const std::shared_ptr<MessageBatch>& bufferVector) const {
+    for(std::size_t i = 0; i < bufferVector->itemPresent.size(); i++) {
+        auto item = readData();
+        if(bufferVector->itemPresent[i]) {
+            auto buffer = std::dynamic_pointer_cast<Buffer>(item);
+            if(!buffer) throw std::runtime_error("MessageBatch item is not derived from Buffer");
+            bufferVector->buffers[i] = std::move(buffer);
+        }
     }
 }
 
