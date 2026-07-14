@@ -19,6 +19,7 @@
 #include "datatype/ImgDetectionsT.hpp"
 #include "datatype/ImgFrame.hpp"
 #include "datatype/MapData.hpp"
+#include "datatype/MessageBatch.hpp"
 #include "datatype/MessageGroup.hpp"
 #include "datatype/NNData.hpp"
 #include "datatype/NeuralDepthConfig.hpp"

@@ -7,6 +7,7 @@ namespace dai {
 enum class DatatypeEnum : std::int32_t {
     ADatatype,
     Buffer,
+    MessageBatch,
     ImgFrame,
     EncodedFrame,
     SegmentationMask,

@@ -11,6 +11,7 @@ namespace dai {
 const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::ADatatype,
      {
+         DatatypeEnum::MessageBatch,
          DatatypeEnum::Buffer,
          DatatypeEnum::ImgFrame,
          DatatypeEnum::EncodedFrame,
@@ -65,6 +66,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
      }},
     {DatatypeEnum::Buffer,
      {
+         DatatypeEnum::MessageBatch,
          DatatypeEnum::Transformable,
          DatatypeEnum::ImgFrame,
          DatatypeEnum::EncodedFrame,
@@ -118,6 +120,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::CalibrationQuality,
          DatatypeEnum::PacketizedData,
      }},
+    {DatatypeEnum::MessageBatch, {}},
     {DatatypeEnum::Transformable,
      {
          DatatypeEnum::SegmentationMask,

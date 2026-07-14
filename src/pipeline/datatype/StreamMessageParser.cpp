@@ -15,6 +15,7 @@
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/MessageBatch.hpp"
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
 #include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
@@ -194,6 +195,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::Buffer:
             return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data, fd);
             break;
+
+        case DatatypeEnum::MessageBatch: {
+            auto bufferVector = parseDatatype<MessageBatch>(metadataStart, serializedObjectSize, data, fd);
+            bufferVector->restoreBufferSlots();
+            return bufferVector;
+        }
 
         case DatatypeEnum::Transformable:
             throw std::runtime_error(
