@@ -5,9 +5,6 @@
 
 #include "depthai/depthai.hpp"
 
-// NOTE: Using autocreate takes over the cameras cannot be used in complex pipelines,
-// where cameras would be used in other nodes as well yet.
-
 // Signal handling for clean shutdown
 static bool isRunning = true;
 void signalHandler(int signum) {
@@ -27,7 +24,12 @@ int main() {
     dai::RemoteConnection remoteConnector(dai::RemoteConnection::DEFAULT_ADDRESS, webSocketPort, true, httpPort);
     // Create pipeline
     dai::Pipeline pipeline;
-    auto rgbd = pipeline.create<dai::node::RGBD>()->build(true, dai::node::StereoDepth::PresetMode::DEFAULT);
+    // The Depth node manages its own stereo cameras and backend internally, and
+    // RGBD aligns its depth to the color camera internally.
+    auto color = pipeline.create<dai::node::Camera>();
+    color->build();
+    auto depth = pipeline.create<dai::node::Depth>();
+    auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth);
 
     remoteConnector.addTopic("pcl", rgbd->pcl);
     pipeline.start();

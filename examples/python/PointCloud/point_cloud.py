@@ -5,35 +5,23 @@ import depthai as dai
 
 pipeline = dai.Pipeline()
 
-# Cameras
-left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+# Color camera
 color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-
-# Stereo depth
-stereo = pipeline.create(dai.node.StereoDepth)
-left.requestFullResolutionOutput().link(stereo.left)
-right.requestFullResolutionOutput().link(stereo.right)
 
 # Color output aligned to depth
 colorOut = color.requestOutput((640, 400), type=dai.ImgFrame.Type.RGB888i,
                                resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=True)
 
+# Unified Depth node. It manages its own stereo cameras and backend, and aligns
+# depth to the color output internally via setAlignTo (no ImageAlign node needed).
+depth = pipeline.create(dai.node.Depth)
+depth.setAlignTo(colorOut)
+
 # Point cloud
 pc = pipeline.create(dai.node.PointCloud)
 pc.initialConfig.setLengthUnit(dai.LengthUnit.METER)
 
-# Align depth to color on RVC4
-platform = pipeline.getDefaultDevice().getPlatform()
-if platform == dai.Platform.RVC4:
-    imageAlign = pipeline.create(dai.node.ImageAlign)
-    stereo.depth.link(imageAlign.input)
-    colorOut.link(imageAlign.inputAlignTo)
-    imageAlign.outputAligned.link(pc.inputDepth)
-else:
-    colorOut.link(stereo.inputAlignTo)
-    stereo.depth.link(pc.inputDepth)
-
+depth.depth.link(pc.inputDepth)
 colorOut.link(pc.inputColor)
 
 q = pc.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)

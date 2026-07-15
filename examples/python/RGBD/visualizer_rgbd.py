@@ -28,14 +28,10 @@ with dai.Pipeline() as p:
 
     if args.depthSource == "stereo":
         color = p.create(dai.node.Camera).build(sensorFps=fps)
-        left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
-        right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
-        depthSource = p.create(dai.node.StereoDepth)
-        depthSource.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
-        depthSource.setRectifyEdgeFillColor(0)
-        depthSource.enableDistortionCorrection(True)
-        left.requestOutput(size).link(depthSource.left)
-        right.requestOutput(size).link(depthSource.right)
+        # The Depth node manages its own stereo cameras and backend internally, so
+        # no explicit left/right cameras are needed. RGBD aligns its depth to the
+        # color camera internally.
+        depthSource = p.create(dai.node.Depth).build(fps=fps)
     elif args.depthSource == "neural":
         color = p.create(dai.node.Camera).build(sensorFps=fps)
         left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)

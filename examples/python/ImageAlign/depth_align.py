@@ -27,35 +27,22 @@ class FPSCounter:
 
 pipeline = dai.Pipeline()
 
-platform = pipeline.getDefaultDevice().getPlatform()
-
 # Define sources and outputs
 camRgb = pipeline.create(dai.node.Camera).build(RGB_SOCKET)
-left = pipeline.create(dai.node.Camera).build(LEFT_SOCKET)
-right = pipeline.create(dai.node.Camera).build(RIGHT_SOCKET)
-stereo = pipeline.create(dai.node.StereoDepth)
+# The Depth node manages its own stereo cameras and backend internally, and
+# aligns its depth output to the RGB camera via setAlignTo (no separate
+# ImageAlign node or platform-specific alignment path is needed).
+depth = pipeline.create(dai.node.Depth)
 sync = pipeline.create(dai.node.Sync)
-if platform == dai.Platform.RVC4:
-    align = pipeline.create(dai.node.ImageAlign)
 
-stereo.setExtendedDisparity(True)
 sync.setSyncThreshold(timedelta(seconds=1/(2*FPS)))
 
 rgbOut = camRgb.requestOutput(size = (1280, 960), fps = FPS, enableUndistortion=True)
-leftOut = left.requestOutput(size = (640, 400), fps = FPS)
-rightOut = right.requestOutput(size = (640, 400), fps = FPS)
+depth.setAlignTo(rgbOut)
 
 # Linking
 rgbOut.link(sync.inputs["rgb"])
-leftOut.link(stereo.left)
-rightOut.link(stereo.right)
-if platform == dai.Platform.RVC4:
-    stereo.depth.link(align.input)
-    rgbOut.link(align.inputAlignTo)
-    align.outputAligned.link(sync.inputs["depth_aligned"])
-else:
-    stereo.depth.link(sync.inputs["depth_aligned"])
-    rgbOut.link(stereo.inputAlignTo)
+depth.depth.link(sync.inputs["depth_aligned"])
 
 queue = sync.out.createOutputQueue()
 

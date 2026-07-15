@@ -69,25 +69,13 @@ int main(int argc, char** argv) {
         dai::node::DepthSource depthSource;
 
         if(depthSourceArg == "stereo") {
-            auto left = pipeline.create<dai::node::Camera>();
-            auto right = pipeline.create<dai::node::Camera>();
-            auto stereo = pipeline.create<dai::node::StereoDepth>();
+            // The Depth node manages its own stereo cameras and backend internally,
+            // so no explicit left/right cameras are needed. RGBD aligns its depth to
+            // the color camera internally.
+            auto depth = pipeline.create<dai::node::Depth>();
+            depth->build(fps);
 
-            left->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
-            right->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
-
-            stereo->setSubpixel(true);
-            stereo->setExtendedDisparity(false);
-            stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
-            stereo->setLeftRightCheck(true);
-            stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
-            stereo->enableDistortionCorrection(true);
-            stereo->initialConfig->setLeftRightCheckThreshold(10);
-
-            left->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->left);
-            right->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->right);
-
-            depthSource = stereo;
+            depthSource = depth;
         } else if(depthSourceArg == "neural") {
             auto left = pipeline.create<dai::node::Camera>();
             auto right = pipeline.create<dai::node::Camera>();

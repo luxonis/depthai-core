@@ -86,14 +86,14 @@ with dai.Pipeline() as p:
     platform = p.getDefaultDevice().getPlatform()
 
     camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A, sensorFps=fps)
-    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
-    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     if args.depthSource == "stereo":
-        depthSource = p.create(dai.node.StereoDepth)
-        depthSource.setExtendedDisparity(True)
-        monoLeft.requestOutput(size).link(depthSource.left)
-        monoRight.requestOutput(size).link(depthSource.right)
+        # The Depth node manages its own stereo cameras and backend internally, so
+        # no explicit left/right cameras are needed. SpatialDetectionNetwork aligns
+        # the depth to the color camera internally.
+        depthSource = p.create(dai.node.Depth).build(fps=fps)
     elif args.depthSource == "neural":
+        monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+        monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
         depthSource = p.create(dai.node.NeuralDepth).build(
             monoLeft.requestFullResolutionOutput(),
             monoRight.requestFullResolutionOutput(),

@@ -148,26 +148,13 @@ int main() {
     detectionNetwork->build(cameraNode, modelDescription);
     auto labelMap = detectionNetwork->getClasses().value_or(std::vector<std::string>{});
 
-    auto monoLeft = pipeline.create<dai::node::Camera>();
-    monoLeft->build(dai::CameraBoardSocket::CAM_B);
-    auto monoRight = pipeline.create<dai::node::Camera>();
-    monoRight->build(dai::CameraBoardSocket::CAM_C);
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-
-    // Linking
-    auto monoLeftOut = monoLeft->requestOutput(std::make_pair(1280, 720));
-    auto monoRightOut = monoRight->requestOutput(std::make_pair(1280, 720));
-    monoLeftOut->link(stereo->left);
-    monoRightOut->link(stereo->right);
-
-    stereo->setRectification(true);
-    stereo->setExtendedDisparity(true);
-    stereo->setLeftRightCheck(true);
-    stereo->setSubpixel(true);
+    // The Depth node manages its own stereo cameras and backend internally, so no
+    // explicit left/right cameras are needed.
+    auto depth = pipeline.create<dai::node::Depth>();
 
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
     auto qDet = detectionNetwork->out.createOutputQueue();
-    auto qDepth = stereo->disparity.createOutputQueue();
+    auto qDepth = depth->depth().createOutputQueue();
 
     pipeline.start();
 

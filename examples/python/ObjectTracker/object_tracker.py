@@ -12,16 +12,13 @@ useSpatialAssociation = False
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
     camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
-    stereo = pipeline.create(dai.node.StereoDepth)
-    leftOutput = monoLeft.requestOutput((640, 400))
-    rightOutput = monoRight.requestOutput((640, 400))
-    leftOutput.link(stereo.left)
-    rightOutput.link(stereo.right)
+    # The Depth node manages its own stereo cameras and backend internally, so no
+    # explicit left/right cameras are needed. SpatialDetectionNetwork aligns the
+    # depth to the color camera internally.
+    depth = pipeline.create(dai.node.Depth)
 
-    spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, stereo, "yolov6-nano")
+    spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, depth, "yolov6-nano")
     objectTracker = pipeline.create(dai.node.ObjectTracker)
 
     spatialDetectionNetwork.setConfidenceThreshold(0.6)

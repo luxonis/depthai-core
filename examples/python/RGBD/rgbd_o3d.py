@@ -59,39 +59,16 @@ class O3DNode(dai.node.ThreadedHostNode):
 with dai.Pipeline() as p:
     fps = 30
     # Define sources and outputs
-    left = p.create(dai.node.Camera)
-    right = p.create(dai.node.Camera)
-    color = p.create(dai.node.Camera)
-    stereo = p.create(dai.node.StereoDepth)
-    rgbd = p.create(dai.node.RGBD).build()
-    align = None
-    color.build()
+    color = p.create(dai.node.Camera).build()
+    # The Depth node manages its own stereo cameras and backend internally, so no
+    # explicit left/right cameras or StereoDepth node are needed.
+    depth = p.create(dai.node.Depth)
     o3dViewer = p.create(O3DNode)
-    left.build(dai.CameraBoardSocket.CAM_B)
-    right.build(dai.CameraBoardSocket.CAM_C)
-    out = None
 
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
-    stereo.setRectifyEdgeFillColor(0)
-    stereo.enableDistortionCorrection(True)
-
-    # Linking
-    left.requestOutput((640, 400)).link(stereo.left)
-    right.requestOutput((640, 400)).link(stereo.right)
-    platform = p.getDefaultDevice().getPlatform()
-    if platform == dai.Platform.RVC4:
-        out = color.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
-        align = p.create(dai.node.ImageAlign)
-        stereo.depth.link(align.input)
-        out.link(align.inputAlignTo)
-        align.outputAligned.link(rgbd.inDepth)
-    else:
-        out = color.requestOutput(
-            (640, 400), dai.ImgFrame.Type.RGB888i, dai.ImgResizeMode.CROP, 30, True
-        )
-        stereo.depth.link(rgbd.inDepth)
-        out.link(stereo.inputAlignTo)
-    out.link(rgbd.inColor)
+    # RGBD wires the color camera and aligns the Depth node's depth to it
+    # internally (using the Depth node's own alignment), so no ImageAlign node is
+    # needed.
+    rgbd = p.create(dai.node.RGBD).build(color, depth, (640, 400), fps)
 
     rgbd.pcl.link(o3dViewer.inputPCL)
 

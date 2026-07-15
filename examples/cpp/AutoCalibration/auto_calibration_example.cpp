@@ -109,9 +109,12 @@ int main() {
     botchCalibration(device);
 
     // Nodes
+    // AutoCalibration requires the explicit left/right camera nodes, so they are
+    // kept. The Depth node reuses these same stereo cameras for its depth output
+    // and manages the stereo backend internally.
     auto camLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto camRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto depth = pipeline.create<dai::node::Depth>();
 
     // AutoCalibration node
     auto dcWorker = pipeline.create<dai::node::AutoCalibration>();
@@ -125,13 +128,9 @@ int main() {
     config->validationSetSize = 5;
     config->dataConfidenceThreshold = 0.3;
 
-    // Links
-    camLeft->requestOutput({1280, 800})->link(stereo->left);
-    camRight->requestOutput({1280, 800})->link(stereo->right);
-
     // Queues
     auto workerOutputQueue = dcWorker->output.createOutputQueue();
-    auto stereoOut = stereo->depth.createOutputQueue();
+    auto stereoOut = depth->depth().createOutputQueue();
 
     pipeline.start();
 
@@ -147,8 +146,8 @@ int main() {
             }
         }
 
-        auto depth = stereoOut->get<dai::ImgFrame>();
-        showDepth(depth->getCvFrame(), "Depth", 500, 5000);
+        auto depthFrame = stereoOut->get<dai::ImgFrame>();
+        showDepth(depthFrame->getCvFrame(), "Depth", 500, 5000);
 
         if(cv::waitKey(1) == 'q') break;
     }

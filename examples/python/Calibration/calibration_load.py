@@ -13,13 +13,13 @@ calibData = dai.CalibrationHandler(args.calibJsonFile)
 with dai.Pipeline() as pipeline:
     pipeline.setCalibrationData(calibData)
     # Define sources and output
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    # The Depth node manages its own stereo cameras and backend internally and
+    # uses the calibration data set on the pipeline above.
     resolution = (640, 480)
-    stereo = pipeline.create(dai.node.StereoDepth).build(
-        monoLeft.requestOutput(resolution), monoRight.requestOutput(resolution)
+    depth = pipeline.create(dai.node.Depth).build(
+        dai.node.Depth.Algorithm.STEREO, size=resolution
     )
-    depthQueue = stereo.depth.createOutputQueue()
+    depthQueue = depth.depth.createOutputQueue()
     pipeline.start()
     while True:
         # blocking call, will wait until a new data has arrived

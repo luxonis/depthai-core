@@ -1,9 +1,6 @@
 import depthai as dai
 from argparse import ArgumentParser
 
-# NOTE: Using autocreate takes over the cameras cannot be used in complex pipelines,
-# where cameras would be used in other nodes as well yet.
-
 parser = ArgumentParser()
 parser.add_argument("--webSocketPort", type=int, default=8765)
 parser.add_argument("--httpPort", type=int, default=8082)
@@ -13,7 +10,11 @@ with dai.Pipeline() as p:
     remoteConnector = dai.RemoteConnection(
         webSocketPort=args.webSocketPort, httpPort=args.httpPort
     )
-    rgbd = p.create(dai.node.RGBD).build(True, dai.node.StereoDepth.PresetMode.DEFAULT)
+    # The Depth node manages its own stereo cameras and backend internally, and
+    # RGBD aligns its depth to the color camera internally.
+    color = p.create(dai.node.Camera).build()
+    depth = p.create(dai.node.Depth)
+    rgbd = p.create(dai.node.RGBD).build(color, depth)
     remoteConnector.addTopic("pcl", rgbd.pcl, "common")
 
     p.start()

@@ -26,22 +26,15 @@ with dai.Pipeline(device) as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
 
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
-    stereo = pipeline.create(dai.node.StereoDepth)
-
-    monoLeftOut = monoLeft.requestFullResolutionOutput()
-    monoRightOut = monoRight.requestFullResolutionOutput()
-    monoLeftOut.link(stereo.left)
-    monoRightOut.link(stereo.right)
-
-    align = pipeline.create(dai.node.ImageAlign)
-    stereo.depth.link(align.input)
-    detNN.passthrough.link(align.inputAlignTo)
+    # The Depth node manages its own stereo cameras and backend internally, and
+    # aligns depth to the detection network's passthrough output via setAlignTo
+    # (no separate ImageAlign node is needed).
+    depth = pipeline.create(dai.node.Depth).build(fps=fps)
+    depth.setAlignTo(detNN.passthrough)
 
     spatialCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
     spatialCalculator.initialConfig.setUseSegmentation(True)
-    align.outputAligned.link(spatialCalculator.inputDepth)
+    depth.depth.link(spatialCalculator.inputDepth)
     detNN.out.link(spatialCalculator.inputDetections)
 
     cameraQueue = detNN.passthrough.createOutputQueue()

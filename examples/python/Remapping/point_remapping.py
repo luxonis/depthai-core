@@ -57,19 +57,17 @@ if __name__ == "__main__":
     pipeline = dai.Pipeline()
 
     rgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    # Keep the left camera to provide the "source" frame for point selection. The
+    # Depth node reuses this camera and manages the right camera + stereo backend
+    # internally, so no explicit right camera or StereoDepth node is needed.
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
     monoLeftOut = monoLeft.requestFullResolutionOutput()
-    monoRightOut = monoRight.requestFullResolutionOutput()
-    stereo = pipeline.create(dai.node.StereoDepth)
-    monoLeftOut.link(stereo.left)
-    monoRightOut.link(stereo.right)
-    stereo.initialConfig.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT)
+    depth = pipeline.create(dai.node.Depth)
 
     rgbOut = rgb.requestOutput((720, 480), enableUndistortion=False, resizeMode=dai.ImgResizeMode.CROP)
     rgbQueue = rgbOut.createOutputQueue()
-    depthQueue = stereo.depth.createOutputQueue()
-    rectifiedLeftQueue = stereo.rectifiedLeft.createOutputQueue()
+    depthQueue = depth.depth.createOutputQueue()
+    leftQueue = monoLeftOut.createOutputQueue()
 
     cv2.namedWindow(SOURCE_WINDOW)
     cv2.namedWindow(RGB_WINDOW)
@@ -79,20 +77,20 @@ if __name__ == "__main__":
     while pipeline.isRunning():
         rgbFrame = rgbQueue.get()
         depthFrame = depthQueue.get()
-        rectifiedLeft = rectifiedLeftQueue.get()
+        leftMsg = leftQueue.get()
 
         assert isinstance(rgbFrame, dai.ImgFrame)
         assert isinstance(depthFrame, dai.ImgFrame)
-        assert isinstance(rectifiedLeft, dai.ImgFrame)
+        assert isinstance(leftMsg, dai.ImgFrame)
         assert rgbFrame.validateTransformations()
         assert depthFrame.validateTransformations()
-        assert rectifiedLeft.validateTransformations()
+        assert leftMsg.validateTransformations()
 
-        sourceTransformation = rectifiedLeft.getTransformation()
+        sourceTransformation = leftMsg.getTransformation()
         rgbTransformation = rgbFrame.getTransformation()
         depthTransformation = depthFrame.getTransformation()
 
-        leftFrame = toColorFrame(rectifiedLeft.getCvFrame())
+        leftFrame = toColorFrame(leftMsg.getCvFrame())
         rgbDisplay = rgbFrame.getCvFrame()
         depthMm, sourceStatus = sampleDepth(selectedPoint, depthFrame)
 

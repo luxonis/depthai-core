@@ -41,34 +41,24 @@ def main() -> None:
     print(f"Device: {device.getDeviceName()}  (ID: {device.getDeviceId()})\n")
 
     with dai.Pipeline(device) as pipeline:
-        # ── Camera + StereoDepth ──────────────────────────────────────
-        left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+        # ── Camera + Depth ────────────────────────────────────────────
         color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-        stereo = pipeline.create(dai.node.StereoDepth)
-        left.requestOutput((640, 400)).link(stereo.left)
-        right.requestOutput((640, 400)).link(stereo.right)
-
-        # Align depth to color camera
-        platform = pipeline.getDefaultDevice().getPlatform()
         colorOut = color.requestOutput(
             (640, 400), type=dai.ImgFrame.Type.RGB888i,
             resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=True,
         )
-        if platform == dai.Platform.RVC4:
-            align = pipeline.create(dai.node.ImageAlign)
-            stereo.depth.link(align.input)
-            colorOut.link(align.inputAlignTo)
-            alignedDepth = align.outputAligned
-        else:
-            colorOut.link(stereo.inputAlignTo)
-            alignedDepth = stereo.depth
+
+        # Unified Depth node. It manages its own stereo cameras and backend, and
+        # aligns depth to the color output internally via setAlignTo (no separate
+        # ImageAlign node needed).
+        depth = pipeline.create(dai.node.Depth)
+        depth.setAlignTo(colorOut)
 
         # ── PointCloud node ───────────────────────────────────────────
         pc = pipeline.create(dai.node.PointCloud)
         pc.setRunOnHost(True)
         pc.initialConfig.setLengthUnit(dai.LengthUnit.METER)
-        alignedDepth.link(pc.inputDepth)
+        depth.depth.link(pc.inputDepth)
         colorOut.link(pc.inputColor)
 
         queue = pc.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)

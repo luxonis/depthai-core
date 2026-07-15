@@ -14,19 +14,15 @@ int main() {
 
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
-    // Create stereo node
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto leftOutput = monoLeft->requestOutput(std::make_pair(640, 400));
-    auto rightOutput = monoRight->requestOutput(std::make_pair(640, 400));
-    leftOutput->link(stereo->left);
-    rightOutput->link(stereo->right);
+    // The Depth node manages its own stereo cameras and backend internally, so no
+    // explicit left/right cameras are needed. SpatialDetectionNetwork aligns the
+    // depth to the color camera internally.
+    auto depth = pipeline.create<dai::node::Depth>();
 
     // Create spatial detection network
     dai::NNModelDescription modelDescription{"yolov6-nano"};
-    auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>()->build(camRgb, stereo, modelDescription);
+    auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>()->build(camRgb, depth, modelDescription);
     spatialDetectionNetwork->setConfidenceThreshold(0.6f);
     spatialDetectionNetwork->input.setBlocking(false);
     spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5f);

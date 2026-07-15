@@ -178,30 +178,21 @@ int main(int argc, char** argv) {
         // Create pipeline
         dai::Pipeline pipeline;
 
-        const std::pair<int, int> size = {640, 400};
-
         // Define sources and outputs
         auto camRgb = pipeline.create<dai::node::Camera>();
         camRgb->build(dai::CameraBoardSocket::CAM_A, std::nullopt, fps);
-
-        auto platform = pipeline.getDefaultDevice()->getPlatform();
 
         // Create depth source based on argument
         dai::node::DepthSource depthSource;
 
         if(depthSourceArg == "stereo") {
-            auto monoLeft = pipeline.create<dai::node::Camera>();
-            auto monoRight = pipeline.create<dai::node::Camera>();
-            auto stereo = pipeline.create<dai::node::StereoDepth>();
+            // The Depth node manages its own stereo cameras and backend internally,
+            // so no explicit left/right cameras are needed. SpatialDetectionNetwork
+            // aligns the depth to the color camera internally.
+            auto depth = pipeline.create<dai::node::Depth>();
+            depth->build(fps);
 
-            monoLeft->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
-            monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
-
-            stereo->setExtendedDisparity(true);
-            monoLeft->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->left);
-            monoRight->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->right);
-
-            depthSource = stereo;
+            depthSource = depth;
         } else if(depthSourceArg == "neural") {
             auto monoLeft = pipeline.create<dai::node::Camera>();
             auto monoRight = pipeline.create<dai::node::Camera>();

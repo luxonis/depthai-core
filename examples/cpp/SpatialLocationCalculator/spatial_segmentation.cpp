@@ -102,23 +102,16 @@ int main() {
         auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>()->build(cameraNode, modelName, cap);
         detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
 
-        auto monoLeft = pipeline.create<dai::node::Camera>();
-        monoLeft->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
-        auto monoRight = pipeline.create<dai::node::Camera>();
-        monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
-
-        auto stereo = pipeline.create<dai::node::StereoDepth>();
-
-        monoLeft->requestFullResolutionOutput()->link(stereo->left);
-        monoRight->requestFullResolutionOutput()->link(stereo->right);
-
-        auto align = pipeline.create<dai::node::ImageAlign>();
-        stereo->depth.link(align->input);
-        detectionNetwork->passthrough.link(align->inputAlignTo);
+        // The Depth node manages its own stereo cameras and backend internally,
+        // and aligns depth to the detection network's passthrough output via
+        // setAlignTo (no separate ImageAlign node is needed).
+        auto depth = pipeline.create<dai::node::Depth>();
+        depth->build(fps);
+        depth->setAlignTo(detectionNetwork->passthrough);
 
         auto spatialCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
         spatialCalculator->initialConfig->setUseSegmentation(true);
-        align->outputAligned.link(spatialCalculator->inputDepth);
+        depth->depth().link(spatialCalculator->inputDepth);
         detectionNetwork->out.link(spatialCalculator->inputDetections);
 
         auto camQueue = detectionNetwork->passthrough.createOutputQueue();

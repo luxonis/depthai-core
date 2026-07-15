@@ -56,7 +56,12 @@ int main() {
     dai::RemoteConnection remoteConnector(dai::RemoteConnection::DEFAULT_ADDRESS, webSocketPort, true, httpPort);
     // Create pipeline
     dai::Pipeline pipeline;
-    auto rgbd = pipeline.create<dai::node::RGBD>()->build(true, dai::node::StereoDepth::PresetMode::DEFAULT);
+    // The Depth node manages its own stereo cameras and backend internally, and
+    // RGBD aligns its depth to the color camera internally.
+    auto color = pipeline.create<dai::node::Camera>();
+    color->build();
+    auto depth = pipeline.create<dai::node::Depth>();
+    auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth);
     auto customNode = pipeline.create<CustomPCLProcessingNode>();
 
     rgbd->pcl.link(customNode->inputPCL);

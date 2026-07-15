@@ -34,10 +34,6 @@ with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
-    monoLeftOut = monoLeft.requestOutput((640, 400), fps=fps)
-    monoRightOut = monoRight.requestOutput((640, 400), fps=fps)
 
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
 
@@ -45,23 +41,21 @@ with dai.Pipeline(device) as pipeline:
     spatialCalculator.initialConfig.setCalculateSpatialKeypoints(True)
     detNN.out.link(spatialCalculator.inputDetections)
 
+    # The Depth node manages its own stereo cameras and backend, and aligns depth
+    # to the detection network's passthrough output internally via setAlignTo, so
+    # no explicit left/right cameras or ImageAlign node are needed. The --depthSource
+    # option maps to the Depth node's backend algorithm selection.
     if args.depthSource == "stereo":
-        depth = pipeline.create(dai.node.StereoDepth).build(monoLeftOut, monoRightOut, presetMode=dai.node.StereoDepth.PresetMode.FAST_DENSITY)
-        if device.getPlatform() == dai.Platform.RVC2:
-            detNN.passthrough.link(depth.inputAlignTo)
-            depth.depth.link(spatialCalculator.inputDepth)
-
+        depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.STEREO, fps=fps)
     elif args.depthSource == "neural":
-        depth = pipeline.create(dai.node.NeuralDepth).build(monoLeftOut, monoRightOut, dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM)
-
+        depth = pipeline.create(dai.node.Depth).build(
+            dai.node.Depth.Algorithm.NEURAL, dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM, fps=fps
+        )
     else:
         raise ValueError(f"Invalid depth source: {args.depthSource}")
 
-    if device.getPlatform() == dai.Platform.RVC4:
-        align = pipeline.create(dai.node.ImageAlign)
-        depth.depth.link(align.input)
-        detNN.passthrough.link(align.inputAlignTo)
-        align.outputAligned.link(spatialCalculator.inputDepth)
+    depth.setAlignTo(detNN.passthrough)
+    depth.depth.link(spatialCalculator.inputDepth)
 
     camQueue = detNN.passthrough.createOutputQueue()
     spatialOutputQueue = spatialCalculator.outputDetections.createOutputQueue()

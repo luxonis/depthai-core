@@ -116,19 +116,17 @@ int main() {
     dai::Pipeline pipeline;
 
     auto rgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    // Keep the left camera to provide the "source" frame for point selection. The
+    // Depth node reuses this camera and manages the right camera + stereo backend
+    // internally, so no explicit right camera or StereoDepth node is needed.
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
-
     auto monoLeftOut = monoLeft->requestFullResolutionOutput();
-    auto monoRightOut = monoRight->requestFullResolutionOutput();
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-    monoLeftOut->link(stereo->left);
-    monoRightOut->link(stereo->right);
+    auto depth = pipeline.create<dai::node::Depth>();
 
     auto rgbOut = rgb->requestOutput({720, 480}, std::nullopt, dai::ImgResizeMode::CROP, std::nullopt, false);
     auto rgbQueue = rgbOut->createOutputQueue();
-    auto depthQueue = stereo->depth.createOutputQueue();
-    auto rectifiedLeftQueue = stereo->rectifiedLeft.createOutputQueue();
+    auto depthQueue = depth->depth().createOutputQueue();
+    auto leftQueue = monoLeftOut->createOutputQueue();
 
     cv::namedWindow(SOURCE_WINDOW);
     cv::namedWindow(RGB_WINDOW);
@@ -138,22 +136,22 @@ int main() {
     while(pipeline.isRunning() && !quitEvent) {
         auto rgbFrame = rgbQueue->get<dai::ImgFrame>();
         auto depthFrame = depthQueue->get<dai::ImgFrame>();
-        auto rectifiedLeft = rectifiedLeftQueue->get<dai::ImgFrame>();
+        auto leftMsg = leftQueue->get<dai::ImgFrame>();
 
-        if(rgbFrame == nullptr || depthFrame == nullptr || rectifiedLeft == nullptr) {
+        if(rgbFrame == nullptr || depthFrame == nullptr || leftMsg == nullptr) {
             continue;
         }
 
-        if(!rgbFrame->validateTransformations() || !depthFrame->validateTransformations() || !rectifiedLeft->validateTransformations()) {
+        if(!rgbFrame->validateTransformations() || !depthFrame->validateTransformations() || !leftMsg->validateTransformations()) {
             std::cerr << "Invalid transformations!" << std::endl;
             continue;
         }
 
-        auto& sourceTransformation = rectifiedLeft->getTransformation();
+        auto& sourceTransformation = leftMsg->getTransformation();
         auto& rgbTransformation = rgbFrame->getTransformation();
         auto& depthTransformation = depthFrame->getTransformation();
 
-        cv::Mat leftFrame = toColorFrame(rectifiedLeft->getCvFrame());
+        cv::Mat leftFrame = toColorFrame(leftMsg->getCvFrame());
         cv::Mat rgbDisplay = rgbFrame->getCvFrame();
         auto [depthMm, sourceStatus] = sampleDepth(selectedPoint, depthFrame);
 
