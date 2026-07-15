@@ -68,10 +68,6 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
             [](Tracklets& track) -> std::vector<Tracklet>& { return track.tracklets; },
             [](Tracklets& track, std::vector<Tracklet> val) { track.tracklets = std::move(val); },
             DOC(dai, Tracklets, tracklets))
-        .def("getTimestamp", &Tracklets::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &Tracklets::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getTimestampSystem", &Tracklets::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
-        .def("getSequenceNum", &Tracklets::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation",
              [](Tracklets& msg) {
                  if(!msg.transformation.has_value()) {
@@ -81,8 +77,5 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
              })
         .def("setTransformation", [](Tracklets& msg, const ImgTransformation& transformation) { msg.transformation = transformation; })
         .def("transformTo", &Tracklets::transformTo, py::arg("target"), DOC(dai, Tracklets, transformTo))
-        // .def("setTimestamp", &Tracklets::setTimestamp, DOC(dai, Tracklets, setTimestamp))
-        // .def("setTimestampDevice", &Tracklets::setTimestampDevice, DOC(dai, Tracklets, setTimestampDevice))
-        // .def("setSequenceNum", &Tracklets::setSequenceNum, DOC(dai, Tracklets, setSequenceNum))
         ;
 }

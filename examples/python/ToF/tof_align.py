@@ -17,8 +17,8 @@ import numpy as np
 FPS = 10.0
 CAMERA_SIZE = (640, 400)
 
-# show depth in range 0m - 7m
-MIN_DEPTH = 0
+# show depth in range 0.1m - 7m
+MIN_DEPTH = 100
 MAX_DEPTH = 7000
 
 

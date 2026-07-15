@@ -90,12 +90,6 @@ std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnIn
     return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
 
-std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
-    setConfig(nnArchive.getVersionedConfig());
-    nnInput.link(input);
-    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
-}
-
 std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
     setConfig(head);
     nnInput.link(input);
