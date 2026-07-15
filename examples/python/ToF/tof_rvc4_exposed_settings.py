@@ -65,22 +65,37 @@ def normalizeFrame(frame: np.ndarray) -> np.ndarray:
 # Live-tuning trackbar spec. Each tuple: (slider label, config attribute, max slider
 # value, scale). The config value sent to the device is `slider_position * scale`
 # (cast back to int for integer-typed fields).
+#
+# Ranges/defaults below follow the VD55H1 IPP filter reference (depthai-device-kb,
+# TOF_IPP_FILTERS.md), which documents the underlying wrapper controls these fields
+# map onto. depthai-core forwards each field to the firmware unchanged (no unit
+# conversion), so the values here are exactly the IPP control values.
 TUNE_PARAMS = [
     ("bilat: enable",         "enableBilateralFilter",           1,   1.0),
-    # Std-factor "strength" multipliers saturate quickly -- above ~5 there's no
-    # visible change -- so the slider covers 0.05..5.0 in 0.05 steps instead of
-    # wasting most of its range past the point where it stops doing anything.
-    ("bilat: stdFactor x20",  "bilateralStdFactor",              100, 0.05),
+    # NR stdFactor: photometric sigma multiplier. IPP default 4.0; higher -> more
+    # smoothing. Slider covers 0.1..8.0 (step 0.1) so the default sits mid-range.
+    ("bilat: stdFactor x10",  "bilateralStdFactor",              80,  0.1),
+    # NR kernelSize: IPP valid range {3,15} in ODD steps only (step 2); default 5.
+    # Even/zero values are invalid, so this slider is snapped to odd via ODD_ATTRS.
     ("bilat: kernelSize",     "bilateralKernelSize",             15,  1.0),
     ("tnr: enable",           "enableTemporalNoiseReduction",    1,   1.0),
+    # TNR maxGain: max temporal integration (frames blended). IPP default 16; a gain
+    # of 0 is meaningless so the slider is clamped to >= 1 (see MIN_SLIDER).
     ("tnr: maxGain",          "tnrMaxGain",                      16,  1.0),
+    # TNR stdFactor: motion-detection sensitivity. IPP default 1.4 (mode variants 1.2).
+    # Slider covers 0.05..5.0 (step 0.05).
     ("tnr: stdFactor x20",    "tnrStdFactor",                    100, 0.05),
     ("fly: enable",           "enableFlyingPixelFilter",         1,   1.0),
-    ("fly: depthThr x1000",   "flyingPixelDepthThreshold",       500, 0.001),
-    ("fly: minOccurrence",    "flyingPixelMinDepthOccurrence",   16,  1.0),
+    # FPC depthTh: neighbour "same-surface" depth threshold in MILLIMETRES. IPP
+    # default 100 mm (per-mode overrides span ~30..230 mm). Slider covers 0..300 mm.
+    ("fly: depthThr (mm)",    "flyingPixelDepthThreshold",       300, 1.0),
+    # FPC minDepthOccurence: min neighbours within depthTh (out of the 5x5=25 window)
+    # required to keep a pixel. IPP default 23; fewer -> more aggressive removal.
+    ("fly: minOccurrence",    "flyingPixelMinDepthOccurrence",   25,  1.0),
     # phaseUnwrapErrorThreshold is a plain uint16 (not std::optional), default 100,
     # and applyConfig writes it unconditionally -- so every runtime config we send
     # overwrites it. Exposing it as a slider keeps that value explicit and tunable.
+    # (IPP treats a very large value, ~10000, as effectively disabled.)
     ("phaseUnwrapErrThr",     "phaseUnwrapErrorThreshold",       500, 1.0),
     # pipeType is a 3-value enum, rendered as a cycling button (see ENUM_ATTRS) rather
     # than a slider; maxval here is just len(choices) - 1.
@@ -93,9 +108,21 @@ BOOL_ATTRS = {"enableBilateralFilter", "enableTemporalNoiseReduction", "enableFl
 # Enum-typed attributes: attr -> ordered tuple of dai.ToFConfig.<Enum> member names.
 # The slider position is the index into this tuple.
 ENUM_ATTRS = {"pipeType": ("AUTO", "FLOOD", "DOT")}
-# Minimum allowed slider position per attribute (IPP rejects a zero bilateral
-# std factor, so its slider is clamped to >= 1 -> 0.05 after scaling).
-MIN_SLIDER = {"bilateralStdFactor": 1}
+# Attributes whose IPP control only accepts ODD values (rounded up to the next odd).
+ODD_ATTRS = {"bilateralKernelSize"}
+# Minimum allowed slider position per attribute:
+#   bilateralStdFactor -> IPP rejects a zero std factor (1 -> 0.1 after scaling).
+#   bilateralKernelSize -> IPP valid range starts at 3 (odd).
+#   tnrMaxGain -> a gain of 0 is meaningless.
+MIN_SLIDER = {"bilateralStdFactor": 1, "bilateralKernelSize": 3, "tnrMaxGain": 1}
+
+
+def _snap(attr: str, pos: int, maxval: int) -> int:
+    """Clamp a slider position to [MIN_SLIDER, maxval] and enforce odd-only attrs."""
+    pos = max(MIN_SLIDER.get(attr, 0), min(maxval, pos))
+    if attr in ODD_ATTRS and pos % 2 == 0:
+        pos = min(maxval, pos + 1)  # round up to the next odd value
+    return pos
 
 
 # Custom slider panel drawn entirely with cv2 primitives. OpenCV's native
@@ -146,7 +173,7 @@ def initial_positions(cfg: dai.ToFConfig) -> list:
             pos = choices.index(init.name) if init is not None else 0
         else:
             pos = int(round((bool(init) if attr in BOOL_ATTRS else (init or 0)) / scale))
-        positions.append(max(MIN_SLIDER.get(attr, 0), min(maxval, pos)))
+        positions.append(_snap(attr, pos, maxval))
     return positions
 
 
@@ -192,7 +219,7 @@ def panel_mouse(event, x, y, flags, state) -> None:
                 state["pos"][row] = (state["pos"][row] + 1) % len(ENUM_ATTRS[attr])
         return
 
-    state["pos"][row] = _x_to_pos(x, maxval, MIN_SLIDER.get(attr, 0))
+    state["pos"][row] = _snap(attr, _x_to_pos(x, maxval, MIN_SLIDER.get(attr, 0)), maxval)
 
 
 def config_from_positions(positions: list) -> dai.ToFConfig:
@@ -287,20 +314,23 @@ def build_exposed_config() -> dai.ToFConfig:
     """A ToFConfig with all newly exposed RVC4 IPP post-processing controls set."""
     cfg = dai.ToFConfig()
 
-    # Bilateral spatial filter
+    # Values below are the VD55H1 IPP defaults (see TOF_IPP_FILTERS.md); tweak to taste.
+
+    # Bilateral spatial filter -- stdFactor default 4.0, kernelSize odd in {3..15}.
     cfg.enableBilateralFilter = True
-    cfg.bilateralStdFactor = 3.0
+    cfg.bilateralStdFactor = 4.0
     cfg.bilateralKernelSize = 5
 
-    # Temporal noise reduction (TNR)
+    # Temporal noise reduction (TNR) -- maxGain default 16, stdFactor default 1.4.
     cfg.enableTemporalNoiseReduction = True
-    cfg.tnrMaxGain = 4
-    cfg.tnrStdFactor = 3.0
+    cfg.tnrMaxGain = 16
+    cfg.tnrStdFactor = 1.4
 
-    # Flying-pixel filter
+    # Flying-pixel filter -- depthThreshold is in MILLIMETRES (IPP default 100 mm,
+    # per-mode ~30..230 mm); minDepthOccurrence default 23 (of the 5x5=25 window).
     cfg.enableFlyingPixelFilter = True
-    cfg.flyingPixelDepthThreshold = 0.05
-    cfg.flyingPixelMinDepthOccurrence = 3.0
+    cfg.flyingPixelDepthThreshold = 100.0
+    cfg.flyingPixelMinDepthOccurrence = 23.0
 
     # Phase-unwrap error threshold. Plain uint16 (default 100), always applied -- set
     # it explicitly so runtime configs don't silently reset it.
