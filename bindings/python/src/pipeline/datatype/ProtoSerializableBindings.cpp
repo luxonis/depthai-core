@@ -20,7 +20,7 @@ void bind_protoserializable(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-#ifdef DEPTHAI_ENABLE_PROTOBU
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     protoSerializable.def("save", &ProtoSerializable::save, py::arg("path"), py::arg("metadataOnly") = false)
         .def("load", &ProtoSerializable::load, py::arg("path"));
 #else
