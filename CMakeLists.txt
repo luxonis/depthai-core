@@ -453,7 +453,25 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     )
 endif()
 
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+set(TARGET_OPENCV_SOURCES
+    src/opencv/ImgFrame.cpp
+    src/opencv/ImgDetectionsT.cpp
+    src/opencv/SegmentationMask.cpp
+    src/opencv/DetectionNetwork.cpp
+    src/opencv/NeuralNetwork.cpp
+    src/opencv/EventsManager.cpp
+    src/opencv/Camera.cpp
+    src/opencv/matrixOps.cpp
+    src/pipeline/node/host/Display.cpp
+    src/pipeline/node/host/HostCamera.cpp
+    src/pipeline/node/host/Record.cpp
+    src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/ImageFilters.cpp
+    src/opencv/RecordReplay.cpp
+    src/opencv/HolisticRecordReplay.cpp
+)
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND DEPTHAI_MERGED_TARGET)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
@@ -463,22 +481,6 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/AutoCalibrationConfig.cpp
     )
 endif()
-
-set(TARGET_OPENCV_SOURCES
-    src/opencv/ImgFrame.cpp
-    src/opencv/ImgDetectionsT.cpp
-    src/opencv/SegmentationMask.cpp
-    src/opencv/DetectionNetwork.cpp
-    src/opencv/NeuralNetwork.cpp
-    src/opencv/EventsManager.cpp
-    src/pipeline/node/host/Display.cpp
-    src/pipeline/node/host/HostCamera.cpp
-    src/pipeline/node/host/Record.cpp
-    src/pipeline/node/host/Replay.cpp
-    src/pipeline/node/ImageFilters.cpp
-    src/opencv/RecordReplay.cpp
-    src/opencv/HolisticRecordReplay.cpp
-)
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 
@@ -657,7 +659,7 @@ if(NOT BUILD_SHARED_LIBS)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
 endif()
 
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link the dynamic calibration target
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
@@ -993,7 +995,7 @@ if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
     add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 endif()
 # Add dynamic calibration dll in build time
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND DEPTHAI_MERGED_TARGET)
     add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
 endif()
 

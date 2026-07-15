@@ -177,12 +177,10 @@ class ToF : public DeviceNodeGroup {
      */
     Input& tofBaseInputConfig{tofBase->inputConfig};
 
-    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Input config for image filters
      */
     Input* imageFiltersInputConfig = nullptr;
-    #endif
 #endif
 
     /**
@@ -190,12 +188,10 @@ class ToF : public DeviceNodeGroup {
      */
     ToFBase& tofBaseNode{*tofBase};
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Image filters node
      */
     ImageFilters* imageFiltersNode = nullptr;
-#endif
 };
 
 }  // namespace node
