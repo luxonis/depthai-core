@@ -466,6 +466,10 @@ endif()
 
 set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
+    src/opencv/ImgDetectionsT.cpp
+    src/opencv/SegmentationMask.cpp
+    src/opencv/DetectionNetwork.cpp
+    src/opencv/NeuralNetwork.cpp
     src/opencv/EventsManager.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/HostCamera.cpp

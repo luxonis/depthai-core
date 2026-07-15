@@ -71,16 +71,6 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, const Model& model, std::optional<float> fps) {
-    neuralNetwork->build(input, model, fps);
-    auto nnArchive = neuralNetwork->getNNArchive();
-    DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
-    detectionParser->setNNArchive(*nnArchive);
-    return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
-}
-#endif
-
 NNArchive DetectionNetwork::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {

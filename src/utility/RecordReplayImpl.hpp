@@ -164,7 +164,9 @@ bool allMatch(const std::vector<std::string>& v1, const std::vector<std::string>
 
 std::string matchTo(const std::vector<std::string>& deviceIds, const std::vector<std::string>& filenames, const std::vector<std::string>& nodenames);
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 std::tuple<size_t, size_t, double> getVideoSize(const std::string& filePath);
+#endif
 
 }  // namespace utility
 }  // namespace dai
