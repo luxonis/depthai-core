@@ -34,8 +34,10 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
 
     rectification->output1.link(focusController->inputs["left"]);
     rectification->output2.link(focusController->inputs["right"]);
-    rectification->output1.link(leftImageManip->inputImage);
-    rectification->output2.link(rightImageManip->inputImage);
+    // Crop the exact synchronized pair the controller selected (not the free-running
+    // rectification stream), so left/right crops share a timestamp for the backend Sync.
+    focusController->leftImage.link(leftImageManip->inputImage);
+    focusController->rightImage.link(rightImageManip->inputImage);
 
     // Crop generation is driven by runtime config; the same image must be reused for sequential crops.
     leftImageManip->inputConfig.setWaitForMessage(true);

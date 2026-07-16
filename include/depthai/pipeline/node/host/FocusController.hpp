@@ -27,6 +27,12 @@ class FocusController : public CustomNode<FocusController> {
     Output leftConfig{*this, {"leftConfig", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
     Output rightConfig{*this, {"rightConfig", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
 
+    // The synchronized frames the crops are computed from. Feeding these to the crop
+    // ImageManips (instead of the free-running rectification stream) keeps the left and
+    // right crops on the same timestamp so the backend's left/right Sync can pair them.
+    Output leftImage{*this, {"leftImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output rightImage{*this, {"rightImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+
     Output gateControlNeural{*this, {"gateControlNeural", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, true}}}}};
     Output gateControlStereo{*this, {"gateControlStereo", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, true}}}}};
     Output gateControlGpu{*this, {"gateControlGpu", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, true}}}}};

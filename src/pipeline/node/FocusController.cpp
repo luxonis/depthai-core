@@ -237,6 +237,12 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
 
     const std::chrono::milliseconds timeout(5000);
 
+    // Feed the synchronized pair to the crop ImageManips once per group; the crop configs
+    // below reuse it (setReusePreviousImage) for every crop, so both left and right crops
+    // carry this pair's timestamp and the backend's left/right Sync can pair them.
+    leftImage.send(leftImg);
+    rightImage.send(rightImg);
+
     for(std::size_t idx = 0; idx < crops.size(); ++idx) {
         const auto& crop = crops[idx];
         const int outW = (selected == Backend::GPU) ? crop.w : (selected == Backend::STEREO) ? stereoSize_.first : neuralSize_.first;
