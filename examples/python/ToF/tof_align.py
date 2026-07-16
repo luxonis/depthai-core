@@ -27,8 +27,12 @@ def colorizeDepth(frameDepth: np.ndarray, minDepth: float, maxDepth: float) -> n
     try:
         logDepth = np.log(frameDepth.astype(np.float32) + 1e-6)
         logDepth[invalidMask] = 0.0
-        logDepth = np.clip(logDepth, np.log(minDepth + 1e-6), np.log(maxDepth + 1e-6))
-        depthFrameColor = np.interp(logDepth, (logDepth[~invalidMask].min(), logDepth[~invalidMask].max()), (0, 255))
+        logMin, logMax = np.log(minDepth + 1e-6), np.log(maxDepth + 1e-6)
+        logDepth = np.clip(logDepth, logMin, logMax)
+        # Map from the FIXED depth range (not the per-frame min/max) so a given depth
+        # always maps to the same color -- otherwise the mapping shifts every frame and
+        # the image flickers.
+        depthFrameColor = np.interp(logDepth, (logMin, logMax), (0, 255))
         depthFrameColor = depthFrameColor.astype(np.uint8)
         depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
         depthFrameColor[invalidMask] = 0
