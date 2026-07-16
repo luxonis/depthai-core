@@ -10,9 +10,10 @@
 #include <vector>
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core/cvdef.h>
+
     #include <opencv2/core.hpp>
     #include <opencv2/imgproc.hpp>
-    #include <opencv2/core/cvdef.h>
 #endif
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"

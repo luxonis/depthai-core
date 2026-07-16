@@ -23,9 +23,9 @@
 #include <vector>
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-#include <opencv2/calib3d.hpp>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/types.hpp>
+    #include <opencv2/calib3d.hpp>
+    #include <opencv2/core/mat.hpp>
+    #include <opencv2/core/types.hpp>
 #endif
 
 #include "depthai/common/CameraBoardSocket.hpp"
