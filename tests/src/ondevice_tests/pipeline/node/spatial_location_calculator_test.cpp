@@ -26,6 +26,8 @@ using Catch::Approx;
 
 namespace {
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
 void setDepthValue(cv::Mat& depth, int xStart, int yStart, int xEnd, int yEnd, std::uint16_t value) {
     for(int y = yStart; y < yEnd; ++y) {
         for(int x = xStart; x < xEnd; ++x) {
@@ -50,6 +52,8 @@ std::shared_ptr<dai::ImgFrame> createDepthFrame(const cv::Mat& depthMat, const s
     REQUIRE(depthFrame->validateTransformations());
     return depthFrame;
 }
+
+#endif
 
 std::shared_ptr<dai::ImgFrame> createDetectionFrameWithManipulation(const std::shared_ptr<dai::ImgFrame>& depthFrame,
                                                                     unsigned width,
@@ -205,6 +209,8 @@ TEST_CASE("SpatialLocationCalculatorConfig tracks ROI updates") {
     CHECK(rois[1].roi.width == Approx(overrideB.roi.width));
     CHECK(rois[1].roi.height == Approx(overrideB.roi.height));
 }
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 
 TEST_CASE("SpatialLocationCalculator synthetic depth data test") {
     constexpr unsigned width = 640;
@@ -998,3 +1004,5 @@ TEST_CASE("Spatial detections handle segmentation and keypoints together") {
     const auto& kp = keypoints.at(0);
     REQUIRE(kp.spatialCoordinates.z == Approx(0).margin(1.0F));
 }
+
+#endif

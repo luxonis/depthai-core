@@ -43,10 +43,12 @@ TEST_CASE("FileData encodes ImgFrame as JPEG", "[FileData][EventsManager]") {
 TEST_CASE("FileGroup throws on null pointer inputs", "[FileGroup][EventsManager]") {
     FileGroup fileGroup;
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     SECTION("addFile with null ImgFrame throws") {
         std::shared_ptr<ImgFrame> nullFrame = nullptr;
         REQUIRE_THROWS_AS(fileGroup.addFile("test.jpg", nullFrame), std::invalid_argument);
     }
+#endif
 
     SECTION("addFile with null EncodedFrame throws") {
         std::shared_ptr<EncodedFrame> nullFrame = nullptr;
@@ -58,11 +60,13 @@ TEST_CASE("FileGroup throws on null pointer inputs", "[FileGroup][EventsManager]
         REQUIRE_THROWS_AS(fileGroup.addFile("test.json", nullDetections), std::invalid_argument);
     }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     SECTION("addImageDetectionsPair with null ImgFrame throws") {
         std::shared_ptr<ImgFrame> nullFrame = nullptr;
         auto detections = std::make_shared<ImgDetections>();
         REQUIRE_THROWS_AS(fileGroup.addImageDetectionsPair("test", nullFrame, detections), std::invalid_argument);
     }
+#endif
 
     SECTION("addImageDetectionsPair with null EncodedFrame throws") {
         std::shared_ptr<EncodedFrame> nullFrame = nullptr;
@@ -70,6 +74,7 @@ TEST_CASE("FileGroup throws on null pointer inputs", "[FileGroup][EventsManager]
         REQUIRE_THROWS_AS(fileGroup.addImageDetectionsPair("test", nullFrame, detections), std::invalid_argument);
     }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     SECTION("addImageDetectionsPair with null ImgDetections throws") {
         auto frame = std::make_shared<ImgFrame>();
         frame->setType(ImgFrame::Type::BGR888i).setSize(4, 4);
@@ -78,11 +83,13 @@ TEST_CASE("FileGroup throws on null pointer inputs", "[FileGroup][EventsManager]
         std::shared_ptr<ImgDetections> nullDetections = nullptr;
         REQUIRE_THROWS_AS(fileGroup.addImageDetectionsPair("test", frame, nullDetections), std::invalid_argument);
     }
+#endif
 }
 
 TEST_CASE("FileGroup accepts valid inputs", "[FileGroup][EventsManager]") {
     FileGroup fileGroup;
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     SECTION("addFile with valid ImgFrame works") {
         auto frame = std::make_shared<ImgFrame>();
         frame->setType(ImgFrame::Type::BGR888i).setSize(4, 4);
@@ -90,12 +97,14 @@ TEST_CASE("FileGroup accepts valid inputs", "[FileGroup][EventsManager]") {
         frame->setData(data);
         REQUIRE_NOTHROW(fileGroup.addFile("test.jpg", frame));
     }
+#endif
 
     SECTION("addFile with valid ImgDetections works") {
         auto detections = std::make_shared<ImgDetections>();
         REQUIRE_NOTHROW(fileGroup.addFile("test.json", detections));
     }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     SECTION("addImageDetectionsPair with valid inputs works") {
         auto frame = std::make_shared<ImgFrame>();
         frame->setType(ImgFrame::Type::BGR888i).setSize(4, 4);
@@ -104,6 +113,7 @@ TEST_CASE("FileGroup accepts valid inputs", "[FileGroup][EventsManager]") {
         auto detections = std::make_shared<ImgDetections>();
         REQUIRE_NOTHROW(fileGroup.addImageDetectionsPair("test", frame, detections));
     }
+#endif
 
     SECTION("addFile with string data works") {
         REQUIRE_NOTHROW(fileGroup.addFile("test.txt", "hello world", "text/plain"));

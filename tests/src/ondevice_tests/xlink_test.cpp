@@ -71,6 +71,8 @@ TEST_CASE("XLinkBridge fps limit test") {
     }
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
 TEST_CASE("Sync node packet transfer timing and data integrity with varying delays", "[sync][xlink][timing][generate]") {
     // Use GENERATE to run the entire test case once for each value
     const int sendingDistanceMs = GENERATE(1, 10, 50, 100);
@@ -209,3 +211,5 @@ TEST_CASE("Sync node packet transfer data integrity with more frames in MessageG
     REQUIRE(same1);
     REQUIRE(same2);
 }
+
+#endif

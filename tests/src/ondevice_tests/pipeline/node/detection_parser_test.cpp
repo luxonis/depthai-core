@@ -224,6 +224,8 @@ void validateSmokeKeypoints(const std::vector<dai::Keypoint>& keypoints, std::si
     }
 }
 
+#ifdef DEPTHAI_MERGED_TARGET
+
 void runDetectionParserReplayTest(const std::string& modelName, const std::filesystem::path& groundTruthPath, const std::filesystem::path& testVideoPath) {
     dai::Pipeline p;
     auto device = p.getDefaultDevice();
@@ -352,6 +354,8 @@ void runDetectionParserReplaySmokeTest(const std::string& modelName,
     REQUIRE(foundDetections);
     REQUIRE(foundExpectedExtraOutput);
 }
+
+#endif
 
 TEST_CASE("DetectionParser can set properties") {
     dai::node::DetectionParser parser;
@@ -490,6 +494,8 @@ TEST_CASE("DetectionParser can be build using a specific head") {
     REQUIRE(parser->properties.parser.classes == 1);
 }
 
+#ifdef DEPTHAI_MERGED_TARGET
+
 TEST_CASE("DetectionParser replay test") {
     const std::filesystem::path yoloV6R2Coco512x288GroundTruth{YOLO_V6_R2_COCO_512x288_GROUND_TRUTH};
     const std::filesystem::path yoloV6R2Coco512x384GroundTruth{YOLO_V6_R2_COCO_512x384_GROUND_TRUTH};
@@ -537,6 +543,8 @@ TEST_CASE("DetectionParser YOLO26 smoke test") {
         }
     }
 }
+
+#endif
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 TEST_CASE("DetectionParser segmentation mask test") {

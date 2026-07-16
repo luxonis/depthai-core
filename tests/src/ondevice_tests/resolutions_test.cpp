@@ -2,13 +2,13 @@
 #include <chrono>
 #include <iostream>
 #include <iterator>
-#include <opencv2/imgproc.hpp>
 #include <stdexcept>
 
 // Libraries
 #include <catch2/catch_all.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <tuple>
 
 // Includes common necessary includes for development using depthai library

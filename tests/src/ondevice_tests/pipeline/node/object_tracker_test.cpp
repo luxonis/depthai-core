@@ -18,6 +18,8 @@ bool has_duplicates(const Container& items, KeyFunc key_func) {
     return false;  // no duplicates
 }
 
+#ifdef DEPTHAI_MERGED_TARGET
+
 TEST_CASE("Object Tracker smallest ID assignment policy") {
     // Create pipeline
     dai::Pipeline pipeline;
@@ -105,6 +107,8 @@ TEST_CASE("Object Tracker unique ID assignment policy") {
     }
     REQUIRE(counter > 0);  // Ensure that at least some tracklets were processed
 }
+
+#endif
 
 TEST_CASE("Object Tracker transformation") {
     // Create pipeline

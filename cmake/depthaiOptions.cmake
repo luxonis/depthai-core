@@ -40,6 +40,11 @@ option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_INSTALL "Enable install target for depthai-core targets" ON)
 
+if(DEPTHAI_BUILD_EXAMPLES AND NOT DEPTHAI_OPENCV_SUPPORT)
+    message(WARNING "DEPTHAI_BUILD_EXAMPLES requires DEPTHAI_OPENCV_SUPPORT to be ON. Turning DEPTHAI_BUILD_EXAMPLES OFF.")
+    set(DEPTHAI_BUILD_EXAMPLES OFF CACHE BOOL "Build examples - Requires OpenCV library to be installed" FORCE)
+endif()
+
 # ---------- Dependency Management -------------
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_VCPKG_INTERNAL_ONLY "Use VCPKG internally, but not for interface libraries" ON)

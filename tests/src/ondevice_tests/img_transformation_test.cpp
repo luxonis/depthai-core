@@ -16,14 +16,17 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <numeric>
-#include <opencv2/calib3d.hpp>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/types.hpp>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
+#endif
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/Extrinsics.hpp"
@@ -241,6 +244,8 @@ float calculateStdDev(const std::vector<float>& errors, float mean) {
     return std::sqrt(variance);
 }
 
+#ifdef DEPTHAI_MERGED_TARGET
+
 std::tuple<dai::ImgTransformation, dai::ImgTransformation> parseTransformations(const std::filesystem::path& refMetadataPath,
                                                                                 const std::filesystem::path& targetMetadataPath) {
     dai::Pipeline pipeline{false};
@@ -333,6 +338,66 @@ nlohmann::json processVideo(const std::filesystem::path& videoPath) {
         {"processed_frames", static_cast<int>(referencePoints.size())},
     });
 }
+
+TEST_CASE("projectPoints test") {
+    const std::filesystem::path& baseFolder = getTransformationTestDataFolder();
+
+    if(!std::filesystem::exists(baseFolder)) {
+        WARN("Capture folder not found, skipping projectPoints test: " << baseFolder.string());
+        return;
+    }
+
+    nlohmann::json currentResults;
+    int testIterator = 0;
+    for(const auto& directory : std::filesystem::directory_iterator(baseFolder)) {
+        if(!directory.is_directory()) continue;
+        const auto capturePath = directory.path();
+        const std::filesystem::path folder = std::filesystem::path(capturePath);
+        const auto result = processVideo(folder);
+        INFO(result.dump(2));
+        const int errorCount = result.value("projection_error_count", 0);
+        const double meanProjectionErrorPx = result.value("mean_projection_error_px", std::numeric_limits<double>::quiet_NaN());
+        const double medianProjectionErrorPx = result.value("median_projection_error_px", std::numeric_limits<double>::quiet_NaN());
+        const double stdProjectionErrorPx = result.value("std_projection_error_px", std::numeric_limits<double>::quiet_NaN());
+
+        REQUIRE(errorCount > 0);
+        REQUIRE(std::isfinite(meanProjectionErrorPx));
+        REQUIRE(std::isfinite(medianProjectionErrorPx));
+        REQUIRE(std::isfinite(stdProjectionErrorPx));
+
+        currentResults[folder.stem().string()] = result;
+        testIterator++;
+    }
+
+    REQUIRE(testIterator > 0);
+
+    const std::filesystem::path outputPath = baseFolder / "aggregated_results.json";
+    std::ifstream inputFile(outputPath);
+    REQUIRE(inputFile.is_open());
+
+    const auto aggregatedResults = nlohmann::json::parse(inputFile);
+    REQUIRE(aggregatedResults.is_object());
+
+    for(const auto& [captureName, currentResult] : currentResults.items()) {
+        INFO("Comparing results for capture: " << captureName);
+        REQUIRE(aggregatedResults.contains(captureName));
+
+        const auto& aggregatedResult = aggregatedResults.at(captureName);
+        const double currentMeanProjectionErrorPx = currentResult.value("mean_projection_error_px", std::numeric_limits<double>::infinity());
+        const double aggregatedMeanProjectionErrorPx = aggregatedResult.value("mean_projection_error_px", std::numeric_limits<double>::quiet_NaN());
+        constexpr double meanProjectionErrorTolerancePx = 1e-4;
+
+        REQUIRE(std::isfinite(currentMeanProjectionErrorPx));
+        REQUIRE(std::isfinite(aggregatedMeanProjectionErrorPx));
+
+        INFO("capture=" << captureName << ", current=" << currentMeanProjectionErrorPx << ", baseline=" << aggregatedMeanProjectionErrorPx
+                        << ", tolerance=" << meanProjectionErrorTolerancePx);
+
+        REQUIRE(currentMeanProjectionErrorPx <= aggregatedMeanProjectionErrorPx + meanProjectionErrorTolerancePx);
+    }
+}
+
+#endif
 
 std::filesystem::path extractTransformationTestDataFolder() {
     const std::filesystem::path archivePath{TRANSFORMATION_TEST_DATA};
@@ -648,6 +713,8 @@ TEST_CASE("ImgTransformation isAlignedTo distortion coefficients handling") {
     REQUIRE_FALSE(base.isAlignedTo(nonZero));
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
 TEST_CASE("AlignmentUtilities distort point") {
     dai::Point3f point3D{40, 75, 150.0f};
     cv::Point3f point3Dcv(point3D.x, point3D.y, point3D.z);
@@ -834,60 +901,4 @@ TEST_CASE("AlignmentUtilities undistort point") {
     }
 }
 
-TEST_CASE("projectPoints test") {
-    const std::filesystem::path& baseFolder = getTransformationTestDataFolder();
-
-    if(!std::filesystem::exists(baseFolder)) {
-        WARN("Capture folder not found, skipping projectPoints test: " << baseFolder.string());
-        return;
-    }
-
-    nlohmann::json currentResults;
-    int testIterator = 0;
-    for(const auto& directory : std::filesystem::directory_iterator(baseFolder)) {
-        if(!directory.is_directory()) continue;
-        const auto capturePath = directory.path();
-        const std::filesystem::path folder = std::filesystem::path(capturePath);
-        const auto result = processVideo(folder);
-        INFO(result.dump(2));
-        const int errorCount = result.value("projection_error_count", 0);
-        const double meanProjectionErrorPx = result.value("mean_projection_error_px", std::numeric_limits<double>::quiet_NaN());
-        const double medianProjectionErrorPx = result.value("median_projection_error_px", std::numeric_limits<double>::quiet_NaN());
-        const double stdProjectionErrorPx = result.value("std_projection_error_px", std::numeric_limits<double>::quiet_NaN());
-
-        REQUIRE(errorCount > 0);
-        REQUIRE(std::isfinite(meanProjectionErrorPx));
-        REQUIRE(std::isfinite(medianProjectionErrorPx));
-        REQUIRE(std::isfinite(stdProjectionErrorPx));
-
-        currentResults[folder.stem().string()] = result;
-        testIterator++;
-    }
-
-    REQUIRE(testIterator > 0);
-
-    const std::filesystem::path outputPath = baseFolder / "aggregated_results.json";
-    std::ifstream inputFile(outputPath);
-    REQUIRE(inputFile.is_open());
-
-    const auto aggregatedResults = nlohmann::json::parse(inputFile);
-    REQUIRE(aggregatedResults.is_object());
-
-    for(const auto& [captureName, currentResult] : currentResults.items()) {
-        INFO("Comparing results for capture: " << captureName);
-        REQUIRE(aggregatedResults.contains(captureName));
-
-        const auto& aggregatedResult = aggregatedResults.at(captureName);
-        const double currentMeanProjectionErrorPx = currentResult.value("mean_projection_error_px", std::numeric_limits<double>::infinity());
-        const double aggregatedMeanProjectionErrorPx = aggregatedResult.value("mean_projection_error_px", std::numeric_limits<double>::quiet_NaN());
-        constexpr double meanProjectionErrorTolerancePx = 1e-4;
-
-        REQUIRE(std::isfinite(currentMeanProjectionErrorPx));
-        REQUIRE(std::isfinite(aggregatedMeanProjectionErrorPx));
-
-        INFO("capture=" << captureName << ", current=" << currentMeanProjectionErrorPx << ", baseline=" << aggregatedMeanProjectionErrorPx
-                        << ", tolerance=" << meanProjectionErrorTolerancePx);
-
-        REQUIRE(currentMeanProjectionErrorPx <= aggregatedMeanProjectionErrorPx + meanProjectionErrorTolerancePx);
-    }
-}
+#endif
