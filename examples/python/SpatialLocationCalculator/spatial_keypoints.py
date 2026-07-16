@@ -36,8 +36,10 @@ with dai.Pipeline(device) as pipeline:
 
     # The Depth node manages its own stereo cameras and backend, and aligns depth
     # to the detection network's passthrough output internally via setAlignTo, so
-    # no explicit left/right cameras or ImageAlign node are needed.
-    depth = pipeline.create(dai.node.Depth).build(fps=fps)
+    # no explicit left/right cameras or ImageAlign node are needed. The (640, 400)
+    # size keeps the depth resolution the same as the previous explicit stereo setup
+    # (the node would otherwise default to the full stereo sensor resolution).
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
 
     depth.setAlignTo(detNN.passthrough)
     depth.depth.link(spatialCalculator.inputDepth)

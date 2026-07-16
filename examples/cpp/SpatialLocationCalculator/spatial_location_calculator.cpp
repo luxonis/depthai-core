@@ -22,8 +22,11 @@ int main() {
 
         // Define sources and outputs
         // The Depth node manages its own stereo cameras and backend internally,
-        // so no explicit left/right cameras are needed.
+        // so no explicit left/right cameras are needed. The (640, 400) size keeps the
+        // depth resolution the same as the previous explicit stereo setup (the node
+        // would otherwise default to the full stereo sensor resolution).
         auto depth = pipeline.create<dai::node::Depth>();
+        depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
         auto spatialLocationCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
 
         // Initial ROI configuration

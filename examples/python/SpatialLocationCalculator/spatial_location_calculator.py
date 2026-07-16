@@ -15,8 +15,10 @@ bottomRight = dai.Point2f(0.6, 0.6)
 
 # Define sources and outputs
 # The Depth node manages its own stereo cameras and backend internally,
-# so no explicit left/right cameras are needed.
-depth = pipeline.create(dai.node.Depth)
+# so no explicit left/right cameras are needed. The (640, 400) size keeps the
+# depth resolution the same as the previous explicit stereo setup (the node
+# would otherwise default to the full stereo sensor resolution).
+depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
 spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
 
 stepSize = 0.05
