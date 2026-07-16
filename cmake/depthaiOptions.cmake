@@ -78,6 +78,13 @@ if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
 endif()
 
+# Disable dynamic calibration support when merged target is disabled
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
+    message(WARNING "DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT requires DEPTHAI_MERGED_TARGET to be ON. Turning DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT OFF.")
+    set(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT OFF CACHE BOOL "Enable Dynamic Calibration support" FORCE)
+endif()
+
+
 # Backward stacktrace printing
 if(ANDROID OR EMSCRIPTEN)
     # Backward not supported currently on Android

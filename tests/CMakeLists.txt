@@ -580,7 +580,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 endif()
 
 # Vpp node tests
-if(DEPTHAI_OPENCV_SUPPORT)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
     dai_set_test_labels(vpp_test ondevice rvc4 ci)
 endif()
@@ -683,7 +683,7 @@ dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
 dai_add_test(input_output_naming_test src/ondevice_tests/input_output_naming_test.cpp)
 dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
-if(DEPTHAI_OPENCV_SUPPORT)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     # Resolutions test
     dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
     dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
@@ -817,7 +817,7 @@ dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cp
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
 # ImageManip test
-if(DEPTHAI_FETCH_ARTIFACTS AND DEPTHAI_OPENCV_SUPPORT)
+if(DEPTHAI_FETCH_ARTIFACTS AND DEPTHAI_HAVE_OPENCV_SUPPORT)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
     target_compile_definitions(image_manip_node_test PRIVATE LENNA_PATH="${lenna_png}")
     dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
