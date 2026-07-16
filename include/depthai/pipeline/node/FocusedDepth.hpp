@@ -26,13 +26,13 @@ class FocusedDepth : public DeviceNodeGroup {
 
     constexpr static const char* NAME = "FocusedDepth";
 
-    Input& inputDetections;
-    Output& depth;
-    Output& confidence;
-
    private:
     bool built_ = false;
 
+    // NOTE: the Subnodes must be declared before the Input&/Output& reference
+    // members below, because the constructor initializes those references from
+    // focusController. Members are initialized in declaration order, so
+    // focusController has to exist first.
     Subnode<FocusController> focusController{*this, "focusController"};
     Subnode<Rectification> rectification{*this, "rectification"};
     Subnode<ImageManip> leftImageManip{*this, "leftImageManip"};
@@ -46,6 +46,11 @@ class FocusedDepth : public DeviceNodeGroup {
     Subnode<NeuralDepth> neuralDepth{*this, "neuralDepth"};
     Subnode<StereoDepth> stereoDepth{*this, "stereoDepth"};
     Subnode<GPUStereo> gpuStereo{*this, "gpuStereo"};
+
+   public:
+    Input& inputDetections;
+    Output& depth;
+    Output& confidence;
 };
 
 }  // namespace node
