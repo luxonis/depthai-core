@@ -1,28 +1,13 @@
 #!/usr/bin/env python3
 
-import argparse
-from pathlib import Path
 import cv2
 import depthai as dai
 import numpy as np
 
-NEURAL_FPS = 8
-STEREO_DEFAULT_FPS = 20
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
-)
-args = parser.parse_args()
+fps = 20
 # For better results on OAK4, use a segmentation model like "luxonis/yolov8-instance-segmentation-large:coco-640x480"
 # for depth estimation over the objects mask instead of the full bounding box.
 modelDescription = dai.NNModelDescription("yolov6-nano")
-size = (640, 400)
-
-if args.depthSource == "stereo":
-    fps = STEREO_DEFAULT_FPS
-else:
-    fps = NEURAL_FPS
 
 class SpatialVisualizer(dai.node.HostNode):
     def __init__(self):
@@ -83,27 +68,14 @@ class SpatialVisualizer(dai.node.HostNode):
 # Creates the pipeline and a default device implicitly
 with dai.Pipeline() as p:
     # Define sources and outputs
-    platform = p.getDefaultDevice().getPlatform()
-
     camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A, sensorFps=fps)
-    if args.depthSource == "stereo":
-        # The Depth node manages its own stereo cameras and backend internally, so
-        # no explicit left/right cameras are needed. SpatialDetectionNetwork aligns
-        # the depth to the color camera internally.
-        depthSource = p.create(dai.node.Depth).build(fps=fps)
-    elif args.depthSource == "neural":
-        monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
-        monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
-        depthSource = p.create(dai.node.NeuralDepth).build(
-            monoLeft.requestFullResolutionOutput(),
-            monoRight.requestFullResolutionOutput(),
-            dai.DeviceModelZoo.NEURAL_DEPTH_LARGE,
-        )
-    else:
-        raise ValueError(f"Invalid depth source: {args.depthSource}")
+    # The Depth node manages its own stereo cameras and backend internally, so
+    # no explicit left/right cameras are needed. SpatialDetectionNetwork aligns
+    # the depth to the color camera internally.
+    depth = p.create(dai.node.Depth).build(fps=fps)
 
     spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
-        camRgb, depthSource, modelDescription
+        camRgb, depth, modelDescription
     )
     visualizer = p.create(SpatialVisualizer)
 
@@ -118,6 +90,6 @@ with dai.Pipeline() as p:
         spatialDetectionNetwork.passthrough,
     )
 
-    print("Starting pipeline with depth source: ", args.depthSource)
+    print("Starting pipeline")
 
     p.run()

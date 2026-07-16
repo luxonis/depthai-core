@@ -2,7 +2,6 @@ import depthai as dai
 import sys
 import numpy as np
 import cv2
-import argparse
 
 try:
     import open3d as o3d
@@ -12,12 +11,6 @@ except ImportError:
             sys.executable
         )
     )
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
-)
-args = parser.parse_args()
 
 device = dai.Device()
 fps = 24
@@ -43,16 +36,8 @@ with dai.Pipeline(device) as pipeline:
 
     # The Depth node manages its own stereo cameras and backend, and aligns depth
     # to the detection network's passthrough output internally via setAlignTo, so
-    # no explicit left/right cameras or ImageAlign node are needed. The --depthSource
-    # option maps to the Depth node's backend algorithm selection.
-    if args.depthSource == "stereo":
-        depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.STEREO, fps=fps)
-    elif args.depthSource == "neural":
-        depth = pipeline.create(dai.node.Depth).build(
-            dai.node.Depth.Algorithm.NEURAL, dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM, fps=fps
-        )
-    else:
-        raise ValueError(f"Invalid depth source: {args.depthSource}")
+    # no explicit left/right cameras or ImageAlign node are needed.
+    depth = pipeline.create(dai.node.Depth).build(fps=fps)
 
     depth.setAlignTo(detNN.passthrough)
     depth.depth.link(spatialCalculator.inputDepth)

@@ -47,7 +47,7 @@ def main() -> None:
     print(f"Device: {device.getDeviceName()}  (ID: {device.getDeviceId()})\n")
 
     # ------------------------------------------------------------------
-    # Single pipeline – shared Camera + StereoDepth, multiple PointCloud
+    # Single pipeline – shared Camera + Depth, multiple PointCloud
     # nodes configured differently.
     # ------------------------------------------------------------------
     with dai.Pipeline(device) as pipeline:
