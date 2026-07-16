@@ -7,9 +7,11 @@
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/pipeline/node/host/HostNode.hpp>
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 namespace dai {
 namespace node {
@@ -40,6 +42,20 @@ class FocusController : public CustomNode<FocusController> {
     Output confidenceOut{*this, {"confidenceOut", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     std::shared_ptr<Buffer> processGroup(std::shared_ptr<MessageGroup> in) override;
+
+    // Geometry of a single focused region derived from a detection.
+    struct Crop {
+        // Backend crop: detection box expanded by max disparity horizontally and clamped to the frame.
+        int x, y, w, h;
+        // Detection box in pixels; the focused output is written back only over this region.
+        float detX, detY, detW, detH;
+    };
+
+    // Convert normalized {xmin, ymin, xmax, ymax} detection boxes into backend crops for a
+    // frameWidth x frameHeight frame. Degenerate or fully out-of-frame boxes are dropped, and
+    // crops are clamped so they always stay within the frame. Pure and free of device state so
+    // the crop geometry (multiple/varying/edge-touching regions) can be tested on host.
+    static std::vector<Crop> computeCrops(int frameWidth, int frameHeight, const std::vector<std::array<float, 4>>& normalizedBoxes);
 
     void setTargetFps(float targetFps);
     void setNeuralModel(DeviceModelZoo model);

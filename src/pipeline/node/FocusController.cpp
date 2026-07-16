@@ -5,8 +5,11 @@
 #include <depthai/pipeline/node/NeuralDepth.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
 #include <limits>
+#include <vector>
 
 namespace dai {
 namespace node {
@@ -64,6 +67,54 @@ void FocusController::setStereoFps(float fps) {
     stereoFps_ = fps;
 }
 
+std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
+                                                                int frameHeight,
+                                                                const std::vector<std::array<float, 4>>& normalizedBoxes) {
+    std::vector<Crop> crops;
+    crops.reserve(normalizedBoxes.size());
+    if(frameWidth <= 0 || frameHeight <= 0) {
+        return crops;
+    }
+
+    // Max disparity: 192 px for a 1 MP width, scaled linearly.
+    const int maxD = static_cast<int>(std::round(192.0f * static_cast<float>(frameWidth) / 1280.0f));
+
+    for(const auto& box : normalizedBoxes) {
+        float fx = box[0] * frameWidth;
+        float fy = box[1] * frameHeight;
+        float fx2 = box[2] * frameWidth;
+        float fy2 = box[3] * frameHeight;
+        float fw = fx2 - fx;
+        float fh = fy2 - fy;
+        if(fw <= 0 || fh <= 0) {
+            continue;
+        }
+
+        int cropX = static_cast<int>(std::floor(fx - maxD));
+        int cropY = static_cast<int>(std::floor(fy));
+        int cropW = static_cast<int>(std::ceil(fw + 2 * maxD));
+        int cropH = static_cast<int>(std::ceil(fh));
+        if(cropW <= 0 || cropH <= 0) {
+            continue;
+        }
+
+        // Clamp to frame bounds and adjust the crop origin/width when it is partially outside.
+        int cropX2 = std::min(frameWidth, cropX + cropW);
+        int cropY2 = std::min(frameHeight, cropY + cropH);
+        cropX = std::max(0, cropX);
+        cropY = std::max(0, cropY);
+        cropW = cropX2 - cropX;
+        cropH = cropY2 - cropY;
+        if(cropW <= 0 || cropH <= 0) {
+            continue;
+        }
+
+        crops.push_back({cropX, cropY, cropW, cropH, fx, fy, fw, fh});
+    }
+
+    return crops;
+}
+
 std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGroup> in) {
     if(!in) {
         return nullptr;
@@ -80,9 +131,6 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     if(frameWidth <= 0 || frameHeight <= 0) {
         return nullptr;
     }
-
-    // Max disparity: 192 px for a 1 MP width, scaled linearly.
-    const int maxD = static_cast<int>(std::round(192.0f * static_cast<float>(frameWidth) / 1280.0f));
 
     std::vector<ImgDetection> detections;
     if(auto dets = in->get<ImgDetections>("inputDetections")) {
@@ -114,58 +162,25 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         return depth;
     }
 
-    struct CropInfo {
-        int x, y, w, h;
-        float detX, detY, detW, detH;
-    };
-    std::vector<CropInfo> crops;
-    crops.reserve(detections.size());
+    std::vector<std::array<float, 4>> boxes;
+    boxes.reserve(detections.size());
+    for(const auto& d : detections) {
+        try {
+            boxes.push_back(d.getOuterBoundingBox());
+        } catch(...) {
+            continue;
+        }
+    }
+
+    const std::vector<Crop> crops = computeCrops(frameWidth, frameHeight, boxes);
 
     int largestCropW = 0;
     int largestCropH = 0;
     std::uint64_t totalArea = 0;
-
-    for(const auto& d : detections) {
-        std::array<float, 4> outer;
-        try {
-            outer = d.getOuterBoundingBox();
-        } catch(...) {
-            continue;
-        }
-
-        float fx = outer[0] * frameWidth;
-        float fy = outer[1] * frameHeight;
-        float fx2 = outer[2] * frameWidth;
-        float fy2 = outer[3] * frameHeight;
-        float fw = fx2 - fx;
-        float fh = fy2 - fy;
-        if(fw <= 0 || fh <= 0) {
-            continue;
-        }
-
-        int cropX = static_cast<int>(std::floor(fx - maxD));
-        int cropY = static_cast<int>(std::floor(fy));
-        int cropW = static_cast<int>(std::ceil(fw + 2 * maxD));
-        int cropH = static_cast<int>(std::ceil(fh));
-        if(cropW <= 0 || cropH <= 0) {
-            continue;
-        }
-
-        // Clamp to frame bounds and adjust the crop origin/width when it is partially outside.
-        int cropX2 = std::min(frameWidth, cropX + cropW);
-        int cropY2 = std::min(frameHeight, cropY + cropH);
-        cropX = std::max(0, cropX);
-        cropY = std::max(0, cropY);
-        cropW = cropX2 - cropX;
-        cropH = cropY2 - cropY;
-        if(cropW <= 0 || cropH <= 0) {
-            continue;
-        }
-
-        crops.push_back({cropX, cropY, cropW, cropH, fx, fy, fw, fh});
-        totalArea += static_cast<std::uint64_t>(cropW) * static_cast<std::uint64_t>(cropH);
-        largestCropW = std::max(largestCropW, cropW);
-        largestCropH = std::max(largestCropH, cropH);
+    for(const auto& crop : crops) {
+        totalArea += static_cast<std::uint64_t>(crop.w) * static_cast<std::uint64_t>(crop.h);
+        largestCropW = std::max(largestCropW, crop.w);
+        largestCropH = std::max(largestCropH, crop.h);
     }
 
     if(crops.empty()) {

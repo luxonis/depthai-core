@@ -532,6 +532,10 @@ dai_set_test_labels(model_slug_test onhost ci)
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
+# FocusController crop-geometry tests (host-only)
+dai_add_test(focus_controller_test src/onhost_tests/pipeline/node/focus_controller_test.cpp)
+dai_set_test_labels(focus_controller_test onhost ci)
+
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
@@ -896,6 +900,10 @@ dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
 # Gate tests
 dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
 dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci noreplayci)
+
+# Focused depth test (on-device)
+dai_add_test(focused_depth_node_test src/ondevice_tests/pipeline/node/focused_depth_node_test.cpp)
+dai_set_test_labels(focused_depth_node_test ondevice rvc4 ci)
 
 # AutoCalibration test
 dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
