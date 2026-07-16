@@ -60,12 +60,6 @@ option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_IN
 
 option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ${DEPTHAI_DEFAULT_DYNAMIC_CALIBRATION_SUPPORT})
 
-# ---------- Platform / Compiler Tweaks ---------
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    # There is not 32b build of Dynamic Calibration Library
-    message(FATAL_ERROR "Dynamic calibration is not supported on 32b machines. Build with DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=OFF")
-endif()
-
 # AprilTag node support
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
@@ -84,6 +78,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     set(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT OFF CACHE BOOL "Enable Dynamic Calibration support" FORCE)
 endif()
 
+# ---------- Platform / Compiler Tweaks ---------
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    # There is not 32b build of Dynamic Calibration Library
+    message(FATAL_ERROR "Dynamic calibration is not supported on 32b machines. Build with DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=OFF")
+endif()
 
 # Backward stacktrace printing
 if(ANDROID OR EMSCRIPTEN)
