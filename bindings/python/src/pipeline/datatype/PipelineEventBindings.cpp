@@ -56,13 +56,5 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
         .def_readwrite("queueSize", &PipelineEvent::queueSize, DOC(dai, PipelineEvent, queueSize))
         .def_readwrite("interval", &PipelineEvent::interval, DOC(dai, PipelineEvent, interval))
         .def_readwrite("type", &PipelineEvent::type, DOC(dai, PipelineEvent, type))
-        .def_readwrite("source", &PipelineEvent::source, DOC(dai, PipelineEvent, source))
-        .def("getTimestamp", &PipelineEvent::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &PipelineEvent::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getTimestampSystem", &PipelineEvent::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
-        .def("getSequenceNum", &PipelineEvent::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &PipelineEvent::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &PipelineEvent::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
-        .def("setTimestampSystem", &PipelineEvent::setTimestampSystem, py::arg("timestampSystem"), DOC(dai, Buffer, setTimestampSystem))
-        .def("setSequenceNum", &PipelineEvent::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum));
+        .def_readwrite("source", &PipelineEvent::source, DOC(dai, PipelineEvent, source));
 }

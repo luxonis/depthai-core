@@ -43,8 +43,8 @@ with dai.Pipeline() as p:
         depthSource = p.create(dai.node.NeuralDepth).build(left.requestOutput(size), right.requestOutput(size), dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
     elif args.depthSource == "tof":
         color = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
-        socket, preset_mode = dai.CameraBoardSocket.AUTO, dai.ImageFiltersPresetMode.TOF_MID_RANGE
-        depthSource = p.create(dai.node.ToF).build(socket, preset_mode)
+        socket, profile = dai.CameraBoardSocket.AUTO, dai.ToFConfig.Profile.MID_RANGE
+        depthSource = p.create(dai.node.ToF).build(socket, profile)
     else:
         raise ValueError(f"Invalid depth source: {args.depthSource}")
 
