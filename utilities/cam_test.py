@@ -265,24 +265,27 @@ def get_default_resolution(cam_feature):
 
     if not configs:
         if cam_feature.width > 0 and cam_feature.height > 0:
-            return (min(cam_feature.width, target_width), min(cam_feature.height, target_height))
-        return DEFAULT_RESOLUTION
+            selected = (min(cam_feature.width, target_width), min(cam_feature.height, target_height))
+            return selected, f"{cam_feature.width}x{cam_feature.height} -> {selected[0]}x{selected[1]}"
+        return DEFAULT_RESOLUTION, f"default {DEFAULT_RESOLUTION[0]}x{DEFAULT_RESOLUTION[1]}"
 
     configs.sort(key=lambda cfg: (cfg.width * cfg.height, cfg.width, cfg.height))
     bounded_configs = [cfg for cfg in configs if cfg.width <= target_width and cfg.height <= target_height]
     if bounded_configs:
         best = bounded_configs[-1]
-        return (best.width, best.height)
+        return (best.width, best.height), f"{cam_feature.width}x{cam_feature.height} -> {best.width}x{best.height}"
 
     best = min(configs, key=lambda cfg: (cfg.width * cfg.height, cfg.width, cfg.height))
-    return (best.width, best.height)
+    return (best.width, best.height), f"{cam_feature.width}x{cam_feature.height} -> {best.width}x{best.height}"
 
 
 def build_socket_resolution_defaults(camera_features):
     resolutions = {}
     for cam_feature in camera_features:
         socket_name = socket_to_socket_opt(cam_feature.socket)
-        resolutions[socket_name] = get_default_resolution(cam_feature)
+        resolution, source = get_default_resolution(cam_feature)
+        resolutions[socket_name] = resolution
+        print(f"Auto resolution {socket_name}: {source}")
     return resolutions
 
 
