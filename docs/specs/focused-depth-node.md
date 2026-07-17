@@ -144,11 +144,11 @@ The crop is clamped to the frame bounds. The detection region inside the crop (b
 flowchart TD
     Camera[Camera / Stereo output] --> Depth[Depth node]
     Depth -->|left/right reused| FocusedDepth[FocusedDepth]
-    DetectionNetwork -->|inputDetections| Depth
-    Depth --> inputDetections
+    DetectionNetwork -->|ImgDetections| Depth
+    Depth -->|inputDetections| FocusController
     FocusedDepth -->|rectified left/right| FocusController
     FocusController -->|synchronized left/right image| ImageManipPair
-    FocusController -->|ImageManipConfig| ImageManipPair
+    FocusController -->|ImageManipConfig from detections| ImageManipPair
     FocusController -->|GateControl| GatePair
     ImageManipPair -->|crop| GatePair
     GatePair -->|open for selected backend| Backend{NeuralDepth / StereoDepth / GPUStereo}
