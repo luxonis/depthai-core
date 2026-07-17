@@ -147,7 +147,7 @@ flowchart TD
     DetectionNetwork -->|inputDetections| Depth
     Depth --> inputDetections
     FocusedDepth -->|rectified left/right| FocusController
-    FocusedDepth -->|rectified left/right| ImageManipPair
+    FocusController -->|synchronized left/right image| ImageManipPair
     FocusController -->|ImageManipConfig| ImageManipPair
     FocusController -->|GateControl| GatePair
     ImageManipPair -->|crop| GatePair
@@ -156,6 +156,8 @@ flowchart TD
     FocusController -->|full-frame depth| Depth.focusedDepth
     FocusController -->|full-frame confidence| Depth.focusedConfidence
 ```
+
+The crop `ImageManip` pair is fed by `FocusController`'s `leftImage`/`rightImage` outputs (the exact synchronized left/right pair the controller selected for the current group), **not** by the free-running rectification stream. This guarantees both crops share a timestamp so the backend's internal left/right `Sync` can pair them; feeding the crops directly from rectification lets the two manips latch different frames and the backend never emits a crop.
 
 ---
 
