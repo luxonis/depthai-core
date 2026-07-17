@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -23,6 +24,20 @@ void requireCropInsideFrame(const FocusController::Crop& c, int width, int heigh
 
 std::array<float, 4> box(float xmin, float ymin, float xmax, float ymax) {
     return {xmin, ymin, xmax, ymax};
+}
+
+// The reassembly region must index both the crop mat (w x h) and the full frame without overflow.
+void requireRegionFits(const FocusController::CopyRegion& r, const FocusController::Crop& c, int width, int height) {
+    REQUIRE(r.srcX >= 0);
+    REQUIRE(r.srcY >= 0);
+    REQUIRE(r.w > 0);
+    REQUIRE(r.h > 0);
+    REQUIRE(r.srcX + r.w <= c.w);
+    REQUIRE(r.srcY + r.h <= c.h);
+    REQUIRE(r.dstX >= 0);
+    REQUIRE(r.dstY >= 0);
+    REQUIRE(r.dstX + r.w <= width);
+    REQUIRE(r.dstY + r.h <= height);
 }
 
 }  // namespace
@@ -124,5 +139,54 @@ TEST_CASE("FocusController::computeCrops: regions touching the frame edges stay 
         for(const auto& c : crops) {
             requireCropInsideFrame(c, kW, kH);
         }
+    }
+}
+
+TEST_CASE("FocusController::computeCopyRegion: reassembly region never overflows the crop or frame", "[FocusController]") {
+    // Sweep fractional boxes: detections from a detector rarely land on integer pixels, and
+    // floor(detY)+ceil(detH) (the crop height) can differ from ceil(detY+detH)-floor(detY) (the
+    // reassembly height) by a pixel. The region must be clamped so neither cv::Mat ROI overflows.
+    for(int xi = 0; xi < 20; ++xi) {
+        for(int yi = 0; yi < 20; ++yi) {
+            const float xmin = 0.013f + xi * 0.047f;
+            const float ymin = 0.017f + yi * 0.043f;
+            const float xmax = std::min(0.999f, xmin + 0.091f);
+            const float ymax = std::min(0.999f, ymin + 0.073f);
+            const auto crops = FocusController::computeCrops(kW, kH, {box(xmin, ymin, xmax, ymax)});
+            if(crops.empty()) {
+                continue;
+            }
+            const auto region = FocusController::computeCopyRegion(crops[0], kW, kH);
+            REQUIRE(region.valid);
+            requireRegionFits(region, crops[0], kW, kH);
+        }
+    }
+}
+
+TEST_CASE("FocusController::computeCopyRegion: fractional height rounding is clamped to the crop", "[FocusController]") {
+    // Detection box whose fractional offset + fractional height crosses an integer boundary:
+    // ceil(detY + detH) - floor(detY) = 7 but the crop is only ceil(detH) = 6 rows tall.
+    FocusController::Crop crop{100, 10, 40, 6, 100.4f, 10.6f, 30.0f, 5.6f};
+    const auto region = FocusController::computeCopyRegion(crop, kW, kH);
+    REQUIRE(region.valid);
+    requireRegionFits(region, crop, kW, kH);
+    REQUIRE(region.srcY == 0);
+    REQUIRE(region.h == crop.h);
+}
+
+TEST_CASE("FocusController::computeCopyRegion: edge-touching detection stays inside both buffers", "[FocusController]") {
+    const std::vector<std::array<float, 4>> boxes = {
+        box(0.0f, 0.0f, 0.12f, 0.12f),     // top-left corner
+        box(0.90f, 0.0f, 1.0f, 0.13f),     // top-right corner
+        box(0.0f, 0.88f, 0.11f, 1.0f),     // bottom-left corner
+        box(0.88f, 0.87f, 1.0f, 1.0f),     // bottom-right corner
+        box(0.0f, 0.0f, 1.0f, 1.0f),       // whole frame
+    };
+    const auto crops = FocusController::computeCrops(kW, kH, boxes);
+    REQUIRE(crops.size() == boxes.size());
+    for(const auto& c : crops) {
+        const auto region = FocusController::computeCopyRegion(c, kW, kH);
+        REQUIRE(region.valid);
+        requireRegionFits(region, c, kW, kH);
     }
 }

@@ -57,6 +57,17 @@ class FocusController : public CustomNode<FocusController> {
     // the crop geometry (multiple/varying/edge-touching regions) can be tested on host.
     static std::vector<Crop> computeCrops(int frameWidth, int frameHeight, const std::vector<std::array<float, 4>>& normalizedBoxes);
 
+    // Where a crop's depth/confidence is written back into the full frame. src* index into the
+    // crop mat (sized w x h from Crop), dst* index into the frameWidth x frameHeight output, and
+    // (w, h) is the copied region. The region is clamped to both the crop mat and the frame, so
+    // rounding between the detection box and the crop never overflows either buffer. valid is
+    // false when nothing should be copied. Pure so the reassembly bounds are host-testable.
+    struct CopyRegion {
+        int srcX, srcY, dstX, dstY, w, h;
+        bool valid;
+    };
+    static CopyRegion computeCopyRegion(const Crop& crop, int frameWidth, int frameHeight);
+
     void setTargetFps(float targetFps);
     void setNeuralModel(DeviceModelZoo model);
     void setStereoSize(int width, int height);

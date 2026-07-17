@@ -2,25 +2,35 @@
 """
 Focused Depth PoC demo.
 
-Runs an object-detection network on the color camera and feeds the resulting
-ImgDetections into the Depth node's inputDetections. The Depth node computes a
-focused depth map (full frame, only the detected regions filled).
+The Depth node can compute a *focused* depth map: a full-frame map in which only
+the regions described by an ImgDetections message are filled (the rest is zero).
+The detections are fed into Depth.inputDetections and the result is read from
+Depth.focusedDepth / Depth.focusedConfidence.
 
-Works on RVC4 devices. The color camera's ImgDetections are automatically
-remapped to the left stereo frame using the ImgDetections transformation.
+Two ways to provide the detections (spec use cases 1 and 2):
+
+  --mode detector (default): run an object-detection network on the color camera
+    and link detectionNetwork.out -> depth.inputDetections. The color-frame
+    detections are automatically remapped to the left stereo frame using the
+    ImgDetections transformation.
+
+  --mode roi: skip the network and publish a fixed region-of-interest from the
+    host into depth.inputDetections. Useful to demo focused depth without a
+    detection model (e.g. when no Hub model is available).
+
+Works on RVC4 devices.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+import threading
+import time
 
 import cv2
 import depthai as dai
 import numpy as np
-
-_COLOR_MAP = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
-_COLOR_MAP[0] = [0, 0, 0]
 
 
 def colorizeDepth(frameDepth: np.ndarray) -> np.ndarray:
@@ -46,12 +56,36 @@ def colorizeDepth(frameDepth: np.ndarray) -> np.ndarray:
 def colorizeConfidence(frame: np.ndarray) -> np.ndarray:
     if frame.dtype == np.uint16:
         vmax = int(np.max(frame))
-        if vmax <= 0:
-            return np.zeros((*frame.shape, 3), dtype=np.uint8)
-        vis = ((frame.astype(np.float32) / vmax) * 255).astype(np.uint8)
+        vis = ((frame.astype(np.float32) / vmax) * 255).astype(np.uint8) if vmax > 0 else np.zeros(frame.shape, dtype=np.uint8)
     else:
         vis = frame
-    return cv2.applyColorMap(vis, _COLOR_MAP)
+    colored = cv2.applyColorMap(vis, cv2.COLORMAP_JET)
+    colored[vis == 0] = 0
+    return colored
+
+
+def parseRoi(text: str) -> tuple[float, float, float, float]:
+    parts = [float(p) for p in text.split(",")]
+    if len(parts) != 4:
+        raise argparse.ArgumentTypeError("--roi expects 'xmin,ymin,xmax,ymax'")
+    xmin, ymin, xmax, ymax = parts
+    if not (0.0 <= xmin < xmax <= 1.0 and 0.0 <= ymin < ymax <= 1.0):
+        raise argparse.ArgumentTypeError("--roi values must be normalized with xmin<xmax and ymin<ymax")
+    return xmin, ymin, xmax, ymax
+
+
+def makeDetections(rois: list[tuple[float, float, float, float]]) -> dai.ImgDetections:
+    detections = []
+    for xmin, ymin, xmax, ymax in rois:
+        det = dai.ImgDetection()
+        det.label = 0
+        det.confidence = 1.0
+        det.xmin, det.ymin, det.xmax, det.ymax = xmin, ymin, xmax, ymax
+        detections.append(det)
+    dets = dai.ImgDetections()
+    dets.detections = detections
+    dets.setTimestamp(dai.Clock.now())
+    return dets
 
 
 def buildParser() -> argparse.ArgumentParser:
@@ -60,9 +94,21 @@ def buildParser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
+        "--mode",
+        choices=["detector", "roi"],
+        default="detector",
+        help="How to source the detections fed to Depth.inputDetections (default: detector)",
+    )
+    parser.add_argument(
         "--model",
         default="yolov6-nano",
-        help="Model description for the DetectionNetwork (default: yolov6-nano)",
+        help="Model description for the DetectionNetwork in detector mode (default: yolov6-nano)",
+    )
+    parser.add_argument(
+        "--roi",
+        type=parseRoi,
+        default=(0.35, 0.30, 0.65, 0.70),
+        help="Normalized 'xmin,ymin,xmax,ymax' ROI published in roi mode (default: centered box)",
     )
     parser.add_argument(
         "--fps",
@@ -78,49 +124,73 @@ def main() -> int:
 
     pipeline = dai.Pipeline()
 
-    # Detection network on the default color camera.
-    camera = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(camera, dai.NNModelDescription(args.model))
-    detectionNetwork.setConfidenceThreshold(0.5)
-
-    # Depth node with focused-depth input.
     depth = pipeline.create(dai.node.Depth)
     if args.fps is not None:
         depth.build(args.fps)
     else:
         depth.build()
-    detectionNetwork.out.link(depth.inputDetections)
 
-    # Output queues.
-    rgbQueue = detectionNetwork.passthrough.createOutputQueue(maxSize=4, blocking=False)
-    detQueue = detectionNetwork.out.createOutputQueue(maxSize=4, blocking=False)
+    rgbQueue = None
+    detQueue = None
+    roiInputQueue = None
+
+    if args.mode == "detector":
+        camera = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+        detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(camera, dai.NNModelDescription(args.model))
+        detectionNetwork.setConfidenceThreshold(0.5)
+        detectionNetwork.out.link(depth.inputDetections)
+        rgbQueue = detectionNetwork.passthrough.createOutputQueue(maxSize=4, blocking=False)
+        detQueue = detectionNetwork.out.createOutputQueue(maxSize=4, blocking=False)
+    else:
+        roiInputQueue = depth.inputDetections.createInputQueue()
+
     focusedDepthQueue = depth.focusedDepth.createOutputQueue(maxSize=4, blocking=False)
     focusedConfQueue = depth.focusedConfidence.createOutputQueue(maxSize=4, blocking=False)
 
     pipeline.build()
 
+    print("Mode:", args.mode)
     print("Resolved depth algorithm:", depth.getResolvedAlgorithm())
     print("Resolved depth config:", depth.getResolvedConfig())
 
+    stopEvent = threading.Event()
+
+    def roiSender():
+        # Publish the ROI continuously with fresh timestamps so the FocusController's
+        # Sync can group it with the device's left/right frames.
+        while not stopEvent.is_set():
+            try:
+                roiInputQueue.send(makeDetections([args.roi]))
+            except Exception:
+                return
+            time.sleep(0.015)
+
     with pipeline:
         pipeline.start()
+
+        senderThread = None
+        if roiInputQueue is not None:
+            senderThread = threading.Thread(target=roiSender, daemon=True)
+            senderThread.start()
+
         while pipeline.isRunning():
-            inRgb = rgbQueue.get()
-            inDet = detQueue.get()
+            if rgbQueue is not None and detQueue is not None:
+                inRgb = rgbQueue.get()
+                inDet = detQueue.get()
+                if inRgb is not None and inDet is not None:
+                    frame = inRgb.getCvFrame()
+                    for det in inDet.detections:
+                        bbox = (
+                            int(det.xmin * frame.shape[1]),
+                            int(det.ymin * frame.shape[0]),
+                            int(det.xmax * frame.shape[1]),
+                            int(det.ymax * frame.shape[0]),
+                        )
+                        cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+                    cv2.imshow("rgb", frame)
+
             inFocusedDepth = focusedDepthQueue.get()
             inFocusedConf = focusedConfQueue.get()
-
-            if inRgb is not None and inDet is not None:
-                frame = inRgb.getCvFrame()
-                for det in inDet.detections:
-                    bbox = (
-                        int(det.xmin * frame.shape[1]),
-                        int(det.ymin * frame.shape[0]),
-                        int(det.xmax * frame.shape[1]),
-                        int(det.ymax * frame.shape[0]),
-                    )
-                    cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-                cv2.imshow("rgb", frame)
 
             if inFocusedDepth is not None:
                 cv2.imshow("focused depth", colorizeDepth(inFocusedDepth.getFrame()))
@@ -132,6 +202,9 @@ def main() -> int:
                 pipeline.stop()
                 break
 
+        stopEvent.set()
+        if senderThread is not None:
+            senderThread.join(timeout=2)
         cv2.destroyAllWindows()
 
     return 0

@@ -115,6 +115,39 @@ std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
     return crops;
 }
 
+FocusController::CopyRegion FocusController::computeCopyRegion(const Crop& crop, int frameWidth, int frameHeight) {
+    CopyRegion region{0, 0, 0, 0, 0, 0, false};
+    if(crop.w <= 0 || crop.h <= 0 || frameWidth <= 0 || frameHeight <= 0) {
+        return region;
+    }
+
+    // Detection box clamped to the frame; the focused output is written only over this region.
+    int dstX = std::max(0, static_cast<int>(std::floor(crop.detX)));
+    int dstY = std::max(0, static_cast<int>(std::floor(crop.detY)));
+    int dstX2 = std::min(frameWidth, static_cast<int>(std::ceil(crop.detX + crop.detW)));
+    int dstY2 = std::min(frameHeight, static_cast<int>(std::ceil(crop.detY + crop.detH)));
+    if(dstX2 <= dstX || dstY2 <= dstY) {
+        return region;
+    }
+
+    // Offset of the detection box inside the crop mat. Never negative because the crop origin is
+    // at or before the detection box, but clamp defensively.
+    int srcX = std::max(0, dstX - crop.x);
+    int srcY = std::max(0, dstY - crop.y);
+    dstX = crop.x + srcX;
+    dstY = crop.y + srcY;
+
+    // Clamp the copied region to whichever of the crop mat / frame runs out first. floor/ceil
+    // rounding between detW/detH and the crop can otherwise make this one pixel too large.
+    int w = std::min({dstX2 - dstX, crop.w - srcX, frameWidth - dstX});
+    int h = std::min({dstY2 - dstY, crop.h - srcY, frameHeight - dstY});
+    if(w <= 0 || h <= 0) {
+        return region;
+    }
+
+    return CopyRegion{srcX, srcY, dstX, dstY, w, h, true};
+}
+
 std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGroup> in) {
     if(!in) {
         return nullptr;
@@ -289,20 +322,6 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
             continue;
         }
 
-        // Detection region in the (possibly resized) crop output.
-        int fullX = std::max(0, static_cast<int>(std::floor(crop.detX)));
-        int fullY = std::max(0, static_cast<int>(std::floor(crop.detY)));
-        int fullX2 = std::min(frameWidth, static_cast<int>(std::ceil(crop.detX + crop.detW)));
-        int fullY2 = std::min(frameHeight, static_cast<int>(std::ceil(crop.detY + crop.detH)));
-        if(fullX2 <= fullX || fullY2 <= fullY) {
-            continue;
-        }
-        int fullW = fullX2 - fullX;
-        int fullH = fullY2 - fullY;
-
-        int srcX = fullX - crop.x;
-        int srcY = fullY - crop.y;
-
         cv::Mat depthCropMat = depthMsg->getFrame();
         cv::Mat confCropMat = confMsg->getFrame();
         if(depthCropMat.empty() || confCropMat.empty()) {
@@ -318,10 +337,16 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
             scaledConf = confCropMat;
         }
 
-        cv::Mat cropDepth(scaledDepth, cv::Rect(srcX, srcY, fullW, fullH));
-        cv::Mat cropConf(scaledConf, cv::Rect(srcX, srcY, fullW, fullH));
-        cv::Mat fullDepthRoi(fullDepth, cv::Rect(fullX, fullY, fullW, fullH));
-        cv::Mat fullConfRoi(fullConf, cv::Rect(fullX, fullY, fullW, fullH));
+        // Detection region mapped into the (resized) crop mat, clamped to both buffers.
+        const CopyRegion region = computeCopyRegion(crop, frameWidth, frameHeight);
+        if(!region.valid) {
+            continue;
+        }
+
+        cv::Mat cropDepth(scaledDepth, cv::Rect(region.srcX, region.srcY, region.w, region.h));
+        cv::Mat cropConf(scaledConf, cv::Rect(region.srcX, region.srcY, region.w, region.h));
+        cv::Mat fullDepthRoi(fullDepth, cv::Rect(region.dstX, region.dstY, region.w, region.h));
+        cv::Mat fullConfRoi(fullConf, cv::Rect(region.dstX, region.dstY, region.w, region.h));
         cropDepth.copyTo(fullDepthRoi);
         cropConf.copyTo(fullConfRoi);
     }
