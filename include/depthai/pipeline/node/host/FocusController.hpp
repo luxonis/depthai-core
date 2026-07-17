@@ -68,6 +68,14 @@ class FocusController : public CustomNode<FocusController> {
     };
     static CopyRegion computeCopyRegion(const Crop& crop, int frameWidth, int frameHeight);
 
+    // Multiplicative correction applied to a crop's backend depth so it becomes metric-correct
+    // regardless of crop size. The backend estimates disparity in the crop resized to outW and
+    // converts to depth with fxUsed (the focal on the crop frame's intrinsic), but the crop's
+    // true focal is fxFull * outW / cropW (fxFull is the full rectified-frame focal in full-frame
+    // px). The correction is (fxFull * outW / cropW) / fxUsed. Returns 1.0 when inputs are
+    // invalid or the correction is a no-op, so it is safe to always apply. Pure and host-testable.
+    static float depthFocalScale(float fxFull, float fxUsed, int outW, int cropW);
+
     void setTargetFps(float targetFps);
     void setNeuralModel(DeviceModelZoo model);
     void setStereoSize(int width, int height);

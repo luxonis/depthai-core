@@ -190,3 +190,40 @@ TEST_CASE("FocusController::computeCopyRegion: edge-touching detection stays ins
         requireRegionFits(region, c, kW, kH);
     }
 }
+
+TEST_CASE("FocusController::depthFocalScale: makes depth crop-size invariant", "[FocusController]") {
+    // Full rectified frame focal (1280-wide) and neural backend output width.
+    constexpr float fxFull = 570.42f;
+    constexpr int outW = 480;
+
+    SECTION("no-op when the frame intrinsic already matches the crop's true focal") {
+        // When the crop frame carries the geometrically correct focal, no correction is needed.
+        for(const int cropW : {480, 576, 768, 1024, 1280}) {
+            const float fxCorrect = fxFull * static_cast<float>(outW) / static_cast<float>(cropW);
+            REQUIRE(FocusController::depthFocalScale(fxFull, fxCorrect, outW, cropW) == Catch::Approx(1.0f));
+        }
+    }
+
+    SECTION("corrects a frozen/stale focal so corrected depth is constant across crop widths") {
+        // Firmware used a fixed focal (stuck at the first crop's value, cropW=576 here). The
+        // backend depth then scales like cropW, but applying depthFocalScale must cancel that so
+        // the corrected depth is the same for every crop width viewing the same surface.
+        const float fxUsed = fxFull * static_cast<float>(outW) / 576.0f;  // 475.35
+        const float trueDepthMm = 3300.0f;
+        for(const int cropW : {576, 768, 1024, 1280}) {
+            // Firmware depth for this crop: true * (fxUsed / fxCorrect) = true * cropW / 576.
+            const float fxCorrect = fxFull * static_cast<float>(outW) / static_cast<float>(cropW);
+            const float firmwareDepth = trueDepthMm * fxUsed / fxCorrect;
+            const float corrected = firmwareDepth * FocusController::depthFocalScale(fxUsed == 0 ? 1.0f : fxFull, fxUsed, outW, cropW);
+            REQUIRE(corrected == Catch::Approx(trueDepthMm).epsilon(0.001));
+        }
+    }
+
+    SECTION("returns 1.0 for degenerate inputs") {
+        REQUIRE(FocusController::depthFocalScale(0.0f, 475.0f, outW, 576) == Catch::Approx(1.0f));
+        REQUIRE(FocusController::depthFocalScale(fxFull, 0.0f, outW, 576) == Catch::Approx(1.0f));
+        REQUIRE(FocusController::depthFocalScale(fxFull, 475.0f, 0, 576) == Catch::Approx(1.0f));
+        REQUIRE(FocusController::depthFocalScale(fxFull, 475.0f, outW, 0) == Catch::Approx(1.0f));
+        REQUIRE(FocusController::depthFocalScale(-1.0f, 475.0f, outW, 576) == Catch::Approx(1.0f));
+    }
+}

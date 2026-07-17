@@ -148,6 +148,18 @@ FocusController::CopyRegion FocusController::computeCopyRegion(const Crop& crop,
     return CopyRegion{srcX, srcY, dstX, dstY, w, h, true};
 }
 
+float FocusController::depthFocalScale(float fxFull, float fxUsed, int outW, int cropW) {
+    if(!(fxFull > 0.0f) || !(fxUsed > 0.0f) || outW <= 0 || cropW <= 0) {
+        return 1.0f;
+    }
+    const float fxCorrect = fxFull * static_cast<float>(outW) / static_cast<float>(cropW);
+    const float scale = fxCorrect / fxUsed;
+    if(!std::isfinite(scale) || scale <= 0.0f) {
+        return 1.0f;
+    }
+    return scale;
+}
+
 std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGroup> in) {
     if(!in) {
         return nullptr;
@@ -164,6 +176,10 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     if(frameWidth <= 0 || frameHeight <= 0) {
         return nullptr;
     }
+
+    // Horizontal focal length of the full rectified frame (in full-frame pixels). Used to
+    // rescale each crop's depth to the crop's correct focal (see the per-crop correction below).
+    const float fxFull = leftImg->getTransformation().getIntrinsicMatrix()[0][0];
 
     std::vector<ImgDetection> detections;
     if(auto dets = in->get<ImgDetections>("inputDetections")) {
@@ -265,6 +281,14 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         selected = Backend::GPU;
     }
 
+    // The STEREO/GPU backends require different crop ImageManip output sizes than NEURAL, and the
+    // left/right crop ImageManips can desync by a frame when the selected backend (hence output
+    // size) changes between groups, delivering mismatched left/right sizes to the backend and
+    // crashing it device-side (e.g. StereoDepth "Left 480x300, Right 640x400"). Until each backend
+    // has its own fixed-size crop manips, pin the reliable NEURAL backend, which produces
+    // correct per-crop depth for every crop size. The selection above is kept for future use.
+    selected = Backend::NEURAL;
+
     // Per-frame algorithm notification.
     switch(selected) {
         case Backend::NEURAL:
@@ -326,6 +350,22 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         cv::Mat confCropMat = confMsg->getFrame();
         if(depthCropMat.empty() || confCropMat.empty()) {
             continue;
+        }
+
+        // Rescale the backend depth to the crop's correct focal length. The backend estimates
+        // disparity in the STRETCH-resized crop grid (outW wide) and converts it to depth using
+        // the focal length carried by the crop frame's intrinsic (fxUsed). That focal is not the
+        // crop's true focal, so depth comes out scaled by (fxCorrect / fxUsed) and the error
+        // differs per crop width, producing depth discontinuities between regions.
+        //
+        // The correct focal for a crop of width crop.w (in full-frame px) resized to outW is
+        // fxFull * outW / crop.w. Multiplying depth by fxCorrect / fxUsed restores metric depth
+        // consistently across crop sizes. If the frame intrinsic is ever made crop-correct
+        // upstream, fxUsed == fxCorrect and this becomes a no-op.
+        const float fxUsed = depthMsg->getTransformation().getIntrinsicMatrix()[0][0];
+        const float depthScale = depthFocalScale(fxFull, fxUsed, outW, crop.w);
+        if(std::abs(depthScale - 1.0f) > 1e-3f) {
+            depthCropMat.convertTo(depthCropMat, depthCropMat.type(), depthScale);
         }
 
         cv::Mat scaledDepth, scaledConf;
