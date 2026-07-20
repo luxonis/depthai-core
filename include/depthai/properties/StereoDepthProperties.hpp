@@ -146,7 +146,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
 
     /**
      * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
-     * RVC4 only.
+     * RVC3 only.
      */
     bool enableFrameSync = true;
 
