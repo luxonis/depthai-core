@@ -85,6 +85,8 @@ namespace v1 {
  * @type is_softmax: bool | None
  * @ivar is_softmax: True, if output is already softmaxed in YOLO
  * instance segmentation
+ * @type strides: list | None
+ * @ivar strides: Strides for each YOLO output.
  *
  * Metadata for the basic head. It allows you to specify additional
  * fields.
@@ -170,6 +172,8 @@ namespace v1 {
  * @type is_softmax: bool | None
  * @ivar is_softmax: True, if output is already softmaxed in YOLO
  * instance segmentation
+ * @type strides: list | None
+ * @ivar strides: Strides for each YOLO output.
  *
  * Metadata for the basic head. It allows you to specify additional
  * fields.
@@ -258,6 +262,10 @@ struct Metadata {
      * A list of output names for each of the different YOLO grid sizes.
      */
     std::optional<std::vector<std::string>> yoloOutputs;
+    /**
+     * Strides for each YOLO output.
+     */
+    std::optional<std::vector<int64_t>> strides;
 
     /**
      * Additional parameters

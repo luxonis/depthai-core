@@ -148,6 +148,21 @@ void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser,
     if(parser.decodingFamily == YoloDecodingFamily::YOLO26) {
         parser.strides = {1};
     }
+    if(metadata.strides) {
+        const size_t numYoloOutputs = metadata.yoloOutputs ? metadata.yoloOutputs->size() : (head.outputs ? head.outputs->size() : 0);
+        DAI_CHECK_V(!metadata.strides->empty(), "`strides` must not be empty.");
+        DAI_CHECK_V(numYoloOutputs > 0, "YOLO outputs must be defined when `strides` is provided.");
+        DAI_CHECK_V(metadata.strides->size() == numYoloOutputs,
+                    "Number of `strides` must match number of YOLO outputs. Got {} strides for {} outputs.",
+                    metadata.strides->size(),
+                    numYoloOutputs);
+        parser.strides.clear();
+        parser.strides.reserve(metadata.strides->size());
+        for(const auto stride : *metadata.strides) {
+            DAI_CHECK_V(stride > 0, "All `strides` values must be positive.");
+            parser.strides.push_back(static_cast<int>(stride));
+        }
+    }
 
     parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
 

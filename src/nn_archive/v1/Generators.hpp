@@ -76,6 +76,7 @@ inline void from_json(const json& j, Metadata& x) {
     x.protosOutputs = get_stack_optional<std::string>(j, "protos_outputs");
     x.subtype = get_stack_optional<std::string>(j, "subtype");
     x.yoloOutputs = get_stack_optional<std::vector<std::string>>(j, "yolo_outputs");
+    x.strides = get_stack_optional<std::vector<int64_t>>(j, "strides");
     x.extraParams = j;
 }
 
@@ -100,6 +101,7 @@ inline void to_json(json& j, const Metadata& x) {
     j["protos_outputs"] = x.protosOutputs;
     j["subtype"] = x.subtype;
     j["yolo_outputs"] = x.yoloOutputs;
+    j["strides"] = x.strides;
 }
 
 inline void from_json(const json& j, Head& x) {
