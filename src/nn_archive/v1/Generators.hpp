@@ -65,6 +65,7 @@ inline void from_json(const json& j, Metadata& x) {
     x.nClasses = get_stack_optional<int64_t>(j, "n_classes");
     x.postprocessorPath = get_stack_optional<std::string>(j, "postprocessor_path");
     x.isSoftmax = get_stack_optional<bool>(j, "is_softmax");
+    x.backgroundClass = get_stack_optional<bool>(j, "background_class");
     x.boxesOutputs = get_stack_optional<std::string>(j, "boxes_outputs");
     x.scoresOutputs = get_stack_optional<std::string>(j, "scores_outputs");
     x.anglesOutputs = get_stack_optional<std::vector<std::string>>(j, "angles_outputs");
@@ -88,6 +89,7 @@ inline void to_json(json& j, const Metadata& x) {
     j["n_classes"] = x.nClasses;
     j["postprocessor_path"] = x.postprocessorPath;
     j["is_softmax"] = x.isSoftmax;
+    j["background_class"] = x.backgroundClass;
     j["boxes_outputs"] = x.boxesOutputs;
     j["scores_outputs"] = x.scoresOutputs;
     j["angles_outputs"] = x.anglesOutputs;

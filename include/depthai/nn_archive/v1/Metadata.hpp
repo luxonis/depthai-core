@@ -57,6 +57,8 @@ namespace v1 {
  * @ivar n_classes: Number of object classes segmented by the model.
  * @type is_softmax: bool
  * @ivar is_softmax: True, if output is already softmaxed
+ * @type background_class: bool | None
+ * @ivar background_class: True, if class index 0 is treated as background.
  *
  * Metadata for the YOLO head.
  *
@@ -140,6 +142,8 @@ namespace v1 {
  * @ivar n_classes: Number of object classes segmented by the model.
  * @type is_softmax: bool
  * @ivar is_softmax: True, if output is already softmaxed
+ * @type background_class: bool | None
+ * @ivar background_class: True, if class index 0 is treated as background.
  *
  * Metadata for the YOLO head.
  *
@@ -210,6 +214,10 @@ struct Metadata {
      * True, if output is already softmaxed in YOLO instance segmentation.
      */
     std::optional<bool> isSoftmax;
+    /**
+     * True, if class index 0 is treated as background.
+     */
+    std::optional<bool> backgroundClass;
     /**
      * Output name corresponding to predicted bounding box coordinates.
      */
