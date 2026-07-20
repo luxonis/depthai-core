@@ -55,7 +55,7 @@ class StereoDepthConfig : public Buffer {
         bool enableLeftRightCheck = true;
 
         /**
-         * Enables software left right check. Applicable to RVC4 only.
+         * Enables software left right check. Not used on RVC2.
          */
         bool enableSwLeftRightCheck = false;
 
@@ -135,6 +135,9 @@ class StereoDepthConfig : public Buffer {
                           numInvalidateEdgePixels);
     };
 
+    /**
+     * Confidence metrics settings. Not used on RVC2.
+     */
     struct ConfidenceMetrics {
         /**
          * Weight used with occlusion estimation to generate final confidence map.
@@ -290,6 +293,9 @@ class StereoDepthConfig : public Buffer {
          */
         DecimationFilter decimationFilter;
 
+        /**
+         * Hole-filling configuration. Not used on RVC2.
+         */
         struct HoleFilling {
             /**
              * Flag to enable post-processing hole-filling.
@@ -324,8 +330,14 @@ class StereoDepthConfig : public Buffer {
             DEPTHAI_SERIALIZE(HoleFilling, enable, highConfidenceThreshold, fillConfidenceThreshold, minValidDisparity, invalidateDisparities);
         };
 
+        /**
+         * Hole-filling configuration. Not used on RVC2.
+         */
         HoleFilling holeFilling;
 
+        /**
+         * Adaptive median filter configuration. Not used on RVC2.
+         */
         struct AdaptiveMedianFilter {
             /**
              * Flag to enable adaptive median filtering for a final pass of filtering on low confidence pixels.
@@ -342,6 +354,9 @@ class StereoDepthConfig : public Buffer {
             DEPTHAI_SERIALIZE(AdaptiveMedianFilter, enable, confidenceThreshold);
         };
 
+        /**
+         * Adaptive median filter configuration. Not used on RVC2.
+         */
         AdaptiveMedianFilter adaptiveMedianFilter;
 
         DEPTHAI_SERIALIZE(PostProcessing,
@@ -412,12 +427,14 @@ class StereoDepthConfig : public Buffer {
          * Used to reduce small fixed levels of noise across all luminance values
          * in the current image.
          * Valid range is [0,127]. Default value is 0.
+         * Not used on RVC2.
          */
         int8_t noiseThresholdOffset = 1;
         /**
          * Used to reduce noise values that increase with luminance in the
          * current image.
          * Valid range is [-128,127]. Default value is 0.
+         * Not used on RVC2.
          */
         int8_t noiseThresholdScale = 1;
 
@@ -462,7 +479,7 @@ class StereoDepthConfig : public Buffer {
         uint8_t confidenceThreshold = 55;
 
         /**
-         * Enable software confidence thresholding. Applicable to RVC4 only.
+         * Enable software confidence thresholding. Not used on RVC2.
          */
         bool enableSwConfidenceThresholding = false;
 
@@ -531,7 +548,7 @@ class StereoDepthConfig : public Buffer {
         uint16_t verticalPenaltyCostP2 = defaultPenaltyP2;
 
         /**
-         * Structure for adaptive P1 penalty configuration.
+         * Adaptive P1 penalty configuration. Not used on RVC2.
          */
         struct P1Config {
             /**
@@ -577,10 +594,13 @@ class StereoDepthConfig : public Buffer {
             DEPTHAI_SERIALIZE(P1Config, enableAdaptive, defaultValue, edgeValue, smoothValue, edgeThreshold, smoothThreshold);
         };
 
+        /**
+         * Adaptive P1 penalty configuration. Not used on RVC2.
+         */
         P1Config p1Config;
 
         /**
-         * Structure for adaptive P2 penalty configuration.
+         * Adaptive P2 penalty configuration. Not used on RVC2.
          */
         struct P2Config {
             /**
@@ -612,6 +632,9 @@ class StereoDepthConfig : public Buffer {
             DEPTHAI_SERIALIZE(P2Config, enableAdaptive, defaultValue, edgeValue, smoothValue);
         };
 
+        /**
+         * Adaptive P2 penalty configuration. Not used on RVC2.
+         */
         P2Config p2Config;
 
         DEPTHAI_SERIALIZE(CostAggregation,
@@ -759,11 +782,13 @@ class StereoDepthConfig : public Buffer {
 
     /**
      * Set filters compute backend
+     * Not used on RVC2.
      */
     StereoDepthConfig& setFiltersComputeBackend(dai::ProcessorType filtersBackend);
 
     /**
      * Get filters compute backend
+     * Not used on RVC2.
      */
     dai::ProcessorType getFiltersComputeBackend() const;
 
@@ -799,10 +824,13 @@ class StereoDepthConfig : public Buffer {
     CostAggregation costAggregation;
 
     /**
-     * Confidence metrics settings.
+     * Confidence metrics settings. Not used on RVC2.
      */
     ConfidenceMetrics confidenceMetrics;
 
+    /**
+     * Compute backend for post-processing filters. Not used on RVC2.
+     */
     dai::ProcessorType filtersBackend = dai::ProcessorType::CPU;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
