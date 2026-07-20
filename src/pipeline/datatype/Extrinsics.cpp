@@ -1,6 +1,7 @@
 #include "depthai/common/Extrinsics.hpp"
 
 #include <array>
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <depthai/utility/matrixOps.hpp>
@@ -39,6 +40,18 @@ std::vector<std::vector<float>> Extrinsics::getInverseRotationMatrix() const {
     }
     auto inv = matrix::getMatrixInverse(matrix::vectorMatrixToMatrix3x3(rotationMatrix));
     return matrix::matrix3x3ToVectorMatrix(inv);
+}
+
+bool Extrinsics::isValid() const {
+    if(rotationMatrix.size() != 3
+       || std::any_of(rotationMatrix.begin(), rotationMatrix.end(), [](const auto& row) { return row.size() != 3; })) {
+        return false;
+    }
+
+    return std::isfinite(translation.x) && std::isfinite(translation.y) && std::isfinite(translation.z)
+           && std::any_of(rotationMatrix.begin(), rotationMatrix.end(), [](const auto& row) {
+                  return std::any_of(row.begin(), row.end(), [](float value) { return value != 0.0f; });
+              });
 }
 
 std::array<std::array<float, 4>, 4> Extrinsics::getTransformationMatrix(bool useSpecTranslation, LengthUnit unit) const {

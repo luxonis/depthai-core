@@ -162,20 +162,23 @@ std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std
 }
 
 std::vector<CameraBoardSocket> DclUtils::buildSocketConnection(const EepromData& eepromData) {
+    const auto validSocketCount = static_cast<size_t>(std::count_if(
+        eepromData.cameraData.begin(), eepromData.cameraData.end(), [](const auto& item) { return item.second.extrinsics.isValid(); }));
+
     std::vector<CameraBoardSocket> referencedSockets;
-    referencedSockets.reserve(eepromData.cameraData.size());
+    referencedSockets.reserve(validSocketCount);
     for(const auto& [socket, info] : eepromData.cameraData) {
         (void)socket;
-        if(info.extrinsics.toCameraSocket != CameraBoardSocket::AUTO) {
+        if(info.extrinsics.isValid() && info.extrinsics.toCameraSocket != CameraBoardSocket::AUTO) {
             referencedSockets.push_back(info.extrinsics.toCameraSocket);
         }
     }
 
     std::vector<CameraBoardSocket> headCandidates;
-    headCandidates.reserve(eepromData.cameraData.size());
+    headCandidates.reserve(validSocketCount);
     for(const auto& [socket, info] : eepromData.cameraData) {
         (void)info;
-        if(std::find(referencedSockets.begin(), referencedSockets.end(), socket) == referencedSockets.end()) {
+        if(info.extrinsics.isValid() && std::find(referencedSockets.begin(), referencedSockets.end(), socket) == referencedSockets.end()) {
             headCandidates.push_back(socket);
         }
     }
@@ -185,7 +188,7 @@ std::vector<CameraBoardSocket> DclUtils::buildSocketConnection(const EepromData&
     }
 
     std::vector<CameraBoardSocket> connection;
-    connection.reserve(eepromData.cameraData.size());
+    connection.reserve(validSocketCount);
 
     auto currentSocket = headCandidates.front();
     while(currentSocket != CameraBoardSocket::AUTO) {
@@ -197,12 +200,13 @@ std::vector<CameraBoardSocket> DclUtils::buildSocketConnection(const EepromData&
         if(currentIt == eepromData.cameraData.end()) {
             throw std::runtime_error("socketConnection references a socket missing from calibration.");
         }
+        if(!currentIt->second.extrinsics.isValid()) break;
 
         connection.push_back(currentSocket);
         currentSocket = currentIt->second.extrinsics.toCameraSocket;
     }
 
-    if(connection.size() != eepromData.cameraData.size()) {
+    if(connection.size() != validSocketCount) {
         throw std::runtime_error("Calibration socketConnection does not cover all calibrated sockets.");
     }
 

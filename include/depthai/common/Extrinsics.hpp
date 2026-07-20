@@ -63,6 +63,11 @@ struct Extrinsics {
     std::vector<std::vector<float>> getInverseRotationMatrix() const;
 
     /**
+     * Check whether the extrinsics contain a non-zero 3x3 rotation matrix and finite translation values.
+     */
+    bool isValid() const;
+
+    /**
      * Get the Camera Extrinsics object to the toCameraSocket.
      * @param useSpecTranslation Set to true to force using spec translation
      * @param unit Units of the returned translation vector
