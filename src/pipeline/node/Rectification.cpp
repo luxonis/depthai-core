@@ -32,14 +32,6 @@ bool Rectification::runOnHost() const {
     return runOnHostVar;
 }
 
-CalibrationHandler Rectification::getCalibrationData() const {
-    if(device) {
-        return device->getCalibration();
-    } else {
-        return getParentPipeline().getCalibrationData();
-    }
-}
-
 #if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
 void Rectification::run() {
     throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
@@ -47,20 +39,6 @@ void Rectification::run() {
 #else   // DEPTHAI_HAVE_OPENCV_SUPPORT
 
 namespace {
-
-template <typename T>
-std::vector<T> flatten(const std::vector<std::vector<T> >& orig) {
-    std::vector<T> ret;
-    for(const auto& v : orig) ret.insert(ret.end(), v.begin(), v.end());
-    return ret;
-}
-
-cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<std::vector<float> >& orig) {
-    std::vector<float> flat = flatten(orig);
-    cv::Mat cvMat = cv::Mat(rows, cols, type);
-    memcpy(cvMat.data, flat.data(), flat.size() * sizeof(flat[0]));
-    return cvMat;
-}
 
 cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
     cv::Mat cvMat = cv::Mat(rows, cols, type);
@@ -173,10 +151,6 @@ void Rectification::run() {
         if(!initialized) {
             dai::ImgTransformation input1ImgTransformation = input1Frame->transformation;
             dai::ImgTransformation input2ImgTransformation = input2Frame->transformation;
-            auto calib = getCalibrationData();
-
-            auto leftSocket = (dai::CameraBoardSocket)input1Frame->getInstanceNum();
-            auto rightSocket = (dai::CameraBoardSocket)input2Frame->getInstanceNum();
 
             auto M1 = input1Frame->transformation.getIntrinsicMatrix();
             auto M2 = input2Frame->transformation.getIntrinsicMatrix();
@@ -190,10 +164,11 @@ void Rectification::run() {
             auto cv_d1 = vecToCvMat(1, d1.size(), CV_32FC1, d1);
             auto cv_d2 = vecToCvMat(1, d2.size(), CV_32FC1, d2);
 
-            auto R = calib.getCameraRotationMatrix(leftSocket, rightSocket);
-            auto cv_R = vecToCvMat(3, 3, CV_32FC1, R);
-            auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, false);
-            auto cv_T = vecToCvMat(1, 3, CV_32FC1, T);
+            const auto extrinsics = input1Frame->transformation.getExtrinsicsTransformationMatrixTo(input2Frame->transformation);
+            const auto R = dai::matrix::getRotationMatrixFromProjection4x4(extrinsics);
+            const auto cv_R = arrayToCvMat(3, 3, CV_32FC1, R);
+            const std::vector<float> T = {extrinsics[0][3], extrinsics[1][3], extrinsics[2][3]};
+            const auto cv_T = vecToCvMat(1, 3, CV_32FC1, T);
 
             cv::Mat cv_R1, cv_R2;
             cv::Size imageSize = cv::Size(input1Frame->getWidth(), input1Frame->getHeight());
