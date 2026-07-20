@@ -436,14 +436,14 @@ class StereoDepthConfig : public Buffer {
         /**
          * Used to reduce small fixed levels of noise across all luminance values
          * in the current image.
-         * Valid range is [0,127]. Default value is 0.
+         * Valid range is [0,127]. Default value is 1.
          * RVC4 only.
          */
         int8_t noiseThresholdOffset = 1;
         /**
          * Used to reduce noise values that increase with luminance in the
          * current image.
-         * Valid range is [-128,127]. Default value is 0.
+         * Valid range is [-128,127]. Default value is 1.
          * RVC4 only.
          */
         int8_t noiseThresholdScale = 1;
