@@ -5,6 +5,7 @@
 #include <depthai/common/variant.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <nlohmann/json.hpp>
+#include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -34,11 +35,12 @@ class DynamicCalibrationControl : public Buffer {
      * are performed on the device.
      */
     enum class PerformanceMode : int {
-        DEFAULT,               ///< Default behavior (balance quality and speed)
-        STATIC_SCENERY,        ///< Optimized for scenes with little or no motion
-        OPTIMIZE_SPEED,        ///< Favor faster processing at possible quality trade-off
-        OPTIMIZE_PERFORMANCE,  ///< Favor accuracy even at reduced speed
-        SKIP_CHECKS            ///< Skip quality checks; force calibration actions
+        DEFAULT = 0,               ///< Default behavior (balance quality and speed)
+        STATIC_SCENERY = 1,        ///< Optimized for scenes with little or no motion
+        OPTIMIZE_SPEED = 2,        ///< Favor faster processing at possible quality trade-off
+        OPTIMIZE_PERFORMANCE = 3,  ///< Favor accuracy even at reduced speed
+        SKIP_CHECKS = 4,           ///< Skip quality checks; force calibration actions
+        RELAXED_COVERAGE = 5       ///< Allow lower coverage requirements before calibration actions
     };
 
     /**
@@ -52,9 +54,10 @@ class DynamicCalibrationControl : public Buffer {
          * @brief Command to perform a full calibration run.
          */
         struct Calibrate {
-            explicit Calibrate(bool force = false) : force(force) {}
-            bool force = false;  ///< Force calibration even when unnecessary.
-            DEPTHAI_SERIALIZE(Calibrate, force);
+            explicit Calibrate(bool force = false, bool keepCameraCenters = true) : force(force), keepCameraCenters(keepCameraCenters) {}
+            bool force = false;             ///< Force calibration even when unnecessary.
+            bool keepCameraCenters = true;  ///< Keep the position of the cameras.
+            DEPTHAI_SERIALIZE(Calibrate, force, keepCameraCenters);
         };
 
         /**
@@ -83,13 +86,14 @@ class DynamicCalibrationControl : public Buffer {
          * @param calibrationPeriod How often calibration should run (seconds)
          */
         struct StartCalibration {
-            explicit StartCalibration(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f)
-                : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod) {}
+            explicit StartCalibration(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f, bool keepCameraCenters = true)
+                : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod), keepCameraCenters(keepCameraCenters) {}
 
             float loadImagePeriod = 0.5f;    ///< Seconds between image loads.
             float calibrationPeriod = 5.0f;  ///< Seconds between calibration cycles.
+            bool keepCameraCenters = true;   ///< Keep the position of the cameras.
 
-            DEPTHAI_SERIALIZE(StartCalibration, loadImagePeriod, calibrationPeriod);
+            DEPTHAI_SERIALIZE(StartCalibration, loadImagePeriod, calibrationPeriod, keepCameraCenters);
         };
 
         /**
@@ -166,8 +170,8 @@ class DynamicCalibrationControl : public Buffer {
      * @param force If true, force calibration even if the quality check passes.
      * @return Shared pointer to a DynamicCalibrationControl command.
      */
-    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> calibrate(bool force = false) {
-        return std::make_shared<DynamicCalibrationControl>(Commands::Calibrate{force});
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> calibrate(bool force = false, bool keepCameraCenters = true) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::Calibrate{force, keepCameraCenters});
     }
 
     /**
@@ -201,8 +205,10 @@ class DynamicCalibrationControl : public Buffer {
      * @param calibrationPeriod How often a new calibration should be executed, in seconds.
      * @return Shared pointer to a DynamicCalibrationControl command.
      */
-    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> startCalibration(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f) {
-        return std::make_shared<DynamicCalibrationControl>(Commands::StartCalibration{loadImagePeriod, calibrationPeriod});
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> startCalibration(float loadImagePeriod = 0.5f,
+                                                                                     float calibrationPeriod = 5.0f,
+                                                                                     bool keepCameraCenters = true) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::StartCalibration{loadImagePeriod, calibrationPeriod, keepCameraCenters});
     }
 
     /**
@@ -261,5 +267,24 @@ class DynamicCalibrationControl : public Buffer {
         return DatatypeEnum::DynamicCalibrationControl;
     }
 };
+
+inline std::string toString(DynamicCalibrationControl::PerformanceMode mode) {
+    switch(mode) {
+        case DynamicCalibrationControl::PerformanceMode::DEFAULT:
+            return "DEFAULT";
+        case DynamicCalibrationControl::PerformanceMode::STATIC_SCENERY:
+            return "STATIC_SCENERY";
+        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_SPEED:
+            return "OPTIMIZE_SPEED";
+        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_PERFORMANCE:
+            return "OPTIMIZE_PERFORMANCE";
+        case DynamicCalibrationControl::PerformanceMode::SKIP_CHECKS:
+            return "SKIP_CHECKS";
+        case DynamicCalibrationControl::PerformanceMode::RELAXED_COVERAGE:
+            return "RELAXED_COVERAGE";
+        default:
+            return "UNKNOWN";
+    }
+}
 
 }  // namespace dai

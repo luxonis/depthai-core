@@ -93,6 +93,11 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
     float getFps() const;
 
     /**
+     * Retrieves sensor temperature in degrees Celsius. Returns an empty optional if not available.
+     */
+    std::optional<float> getSensorTemperature() const;
+
+    /**
      * Retrieves the encoding quality
      */
     unsigned int getQuality() const;
@@ -227,7 +232,8 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
                       transformation,
                       Buffer::sequenceNum,
                       Buffer::ts,
-                      Buffer::tsDevice);
+                      Buffer::tsDevice,
+                      Buffer::tsSystem);
 };
 
 }  // namespace dai

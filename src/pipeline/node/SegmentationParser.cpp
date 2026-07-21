@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -74,9 +75,23 @@ NNArchive SegmentationParser::decodeModel(const Model& model) {
     return *nnArchive;
 }
 
+void SegmentationParser::setNNArchive(const NNArchive& nnArchive) {
+    setConfig(nnArchive.getVersionedConfig());
+}
+
+void SegmentationParser::setNNArchiveHead(const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
+}
+
 std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const Model& model) {
     auto nnArchive = decodeModel(model);
     setConfig(nnArchive.getVersionedConfig());
+    nnInput.link(input);
+    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
+}
+
+std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
     nnInput.link(input);
     return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
@@ -98,15 +113,9 @@ void SegmentationParser::setConfig(const dai::NNArchiveVersionedConfig& config) 
     }
 
     DAI_CHECK_V(segmentationHeads > 0, "NNArchive does not contain a segmentation head.");
-    DAI_CHECK_V(segmentationHeads == 1, "NNArchive contains " + std::to_string(segmentationHeads) + " segmentation heads. Please build with a specific head.");
+    DAI_CHECK_V(segmentationHeads == 1, "NNArchive contains {} segmentation heads. Please build with a specific head.", segmentationHeads);
 
     setConfig(segHead);
-}
-
-std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
-    setConfig(head);
-    nnInput.link(input);
-    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
 
 void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
@@ -167,7 +176,7 @@ std::string checkTensorName(const dai::NNData& nnData, const std::string& prefer
 
     if(preferredName != "") {
         auto it = std::find(layerNames.begin(), layerNames.end(), preferredName);
-        DAI_CHECK_V(it != layerNames.end(), "Preferred Segmentation tensor name '" + preferredName + "' not found in NNData outputs.");
+        DAI_CHECK_V(it != layerNames.end(), "Preferred Segmentation tensor name '{}' not found in NNData outputs.", preferredName);
         return preferredName;
     }
 
@@ -183,19 +192,21 @@ void SegmentationParser::validateTensor(std::optional<TensorInfo>& info) {
     int channels = info->getChannels();
 
     DAI_CHECK_V(maskWidth > 0 && maskHeight > 0 && channels > 0,
-                "Invalid tensor dimensions retrieved for segmentation. Channels: " + std::to_string(channels) + ", height: " + std::to_string(maskHeight)
-                    + ", width: " + std::to_string(maskWidth) + ".");
+                "Invalid tensor dimensions retrieved for segmentation. Channels: {}, height: {}, width: {}.",
+                channels,
+                maskHeight,
+                maskWidth);
     DAI_CHECK(channels <= 256, "SegmentationParser supports a maximum of 256 channels.");
 
     if(!properties.classesInOneLayer && properties.labels.size() > 0) {
         int expectedNumLabels = properties.labels.size();
         DAI_CHECK_V(expectedNumLabels == channels,
-                    fmt::format("Number of provided labels ({}) does not match number of channels ({}).{}",
-                                expectedNumLabels,
-                                channels,
-                                properties.backgroundClass
-                                    ? " Note: background_class is set to true, make sure to add a background label to the beginning of the labels list."
-                                    : ""));
+                    "Number of provided labels ({}) does not match number of channels ({}).{}",
+                    expectedNumLabels,
+                    channels,
+                    properties.backgroundClass
+                        ? " Note: background_class is set to true, make sure to add a background label to the beginning of the labels list."
+                        : "");
     }
 }
 
@@ -245,6 +256,10 @@ void SegmentationParser::run() {
 
         auto outMask = std::make_shared<dai::SegmentationMask>();
         if(!classesInSingleLayer) {
+            // Handle single-channel foreground score outputs, with no threshold configuration.
+            if(tensorInfo->getChannels() == 1 && !properties.backgroundClass && inConfig->getConfidenceThreshold() == -1.0f) {
+                inConfig->setConfidenceThreshold(0.0f);
+            }
             utilities::SegmentationParserUtils::computeSegmentationMask(*outMask, *sharedNNData, *tensorInfo, *inConfig, properties.backgroundClass, logger);
         } else {
             // assume data is stored as INT in shape N x H x W  with N = 1
@@ -256,9 +271,7 @@ void SegmentationParser::run() {
         if(properties.labels.size() > 0) {
             outMask->setLabels(properties.labels);
         }
-        outMask->setSequenceNum(sharedNNData->getSequenceNum());
-        outMask->setTimestamp(sharedNNData->getTimestamp());
-        outMask->setTimestampDevice(sharedNNData->getTimestampDevice());
+        outMask->setBufferMetadataFrom(sharedNNData);
         outMask->transformation = sharedNNData->transformation;
         const float invStep = 1.0f / static_cast<float>(inConfig->stepSize);
         outMask->transformation->addScale(invStep, invStep);

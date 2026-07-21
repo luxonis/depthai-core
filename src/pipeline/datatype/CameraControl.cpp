@@ -122,6 +122,11 @@ CameraControl& CameraControl::setAutoExposureLimit(uint32_t maxExposureTimeUs) {
 CameraControl& CameraControl::setAutoExposureLimit(std::chrono::microseconds maxExposureTime) {
     return setAutoExposureLimit(maxExposureTime.count());
 }
+CameraControl& CameraControl::setAutoExposureMaxISO(uint32_t aeMaxISO) {
+    setCommand(CameraControl::Command::AE_MAX_ISO);
+    this->aeMaxISO = aeMaxISO;
+    return *this;
+}
 CameraControl& CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     setCommand(Command::ANTIBANDING_MODE);
     antiBandingMode = mode;
@@ -217,16 +222,16 @@ CameraControl& CameraControl::setMisc(std::string control, std::string value) {
     miscControls.push_back(std::make_pair(control, value));
     return *this;
 }
-CameraControl& CameraControl::setMisc(std::string control, int value) {
+CameraControl& CameraControl::setMisc(const std::string& control, int value) {
     return setMisc(control, std::to_string(value));
 }
-CameraControl& CameraControl::setMisc(std::string control, float value) {
+CameraControl& CameraControl::setMisc(const std::string& control, float value) {
     return setMisc(control, std::to_string(value));
 }
 void CameraControl::clearMiscControls() {
     miscControls.clear();
 }
-std::vector<std::pair<std::string, std::string>> CameraControl::getMiscControls() {
+std::vector<std::pair<std::string, std::string>> CameraControl::getMiscControls() const {
     return miscControls;
 }
 

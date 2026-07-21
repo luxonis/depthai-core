@@ -78,6 +78,45 @@ def test_python_is_kept_alive():
             assert isinstance(message, CustomMessage)
             assert message.test_field == i
 
+def test_buffer_methods_are_inherited_by_derived_messages():
+    timestamp = dai.Buffer().getTimestamp()
+    device_timestamp = dai.Buffer().getTimestampDevice()
+    system_timestamp = dai.Buffer().getTimestampSystem()
+
+    for message_type in [
+        dai.AprilTags,
+        dai.EncodedFrame,
+        dai.ImgAnnotations,
+        dai.ImgDetections,
+        dai.MessageGroup,
+        dai.NNData,
+        dai.PipelineEvent,
+        dai.PipelineState,
+        dai.PointCloudData,
+        dai.SegmentationMask,
+        dai.SpatialImgDetections,
+        dai.SpatialLocationCalculatorData,
+        dai.TrackedFeatures,
+        dai.Tracklets,
+    ]:
+        message = message_type()
+        message.setTimestamp(timestamp)
+        message.setTimestampDevice(device_timestamp)
+        message.setTimestampSystem(system_timestamp)
+        message.setSequenceNum(42)
+
+        assert message.getTimestamp() == timestamp
+        assert message.getTimestampDevice() == device_timestamp
+        assert message.getTimestampSystem() == system_timestamp
+        assert message.getSequenceNum() == 42
+
+def test_imgframe_keeps_timestamp_overloads():
+    frame = dai.ImgFrame()
+
+    assert frame.getTimestamp(dai.CameraExposureOffset.END) == frame.getTimestamp()
+    assert frame.getTimestampDevice(dai.CameraExposureOffset.END) == frame.getTimestampDevice()
+    assert frame.getTimestampSystem(dai.CameraExposureOffset.END) == frame.getTimestampSystem()
+
 def test_transformable_buffer_dispatches_to_python_override():
     class CustomTransformableBuffer(dai.TransformableBuffer):
         def __init__(self):

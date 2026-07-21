@@ -33,20 +33,21 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
         .def("setBlobPath", &DetectionParser::setBlobPath, py::arg("path"), DOC(dai, node, DetectionParser, setBlobPath))
         .def("setNumFramesPool", &DetectionParser::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, DetectionParser, setNumFramesPool))
         .def("getNumFramesPool", &DetectionParser::getNumFramesPool, DOC(dai, node, DetectionParser, getNumFramesPool))
-        .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionParser::setBlob), py::arg("blob"), DOC(dai, node, DetectionParser, setBlob))
+        .def("setBlob", py::overload_cast<const dai::OpenVINO::Blob&>(&DetectionParser::setBlob), py::arg("blob"), DOC(dai, node, DetectionParser, setBlob))
         .def(
             "setBlob", py::overload_cast<const std::filesystem::path&>(&DetectionParser::setBlob), py::arg("path"), DOC(dai, node, DetectionParser, setBlob, 2))
         .def("setNNArchive",
              py::overload_cast<const NNArchive&>(&DetectionParser::setNNArchive),
              py::arg("nnArchive"),
              DOC(dai, node, DetectionParser, setNNArchive))
+        .def("setNNArchiveHead", &DetectionParser::setNNArchiveHead, py::arg("head"), DOC(dai, node, DetectionParser, setNNArchiveHead))
         .def("setInputImageSize",
              static_cast<void (DetectionParser::*)(int, int)>(&DetectionParser::setInputImageSize),
              py::arg("width"),
              py::arg("height"),
              DOC(dai, node, DetectionParser, setInputImageSize))
         .def("setInputImageSize",
-             static_cast<void (DetectionParser::*)(std::tuple<int, int>)>(&DetectionParser::setInputImageSize),
+             static_cast<void (DetectionParser::*)(const std::tuple<int, int>&)>(&DetectionParser::setInputImageSize),
              py::arg("size"),
              DOC(dai, node, DetectionParser, setInputImageSize, 2))
         .def("setNNFamily", &DetectionParser::setNNFamily, py::arg("type"), DOC(dai, node, DetectionParser, setNNFamily))
@@ -60,7 +61,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
              py::arg("anchors"),
              DOC(dai, node, DetectionParser, setAnchors))
         .def("setAnchors",
-             py::overload_cast<std::vector<float>>(&DetectionParser::setAnchors),
+             py::overload_cast<const std::vector<float>&>(&DetectionParser::setAnchors),
              py::arg("anchors"),
              DOC(dai, node, DetectionParser, setAnchors, 2))
         .def("setAnchorMasks", &DetectionParser::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, DetectionParser, setAnchorMasks))
@@ -85,6 +86,15 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
         .def("getDecodeKeypoints", &DetectionParser::getDecodeKeypoints, DOC(dai, node, DetectionParser, getDecodeKeypoints))
         .def("getDecodeSegmentation", &DetectionParser::getDecodeSegmentation, DOC(dai, node, DetectionParser, getDecodeSegmentation))
         .def("getStrides", &DetectionParser::getStrides, DOC(dai, node, DetectionParser, getStrides))
-        .def("build", &DetectionParser::build, py::arg("input"), py::arg("nnArchive"), DOC(dai, node, DetectionParser, build));
+        .def("build",
+             py::overload_cast<Node::Output&, const NNArchive&>(&DetectionParser::build),
+             py::arg("input"),
+             py::arg("nnArchive"),
+             DOC(dai, node, DetectionParser, build))
+        .def("build",
+             py::overload_cast<Node::Output&, const dai::nn_archive::v1::Head&>(&DetectionParser::build),
+             py::arg("input"),
+             py::arg("head"),
+             DOC(dai, node, DetectionParser, build, 2));
     daiNodeModule.attr("DetectionParser").attr("Properties") = detectionParserProperties;
 }

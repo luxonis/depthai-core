@@ -212,24 +212,7 @@ class StereoDepthConfig : public Buffer {
          */
         TemporalFilter temporalFilter;
 
-        /**
-         * Threshold filtering.
-         * Filters out distances outside of a given interval.
-         */
-        struct ThresholdFilter {
-            /**
-             * Minimum range in depth units.
-             * Depth values under this value are invalidated.
-             */
-            std::int32_t minRange = 0;
-            /**
-             * Maximum range in depth units.
-             * Depth values over this value are invalidated.
-             */
-            std::int32_t maxRange = 65535;
-
-            DEPTHAI_SERIALIZE(ThresholdFilter, minRange, maxRange);
-        };
+        using ThresholdFilter = filters::params::ThresholdFilter;
 
         /**
          * Threshold filtering.

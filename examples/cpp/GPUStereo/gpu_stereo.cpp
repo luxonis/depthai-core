@@ -20,9 +20,8 @@ int main() {
     camRight->build(dai::CameraBoardSocket::CAM_C);
 
     auto gpu = pipeline.create<dai::node::GPUStereo>();
-    camLeft->requestOutput({1280, 800}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, 30.0f)->link(gpu->left);
-    camRight->requestOutput({1280, 800}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, 30.0f)->link(gpu->right);
-    gpu->setRectification(true);
+    camLeft->requestFullResolutionOutput()->link(gpu->left);
+    camRight->requestFullResolutionOutput()->link(gpu->right);
     gpu->initialConfig->setConfidenceThreshold(25);
 
     auto dispQ = gpu->disparity.createOutputQueue();

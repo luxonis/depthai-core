@@ -229,12 +229,16 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         // getters
         .def("getTimestamp", py::overload_cast<>(&ImgFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", py::overload_cast<>(&ImgFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", py::overload_cast<>(&ImgFrame::Buffer::getTimestampSystem, py::const_), DOC(dai, Buffer, getTimestampSystem))
         .def("getTimestamp", py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestamp, py::const_), py::arg("offset"), DOC(dai, ImgFrame, getTimestamp))
         .def("getTimestampDevice",
              py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampDevice, py::const_),
              py::arg("offset"),
              DOC(dai, ImgFrame, getTimestampDevice))
-        .def("getSequenceNum", &ImgFrame::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
+        .def("getTimestampSystem",
+             py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampSystem, py::const_),
+             py::arg("offset"),
+             DOC(dai, ImgFrame, getTimestampSystem))
         .def("getInstanceNum", &ImgFrame::getInstanceNum, DOC(dai, ImgFrame, getInstanceNum))
         .def("getCategory", &ImgFrame::getCategory, DOC(dai, ImgFrame, getCategory))
         .def("getWidth", &ImgFrame::getWidth, DOC(dai, ImgFrame, getWidth))
@@ -252,6 +256,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getFsync", &ImgFrame::getFsync, DOC(dai, ImgFrame, getFsync))
         .def("getSensorMode", &ImgFrame::getSensorMode, DOC(dai, ImgFrame, getSensorMode))
         .def("getFps", &ImgFrame::getFps, DOC(dai, ImgFrame, getFps))
+        .def("getSensorTemperature", &ImgFrame::getSensorTemperature, DOC(dai, ImgFrame, getSensorTemperature))
         .def("getSourceHFov", &ImgFrame::getSourceHFov, DOC(dai, ImgFrame, getSourceHFov))
         .def("getSourceVFov", &ImgFrame::getSourceVFov, DOC(dai, ImgFrame, getSourceVFov))
         .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))
@@ -298,11 +303,8 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
             DOC(dai, ImgFrame, setCvFrame))
 #endif
         // setters
-        .def("setTimestamp", &ImgFrame::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &ImgFrame::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
         .def("setInstanceNum", &ImgFrame::setInstanceNum, py::arg("instance"), DOC(dai, ImgFrame, setInstanceNum))
         .def("setCategory", &ImgFrame::setCategory, py::arg("category"), DOC(dai, ImgFrame, setCategory))
-        // .def("setSequenceNum", &ImgFrame::setSequenceNum, py::arg("seq"), DOC(dai, ImgFrame, setSequenceNum))
         .def("setWidth", &ImgFrame::setWidth, py::arg("width"), DOC(dai, ImgFrame, setWidth))
         .def("setStride", &ImgFrame::setStride, py::arg("stride"), DOC(dai, ImgFrame, setStride))
         .def("setHeight", &ImgFrame::setHeight, py::arg("height"), DOC(dai, ImgFrame, setHeight))

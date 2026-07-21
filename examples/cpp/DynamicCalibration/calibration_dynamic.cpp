@@ -40,7 +40,7 @@ int main() {
 
     auto dynCalibInputControl = dynCalib->inputControl.createInputQueue();
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle
@@ -99,14 +99,15 @@ int main() {
                 // Print quality deltas
                 const auto& q = dynCalibrationResult->calibrationData->calibrationDifference;
 
-                float rotDiff = std::sqrt(q.rotationChange[0] * q.rotationChange[0] + q.rotationChange[1] * q.rotationChange[1]
-                                          + q.rotationChange[2] * q.rotationChange[2]);
-                std::cout << "Rotation difference: " << rotDiff << " deg\n";
+                if(!q.pairwiseRotationDifference.empty()) {
+                    const auto& pairwiseRotation = q.pairwiseRotationDifference.begin()->second;
+                    float rotDiff = 0.0f;
+                    for(const auto axis : pairwiseRotation) rotDiff += axis * axis;
+                    rotDiff = std::sqrt(rotDiff);
+                    std::cout << "Rotation difference: " << rotDiff << " deg\n";
+                }
                 std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
                 std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
-                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                          << "%\n";
 
                 // Reset and start a new round if desired
                 dynCalibInputControl->send(DCC::startCalibration());

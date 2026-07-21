@@ -7,6 +7,10 @@ for manual exposure/focus:
   exposure time:     I   O      1..33000 [us]
   sensitivity iso:   K   L    100..1600
   focus:             ,   .      0..255 [far..near]
+for auto exposure:
+  Control:          key[dec/inc]  min..max
+  max exposure time:     g   h      1..33000 [us]
+  max ISO:               b   n      100..1600
 To go back to auto controls:
   'E' - autoexposure
   'F' - autofocus (continuous)
@@ -411,7 +415,9 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             xout[thermal_color_name] = cam[c].color
             streams.append(thermal_color_name)
         else:
-            cam[c] = pipeline.create(dai.node.Camera).build(cam_socket_opts[c])
+            cam[c] = pipeline.create(dai.node.Camera)
+            cam[c].setSensorType(dai.CameraSensorType.COLOR if cam_type_color[c] else dai.CameraSensorType.MONO)
+            cam[c].build(cam_socket_opts[c], sensorFps=args.fps)
             cap = dai.ImgFrameCapability()
             cap.size.fixed(get_socket_resolution(c))
             cap.fps.fixed(args.fps)
@@ -567,6 +573,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     floodIntensity = 0
 
     expTimeLimit = 700
+    expMaxISO = 500
 
     awb_mode = Cycle(dai.CameraControl.AutoWhiteBalanceMode)
     anti_banding_mode = Cycle(dai.CameraControl.AntiBandingMode)
@@ -753,9 +760,20 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 expTimeLimit -= 50
             else:
                 expTimeLimit += 50
-            print("Exposure time limit: ", expTimeLimit)
+            print("Auto exposure time limit: ", expTimeLimit)
             ctrl = dai.CameraControl()
             ctrl.setAutoExposureLimit(expTimeLimit)
+            ctrl.setAutoExposureEnable()
+            controlQueueSend(ctrl)
+        elif key in [ord('b'), ord('n')]:
+            if key == ord('b'):
+                expMaxISO -= 50
+            else:
+                expMaxISO += 50
+            print("Auto exposure ISO limit: ", expMaxISO)
+            ctrl = dai.CameraControl()
+            ctrl.setAutoExposureMaxISO(expMaxISO)
+            ctrl.setAutoExposureEnable()
             controlQueueSend(ctrl)
         elif key == ord('1'):
             awb_lock = not awb_lock
