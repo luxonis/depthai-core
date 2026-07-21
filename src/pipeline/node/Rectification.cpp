@@ -123,6 +123,8 @@ void Rectification::run() {
     std::array<std::array<float, 3>, 3> targetM1, targetM2;
     dai::ImgTransformation output1ImgTransformation;
     dai::ImgTransformation output2ImgTransformation;
+    dai::ImgTransformation previousInput1Transformation;
+    dai::ImgTransformation previousInput2Transformation;
     while(mainLoop()) {
         std::shared_ptr<dai::ImgFrame> input1Frame;
         std::shared_ptr<dai::ImgFrame> input2Frame;
@@ -146,6 +148,11 @@ void Rectification::run() {
             output1FrameHeight = input1Frame->getHeight();
             output2FrameWidth = input2Frame->getWidth();
             output2FrameHeight = input2Frame->getHeight();
+        }
+
+        if(!previousInput1Transformation.isEqualTransformation(input1Frame->transformation)
+           || !previousInput2Transformation.isEqualTransformation(input2Frame->transformation)) {
+            initialized = false;
         }
 
         if(!initialized) {
@@ -236,6 +243,8 @@ void Rectification::run() {
             logger->debug("TARGET_MATRIX2 = {}", matToString(cv_targetCameraMatrix2));
 
             initialized = true;
+            previousInput1Transformation = input1Frame->transformation;
+            previousInput2Transformation = input2Frame->transformation;
         }
 
         auto start = steady_clock::now();
