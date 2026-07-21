@@ -344,6 +344,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/Depth.cpp
     src/pipeline/node/GPUStereo.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
+    src/beta/node/ToFStereoFusion.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/Transformable.cpp
