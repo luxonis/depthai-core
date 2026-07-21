@@ -26,7 +26,7 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     /**
      * Internal transform hook used by transformTo() to apply PointCloudData-specific transformation logic.
      *
-     * Point cloud remapping is currently not implemented here. Use ImageAlign on the source
+     * Point cloud remapping is currently not implemented here. Use Align on the source
      * images before generating the point cloud instead.
      */
     void transformToInternal(const ImgTransformation& target) override;
@@ -232,7 +232,7 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
      *
      * Due to efficiency reasons, point cloud remapping is currently not implemented. Point clouds
      * should be generated from already aligned source messages instead of being transformed after
-     * the fact. Use ImageAlign on the source inputs before creating the point cloud.
+     * the fact. Use Align on the source inputs before creating the point cloud.
      *
      * @param target Target image transformation.
      */

@@ -107,6 +107,7 @@ set(SOURCE_LIST
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
+    src/pipeline/node/AlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
     src/pipeline/node/RectificationBindings.cpp

@@ -50,8 +50,8 @@ if __name__ == "__main__":
     sourceOutput = camera.requestOutput(size=SourceSize, fps=FPS, resizeMode=dai.ImgResizeMode.LETTERBOX, enableUndistortion=False)
     alignToOutput = camera.requestOutput(size=AlignToSize, fps=FPS, resizeMode=dai.ImgResizeMode.STRETCH, enableUndistortion=True)
 
-    align = pipeline.create(dai.node.ImageAlign)
-    align.setRunOnHost(True) # for custom message, ImageAlign needs to run on host.
+    align = pipeline.create(dai.node.Align)
+    align.setRunOnHost(True) # for custom message, Align needs to run on host.
     alignToOutput.link(align.inputAlignTo)
 
     sourceQueue = sourceOutput.createOutputQueue()

@@ -44,7 +44,7 @@ def overlayDetectionsMsg(frame: np.ndarray, detectionsMsg: dai.ImgDetections) ->
 
 device = dai.Device()
 if device.getPlatform() == dai.Platform.RVC2:
-    raise RuntimeError(f"GenericAlign is not supported on the RVC2 platform.")
+    raise RuntimeError("Align is not supported on the RVC2 platform.")
 
 fps = 30.0
 modelName = "luxonis/yolov8-instance-segmentation-large:coco-640x480"
@@ -70,7 +70,7 @@ with dai.Pipeline(device) as pipeline:
     manip.setMaxOutputFrameSize(800 * 600 * 3)
     alignToSource.link(manip.inputImage)
 
-    align = pipeline.create(dai.node.ImageAlign)
+    align = pipeline.create(dai.node.Align)
     detectionNetwork.out.link(align.input)
     manip.out.link(align.inputAlignTo)
 

@@ -1,0 +1,438 @@
+#include <array>
+#include <catch2/catch_all.hpp>
+#include <chrono>
+#include <cmath>
+#include <memory>
+#include <optional>
+#include <thread>
+#include <vector>
+
+#include "depthai/depthai.hpp"
+
+using namespace std;
+using namespace std::chrono;
+using namespace std::chrono_literals;
+
+namespace {
+
+constexpr size_t kSourceWidth = 64;
+constexpr size_t kSourceHeight = 48;
+constexpr size_t kTargetWidth = 80;
+constexpr size_t kTargetHeight = 60;
+constexpr size_t kUpdatedTargetWidth = 96;
+constexpr size_t kUpdatedTargetHeight = 72;
+
+array<array<float, 3>, 3> makeIntrinsics(size_t width, size_t height) {
+    return {{{150.0F, 0.0F, static_cast<float>(width) / 2.0F}, {0.0F, 148.0F, static_cast<float>(height) / 2.0F}, {0.0F, 0.0F, 1.0F}}};
+}
+
+dai::Extrinsics makeExtrinsics(float translationXMillimeters = 0.0F) {
+    static const vector<vector<float>> rotation = {{1.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}, {0.0F, 0.0F, 1.0F}};
+    return {rotation, {translationXMillimeters, 0.0F, 0.0F}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER};
+}
+
+vector<float> makeDistortionCoefficients() {
+    return {0.12F, -0.04F, 0.0015F, 0.0005F, 0.01F};
+}
+
+dai::ImgTransformation makeTransform(size_t width, size_t height, bool distorted = false) {
+    dai::ImgTransformation transform(kSourceWidth,
+                                     kSourceHeight,
+                                     makeIntrinsics(kSourceWidth, kSourceHeight),
+                                     dai::CameraModel::Perspective,
+                                     distorted ? makeDistortionCoefficients() : vector<float>{},
+                                     makeExtrinsics());
+    if(width != kSourceWidth || height != kSourceHeight) {
+        transform.addScale(static_cast<float>(width) / static_cast<float>(kSourceWidth), static_cast<float>(height) / static_cast<float>(kSourceHeight));
+    }
+    return transform;
+}
+
+dai::ImgTransformation expectedAlignedTransform(const dai::ImgTransformation& alignToTransform) {
+    dai::ImgTransformation expected = alignToTransform;
+    auto distortion = expected.getDistortionCoefficients();
+    if(!distortion.empty()) {
+        expected.setDistortionCoefficients(vector<float>(distortion.size(), 0.0F));
+    }
+    return expected;
+}
+
+steady_clock::time_point makeTimestamp(int millisecondsOffset) {
+    return steady_clock::time_point{} + milliseconds(millisecondsOffset);
+}
+
+vector<uint8_t> makeFrameData(size_t width, size_t height, uint8_t seed) {
+    vector<uint8_t> data(width * height);
+    for(size_t y = 0; y < height; ++y) {
+        for(size_t x = 0; x < width; ++x) {
+            data[y * width + x] = static_cast<uint8_t>((x * 7 + y * 13 + seed) % 251);
+        }
+    }
+    return data;
+}
+
+vector<uint8_t> makeMaskData(size_t width, size_t height) {
+    vector<uint8_t> mask(width * height, 255);
+    for(size_t y = height / 4; y < (3 * height) / 4; ++y) {
+        for(size_t x = width / 5; x < (4 * width) / 5; ++x) {
+            mask[y * width + x] = (x < width / 2) ? 0 : 1;
+        }
+    }
+    return mask;
+}
+
+template <typename MsgT>
+void setCommonMetadata(MsgT& msg, int64_t sequenceNum) {
+    msg.setSequenceNum(sequenceNum);
+    msg.setTimestamp(makeTimestamp(1000 + static_cast<int>(sequenceNum)));
+    msg.setTimestampDevice(makeTimestamp(2000 + static_cast<int>(sequenceNum)));
+}
+
+template <typename MsgT>
+const dai::ImgTransformation& messageTransformation(const MsgT& msg) {
+    REQUIRE(msg.transformation.has_value());
+    return msg.transformation.value();
+}
+
+const dai::ImgTransformation& messageTransformation(const dai::ImgFrame& msg) {
+    return msg.transformation;
+}
+
+void requireTransformEqual(const dai::ImgTransformation& expected, const dai::ImgTransformation& actual) {
+    REQUIRE(actual.getSize() == expected.getSize());
+    REQUIRE(actual.getSourceSize() == expected.getSourceSize());
+    REQUIRE(actual.getMatrix() == expected.getMatrix());
+    REQUIRE(actual.getMatrixInv() == expected.getMatrixInv());
+    REQUIRE(actual.getSourceIntrinsicMatrix() == expected.getSourceIntrinsicMatrix());
+    REQUIRE(actual.getSourceIntrinsicMatrixInv() == expected.getSourceIntrinsicMatrixInv());
+    REQUIRE(actual.getDistortionModel() == expected.getDistortionModel());
+    REQUIRE(actual.getDistortionCoefficients() == expected.getDistortionCoefficients());
+    REQUIRE(actual.getExtrinsics().isEqualExtrinsics(expected.getExtrinsics()));
+}
+
+template <typename MsgT>
+void requireCommonMetadata(const MsgT& expected, const MsgT& actual) {
+    REQUIRE(actual.getSequenceNum() == expected.getSequenceNum());
+    REQUIRE(actual.getTimestamp() == expected.getTimestamp());
+    REQUIRE(actual.getTimestampDevice() == expected.getTimestampDevice());
+}
+
+template <typename MsgT>
+std::shared_ptr<MsgT> getRequiredMessage(const shared_ptr<dai::MessageQueue>& queue) {
+    bool timedOut = false;
+    auto msg = queue->get<MsgT>(2s, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(msg != nullptr);
+    return msg;
+}
+
+template <typename MsgT>
+std::shared_ptr<MsgT> createSampleMessage(const dai::ImgTransformation& transform, int64_t sequenceNum);
+
+template <>
+shared_ptr<dai::ImgFrame> createSampleMessage<dai::ImgFrame>(const dai::ImgTransformation& transform, int64_t sequenceNum) {
+    auto msg = make_shared<dai::ImgFrame>();
+    const auto [sourceWidth, sourceHeight] = transform.getSourceSize();
+    const auto [width, height] = transform.getSize();
+
+    msg->setSourceSize(static_cast<unsigned int>(sourceWidth), static_cast<unsigned int>(sourceHeight));
+    msg->setSize(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
+    msg->setType(dai::ImgFrame::Type::GRAY8);
+    msg->setData(makeFrameData(width, height, static_cast<uint8_t>(sequenceNum)));
+    msg->setInstanceNum(static_cast<unsigned int>(700 + sequenceNum));
+    setCommonMetadata(*msg, sequenceNum);
+    msg->setTransformation(transform);
+
+    REQUIRE(msg->validateTransformations());
+    return msg;
+}
+
+template <>
+shared_ptr<dai::ImgDetections> createSampleMessage<dai::ImgDetections>(const dai::ImgTransformation& transform, int64_t sequenceNum) {
+    auto msg = make_shared<dai::ImgDetections>();
+    const auto [width, height] = transform.getSize();
+
+    dai::ImgDetection detection;
+    detection.label = 2;
+    detection.labelName = "person";
+    detection.confidence = 0.83F;
+    detection.setBoundingBox(dai::RotatedRect(dai::Rect(8.0F, 6.0F, 20.0F, 14.0F, false), 11.0F));
+
+    msg->detections.push_back(detection);
+    msg->setSegmentationMask(makeMaskData(width, height), width, height);
+    setCommonMetadata(*msg, sequenceNum);
+    msg->setTransformation(transform);
+    return msg;
+}
+
+template <>
+shared_ptr<dai::SpatialImgDetections> createSampleMessage<dai::SpatialImgDetections>(const dai::ImgTransformation& transform, int64_t sequenceNum) {
+    auto msg = make_shared<dai::SpatialImgDetections>();
+    const auto [width, height] = transform.getSize();
+
+    dai::SpatialImgDetection detection;
+    detection.label = 5;
+    detection.labelName = "crate";
+    detection.confidence = 0.76F;
+    detection.setBoundingBox(dai::RotatedRect(dai::Rect(10.0F, 7.0F, 18.0F, 12.0F, false), -6.0F));
+    detection.spatialCoordinates = {30.0F, -20.0F, 1200.0F};
+    detection.boundingBoxMapping.roi = dai::Rect(0.2F, 0.15F, 0.3F, 0.25F, true);
+    detection.boundingBoxMapping.depthThresholds.lowerThreshold = 100;
+    detection.boundingBoxMapping.depthThresholds.upperThreshold = 4000;
+
+    msg->detections.push_back(detection);
+    msg->unit = dai::LengthUnit::MILLIMETER;
+    msg->setSegmentationMask(makeMaskData(width, height), width, height);
+    setCommonMetadata(*msg, sequenceNum);
+    msg->setTransformation(transform);
+    return msg;
+}
+
+template <>
+shared_ptr<dai::SegmentationMask> createSampleMessage<dai::SegmentationMask>(const dai::ImgTransformation& transform, int64_t sequenceNum) {
+    auto msg = make_shared<dai::SegmentationMask>();
+    const auto [width, height] = transform.getSize();
+
+    msg->setMask(makeMaskData(width, height), width, height);
+    msg->setLabels({"background", "left", "right"});
+    setCommonMetadata(*msg, sequenceNum);
+    msg->setTransformation(transform);
+    return msg;
+}
+
+template <>
+shared_ptr<dai::AprilTags> createSampleMessage<dai::AprilTags>(const dai::ImgTransformation& transform, int64_t sequenceNum) {
+    auto msg = make_shared<dai::AprilTags>();
+
+    dai::AprilTag tag;
+    tag.id = 42;
+    tag.hamming = 1;
+    tag.decisionMargin = 73.5F;
+    tag.topLeft = {9.0F, 7.0F, false};
+    tag.topRight = {25.0F, 7.0F, false};
+    tag.bottomRight = {25.0F, 23.0F, false};
+    tag.bottomLeft = {9.0F, 23.0F, false};
+
+    msg->aprilTags.push_back(tag);
+    setCommonMetadata(*msg, sequenceNum);
+    msg->setTransformation(transform);
+    return msg;
+}
+
+template <>
+shared_ptr<dai::Tracklets> createSampleMessage<dai::Tracklets>(const dai::ImgTransformation& transform, int64_t sequenceNum) {
+    auto msg = make_shared<dai::Tracklets>();
+
+    dai::Tracklet tracklet;
+    tracklet.id = 17;
+    tracklet.label = 2;
+    tracklet.age = 4;
+    tracklet.status = dai::Tracklet::TrackingStatus::TRACKED;
+    tracklet.roi = dai::Rect(7.0F, 6.0F, 22.0F, 16.0F, false);
+    tracklet.srcImgDetection.label = 2;
+    tracklet.srcImgDetection.labelName = "tracked";
+    tracklet.srcImgDetection.confidence = 0.91F;
+    tracklet.srcImgDetection.setBoundingBox(dai::RotatedRect(tracklet.roi, 0.0F));
+    tracklet.spatialCoordinates = {40.0F, 10.0F, 1400.0F};
+    tracklet.velocity = dai::Point3f(1.0F, 0.0F, 0.25F);
+    tracklet.speed = 1.03F;
+
+    msg->tracklets.push_back(tracklet);
+    msg->unit = dai::LengthUnit::MILLIMETER;
+    setCommonMetadata(*msg, sequenceNum);
+    msg->setTransformation(transform);
+    return msg;
+}
+
+template <typename InputT>
+struct AlignmentResult {
+    shared_ptr<InputT> aligned;
+    shared_ptr<InputT> passthrough;
+};
+
+template <typename InputT, typename AlignToT>
+AlignmentResult<InputT> runGenericAlignmentOnce(const shared_ptr<InputT>& inputMsg, const shared_ptr<AlignToT>& alignToMsg) {
+    dai::Pipeline pipeline(false);
+    auto align = pipeline.create<dai::node::Align>();
+    align->setRunOnHost(true);
+
+    auto inputQueue = align->input.createInputQueue();
+    auto alignToQueue = align->inputAlignTo.createInputQueue();
+    auto alignedQueue = align->outputAligned.createOutputQueue();
+    auto passthroughQueue = align->passthroughInput.createOutputQueue();
+
+    pipeline.start();
+    inputQueue->send(inputMsg);
+    alignToQueue->send(alignToMsg);
+
+    AlignmentResult<InputT> result;
+    result.aligned = getRequiredMessage<InputT>(alignedQueue);
+    result.passthrough = getRequiredMessage<InputT>(passthroughQueue);
+
+    pipeline.stop();
+    pipeline.wait();
+    return result;
+}
+
+void requireMessageMetadata(const dai::ImgFrame& expectedInput, const dai::ImgFrame& actual, const dai::ImgTransformation& expectedTransform) {
+    const auto [expectedWidth, expectedHeight] = expectedTransform.getSize();
+    requireCommonMetadata(expectedInput, actual);
+    requireTransformEqual(expectedTransform, actual.transformation);
+    REQUIRE(actual.getInstanceNum() == expectedInput.getInstanceNum());
+    REQUIRE(actual.getType() == expectedInput.getType());
+    REQUIRE(actual.getWidth() == expectedWidth);
+    REQUIRE(actual.getHeight() == expectedHeight);
+    REQUIRE(actual.getData().size() == expectedWidth * expectedHeight);
+}
+
+void requireMessageMetadata(const dai::ImgDetections& expectedInput, const dai::ImgDetections& actual, const dai::ImgTransformation& expectedTransform) {
+    const auto [expectedWidth, expectedHeight] = expectedTransform.getSize();
+    requireCommonMetadata(expectedInput, actual);
+    requireTransformEqual(expectedTransform, messageTransformation(actual));
+    REQUIRE(actual.detections.size() == expectedInput.detections.size());
+    REQUIRE(actual.getSegmentationMaskWidth() == expectedWidth);
+    REQUIRE(actual.getSegmentationMaskHeight() == expectedHeight);
+    REQUIRE(actual.getMaskData().has_value());
+    REQUIRE(actual.getMaskData()->size() == expectedWidth * expectedHeight);
+}
+
+void requireMessageMetadata(const dai::SpatialImgDetections& expectedInput,
+                            const dai::SpatialImgDetections& actual,
+                            const dai::ImgTransformation& expectedTransform) {
+    const auto [expectedWidth, expectedHeight] = expectedTransform.getSize();
+    requireCommonMetadata(expectedInput, actual);
+    requireTransformEqual(expectedTransform, messageTransformation(actual));
+    REQUIRE(actual.unit == expectedInput.unit);
+    REQUIRE(actual.detections.size() == expectedInput.detections.size());
+    REQUIRE(actual.getSegmentationMaskWidth() == expectedWidth);
+    REQUIRE(actual.getSegmentationMaskHeight() == expectedHeight);
+    REQUIRE(actual.getMaskData().has_value());
+    REQUIRE(actual.getMaskData()->size() == expectedWidth * expectedHeight);
+}
+
+void requireMessageMetadata(const dai::SegmentationMask& expectedInput, const dai::SegmentationMask& actual, const dai::ImgTransformation& expectedTransform) {
+    const auto [expectedWidth, expectedHeight] = expectedTransform.getSize();
+    requireCommonMetadata(expectedInput, actual);
+    requireTransformEqual(expectedTransform, messageTransformation(actual));
+    REQUIRE(actual.getLabels() == expectedInput.getLabels());
+    REQUIRE(actual.getWidth() == expectedWidth);
+    REQUIRE(actual.getHeight() == expectedHeight);
+    REQUIRE(actual.getMaskData().size() == expectedWidth * expectedHeight);
+}
+
+void requireMessageMetadata(const dai::AprilTags& expectedInput, const dai::AprilTags& actual, const dai::ImgTransformation& expectedTransform) {
+    requireCommonMetadata(expectedInput, actual);
+    requireTransformEqual(expectedTransform, messageTransformation(actual));
+    REQUIRE(actual.aprilTags.size() == expectedInput.aprilTags.size());
+}
+
+void requireMessageMetadata(const dai::Tracklets& expectedInput, const dai::Tracklets& actual, const dai::ImgTransformation& expectedTransform) {
+    requireCommonMetadata(expectedInput, actual);
+    requireTransformEqual(expectedTransform, messageTransformation(actual));
+    REQUIRE(actual.unit == expectedInput.unit);
+    REQUIRE(actual.tracklets.size() == expectedInput.tracklets.size());
+}
+
+template <typename InputT, typename AlignToT>
+void runGenericMetadataCase() {
+    const auto inputTransform = makeTransform(kSourceWidth, kSourceHeight, false);
+    const auto alignToTransform = makeTransform(kTargetWidth, kTargetHeight, true);
+
+    auto inputMsg = createSampleMessage<InputT>(inputTransform, 11);
+    auto alignToMsg = createSampleMessage<AlignToT>(alignToTransform, 27);
+    auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
+
+    requireMessageMetadata(*inputMsg, *result.aligned, expectedAlignedTransform(alignToTransform));
+    requireMessageMetadata(*inputMsg, *result.passthrough, inputTransform);
+}
+}  // namespace
+
+TEST_CASE("Test Align generic path message to ImgFrame metadata") {
+    SECTION("ImgDetections -> ImgFrame") {
+        runGenericMetadataCase<dai::ImgDetections, dai::ImgFrame>();
+    }
+    SECTION("SpatialImgDetections -> ImgFrame") {
+        runGenericMetadataCase<dai::SpatialImgDetections, dai::ImgFrame>();
+    }
+    SECTION("SegmentationMask -> ImgFrame") {
+        runGenericMetadataCase<dai::SegmentationMask, dai::ImgFrame>();
+    }
+    SECTION("AprilTags -> ImgFrame") {
+        runGenericMetadataCase<dai::AprilTags, dai::ImgFrame>();
+    }
+    SECTION("Tracklets -> ImgFrame") {
+        runGenericMetadataCase<dai::Tracklets, dai::ImgFrame>();
+    }
+}
+
+TEST_CASE("Test Align generic path ImgFrame to message metadata") {
+    SECTION("ImgFrame -> ImgDetections") {
+        runGenericMetadataCase<dai::ImgFrame, dai::ImgDetections>();
+    }
+    SECTION("ImgFrame -> SpatialImgDetections") {
+        runGenericMetadataCase<dai::ImgFrame, dai::SpatialImgDetections>();
+    }
+    SECTION("ImgFrame -> SegmentationMask") {
+        runGenericMetadataCase<dai::ImgFrame, dai::SegmentationMask>();
+    }
+    SECTION("ImgFrame -> AprilTags") {
+        runGenericMetadataCase<dai::ImgFrame, dai::AprilTags>();
+    }
+    SECTION("ImgFrame -> Tracklets") {
+        runGenericMetadataCase<dai::ImgFrame, dai::Tracklets>();
+    }
+}
+
+TEST_CASE("Test Align generic path message to message metadata") {
+    SECTION("ImgDetections -> ImgDetections") {
+        runGenericMetadataCase<dai::ImgDetections, dai::ImgDetections>();
+    }
+    SECTION("SpatialImgDetections -> SpatialImgDetections") {
+        runGenericMetadataCase<dai::SpatialImgDetections, dai::SpatialImgDetections>();
+    }
+    SECTION("SegmentationMask -> SegmentationMask") {
+        runGenericMetadataCase<dai::SegmentationMask, dai::SegmentationMask>();
+    }
+    SECTION("AprilTags -> AprilTags") {
+        runGenericMetadataCase<dai::AprilTags, dai::AprilTags>();
+    }
+    SECTION("Tracklets -> Tracklets") {
+        runGenericMetadataCase<dai::Tracklets, dai::Tracklets>();
+    }
+}
+
+TEST_CASE("Test Align generic path refreshes rectification metadata when ImgTransformation changes") {
+    dai::Pipeline pipeline(false);
+    auto align = pipeline.create<dai::node::Align>();
+    align->setRunOnHost(true);
+
+    auto inputQueue = align->input.createInputQueue();
+    auto alignToQueue = align->inputAlignTo.createInputQueue();
+    auto alignedQueue = align->outputAligned.createOutputQueue();
+
+    const auto inputTransform = makeTransform(kSourceWidth, kSourceHeight, false);
+    const auto firstAlignToTransform = makeTransform(kTargetWidth, kTargetHeight, true);
+    const auto secondAlignToTransform = makeTransform(kUpdatedTargetWidth, kUpdatedTargetHeight, true);
+
+    pipeline.start();
+
+    inputQueue->send(createSampleMessage<dai::SegmentationMask>(inputTransform, 101));
+    alignToQueue->send(createSampleMessage<dai::ImgFrame>(firstAlignToTransform, 201));
+
+    auto firstAligned = getRequiredMessage<dai::SegmentationMask>(alignedQueue);
+    requireMessageMetadata(*createSampleMessage<dai::SegmentationMask>(inputTransform, 101), *firstAligned, expectedAlignedTransform(firstAlignToTransform));
+    REQUIRE(firstAligned->getWidth() == kTargetWidth);
+    REQUIRE(firstAligned->getHeight() == kTargetHeight);
+
+    inputQueue->send(createSampleMessage<dai::SegmentationMask>(inputTransform, 102));
+    alignToQueue->send(createSampleMessage<dai::ImgFrame>(secondAlignToTransform, 202));
+
+    auto secondAligned = getRequiredMessage<dai::SegmentationMask>(alignedQueue);
+    requireMessageMetadata(*createSampleMessage<dai::SegmentationMask>(inputTransform, 102), *secondAligned, expectedAlignedTransform(secondAlignToTransform));
+    REQUIRE(secondAligned->getWidth() == kUpdatedTargetWidth);
+    REQUIRE(secondAligned->getHeight() == kUpdatedTargetHeight);
+    REQUIRE(secondAligned->getMaskData().size() == kUpdatedTargetWidth * kUpdatedTargetHeight);
+
+    pipeline.stop();
+    pipeline.wait();
+}
