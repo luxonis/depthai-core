@@ -477,8 +477,8 @@ TEST_CASE("SegmentationParser can set a specific head") {
         if(head.metadata.extraParams.contains("classes_in_one_layer")) {
             REQUIRE(parser.properties.classesInOneLayer == head.metadata.extraParams.at("classes_in_one_layer").get<bool>());
         }
-        if(head.metadata.extraParams.contains("background_class")) {
-            REQUIRE(parser.getBackgroundClass() == head.metadata.extraParams.at("background_class").get<bool>());
+        if(head.metadata.backgroundClass.has_value()) {
+            REQUIRE(parser.getBackgroundClass() == *head.metadata.backgroundClass);
         }
         if(head.metadata.confThreshold) {
             REQUIRE(parser.initialConfig->getConfidenceThreshold() == Catch::Approx(static_cast<float>(*head.metadata.confThreshold)));
@@ -510,8 +510,8 @@ TEST_CASE("SegmentationParser can set a specific nn archive") {
     if(segmentationHead->metadata.extraParams.contains("classes_in_one_layer")) {
         REQUIRE(parser.properties.classesInOneLayer == segmentationHead->metadata.extraParams.at("classes_in_one_layer").get<bool>());
     }
-    if(segmentationHead->metadata.extraParams.contains("background_class")) {
-        REQUIRE(parser.getBackgroundClass() == segmentationHead->metadata.extraParams.at("background_class").get<bool>());
+    if(segmentationHead->metadata.backgroundClass.has_value()) {
+        REQUIRE(parser.getBackgroundClass() == *segmentationHead->metadata.backgroundClass);
     }
     if(segmentationHead->metadata.confThreshold) {
         REQUIRE(parser.initialConfig->getConfidenceThreshold() == Catch::Approx(static_cast<float>(*segmentationHead->metadata.confThreshold)));
