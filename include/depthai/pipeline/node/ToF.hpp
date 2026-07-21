@@ -91,6 +91,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
 class ToF : public DeviceNodeGroup {
    public:
+    ToF() : ToF(nullptr) {}
     ToF(const std::shared_ptr<Device>& device);
 
     ~ToF() override;
