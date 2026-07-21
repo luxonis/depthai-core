@@ -1,15 +1,11 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
-
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
 #include <depthai/properties/ImageAlignProperties.hpp>
 
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
-#include "depthai/pipeline/datatype/Transformable.hpp"
 
 namespace dai {
 namespace node {
@@ -38,27 +34,27 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImageAlignConfig, false}}}};
 
     /**
-     * Input message to be aligned. Can be either ImgFrame or any message that implements Transformable interface.
+     * Input message.
      * Default queue is non-blocking with size 4.
      */
-    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
+    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Input align to message.
      * Default queue is non-blocking with size 1.
      */
-    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}, true}};
+    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
 
     /**
-     * Outputs the input message aligned to the inputAlignTo message. Output message will be of the same type as input message.
+     * Outputs ImgFrame message that is aligned to inputAlignTo.
      */
-    Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
+    Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInput{*this, {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
+    Output passthroughInput{*this, {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Specify the output size of the aligned image
@@ -100,28 +96,6 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
 
    private:
     bool runOnHostVar = false;
-
-#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-    struct ImgFrameRunState;
-
-    ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform);
-    static void updateShiftFactor(ImgFrameRunState& state, uint16_t staticDepthPlane);
-    ImgTransformation extractTransformationFromBuffer(const std::shared_ptr<Buffer>& buffer, DatatypeEnum datatype);
-
-    void legacyRun(std::shared_ptr<ImgFrame> firstInputImg,
-                   std::shared_ptr<ImgFrame> inputAlignToMsg);  // lagacy ImgFrame to ImgFrame alignment
-    void genericAlignRun(std::shared_ptr<Buffer> firstInput,
-                         std::shared_ptr<Buffer> inputAlignToMsg);  // if one of the inputs is transformable buffer
-
-    std::shared_ptr<ImgFrame> alignImgFrame(
-        ImgFrame inputImg, const ImgFrameRunState& state, std::array<uint8_t, 3> bgColor = {0, 0, 0});
-
-    std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>& inputMsg,
-                                                      DatatypeEnum inputType,
-                                                      const ImgTransformation& targetTransform,
-                                                      const ImgFrameRunState& runState,
-                                                      bool& warnedAboutDistortion);
-#endif
 };
 
 }  // namespace node
