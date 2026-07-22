@@ -133,8 +133,8 @@ void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
         properties.classesInOneLayer = head.metadata.extraParams.at("classes_in_one_layer").get<bool>();
     }
 
-    if(head.metadata.extraParams.contains("background_class")) {
-        properties.backgroundClass = head.metadata.extraParams.at("background_class").get<bool>();
+    if(head.metadata.backgroundClass.has_value()) {
+        properties.backgroundClass = *head.metadata.backgroundClass;
     }
 
     if(head.metadata.classes) {
