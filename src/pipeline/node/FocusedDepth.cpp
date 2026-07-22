@@ -1,7 +1,5 @@
 #include "depthai/pipeline/node/FocusedDepth.hpp"
 
-#include "depthai/pipeline/datatype/GateControl.hpp"
-
 namespace dai {
 namespace node {
 
@@ -34,65 +32,47 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
 
     rectification->output1.link(focusController->inputs["left"]);
     rectification->output2.link(focusController->inputs["right"]);
-    // Crop the exact synchronized pair the controller selected (not the free-running
-    // rectification stream), so left/right crops share a timestamp for the backend Sync.
-    focusController->leftImage.link(leftImageManip->inputImage);
-    focusController->rightImage.link(rightImageManip->inputImage);
 
-    // Crop generation is driven by runtime config; the same image must be reused for sequential crops.
-    leftImageManip->inputConfig.setWaitForMessage(true);
-    rightImageManip->inputConfig.setWaitForMessage(true);
-    leftImageManip->setMaxOutputFrameSize(8 * 1024 * 1024);
-    rightImageManip->setMaxOutputFrameSize(8 * 1024 * 1024);
-    leftImageManip->setNumFramesPool(4);
-    rightImageManip->setNumFramesPool(4);
+    ImageManip* leftManips[FocusController::kNumTiers] = {&*leftManip0, &*leftManip1, &*leftManip2};
+    ImageManip* rightManips[FocusController::kNumTiers] = {&*rightManip0, &*rightManip1, &*rightManip2};
+    NeuralDepth* neurals[FocusController::kNumTiers] = {&*neuralDepth0, &*neuralDepth1, &*neuralDepth2};
 
-    focusController->leftConfig.link(leftImageManip->inputConfig);
-    focusController->rightConfig.link(rightImageManip->inputConfig);
+    for(int tier = 0; tier < FocusController::kNumTiers; ++tier) {
+        ImageManip* lm = leftManips[tier];
+        ImageManip* rm = rightManips[tier];
+        NeuralDepth* nd = neurals[tier];
 
-    // One ImageManip output feeds the inputs of all candidate gates; only one gate is opened per crop.
-    leftImageManip->out.link(gateNeuralLeft->input);
-    leftImageManip->out.link(gateStereoLeft->input);
-    leftImageManip->out.link(gateGpuLeft->input);
-    rightImageManip->out.link(gateNeuralRight->input);
-    rightImageManip->out.link(gateStereoRight->input);
-    rightImageManip->out.link(gateGpuRight->input);
+        // Crop the exact synchronized pair the controller emits (not the free-running rectification
+        // stream), so a tier's left/right crops share a timestamp for its backend Sync. The first
+        // config each frame consumes the image; later crops on the tier reuse it.
+        focusController->leftImage.link(lm->inputImage);
+        focusController->rightImage.link(rm->inputImage);
 
-    // Gate controls open both left and right gates for the selected backend.
-    focusController->gateControlNeural.link(gateNeuralLeft->inputControl);
-    focusController->gateControlNeural.link(gateNeuralRight->inputControl);
-    focusController->gateControlStereo.link(gateStereoLeft->inputControl);
-    focusController->gateControlStereo.link(gateStereoRight->inputControl);
-    focusController->gateControlGpu.link(gateGpuLeft->inputControl);
-    focusController->gateControlGpu.link(gateGpuRight->inputControl);
+        lm->inputConfig.setWaitForMessage(true);
+        rm->inputConfig.setWaitForMessage(true);
+        // All of a frame's crop configs are dispatched up front, so the config queue must hold them
+        // (one round-trip per crop was the old bottleneck; this lets the manips + backend pipeline).
+        lm->inputConfig.setMaxSize(FocusController::kMaxCropsPerFrame);
+        rm->inputConfig.setMaxSize(FocusController::kMaxCropsPerFrame);
+        // The image is broadcast once per frame and reused across the frame's crops; keep the latest.
+        lm->inputImage.setBlocking(false);
+        rm->inputImage.setBlocking(false);
+        lm->inputImage.setMaxSize(1);
+        rm->inputImage.setMaxSize(1);
+        lm->setMaxOutputFrameSize(8 * 1024 * 1024);
+        rm->setMaxOutputFrameSize(8 * 1024 * 1024);
+        lm->setNumFramesPool(4);
+        rm->setNumFramesPool(4);
 
-    // Gates start closed.
-    gateNeuralLeft->initialConfig = GateControl::closeGate();
-    gateNeuralRight->initialConfig = GateControl::closeGate();
-    gateStereoLeft->initialConfig = GateControl::closeGate();
-    gateStereoRight->initialConfig = GateControl::closeGate();
-    gateGpuLeft->initialConfig = GateControl::closeGate();
-    gateGpuRight->initialConfig = GateControl::closeGate();
+        focusController->leftConfigTier(tier).link(lm->inputConfig);
+        focusController->rightConfigTier(tier).link(rm->inputConfig);
 
-    // Backend build() links the gate outputs to the backend inputs.
-
-    neuralDepth->depth.link(focusController->depthCrop);
-    neuralDepth->confidence.link(focusController->confidenceCrop);
-    stereoDepth->depth.link(focusController->depthCrop);
-    stereoDepth->confidenceMap.link(focusController->confidenceCrop);
-    gpuStereo->depth.link(focusController->depthCrop);
-    gpuStereo->confidenceMap.link(focusController->confidenceCrop);
-
-    // Default focused backend on RVC4 is the small NeuralDepth model.
-    neuralDepth->setRectification(false).build(gateNeuralLeft->output, gateNeuralRight->output, DeviceModelZoo::NEURAL_DEPTH_480X300);
-    stereoDepth->setRectification(false);
-    stereoDepth->setInputResolution(640, 400);
-    stereoDepth->build(gateStereoLeft->output, gateStereoRight->output, StereoDepth::PresetMode::FAST_ACCURACY);
-    gpuStereo->setRectification(false);
-    gpuStereo->build(gateGpuLeft->output, gateGpuRight->output);
+        nd->setRectification(false).build(lm->out, rm->out, FocusController::kTiers[tier].model);
+        nd->depth.link(focusController->depthCropTier(tier));
+        nd->confidence.link(focusController->confidenceCropTier(tier));
+    }
 
     focusController->setTargetFps(fps.value_or(30.0f));
-    focusController->setNeuralModel(DeviceModelZoo::NEURAL_DEPTH_480X300);
 
     return std::static_pointer_cast<FocusedDepth>(shared_from_this());
 }

@@ -3,12 +3,9 @@
 #include <depthai/common/optional.hpp>
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
-#include <depthai/pipeline/node/Gate.hpp>
-#include <depthai/pipeline/node/GPUStereo.hpp>
 #include <depthai/pipeline/node/ImageManip.hpp>
 #include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <depthai/pipeline/node/Rectification.hpp>
-#include <depthai/pipeline/node/StereoDepth.hpp>
 #include <depthai/pipeline/node/host/FocusController.hpp>
 
 namespace dai {
@@ -35,17 +32,20 @@ class FocusedDepth : public DeviceNodeGroup {
     // focusController has to exist first.
     Subnode<FocusController> focusController{*this, "focusController"};
     Subnode<Rectification> rectification{*this, "rectification"};
-    Subnode<ImageManip> leftImageManip{*this, "leftImageManip"};
-    Subnode<ImageManip> rightImageManip{*this, "rightImageManip"};
-    Subnode<Gate> gateNeuralLeft{*this, "gateNeuralLeft"};
-    Subnode<Gate> gateNeuralRight{*this, "gateNeuralRight"};
-    Subnode<Gate> gateStereoLeft{*this, "gateStereoLeft"};
-    Subnode<Gate> gateStereoRight{*this, "gateStereoRight"};
-    Subnode<Gate> gateGpuLeft{*this, "gateGpuLeft"};
-    Subnode<Gate> gateGpuRight{*this, "gateGpuRight"};
-    Subnode<NeuralDepth> neuralDepth{*this, "neuralDepth"};
-    Subnode<StereoDepth> stereoDepth{*this, "stereoDepth"};
-    Subnode<GPUStereo> gpuStereo{*this, "gpuStereo"};
+
+    // One left/right crop ImageManip pair and one NeuralDepth backend per size tier
+    // (FocusController::kNumTiers). Each backend has a fixed input size, so the left/right crops
+    // reaching any one backend always match in size, and small crops use the fast small model
+    // while large crops use a larger one. Crops are routed to a tier by FocusController::selectTier.
+    Subnode<ImageManip> leftManip0{*this, "leftManip0"};
+    Subnode<ImageManip> rightManip0{*this, "rightManip0"};
+    Subnode<ImageManip> leftManip1{*this, "leftManip1"};
+    Subnode<ImageManip> rightManip1{*this, "rightManip1"};
+    Subnode<ImageManip> leftManip2{*this, "leftManip2"};
+    Subnode<ImageManip> rightManip2{*this, "rightManip2"};
+    Subnode<NeuralDepth> neuralDepth0{*this, "neuralDepth0"};
+    Subnode<NeuralDepth> neuralDepth1{*this, "neuralDepth1"};
+    Subnode<NeuralDepth> neuralDepth2{*this, "neuralDepth2"};
 
    public:
     Input& inputDetections;

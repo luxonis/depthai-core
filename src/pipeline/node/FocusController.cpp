@@ -1,14 +1,13 @@
 #include "depthai/pipeline/node/host/FocusController.hpp"
 
-#include <depthai/pipeline/datatype/GateControl.hpp>
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
-#include <depthai/pipeline/node/NeuralDepth.hpp>
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <vector>
 
 namespace dai {
@@ -23,48 +22,57 @@ void FocusController::setTargetFps(float targetFps) {
     targetFps_ = targetFps;
 }
 
-void FocusController::setNeuralModel(DeviceModelZoo model) {
-    neuralModel_ = model;
-    neuralSize_ = NeuralDepth::getInputSize(model);
-    switch(model) {
-        case DeviceModelZoo::NEURAL_DEPTH_1248X780:
-            neuralFps_ = 8.5f;
-            break;
-        case DeviceModelZoo::NEURAL_DEPTH_1056X660:
-            neuralFps_ = 10.0f;
-            break;
-        case DeviceModelZoo::NEURAL_DEPTH_960X600:
-            neuralFps_ = 14.0f;
-            break;
-        case DeviceModelZoo::NEURAL_DEPTH_864X540:
-            neuralFps_ = 18.0f;
-            break;
-        case DeviceModelZoo::NEURAL_DEPTH_768X480:
-            neuralFps_ = 22.0f;
-            break;
-        case DeviceModelZoo::NEURAL_DEPTH_576X360:
-            neuralFps_ = 38.0f;
-            break;
-        case DeviceModelZoo::NEURAL_DEPTH_480X300:
-            neuralFps_ = 56.0f;
-            break;
-        case DeviceModelZoo::NEURAL_DEPTH_384X240:
-        case DeviceModelZoo::NEURAL_DEPTH_288X180:
-        case DeviceModelZoo::NEURAL_DEPTH_192X120:
-            neuralFps_ = 60.0f;
-            break;
+Node::Input& FocusController::depthCropTier(int tier) {
+    switch(tier) {
+        case 0:
+            return depthCrop0;
+        case 1:
+            return depthCrop1;
         default:
-            neuralFps_ = 56.0f;
-            break;
+            return depthCrop2;
     }
 }
 
-void FocusController::setStereoSize(int width, int height) {
-    stereoSize_ = {width, height};
+Node::Input& FocusController::confidenceCropTier(int tier) {
+    switch(tier) {
+        case 0:
+            return confidenceCrop0;
+        case 1:
+            return confidenceCrop1;
+        default:
+            return confidenceCrop2;
+    }
 }
 
-void FocusController::setStereoFps(float fps) {
-    stereoFps_ = fps;
+Node::Output& FocusController::leftConfigTier(int tier) {
+    switch(tier) {
+        case 0:
+            return leftConfig0;
+        case 1:
+            return leftConfig1;
+        default:
+            return leftConfig2;
+    }
+}
+
+Node::Output& FocusController::rightConfigTier(int tier) {
+    switch(tier) {
+        case 0:
+            return rightConfig0;
+        case 1:
+            return rightConfig1;
+        default:
+            return rightConfig2;
+    }
+}
+
+int FocusController::selectTier(int cropW, int cropH) {
+    for(int tier = 0; tier < kNumTiers; ++tier) {
+        if(kTiers[tier].w >= cropW && kTiers[tier].h >= cropH) {
+            return tier;
+        }
+    }
+    return kNumTiers - 1;
 }
 
 std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
@@ -113,6 +121,49 @@ std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
     }
 
     return crops;
+}
+
+std::vector<FocusController::MergedCrop> FocusController::mergeCrops(const std::vector<Crop>& crops) {
+    std::vector<MergedCrop> merged;
+    merged.reserve(crops.size());
+    for(const auto& c : crops) {
+        if(c.w <= 0 || c.h <= 0) {
+            continue;
+        }
+        merged.push_back({c.x, c.y, c.w, c.h, {{{c.detX, c.detY, c.detW, c.detH}}}});
+    }
+
+    // Two rectangles overlap when they intersect on both axes.
+    auto overlaps = [](const MergedCrop& a, const MergedCrop& b) {
+        return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    };
+
+    // Repeatedly fold any crop that overlaps an earlier one into it (union rectangle, combined
+    // detection list) until a full pass makes no change. Crop counts are small, so O(n^2) per pass
+    // is fine, and merging can create new overlaps that later passes resolve.
+    bool mergedAny = true;
+    while(mergedAny) {
+        mergedAny = false;
+        for(std::size_t i = 0; i < merged.size(); ++i) {
+            for(std::size_t j = i + 1; j < merged.size();) {
+                if(overlaps(merged[i], merged[j])) {
+                    const int x2 = std::max(merged[i].x + merged[i].w, merged[j].x + merged[j].w);
+                    const int y2 = std::max(merged[i].y + merged[i].h, merged[j].y + merged[j].h);
+                    merged[i].x = std::min(merged[i].x, merged[j].x);
+                    merged[i].y = std::min(merged[i].y, merged[j].y);
+                    merged[i].w = x2 - merged[i].x;
+                    merged[i].h = y2 - merged[i].y;
+                    merged[i].dets.insert(merged[i].dets.end(), merged[j].dets.begin(), merged[j].dets.end());
+                    merged.erase(merged.begin() + static_cast<std::ptrdiff_t>(j));
+                    mergedAny = true;
+                } else {
+                    ++j;
+                }
+            }
+        }
+    }
+
+    return merged;
 }
 
 FocusController::CopyRegion FocusController::computeCopyRegion(const Crop& crop, int frameWidth, int frameHeight) {
@@ -223,125 +274,65 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
 
     const std::vector<Crop> crops = computeCrops(frameWidth, frameHeight, boxes);
 
-    int largestCropW = 0;
-    int largestCropH = 0;
-    std::uint64_t totalArea = 0;
-    for(const auto& crop : crops) {
-        totalArea += static_cast<std::uint64_t>(crop.w) * static_cast<std::uint64_t>(crop.h);
-        largestCropW = std::max(largestCropW, crop.w);
-        largestCropH = std::max(largestCropH, crop.h);
+    // Fold overlapping crops (disparity padding makes neighbouring detections overlap) into their
+    // union so each region is inferred once instead of once per detection.
+    std::vector<MergedCrop> merged = mergeCrops(crops);
+    if(static_cast<int>(merged.size()) > kMaxCropsPerFrame) {
+        merged.resize(kMaxCropsPerFrame);
     }
 
-    if(crops.empty()) {
+    if(merged.empty()) {
         auto depth = makeZeroFrame(ImgFrame::Type::RAW16, 2);
         auto conf = makeZeroFrame(ImgFrame::Type::RAW8, 1);
         confidenceOut.send(conf);
         return depth;
     }
 
-    // Backend selection per frame budget.
-    const int N = static_cast<int>(crops.size());
-    const float framePeriod = (targetFps_ > 0.0f) ? (1.0f / targetFps_) : (1.0f / 30.0f);
-
-    const int neuralArea = neuralSize_.first * neuralSize_.second;
-    const int neuralFrames = neuralArea > 0 ? static_cast<int>(totalArea / static_cast<std::uint64_t>(neuralArea)) : 0;
-    const float neuralTime = static_cast<float>(std::max(N, neuralFrames)) / neuralFps_;
-
-    const int stereoArea = stereoSize_.first * stereoSize_.second;
-    const int stereoFrames = stereoArea > 0 ? static_cast<int>(totalArea / static_cast<std::uint64_t>(stereoArea)) : 0;
-    const float stereoTime = static_cast<float>(std::max(N, stereoFrames)) / stereoFps_;
-
-    struct GpuProfile {
-        int w, h;
-        float fps;
-    };
-    static constexpr GpuProfile GPU_PROFILES[] = {
-        {640, 400, 55.0f},
-        {1280, 800, 30.0f},
-        {2592, 1944, 5.0f},
-    };
-    float gpuTime = std::numeric_limits<float>::max();
-    for(const auto& p : GPU_PROFILES) {
-        if(largestCropW <= p.w && largestCropH <= p.h) {
-            const int gpuArea = p.w * p.h;
-            const int gpuFrames = gpuArea > 0 ? static_cast<int>(totalArea / static_cast<std::uint64_t>(gpuArea)) : 0;
-            gpuTime = static_cast<float>(std::max(N, gpuFrames)) / p.fps;
-            break;
-        }
-    }
-
-    Backend selected = Backend::NEURAL;
-    float bestTime = neuralTime;
-    if(stereoTime < bestTime) {
-        bestTime = stereoTime;
-        selected = Backend::STEREO;
-    }
-    if(gpuTime < bestTime) {
-        bestTime = gpuTime;
-        selected = Backend::GPU;
-    }
-
-    // The STEREO/GPU backends require different crop ImageManip output sizes than NEURAL, and the
-    // left/right crop ImageManips can desync by a frame when the selected backend (hence output
-    // size) changes between groups, delivering mismatched left/right sizes to the backend and
-    // crashing it device-side (e.g. StereoDepth "Left 480x300, Right 640x400"). Until each backend
-    // has its own fixed-size crop manips, pin the reliable NEURAL backend, which produces
-    // correct per-crop depth for every crop size. The selection above is kept for future use.
-    selected = Backend::NEURAL;
-
-    // Per-frame algorithm notification.
-    switch(selected) {
-        case Backend::NEURAL:
-            // gateControlNeural opened per crop below.
-            break;
-        case Backend::STEREO:
-            // gateControlStereo opened per crop below.
-            break;
-        case Backend::GPU:
-            // gateControlGpu opened per crop below.
-            break;
-    }
-
-    (void)framePeriod;  // Future logging; for now selection simply picks the fastest.
-
     cv::Mat fullDepth = cv::Mat::zeros(frameHeight, frameWidth, CV_16U);
     cv::Mat fullConf = cv::Mat::zeros(frameHeight, frameWidth, CV_8U);
 
     const std::chrono::milliseconds timeout(5000);
 
-    // Feed the synchronized pair to the crop ImageManips once per group; the crop configs
-    // below reuse it (setReusePreviousImage) for every crop, so both left and right crops
-    // carry this pair's timestamp and the backend's left/right Sync can pair them.
+    // Broadcast the synchronized pair to every tier's crop ImageManips once per group. The first
+    // config sent to a tier consumes this frame (setReusePreviousImage(false)); later crops on the
+    // same tier reuse it, so all of a tier's left/right crops share this timestamp and its backend
+    // Sync can pair them. Tiers that get no crop this frame just hold the (non-blocking) latest.
     leftImage.send(leftImg);
     rightImage.send(rightImg);
 
-    for(std::size_t idx = 0; idx < crops.size(); ++idx) {
-        const auto& crop = crops[idx];
-        const int outW = (selected == Backend::GPU) ? crop.w : (selected == Backend::STEREO) ? stereoSize_.first : neuralSize_.first;
-        const int outH = (selected == Backend::GPU) ? crop.h : (selected == Backend::STEREO) ? stereoSize_.second : neuralSize_.second;
+    // Phase 1 (dispatch): route each merged crop to the smallest tier that fits it and queue its
+    // ImageManip config on that tier. Dispatching every crop up front lets the crop ImageManips and
+    // the per-tier NeuralDepth backends run back-to-back (pipelined) instead of the frame costing
+    // one full host<->device round-trip per crop, which was the dominant cost. Different sizes go to
+    // different backends, so left/right crops fed to any one backend always match in size.
+    std::vector<int> cropTier(merged.size());
+    std::array<int, kNumTiers> perTierCount{};
+    for(std::size_t idx = 0; idx < merged.size(); ++idx) {
+        const auto& mc = merged[idx];
+        const int tier = selectTier(mc.w, mc.h);
+        cropTier[idx] = tier;
 
         auto cfg = std::make_shared<ImageManipConfig>();
-        cfg->setReusePreviousImage(idx > 0);
-        auto resizeMode = (selected == Backend::GPU) ? ImageManipConfig::ResizeMode::NONE : ImageManipConfig::ResizeMode::STRETCH;
-        cfg->setOutputSize(static_cast<std::uint32_t>(outW), static_cast<std::uint32_t>(outH), resizeMode);
+        cfg->setReusePreviousImage(perTierCount[tier] > 0);
+        cfg->setOutputSize(static_cast<std::uint32_t>(kTiers[tier].w), static_cast<std::uint32_t>(kTiers[tier].h), ImageManipConfig::ResizeMode::STRETCH);
         cfg->base.center = false;
-        cfg->addCrop(dai::Rect(static_cast<float>(crop.x), static_cast<float>(crop.y), static_cast<float>(crop.w), static_cast<float>(crop.h)), false);
+        cfg->addCrop(dai::Rect(static_cast<float>(mc.x), static_cast<float>(mc.y), static_cast<float>(mc.w), static_cast<float>(mc.h)), false);
 
-        leftConfig.send(cfg);
-        rightConfig.send(cfg);
+        leftConfigTier(tier).send(cfg);
+        rightConfigTier(tier).send(cfg);
+        ++perTierCount[tier];
+    }
 
-        std::shared_ptr<GateControl> gateOpen = GateControl::openGate(1);
-        if(selected == Backend::NEURAL) {
-            gateControlNeural.send(gateOpen);
-        } else if(selected == Backend::STEREO) {
-            gateControlStereo.send(gateOpen);
-        } else {
-            gateControlGpu.send(gateOpen);
-        }
+    // Phase 2 (collect): each tier emits one depth/confidence pair per crop, in dispatch order, so
+    // collecting in the original dispatch order pulls each tier's queue in the order it was fed.
+    for(std::size_t idx = 0; idx < merged.size(); ++idx) {
+        const auto& mc = merged[idx];
+        const int tier = cropTier[idx];
+        const int outW = kTiers[tier].w;
 
         bool hasTimedOut = false;
-        auto depthMsg = depthCrop.get<ImgFrame>(timeout, hasTimedOut);
-        auto confMsg = confidenceCrop.get<ImgFrame>(timeout, hasTimedOut);
+        auto depthMsg = depthCropTier(tier).get<ImgFrame>(timeout, hasTimedOut);
+        auto confMsg = confidenceCropTier(tier).get<ImgFrame>(timeout, hasTimedOut);
         if(!depthMsg || !confMsg) {
             continue;
         }
@@ -358,37 +349,41 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         // crop's true focal, so depth comes out scaled by (fxCorrect / fxUsed) and the error
         // differs per crop width, producing depth discontinuities between regions.
         //
-        // The correct focal for a crop of width crop.w (in full-frame px) resized to outW is
-        // fxFull * outW / crop.w. Multiplying depth by fxCorrect / fxUsed restores metric depth
+        // The correct focal for a crop of width mc.w (in full-frame px) resized to outW is
+        // fxFull * outW / mc.w. Multiplying depth by fxCorrect / fxUsed restores metric depth
         // consistently across crop sizes. If the frame intrinsic is ever made crop-correct
         // upstream, fxUsed == fxCorrect and this becomes a no-op.
         const float fxUsed = depthMsg->getTransformation().getIntrinsicMatrix()[0][0];
-        const float depthScale = depthFocalScale(fxFull, fxUsed, outW, crop.w);
+        const float depthScale = depthFocalScale(fxFull, fxUsed, outW, mc.w);
         if(std::abs(depthScale - 1.0f) > 1e-3f) {
             depthCropMat.convertTo(depthCropMat, depthCropMat.type(), depthScale);
         }
 
         cv::Mat scaledDepth, scaledConf;
-        if(static_cast<int>(depthCropMat.cols) != crop.w || static_cast<int>(depthCropMat.rows) != crop.h) {
-            cv::resize(depthCropMat, scaledDepth, cv::Size(crop.w, crop.h), 0, 0, cv::INTER_NEAREST);
-            cv::resize(confCropMat, scaledConf, cv::Size(crop.w, crop.h), 0, 0, cv::INTER_NEAREST);
+        if(static_cast<int>(depthCropMat.cols) != mc.w || static_cast<int>(depthCropMat.rows) != mc.h) {
+            cv::resize(depthCropMat, scaledDepth, cv::Size(mc.w, mc.h), 0, 0, cv::INTER_NEAREST);
+            cv::resize(confCropMat, scaledConf, cv::Size(mc.w, mc.h), 0, 0, cv::INTER_NEAREST);
         } else {
             scaledDepth = depthCropMat;
             scaledConf = confCropMat;
         }
 
-        // Detection region mapped into the (resized) crop mat, clamped to both buffers.
-        const CopyRegion region = computeCopyRegion(crop, frameWidth, frameHeight);
-        if(!region.valid) {
-            continue;
-        }
+        // Write the focused output back only over each detection box the merged crop covers (not
+        // the padded/merged rectangle), so gaps between merged detections stay unfilled.
+        for(const auto& det : mc.dets) {
+            const Crop writeBack{mc.x, mc.y, mc.w, mc.h, det[0], det[1], det[2], det[3]};
+            const CopyRegion region = computeCopyRegion(writeBack, frameWidth, frameHeight);
+            if(!region.valid) {
+                continue;
+            }
 
-        cv::Mat cropDepth(scaledDepth, cv::Rect(region.srcX, region.srcY, region.w, region.h));
-        cv::Mat cropConf(scaledConf, cv::Rect(region.srcX, region.srcY, region.w, region.h));
-        cv::Mat fullDepthRoi(fullDepth, cv::Rect(region.dstX, region.dstY, region.w, region.h));
-        cv::Mat fullConfRoi(fullConf, cv::Rect(region.dstX, region.dstY, region.w, region.h));
-        cropDepth.copyTo(fullDepthRoi);
-        cropConf.copyTo(fullConfRoi);
+            cv::Mat cropDepth(scaledDepth, cv::Rect(region.srcX, region.srcY, region.w, region.h));
+            cv::Mat cropConf(scaledConf, cv::Rect(region.srcX, region.srcY, region.w, region.h));
+            cv::Mat fullDepthRoi(fullDepth, cv::Rect(region.dstX, region.dstY, region.w, region.h));
+            cv::Mat fullConfRoi(fullConf, cv::Rect(region.dstX, region.dstY, region.w, region.h));
+            cropDepth.copyTo(fullDepthRoi);
+            cropConf.copyTo(fullConfRoi);
+        }
     }
 
     auto depthImg = std::make_shared<ImgFrame>();

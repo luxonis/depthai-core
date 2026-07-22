@@ -22,24 +22,56 @@ class FocusController : public CustomNode<FocusController> {
 
     std::shared_ptr<FocusController> build(float targetFps = 30.0f);
 
-    Input depthCrop{*this, {"depthCrop", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-    Input confidenceCrop{*this,
-                         {"confidenceCrop", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    // A backend tier: a NeuralDepth model of a fixed input size. Crops are routed to the smallest
+    // tier that fits them (selectTier), so a small detection uses the fast small model and a large
+    // one uses a larger model instead of stretching every crop to a single size.
+    struct Tier {
+        DeviceModelZoo model;
+        int w;
+        int h;
+    };
+    static constexpr int kNumTiers = 3;
+    static constexpr std::array<Tier, kNumTiers> kTiers{{
+        {DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300},
+        {DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480},
+        {DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780},
+    }};
 
-    Output leftConfig{*this, {"leftConfig", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
-    Output rightConfig{*this, {"rightConfig", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
+    // Upper bound on merged crops processed per frame. Also the depth/confidence crop input queue
+    // depth, so every crop dispatched in a frame can be buffered before it is collected (the
+    // dispatch-all-then-collect pipeline would otherwise deadlock if a tier's results piled up).
+    static constexpr int kMaxCropsPerFrame = 24;
 
-    // The synchronized frames the crops are computed from. Feeding these to the crop
-    // ImageManips (instead of the free-running rectification stream) keeps the left and
-    // right crops on the same timestamp so the backend's left/right Sync can pair them.
+    // One depth/confidence crop input and one left/right config output per tier. Each tier has its
+    // own fixed-size crop ImageManips and NeuralDepth backend, so left/right crops always match in
+    // size (no backend size-mismatch crash) and different sizes never share a manip.
+    Input depthCrop0{*this, {"depthCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input depthCrop1{*this, {"depthCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input depthCrop2{*this, {"depthCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input confidenceCrop0{*this, {"confidenceCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input confidenceCrop1{*this, {"confidenceCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input confidenceCrop2{*this, {"confidenceCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    Output leftConfig0{*this, {"leftConfig0", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
+    Output leftConfig1{*this, {"leftConfig1", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
+    Output leftConfig2{*this, {"leftConfig2", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
+    Output rightConfig0{*this, {"rightConfig0", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
+    Output rightConfig1{*this, {"rightConfig1", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
+    Output rightConfig2{*this, {"rightConfig2", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
+
+    // The synchronized frames the crops are computed from. Broadcast to every tier's crop
+    // ImageManips (instead of the free-running rectification stream) so the left and right crops
+    // stay on the same timestamp and each backend's left/right Sync can pair them.
     Output leftImage{*this, {"leftImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output rightImage{*this, {"rightImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
-    Output gateControlNeural{*this, {"gateControlNeural", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, true}}}}};
-    Output gateControlStereo{*this, {"gateControlStereo", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, true}}}}};
-    Output gateControlGpu{*this, {"gateControlGpu", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, true}}}}};
-
     Output confidenceOut{*this, {"confidenceOut", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+
+    // Per-tier port accessors (tier in [0, kNumTiers)).
+    Input& depthCropTier(int tier);
+    Input& confidenceCropTier(int tier);
+    Output& leftConfigTier(int tier);
+    Output& rightConfigTier(int tier);
 
     std::shared_ptr<Buffer> processGroup(std::shared_ptr<MessageGroup> in) override;
 
@@ -51,11 +83,28 @@ class FocusController : public CustomNode<FocusController> {
         float detX, detY, detW, detH;
     };
 
+    // A crop shared by one or more detections. Disparity padding makes neighbouring detections'
+    // crops overlap; merging them into the union rectangle runs one inference instead of several,
+    // while the focused output is still written back only over each detection's own box.
+    struct MergedCrop {
+        int x, y, w, h;
+        // Detection boxes covered by this crop, each {detX, detY, detW, detH} in pixels.
+        std::vector<std::array<float, 4>> dets;
+    };
+
     // Convert normalized {xmin, ymin, xmax, ymax} detection boxes into backend crops for a
     // frameWidth x frameHeight frame. Degenerate or fully out-of-frame boxes are dropped, and
     // crops are clamped so they always stay within the frame. Pure and free of device state so
     // the crop geometry (multiple/varying/edge-touching regions) can be tested on host.
     static std::vector<Crop> computeCrops(int frameWidth, int frameHeight, const std::vector<std::array<float, 4>>& normalizedBoxes);
+
+    // Merge crops whose backend rectangles overlap into their bounding union, accumulating the
+    // detection boxes each union covers. Non-overlapping crops become single-detection merged
+    // crops. The result has no two overlapping rectangles. Pure and host-testable.
+    static std::vector<MergedCrop> mergeCrops(const std::vector<Crop>& crops);
+
+    // Smallest tier whose model fits a cropW x cropH crop; the largest tier if none fit. Pure.
+    static int selectTier(int cropW, int cropH);
 
     // Where a crop's depth/confidence is written back into the full frame. src* index into the
     // crop mat (sized w x h from Crop), dst* index into the frameWidth x frameHeight output, and
@@ -77,21 +126,11 @@ class FocusController : public CustomNode<FocusController> {
     static float depthFocalScale(float fxFull, float fxUsed, int outW, int cropW);
 
     void setTargetFps(float targetFps);
-    void setNeuralModel(DeviceModelZoo model);
-    void setStereoSize(int width, int height);
-    void setStereoFps(float fps);
 
     constexpr static const char* NAME = "FocusController";
 
    private:
-    enum class Backend { NEURAL, STEREO, GPU };
-
     float targetFps_ = 30.0f;
-    DeviceModelZoo neuralModel_ = DeviceModelZoo::NEURAL_DEPTH_480X300;
-    std::pair<int, int> neuralSize_ = {480, 300};
-    float neuralFps_ = 56.0f;
-    std::pair<int, int> stereoSize_ = {640, 400};
-    float stereoFps_ = 30.0f;
 };
 
 }  // namespace node

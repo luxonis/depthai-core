@@ -191,6 +191,138 @@ TEST_CASE("FocusController::computeCopyRegion: edge-touching detection stays ins
     }
 }
 
+namespace {
+
+FocusController::Crop cropRect(int x, int y, int w, int h) {
+    // Detection box == crop box for merge tests (padding is irrelevant to the union logic).
+    return FocusController::Crop{x, y, w, h, static_cast<float>(x), static_cast<float>(y), static_cast<float>(w), static_cast<float>(h)};
+}
+
+int totalDets(const std::vector<FocusController::MergedCrop>& merged) {
+    int n = 0;
+    for(const auto& m : merged) {
+        n += static_cast<int>(m.dets.size());
+    }
+    return n;
+}
+
+// No two merged crops may overlap after merging.
+void requireNoOverlap(const std::vector<FocusController::MergedCrop>& merged) {
+    for(std::size_t i = 0; i < merged.size(); ++i) {
+        for(std::size_t j = i + 1; j < merged.size(); ++j) {
+            const auto& a = merged[i];
+            const auto& b = merged[j];
+            const bool overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+            REQUIRE_FALSE(overlap);
+        }
+    }
+}
+
+}  // namespace
+
+TEST_CASE("FocusController::mergeCrops: overlapping crops become one inference, disjoint stay separate", "[FocusController]") {
+    SECTION("two overlapping crops merge into their union and keep both detections") {
+        const std::vector<FocusController::Crop> crops = {cropRect(100, 100, 200, 200), cropRect(250, 150, 200, 200)};
+        const auto merged = FocusController::mergeCrops(crops);
+        REQUIRE(merged.size() == 1);
+        REQUIRE(merged[0].dets.size() == 2);
+        // Union rectangle covers both inputs.
+        REQUIRE(merged[0].x == 100);
+        REQUIRE(merged[0].y == 100);
+        REQUIRE(merged[0].x + merged[0].w == 450);
+        REQUIRE(merged[0].y + merged[0].h == 350);
+        requireNoOverlap(merged);
+    }
+    SECTION("disjoint crops are not merged") {
+        const std::vector<FocusController::Crop> crops = {cropRect(0, 0, 100, 100), cropRect(500, 500, 100, 100)};
+        const auto merged = FocusController::mergeCrops(crops);
+        REQUIRE(merged.size() == 2);
+        REQUIRE(merged[0].dets.size() == 1);
+        REQUIRE(merged[1].dets.size() == 1);
+    }
+    SECTION("merely touching (shared edge, no overlap) crops are not merged") {
+        const std::vector<FocusController::Crop> crops = {cropRect(0, 0, 100, 100), cropRect(100, 0, 100, 100)};
+        const auto merged = FocusController::mergeCrops(crops);
+        REQUIRE(merged.size() == 2);
+    }
+    SECTION("transitive overlap: A-B and B-C overlap but A-C do not; all fold into one") {
+        const std::vector<FocusController::Crop> crops = {cropRect(0, 0, 120, 100), cropRect(100, 0, 120, 100), cropRect(200, 0, 120, 100)};
+        const auto merged = FocusController::mergeCrops(crops);
+        REQUIRE(merged.size() == 1);
+        REQUIRE(merged[0].dets.size() == 3);
+        REQUIRE(merged[0].x == 0);
+        REQUIRE(merged[0].x + merged[0].w == 320);
+        requireNoOverlap(merged);
+    }
+    SECTION("no detection is ever dropped and the result has no overlaps") {
+        const std::vector<FocusController::Crop> crops = {
+            cropRect(10, 10, 100, 100),
+            cropRect(80, 40, 100, 100),   // overlaps the first
+            cropRect(400, 300, 50, 50),   // isolated
+            cropRect(420, 320, 60, 60),   // overlaps the previous
+            cropRect(900, 700, 40, 40),   // isolated
+        };
+        const auto merged = FocusController::mergeCrops(crops);
+        REQUIRE(totalDets(merged) == static_cast<int>(crops.size()));
+        REQUIRE(merged.size() == 3);
+        requireNoOverlap(merged);
+    }
+    SECTION("empty input yields no crops") {
+        REQUIRE(FocusController::mergeCrops({}).empty());
+    }
+}
+
+TEST_CASE("FocusController::mergeCrops: overlapping detections from computeCrops fold into fewer inferences", "[FocusController]") {
+    // Two detections close enough that their disparity-padded crops overlap must merge, while every
+    // detection box is still individually covered by the merged crop it belongs to.
+    const std::vector<std::array<float, 4>> boxes = {
+        box(0.40f, 0.40f, 0.50f, 0.60f),
+        box(0.52f, 0.40f, 0.62f, 0.60f),
+    };
+    const auto crops = FocusController::computeCrops(kW, kH, boxes);
+    REQUIRE(crops.size() == 2);
+    const auto merged = FocusController::mergeCrops(crops);
+    REQUIRE(merged.size() < crops.size());
+    REQUIRE(totalDets(merged) == static_cast<int>(crops.size()));
+    for(const auto& m : merged) {
+        for(const auto& det : m.dets) {
+            // Each detection box lies within the merged crop it was folded into.
+            REQUIRE(det[0] >= static_cast<float>(m.x) - 1.0f);
+            REQUIRE(det[1] >= static_cast<float>(m.y) - 1.0f);
+            REQUIRE(det[0] + det[2] <= static_cast<float>(m.x + m.w) + 1.0f);
+            REQUIRE(det[1] + det[3] <= static_cast<float>(m.y + m.h) + 1.0f);
+        }
+    }
+}
+
+TEST_CASE("FocusController::selectTier: routes a crop to the smallest tier that fits it", "[FocusController]") {
+    // Tiers ascend in size; a crop goes to the first tier whose model dimensions cover it.
+    const auto& tiers = FocusController::kTiers;
+    REQUIRE(FocusController::kNumTiers == 3);
+
+    SECTION("a crop that fits the smallest tier uses tier 0") {
+        REQUIRE(FocusController::selectTier(tiers[0].w, tiers[0].h) == 0);
+        REQUIRE(FocusController::selectTier(64, 48) == 0);
+    }
+    SECTION("a crop larger than tier 0 but within tier 1 uses tier 1") {
+        REQUIRE(FocusController::selectTier(tiers[0].w + 1, tiers[0].h + 1) == 1);
+        REQUIRE(FocusController::selectTier(tiers[1].w, tiers[1].h) == 1);
+    }
+    SECTION("a crop larger than tier 1 uses the largest tier") {
+        REQUIRE(FocusController::selectTier(tiers[1].w + 1, tiers[1].h + 1) == 2);
+        REQUIRE(FocusController::selectTier(tiers[2].w, tiers[2].h) == 2);
+    }
+    SECTION("a crop larger than every tier still clamps to the largest tier") {
+        REQUIRE(FocusController::selectTier(tiers[2].w + 500, tiers[2].h + 500) == FocusController::kNumTiers - 1);
+    }
+    SECTION("tiers are strictly ascending in both dimensions") {
+        for(int t = 1; t < FocusController::kNumTiers; ++t) {
+            REQUIRE(tiers[t].w > tiers[t - 1].w);
+            REQUIRE(tiers[t].h > tiers[t - 1].h);
+        }
+    }
+}
+
 TEST_CASE("FocusController::depthFocalScale: makes depth crop-size invariant", "[FocusController]") {
     // Full rectified frame focal (1280-wide) and neural backend output width.
     constexpr float fxFull = 570.42f;
