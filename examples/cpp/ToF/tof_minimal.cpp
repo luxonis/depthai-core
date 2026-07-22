@@ -20,17 +20,9 @@ cv::Mat colorizeDepth(const cv::Mat& frame, float minDepth, float maxDepth) {
         cv::min(logDepth, logMaxDepth, logDepth);
         cv::max(logDepth, logMinDepth, logDepth);
 
-        cv::Mat validMask = invalidMask == 0;
-        double validMin = 0.0;
-        double validMax = 0.0;
-        cv::minMaxLoc(logDepth, &validMin, &validMax, nullptr, nullptr, validMask);
-
-        if(validMax <= validMin) {
-            return cv::Mat::zeros(frame.size(), CV_8UC3);
-        }
-
         cv::Mat colored;
-        logDepth.convertTo(colored, CV_8U, 255.0 / (validMax - validMin), -validMin * 255.0 / (validMax - validMin));
+        logDepth.convertTo(
+            colored, CV_8U, 255.0 / (logMaxDepth - logMinDepth), -logMinDepth * 255.0 / (logMaxDepth - logMinDepth));
         cv::applyColorMap(colored, colored, cv::COLORMAP_JET);
         colored.setTo(cv::Scalar::all(0), invalidMask);
         return colored;
