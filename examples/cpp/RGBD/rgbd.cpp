@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
 #include "rerun.hpp"
@@ -47,8 +49,18 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline;
     // Define sources and outputs
+    // Pick a COLOR-capable socket for the color camera so it does not take the
+    // socket the Depth node needs (e.g. the ToF sensor on ToF-only devices, where
+    // the default AUTO socket would otherwise grab the only ToF-capable sensor).
+    auto colorSocket = dai::CameraBoardSocket::CAM_A;
+    for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
+            colorSocket = features.socket;
+            break;
+        }
+    }
     auto color = pipeline.create<dai::node::Camera>();
-    color->build();
+    color->build(colorSocket);
     // The Depth node manages its own stereo cameras and backend internally, so no
     // explicit left/right cameras or StereoDepth node are needed.
     auto depth = pipeline.create<dai::node::Depth>();

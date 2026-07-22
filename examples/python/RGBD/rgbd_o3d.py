@@ -59,7 +59,15 @@ class O3DNode(dai.node.ThreadedHostNode):
 with dai.Pipeline() as p:
     fps = 30
     # Define sources and outputs
-    color = p.create(dai.node.Camera).build()
+    # Pick a COLOR-capable socket for the color camera so it does not take the
+    # socket the Depth node needs (e.g. the ToF sensor on ToF-only devices, where
+    # the default AUTO socket would otherwise grab the only ToF-capable sensor).
+    colorSocket = dai.CameraBoardSocket.CAM_A
+    for features in p.getDefaultDevice().getConnectedCameraFeatures():
+        if dai.CameraSensorType.COLOR in features.supportedTypes:
+            colorSocket = features.socket
+            break
+    color = p.create(dai.node.Camera).build(colorSocket)
     # The Depth node manages its own stereo cameras and backend internally, so no
     # explicit left/right cameras or StereoDepth node are needed.
     depth = p.create(dai.node.Depth)

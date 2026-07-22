@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <argparse/argparse.hpp>
 #include <csignal>
 #include <depthai/remote_connection/RemoteConnection.hpp>
@@ -62,8 +63,18 @@ int main(int argc, char** argv) {
         const std::pair<int, int> size = std::make_pair(640, 400);
 
         // Create color camera
+        // Pick a COLOR-capable socket for the color camera so it does not take the
+        // socket the Depth/ToF source needs (e.g. the ToF sensor on ToF-only devices,
+        // where the default AUTO socket would otherwise grab the only ToF-capable sensor).
+        auto colorSocket = dai::CameraBoardSocket::CAM_A;
+        for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
+            if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
+                colorSocket = features.socket;
+                break;
+            }
+        }
         auto color = pipeline.create<dai::node::Camera>();
-        color->build(dai::CameraBoardSocket::AUTO, std::nullopt, fps);
+        color->build(colorSocket, std::nullopt, fps);
 
         // Create depth source based on argument
         dai::node::DepthSource depthSource;

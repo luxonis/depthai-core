@@ -38,7 +38,15 @@ with dai.Pipeline() as p:
     )
     # The Depth node manages its own stereo cameras and backend internally, and
     # RGBD aligns its depth to the color camera internally.
-    color = p.create(dai.node.Camera).build()
+    # Pick a COLOR-capable socket for the color camera so it does not take the
+    # socket the Depth node needs (e.g. the ToF sensor on ToF-only devices, where
+    # the default AUTO socket would otherwise grab the only ToF-capable sensor).
+    colorSocket = dai.CameraBoardSocket.CAM_A
+    for features in p.getDefaultDevice().getConnectedCameraFeatures():
+        if dai.CameraSensorType.COLOR in features.supportedTypes:
+            colorSocket = features.socket
+            break
+    color = p.create(dai.node.Camera).build(colorSocket)
     depth = p.create(dai.node.Depth)
     rgbd = p.create(dai.node.RGBD).build(color, depth)
     customNode = p.create(CustomPCLProcessingNode)

@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <csignal>
 #include <depthai/remote_connection/RemoteConnection.hpp>
 #include <iostream>
@@ -58,8 +59,18 @@ int main() {
     dai::Pipeline pipeline;
     // The Depth node manages its own stereo cameras and backend internally, and
     // RGBD aligns its depth to the color camera internally.
+    // Pick a COLOR-capable socket for the color camera so it does not take the
+    // socket the Depth node needs (e.g. the ToF sensor on ToF-only devices, where
+    // the default AUTO socket would otherwise grab the only ToF-capable sensor).
+    auto colorSocket = dai::CameraBoardSocket::CAM_A;
+    for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
+            colorSocket = features.socket;
+            break;
+        }
+    }
     auto color = pipeline.create<dai::node::Camera>();
-    color->build();
+    color->build(colorSocket);
     auto depth = pipeline.create<dai::node::Depth>();
     auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth);
     auto customNode = pipeline.create<CustomPCLProcessingNode>();
