@@ -351,8 +351,6 @@ void ImageAlign::run() {
             }
 
             if(!initialized) {
-                inputAlignToImgFrame = *inputAlignToImg;
-
                 alignToTransformation = inputAlignToImg->transformation;
                 inputAlignToTransform = alignToTransformation;
                 const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
@@ -543,7 +541,7 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        alignedImg->setMetadata(inputAlignToImgFrame);
+        alignedImg->setMetadata(*inputImg);
         alignedImg->setWidth(alignWidth);
         alignedImg->setHeight(alignHeight);
         alignedImg->setType(inputImg->getType());
