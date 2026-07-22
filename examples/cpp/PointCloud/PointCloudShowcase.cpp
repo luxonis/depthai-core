@@ -63,7 +63,10 @@ int main() {
         // Unified Depth node. It manages its own stereo cameras and backend, and
         // aligns depth to the color output internally via setAlignTo (no ImageAlign
         // node needed), so every PointCloud node below consumes color-aligned depth.
+        // The (640, 400) size keeps the depth resolution the same as before
+        // instead of computing depth at the full stereo sensor resolution.
         auto depth = pipeline.create<dai::node::Depth>();
+        depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
         depth->setAlignTo(*colorOut);
 
         // ── 1. Filtered point cloud (METER)

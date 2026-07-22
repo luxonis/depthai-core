@@ -45,8 +45,10 @@ with dai.Pipeline() as p:
             break
     color = p.create(dai.node.Camera).build(colorSocket)
     # The Depth node manages its own stereo cameras and backend internally, so no
-    # explicit left/right cameras or StereoDepth node are needed.
-    depth = p.create(dai.node.Depth)
+    # explicit left/right cameras or StereoDepth node are needed. The (640, 400)
+    # size keeps the depth resolution the same as the RGBD frame size instead of
+    # computing depth at the full stereo sensor resolution.
+    depth = p.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
     rerunViewer = p.create(RerunNode)
 
     # RGBD wires the color camera and aligns the Depth node's depth to it

@@ -20,6 +20,8 @@ void signalHandler(int) {
 constexpr float FPS = 25.0f;
 
 const dai::CameraBoardSocket RGB_SOCKET = dai::CameraBoardSocket::CAM_A;
+const dai::CameraBoardSocket LEFT_SOCKET = dai::CameraBoardSocket::CAM_B;
+const dai::CameraBoardSocket RIGHT_SOCKET = dai::CameraBoardSocket::CAM_C;
 
 // FPS Counter class
 class FPSCounter {
@@ -100,21 +102,41 @@ int main() {
     // Create and configure nodes
     auto camRgb = pipeline.create<dai::node::Camera>();
     camRgb->build(RGB_SOCKET);
-    // The Depth node manages its own stereo cameras and backend, and aligns its
-    // depth output to the RGB camera via setAlignTo (no separate ImageAlign node or
-    // platform-specific alignment path is needed).
-    auto depth = pipeline.create<dai::node::Depth>();
+    auto left = pipeline.create<dai::node::Camera>();
+    left->build(LEFT_SOCKET);
+    auto right = pipeline.create<dai::node::Camera>();
+    right->build(RIGHT_SOCKET);
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto sync = pipeline.create<dai::node::Sync>();
 
+    // Check if platform is RVC4 and create ImageAlign node if needed
+    auto platform = pipeline.getDefaultDevice()->getPlatform();
+    std::shared_ptr<dai::node::ImageAlign> align;
+    if(platform == dai::Platform::RVC4) {
+        align = pipeline.create<dai::node::ImageAlign>();
+    }
+
+    stereo->setExtendedDisparity(true);
     sync->setSyncThreshold(std::chrono::duration<int64_t, std::nano>(static_cast<int64_t>(1e9 / (2.0 * FPS))));
 
     // Configure outputs
     auto rgbOut = camRgb->requestOutput(std::make_pair(1280, 960), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, FPS, true);
-    depth->setAlignTo(*rgbOut);
+    auto leftOut = left->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, FPS);
+    auto rightOut = right->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, FPS);
 
     // Link nodes
     rgbOut->link(sync->inputs["rgb"]);
-    depth->depth().link(sync->inputs["depth_aligned"]);
+    leftOut->link(stereo->left);
+    rightOut->link(stereo->right);
+
+    if(platform == dai::Platform::RVC4) {
+        stereo->depth.link(align->input);
+        rgbOut->link(align->inputAlignTo);
+        align->outputAligned.link(sync->inputs["depth_aligned"]);
+    } else {
+        stereo->depth.link(sync->inputs["depth_aligned"]);
+        rgbOut->link(stereo->inputAlignTo);
+    }
 
     // Create output queue
     auto queue = sync->out.createOutputQueue();

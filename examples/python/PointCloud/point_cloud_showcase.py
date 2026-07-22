@@ -60,7 +60,7 @@ def main() -> None:
         # Unified Depth node. It manages its own stereo cameras and backend, and
         # aligns depth to the color output internally via setAlignTo (no ImageAlign
         # node needed), so every PointCloud node below consumes color-aligned depth.
-        depth = pipeline.create(dai.node.Depth)
+        depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
         depth.setAlignTo(colorOut)
 
         # ── 1. Filtered point cloud  (METER) ────

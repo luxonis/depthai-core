@@ -62,8 +62,11 @@ int main() {
     auto color = pipeline.create<dai::node::Camera>();
     color->build(colorSocket);
     // The Depth node manages its own stereo cameras and backend internally, so no
-    // explicit left/right cameras or StereoDepth node are needed.
+    // explicit left/right cameras or StereoDepth node are needed. The (640, 400)
+    // size keeps the depth resolution the same as the RGBD frame size instead of
+    // computing depth at the full stereo sensor resolution.
     auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO, 30.0f, std::make_pair(640u, 400u));
     auto rerun = pipeline.create<RerunNode>();
 
     // RGBD wires the color camera and aligns the Depth node's depth to it

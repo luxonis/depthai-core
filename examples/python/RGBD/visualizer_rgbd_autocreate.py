@@ -21,7 +21,9 @@ with dai.Pipeline() as p:
             colorSocket = features.socket
             break
     color = p.create(dai.node.Camera).build(colorSocket)
-    depth = p.create(dai.node.Depth)
+    # The (640, 400) size keeps the depth resolution the same as the RGBD frame
+    # size instead of computing depth at the full stereo sensor resolution.
+    depth = p.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
     rgbd = p.create(dai.node.RGBD).build(color, depth)
     remoteConnector.addTopic("pcl", rgbd.pcl, "common")
 

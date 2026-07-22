@@ -14,7 +14,7 @@ colorOut = color.requestOutput((640, 400), type=dai.ImgFrame.Type.RGB888i,
 
 # Unified Depth node. It manages its own stereo cameras and backend, and aligns
 # depth to the color output internally via setAlignTo (no ImageAlign node needed).
-depth = pipeline.create(dai.node.Depth)
+depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
 depth.setAlignTo(colorOut)
 
 # Point cloud

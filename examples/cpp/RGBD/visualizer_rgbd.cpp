@@ -82,9 +82,11 @@ int main(int argc, char** argv) {
         if(depthSourceArg == "stereo") {
             // The Depth node manages its own stereo cameras and backend internally,
             // so no explicit left/right cameras are needed. RGBD aligns its depth to
-            // the color camera internally.
+            // the color camera internally. The (640, 400) size keeps the depth
+            // resolution the same as the RGBD frame size instead of the full stereo
+            // sensor resolution.
             auto depth = pipeline.create<dai::node::Depth>();
-            depth->build(fps);
+            depth->build(dai::node::Depth::Algorithm::AUTO, fps, std::make_pair(640u, 400u));
 
             depthSource = depth;
         } else if(depthSourceArg == "neural") {

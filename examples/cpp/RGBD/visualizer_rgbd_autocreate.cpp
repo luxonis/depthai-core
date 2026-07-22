@@ -39,7 +39,10 @@ int main() {
     }
     auto color = pipeline.create<dai::node::Camera>();
     color->build(colorSocket);
+    // The (640, 400) size keeps the depth resolution the same as the RGBD frame
+    // size instead of computing depth at the full stereo sensor resolution.
     auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
     auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth);
 
     remoteConnector.addTopic("pcl", rgbd->pcl);
