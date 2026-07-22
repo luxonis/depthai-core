@@ -59,7 +59,7 @@ jobs:
         WHEEL_PYTHON_SETS='["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314"]'
         WHEEL_MACOS_RUNNERS='["macos-14"]'
 
-        if [[ "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == refs/heads/release* || "$GITHUB_REF" == refs/tags/v* ]]; then
+        if [[ "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == "refs/heads/develop" || "$GITHUB_REF" == refs/heads/release* || "$GITHUB_REF" == refs/tags/v* ]]; then
           WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
         fi
 
