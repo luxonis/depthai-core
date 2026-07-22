@@ -24,6 +24,7 @@ message CameraSettings {
     CameraFsync fsync = 6;
     int32 sensorMode = 7;
     float fps = 8;
+    optional float sensorTemperatureC = 9;
 }
 
 message Extrinsics {

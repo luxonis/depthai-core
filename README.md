@@ -220,18 +220,18 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
+| DEPTHAI_CACHE_DIR | Overrides the default DepthAI cache root directory. Default: macOS `~/Library/Caches/depthai`, Windows `%LOCALAPPDATA%\\depthai\\cache`, Linux `${XDG_CACHE_HOME:-~/.cache}/depthai` |
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. Automatic crash dump collection is disabled if set to 0. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in milliseconds to wait for device reboot when obtaining a crash dump. Automatic crash dump collection is disabled if set to 0. |
 | DEPTHAI_TELEMETRY | Telemetry is enabled by default. Set to `0` or `false` to disable event capture. |
 | DEPTHAI_TELEMETRY_URL | Overrides the telemetry capture URL. |
 | DEPTHAI_TELEMETRY_API_KEY | Overrides the telemetry API key. |
-| DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
 | DEPTHAI_HUB_EVENTS_BASE_URL | URL for events of the Luxonis Hub |
 | DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |
 | DEPTHAI_ZOO_INTERNET_CHECK | (Default) 1 - perform internet check, if available, download the newest model version 0 - skip internet check and use cached model |
 | DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT | (Default) 1000 - timeout in milliseconds for the internet check |
-| DEPTHAI_ZOO_CACHE_PATH | (Default) .depthai_cached_models - Folder where cached zoo models are stored |
+| DEPTHAI_ZOO_CACHE_PATH | (Default) `${DEPTHAI_CACHE_DIR}/models` - Folder where cached zoo models are stored |
 | DEPTHAI_ZOO_MODELS_PATH | (Default) depthai_models - Folder where zoo model description files are stored |
 | DEPTHAI_RECORD | Enables holistic record to the specified directory. |
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |

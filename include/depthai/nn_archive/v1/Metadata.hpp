@@ -57,6 +57,8 @@ namespace v1 {
  * @ivar n_classes: Number of object classes segmented by the model.
  * @type is_softmax: bool
  * @ivar is_softmax: True, if output is already softmaxed
+ * @type background_class: bool | None
+ * @ivar background_class: True, if class index 0 is treated as background.
  *
  * Metadata for the YOLO head.
  *
@@ -83,6 +85,8 @@ namespace v1 {
  * @type is_softmax: bool | None
  * @ivar is_softmax: True, if output is already softmaxed in YOLO
  * instance segmentation
+ * @type strides: list | None
+ * @ivar strides: Strides for each YOLO output.
  *
  * Metadata for the basic head. It allows you to specify additional
  * fields.
@@ -140,6 +144,8 @@ namespace v1 {
  * @ivar n_classes: Number of object classes segmented by the model.
  * @type is_softmax: bool
  * @ivar is_softmax: True, if output is already softmaxed
+ * @type background_class: bool | None
+ * @ivar background_class: True, if class index 0 is treated as background.
  *
  * Metadata for the YOLO head.
  *
@@ -166,6 +172,8 @@ namespace v1 {
  * @type is_softmax: bool | None
  * @ivar is_softmax: True, if output is already softmaxed in YOLO
  * instance segmentation
+ * @type strides: list | None
+ * @ivar strides: Strides for each YOLO output.
  *
  * Metadata for the basic head. It allows you to specify additional
  * fields.
@@ -211,6 +219,10 @@ struct Metadata {
      */
     std::optional<bool> isSoftmax;
     /**
+     * True, if class index 0 is treated as background.
+     */
+    std::optional<bool> backgroundClass;
+    /**
      * Output name corresponding to predicted bounding box coordinates.
      */
     std::optional<std::string> boxesOutputs;
@@ -250,6 +262,10 @@ struct Metadata {
      * A list of output names for each of the different YOLO grid sizes.
      */
     std::optional<std::vector<std::string>> yoloOutputs;
+    /**
+     * Strides for each YOLO output.
+     */
+    std::optional<std::vector<int64_t>> strides;
 
     /**
      * Additional parameters

@@ -5,6 +5,7 @@
 #include <csignal>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "common/DetectionNetworkType.hpp"
@@ -45,8 +46,18 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
     }
 }
 
+void DetectionParser::setNNArchiveHead(const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
+}
+
 std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
     setNNArchive(nnArchive);
+    nnInput.link(input);
+    return std::static_pointer_cast<DetectionParser>(shared_from_this());
+}
+
+std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
     nnInput.link(input);
     return std::static_pointer_cast<DetectionParser>(shared_from_this());
 }
@@ -137,6 +148,21 @@ void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser,
     if(parser.decodingFamily == YoloDecodingFamily::YOLO26) {
         parser.strides = {1};
     }
+    if(metadata.strides) {
+        const size_t numYoloOutputs = metadata.yoloOutputs ? metadata.yoloOutputs->size() : (head.outputs ? head.outputs->size() : 0);
+        DAI_CHECK_V(!metadata.strides->empty(), "`strides` must not be empty.");
+        DAI_CHECK_V(numYoloOutputs > 0, "YOLO outputs must be defined when `strides` is provided.");
+        DAI_CHECK_V(metadata.strides->size() == numYoloOutputs,
+                    "Number of `strides` must match number of YOLO outputs. Got {} strides for {} outputs.",
+                    metadata.strides->size(),
+                    numYoloOutputs);
+        parser.strides.clear();
+        parser.strides.reserve(metadata.strides->size());
+        for(const auto stride : *metadata.strides) {
+            DAI_CHECK_V(stride > 0, "All `strides` values must be positive.");
+            parser.strides.push_back(static_cast<int>(stride));
+        }
+    }
 
     parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
 
@@ -154,11 +180,11 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     DAI_CHECK_V(config.getVersion() == NNArchiveConfigVersion::V1, "Only NNArchive config V1 is supported.");
     auto configV1 = config.getConfig<nn_archive::v1::Config>();
 
-    const auto model = configV1.model;
+    const auto& model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
 
-    std::vector<nn_archive::v1::Head> modelHeads = *model.heads;
+    const auto& modelHeads = *model.heads;
     int yoloHeadIndex = 0;
     int numYoloHeads = 0;
     int numMobilenetHeads = 0;
@@ -180,8 +206,19 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
                 numMobilenetHeads);
 
     int headIndex = (numYoloHeads > 0) ? yoloHeadIndex : mobilenetHeadIndex;
+    const auto& head = modelHeads[headIndex];
 
-    const auto head = (*model.heads)[headIndex];
+    pimpl->logger->info(
+        "Auto-selected NN Archive detection head at index {} of {} (parser: {}, name: {}). Use setNNArchiveHead(...) to select a specific head.",
+        headIndex,
+        modelHeads.size(),
+        head.parser,
+        head.name.value_or("<unnamed>"));
+
+    setConfig(head);
+}
+
+void DetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
     auto& parser = properties.parser;
     resetParser(parser);
 
@@ -239,7 +276,7 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
 
     if(subtypeStr == "yolov6r1") return YoloDecodingFamily::R1AF;
     if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov6" || subtypeStr == "yolov8" || subtypeStr == "yolov10"
-       || subtypeStr == "yolov11")
+       || subtypeStr == "yolov11" || subtypeStr == "yolov12")
         return YoloDecodingFamily::TLBR;
     if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
     if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
@@ -274,7 +311,7 @@ void DetectionParser::setNNArchiveOther(const NNArchive& nnArchive) {
     setConfig(nnArchive.getVersionedConfig());
 }
 
-void DetectionParser::setBlob(OpenVINO::Blob blob) {
+void DetectionParser::setBlob(const OpenVINO::Blob& blob) {
     properties.networkInputs = blob.networkInputs;
 }
 
@@ -286,7 +323,7 @@ void DetectionParser::setBlob(const std::filesystem::path& path) {
     setBlobPath(path);
 }
 
-void DetectionParser::setInputImageSize(std::tuple<int, int> size) {
+void DetectionParser::setInputImageSize(const std::tuple<int, int>& size) {
     setInputImageSize(std::get<0>(size), std::get<1>(size));
 }
 
@@ -305,7 +342,7 @@ void DetectionParser::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }
 
-int DetectionParser::getNumFramesPool() {
+int DetectionParser::getNumFramesPool() const {
     return properties.numFramesPool;
 }
 
@@ -313,7 +350,7 @@ void DetectionParser::setNNFamily(DetectionNetworkType type) {
     properties.parser.nnFamily = type;
 }
 
-DetectionNetworkType DetectionParser::getNNFamily() {
+DetectionNetworkType DetectionParser::getNNFamily() const {
     return properties.parser.nnFamily;
 }
 
@@ -333,11 +370,11 @@ void DetectionParser::setCoordinateSize(const int coordinates) {
     properties.parser.coordinates = coordinates;
 }
 
-void DetectionParser::setAnchors(std::vector<float> anchors) {
+void DetectionParser::setAnchors(const std::vector<float>& anchors) {
     properties.parser.anchors = anchors;
 }
 
-void DetectionParser::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
+void DetectionParser::setAnchorMasks(const std::map<std::string, std::vector<int>>& anchorMasks) {
     properties.parser.anchorMasks = anchorMasks;
 }
 
@@ -499,9 +536,7 @@ void DetectionParser::run() {
         auto tBeforeSend = steady_clock::now();
 
         // Copy over seq and ts
-        outDetections->setSequenceNum(inputData.getSequenceNum());
-        outDetections->setTimestamp(inputData.getTimestamp());
-        outDetections->setTimestampDevice(inputData.getTimestampDevice());
+        outDetections->setBufferMetadataFrom(&inputData);
         outDetections->transformation = inputData.transformation;
 
         {

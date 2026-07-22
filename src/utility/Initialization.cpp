@@ -61,7 +61,7 @@ bool initialize(void* javavm) {
     return initialize(nullptr, false, javavm);
 }
 
-bool initialize(std::string additionalInfo, bool installSignalHandler, void* javavm) {
+bool initialize(const std::string& additionalInfo, bool installSignalHandler, void* javavm) {
     return initialize(additionalInfo.c_str(), installSignalHandler, javavm);
 }
 
@@ -157,7 +157,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
 
         logger::debug("Initialize - finished");
 
-        utility::Telemetry::emitDepthaiTelemetryLoadEvent();
+        utility::Telemetry::getInstance().init();
 
         return true;
     }();

@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - develop
+      - 'release*'
     tags:
       - 'v*'
   pull_request:
@@ -126,7 +127,7 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     strategy:
       matrix:
-        # os: [ubuntu-latest, windows-latest, macos-latest]
+        # os: [ubuntu-latest, windows-2022, macos-latest]
         os: [ubuntu-latest] # TODO(Morato) - re-enable windows & macos
     runs-on: ${{ matrix.os }}
     steps:
@@ -138,13 +139,13 @@ jobs:
         run: echo Home directory inside container $HOME
 
       - name: Cache vcpkg folder
-        if: matrix.os != 'windows-latest'
+        if: matrix.os != 'windows-2022'
         uses: actions/cache@v3
         with:
           path: /home/runner/.vcpkg/
           key: vcpkg-${{ matrix.os }}
       - name: Cache vcpkg folder
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-2022'
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg/
@@ -216,7 +217,7 @@ jobs:
   # This job builds wheels for Windows x86_64 arch
   build-windows-x86_64:
     needs: build-docstrings
-    runs-on: windows-latest
+    runs-on: windows-2022
     strategy:
       matrix:
         python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
@@ -237,7 +238,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg
-          key: vcpkg-windows-latest
+          key: vcpkg-windows-2022
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -275,6 +276,9 @@ jobs:
           python -m pip install --upgrade pip
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
+      - name: Verify wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -291,6 +295,9 @@ jobs:
           for wheel in ./wheelhouse/*.whl; do
             delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" --include vcruntime140.dll --include vcruntime140_1.dll --include ucrtbase.dll -w wheelhouse/audited
           done
+      - name: Verify repaired wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -359,11 +366,17 @@ jobs:
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
+      - name: Verify wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Auditing wheels
         run: cd bindings/python && ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
+      - name: Verify repaired wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -473,12 +486,16 @@ jobs:
       - name: Build wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
+      - name: Verify wheel license files
+        run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
+      - name: Verify repaired wheel license files
+        run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -597,12 +614,16 @@ jobs:
       - name: Building wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
+      - name: Verify wheel license files
+        run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
+      - name: Verify repaired wheel license files
+        run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -664,7 +685,7 @@ jobs:
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v3
       - name: Download audited wheels

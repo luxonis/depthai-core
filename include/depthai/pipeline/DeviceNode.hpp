@@ -52,7 +52,7 @@ class DeviceNode : public ThreadedNode {
      *
      * @param device: shared pointer to device
      */
-    void setDevice(std::shared_ptr<Device> device);
+    void setDevice(const std::shared_ptr<Device>& device);
 };
 
 // Node CRTP class

@@ -49,6 +49,9 @@ int EncodedFrame::getSensorMode() const {
 float EncodedFrame::getFps() const {
     return cam.fps;
 }
+std::optional<float> EncodedFrame::getSensorTemperature() const {
+    return cam.sensorTemperatureC;
+}
 unsigned int EncodedFrame::getQuality() const {
     return quality;
 }
@@ -153,9 +156,7 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
     frame.setSourceSize(transformation.getSourceSize());
     // Important to set the transformation last as setting the source size resets it
     frame.transformation = transformation;
-    frame.setSequenceNum(getSequenceNum());
-    frame.setTimestamp(getTimestamp());
-    frame.setTimestampDevice(getTimestampDevice());
+    frame.setBufferMetadataFrom(this);
     return frame;
 }
 

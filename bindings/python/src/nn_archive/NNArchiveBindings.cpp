@@ -186,6 +186,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1metadata.def_readwrite("maxDet", &v1::Metadata::maxDet, DOC(dai, nn_archive, v1, Metadata, maxDet));
     v1metadata.def_readwrite("nClasses", &v1::Metadata::nClasses, DOC(dai, nn_archive, v1, Metadata, nClasses));
     v1metadata.def_readwrite("isSoftmax", &v1::Metadata::isSoftmax, DOC(dai, nn_archive, v1, Metadata, isSoftmax));
+    v1metadata.def_readwrite("backgroundClass", &v1::Metadata::backgroundClass, DOC(dai, nn_archive, v1, Metadata, backgroundClass));
     v1metadata.def_readwrite("boxesOutputs", &v1::Metadata::boxesOutputs, DOC(dai, nn_archive, v1, Metadata, boxesOutputs));
     v1metadata.def_readwrite("scoresOutputs", &v1::Metadata::scoresOutputs, DOC(dai, nn_archive, v1, Metadata, scoresOutputs));
     v1metadata.def_readwrite("anglesOutputs", &v1::Metadata::anglesOutputs, DOC(dai, nn_archive, v1, Metadata, anglesOutputs));
@@ -196,6 +197,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1metadata.def_readwrite("protosOutputs", &v1::Metadata::protosOutputs, DOC(dai, nn_archive, v1, Metadata, protosOutputs));
     v1metadata.def_readwrite("subtype", &v1::Metadata::subtype, DOC(dai, nn_archive, v1, Metadata, subtype));
     v1metadata.def_readwrite("yoloOutputs", &v1::Metadata::yoloOutputs, DOC(dai, nn_archive, v1, Metadata, yoloOutputs));
+    v1metadata.def_readwrite("strides", &v1::Metadata::strides, DOC(dai, nn_archive, v1, Metadata, strides));
     v1metadata.def_readwrite("extraParams", &v1::Metadata::extraParams, DOC(dai, nn_archive, v1, Metadata, extraParams));
 
     v1metadataClass.def(py::init<>());

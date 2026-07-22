@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -440,6 +441,78 @@ TEST_CASE("DetectionParser can set properties") {
 
         REQUIRE_THROWS(parser.setNNArchive(nnArchive));
     }
+}
+
+TEST_CASE("DetectionParser can set a specific head") {
+    auto description = dai::NNModelDescription{"yolo-p", "RVC4"};
+    auto archivePath = dai::getModelFromZoo(description);
+    dai::NNArchive nnArchive{archivePath};
+
+    const auto& archiveConfig = nnArchive.getConfig<dai::nn_archive::v1::Config>();
+    const auto headCount = archiveConfig.model.heads ? archiveConfig.model.heads->size() : 0;
+    REQUIRE(headCount == 3);
+
+    for(int index = 0; index < headCount; ++index) {
+        auto head = nnArchive.getHeadConfig(static_cast<uint32_t>(index));
+        dai::node::DetectionParser parser;
+
+        // Should work only for detection heads
+        const bool isDetectionHead = head.parser == "YOLO" || head.parser == "YOLOExtendedParser" || head.parser == "SSD" || head.parser == "MOBILENET";
+        if(!isDetectionHead) {
+            REQUIRE_THROWS(parser.setNNArchiveHead(head));
+            continue;
+        }
+        REQUIRE_NOTHROW(parser.setNNArchiveHead(head));
+
+        if(head.metadata.nClasses) {
+            REQUIRE(parser.properties.parser.classes == static_cast<int>(*head.metadata.nClasses));
+        }
+        if(head.metadata.classes) {
+            REQUIRE(parser.properties.parser.classNames.has_value());
+            REQUIRE(*parser.properties.parser.classNames == *head.metadata.classes);
+        }
+        if(head.metadata.yoloOutputs) {
+            REQUIRE(parser.properties.parser.outputNamesToUse == *head.metadata.yoloOutputs);
+        }
+        if(head.metadata.strides) {
+            REQUIRE(parser.properties.parser.strides == std::vector<int>(head.metadata.strides->begin(), head.metadata.strides->end()));
+        }
+    }
+}
+
+TEST_CASE("DetectionParser uses metadata strides") {
+    dai::nn_archive::v1::Head head;
+    head.parser = "YOLO";
+    head.outputs = std::vector<std::string>{"output_0", "output_1"};
+    head.metadata.yoloOutputs = std::vector<std::string>{"output_0", "output_1"};
+    head.metadata.strides = std::vector<int64_t>{4, 8};
+
+    dai::node::DetectionParser parser;
+    const std::vector<int> expectedStrides{4, 8};
+    REQUIRE_NOTHROW(parser.setNNArchiveHead(head));
+    REQUIRE(parser.properties.parser.strides == expectedStrides);
+
+    head.metadata.strides = std::vector<int64_t>{4};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
+
+    head.metadata.strides = std::vector<int64_t>{4, 0};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
+
+    head.metadata.strides = std::vector<int64_t>{};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
+}
+
+TEST_CASE("DetectionParser can be build using a specific head") {
+    dai::nn_archive::v1::Head head;
+    head.parser = "MOBILENET";
+    head.metadata.nClasses = 1;
+
+    dai::Pipeline pipeline;
+    auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    auto parser = pipeline.create<dai::node::DetectionParser>();
+    REQUIRE_NOTHROW(parser->build(nn->out, head));
+    REQUIRE(parser->properties.parser.nnFamily == DetectionNetworkType::MOBILENET);
+    REQUIRE(parser->properties.parser.classes == 1);
 }
 
 TEST_CASE("DetectionParser replay test") {

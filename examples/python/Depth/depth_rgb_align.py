@@ -4,51 +4,56 @@ import numpy as np
 import cv2
 import depthai as dai
 import time
-from datetime import timedelta
-from collections import deque
 
-# This example is intended to run unchanged on an OAK-ToF camera
-FPS = 30.0
-
-RGB_SOCKET = dai.CameraBoardSocket.CAM_C
-TOF_SOCKET = dai.CameraBoardSocket.CAM_A
-ALIGN_SOCKET = RGB_SOCKET
-SIZE=(640, 400)
 
 class FPSCounter:
-    def __init__(self, max_samples=1000):
-        self.timestamps = deque(maxlen=max_samples)
+    def __init__(self):
+        self.frameTimes = []
 
     def tick(self):
-        self.timestamps.append(time.time())
+        now = time.time()
+        self.frameTimes.append(now)
+        self.frameTimes = self.frameTimes[-10:]
 
     def getFps(self):
-        if len(self.timestamps) < 2:
-            return 0.0
-        intervals = [t2 - t1 for t1, t2 in zip(self.timestamps, list(self.timestamps)[1:])]
-        avg_interval = sum(intervals) / len(intervals)
-        return 1.0 / avg_interval if avg_interval > 0 else 0.0
+        if len(self.frameTimes) <= 1:
+            return 0
+        return (len(self.frameTimes) - 1) / (self.frameTimes[-1] - self.frameTimes[0])
+
 
 pipeline = dai.Pipeline()
+device = pipeline.getDefaultDevice()
 
-# Define sources and outputs
-camRgb = pipeline.create(dai.node.Camera).build(RGB_SOCKET)
-tof = pipeline.create(dai.node.ToF).build(TOF_SOCKET, fps=FPS)
+# Find a color camera automatically. Pick the first connected camera that
+# advertises a COLOR sensor instead of hardcoding a socket.
+colorSocket = None
+for features in device.getConnectedCameraFeatures():
+    if dai.CameraSensorType.COLOR in features.supportedTypes:
+        colorSocket = features.socket
+        break
+if colorSocket is None:
+    raise RuntimeError("No color camera found on this device to align the depth to.")
+print(f"Aligning depth to color camera on socket: {colorSocket}")
+
+# Unified Depth node (AUTO backend selection). The Depth node manages its own
+# stereo backend and stereo cameras, resolving the algorithm at wiring time.
+depthNode = pipeline.create(dai.node.Depth)
+
+camRgb = pipeline.create(dai.node.Camera).build(colorSocket)
 sync = pipeline.create(dai.node.Sync)
-align = pipeline.create(dai.node.ImageAlign)
-align.setRunOnHost(True)
 
-sync.setSyncThreshold(timedelta(seconds=0.5 / FPS))
-sync.setRunOnHost(True)
+rgbOut = camRgb.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
 
-# Linking
-cameraOutput = camRgb.requestOutput(SIZE, enableUndistortion=True, fps=FPS)
-cameraOutput.link(sync.inputs["rgb"])
-tof.depth.link(align.input)
-align.outputAligned.link(sync.inputs["depth_aligned"])
-sync.inputs["rgb"].setBlocking(False)
-cameraOutput.link(align.inputAlignTo)
-syncQueue = sync.out.createOutputQueue()
+# Align depth to the color camera. The Depth node wires the alignment internally
+# (StereoDepth's native alignTo or an ImageAlign node) depending on the platform
+# and the resolved backend, so no ImageAlign node is needed.
+depthNode.setAlignTo(rgbOut)
+
+rgbOut.link(sync.inputs["rgb"])
+depthNode.depth.link(sync.inputs["depth_aligned"])
+
+queue = sync.out.createOutputQueue()
+
 
 def colorizeDepth(frameDepth):
     invalidMask = frameDepth == 0
@@ -56,7 +61,8 @@ def colorizeDepth(frameDepth):
     try:
         minDepth = np.percentile(frameDepth[frameDepth != 0], 3)
         maxDepth = np.percentile(frameDepth[frameDepth != 0], 95)
-        logDepth = np.log(frameDepth, where=frameDepth != 0)
+        logDepth = np.zeros_like(frameDepth, dtype=np.float32)
+        np.log(frameDepth, where=frameDepth != 0, out=logDepth)
         logMinDepth = np.log(minDepth)
         logMaxDepth = np.log(maxDepth)
         np.nan_to_num(logDepth, copy=False, nan=logMinDepth)
@@ -94,25 +100,29 @@ def updateBlendWeights(percentRgb):
     depthWeight = 1.0 - rgbWeight
 
 
-
 # Connect to device and start pipeline
 with pipeline:
+    pipeline.build()
+    print(f"Resolved algorithm: {depthNode.getResolvedAlgorithm()}")
+    print(f"Resolved config:    {depthNode.getResolvedConfig()}")
     pipeline.start()
 
     # Configure windows; trackbar adjusts blending ratio of rgb/depth
-    rgbDepthWindowName = "rgb-depth"
+    windowName = "rgb-depth"
 
-    cv2.namedWindow(rgbDepthWindowName)
+    # Set the window to be resizable and the initial size
+    cv2.namedWindow(windowName, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(windowName, 800, 600)
     cv2.createTrackbar(
         "RGB Weight %",
-        rgbDepthWindowName,
+        windowName,
         int(rgbWeight * 100),
         100,
         updateBlendWeights,
     )
     fpsCounter = FPSCounter()
     while True:
-        messageGroup = syncQueue.get()
+        messageGroup = queue.get()
         fpsCounter.tick()
         assert isinstance(messageGroup, dai.MessageGroup)
         frameRgb = messageGroup["rgb"]
@@ -120,16 +130,20 @@ with pipeline:
         frameDepth = messageGroup["depth_aligned"]
         assert isinstance(frameDepth, dai.ImgFrame)
 
-        sizeRgb = frameRgb.getData().size
-        sizeDepth = frameDepth.getData().size
         # Blend when both received
         if frameDepth is not None:
             cvFrame = frameRgb.getCvFrame()
             # Colorize the aligned depth
             alignedDepthColorized = colorizeDepth(frameDepth.getFrame())
-            # Resize depth to match the rgb frame
+            cv2.imshow("Depth aligned", alignedDepthColorized)
+
+            if len(cvFrame.shape) == 2:
+                cvFrame = cv2.cvtColor(cvFrame, cv2.COLOR_GRAY2BGR)
+            blended = cv2.addWeighted(
+                cvFrame, rgbWeight, alignedDepthColorized, depthWeight, 0
+            )
             cv2.putText(
-                alignedDepthColorized,
+                blended,
                 f"FPS: {fpsCounter.getFps():.2f}",
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
@@ -137,12 +151,7 @@ with pipeline:
                 (255, 255, 255),
                 2,
             )
-            cv2.imshow("depth", alignedDepthColorized)
-
-            blended = cv2.addWeighted(
-                cvFrame, rgbWeight, alignedDepthColorized, depthWeight, 0
-            )
-            cv2.imshow(rgbDepthWindowName, blended)
+            cv2.imshow(windowName, blended)
 
         key = cv2.waitKey(1)
         if key == ord("q"):

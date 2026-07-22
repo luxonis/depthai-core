@@ -56,33 +56,9 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             "build",
             [](DetectionNetwork& self,
                const std::shared_ptr<Camera>& input,
-               NNModelDescription modelDesc,
+               const DetectionNetwork::Model& model,
                std::optional<float> fps,
-               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, DetectionNetwork::Model{std::move(modelDesc)}, fps, resizeMode); },
-            py::arg("input"),
-            py::arg("model"),
-            py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-            DOC(dai, node, DetectionNetwork, build))
-        .def(
-            "build",
-            [](DetectionNetwork& self,
-               const std::shared_ptr<Camera>& input,
-               const NNArchive& nnArchive,
-               std::optional<float> fps,
-               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, DetectionNetwork::Model{nnArchive}, fps, resizeMode); },
-            py::arg("input"),
-            py::arg("nnArchive"),
-            py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-            DOC(dai, node, DetectionNetwork, build))
-        .def(
-            "build",
-            [](DetectionNetwork& self,
-               const std::shared_ptr<Camera>& input,
-               const std::string& model,
-               std::optional<float> fps,
-               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, DetectionNetwork::Model{model}, fps, resizeMode); },
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, model, fps, resizeMode); },
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
@@ -100,29 +76,11 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
             "build",
-            [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
-                return self.build(input, DetectionNetwork::Model{std::move(modelDesc)}, fps);
+            [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, const DetectionNetwork::Model& model, std::optional<float> fps) {
+                return self.build(input, model, fps);
             },
             py::arg("input"),
             py::arg("model"),
-            py::arg("fps") = std::nullopt,
-            DOC(dai, node, DetectionNetwork, build, 4))
-        .def(
-            "build",
-            [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, const std::string& model, std::optional<float> fps) {
-                return self.build(input, DetectionNetwork::Model{NNModelDescription{model}}, fps);
-            },
-            py::arg("input"),
-            py::arg("model"),
-            py::arg("fps") = std::nullopt,
-            DOC(dai, node, DetectionNetwork, build, 4))
-        .def(
-            "build",
-            [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
-                return self.build(input, DetectionNetwork::Model{nnArchive}, fps);
-            },
-            py::arg("input"),
-            py::arg("nnArchive"),
             py::arg("fps") = std::nullopt,
             DOC(dai, node, DetectionNetwork, build, 4))
 #endif
@@ -160,7 +118,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("description"),
              py::arg("useCached") = false,
              DOC(dai, node, DetectionNetwork, setFromModelZoo))
-        .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
+        .def("setBlob", py::overload_cast<const dai::OpenVINO::Blob&>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob",
              py::overload_cast<const std::filesystem::path&>(&DetectionNetwork::setBlob),
              py::arg("path"),

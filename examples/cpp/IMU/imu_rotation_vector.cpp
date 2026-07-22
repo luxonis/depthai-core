@@ -109,7 +109,7 @@ int main() {
     imu->setMaxBatchReports(10);
     auto imuQueue = imu->out.createOutputQueue(50, false);
 
-    auto calibration = device->readCalibration();
+    auto calibration = device->getCalibration();
     const auto eepromData = calibration.getEepromData();
     const auto& imuExtrinsics = eepromData.imuExtrinsics;
     const auto destinationSocket = resolveImuExtrinsicsDestination(eepromData);

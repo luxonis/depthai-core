@@ -245,7 +245,7 @@ std::shared_ptr<RGBD> RGBD::build() {
     return std::static_pointer_cast<RGBD>(shared_from_this());
 }
 
-std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, std::pair<int, int> size, std::optional<float> fps) {
+std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, const std::pair<int, int>& size, std::optional<float> fps) {
     if(!autocreate) {
         return std::static_pointer_cast<RGBD>(shared_from_this());
     }
@@ -278,11 +278,15 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
             // Create the ToF node along with ImageAlign node and return
             bool setRunOnHost = true;
             auto tofFps = fps.value_or(30.0f);
-            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::TOF_MID_RANGE, tofFps);
+            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ToFConfig::Profile::MID_RANGE, tofFps);
             auto align = pipeline.create<node::ImageAlign>();
             auto* colorCamOutput = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, tofFps, true);
             colorCamOutput->link(align->inputAlignTo);
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+            tof->tofBaseNode.depth.link(align->input);
+#else
             tof->depth.link(align->input);
+#endif
             colorCamOutput->link(inColor);
             align->outputAligned.link(inDepth);
             align->setRunOnHost(setRunOnHost);
@@ -314,13 +318,13 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
 
 std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera,
                                   const DepthSource& depthSource,
-                                  std::pair<int, int> frameSize,
+                                  const std::pair<int, int>& frameSize,
                                   std::optional<float> fps) {
     alignDepth(depthSource, camera, frameSize, fps);
     return build();
 }
 
-void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
+void RGBD::initialize(const std::shared_ptr<MessageGroup>& frames) {
     // Initialize the camera intrinsics
     // Check if width, width and cameraID match
     auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inColor.getName()));
@@ -384,9 +388,7 @@ void RGBD::run() {
 
             // Create the point cloud
             auto pc = std::make_shared<PointCloudData>();
-            pc->setTimestamp(colorFrame->getTimestamp());
-            pc->setTimestampDevice(colorFrame->getTimestampDevice());
-            pc->setSequenceNum(colorFrame->getSequenceNum());
+            pc->setBufferMetadataFrom(colorFrame);
             pc->setInstanceNum(colorFrame->getInstanceNum());
             auto width = colorFrame->getWidth();
             auto height = colorFrame->getHeight();
@@ -421,9 +423,7 @@ void RGBD::run() {
             pc->setMaxZ(maxZ);
 
             pc->setPointsRGB(points);
-            pc->setTimestamp(colorFrame->getTimestamp());
-            pc->setTimestampDevice(colorFrame->getTimestampDevice());
-            pc->setSequenceNum(colorFrame->getSequenceNum());
+            pc->setBufferMetadataFrom(colorFrame);
             pc->setInstanceNum(colorFrame->getInstanceNum());
             {
                 auto blockEvent = this->outputBlockEvent();
@@ -434,9 +434,7 @@ void RGBD::run() {
                 }
                 if(!rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
                     auto rgbdData = std::make_shared<RGBDData>();
-                    rgbdData->setTimestamp(colorFrame->getTimestamp());
-                    rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
-                    rgbdData->setSequenceNum(colorFrame->getSequenceNum());
+                    rgbdData->setBufferMetadataFrom(colorFrame);
                     rgbdData->setDepthFrame(depthFrame);
                     rgbdData->setRGBFrame(colorFrame);
                     rgbd.send(rgbdData);
@@ -465,9 +463,30 @@ void RGBD::alignDepth(const DepthSource& depthSource, const std::shared_ptr<Came
     std::visit([this, &camera, &frameSize, &fps](const auto& source) { alignDepthImpl(source, camera, frameSize, fps); }, depthSource);
 }
 
+void RGBD::alignDepthImpl(const std::shared_ptr<Depth>& depth,
+                          const std::shared_ptr<Camera>& camera,
+                          const std::pair<int, int>& frameSize,
+                          std::optional<float> fps) {
+    std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    colorCamOutputType = std::nullopt;  // native output for each platform
+#endif
+
+    auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
+    colorCamOutput->link(inColor);
+    depth->setAlignTo(*colorCamOutput);
+    depth->depth().link(inDepth);
+
+    if(depth->getResolvedAlgorithm() == Depth::Algorithm::TOF) {
+        constexpr float DEFAULT_TOF_FPS = 30.0f;
+        sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(500 / fps.value_or(DEFAULT_TOF_FPS))));
+        sync->setRunOnHost(true);
+    }
+}
+
 void RGBD::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
                           const std::shared_ptr<Camera>& camera,
-                          std::pair<int, int> frameSize,
+                          const std::pair<int, int>& frameSize,
                           std::optional<float> fps) {
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
@@ -506,7 +525,7 @@ void RGBD::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
 
 void RGBD::alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth,
                           const std::shared_ptr<Camera>& camera,
-                          std::pair<int, int> frameSize,
+                          const std::pair<int, int>& frameSize,
                           std::optional<float> fps) {
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
@@ -528,7 +547,10 @@ void RGBD::alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth,
     align->outputAligned.link(inDepth);
 }
 
-void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps) {
+void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof,
+                          const std::shared_ptr<Camera>& camera,
+                          const std::pair<int, int>& frameSize,
+                          std::optional<float> fps) {
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
 
@@ -543,7 +565,11 @@ void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr
 
     auto align = pipeline.create<node::ImageAlign>();
     colorCamOutput->link(inColor);
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    tof->tofBaseNode.depth.link(align->input);
+#else
     tof->depth.link(align->input);
+#endif
     colorCamOutput->link(align->inputAlignTo);
     align->outputAligned.link(inDepth);
 

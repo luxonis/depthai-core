@@ -419,6 +419,11 @@ endif()
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
 
+# Calibration CBA merge test
+dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_test.cpp)
+dai_set_test_labels(calibration_cba_merge_test onhost)
+set_property(TEST calibration_cba_merge_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_ALLOW_FACTORY_FLASHING=868632271")
+
 # XLInkInHost test 
 dai_add_test(xlink_in_host_test src/onhost_tests/pipeline/node/internal/XLinkInHostTest.cpp)
 dai_set_test_labels(xlink_in_host_test onhost ci)
@@ -686,6 +691,13 @@ dai_set_test_labels(gpu_availability_test ondevice rvc4)
 dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
 dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
+dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
+dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
+
+# Depth algorithm selection (on-device)
+dai_add_test(depth_algorithm_selection_test src/ondevice_tests/pipeline/node/depth_algorithm_selection_test.cpp)
+dai_set_test_labels(depth_algorithm_selection_test ondevice rvc2_all rvc4 ci)
+
 # Detection network test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(detection_network_test src/ondevice_tests/pipeline/node/detection_network_test.cpp)
@@ -845,6 +857,10 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
+
+dai_add_test(camera_fps_config_part_2_test src/ondevice_tests/pipeline/node/camera_fps_config_test_part_2.cpp)
+dai_set_test_labels(camera_fps_config_part_2_test ondevice rvc2_all rvc4 ci noreplayci)
+set_property(TEST camera_fps_config_part_2_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
