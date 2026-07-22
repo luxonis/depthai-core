@@ -348,6 +348,7 @@ void ImageAlign::run() {
                || !previousInputAlignToTransformation.isEqualTransformation(inputAlignToImg->transformation)) {
                 initialized = false;
                 calibrationSet = false;
+                previousShiftFactor = 0;
             }
 
             if(!initialized) {
