@@ -300,35 +300,41 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     leftImage.send(leftImg);
     rightImage.send(rightImg);
 
-    // Phase 1 (dispatch): route each merged crop to the smallest tier that fits it and queue its
-    // ImageManip config on that tier. Dispatching every crop up front lets the crop ImageManips and
-    // the per-tier NeuralDepth backends run back-to-back (pipelined) instead of the frame costing
-    // one full host<->device round-trip per crop, which was the dominant cost. Different sizes go to
-    // different backends, so left/right crops fed to any one backend always match in size.
-    std::vector<int> cropTier(merged.size());
-    std::array<int, kNumTiers> perTierCount{};
+    // Pick a single backend tier per frame: the smallest model that fits the largest crop this
+    // frame. Every crop this frame uses that one model. This deliberately does NOT route each crop
+    // to its own best-fit tier: RVC4 has a single NN engine, and alternating between differently
+    // sized depth models within a frame forces an expensive model reload per crop (measured ~2.5x
+    // slower for mixed-size scenes, and far worse alongside a detection network). Using one model
+    // per frame keeps the model resident across the frame's crops while still using a smaller, faster
+    // model when the whole scene is small and a larger one only when a crop needs the resolution.
+    int maxW = 0;
+    int maxH = 0;
+    for(const auto& mc : merged) {
+        maxW = std::max(maxW, mc.w);
+        maxH = std::max(maxH, mc.h);
+    }
+    const int tier = selectTier(maxW, maxH);
+    const int outW = kTiers[tier].w;
+
+    // Phase 1 (dispatch): queue every crop's ImageManip config on the selected tier up front, so the
+    // crop ImageManips and the tier's NeuralDepth backend run back-to-back (pipelined) instead of the
+    // frame costing one full host<->device round-trip per crop, which was the dominant cost.
     for(std::size_t idx = 0; idx < merged.size(); ++idx) {
         const auto& mc = merged[idx];
-        const int tier = selectTier(mc.w, mc.h);
-        cropTier[idx] = tier;
 
         auto cfg = std::make_shared<ImageManipConfig>();
-        cfg->setReusePreviousImage(perTierCount[tier] > 0);
+        cfg->setReusePreviousImage(idx > 0);
         cfg->setOutputSize(static_cast<std::uint32_t>(kTiers[tier].w), static_cast<std::uint32_t>(kTiers[tier].h), ImageManipConfig::ResizeMode::STRETCH);
         cfg->base.center = false;
         cfg->addCrop(dai::Rect(static_cast<float>(mc.x), static_cast<float>(mc.y), static_cast<float>(mc.w), static_cast<float>(mc.h)), false);
 
         leftConfigTier(tier).send(cfg);
         rightConfigTier(tier).send(cfg);
-        ++perTierCount[tier];
     }
 
-    // Phase 2 (collect): each tier emits one depth/confidence pair per crop, in dispatch order, so
-    // collecting in the original dispatch order pulls each tier's queue in the order it was fed.
+    // Phase 2 (collect): the tier emits one depth/confidence pair per crop, in dispatch order.
     for(std::size_t idx = 0; idx < merged.size(); ++idx) {
         const auto& mc = merged[idx];
-        const int tier = cropTier[idx];
-        const int outW = kTiers[tier].w;
 
         bool hasTimedOut = false;
         auto depthMsg = depthCropTier(tier).get<ImgFrame>(timeout, hasTimedOut);

@@ -30,11 +30,14 @@ class FocusController : public CustomNode<FocusController> {
         int w;
         int h;
     };
+    // Sizes are capped at 768x480: on RVC4 the largest models (e.g. 1248x780) run at ~8.5 fps, so a
+    // large crop is downscaled to 768x480 (with per-crop focal correction keeping depth metric)
+    // rather than routed to a much slower model. The smallest tier is a fast model for small scenes.
     static constexpr int kNumTiers = 3;
     static constexpr std::array<Tier, kNumTiers> kTiers{{
+        {DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180},
         {DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300},
         {DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480},
-        {DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780},
     }};
 
     // Upper bound on merged crops processed per frame. Also the depth/confidence crop input queue
