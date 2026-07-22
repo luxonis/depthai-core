@@ -40,46 +40,14 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             [](SpatialDetectionNetwork& self,
                const std::shared_ptr<Camera>& input,
                const node::DepthSource& depthSource,
-               NNModelDescription modelDesc,
+               const SpatialDetectionNetwork::Model& model,
                std::optional<float> fps,
-               std::optional<dai::ImgResizeMode> resizeMode) {
-                return self.build(input, depthSource, SpatialDetectionNetwork::Model{std::move(modelDesc)}, fps, resizeMode);
-            },
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, depthSource, model, fps, resizeMode); },
             py::arg("input"),
-            py::arg("stereo"),
+            py::arg("depthSource"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-            DOC(dai, node, SpatialDetectionNetwork, build))
-        .def(
-            "build",
-            [](SpatialDetectionNetwork& self,
-               const std::shared_ptr<Camera>& input,
-               const node::DepthSource& depthSource,
-               const NNArchive& nnArchive,
-               std::optional<float> fps,
-               std::optional<dai::ImgResizeMode> resizeMode) {
-                return self.build(input, depthSource, SpatialDetectionNetwork::Model{nnArchive}, fps, resizeMode);
-            },
-            py::arg("input"),
-            py::arg("stereo"),
-            py::arg("nnArchive"),
-            py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-            DOC(dai, node, SpatialDetectionNetwork, build))
-        .def(
-            "build",
-            [](SpatialDetectionNetwork& self,
-               const std::shared_ptr<Camera>& input,
-               const node::DepthSource& depthSource,
-               const std::string& model,
-               std::optional<float> fps,
-               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, depthSource, SpatialDetectionNetwork::Model{model}, fps, resizeMode); },
-            py::arg("input"),
-            py::arg("stereo"),
-            py::arg("model"),
-            py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, SpatialDetectionNetwork, build))
         .def(
             "build",
@@ -89,7 +57,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
                const SpatialDetectionNetwork::Model& model,
                const ImgFrameCapability& capability) { return self.build(input, depthSource, model, capability); },
             py::arg("input"),
-            py::arg("stereo"),
+            py::arg("depthSource"),
             py::arg("model"),
             py::arg("capability"),
             DOC(dai, node, SpatialDetectionNetwork, build, 2))

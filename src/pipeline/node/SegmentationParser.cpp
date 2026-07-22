@@ -90,12 +90,6 @@ std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnIn
     return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
 
-std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
-    setConfig(nnArchive.getVersionedConfig());
-    nnInput.link(input);
-    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
-}
-
 std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
     setConfig(head);
     nnInput.link(input);
@@ -139,8 +133,8 @@ void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
         properties.classesInOneLayer = head.metadata.extraParams.at("classes_in_one_layer").get<bool>();
     }
 
-    if(head.metadata.extraParams.contains("background_class")) {
-        properties.backgroundClass = head.metadata.extraParams.at("background_class").get<bool>();
+    if(head.metadata.backgroundClass.has_value()) {
+        properties.backgroundClass = *head.metadata.backgroundClass;
     }
 
     if(head.metadata.classes) {

@@ -48,6 +48,7 @@ constexpr std::size_t DEFAULT_FLUSH_AT = 20;
 constexpr std::size_t DEFAULT_MAX_QUEUE_SIZE = 1000;
 constexpr std::size_t DEFAULT_MAX_BATCH_SIZE = 50;
 constexpr std::chrono::seconds DEFAULT_FLUSH_INTERVAL{30};
+constexpr std::chrono::seconds DEFAULT_PING_INTERVAL{std::chrono::minutes(5)};
 constexpr std::chrono::seconds RETRY_DELAY{5};
 constexpr std::chrono::seconds MAX_RETRY_DELAY{30};
 constexpr char DEFAULT_POSTHOG_HOST[] = "https://b.luxonis.com";
@@ -55,6 +56,7 @@ constexpr char DEFAULT_POSTHOG_API_KEY[] = "phc_ojEByaCiZZ5eigzaM43PaEVbfLfFDF5N
 constexpr char DEFAULT_TELEMETRY_ROOT_DIR[] = "telemetry";
 constexpr char TMP_IDS_FILENAME[] = "tmpIds.json";
 constexpr auto TMP_ID_TTL = std::chrono::hours(24);
+constexpr std::int64_t RATE_LIMIT_MAX_EVENTS = 30000;
 
 std::atomic_bool telemetryUsesPython{false};
 
@@ -167,9 +169,16 @@ struct TemporaryDeviceIdEntry {
     int64_t expiresAtMs = 0;
 };
 
+struct RateLimitEntry {
+    int64_t expiresAtMs = 0;
+    int64_t value = 0;
+    bool triggered = false;
+};
+
 struct TemporaryIdsDocument {
     TemporaryIdEntry host;
     std::vector<TemporaryDeviceIdEntry> devices;
+    RateLimitEntry rateLimit;
 };
 
 bool isExpired(const TemporaryIdEntry& entry, int64_t currentMs) {
@@ -178,6 +187,33 @@ bool isExpired(const TemporaryIdEntry& entry, int64_t currentMs) {
 
 bool isExpired(const TemporaryDeviceIdEntry& entry, int64_t currentMs) {
     return entry.tmpDeviceId.empty() || entry.expiresAtMs <= currentMs;
+}
+
+bool isExpired(const RateLimitEntry& entry, int64_t currentMs) {
+    return entry.expiresAtMs <= currentMs;
+}
+
+void normalizeTemporaryIdsDocument(TemporaryIdsDocument& document, int64_t currentMs, bool& changed) {
+    const auto originalSize = document.devices.size();
+    document.devices.erase(std::remove_if(document.devices.begin(),
+                                          document.devices.end(),
+                                          [&](const TemporaryDeviceIdEntry& entry) { return entry.mxid.empty() || isExpired(entry, currentMs); }),
+                           document.devices.end());
+    changed = changed || document.devices.size() != originalSize;
+}
+
+void normalizeRateLimitEntry(RateLimitEntry& rateLimit, int64_t currentMs, bool& changed) {
+    if(rateLimit.value < 0) {
+        rateLimit.value = 0;
+        changed = true;
+    }
+
+    if(isExpired(rateLimit, currentMs)) {
+        rateLimit.expiresAtMs = currentMs + std::chrono::duration_cast<std::chrono::milliseconds>(TMP_ID_TTL).count();
+        rateLimit.value = 0;
+        rateLimit.triggered = false;
+        changed = true;
+    }
 }
 
 std::string getTelemetryHostOSImpl() {
@@ -242,6 +278,13 @@ TemporaryIdsDocument readTemporaryIdsDocument(const std::filesystem::path& path)
         }
     }
 
+    if(json.contains("rate_limit") && json["rate_limit"].is_object()) {
+        const auto& rateLimit = json["rate_limit"];
+        document.rateLimit.expiresAtMs = rateLimit.value("expires_at_ms", int64_t{0});
+        document.rateLimit.value = rateLimit.value("value", int64_t{0});
+        document.rateLimit.triggered = rateLimit.value("triggered", false);
+    }
+
     return document;
 }
 
@@ -260,6 +303,12 @@ nlohmann::json writeTemporaryIdsDocument(const TemporaryIdsDocument& document) {
             {"expires_at_ms", entry.expiresAtMs},
         });
     }
+
+    json["rate_limit"] = {
+        {"expires_at_ms", document.rateLimit.expiresAtMs},
+        {"value", document.rateLimit.value},
+        {"triggered", document.rateLimit.triggered},
+    };
 
     return json;
 }
@@ -339,12 +388,7 @@ class TemporaryIdsManager {
 
     TemporaryIdsDocument loadLocked(int64_t currentMs, bool& changed) {
         auto document = readTemporaryIdsDocument(tmpIdsPath());
-        const auto originalSize = document.devices.size();
-        document.devices.erase(std::remove_if(document.devices.begin(),
-                                              document.devices.end(),
-                                              [&](const TemporaryDeviceIdEntry& entry) { return entry.mxid.empty() || isExpired(entry, currentMs); }),
-                               document.devices.end());
-        changed = changed || document.devices.size() != originalSize;
+        normalizeTemporaryIdsDocument(document, currentMs, changed);
         return document;
     }
 
@@ -386,24 +430,31 @@ struct TelemetrySharedState {
     std::chrono::seconds flushInterval{DEFAULT_FLUSH_INTERVAL};
 
     std::deque<std::string> queuedFiles;
-    std::vector<std::shared_ptr<Telemetry::AggregateMetricsCallback>> aggregateMetricsCallbacks;
+    std::vector<std::pair<Telemetry::AggregateMetricsHandle, std::shared_ptr<Telemetry::AggregateMetricsCallback>>> aggregateMetricsCallbacks;
+    Telemetry::AggregateMetricsHandle nextAggregateMetricsHandle{1};
 
     std::mutex mutex;
     std::mutex aggregateMetricsMtx;
     std::condition_variable condition;
     std::thread worker;
+    std::thread pingWorker;
     bool stopRequested{false};
+    bool pingStopRequested{false};
     bool flushRequested{false};
+    bool initialized{false};
     std::size_t retryCount{0};
     std::optional<Clock::time_point> pausedUntil;
 
     TelemetrySharedState();
     ~TelemetrySharedState();
 
+    void init();
     void event(std::string eventName, nlohmann::json properties);
-    void addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb);
+    Telemetry::AggregateMetricsHandle addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb);
+    void removeAggregateMetrics(Telemetry::AggregateMetricsHandle handle);
     void loadQueueFromDisk();
     void workerLoop();
+    void pingWorkerLoop();
     void flushOneBatch();
     void cleanupRunDirectory();
     void removeFileFromQueueLocked(const std::string& filename);
@@ -419,12 +470,20 @@ TelemetrySharedState& telemetrySharedState() {
 
 class Telemetry::Impl {
    public:
+    void init() {
+        telemetrySharedState().init();
+    }
+
     void event(std::string eventName, nlohmann::json properties) {
         telemetrySharedState().event(std::move(eventName), std::move(properties));
     }
 
-    void addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
-        telemetrySharedState().addAggregateMetrics(std::move(functionLikeCb));
+    Telemetry::AggregateMetricsHandle addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
+        return telemetrySharedState().addAggregateMetrics(std::move(functionLikeCb));
+    }
+
+    void removeAggregateMetrics(Telemetry::AggregateMetricsHandle handle) {
+        telemetrySharedState().removeAggregateMetrics(handle);
     }
 };
 
@@ -465,16 +524,44 @@ TelemetrySharedState::TelemetrySharedState() {
 TelemetrySharedState::~TelemetrySharedState() {
     {
         std::lock_guard<std::mutex> lock(mutex);
+        pingStopRequested = true;
         stopRequested = true;
         flushRequested = true;
     }
     condition.notify_all();
+
+    if(pingWorker.joinable()) {
+        pingWorker.join();
+    }
 
     if(worker.joinable()) {
         worker.join();
     }
 
     cleanupRunDirectory();
+}
+
+void TelemetrySharedState::init() {
+    bool shouldEmitLoad = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if(initialized || !enabled) {
+            return;
+        }
+        initialized = true;
+        shouldEmitLoad = true;
+        pingWorker = std::thread([this]() { pingWorkerLoop(); });
+    }
+
+    if(shouldEmitLoad) {
+        event("depthai_load",
+              nlohmann::json{
+                  {"host_os", getTelemetryHostOS()},
+                  {"host_os_version", getTelemetryHostOSVersion()},
+                  {"is_oak_app", !readEnv("OAKAGENT_PRIVATE_HTTP_PWD").empty()},
+                  {"uses_python", telemetryUsesPython.load()},
+              });
+    }
 }
 
 void TelemetrySharedState::event(std::string eventName, nlohmann::json properties) {
@@ -492,12 +579,52 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
         logger::warn("Telemetry properties for '{}' must be a JSON object. Dropping invalid properties.", eventName);
         properties = nlohmann::json::object();
     }
+
     if(eventName == "depthai_ping") {
         applyAggregateMetrics(properties);
         if(!properties.is_object()) {
             logger::warn("Telemetry aggregate metrics for '{}' produced invalid properties. Dropping invalid properties.", eventName);
             properties = nlohmann::json::object();
         }
+    }
+
+    const auto hostId = safeTemporaryTelemetryHostId();
+    std::unique_ptr<dai::platform::FileLock> rateLimitLock;
+    TemporaryIdsDocument rateLimitDocument;
+    bool trackRateLimit = false;
+
+    try {
+        std::filesystem::create_directories(defaultTelemetryBaseDir());
+        rateLimitLock = dai::platform::FileLock::lock(tmpIdsLockPath(), true);
+
+        const auto currentMs = nowMs();
+        bool changed = false;
+        rateLimitDocument = readTemporaryIdsDocument(tmpIdsPath());
+        normalizeTemporaryIdsDocument(rateLimitDocument, currentMs, changed);
+        normalizeRateLimitEntry(rateLimitDocument.rateLimit, currentMs, changed);
+
+        if(eventName != "depthai_rate_limit" && rateLimitDocument.rateLimit.expiresAtMs > currentMs
+           && rateLimitDocument.rateLimit.value > RATE_LIMIT_MAX_EVENTS) {
+            if(rateLimitDocument.rateLimit.triggered) {
+                if(changed) {
+                    persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
+                }
+                return;
+            }
+
+            rateLimitDocument.rateLimit.triggered = true;
+            persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
+            rateLimitLock.reset();
+            event("depthai_rate_limit", nlohmann::json{{"time_till_reset", rateLimitDocument.rateLimit.expiresAtMs - nowMs()}});
+            return;
+        }
+
+        if(changed) {
+            persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
+        }
+        trackRateLimit = true;
+    } catch(const std::exception& ex) {
+        logger::debug("Failed to evaluate telemetry rate limit for '{}': {}", eventName, ex.what());
     }
 
     if(!properties.contains("$lib")) {
@@ -515,8 +642,6 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
     properties["source_product"] = "depthai";
     properties["source_component"] = "depthai-core";
 
-    const auto hostId = safeTemporaryTelemetryHostId();
-
     const auto payload = nlohmann::json{
         {"event", eventName},
         {"distinct_id", hostId},
@@ -525,7 +650,7 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
         {"uuid", generateUuidV4()},
     };
 
-    std::string filename;
+    bool queued = false;
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -536,7 +661,7 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
             logger::debug("Telemetry queue is full, dropping oldest event '{}'", oldest);
         }
 
-        filename = makeQueueFilename();
+        const auto filename = makeQueueFilename();
         const auto eventPath = queueDir / filename;
         std::ofstream output(eventPath, std::ios::binary | std::ios::trunc);
         if(!output) {
@@ -557,25 +682,66 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
         if(queuedFiles.size() >= flushAt) {
             flushRequested = true;
         }
+        queued = true;
     }
 
-    condition.notify_one();
+    if(queued) {
+        try {
+            if(trackRateLimit) {
+                rateLimitDocument.rateLimit.value += 1;
+                persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
+            }
+        } catch(const std::exception& ex) {
+            logger::debug("Failed to update telemetry rate limit for '{}': {}", eventName, ex.what());
+        }
+        condition.notify_one();
+    }
 }
 
-void TelemetrySharedState::addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
+void TelemetrySharedState::pingWorkerLoop() {
+    std::unique_lock<std::mutex> lock(mutex);
+    while(!pingStopRequested) {
+        if(condition.wait_for(lock, DEFAULT_PING_INTERVAL, [this]() { return pingStopRequested; })) {
+            break;
+        }
+
+        lock.unlock();
+        event("depthai_ping", nlohmann::json::object());
+        lock.lock();
+    }
+}
+
+Telemetry::AggregateMetricsHandle TelemetrySharedState::addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
     if(!functionLikeCb) {
+        return 0;
+    }
+
+    std::lock_guard<std::mutex> lock(aggregateMetricsMtx);
+    const auto handle = nextAggregateMetricsHandle++;
+    aggregateMetricsCallbacks.push_back({handle, std::make_shared<Telemetry::AggregateMetricsCallback>(std::move(functionLikeCb))});
+    return handle;
+}
+
+void TelemetrySharedState::removeAggregateMetrics(Telemetry::AggregateMetricsHandle handle) {
+    if(handle == 0) {
         return;
     }
 
     std::lock_guard<std::mutex> lock(aggregateMetricsMtx);
-    aggregateMetricsCallbacks.push_back(std::make_shared<Telemetry::AggregateMetricsCallback>(std::move(functionLikeCb)));
+    aggregateMetricsCallbacks.erase(
+        std::remove_if(
+            aggregateMetricsCallbacks.begin(), aggregateMetricsCallbacks.end(), [handle](const auto& callbackEntry) { return callbackEntry.first == handle; }),
+        aggregateMetricsCallbacks.end());
 }
 
 void TelemetrySharedState::applyAggregateMetrics(nlohmann::json& properties) {
     std::vector<std::shared_ptr<Telemetry::AggregateMetricsCallback>> callbacks;
     {
         std::lock_guard<std::mutex> lock(aggregateMetricsMtx);
-        callbacks = aggregateMetricsCallbacks;
+        callbacks.reserve(aggregateMetricsCallbacks.size());
+        for(const auto& callbackEntry : aggregateMetricsCallbacks) {
+            callbacks.push_back(callbackEntry.second);
+        }
     }
 
     for(const auto& callback : callbacks) {
@@ -874,14 +1040,10 @@ void Telemetry::setTelemetryUsesPython(bool value) {
     telemetryUsesPython.store(value);
 }
 
-void Telemetry::emitDepthaiTelemetryLoadEvent() {
-    Telemetry::getInstance().event("depthai_load",
-                                   nlohmann::json{
-                                       {"host_os", getTelemetryHostOS()},
-                                       {"host_os_version", getTelemetryHostOSVersion()},
-                                       {"is_oak_app", !readEnv("OAKAGENT_PRIVATE_HTTP_PWD").empty()},
-                                       {"uses_python", telemetryUsesPython.load()},
-                                   });
+void Telemetry::init() {
+    if(impl) {
+        impl->init();
+    }
 }
 
 void Telemetry::event(std::string eventName, nlohmann::json properties) {
@@ -911,9 +1073,16 @@ void Telemetry::event(const Pipeline& pipeline, std::string eventName, nlohmann:
     }
 }
 
-void Telemetry::addAggregateMetrics(AggregateMetricsCallback functionLikeCb) {
+Telemetry::AggregateMetricsHandle Telemetry::addAggregateMetrics(AggregateMetricsCallback functionLikeCb) {
     if(impl) {
-        impl->addAggregateMetrics(std::move(functionLikeCb));
+        return impl->addAggregateMetrics(std::move(functionLikeCb));
+    }
+    return 0;
+}
+
+void Telemetry::removeAggregateMetrics(AggregateMetricsHandle handle) {
+    if(impl) {
+        impl->removeAggregateMetrics(handle);
     }
 }
 
