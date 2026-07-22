@@ -567,7 +567,7 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
     )
 
     # Set C++17 standard for zoo_helper
-    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 23)
     set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
     set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
 endif()
@@ -590,15 +590,15 @@ if(DEPTHAI_CLANG_TIDY)
     target_clangtidy_setup(${TARGET_CORE_NAME})
 endif()
 
-# Set compiler features (c++17), and disables extensions (g++17)
-set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 17)
+# Set compiler features (c++23), and disables extensions (g++23)
+set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 23)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_EXTENSIONS OFF)
-# Add interface transitive property (C++17)
+# Add interface transitive property (C++23)
 if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_generic_lambdas)
 else()
-    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_23)
 endif()
 
 # Link merged target libraries and add compile definitions

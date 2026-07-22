@@ -19,6 +19,7 @@
         "magic-enum",
         "eigen3",
         "argparse",
+        "glaze",
         {
             "name": "libarchive",
             "default-features": false

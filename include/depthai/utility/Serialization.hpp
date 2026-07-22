@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <nlohmann/json.hpp>
 #include <sstream>
+#include <tuple>
 #include <vector>
 
 // libraries
@@ -12,6 +13,9 @@
 #include <nop/structure.h>
 #include <nop/utility/buffer_reader.h>
 #include <nop/utility/stream_writer.h>
+
+#include <glaze/glaze.hpp>
+#include <glaze/json/schema.hpp>
 
 // project
 #include "NlohmannJsonCompat.hpp"
@@ -219,6 +223,25 @@ inline bool deserialize(const std::vector<std::uint8_t>& data, T& obj) {
     return deserialize<DEFAULT_SERIALIZATION_TYPE>(data, obj);
 }
 
+/**
+ * Generate a JSON Schema for a DepthAI datatype.
+ *
+ * Types using DEPTHAI_SERIALIZE or DEPTHAI_SERIALIZE_EXT automatically expose
+ * their listed members to the schema generator.
+ */
+template <typename T>
+inline std::string getJsonSchema() {
+    auto schema = glz::write_json_schema<T>();
+    if(!schema) {
+#ifdef DEPTHAI_EXCEPTIONS
+        throw std::runtime_error(glz::format_error(schema.error()));
+#else
+        return {};
+#endif
+    }
+    return std::move(*schema);
+}
+
 std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 4);
 
 }  // namespace utility
@@ -232,6 +255,31 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
 // };
 
 }  // namespace dai
+
+/**
+ * Tag used to find DepthAI's Glaze metadata through argument-dependent lookup.
+ *
+ * DEPTHAI_SERIALIZE_EXT is invoked inside dai namespaces, where an explicit
+ * specialization of glz::meta is not permitted. The tag lets both serialization
+ * macros declare their metadata in the type's associated namespace instead.
+ */
+template <typename T>
+struct DepthaiGlazeMetaTag {};
+
+template <typename... Members>
+constexpr auto depthaiGlazeObject(std::tuple<Members...> members) {
+    return std::apply([](auto... member) { return glz::object(member...); }, members);
+}
+
+namespace glz {
+
+template <typename T>
+    requires requires { depthai_glaze_meta(DepthaiGlazeMetaTag<T>{}); }
+struct meta<T> {
+    static constexpr auto value = depthai_glaze_meta(DepthaiGlazeMetaTag<T>{});
+};
+
+}  // namespace glz
 
 #define DEPTHAI_DEFERRED_EXPAND(x) x
 #if defined(_MSC_VER) && (!defined(_MSVC_TRADITIONAL) || _MSVC_TRADITIONAL)
@@ -264,6 +312,21 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
         return dai::utility::jsonDisplay(j); \
     }
 
+#define DEPTHAI_GLAZE_MEMBER(v1) &DepthaiGlazeType::v1,
+#define DEPTHAI_GLAZE_OBJECT(...) depthaiGlazeObject(std::tuple{DEPTHAI_NLOHMANN_JSON_PASTE(DEPTHAI_GLAZE_MEMBER, __VA_ARGS__)})
+
+#define DEPTHAI_GLAZE_DEFINE_TYPE_NON_INTRUSIVE(Type, ...)           \
+    constexpr auto depthai_glaze_meta(::DepthaiGlazeMetaTag<Type>) { \
+        using DepthaiGlazeType = Type;                               \
+        return DEPTHAI_GLAZE_OBJECT(__VA_ARGS__);                    \
+    }
+
+#define DEPTHAI_GLAZE_DEFINE_TYPE_INTRUSIVE(Type, ...)                      \
+    friend constexpr auto depthai_glaze_meta(::DepthaiGlazeMetaTag<Type>) { \
+        using DepthaiGlazeType = Type;                                      \
+        return DEPTHAI_GLAZE_OBJECT(__VA_ARGS__);                           \
+    }
+
 // Macros
 #define DEPTHAI_SERIALIZE_OPTIONAL_EXT(...)                                                   \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_OPTIONAL_NON_INTRUSIVE(__VA_ARGS__)) \
@@ -275,9 +338,11 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
 
 #define DEPTHAI_SERIALIZE_EXT(...)                                                   \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(__VA_ARGS__)) \
+    DEPTHAI_DEFERRED_EXPAND(DEPTHAI_GLAZE_DEFINE_TYPE_NON_INTRUSIVE(__VA_ARGS__))    \
     DEPTHAI_DEFERRED_EXPAND(NOP_EXTERNAL_STRUCTURE(__VA_ARGS__))
 
 #define DEPTHAI_SERIALIZE(Type, ...)                                                   \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_INTRUSIVE(Type, __VA_ARGS__)) \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_DISPLAY(Type))                                     \
+    DEPTHAI_DEFERRED_EXPAND(DEPTHAI_GLAZE_DEFINE_TYPE_INTRUSIVE(Type, __VA_ARGS__))    \
     DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(Type, __VA_ARGS__))
