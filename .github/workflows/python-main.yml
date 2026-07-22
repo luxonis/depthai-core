@@ -40,9 +40,12 @@ jobs:
     steps:
     - name: Evaluate trigger condition
       id: check
+      env:
+        CHECK_EVENT_NAME: ${{ github.event_name }}
+        CHECK_GITHUB_REF: ${{ github.ref }}
       run: |
-        EVENT_NAME="${{ github.event_name }}"
-        GITHUB_REF="${{ github.ref }}"
+        EVENT_NAME="$CHECK_EVENT_NAME"
+        GITHUB_REF="$CHECK_GITHUB_REF"
 
         RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
         if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
