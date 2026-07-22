@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <thread>
 
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -204,6 +205,11 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
     return {};
 }
 
+inline void waitAndStopPipeline(Node* node) {
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    node->stopPipeline();
+}
+
 inline std::chrono::milliseconds getReplayFallbackInterval(const std::optional<float>& fps) {
     if(fps.has_value() && fps.value() > 0.1f) {
         return std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value()));
@@ -290,7 +296,7 @@ void ReplayVideo::run() {
                     continue;
                 }
                 // This will stop even if there is still frames in the pipeline
-                stopPipeline();
+                waitAndStopPipeline(this);
                 break;
             } else {
                 hasMetadata = false;
@@ -313,7 +319,7 @@ void ReplayVideo::run() {
                     continue;
                 }
                 // This will stop even if there is still frames in the pipeline
-                stopPipeline();
+                waitAndStopPipeline(this);
                 break;
             } else {
                 hasVideo = false;
@@ -441,7 +447,7 @@ void ReplayMetadataOnly::run() {
                 continue;
             }
             // This will stop even if there is still frames in the pipeline
-            stopPipeline();
+            waitAndStopPipeline(this);
             break;
         } else {
             throw std::runtime_error("Metadata file contains no messages");
