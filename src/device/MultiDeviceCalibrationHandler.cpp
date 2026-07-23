@@ -18,58 +18,12 @@ namespace dai {
 namespace {
 
 constexpr uint32_t kSupportedMultiDeviceCalibrationVersion = 1;
-constexpr float kRotationValidationTolerance = 1e-4f;
-
-float determinant3x3(const std::array<std::array<float, 3>, 3>& matrix) {
-    return matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
-           - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
-           + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
-}
-
-std::array<std::array<float, 3>, 3> transpose3x3(const std::array<std::array<float, 3>, 3>& matrix) {
-    std::array<std::array<float, 3>, 3> transpose{};
-    for(size_t row = 0; row < 3; ++row) {
-        for(size_t col = 0; col < 3; ++col) {
-            transpose[row][col] = matrix[col][row];
-        }
-    }
-    return transpose;
-}
-
 void validateFiniteTranslation(const Point3f& translation, const std::string& context) {
     if(std::isfinite(translation.x) && std::isfinite(translation.y) && std::isfinite(translation.z)) {
         return;
     }
 
     throw std::runtime_error(context + " has a non-finite translation component");
-}
-
-void validateRotationMatrix(const std::array<std::array<float, 3>, 3>& rotationMatrix, const std::string& context) {
-    for(const auto& row : rotationMatrix) {
-        for(float value : row) {
-            if(!std::isfinite(value)) {
-                throw std::runtime_error(context + " has a non-finite rotation matrix element");
-            }
-        }
-    }
-
-    const auto transpose = transpose3x3(rotationMatrix);
-    const auto shouldBeIdentity = matrix::matMul(transpose, rotationMatrix);
-    const std::array<std::array<float, 3>, 3> identity{
-        std::array<float, 3>{1.0f, 0.0f, 0.0f},
-        std::array<float, 3>{0.0f, 1.0f, 0.0f},
-        std::array<float, 3>{0.0f, 0.0f, 1.0f},
-    };
-    if(!matrix::mateq(shouldBeIdentity, identity, kRotationValidationTolerance)) {
-        throw std::runtime_error(context + " must satisfy R^T R ~= I");
-    }
-
-    const float determinant = determinant3x3(rotationMatrix);
-    if(std::fabs(determinant - 1.0f) > kRotationValidationTolerance) {
-        std::ostringstream message;
-        message << context << " must have determinant ~= +1, got " << determinant;
-        throw std::runtime_error(message.str());
-    }
 }
 
 }  // namespace
@@ -141,7 +95,7 @@ CalibrationHandler MultiDeviceCalibrationHandler::getDeviceCalibration(const std
 void MultiDeviceCalibrationHandler::setDevice(const std::string& mxid,
                                               const CalibrationHandler& calibration,
                                               const MultiDeviceFrame& anchorFrame,
-                                              const RigidTransform& rigFromAnchor) {
+                                              const Extrinsics& rigFromAnchor) {
     MultiDeviceCalibrationData proposed = data;
     proposed.devices.erase(std::remove_if(proposed.devices.begin(), proposed.devices.end(), [&mxid](const auto& device) { return device.mxid == mxid; }),
                            proposed.devices.end());
@@ -280,8 +234,13 @@ void MultiDeviceCalibrationHandler::validateData(const MultiDeviceCalibrationDat
             }
 
             validateFrameState(device.anchorFrame, "anchor frame for device '" + device.mxid + "'");
-            validateRotationMatrix(device.rigFromAnchor.rotationMatrix, "rigFromAnchor rotation for device '" + device.mxid + "'");
+            if(device.rigFromAnchor.toCameraSocket != CameraBoardSocket::AUTO) {
+                throw std::runtime_error("rigFromAnchor for device '" + device.mxid + "' must use toCameraSocket=AUTO");
+            }
+            matrix::validateRotationMatrix3x3(device.rigFromAnchor.rotationMatrix);
             validateFiniteTranslation(device.rigFromAnchor.translation, "rigFromAnchor for device '" + device.mxid + "'");
+            validateFiniteTranslation(device.rigFromAnchor.specTranslation, "rigFromAnchor specTranslation for device '" + device.mxid + "'");
+            (void)device.rigFromAnchor.getTransformationMatrix(false, LengthUnit::CENTIMETER);
 
             CalibrationHandler calibration(device.calibration);
             if(!calibration.hasCalibrationData()) {
@@ -354,14 +313,8 @@ std::vector<std::vector<float>> MultiDeviceCalibrationHandler::createIdentityTra
     return {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
 }
 
-std::vector<std::vector<float>> MultiDeviceCalibrationHandler::rigFromAnchorToCentimeterMatrix(const RigidTransform& transform) {
-    const float scale = getDistanceUnitScale(LengthUnit::CENTIMETER, transform.translationUnit);
-    const Point3f translationInCentimeters{
-        transform.translation.x * scale,
-        transform.translation.y * scale,
-        transform.translation.z * scale,
-    };
-    return matrix::toVecMatrix4x4(matrix::createTransformationMatrix(transform.rotationMatrix, translationInCentimeters));
+std::vector<std::vector<float>> MultiDeviceCalibrationHandler::rigFromAnchorToCentimeterMatrix(const Extrinsics& transform) {
+    return matrix::toVecMatrix4x4(transform.getTransformationMatrix(false, LengthUnit::CENTIMETER));
 }
 
 void MultiDeviceCalibrationHandler::scaleTranslationFromCentimetersInPlace(std::vector<std::vector<float>>& transform, LengthUnit unit) {

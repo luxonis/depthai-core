@@ -41,10 +41,8 @@ CalibrationHandler makeCalibration(const Point3f& camBToCamA = Point3f(10.0f, 0.
     return CalibrationHandler(data, true);
 }
 
-RigidTransform makeRigTransform(float x = 0.0f, float y = 0.0f, float z = 0.0f, LengthUnit unit = LengthUnit::CENTIMETER) {
-    RigidTransform transform;
-    transform.translation = Point3f(x, y, z);
-    transform.translationUnit = unit;
+Extrinsics makeRigTransform(float x = 0.0f, float y = 0.0f, float z = 0.0f, LengthUnit unit = LengthUnit::CENTIMETER) {
+    Extrinsics transform(identityRotation(), Point3f(x, y, z), CameraBoardSocket::AUTO, unit);
     return transform;
 }
 
@@ -99,7 +97,7 @@ TEST_CASE("MultiDeviceCalibrationHandler serialization round-trip", "[multi-devi
     REQUIRE(fromJson.getDeviceIds() == std::vector<std::string>({"MXID_A", "MXID_B"}));
     REQUIRE(fromJson.getDevice("MXID_A").anchorFrame == handler.getDevice("MXID_A").anchorFrame);
     REQUIRE(fromFile.getDevice("MXID_B").rigFromAnchor.translation.x == Catch::Approx(100.0f).margin(1e-6));
-    REQUIRE(fromFile.getDevice("MXID_B").rigFromAnchor.translationUnit == LengthUnit::CENTIMETER);
+    REQUIRE(fromFile.getDevice("MXID_B").rigFromAnchor.lengthUnit == LengthUnit::CENTIMETER);
 
     requireMatricesNear(fromJson.getCameraExtrinsics("MXID_A", CameraBoardSocket::CAM_B, "MXID_B", CameraBoardSocket::CAM_C, false, LengthUnit::CENTIMETER),
                         handler.getCameraExtrinsics("MXID_A", CameraBoardSocket::CAM_B, "MXID_B", CameraBoardSocket::CAM_C, false, LengthUnit::CENTIMETER));

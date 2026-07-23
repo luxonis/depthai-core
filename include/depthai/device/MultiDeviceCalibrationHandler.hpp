@@ -107,7 +107,7 @@ class MultiDeviceCalibrationHandler {
      * @param anchorFrame Local anchor frame for this device
      * @param rigFromAnchor Stored transform `T_rig_from_anchor`
      */
-    void setDevice(const std::string& mxid, const CalibrationHandler& calibration, const MultiDeviceFrame& anchorFrame, const RigidTransform& rigFromAnchor);
+    void setDevice(const std::string& mxid, const CalibrationHandler& calibration, const MultiDeviceFrame& anchorFrame, const Extrinsics& rigFromAnchor);
 
     /**
      * Remove all entries matching `mxid`.
@@ -193,7 +193,7 @@ class MultiDeviceCalibrationHandler {
     static void validateFrameState(const MultiDeviceFrame& frame, const std::string& context);
     static std::string frameToString(const MultiDeviceFrame& frame);
     static std::vector<std::vector<float>> createIdentityTransform();
-    static std::vector<std::vector<float>> rigFromAnchorToCentimeterMatrix(const RigidTransform& transform);
+    static std::vector<std::vector<float>> rigFromAnchorToCentimeterMatrix(const Extrinsics& transform);
     static void scaleTranslationFromCentimetersInPlace(std::vector<std::vector<float>>& transform, LengthUnit unit);
     std::vector<std::vector<float>> getAnchorFromLocalFrame(const MultiDeviceCalibrationDevice& device,
                                                             const MultiDeviceFrame& frame,

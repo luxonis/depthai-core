@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -8,8 +7,8 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/EepromData.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
-#include "depthai/common/Point3f.hpp"
 
 namespace dai {
 
@@ -61,22 +60,6 @@ struct MultiDeviceFrame {
 };
 
 /**
- * Rigid transform with a rotation matrix and translation vector.
- */
-struct RigidTransform {
-    std::array<std::array<float, 3>, 3> rotationMatrix{
-        std::array<float, 3>{1.0f, 0.0f, 0.0f},
-        std::array<float, 3>{0.0f, 1.0f, 0.0f},
-        std::array<float, 3>{0.0f, 0.0f, 1.0f},
-    };
-
-    Point3f translation{};
-    LengthUnit translationUnit = LengthUnit::CENTIMETER;
-
-    DEPTHAI_SERIALIZE(RigidTransform, rotationMatrix, translation, translationUnit);
-};
-
-/**
  * Multi-device calibration entry for one physical device in a rig.
  */
 struct MultiDeviceCalibrationDevice {
@@ -96,7 +79,11 @@ struct MultiDeviceCalibrationDevice {
     /**
      * Homogeneous transform direction: T_rig_from_anchor.
      */
-    RigidTransform rigFromAnchor;
+    Extrinsics rigFromAnchor = Extrinsics(
+        std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+        Point3f(),
+        CameraBoardSocket::AUTO,
+        LengthUnit::CENTIMETER);
 
     DEPTHAI_SERIALIZE(MultiDeviceCalibrationDevice, mxid, calibration, anchorFrame, rigFromAnchor);
 };
