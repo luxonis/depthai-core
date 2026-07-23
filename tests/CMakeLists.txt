@@ -419,6 +419,10 @@ endif()
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
 
+# MultiDeviceCalibrationHandler test
+dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
+dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
+
 # Calibration CBA merge test
 dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_test.cpp)
 dai_set_test_labels(calibration_cba_merge_test onhost)
