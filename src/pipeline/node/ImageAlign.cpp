@@ -542,11 +542,25 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        alignedImg->setMetadata(*inputImg);
+        // manually set metadata
+        alignedImg->cam = inputImg->cam;
+        alignedImg->category = inputImg->category;
+        alignedImg->event = inputImg->event;
+        alignedImg->sourceFb = inputAlignToImg->sourceFb;
         alignedImg->setWidth(alignWidth);
         alignedImg->setHeight(alignHeight);
         alignedImg->setType(inputImg->getType());
         alignedImg->fb.stride = alignedImg->fb.width * alignedImg->getBytesPerPixel();
+        alignedImg->fb.p1Offset = 0;
+        alignedImg->fb.p2Offset = 0;
+        alignedImg->fb.p3Offset = 0;
+        if(alignedImg->getType() == ImgFrame::Type::NV12) {
+            alignedImg->fb.p2Offset = alignedImg->fb.stride * alignedImg->fb.height;
+            alignedImg->fb.p3Offset = alignedImg->fb.p2Offset;
+        } else if(alignedImg->getType() == ImgFrame::Type::YUV420p) {
+            alignedImg->fb.p2Offset = alignedImg->fb.stride * alignedImg->fb.height;
+            alignedImg->fb.p3Offset = alignedImg->fb.p2Offset + (alignedImg->fb.stride / 2) * (alignedImg->fb.height / 2);
+        }
 
         auto warp2InputFrame = warp2Input->getFrame();
         auto alignedImgFrame = alignedImg->getFrame();
@@ -568,9 +582,7 @@ void ImageAlign::run() {
         }
 
         alignedImg->setInstanceNum((uint32_t)alignTo);
-
         alignedImg->setBufferMetadataFrom(inputImg);
-
         alignedImg->transformation = inputAlignToTransform;
         const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
         alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
