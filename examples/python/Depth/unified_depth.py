@@ -34,27 +34,6 @@ _ALGORITHM_CHOICES = {
 }
 
 
-def colorizeDepth(frameDepth: np.ndarray) -> np.ndarray:
-    """Log-scaled depth colorization with adaptive 3rd..95th percentile clipping (zero = invalid)."""
-    invalidMask = frameDepth == 0
-    try:
-        minDepth = np.percentile(frameDepth[frameDepth != 0], 3)
-        maxDepth = np.percentile(frameDepth[frameDepth != 0], 95)
-        logDepth = np.log(frameDepth, where=frameDepth != 0)
-        logMinDepth = np.log(minDepth)
-        logMaxDepth = np.log(maxDepth)
-        np.nan_to_num(logDepth, copy=False, nan=logMinDepth)
-        logDepth = np.clip(logDepth, logMinDepth, logMaxDepth)
-
-        depthFrameColor = np.interp(logDepth, (logMinDepth, logMaxDepth), (0, 255))
-        depthFrameColor = np.nan_to_num(depthFrameColor).astype(np.uint8)
-        depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
-        depthFrameColor[invalidMask] = 0
-    except IndexError:
-        depthFrameColor = np.zeros((frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8)
-    return depthFrameColor
-
-
 def colorizeConfidence(frame: np.ndarray) -> np.ndarray:
     if frame.dtype == np.uint16:
         vmax = int(np.max(frame))
@@ -201,7 +180,7 @@ def main() -> int:
         while pipeline.isRunning():
             depthFrame = depthQueue.get()
             assert isinstance(depthFrame, dai.ImgFrame)
-            cv2.imshow("depth", colorizeDepth(depthFrame.getFrame()))
+            cv2.imshow("depth", dai.colorizeDepthFrame(depthFrame, 500, 12000).getCvFrame())
 
             confidenceFrame = confidenceQueue.get()
             assert isinstance(confidenceFrame, dai.ImgFrame)

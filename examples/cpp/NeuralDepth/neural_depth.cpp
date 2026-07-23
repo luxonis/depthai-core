@@ -40,7 +40,7 @@ int main() {
     // Create output queues
     auto confidenceQueue = neuralDepth->confidence.createOutputQueue();
     auto edgeQueue = neuralDepth->edge.createOutputQueue();
-    auto disparityQueue = neuralDepth->disparity.createOutputQueue();
+    auto depthQueue = neuralDepth->depth.createOutputQueue();
 
     // Create input queue for runtime configuration
     auto inputConfigQueue = neuralDepth->inputConfig.createInputQueue();
@@ -49,7 +49,6 @@ int main() {
     pipeline.start();
 
     // Variables for visualization
-    double maxDisparity = 1.0;
     cv::Mat colorMap;
     cv::Mat gray(256, 1, CV_8UC1);
     for(int i = 0; i < 256; i++) {
@@ -83,20 +82,8 @@ int main() {
         cv::applyColorMap(npEdge, colorizedEdge, colorMap);
         cv::imshow("edge", colorizedEdge);
 
-        // Get disparity data, normalize, and display it
-        auto disparityData = disparityQueue->get<dai::ImgFrame>();
-        cv::Mat npDisparity = disparityData->getFrame();
-
-        double minVal, curMax;
-        cv::minMaxLoc(npDisparity, &minVal, &curMax);
-        maxDisparity = std::max(maxDisparity, curMax);
-
-        cv::Mat normalized;
-        npDisparity.convertTo(normalized, CV_8UC1, 255.0 / maxDisparity);
-
-        cv::Mat colorizedDisparity;
-        cv::applyColorMap(normalized, colorizedDisparity, colorMap);
-        cv::imshow("disparity", colorizedDisparity);
+        auto depthData = depthQueue->get<dai::ImgFrame>();
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depthData, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame());
 
         // Check for keyboard input
         int key = cv::waitKey(1);

@@ -20,7 +20,7 @@ with dai.Pipeline() as pipeline:
     monoLeftOut.link(dynCalib.left)
     monoRightOut.link(dynCalib.right)
 
-    # Stereo (for disparity + synced previews)
+    # Stereo (for depth + synced previews)
     stereo = pipeline.create(dai.node.StereoDepth)
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
@@ -28,7 +28,7 @@ with dai.Pipeline() as pipeline:
     # Output queues
     syncedLeftQueue  = stereo.syncedLeft.createOutputQueue()
     syncedRightQueue = stereo.syncedRight.createOutputQueue()
-    disparityQueue   = stereo.disparity.createOutputQueue()
+    depthQueue       = stereo.depth.createOutputQueue()
 
     # Initialize the command output queues for calibration and coverage
     dynCalibCalibrationQueue = dynCalib.calibrationOutput.createOutputQueue()
@@ -39,11 +39,6 @@ with dai.Pipeline() as pipeline:
 
     device = pipeline.getDefaultDevice()
     device.setCalibration(device.getCalibration())
-
-    # Setup the colormap for visualization
-    colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
-    colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
-    maxDisparity = 1.0
 
     pipeline.start()
     time.sleep(1) # wait for auto exposure to settle
@@ -63,23 +58,13 @@ with dai.Pipeline() as pipeline:
     while pipeline.isRunning():
         leftSynced  = syncedLeftQueue.get()
         rightSynced = syncedRightQueue.get()
-        disparity = disparityQueue.get()
+        depth = depthQueue.get()
 
         cv2.imshow("left", leftSynced.getCvFrame())
         cv2.imshow("right", rightSynced.getCvFrame())
 
-        # --- Disparity visualization ---
-        npDisparity = disparity.getFrame()
-        curMax = float(np.max(npDisparity))
-        if curMax > 0:
-            maxDisparity = max(maxDisparity, curMax)
-
-        # Normalize to [0,255] and colorize; keep zero-disparity as black
-        denom = maxDisparity if maxDisparity > 0 else 1.0
-        normalized = (npDisparity / denom * 255.0).astype(np.uint8)
-        colorizedDisparity = cv2.applyColorMap(normalized, cv2.COLORMAP_JET)
-        colorizedDisparity[normalized == 0] = (0, 0, 0)
-        cv2.imshow("disparity", colorizedDisparity)
+        colorizedDepth = dai.colorizeDepthFrame(depth, 500, 12000, cv2.COLORMAP_JET, True).getCvFrame()
+        cv2.imshow("depth", colorizedDepth)
 
         # --- Coverage (non-blocking) ---
         coverage = dynCalibCoverageQueue.tryGet()

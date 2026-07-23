@@ -1,5 +1,4 @@
 import depthai as dai
-import numpy as np
 import cv2
 
 with dai.Pipeline() as pipeline:
@@ -21,20 +20,14 @@ with dai.Pipeline() as pipeline:
     stereo.setExtendedDisparity(True)
     stereo.setLeftRightCheck(True)
 
-    disparityQueue = stereo.disparity.createOutputQueue()
-
-    colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
-    colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
+    depthQueue = stereo.depth.createOutputQueue()
 
     pipeline.start()
-    maxDisparity = 1
     while pipeline.isRunning():
-        disparity = disparityQueue.get()
-        assert isinstance(disparity, dai.ImgFrame)
-        npDisparity = disparity.getFrame()
-        maxDisparity = max(maxDisparity, np.max(npDisparity))
-        colorizedDisparity = cv2.applyColorMap(((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap)
-        cv2.imshow("disparity", colorizedDisparity)
+        depth = depthQueue.get()
+        assert isinstance(depth, dai.ImgFrame)
+        colorizedDepth = dai.colorizeDepthFrame(depth, 500, 12000, cv2.COLORMAP_JET, True).getCvFrame()
+        cv2.imshow("depth", colorizedDepth)
         key = cv2.waitKey(1)
         if key == ord('q'):
             pipeline.stop()

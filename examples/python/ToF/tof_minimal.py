@@ -8,26 +8,9 @@ Press 'q' to quit.
 """
 
 import cv2
-import numpy as np
 import depthai as dai
 
 FPS = 30.0
-
-
-def colorizeDepth(frame: np.ndarray, minDepth: float, maxDepth: float) -> np.ndarray:
-    invalidMask = frame == 0
-    try:
-        logDepth = np.log(frame.astype(np.float32) + 1e-6)
-        logDepth[invalidMask] = 0.0
-        logMin, logMax = np.log(minDepth + 1e-6), np.log(maxDepth + 1e-6)
-        logDepth = np.clip(logDepth, logMin, logMax)
-        colored = np.interp(logDepth, (logMin, logMax), (0, 255))
-        colored = colored.astype(np.uint8)
-        colored = cv2.applyColorMap(colored, cv2.COLORMAP_JET)
-        colored[invalidMask] = 0
-    except (IndexError, ValueError):
-        colored = np.zeros((*frame.shape, 3), dtype=np.uint8)
-    return colored
 
 
 def main():
@@ -50,7 +33,7 @@ def main():
         p.start()
         while p.isRunning():
             depth = depthOutputQueue.get()
-            cv2.imshow("depth", colorizeDepth(depth.getCvFrame(), minDepth, maxDepth))
+            cv2.imshow("depth", dai.colorizeDepthFrame(depth, minDepth, maxDepth).getCvFrame())
 
             if cv2.waitKey(1) == ord("q"):
                 break

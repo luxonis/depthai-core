@@ -8,6 +8,7 @@
 // depthai
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/ColorizeDepthFrame.hpp"
 #include "ndarray_converter.h"
 // pybind
 #include <pybind11/cast.h>
@@ -324,4 +325,27 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
     // m.attr("ImgFrame").attr("Type") = m.attr("RawImgFrame").attr("Type");
     // m.attr("ImgFrame").attr("Specs") = m.attr("RawImgFrame").attr("Specs");
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    m.def(
+        "colorizeDepthFrame",
+        [](py::object frame, float minDepth, float maxDepth, int colormap, bool useLog) -> py::object {
+            if(py::isinstance<ImgFrame>(frame)) {
+                auto& img = frame.cast<ImgFrame&>();
+                return py::cast(dai::utility::colorizeDepthFrame(img, minDepth, maxDepth, static_cast<cv::ColormapTypes>(colormap), useLog));
+            }
+            if(py::isinstance<py::array>(frame)) {
+                auto mat = frame.cast<cv::Mat>();
+                return py::cast(dai::utility::colorizeDepthFrame(mat, minDepth, maxDepth, static_cast<cv::ColormapTypes>(colormap), useLog));
+            }
+            throw std::invalid_argument("colorizeDepthFrame expects an ImgFrame or a numpy array");
+        },
+        py::arg("frame"),
+        py::arg("minDepth") = 500.0f,
+        py::arg("maxDepth") = 12000.0f,
+        py::arg("colormap") = static_cast<int>(cv::COLORMAP_JET),
+        py::arg("useLog") = true,
+        "Colorize a single-channel depth frame. Depth values (including minDepth and maxDepth) are usually in millimeters. "
+        "If maxDepth <= minDepth (e.g. 0,0) the 3rd/95th percentile range is auto-computed from valid (non-zero) pixels.");
+#endif
 }

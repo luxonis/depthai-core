@@ -22,32 +22,14 @@ int main() {
     stereo->setExtendedDisparity(true);
     stereo->setLeftRightCheck(true);
 
-    auto disparityQueue = stereo->disparity.createOutputQueue();
+    auto depthQueue = stereo->depth.createOutputQueue();
     auto monoLeftEventQueue = monoLeft->pipelineEventOutput.createOutputQueue(1, false);
 
-    double maxDisparity = 1.0;
     pipeline.start();
     while(pipeline.isRunning()) {
-        auto disparity = disparityQueue->get<dai::ImgFrame>();
+        auto depth = depthQueue->get<dai::ImgFrame>();
         auto latestNodeEvent = monoLeftEventQueue->tryGet<dai::PipelineEvent>();
-
-        cv::Mat npDisparity = disparity->getFrame();
-
-        double minVal, curMax;
-        cv::minMaxLoc(npDisparity, &minVal, &curMax);
-        maxDisparity = std::max(maxDisparity, curMax);
-
-        // Normalize the disparity image to an 8-bit scale.
-        cv::Mat normalized;
-        npDisparity.convertTo(normalized, CV_8UC1, 255.0 / maxDisparity);
-
-        cv::Mat colorizedDisparity;
-        cv::applyColorMap(normalized, colorizedDisparity, cv::COLORMAP_JET);
-
-        // Set pixels with zero disparity to black.
-        colorizedDisparity.setTo(cv::Scalar(0, 0, 0), normalized == 0);
-
-        cv::imshow("disparity", colorizedDisparity);
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame());
 
         std::cout << "Latest event from MonoLeft camera node: " << (latestNodeEvent ? latestNodeEvent->str() : "No event");
 

@@ -4,7 +4,6 @@ import argparse
 from pathlib import Path
 import cv2
 import depthai as dai
-import numpy as np
 
 NEURAL_FPS = 8
 STEREO_DEFAULT_FPS = 20
@@ -32,20 +31,12 @@ class SpatialVisualizer(dai.node.HostNode):
         self.link_args(depth, detections, rgb) # Must match the inputs to the process method
 
     def process(self, depthPreview, detections, rgbPreview):
-        depthPreview = depthPreview.getCvFrame()
         rgbPreview = rgbPreview.getCvFrame()
         depthFrameColor = self.processDepthFrame(depthPreview)
         self.displayResults(rgbPreview, depthFrameColor, detections.detections)
 
     def processDepthFrame(self, depthFrame):
-        depthDownscaled = depthFrame[::4]
-        if np.all(depthDownscaled == 0):
-            minDepth = 0
-        else:
-            minDepth = np.percentile(depthDownscaled[depthDownscaled != 0], 1)
-        maxDepth = np.percentile(depthDownscaled, 99)
-        depthFrameColor = np.interp(depthFrame, (minDepth, maxDepth), (0, 255)).astype(np.uint8)
-        return cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
+        return dai.colorizeDepthFrame(depthFrame, 500, 12000, cv2.COLORMAP_HOT, False).getCvFrame()
 
     def displayResults(self, rgbFrame, depthFrameColor, detections):
         height, width, _ = rgbFrame.shape

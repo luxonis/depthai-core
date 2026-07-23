@@ -1,10 +1,8 @@
+#include <argparse/argparse.hpp>
 #include <chrono>
-#include <cmath>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>
-
-#include <argparse/argparse.hpp>
 
 #include "depthai/depthai.hpp"
 
@@ -13,35 +11,6 @@ const cv::Size CAMERA_SIZE(640, 400);
 
 constexpr float MIN_DEPTH = 100.0f;
 constexpr float MAX_DEPTH = 7000.0f;
-
-cv::Mat colorizeDepth(const cv::Mat& frame, float minDepth, float maxDepth) {
-    cv::Mat depth32f;
-    frame.convertTo(depth32f, CV_32F);
-
-    cv::Mat invalidMask = depth32f == 0.0f;
-
-    try {
-        cv::Mat logDepth = depth32f + 1e-6f;
-        cv::log(logDepth, logDepth);
-        logDepth.setTo(0.0f, invalidMask);
-
-        const float logMinDepth = std::log(minDepth + 1e-6f);
-        const float logMaxDepth = std::log(maxDepth + 1e-6f);
-
-        cv::min(logDepth, logMaxDepth, logDepth);
-        cv::max(logDepth, logMinDepth, logDepth);
-
-        cv::Mat colored;
-        logDepth.convertTo(
-            colored, CV_8U, 255.0 / (logMaxDepth - logMinDepth), -logMinDepth * 255.0 / (logMaxDepth - logMinDepth));
-        cv::applyColorMap(colored, colored, cv::COLORMAP_JET);
-        colored.setTo(cv::Scalar::all(0), invalidMask);
-        return colored;
-    } catch(const cv::Exception&) {
-        return cv::Mat::zeros(frame.size(), CV_8UC3);
-    }
-}
-
 float rgbWeight = 0.5f;
 float depthWeight = 0.5f;
 
@@ -113,7 +82,7 @@ int main(int argc, char** argv) {
             cv::cvtColor(cvFrame, cvFrame, cv::COLOR_GRAY2BGR);
         }
 
-        cv::Mat depthColorized = colorizeDepth(frameDepth->getFrame(), MIN_DEPTH, MAX_DEPTH);
+        cv::Mat depthColorized = dai::utility::colorizeDepthFrame(*frameDepth, MIN_DEPTH, MAX_DEPTH).getCvFrame();
         if(depthColorized.size() != cvFrame.size()) {
             cv::resize(depthColorized, depthColorized, cvFrame.size());
         }

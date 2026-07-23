@@ -43,35 +43,16 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
         auto detections = in->get<dai::SpatialImgDetections>("detections");
         auto rgbFrame = in->get<dai::ImgFrame>("rgb");
 
-        cv::Mat depthCv = depthFrame->getCvFrame();
         cv::Mat rgbCv = rgbFrame->getCvFrame();
-        cv::Mat depthFrameColor = processDepthFrame(depthCv);
+        cv::Mat depthFrameColor = processDepthFrame(*depthFrame);
         displayResults(rgbCv, depthFrameColor, detections->detections);
 
         return nullptr;
     }
 
    private:
-    cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
-        // Downscale depth frame
-        cv::Mat depthDownscaled;
-        cv::resize(depthFrame, depthDownscaled, cv::Size(), 0.25, 0.25);
-
-        // Find min and max depth values
-        double minDepth = 0, maxDepth = 0;
-        cv::Mat mask = (depthDownscaled != 0);
-        if(cv::countNonZero(mask) > 0) {
-            cv::minMaxLoc(depthDownscaled, &minDepth, &maxDepth, nullptr, nullptr, mask);
-        }
-
-        // Normalize depth frame
-        cv::Mat depthFrameColor;
-        depthFrame.convertTo(depthFrameColor, CV_8UC1, 255.0 / (maxDepth - minDepth), -minDepth * 255.0 / (maxDepth - minDepth));
-
-        // Apply color map
-        cv::Mat colorized;
-        cv::applyColorMap(depthFrameColor, colorized, cv::COLORMAP_HOT);
-        return colorized;
+    cv::Mat processDepthFrame(const dai::ImgFrame& depthFrameImg) {
+        return dai::utility::colorizeDepthFrame(depthFrameImg, 500.0f, 12000.0f, cv::COLORMAP_HOT, false).getCvFrame();
     }
 
     void displayResults(cv::Mat& rgbFrame, cv::Mat& depthFrameColor, const std::vector<dai::SpatialImgDetection>& detections) {

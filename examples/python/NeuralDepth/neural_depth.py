@@ -17,7 +17,6 @@ with dai.Pipeline() as pipeline:
 
     confidenceQueue = neuralDepth.confidence.createOutputQueue()
     edgeQueue = neuralDepth.edge.createOutputQueue()
-    disparityQueue = neuralDepth.disparity.createOutputQueue()
     depthQueue = neuralDepth.depth.createOutputQueue()
 
     inputConfigQueue = neuralDepth.inputConfig.createInputQueue()
@@ -26,7 +25,6 @@ with dai.Pipeline() as pipeline:
 
     # Connect to device and start pipeline
     pipeline.start()
-    maxDisparity = 1
     colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
     colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
     print("For adjusting thresholds, use keys:")
@@ -53,19 +51,9 @@ with dai.Pipeline() as pipeline:
         cv2.imshow("edge", colorizedEdge)
 
 
-        disparityData = disparityQueue.get()
-        assert isinstance(disparityData, dai.ImgFrame)
-        npDisparity = disparityData.getFrame()
-        maxDisparity = max(maxDisparity, np.max(npDisparity))
-        colorizedDisparity = cv2.applyColorMap(((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap)
-        cv2.imshow("disparity", colorizedDisparity)
-
         depthData = depthQueue.get()
         assert isinstance(depthData, dai.ImgFrame)
-        npDepth = depthData.getFrame()
-        maxRange = max(currentConfig.postProcessing.thresholdFilter.maxRange, 1)
-        depthFrame = np.clip((npDepth / maxRange) * 255, 0, 255).astype(np.uint8)
-        colorizedDepth = cv2.applyColorMap(depthFrame, colorMap)
+        colorizedDepth = dai.colorizeDepthFrame(depthData, 500, 12000, cv2.COLORMAP_JET, False).getCvFrame()
         cv2.imshow("depth", colorizedDepth)
 
         key = cv2.waitKey(1)

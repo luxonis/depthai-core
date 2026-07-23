@@ -24,15 +24,8 @@ def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
     # Draw the rectangle on the frame
     cv2.polylines(frame, [box], isClosed=True, color=color, thickness=thickness)
 
-def processDepthFrame(depthFrame):
-    depth_downscaled = depthFrame[::4]
-    if np.all(depth_downscaled == 0):
-        min_depth = 0
-    else:
-        min_depth = np.percentile(depth_downscaled[depth_downscaled != 0], 1)
-    max_depth = np.percentile(depth_downscaled, 99)
-    depthFrameColor = np.interp(depthFrame, (min_depth, max_depth), (0, 255)).astype(np.uint8)
-    return cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
+def processDepthFrame(depthFrame: dai.ImgFrame):
+    return dai.colorizeDepthFrame(depthFrame, 500, 12000, cv2.COLORMAP_HOT, False).getCvFrame()
 
 with dai.Pipeline() as pipeline:
     color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
@@ -65,7 +58,7 @@ with dai.Pipeline() as pipeline:
         assert stereoFrame.validateTransformations()
 
         clr = colorFrame.getCvFrame()
-        depth = processDepthFrame(stereoFrame.getCvFrame())
+        depth = processDepthFrame(stereoFrame)
 
         rect = dai.RotatedRect(dai.Point2f(300, 200), dai.Size2f(200, 100), 10)
         remappedRect = colorFrame.getTransformation().remapRectTo(stereoFrame.getTransformation(), rect)

@@ -2,35 +2,6 @@
 
 import cv2
 import depthai as dai
-import numpy as np
-
-def colorizeDepth(frameDepth):
-    invalidMask = frameDepth == 0
-    # Log the depth, minDepth and maxDepth
-    try:
-        minDepth = np.percentile(frameDepth[frameDepth != 0], 3)
-        maxDepth = np.percentile(frameDepth[frameDepth != 0], 95)
-        logDepth = np.zeros_like(frameDepth, dtype=np.float32)
-        np.log(frameDepth, where=frameDepth != 0, out=logDepth)
-        logMinDepth = np.log(minDepth)
-        logMaxDepth = np.log(maxDepth)
-        np.nan_to_num(logDepth, copy=False, nan=logMinDepth)
-        # Clip the values to be in the 0-255 range
-        logDepth = np.clip(logDepth, logMinDepth, logMaxDepth)
-
-        # Interpolate only valid logDepth values, setting the rest based on the mask
-        depthFrameColor = np.interp(logDepth, (logMinDepth, logMaxDepth), (0, 255))
-        depthFrameColor = np.nan_to_num(depthFrameColor)
-        depthFrameColor = depthFrameColor.astype(np.uint8)
-        depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
-        # Set invalid depth pixels to black
-        depthFrameColor[invalidMask] = 0
-    except IndexError:
-        # Frame is likely empty
-        depthFrameColor = np.zeros((frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8)
-    except Exception as e:
-        raise e
-    return depthFrameColor
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
@@ -60,16 +31,17 @@ with dai.Pipeline() as pipeline:
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qTrack = objectTracker.out.createOutputQueue()
-    qDepth = stereo.disparity.createOutputQueue()
+    qDepth = stereo.depth.createOutputQueue()
 
     pipeline.start()
 
     def displayFrame(name: str, frame: dai.ImgFrame, tracklets: dai.Tracklets):
         color = (0, 255, 0)
         assert tracklets.getTransformation() is not None
-        cvFrame = frame.getFrame() if frame.getType() == dai.ImgFrame.Type.RAW16 else frame.getCvFrame()
         if(frame.getType() == dai.ImgFrame.Type.RAW16):
-            cvFrame = colorizeDepth(cvFrame)
+            cvFrame = dai.colorizeDepthFrame(frame, 500, 12000).getCvFrame()
+        else:
+            cvFrame = frame.getCvFrame()
         for tracklet in tracklets.tracklets:
             # Get the shape of the frame from which the detections originated for denormalization
             normShape = tracklets.getTransformation().getSize()

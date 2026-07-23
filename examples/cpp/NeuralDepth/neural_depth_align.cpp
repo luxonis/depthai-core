@@ -40,73 +40,6 @@ class FPSCounter {
     std::deque<std::chrono::steady_clock::time_point> frameTimes;
 };
 
-// Function to colorize a depth frame for visualization
-cv::Mat colorizeDepth(const cv::Mat& frameDepth) {
-    if(frameDepth.empty() || frameDepth.channels() != 1) {
-        return cv::Mat::zeros(frameDepth.size(), CV_8UC3);
-    }
-
-    cv::Mat depth32f;
-    frameDepth.convertTo(depth32f, CV_32F);
-
-    const cv::Mat nonZeroMask = depth32f != 0.0f;
-    const int nz = cv::countNonZero(nonZeroMask);
-    if(nz == 0) {
-        return cv::Mat::zeros(frameDepth.size(), CV_8UC3);
-    }
-
-    // Extract non-zero depth values to calculate percentiles
-    std::vector<float> values;
-    values.reserve(nz);
-    for(int r = 0; r < depth32f.rows; ++r) {
-        const float* d = depth32f.ptr<float>(r);
-        const uchar* m = nonZeroMask.ptr<uchar>(r);
-        for(int c = 0; c < depth32f.cols; ++c) {
-            if(m[c]) {
-                values.push_back(d[c]);
-            }
-        }
-    }
-
-    std::sort(values.begin(), values.end());
-
-    // Lambda to calculate percentile
-    auto pct = [&](double p) {
-        if(values.empty()) return 0.0f;
-        size_t idx = static_cast<size_t>(std::round((p / 100.0) * (values.size() - 1)));
-        return values[idx];
-    };
-
-    const float minDepth = pct(3.0);
-    const float maxDepth = pct(95.0);
-
-    // Apply logarithmic scaling
-    cv::Mat logDepth;
-    depth32f.copyTo(logDepth);
-    logDepth.setTo(minDepth, ~nonZeroMask);  // Replace zeros to avoid log(0)
-    cv::log(logDepth, logDepth);
-
-    const float logMinDepth = std::log(minDepth);
-    const float logMaxDepth = std::log(maxDepth);
-
-    // Clip and linearly scale to the [0, 255] range
-    cv::min(logDepth, logMaxDepth, logDepth);
-    cv::max(logDepth, logMinDepth, logDepth);
-    if(logMaxDepth > logMinDepth) {
-        logDepth = (logDepth - logMinDepth) * (255.0f / (logMaxDepth - logMinDepth));
-    }
-
-    cv::Mat depth8U;
-    logDepth.convertTo(depth8U, CV_8U);
-
-    // Apply color map and set invalid pixels to black
-    cv::Mat depthFrameColor;
-    cv::applyColorMap(depth8U, depthFrameColor, cv::COLORMAP_JET);
-    depthFrameColor.setTo(cv::Scalar::all(0), ~nonZeroMask);
-
-    return depthFrameColor;
-}
-
 // Global variables for blending weights, controlled by the trackbar
 float rgbWeight = 0.4f;
 float depthWeight = 0.6f;
@@ -178,7 +111,7 @@ int main() {
             cv::Mat cvFrame = frameRgb->getCvFrame();
 
             // Colorize the aligned depth frame for visualization
-            cv::Mat alignedDepthColorized = colorizeDepth(frameDepth->getFrame());
+            cv::Mat alignedDepthColorized = dai::utility::colorizeDepthFrame(*frameDepth, 500.0f, 12000.0f).getCvFrame();
             cv::imshow("Depth aligned", alignedDepthColorized);
 
             // Blend the RGB and colorized depth frames

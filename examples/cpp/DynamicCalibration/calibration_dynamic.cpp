@@ -1,5 +1,4 @@
 // examples/cpp/DynamicCalibration/calibrate.cpp
-#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <iomanip>
@@ -33,7 +32,7 @@ int main() {
     // In-pipeline host queues
     auto leftSyncedQueue = stereo->syncedLeft.createOutputQueue();
     auto rightSyncedQueue = stereo->syncedRight.createOutputQueue();
-    auto disparityQueue = stereo->disparity.createOutputQueue();
+    auto depthQueue = stereo->depth.createOutputQueue();
 
     auto dynCalibOutQ = dynCalib->calibrationOutput.createOutputQueue();
     auto dynCoverageOutQ = dynCalib->coverageOutput.createOutputQueue();
@@ -52,32 +51,15 @@ int main() {
     // Start calibration (optimize performance)
     dynCalibInputControl->send(DCC::startCalibration());
 
-    double maxDisparity = 1.0;
     while(pipeline.isRunning()) {
         auto leftSynced = leftSyncedQueue->get<dai::ImgFrame>();
         auto rightSynced = rightSyncedQueue->get<dai::ImgFrame>();
-        auto disparity = disparityQueue->get<dai::ImgFrame>();
+        auto depth = depthQueue->get<dai::ImgFrame>();
 
         cv::imshow("left", leftSynced->getCvFrame());
         cv::imshow("right", rightSynced->getCvFrame());
 
-        cv::Mat npDisparity = disparity->getFrame();
-
-        double minVal = 0.0, curMax = 0.0;
-        cv::minMaxLoc(npDisparity, &minVal, &curMax);
-        maxDisparity = std::max(maxDisparity, curMax);
-
-        // Normalize the disparity image to an 8-bit scale.
-        cv::Mat normalized;
-        npDisparity.convertTo(normalized, CV_8UC1, 255.0 / (maxDisparity > 0 ? maxDisparity : 1.0));
-
-        cv::Mat colorizedDisparity;
-        cv::applyColorMap(normalized, colorizedDisparity, cv::COLORMAP_JET);
-
-        // Set pixels with zero disparity to black.
-        colorizedDisparity.setTo(cv::Scalar(0, 0, 0), normalized == 0);
-
-        cv::imshow("disparity", colorizedDisparity);
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame());
 
         // Coverage (non-blocking)
         if(auto coverageMsg = dynCoverageOutQ->tryGet<dai::CoverageData>()) {

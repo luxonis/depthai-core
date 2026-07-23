@@ -19,19 +19,6 @@ except ImportError:
 import depthai as dai
 
 
-def colorizeDepth(frame: np.ndarray) -> np.ndarray:
-    """Normalize a uint16 depth frame and apply a colormap for display."""
-    downscaled = frame[::4, ::4]
-    nonZero = downscaled[downscaled != 0]
-    if nonZero.size == 0:
-        minD, maxD = 0, 1
-    else:
-        minD = np.percentile(nonZero, 1)
-        maxD = np.percentile(nonZero, 99)
-    colored = np.interp(frame, (minD, maxD), (0, 255)).astype(np.uint8)
-    return cv2.applyColorMap(colored, cv2.COLORMAP_HOT)
-
-
 def main() -> None:
     print("PointCloud Visualizer")
     print("=====================")
@@ -124,7 +111,7 @@ def main() -> None:
                 # Show colorized depth in an OpenCV window
                 depthMsg = qDepth.tryGet()
                 if depthMsg is not None:
-                    cv2.imshow("Depth", colorizeDepth(depthMsg.getCvFrame()))
+                    cv2.imshow("Depth", dai.colorizeDepthFrame(depthMsg, 500, 12000, cv2.COLORMAP_HOT, False).getCvFrame())
 
                 if cv2.waitKey(1) == ord("q"):
                     break

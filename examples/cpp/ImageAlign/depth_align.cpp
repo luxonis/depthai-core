@@ -44,45 +44,6 @@ class FPSCounter {
     std::deque<std::chrono::steady_clock::time_point> frameTimes;
 };
 
-// Depth colorization function from detection_network_remap.cpp
-cv::Mat colorizeDepth(cv::Mat frameDepth) {
-    try {
-        // Early exit if no valid pixels
-        if(cv::countNonZero(frameDepth) == 0) {
-            return cv::Mat::zeros(frameDepth.rows, frameDepth.cols, CV_8UC3);
-        }
-
-        // Convert to float once
-        cv::Mat frameDepthFloat;
-        frameDepth.convertTo(frameDepthFloat, CV_32F);
-
-        double minVal, maxVal;
-        cv::minMaxLoc(frameDepthFloat, &minVal, &maxVal, nullptr, nullptr, frameDepthFloat > 0);
-
-        // Take log in-place
-        cv::log(frameDepthFloat, frameDepthFloat);
-        float logMinDepth = std::log(minVal);
-        float logMaxDepth = std::log(maxVal);
-
-        frameDepthFloat = (frameDepthFloat - logMinDepth) * (255.0f / (logMaxDepth - logMinDepth));
-
-        cv::Mat normalizedDepth;
-        frameDepthFloat.convertTo(normalizedDepth, CV_8UC1);
-
-        cv::Mat depthFrameColor;
-        cv::applyColorMap(normalizedDepth, depthFrameColor, cv::COLORMAP_JET);
-
-        // Mask invalid pixels
-        depthFrameColor.setTo(0, frameDepth == 0);
-
-        return depthFrameColor;
-
-    } catch(const std::exception& e) {
-        std::cerr << "Error in colorizeDepth: " << e.what() << std::endl;
-        return cv::Mat::zeros(frameDepth.rows, frameDepth.cols, CV_8UC3);
-    }
-}
-
 // Global blend weights
 float rgbWeight = 0.4f;
 float depthWeight = 0.6f;
@@ -164,7 +125,7 @@ int main() {
             cv::Mat cvFrame = frameRgb->getCvFrame();
 
             // Colorize depth
-            cv::Mat alignedDepthColorized = colorizeDepth(frameDepth->getFrame());
+            cv::Mat alignedDepthColorized = dai::utility::colorizeDepthFrame(*frameDepth, 500.0f, 12000.0f).getCvFrame();
             cv::imshow("Depth aligned", alignedDepthColorized);
 
             // Convert grayscale to BGR if needed

@@ -11,7 +11,6 @@ from datetime import timedelta
 
 import cv2
 import depthai as dai
-import numpy as np
 
 
 FPS = 30.0
@@ -19,23 +18,6 @@ CAMERA_SIZE = (640, 400)
 
 MIN_DEPTH = 100
 MAX_DEPTH = 7000
-
-
-def colorizeDepth(frameDepth: np.ndarray, minDepth: float, maxDepth: float) -> np.ndarray:
-    invalidMask = frameDepth == 0
-    try:
-        logDepth = np.log(frameDepth.astype(np.float32) + 1e-6)
-        logDepth[invalidMask] = 0.0
-        logMin, logMax = np.log(minDepth + 1e-6), np.log(maxDepth + 1e-6)
-        logDepth = np.clip(logDepth, logMin, logMax)
-        depthFrameColor = np.interp(logDepth, (logMin, logMax), (0, 255))
-        depthFrameColor = depthFrameColor.astype(np.uint8)
-        depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
-        depthFrameColor[invalidMask] = 0
-    except (IndexError, ValueError):
-        depthFrameColor = np.zeros((frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8)
-    return depthFrameColor
-
 
 rgbWeight = 0.5
 depthWeight = 0.5
@@ -111,7 +93,7 @@ def main():
             if len(cvFrame.shape) == 2:
                 cvFrame = cv2.cvtColor(cvFrame, cv2.COLOR_GRAY2BGR)
 
-            depthColorized = colorizeDepth(frameDepth.getFrame(), MIN_DEPTH, MAX_DEPTH)
+            depthColorized = dai.colorizeDepthFrame(frameDepth, MIN_DEPTH, MAX_DEPTH).getCvFrame()
             if depthColorized.shape[:2] != cvFrame.shape[:2]:
                 depthColorized = cv2.resize(
                     depthColorized, (cvFrame.shape[1], cvFrame.shape[0])
