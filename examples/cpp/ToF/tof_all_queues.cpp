@@ -1,9 +1,12 @@
 #include <cmath>
+#include <iostream>
 #include <map>
 #include <opencv2/opencv.hpp>
 #include <string>
 
 #include "depthai/depthai.hpp"
+
+constexpr float FPS = 30.0f;
 
 cv::Mat colorizeDepth(const cv::Mat& frame, float minDepth, float maxDepth) {
     cv::Mat depth32f;
@@ -47,13 +50,22 @@ int main() {
 
     auto profile = dai::ToFConfig::Profile::MID_RANGE;
 
-    auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, profile);
+    auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, profile, FPS);
+
+    bool isRVC2 = pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2;
 
     std::map<std::string, std::shared_ptr<dai::MessageQueue>> outputQueues = {
         {"depth", tof->depth.createOutputQueue(1, false)},
         {"amplitude", tof->amplitude.createOutputQueue(1, false)},
         {"intensity", tof->intensity.createOutputQueue(1, false)},
     };
+    if(isRVC2) {
+        outputQueues["rawDepth"] = tof->rawDepth.createOutputQueue(1, false);
+    } else {
+        outputQueues["confidence"] = tof->confidence.createOutputQueue(1, false);
+    }
+
+    std::cout << "Detected " << (isRVC2 ? "RVC2" : "RVC4") << std::endl;
 
     pipeline.start();
     while(pipeline.isRunning()) {

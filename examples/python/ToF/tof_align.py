@@ -2,8 +2,8 @@
 """Align ToF depth over left or right camera and show a blended overlay.
 
 Usage:
-    python tof_align_overlay.py --camera left   # align over CAM_B (default)
-    python tof_align_overlay.py --camera right  # align over CAM_C
+    python tof_align.py --camera left
+    python tof_align.py --camera right
 """
 
 import argparse
@@ -14,7 +14,7 @@ import depthai as dai
 import numpy as np
 
 
-FPS = 10.0
+FPS = 30.0
 CAMERA_SIZE = (640, 400)
 
 MIN_DEPTH = 100

@@ -3,6 +3,8 @@
 
 #include "depthai/depthai.hpp"
 
+constexpr float FPS = 30.0f;
+
 cv::Mat colorizeDepth(const cv::Mat& frame, float minDepth, float maxDepth) {
     cv::Mat depth32f;
     frame.convertTo(depth32f, CV_32F);
@@ -40,7 +42,7 @@ int main() {
 
     auto profile = dai::ToFConfig::Profile::MID_RANGE;
 
-    auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, profile);
+    auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, profile, FPS);
 
     auto depthOutputQueue = tof->depth.createOutputQueue();
 

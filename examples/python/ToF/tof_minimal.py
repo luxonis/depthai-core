@@ -11,6 +11,8 @@ import cv2
 import numpy as np
 import depthai as dai
 
+FPS = 30.0
+
 
 def colorizeDepth(frame: np.ndarray, minDepth: float, maxDepth: float) -> np.ndarray:
     invalidMask = frame == 0
@@ -38,7 +40,8 @@ def main():
 
     tof = pipeline.create(dai.node.ToF).build(
         boardSocket=dai.CameraBoardSocket.AUTO,
-        profile=profile
+        profile=profile,
+        fps=FPS,
     )
 
     depthOutputQueue = tof.depth.createOutputQueue()

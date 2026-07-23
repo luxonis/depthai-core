@@ -8,7 +8,7 @@
 
 #include "depthai/depthai.hpp"
 
-constexpr float FPS = 10.0f;
+constexpr float FPS = 30.0f;
 const cv::Size CAMERA_SIZE(640, 400);
 
 constexpr float MIN_DEPTH = 100.0f;

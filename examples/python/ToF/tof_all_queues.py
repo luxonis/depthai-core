@@ -11,6 +11,8 @@ import cv2
 import numpy as np
 import depthai as dai
 
+FPS = 30.0
+
 
 def colorizeDepth(frame: np.ndarray, minDepth: float, maxDepth: float) -> np.ndarray:
     invalidMask = frame == 0
@@ -42,7 +44,8 @@ def main():
 
     tof = pipeline.create(dai.node.ToF).build(
         boardSocket=dai.CameraBoardSocket.AUTO,
-        profile=profile
+        profile=profile,
+        fps=FPS,
     )
 
     with pipeline as p:
@@ -55,10 +58,8 @@ def main():
             "intensity": tof.intensity.createOutputQueue(maxSize=1, blocking=False),
         }
         if isRVC2:
-            # rawDepth are only supported on RVC2
             outputQueues["rawDepth"] = tof.rawDepth.createOutputQueue(maxSize=1, blocking=False)
         else:
-            # confidence is only supported on RVC4
             outputQueues["confidence"] = tof.confidence.createOutputQueue(maxSize=1, blocking=False)
 
         platformName = "RVC2" if isRVC2 else "RVC4"
