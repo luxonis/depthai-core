@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
     camOut->link(align->inputAlignTo);
 
     auto sync = pipeline.create<dai::node::Sync>();
-    sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(500 / FPS)));
+    sync->setSyncThreshold(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / FPS)));
     sync->setRunOnHost(true);
     camOut->link(sync->inputs["rgb"]);
     align->outputAligned.link(sync->inputs["depth_aligned"]);
