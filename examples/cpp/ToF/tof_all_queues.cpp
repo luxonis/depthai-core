@@ -42,11 +42,9 @@ cv::Mat normalizeFrame(const cv::Mat& frame) {
 int main() {
     dai::Pipeline pipeline;
 
-    // show depth in range 0.1m - 7m
     constexpr float minDepth = 100.0f;
     constexpr float maxDepth = 7000.0f;
 
-    // choose one of profiles LOW_RANGE / MID_RANGE / HIGH_RANGE
     auto profile = dai::ToFConfig::Profile::MID_RANGE;
 
     auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, profile);
@@ -55,8 +53,6 @@ int main() {
         {"depth", tof->depth.createOutputQueue(1, false)},
         {"amplitude", tof->amplitude.createOutputQueue(1, false)},
         {"intensity", tof->intensity.createOutputQueue(1, false)},
-        // {"rawDepth", tof->rawDepth.createOutputQueue(1, false)},  // not supported on RVC4
-        // {"confidence", tof->confidence.createOutputQueue(1, false)},  // not supported on RVC2
     };
 
     pipeline.start();

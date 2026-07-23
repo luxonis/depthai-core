@@ -11,7 +11,6 @@
 constexpr float FPS = 10.0f;
 const cv::Size CAMERA_SIZE(640, 400);
 
-// Show depth in range 0.1 m to 7 m.
 constexpr float MIN_DEPTH = 100.0f;
 constexpr float MAX_DEPTH = 7000.0f;
 

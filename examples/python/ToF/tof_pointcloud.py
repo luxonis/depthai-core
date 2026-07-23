@@ -27,7 +27,6 @@ with dai.Pipeline() as p:
         fps=FPS
     )
 
-    # Align depth into colour frame so both inputs to PointCloud share the same dimensions
     align = p.create(dai.node.ImageAlign)
     align.setRunOnHost(True)
     tof.depth.link(align.input)
