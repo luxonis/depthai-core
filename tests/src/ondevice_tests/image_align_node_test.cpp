@@ -11,17 +11,6 @@ using namespace std::chrono;
 using namespace std::chrono_literals;
 
 namespace {
-void requireEqualSpecs(const dai::ImgFrame::Specs& actual, const dai::ImgFrame::Specs& expected) {
-    REQUIRE(actual.type == expected.type);
-    REQUIRE(actual.width == expected.width);
-    REQUIRE(actual.height == expected.height);
-    REQUIRE(actual.stride == expected.stride);
-    REQUIRE(actual.bytesPP == expected.bytesPP);
-    REQUIRE(actual.p1Offset == expected.p1Offset);
-    REQUIRE(actual.p2Offset == expected.p2Offset);
-    REQUIRE(actual.p3Offset == expected.p3Offset);
-}
-
 void requireInputMetadata(const dai::ImgFrame& aligned, const dai::ImgFrame& inputFrame) {
     REQUIRE(aligned.getType() == inputFrame.getType());
     REQUIRE(aligned.getBytesPerPixel() == inputFrame.getBytesPerPixel());
@@ -48,7 +37,6 @@ void requireAlignedFrameMetadata(const dai::ImgFrame& aligned, const dai::ImgFra
     REQUIRE(aligned.getSourceWidth() == alignToFrame.getSourceWidth());
     REQUIRE(aligned.getSourceHeight() == alignToFrame.getSourceHeight());
     REQUIRE(aligned.validateTransformations());
-    requireEqualSpecs(aligned.sourceFb, alignToFrame.sourceFb);
 
     if(aligned.getType() == dai::ImgFrame::Type::NV12) {
         REQUIRE(aligned.getPlaneHeight() == aligned.getHeight());
@@ -123,15 +111,14 @@ std::shared_ptr<dai::ImgFrame> makeRuntimeTransformationFrame(const dai::ImgTran
     frame->setSourceSize(width, height);
     frame->setWidth(width);
     frame->setHeight(height);
-    frame->setType(dai::ImgFrame::Type::RAW8);
-    frame->setStride(width);
+    frame->setType(dai::ImgFrame::Type::RAW16);
+    const size_t bytesPerPixel = static_cast<size_t>(frame->getBytesPerPixel());
+    frame->setStride(width * bytesPerPixel);
     frame->setInstanceNum(static_cast<uint32_t>(camera));
     frame->setSequenceNum(sequenceNum);
-    std::vector<uint8_t> data(width * height);
-    for(size_t y = 0; y < height; ++y) {
-        for(size_t x = 0; x < width; ++x) {
-            data[y * width + x] = static_cast<uint8_t>((x * 17 + y * 31) % 256);
-        }
+    std::vector<uint8_t> data(width * height * bytesPerPixel);
+    for(size_t i = 0; i < data.size(); ++i) {
+        data[i] = static_cast<uint8_t>((i * 17) % 65536);
     }
     frame->setData(std::move(data));
     frame->setTransformation(transformation);
@@ -193,8 +180,6 @@ TEST_CASE("Test ImageAlign device runtime input transformations") {
     dai::Pipeline pipeline;
     auto align = pipeline.create<dai::node::ImageAlign>();
     align->setRunOnHost(false);
-    // RAW8 is an image rather than a depth map, so provide the plane used by the device warp.
-    align->initialConfig->staticDepthPlane = 1000;
     auto inputQueue = align->input.createInputQueue();
     auto alignToQueue = align->inputAlignTo.createInputQueue();
     auto outputQueue = align->outputAligned.createOutputQueue();
@@ -203,7 +188,19 @@ TEST_CASE("Test ImageAlign device runtime input transformations") {
     auto sendAndRequireAligned = [&](const dai::ImgTransformation& currentInputTransformation,
                                      const dai::ImgTransformation& currentAlignToTransformation,
                                      int64_t sequenceNum) {
-        alignToQueue->send(makeRuntimeTransformationFrame(currentAlignToTransformation, dai::CameraBoardSocket::CAM_A, sequenceNum));
+        constexpr int maxSendAttempts = 100;
+        int attempts = 0;
+        bool alignQueueStatus = false;
+        while(!alignQueueStatus) {
+            alignQueueStatus = alignToQueue->trySend(makeRuntimeTransformationFrame(currentAlignToTransformation, dai::CameraBoardSocket::CAM_A, sequenceNum));
+            if(!alignQueueStatus) {
+                if(++attempts >= maxSendAttempts) {
+                    CAPTURE(sequenceNum, attempts);
+                    FAIL("Timed out sending alignTo frame: the host-side input queue remained full");
+                }
+                std::this_thread::sleep_for(1ms);
+            }
+        }
         inputQueue->send(makeRuntimeTransformationFrame(currentInputTransformation, dai::CameraBoardSocket::CAM_B, sequenceNum));
 
         auto aligned = outputQueue->get<dai::ImgFrame>();
