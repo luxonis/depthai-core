@@ -28,12 +28,6 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
    protected:
     Properties& getProperties();
-    /**
-     * Input for raw sensor frames used by the RVC4 host implementation.
-     * This stays internal to the node group API, but must remain on the base
-     * node so the auto-created ToF camera can be linked in the pipeline schema.
-     */
-    Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
    public:
     ToFBase() = default;
@@ -60,6 +54,13 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
+     * Input for raw sensor frames used by the RVC4 host implementation.
+     * When using ToFBase directly (instead of the ToF node group), link a
+     * Camera node's raw output here to feed the ToF processing pipeline.
+     */
+    Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
      * Build with a specific board socket
      */
     std::shared_ptr<ToFBase> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
@@ -74,7 +75,6 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
    private:
     friend class ToF;
-
     bool isBuilt = false;
     uint32_t maxWidth = 0;
     uint32_t maxHeight = 0;
