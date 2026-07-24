@@ -278,11 +278,15 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
             // Create the ToF node along with ImageAlign node and return
             bool setRunOnHost = true;
             auto tofFps = fps.value_or(30.0f);
-            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::TOF_MID_RANGE, tofFps);
+            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ToFConfig::Profile::MID_RANGE, tofFps);
             auto align = pipeline.create<node::ImageAlign>();
             auto* colorCamOutput = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, tofFps, true);
             colorCamOutput->link(align->inputAlignTo);
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+            tof->tofBaseNode.depth.link(align->input);
+#else
             tof->depth.link(align->input);
+#endif
             colorCamOutput->link(inColor);
             align->outputAligned.link(inDepth);
             align->setRunOnHost(setRunOnHost);
@@ -459,6 +463,27 @@ void RGBD::alignDepth(const DepthSource& depthSource, const std::shared_ptr<Came
     std::visit([this, &camera, &frameSize, &fps](const auto& source) { alignDepthImpl(source, camera, frameSize, fps); }, depthSource);
 }
 
+void RGBD::alignDepthImpl(const std::shared_ptr<Depth>& depth,
+                          const std::shared_ptr<Camera>& camera,
+                          const std::pair<int, int>& frameSize,
+                          std::optional<float> fps) {
+    std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    colorCamOutputType = std::nullopt;  // native output for each platform
+#endif
+
+    auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
+    colorCamOutput->link(inColor);
+    depth->setAlignTo(*colorCamOutput);
+    depth->depth().link(inDepth);
+
+    if(depth->getResolvedAlgorithm() == Depth::Algorithm::TOF) {
+        constexpr float DEFAULT_TOF_FPS = 30.0f;
+        sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(500 / fps.value_or(DEFAULT_TOF_FPS))));
+        sync->setRunOnHost(true);
+    }
+}
+
 void RGBD::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
                           const std::shared_ptr<Camera>& camera,
                           const std::pair<int, int>& frameSize,
@@ -540,7 +565,11 @@ void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof,
 
     auto align = pipeline.create<node::ImageAlign>();
     colorCamOutput->link(inColor);
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    tof->tofBaseNode.depth.link(align->input);
+#else
     tof->depth.link(align->input);
+#endif
     colorCamOutput->link(align->inputAlignTo);
     align->outputAligned.link(inDepth);
 

@@ -199,7 +199,7 @@ parser.add_argument('-res', '--resolution', type=resolution_entry, action='appen
                     metavar='[socket:](width,height)',
                     help="Select camera resolution as a tuple (width, height). "
                     "Use socket:(width,height) to override specific sockets (same names as -cams). "
-                    "Default is (1280, 800) for all sockets. Can be provided multiple times."
+                    "Default is auto-selected from connected camera features. Can be provided multiple times."
                     "Example is -res cama:1920,1080, -res 640,480")
 parser.add_argument('-rot', '--rotate', const='all', choices={'all', 'rgb', 'mono'}, nargs="?",
                     help="Which cameras to rotate 180 degrees. All if not filtered")
@@ -250,17 +250,51 @@ parser.add_argument("-h", "--help", action="store_true", default=False,
 
 args = parser.parse_args()
 
-resolution_default = DEFAULT_RESOLUTION
+resolution_default_override = None
 socket_resolution_overrides = {}
 for socket, resolution in args.resolution:
     if socket:
         socket_resolution_overrides[socket] = resolution
     else:
-        resolution_default = resolution
+        resolution_default_override = resolution
 
 
-def get_socket_resolution(socket):
-    return socket_resolution_overrides.get(socket, resolution_default)
+def get_default_resolution(cam_feature):
+    configs = [cfg for cfg in cam_feature.configs if cfg.width > 0 and cfg.height > 0]
+    target_width, target_height = DEFAULT_RESOLUTION
+
+    if not configs:
+        if cam_feature.width > 0 and cam_feature.height > 0:
+            selected = (min(cam_feature.width, target_width), min(cam_feature.height, target_height))
+            return selected, f"{cam_feature.width}x{cam_feature.height} -> {selected[0]}x{selected[1]}"
+        return DEFAULT_RESOLUTION, f"default {DEFAULT_RESOLUTION[0]}x{DEFAULT_RESOLUTION[1]}"
+
+    configs.sort(key=lambda cfg: (cfg.width * cfg.height, cfg.width, cfg.height))
+    bounded_configs = [cfg for cfg in configs if cfg.width <= target_width and cfg.height <= target_height]
+    if bounded_configs:
+        best = bounded_configs[-1]
+        return (best.width, best.height), f"{cam_feature.width}x{cam_feature.height} -> {best.width}x{best.height}"
+
+    best = min(configs, key=lambda cfg: (cfg.width * cfg.height, cfg.width, cfg.height))
+    return (best.width, best.height), f"{cam_feature.width}x{cam_feature.height} -> {best.width}x{best.height}"
+
+
+def build_socket_resolution_defaults(camera_features):
+    resolutions = {}
+    for cam_feature in camera_features:
+        socket_name = socket_to_socket_opt(cam_feature.socket)
+        resolution, source = get_default_resolution(cam_feature)
+        resolutions[socket_name] = resolution
+        print(f"Auto resolution {socket_name}: {source}")
+    return resolutions
+
+
+def get_socket_resolution(socket, socket_default_resolutions):
+    if socket in socket_resolution_overrides:
+        return socket_resolution_overrides[socket]
+    if resolution_default_override is not None:
+        return resolution_default_override
+    return socket_default_resolutions.get(socket, DEFAULT_RESOLUTION)
 
 # Set timeouts before importing depthai
 os.environ["DEPTHAI_CONNECTION_TIMEOUT"] = str(args.connection_timeout)
@@ -356,8 +390,8 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     cam_type_thermal = {}
 
     device: dai.Device = pipeline.getDefaultDevice()
+    connected_cameras = device.getConnectedCameraFeatures()
     if not args.cameras:
-        connected_cameras = device.getConnectedCameraFeatures()
         args.cameras = [(socket_to_socket_opt(cam.socket), cam.supportedTypes[0] ==
                          dai.CameraSensorType.COLOR, cam.supportedTypes[0] == dai.CameraSensorType.TOF, cam.supportedTypes[0] == dai.CameraSensorType.THERMAL) for cam in connected_cameras]
         if not args.cameras:
@@ -371,6 +405,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         cam_type_tof[socket] = is_tof
         cam_type_thermal[socket] = is_thermal
         print(socket.rjust(7), ':', 'tof' if is_tof else 'color' if is_color else 'thermal' if is_thermal else 'mono')
+    socket_default_resolutions = build_socket_resolution_defaults(connected_cameras)
 
     # Uncomment to get better throughput
     # pipeline.setXLinkChunkSize(0)
@@ -417,9 +452,9 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         else:
             cam[c] = pipeline.create(dai.node.Camera)
             cam[c].setSensorType(dai.CameraSensorType.COLOR if cam_type_color[c] else dai.CameraSensorType.MONO)
-            cam[c].build(cam_socket_opts[c], get_socket_resolution(c), args.fps)
+            cam[c].build(cam_socket_opts[c], sensorFps=args.fps)
             cap = dai.ImgFrameCapability()
-            cap.size.fixed(get_socket_resolution(c))
+            cap.size.fixed(get_socket_resolution(c, socket_default_resolutions))
             cap.fps.fixed(args.fps)
             stream_name = c
             xout[stream_name] = cam[c].requestOutput(cap, True)
@@ -517,7 +552,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
 
     print('Connected cameras:')
     cam_name = {}
-    for p in device.getConnectedCameraFeatures():
+    for p in connected_cameras:
         print(
             f' -socket {p.socket.name:6}: {p.sensorName:6} {p.width:4} x {p.height:4} focus:', end='')
         print('auto ' if p.hasAutofocus else 'fixed', '- ', end='')

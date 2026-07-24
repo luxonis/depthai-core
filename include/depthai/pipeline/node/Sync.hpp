@@ -65,7 +65,7 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     /**
      * Specify the timestamp source
      */
-    void setTimestampSource(TimestampSource type);
+    void setTimestampSource(TimestampSource source);
 
     /**
      * Get the timestamp source

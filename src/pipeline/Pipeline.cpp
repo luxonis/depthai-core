@@ -805,24 +805,16 @@ PipelineStateApi PipelineImpl::getPipelineState() {
     return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
 }
 
-void PipelineImpl::add(const std::shared_ptr<Node>& node) {
-    if(node == nullptr) {
-        throw std::invalid_argument(fmt::format("Given node pointer is null"));
-    }
-
-    // First check if node has already been added
-    auto localNodes = getAllNodes();
-    for(auto& n : localNodes) {
-        if(node.get() == n.get()) {
-            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
-        }
+// Adopt children added after the parent node is already in the pipeline.
+void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
+    if(root == nullptr) {
+        return;
     }
 
     // Go through and modify nodes and its children
     // that they are now part of this pipeline
-    std::weak_ptr<PipelineImpl> curParent;
     std::queue<std::shared_ptr<Node>> search;
-    search.push(node);
+    search.push(root);
     while(!search.empty()) {
         auto curNode = search.front();
         search.pop();
@@ -848,6 +840,22 @@ void PipelineImpl::add(const std::shared_ptr<Node>& node) {
             search.push(n);
         }
     }
+}
+
+void PipelineImpl::add(const std::shared_ptr<Node>& node) {
+    if(node == nullptr) {
+        throw std::invalid_argument(fmt::format("Given node pointer is null"));
+    }
+
+    // First check if node has already been added
+    auto localNodes = getAllNodes();
+    for(auto& n : localNodes) {
+        if(node.get() == n.get()) {
+            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
+        }
+    }
+
+    adoptSubtree(node);  // BFS: ids, parent weak_ptr, default device for DeviceNodes
 
     // Add to the map (node holds its children itself)
     nodes.push_back(node);

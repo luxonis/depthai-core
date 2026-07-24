@@ -58,7 +58,7 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     /**
      * @brief Build SegmentationParser node
      * @param nnInput: Output to link
-     * @param nnArchive: Neural network archive
+     * @param model: Neural network model
      */
     std::shared_ptr<SegmentationParser> build(Node::Output& nnInput, const Model& model);
 
@@ -68,6 +68,20 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
      * @param head: Specific head from NNArchive to use for this parser
      */
     std::shared_ptr<SegmentationParser> build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head);
+
+    /**
+     * @brief Set NNArchive for this Node.
+     *
+     * @param nnArchive: NNArchive to set
+     */
+    void setNNArchive(const NNArchive& nnArchive);
+
+    /**
+     * @brief Set NNArchive head for this Node.
+     *
+     * @param head: NNArchive head to set
+     */
+    void setNNArchiveHead(const dai::nn_archive::v1::Head& head);
 
     /**
      * Sets the class labels associated with the segmentation mask.
@@ -115,11 +129,12 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     void setConfig(const dai::NNArchiveVersionedConfig& config);
     void setConfig(const dai::nn_archive::v1::Head& head);
     void validateTensor(std::optional<TensorInfo>& info);
-    std::optional<NNArchiveVersionedConfig> archiveConfig;
     std::shared_ptr<SegmentationParserConfig> inConfig;
     // TODO (aljazkonec1): common functions that are shared with NeuralNetwork, DetectionNetwork, etc. should be moved to a common base class
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
+
+    std::optional<NNArchiveVersionedConfig> archiveConfig;
 
    protected:
     Properties& getProperties() override;
