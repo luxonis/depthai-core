@@ -6,7 +6,6 @@
 #include <cstring>
 #include <memory>
 #include <optional>
-#include <sstream>
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
@@ -143,12 +142,6 @@ std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1,
     R2.convertTo(cv_R2, CV_32FC1);
 
     return std::make_pair(cv_R1, cv_R2);
-}
-
-std::string matToString(const cv::Mat& mat) {
-    std::ostringstream oss;
-    oss << mat;
-    return oss.str();
 }
 
 int shiftDepthImg(const std::shared_ptr<dai::ImgFrame>& inVec,
@@ -300,7 +293,7 @@ void Align::run() {
 
     auto nextAlignToMsg = [&]() -> std::shared_ptr<Buffer> {
         if(firstAlignTo) return std::exchange(firstAlignTo, nullptr);
-        return inputAlignTo.tryGet<Buffer>();
+        return inputAlignTo.getWaitForMessage() ? inputAlignTo.get<Buffer>() : inputAlignTo.tryGet<Buffer>();
     };
 
     while(mainLoop()) {
@@ -753,6 +746,10 @@ std::shared_ptr<Buffer> Align::buildAlignedOutputMessage(const std::shared_ptr<B
 
     const auto alignToDistortion = targetTransform.getDistortionCoefficients();
     bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
+    ImgTransformation outputTransform = targetTransform;
+    if(!alignToDistortion.empty()) {
+        outputTransform.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
+    }
 
     auto warnAboutDistortion = [&]() {
         if(!warnedAboutDistortion && hasDistortion) {
@@ -769,7 +766,7 @@ std::shared_ptr<Buffer> Align::buildAlignedOutputMessage(const std::shared_ptr<B
         warnAboutDistortion();
 
         auto alignedImg = alignImgFrame(*imgFrameInput, runState, {0, 0, 0});
-        alignedImg->setTransformation(targetTransform);
+        alignedImg->setTransformation(outputTransform);
         return alignedImg;
     }
 
@@ -777,7 +774,7 @@ std::shared_ptr<Buffer> Align::buildAlignedOutputMessage(const std::shared_ptr<B
         std::shared_ptr<ImgDetections> imgDetectionsInput = std::dynamic_pointer_cast<ImgDetections>(inputMsg);
         std::optional<ImgFrame> segMask = imgDetectionsInput->getSegmentationMask();
 
-        auto alignedImg = transformMessage<ImgDetections>(inputMsg, targetTransform, "ImgDetections");
+        auto alignedImg = transformMessage<ImgDetections>(inputMsg, outputTransform, "ImgDetections");
 
         if(segMask) {
             warnAboutDistortion();
@@ -793,7 +790,7 @@ std::shared_ptr<Buffer> Align::buildAlignedOutputMessage(const std::shared_ptr<B
         auto spatialImgDetectionsInput = std::dynamic_pointer_cast<SpatialImgDetections>(inputMsg);
         auto segMask = spatialImgDetectionsInput->getSegmentationMask();
 
-        auto alignedSpatialImgDetections = transformMessage<SpatialImgDetections>(inputMsg, targetTransform, "SpatialImgDetections");
+        auto alignedSpatialImgDetections = transformMessage<SpatialImgDetections>(inputMsg, outputTransform, "SpatialImgDetections");
 
         if(segMask) {
             warnAboutDistortion();
@@ -817,28 +814,28 @@ std::shared_ptr<Buffer> Align::buildAlignedOutputMessage(const std::shared_ptr<B
         alignedSegMask->setTimestamp(segMaskInput->getTimestamp());
         alignedSegMask->setTimestampDevice(segMaskInput->getTimestampDevice());
         alignedSegMask->setSequenceNum(segMaskInput->getSequenceNum());
-        alignedSegMask->setTransformation(targetTransform);
+        alignedSegMask->setTransformation(outputTransform);
         alignedSegMask->setLabels(segMaskInput->getLabels());
         return alignedSegMask;
     }
 
     if(inputType == DatatypeEnum::AprilTags) {
-        return transformMessage<AprilTags>(inputMsg, targetTransform, "AprilTags");
+        return transformMessage<AprilTags>(inputMsg, outputTransform, "AprilTags");
     }
 
     if(inputType == DatatypeEnum::Tracklets) {
-        return transformMessage<Tracklets>(inputMsg, targetTransform, "Tracklets");
+        return transformMessage<Tracklets>(inputMsg, outputTransform, "Tracklets");
     }
 
     if(inputType == DatatypeEnum::PointCloudData) {
         logger->warn("Alignment of PointCloudData should be handled before PointCloud node creates the message. Returning identity transformation");
-        return transformMessage<PointCloudData>(inputMsg, targetTransform, "PointCloudData");
+        return transformMessage<PointCloudData>(inputMsg, outputTransform, "PointCloudData");
     }
 
     if(inputType == DatatypeEnum::Transformable) {  // custom python messages
         auto transformableInput = std::dynamic_pointer_cast<TransformableBuffer>(inputMsg);
         if(transformableInput) {
-            return transformableInput->transformTo(targetTransform);
+            return transformableInput->transformTo(outputTransform);
         }
     }
 
