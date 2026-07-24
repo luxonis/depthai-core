@@ -205,6 +205,10 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     }
 }
 
+void StereoDepth::setStereoBackend(Properties::StereoBackend backend) {
+    properties.stereoBackend = backend;
+}
+
 void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
     switch(mode) {
         case PresetMode::ACCURACY:

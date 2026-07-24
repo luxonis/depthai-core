@@ -39,8 +39,16 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
         DEPTHAI_SERIALIZE(RectificationMesh, meshLeftUri, meshRightUri, meshSize, stepWidth, stepHeight);
     };
 
+    /**
+     * Stereo depth backend selector. Currently used on RVC4 only.
+     */
+    enum class StereoBackend : std::int32_t { EVA, DSP_GPU };
+
     /// Initial stereo config
     StereoDepthConfig initialConfig;
+
+    /// Backend to use for stereo depth computation.
+    StereoBackend stereoBackend = StereoBackend::EVA;
 
     using MedianFilter = dai::StereoDepthConfig::MedianFilter;
 
@@ -193,6 +201,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
 
 DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       initialConfig,
+                      stereoBackend,
                       depthAlignCamera,
                       enableRectification,
                       rectifyEdgeFillColor,

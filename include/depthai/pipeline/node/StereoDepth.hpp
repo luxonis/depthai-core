@@ -313,6 +313,12 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     void setDefaultProfilePreset(PresetMode mode);
 
     /**
+     * Select the stereo depth backend. Currently used on RVC4 only.
+     * @param backend StereoBackend::EVA for the existing EVA pipeline, StereoBackend::DSP_GPU for the DSP+GPU 3-path pipeline.
+     */
+    void setStereoBackend(Properties::StereoBackend backend);
+
+    /**
      * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.
      * Default behaviour is AUTO, for lenses with FOV over 85 degrees sparse mesh is used, otherwise 3x3 homography.
      * If custom mesh data is provided through loadMeshData or loadMeshFiles this option is ignored.
