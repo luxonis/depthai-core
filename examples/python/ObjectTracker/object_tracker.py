@@ -15,8 +15,10 @@ with dai.Pipeline() as pipeline:
 
     # The Depth node manages its own stereo cameras and backend internally, so no
     # explicit left/right cameras are needed. SpatialDetectionNetwork aligns the
-    # depth to the color camera internally.
-    depth = pipeline.create(dai.node.Depth)
+    # depth to the color camera internally. The (640, 400) size matches the
+    # previous stereo input and stays within the stereo backend's 1280-wide input
+    # limit (full sensor resolution would exceed it on e.g. OAK-D-LR).
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
 
     spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, depth, "yolov6-nano")
     objectTracker = pipeline.create(dai.node.ObjectTracker)

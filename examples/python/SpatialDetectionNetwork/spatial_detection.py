@@ -71,8 +71,10 @@ with dai.Pipeline() as p:
     camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A, sensorFps=fps)
     # The Depth node manages its own stereo cameras and backend internally, so
     # no explicit left/right cameras are needed. SpatialDetectionNetwork aligns
-    # the depth to the color camera internally.
-    depth = p.create(dai.node.Depth).build(fps=fps)
+    # the depth to the color camera internally. The (640, 400) size matches the
+    # previous stereo input and stays within the stereo backend's 1280-wide input
+    # limit (full sensor resolution would exceed it on e.g. OAK-D-LR).
+    depth = p.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
 
     spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
         camRgb, depth, modelDescription

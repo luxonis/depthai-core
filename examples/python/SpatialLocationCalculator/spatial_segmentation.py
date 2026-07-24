@@ -28,8 +28,11 @@ with dai.Pipeline(device) as pipeline:
 
     # The Depth node manages its own stereo cameras and backend internally, and
     # aligns depth to the detection network's passthrough output via setAlignTo
-    # (no separate ImageAlign node is needed).
-    depth = pipeline.create(dai.node.Depth).build(fps=fps)
+    # (no separate ImageAlign node is needed). The (1280, 800) size keeps the
+    # stereo input at the sensor's full mono resolution on OAK-D while staying
+    # within the stereo backend's 1280-wide input limit (unbounded full resolution
+    # would exceed it on e.g. OAK-D-LR).
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (1280, 800))
     depth.setAlignTo(detNN.passthrough)
 
     spatialCalculator = pipeline.create(dai.node.SpatialLocationCalculator)

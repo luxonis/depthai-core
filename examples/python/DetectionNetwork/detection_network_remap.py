@@ -37,8 +37,10 @@ with dai.Pipeline() as pipeline:
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
     labelMap = detectionNetwork.getClasses()
     # The Depth node manages its own stereo cameras and backend internally, so no
-    # explicit left/right cameras are needed.
-    depth = pipeline.create(dai.node.Depth)
+    # explicit left/right cameras are needed. The (1280, 720) size matches the
+    # previous stereo input and stays within the stereo backend's 1280-wide input
+    # limit (full sensor resolution would exceed it on e.g. OAK-D-LR).
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (1280, 720))
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()

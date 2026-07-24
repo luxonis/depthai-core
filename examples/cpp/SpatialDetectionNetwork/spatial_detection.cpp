@@ -188,9 +188,12 @@ int main(int argc, char** argv) {
         if(depthSourceArg == "stereo") {
             // The Depth node manages its own stereo cameras and backend internally,
             // so no explicit left/right cameras are needed. SpatialDetectionNetwork
-            // aligns the depth to the color camera internally.
+            // aligns the depth to the color camera internally. The (640, 400) size
+            // matches the previous stereo input and stays within the stereo
+            // backend's 1280-wide input limit (full sensor resolution would exceed
+            // it on e.g. OAK-D-LR).
             auto depth = pipeline.create<dai::node::Depth>();
-            depth->build(fps);
+            depth->build(dai::node::Depth::Algorithm::AUTO, fps, std::make_pair(640u, 400u));
 
             depthSource = depth;
         } else if(depthSourceArg == "neural") {

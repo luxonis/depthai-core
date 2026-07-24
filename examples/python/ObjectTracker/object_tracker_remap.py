@@ -39,8 +39,10 @@ with dai.Pipeline() as pipeline:
     objectTracker = pipeline.create(dai.node.ObjectTracker)
     labelMap = detectionNetwork.getClasses()
     # The Depth node manages its own stereo cameras and backend internally, so no
-    # explicit left/right cameras are needed.
-    depth = pipeline.create(dai.node.Depth)
+    # explicit left/right cameras are needed. The (1280, 720) size matches the
+    # previous stereo input and stays within the stereo backend's 1280-wide input
+    # limit (full sensor resolution would exceed it on e.g. OAK-D-LR).
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (1280, 720))
 
     # Linking
     detectionNetwork.out.link(objectTracker.inputDetections)

@@ -62,7 +62,12 @@ if __name__ == "__main__":
     # internally, so no explicit right camera or StereoDepth node is needed.
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     monoLeftOut = monoLeft.requestFullResolutionOutput()
-    depth = pipeline.create(dai.node.Depth)
+    # This example remaps points between the stereo/rgb frames, so force the
+    # STEREO backend (AUTO could otherwise pick e.g. ToF and clash with the
+    # explicit CAM_B camera on ToF-capable devices). The (1280, 800) size keeps
+    # the stereo input within the backend's 1280-wide input limit (full sensor
+    # resolution would exceed it on e.g. OAK-D-LR).
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.STEREO, None, (1280, 800))
 
     rgbOut = rgb.requestOutput((720, 480), enableUndistortion=False, resizeMode=dai.ImgResizeMode.CROP)
     rgbQueue = rgbOut.createOutputQueue()

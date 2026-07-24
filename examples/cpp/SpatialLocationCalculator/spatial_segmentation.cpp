@@ -104,9 +104,12 @@ int main() {
 
         // The Depth node manages its own stereo cameras and backend internally,
         // and aligns depth to the detection network's passthrough output via
-        // setAlignTo (no separate ImageAlign node is needed).
+        // setAlignTo (no separate ImageAlign node is needed). The (1280, 800) size
+        // keeps the stereo input at the sensor's full mono resolution on OAK-D
+        // while staying within the stereo backend's 1280-wide input limit
+        // (unbounded full resolution would exceed it on e.g. OAK-D-LR).
         auto depth = pipeline.create<dai::node::Depth>();
-        depth->build(fps);
+        depth->build(dai::node::Depth::Algorithm::AUTO, fps, std::make_pair(1280u, 800u));
         depth->setAlignTo(detectionNetwork->passthrough);
 
         auto spatialCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();

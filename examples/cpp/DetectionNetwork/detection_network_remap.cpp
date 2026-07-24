@@ -149,8 +149,11 @@ int main() {
     auto labelMap = detectionNetwork->getClasses().value_or(std::vector<std::string>{});
 
     // The Depth node manages its own stereo cameras and backend internally, so no
-    // explicit left/right cameras are needed.
+    // explicit left/right cameras are needed. The (1280, 720) size matches the
+    // previous stereo input and stays within the stereo backend's 1280-wide input
+    // limit (full sensor resolution would exceed it on e.g. OAK-D-LR).
     auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(1280u, 720u));
 
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
     auto qDet = detectionNetwork->out.createOutputQueue();

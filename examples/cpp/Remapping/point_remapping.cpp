@@ -121,7 +121,13 @@ int main() {
     // internally, so no explicit right camera or StereoDepth node is needed.
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto monoLeftOut = monoLeft->requestFullResolutionOutput();
+    // This example remaps points between the stereo/rgb frames, so force the
+    // STEREO backend (AUTO could otherwise pick e.g. ToF and clash with the
+    // explicit CAM_B camera on ToF-capable devices). The (1280, 800) size keeps
+    // the stereo input within the backend's 1280-wide input limit (full sensor
+    // resolution would exceed it on e.g. OAK-D-LR).
     auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::STEREO, std::nullopt, std::make_pair(1280u, 800u));
 
     auto rgbOut = rgb->requestOutput({720, 480}, std::nullopt, dai::ImgResizeMode::CROP, std::nullopt, false);
     auto rgbQueue = rgbOut->createOutputQueue();

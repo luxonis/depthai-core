@@ -17,8 +17,11 @@ int main() {
 
     // The Depth node manages its own stereo cameras and backend internally, so no
     // explicit left/right cameras are needed. SpatialDetectionNetwork aligns the
-    // depth to the color camera internally.
+    // depth to the color camera internally. The (640, 400) size matches the
+    // previous stereo input and stays within the stereo backend's 1280-wide input
+    // limit (full sensor resolution would exceed it on e.g. OAK-D-LR).
     auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
 
     // Create spatial detection network
     dai::NNModelDescription modelDescription{"yolov6-nano"};
