@@ -155,7 +155,7 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install opencv
+        brew install opencv@4
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -203,7 +203,7 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install opencv
+        brew install opencv@4
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
