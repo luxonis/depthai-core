@@ -322,6 +322,13 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * costMatching.disparityWidth to DISPARITY_64 and setSubpixelFractionalBits(4)
      * for getMaxDisparity() to describe its output. Selecting it also turns the
      * 3x3 median filter on, which its kernels used to apply themselves.
+     *
+     * Its semi-global matching is tuned by costAggregation.p1Config.defaultValue
+     * and p2Config.defaultValue, the SGM penalties, which must satisfy P2 >= P1
+     * and P2 <= 255; the adaptive and per-direction penalty fields do not apply.
+     * setConfidenceThreshold() sets how much a second candidate has to lose by
+     * for a pixel to be kept, rescaled from 0..255 onto the matcher's percentage
+     * margin, so it behaves as a confidence threshold with no confidence map.
      */
     void setStereoBackend(Properties::StereoBackend backend);
 
