@@ -16,7 +16,7 @@ static std::pair<float, float> computeAutoDepthRange(const cv::Mat& depth32f, co
             const float* d = depth32f.ptr<float>(r);
             const uchar* m = invalidMask.ptr<uchar>(r);
             for(int c = 0; c < depth32f.cols; ++c) {
-                if(m[c]) {
+                if(!m[c]) {
                     values.push_back(d[c]);
                 }
             }
