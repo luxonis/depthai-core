@@ -71,7 +71,6 @@ set(SOURCE_LIST
     src/common/ModelTypeBindings.cpp
 
     src/pipeline/node/NodeBindings.cpp
-    src/beta/node/ImgDetectionsFilterBindings.cpp
 
     src/pipeline/node/ColorCameraBindings.cpp
     src/pipeline/node/CameraBindings.cpp
@@ -169,6 +168,13 @@ set(SOURCE_LIST
     src/remote_connection/RemoteConnectionBindings.cpp
     src/utility/EventsManagerBindings.cpp
 )
+
+if(DEPTHAI_BUILD_BETA)
+    list(APPEND SOURCE_LIST
+        src/beta/node/ImgDetectionsFilterBindings.cpp
+    )
+endif()
+
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
         external/pybind11_opencv_numpy/ndarray_converter.cpp

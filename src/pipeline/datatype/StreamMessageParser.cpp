@@ -9,6 +9,9 @@
 #include <spdlog/spdlog.h>
 
 // project
+#ifdef DEPTHAI_HAVE_BETA
+    #include "depthai/beta/datatype/ImgDetectionsFilterConfig.hpp"
+#endif
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
 #include "depthai/pipeline/datatype/AprilTags.hpp"
@@ -327,6 +330,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::PacketizedData: {
             return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data, fd);
         } break;
+        case DatatypeEnum::ImgDetectionsFilterConfig:
+#ifdef DEPTHAI_HAVE_BETA
+            return parseDatatype<beta::ImgDetectionsFilterConfig>(metadataStart, serializedObjectSize, data, fd);
+#else
+            break;
+#endif
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);

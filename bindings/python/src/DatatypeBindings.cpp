@@ -170,6 +170,9 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("DynamicCalibrationResult", DatatypeEnum::DynamicCalibrationResult)
         .value("AutoCalibrationConfig", DatatypeEnum::AutoCalibrationConfig)
         .value("AutoCalibrationResult", DatatypeEnum::AutoCalibrationResult)
-        .value("CalibrationQuality", DatatypeEnum::CalibrationQuality)
-        .value("CoverageData", DatatypeEnum::CoverageData);
+        .value("CalibrationQuality", DatatypeEnum::CalibrationQuality);
+#ifdef DEPTHAI_HAVE_BETA
+    datatypeEnum.value("ImgDetectionsFilterConfig", DatatypeEnum::ImgDetectionsFilterConfig);
+#endif  // DEPTHAI_HAVE_BETA
+    datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

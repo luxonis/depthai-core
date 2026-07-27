@@ -8,7 +8,10 @@
 #include "utility/Initialization.hpp"
 
 // Include experimental APIs
-#include "beta/nodes.hpp"
+#ifdef DEPTHAI_HAVE_BETA
+    #include "beta/datatypes.hpp"
+    #include "beta/nodes.hpp"
+#endif
 
 // Include some common device classes
 #include "device/CalibrationHandler.hpp"

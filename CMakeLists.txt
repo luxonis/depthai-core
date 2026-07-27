@@ -270,7 +270,6 @@ set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
-    src/beta/node/ImgDetectionsFilter.cpp
     src/common/ModelType.cpp
     src/device/CrashDump.cpp
     src/device/CrashDumpManager.cpp
@@ -435,6 +434,14 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+if(DEPTHAI_BUILD_BETA)
+    list(APPEND TARGET_CORE_SOURCES
+        src/beta/datatype/ImgDetectionsFilterConfig.cpp
+        src/beta/node/ImgDetectionsFilter.cpp
+        src/beta/properties/ImgDetectionsFilterProperties.cpp
+    )
+endif()
+
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
     list(APPEND TARGET_CORE_SOURCES
         src/utility/EventsManager.cpp
@@ -525,6 +532,9 @@ add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
+if(DEPTHAI_BUILD_BETA)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BETA)
+endif()
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install

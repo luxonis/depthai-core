@@ -32,6 +32,7 @@ option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" 
 
 # Build Behaviour
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
+option(DEPTHAI_BUILD_BETA "Build beta namespace APIs" OFF)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
