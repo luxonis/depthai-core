@@ -2,8 +2,8 @@
 """Align ToF depth over left or right camera and show a blended overlay.
 
 Usage:
-    python tof_align_overlay.py --camera left   # align over CAM_B (default)
-    python tof_align_overlay.py --camera right  # align over CAM_C
+    python tof_align.py --camera left
+    python tof_align.py --camera right
 """
 
 import argparse
@@ -14,10 +14,9 @@ import depthai as dai
 import numpy as np
 
 
-FPS = 10.0
+FPS = 30.0
 CAMERA_SIZE = (640, 400)
 
-# show depth in range 0.1m - 7m
 MIN_DEPTH = 100
 MAX_DEPTH = 7000
 
@@ -27,8 +26,9 @@ def colorizeDepth(frameDepth: np.ndarray, minDepth: float, maxDepth: float) -> n
     try:
         logDepth = np.log(frameDepth.astype(np.float32) + 1e-6)
         logDepth[invalidMask] = 0.0
-        logDepth = np.clip(logDepth, np.log(minDepth + 1e-6), np.log(maxDepth + 1e-6))
-        depthFrameColor = np.interp(logDepth, (logDepth[~invalidMask].min(), logDepth[~invalidMask].max()), (0, 255))
+        logMin, logMax = np.log(minDepth + 1e-6), np.log(maxDepth + 1e-6)
+        logDepth = np.clip(logDepth, logMin, logMax)
+        depthFrameColor = np.interp(logDepth, (logMin, logMax), (0, 255))
         depthFrameColor = depthFrameColor.astype(np.uint8)
         depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
         depthFrameColor[invalidMask] = 0
