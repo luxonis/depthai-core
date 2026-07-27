@@ -73,6 +73,33 @@ void ProtoSerializable::save(const std::filesystem::path& path, bool metadataOnl
     writeMsgBinaryFile(resolveDataPath(path), serializeProto(metadataOnly), getDatatype());
 }
 
+void ProtoSerializable::serializeProtoToStream(std::ostream& os, bool metadataOnly, bool consume) {
+    // Generic fallback: materializes the whole encoded message, which is exactly the
+    // copy this entry point exists to avoid, and cannot release the payload early.
+    // Concrete types override this to stream directly.
+    (void)consume;
+    const auto bytes = serializeProto(metadataOnly);
+    if(!bytes.empty()) {
+        os.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    }
+}
+
+void ProtoSerializable::saveStream(const std::filesystem::path& path, bool metadataOnly, bool consume) {
+    // Mirrors writeMsgBinaryFile()'s framing exactly (datatype enum, then the encoded
+    // message) so the resulting file is byte-identical to save()'s output.
+    const auto resolved = resolveDataPath(path);
+    std::ofstream file(resolved, std::ios::binary);
+    if(!file) {
+        throw std::runtime_error("Failed to open file for writing: " + resolved.string());
+    }
+    const auto datatype = getDatatype();
+    file.write(reinterpret_cast<const char*>(&datatype), sizeof(datatype));
+    serializeProtoToStream(file, metadataOnly, consume);
+    if(!file) {
+        throw std::runtime_error("Failed to write file: " + resolved.string());
+    }
+}
+
 void ProtoSerializable::load(const std::filesystem::path& path) {
     deserializeProto(readMsgBinaryFile(resolveDataPath(path), getDatatype()));
 }

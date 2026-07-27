@@ -369,6 +369,25 @@ std::vector<std::uint8_t> ImgFrame::serializeProto(bool metadataOnly) const {
     return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }
 
+void ImgFrame::serializeProtoToStream(std::ostream& os, bool metadataOnly, bool consume) {
+    // getProtoMessage() copies the payload into the protobuf message; from here on the
+    // message is self-contained, so our own buffer is dead weight during the encode+write.
+    auto protoMessage = utility::getProtoMessage(this, metadataOnly);
+    if(consume) {
+        // Release the payload before the slow part. Only actually frees it if we held
+        // the last reference -- otherwise it just drops ours, which is still correct.
+        //
+        // Swap in an empty buffer rather than resetting to nullptr: Buffer::getData()
+        // and friends dereference `data` unconditionally, so a null would turn any
+        // later access into a segfault instead of an empty frame.
+        data = std::make_shared<VectorMemory>(std::vector<std::uint8_t>());
+    }
+    // Encodes straight into the stream, so the encoded form is never materialized whole.
+    if(!protoMessage->SerializeToOstream(&os)) {
+        throw std::runtime_error("Failed to serialize ImgFrame into stream");
+    }
+}
+
 void ImgFrame::deserializeProto(const std::vector<std::uint8_t>& bytes) {
     utility::deserializeProtoMessage(*this, bytes);
 }

@@ -96,6 +96,12 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
+     * Serialize message straight into a stream, without materializing the encoded
+     * message in memory first. See ProtoSerializable::serializeProtoToStream().
+     */
+    void serializeProtoToStream(std::ostream& os, bool metadataOnly = false, bool consume = false) override;
+
+    /**
      * @brief Set from a deserialized protobuf message of this object
      */
     void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
