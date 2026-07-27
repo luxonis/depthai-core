@@ -210,6 +210,8 @@ class CMakeBuild(build_ext):
 
         cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
         cmake_args += ['-DDEPTHAI_ENABLE_EVENTS_MANAGER=ON']
+        if env.get('DEPTHAI_BUILD_BETA') == 'ON':
+            cmake_args += ['-DDEPTHAI_BUILD_BETA=ON']
 
         # build shared libs only in CI - for downstream wheel bundling
         if env.get("CI") is not None:
