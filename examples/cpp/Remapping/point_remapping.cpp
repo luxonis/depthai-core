@@ -14,8 +14,8 @@
 
 #include "depthai/depthai.hpp"
 
-const std::string SOURCE_WINDOW = "Source window CAM_B";
-const std::string RGB_WINDOW = "RGB window CAM_A";
+const std::string DEPTH_WINDOW = "Depth window (source)";
+const std::string RGB_WINDOW = "RGB window (remapped)";
 
 std::atomic<bool> quitEvent(false);
 std::optional<cv::Point> selectedPoint = std::nullopt;
@@ -33,16 +33,6 @@ void onLeftClick(int event, int x, int y, int flags, void* param) {
     }
 }
 
-cv::Mat toColorFrame(const cv::Mat& frame) {
-    if(frame.channels() == 3) {
-        return frame;
-    }
-
-    cv::Mat colorFrame;
-    cv::cvtColor(frame, colorFrame, cv::COLOR_GRAY2BGR);
-    return colorFrame;
-}
-
 void drawPoint(cv::Mat& frame, const std::optional<dai::Point2f>& point, const std::string& label, const cv::Scalar& color) {
     if(point.has_value()) {
         const cv::Point intPoint(static_cast<int>(std::lround(point->x)), static_cast<int>(std::lround(point->y)));
@@ -58,7 +48,7 @@ std::pair<std::optional<float>, std::string> sampleDepth(const std::optional<cv:
                                                          const std::shared_ptr<dai::ImgFrame>& depthFrame,
                                                          int patchRadius = 2) {
     if(!point.has_value()) {
-        return {std::nullopt, "Left click to select a point"};
+        return {std::nullopt, "Left click a point on the depth image"};
     }
 
     cv::Mat depthData = depthFrame->getFrame();
@@ -115,71 +105,70 @@ int main() {
 
     dai::Pipeline pipeline;
 
-    auto rgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    // Keep the left camera to provide the "source" frame for point selection. The
-    // Depth node reuses this camera and manages the right camera + stereo backend
-    // internally, so no explicit right camera or StereoDepth node is needed.
-    auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto monoLeftOut = monoLeft->requestFullResolutionOutput();
-    // This example remaps points between the stereo/rgb frames, so force the
-    // STEREO backend (AUTO could otherwise pick e.g. ToF and clash with the
-    // explicit CAM_B camera on ToF-capable devices). The (1280, 800) size keeps
-    // the stereo input within the backend's 1280-wide input limit (full sensor
-    // resolution would exceed it on e.g. OAK-D-LR).
+    // Pick a COLOR-capable socket for the RGB camera so it does not take the
+    // socket the Depth node needs (e.g. the ToF sensor on ToF-capable devices,
+    // where the default AUTO socket could otherwise grab the only ToF-capable
+    // sensor).
+    auto colorSocket = dai::CameraBoardSocket::CAM_A;
+    for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
+            colorSocket = features.socket;
+            break;
+        }
+    }
+    auto rgb = pipeline.create<dai::node::Camera>()->build(colorSocket);
+
+    // The Depth node manages its own cameras and backend (stereo / ToF / neural)
+    // internally, so this example stays device-agnostic. We click a point on the
+    // depth image (its own sensor frame), read the depth there, and remap that 3D
+    // point into the RGB sensor via projectPointTo. The (640, 400) size keeps a
+    // stereo backend within its 1280-wide input limit (full sensor resolution
+    // would exceed it on e.g. OAK-D-LR).
     auto depth = pipeline.create<dai::node::Depth>();
-    depth->build(dai::node::Depth::Algorithm::STEREO, std::nullopt, std::make_pair(1280u, 800u));
+    depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
 
     auto rgbOut = rgb->requestOutput({720, 480}, std::nullopt, dai::ImgResizeMode::CROP, std::nullopt, false);
     auto rgbQueue = rgbOut->createOutputQueue();
     auto depthQueue = depth->depth().createOutputQueue();
-    auto leftQueue = monoLeftOut->createOutputQueue();
 
-    cv::namedWindow(SOURCE_WINDOW);
+    cv::namedWindow(DEPTH_WINDOW);
     cv::namedWindow(RGB_WINDOW);
-    cv::setMouseCallback(SOURCE_WINDOW, onLeftClick);
+    cv::setMouseCallback(DEPTH_WINDOW, onLeftClick);
 
     pipeline.start();
     while(pipeline.isRunning() && !quitEvent) {
         auto rgbFrame = rgbQueue->get<dai::ImgFrame>();
         auto depthFrame = depthQueue->get<dai::ImgFrame>();
-        auto leftMsg = leftQueue->get<dai::ImgFrame>();
 
-        if(rgbFrame == nullptr || depthFrame == nullptr || leftMsg == nullptr) {
+        if(rgbFrame == nullptr || depthFrame == nullptr) {
             continue;
         }
 
-        if(!rgbFrame->validateTransformations() || !depthFrame->validateTransformations() || !leftMsg->validateTransformations()) {
+        if(!rgbFrame->validateTransformations() || !depthFrame->validateTransformations()) {
             std::cerr << "Invalid transformations!" << std::endl;
             continue;
         }
 
-        auto& sourceTransformation = leftMsg->getTransformation();
-        auto& rgbTransformation = rgbFrame->getTransformation();
         auto& depthTransformation = depthFrame->getTransformation();
+        auto& rgbTransformation = rgbFrame->getTransformation();
 
-        cv::Mat leftFrame = toColorFrame(leftMsg->getCvFrame());
         cv::Mat rgbDisplay = rgbFrame->getCvFrame();
-        auto [depthMm, sourceStatus] = sampleDepth(selectedPoint, depthFrame);
+        auto [depthMm, depthStatus] = sampleDepth(selectedPoint, depthFrame);
 
         std::optional<dai::Point2f> remappedRgbPoint = std::nullopt;
-        std::optional<dai::Point2f> remappedDepthPoint = std::nullopt;
         std::string rgbStatus;
-        std::string depthStatus;
 
-        std::optional<dai::Point2f> originalPoint = std::nullopt;
+        std::optional<dai::Point2f> sourcePoint = std::nullopt;
         if(selectedPoint.has_value() && depthMm.has_value()) {
-            dai::Point2f sourcePoint(static_cast<float>(selectedPoint->x), static_cast<float>(selectedPoint->y));
-            originalPoint = sourcePoint;
+            dai::Point2f source(static_cast<float>(selectedPoint->x), static_cast<float>(selectedPoint->y));
+            sourcePoint = source;
 
             try {
-                remappedRgbPoint = sourceTransformation.projectPointTo(rgbTransformation, sourcePoint, *depthMm);
-                remappedDepthPoint = sourceTransformation.projectPointTo(depthTransformation, sourcePoint, *depthMm);
+                remappedRgbPoint = depthTransformation.projectPointTo(rgbTransformation, source, *depthMm);
+                depthStatus = formatPointStatus("Depth", source, *depthMm);
                 rgbStatus = formatPointStatus("RGB", *remappedRgbPoint, *depthMm);
-                sourceStatus = formatPointStatus("Source", sourcePoint, *depthMm);
-                depthStatus = formatPointStatus("Depth", *remappedDepthPoint, *depthMm);
             } catch(const std::runtime_error& exc) {
                 rgbStatus = std::string("RGB projection failed: ") + exc.what();
-                depthStatus = std::string("Depth projection failed: ") + exc.what();
             }
         }
 
@@ -189,12 +178,10 @@ int main() {
         cv::Mat depthColor;
         cv::applyColorMap(depthScaled, depthColor, cv::COLORMAP_JET);
 
-        drawPoint(leftFrame, originalPoint, sourceStatus, cv::Scalar(0, 255, 0));
+        drawPoint(depthColor, sourcePoint, depthStatus, cv::Scalar(0, 255, 0));
         drawPoint(rgbDisplay, remappedRgbPoint, rgbStatus, cv::Scalar(255, 255, 0));
-        drawPoint(depthColor, remappedDepthPoint, depthStatus, cv::Scalar(0, 0, 255));
 
-        cv::imshow("Depth", depthColor);
-        cv::imshow(SOURCE_WINDOW, leftFrame);
+        cv::imshow(DEPTH_WINDOW, depthColor);
         cv::imshow(RGB_WINDOW, rgbDisplay);
 
         const int key = cv::waitKey(1);

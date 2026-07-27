@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 import depthai as dai
 
-SOURCE_WINDOW = "Source window CAM_B"
-RGB_WINDOW = "RGB window CAM_A"
+DEPTH_WINDOW = "Depth window (source)"
+RGB_WINDOW = "RGB window (remapped)"
 
 selectedPoint = None
 
@@ -14,11 +14,6 @@ def onLeftClick(event, x, y, flags, param):
     global selectedPoint
     if event == cv2.EVENT_LBUTTONDOWN:
         selectedPoint = (x, y)
-
-def toColorFrame(frame):
-    if(len(frame.shape) == 3 and frame.shape[2] == 3):
-        return frame
-    return cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
 
 def drawPoint(frame, point, label, color):
@@ -33,7 +28,7 @@ def drawPoint(frame, point, label, color):
 
 def sampleDepth(point, depthFrame, patchRadius=2):
     if point is None:
-        return None, "Left click to select a point"
+        return None, "Left click a point on the depth image"
 
     x, y = point
     depthData = depthFrame.getFrame()
@@ -56,74 +51,66 @@ def sampleDepth(point, depthFrame, patchRadius=2):
 if __name__ == "__main__":
     pipeline = dai.Pipeline()
 
-    rgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    # Keep the left camera to provide the "source" frame for point selection. The
-    # Depth node reuses this camera and manages the right camera + stereo backend
-    # internally, so no explicit right camera or StereoDepth node is needed.
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoLeftOut = monoLeft.requestFullResolutionOutput()
-    # This example remaps points between the stereo/rgb frames, so force the
-    # STEREO backend (AUTO could otherwise pick e.g. ToF and clash with the
-    # explicit CAM_B camera on ToF-capable devices). The (1280, 800) size keeps
-    # the stereo input within the backend's 1280-wide input limit (full sensor
-    # resolution would exceed it on e.g. OAK-D-LR).
-    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.STEREO, None, (1280, 800))
+    # Pick a COLOR-capable socket for the RGB camera so it does not take the socket
+    # the Depth node needs (e.g. the ToF sensor on ToF-capable devices, where the
+    # default AUTO socket could otherwise grab the only ToF-capable sensor).
+    colorSocket = dai.CameraBoardSocket.CAM_A
+    for features in pipeline.getDefaultDevice().getConnectedCameraFeatures():
+        if dai.CameraSensorType.COLOR in features.supportedTypes:
+            colorSocket = features.socket
+            break
+    rgb = pipeline.create(dai.node.Camera).build(colorSocket)
+
+    # The Depth node manages its own cameras and backend (stereo / ToF / neural)
+    # internally, so this example stays device-agnostic. We click a point on the
+    # depth image (its own sensor frame), read the depth there, and remap that 3D
+    # point into the RGB sensor via projectPointTo. The (640, 400) size keeps a
+    # stereo backend within its 1280-wide input limit (full sensor resolution would
+    # exceed it on e.g. OAK-D-LR).
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
 
     rgbOut = rgb.requestOutput((720, 480), enableUndistortion=False, resizeMode=dai.ImgResizeMode.CROP)
     rgbQueue = rgbOut.createOutputQueue()
     depthQueue = depth.depth.createOutputQueue()
-    leftQueue = monoLeftOut.createOutputQueue()
 
-    cv2.namedWindow(SOURCE_WINDOW)
+    cv2.namedWindow(DEPTH_WINDOW)
     cv2.namedWindow(RGB_WINDOW)
-    cv2.setMouseCallback(SOURCE_WINDOW, onLeftClick)
+    cv2.setMouseCallback(DEPTH_WINDOW, onLeftClick)
 
     pipeline.start()
     while pipeline.isRunning():
         rgbFrame = rgbQueue.get()
         depthFrame = depthQueue.get()
-        leftMsg = leftQueue.get()
 
         assert isinstance(rgbFrame, dai.ImgFrame)
         assert isinstance(depthFrame, dai.ImgFrame)
-        assert isinstance(leftMsg, dai.ImgFrame)
         assert rgbFrame.validateTransformations()
         assert depthFrame.validateTransformations()
-        assert leftMsg.validateTransformations()
 
-        sourceTransformation = leftMsg.getTransformation()
-        rgbTransformation = rgbFrame.getTransformation()
         depthTransformation = depthFrame.getTransformation()
+        rgbTransformation = rgbFrame.getTransformation()
 
-        leftFrame = toColorFrame(leftMsg.getCvFrame())
         rgbDisplay = rgbFrame.getCvFrame()
-        depthMm, sourceStatus = sampleDepth(selectedPoint, depthFrame)
+        depthColor = cv2.applyColorMap(cv2.convertScaleAbs(depthFrame.getFrame(), alpha=0.05), cv2.COLORMAP_JET)
+        depthMm, depthStatus = sampleDepth(selectedPoint, depthFrame)
 
-        remappedRgbPoint, remappedDepthPoint = None, None
-        rgbStatus, depthStatus = "", ""
+        remappedRgbPoint = None
+        rgbStatus = ""
 
-        originalPoint = None
+        sourcePoint = None
         if selectedPoint is not None and depthMm is not None:
             sourcePoint = dai.Point2f(float(selectedPoint[0]), float(selectedPoint[1]))
-            originalPoint = sourcePoint
             try:
-                remappedRgbPoint = sourceTransformation.projectPointTo(rgbTransformation, sourcePoint, depthMm)
-                remappedDepthPoint = sourceTransformation.projectPointTo(depthTransformation, sourcePoint, depthMm)
+                remappedRgbPoint = depthTransformation.projectPointTo(rgbTransformation, sourcePoint, depthMm)
+                depthStatus = f"Depth=({sourcePoint.x:.1f}, {sourcePoint.y:.1f}) z={depthMm:.0f}mm"
                 rgbStatus = f"RGB=({remappedRgbPoint.x:.1f}, {remappedRgbPoint.y:.1f}) z={depthMm:.0f}mm"
-                sourceStatus = f"Source=({sourcePoint.x:.1f}, {sourcePoint.y:.1f}) z={depthMm:.0f}mm"
-                depthStatus = f"Depth=({remappedDepthPoint.x:.1f}, {remappedDepthPoint.y:.1f}) z={depthMm:.0f}mm"
-
             except RuntimeError as exc:
-                rightStatus = f"R projection failed: {exc}"
                 rgbStatus = f"RGB projection failed: {exc}"
 
-        depthColor = cv2.applyColorMap(cv2.convertScaleAbs(depthFrame.getFrame(), alpha=0.05), cv2.COLORMAP_JET)
-        drawPoint(leftFrame, originalPoint, f"{sourceStatus}", (0, 255, 0))
+        drawPoint(depthColor, sourcePoint, f"{depthStatus}", (0, 255, 0))
         drawPoint(rgbDisplay, remappedRgbPoint, f"{rgbStatus}", (255, 255, 0))
-        drawPoint(depthColor, remappedDepthPoint, f"{depthStatus}", (0, 0, 255))
 
-        cv2.imshow("Depth", depthColor)
-        cv2.imshow(SOURCE_WINDOW, leftFrame)
+        cv2.imshow(DEPTH_WINDOW, depthColor)
         cv2.imshow(RGB_WINDOW, rgbDisplay)
         key = cv2.waitKey(1)
         if key == ord('q'):
