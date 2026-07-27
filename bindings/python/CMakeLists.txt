@@ -71,6 +71,7 @@ set(SOURCE_LIST
     src/common/ModelTypeBindings.cpp
 
     src/pipeline/node/NodeBindings.cpp
+    src/beta/node/ImgDetectionsFilterBindings.cpp
 
     src/pipeline/node/ColorCameraBindings.cpp
     src/pipeline/node/CameraBindings.cpp

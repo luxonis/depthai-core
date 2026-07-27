@@ -7,6 +7,9 @@
 // Include initialization utility
 #include "utility/Initialization.hpp"
 
+// Include experimental APIs
+#include "beta/nodes.hpp"
+
 // Include some common device classes
 #include "device/CalibrationHandler.hpp"
 #include "device/Device.hpp"

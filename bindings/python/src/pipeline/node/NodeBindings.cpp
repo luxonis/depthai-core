@@ -65,6 +65,7 @@ bool isCreatingNodeFromPipelineCreate() {
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 py::handle daiNodeModule;
 py::handle daiNodeInternalModule;
+py::handle daiBetaNodeModule;
 
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
@@ -191,6 +192,7 @@ void bind_depth(pybind11::module& m, void* pCallstack);
 void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack);
 void bind_vpp(pybind11::module& m, void* pCallstack);
 void bind_gate(pybind11::module& m, void* pCallstack);
+void bind_beta_imgdetectionsfilter(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
 #endif
@@ -249,6 +251,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuralassistedstereo);
     callstack.push_front(bind_vpp);
     callstack.push_front(bind_gate);
+    callstack.push_front(bind_beta_imgdetectionsfilter);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);
 #endif
@@ -270,6 +273,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     // Move properties into nodes and nodes under 'node' submodule
     daiNodeModule = m.def_submodule("node");
     daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
+    daiBetaNodeModule = m.def_submodule("beta", "Experimental APIs").def_submodule("node", "Experimental nodes");
 
     // XLink bridge structures
     py::class_<dai::node::internal::XLinkInBridge, std::shared_ptr<dai::node::internal::XLinkInBridge>> pyXLinkInBridge(

@@ -270,6 +270,7 @@ set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
+    src/beta/node/ImgDetectionsFilter.cpp
     src/common/ModelType.cpp
     src/device/CrashDump.cpp
     src/device/CrashDumpManager.cpp
