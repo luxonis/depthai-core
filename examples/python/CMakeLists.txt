@@ -309,9 +309,9 @@ add_python_example(depth_align ImageAlign/depth_align.py)
 dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
 
 ## Align
-add_python_example(img_detections_align ImageAlign/img_detections_align.py)
+add_python_example(img_detections_align Align/img_detections_align.py)
 dai_set_example_test_labels(img_detections_align ondevice rvc4 ci)
-add_python_example(custom_message_align ImageAlign/custom_message_align.py)
+add_python_example(custom_message_align Align/custom_message_align.py)
 dai_set_example_test_labels(custom_message_align ondevice rvc2_all rvc4 ci)
 
 ## Visualizer
