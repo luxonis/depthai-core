@@ -315,6 +315,13 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Select the stereo depth backend. Currently used on RVC4 only.
      * @param backend StereoBackend::EVA for the existing EVA pipeline, StereoBackend::DSP_GPU for the DSP+GPU 3-path pipeline.
+     *
+     * StereoBackend::DSP_GPU replaces only the disparity search; the whole
+     * post-processing chain stays configurable. It always searches 64
+     * disparities with 4 subpixel fractional bits, so set
+     * costMatching.disparityWidth to DISPARITY_64 and setSubpixelFractionalBits(4)
+     * for getMaxDisparity() to describe its output. Selecting it also turns the
+     * 3x3 median filter on, which its kernels used to apply themselves.
      */
     void setStereoBackend(Properties::StereoBackend backend);
 

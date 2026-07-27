@@ -207,6 +207,13 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
 
 void StereoDepth::setStereoBackend(Properties::StereoBackend backend) {
     properties.stereoBackend = backend;
+    if(backend == Properties::StereoBackend::DSP_GPU) {
+        // The DSP+GPU backend used to apply a 3x3 median inside its own kernels.
+        // It now emits the raw disparity and the node's configurable filter
+        // chain does the filtering, so keep the same median on by default.
+        initialConfig->setMedianFilter(MedianFilter::KERNEL_3x3);
+        properties.initialConfig = *initialConfig;
+    }
 }
 
 void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
