@@ -779,7 +779,7 @@ void Depth::buildInternal() {
         case Algorithm::TOF:
             tofBackend_ = ToF::create(device);
             add(tofBackend_);
-            tofBackend_->build(CameraBoardSocket::AUTO, ImageFiltersPresetMode::TOF_MID_RANGE, stereoOutputFps_);
+            tofBackend_->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, stereoOutputFps_);
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
             depthOut_ = &tofBackend_->tofBaseNode.depth;
             confidenceOut_ = &tofBackend_->tofBaseNode.confidence;

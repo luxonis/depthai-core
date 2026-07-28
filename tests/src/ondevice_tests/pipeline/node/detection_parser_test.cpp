@@ -474,7 +474,32 @@ TEST_CASE("DetectionParser can set a specific head") {
         if(head.metadata.yoloOutputs) {
             REQUIRE(parser.properties.parser.outputNamesToUse == *head.metadata.yoloOutputs);
         }
+        if(head.metadata.strides) {
+            REQUIRE(parser.properties.parser.strides == std::vector<int>(head.metadata.strides->begin(), head.metadata.strides->end()));
+        }
     }
+}
+
+TEST_CASE("DetectionParser uses metadata strides") {
+    dai::nn_archive::v1::Head head;
+    head.parser = "YOLO";
+    head.outputs = std::vector<std::string>{"output_0", "output_1"};
+    head.metadata.yoloOutputs = std::vector<std::string>{"output_0", "output_1"};
+    head.metadata.strides = std::vector<int64_t>{4, 8};
+
+    dai::node::DetectionParser parser;
+    const std::vector<int> expectedStrides{4, 8};
+    REQUIRE_NOTHROW(parser.setNNArchiveHead(head));
+    REQUIRE(parser.properties.parser.strides == expectedStrides);
+
+    head.metadata.strides = std::vector<int64_t>{4};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
+
+    head.metadata.strides = std::vector<int64_t>{4, 0};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
+
+    head.metadata.strides = std::vector<int64_t>{};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
 }
 
 TEST_CASE("DetectionParser can be build using a specific head") {

@@ -12,6 +12,11 @@ import argparse
 import signal
 import threading
 
+try:
+    import av
+except ImportError:
+    av = None
+
 from typing import Optional, Dict
 from enum import Enum
 
@@ -58,11 +63,18 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
             .build(socket)
         )
 
-    output = (
+    rawOutput = (
         cam.requestOutput(
-            (640, 480), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
+            (1920, 1080), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
         )
     )
+
+    encoder = pipeline.create(dai.node.VideoEncoder).build(
+        rawOutput,
+        frameRate=sensorFps,
+        profile=dai.VideoEncoderProperties.Profile.H265_MAIN,
+    )
+    output = encoder.out
 
     if syncType == SyncType.PTP:
         cam.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
@@ -225,6 +237,9 @@ group.add_argument("--external-sync", action="store_true", help="Use external sy
 group.add_argument("--ptp-sync", action="store_true", help="Use PTP sync")
 args = parser.parse_args()
 
+if av is None:
+    raise RuntimeError("PyAV is required for H.265 display. Install it with: pip install av")
+
 # if user did not specify device IPs, use all available devices
 if len(args.devices) == 0:
     deviceInfos = dai.Device.getAllAvailableDevices()
@@ -245,6 +260,28 @@ elif args.ptp_sync:
     print("Master camera does not match PTP master, instead it signifies the sync pipeline")
 else:
     raise RuntimeError("Must specify sync type")
+# One persistent H.265 decoder is required per stream.
+decoders = {}
+lastDecodedFrames = {}
+
+def decodeH265(outputName, msg):
+    decoder = decoders.get(outputName)
+    if decoder is None:
+        decoder = av.CodecContext.create("hevc", "r")
+        decoders[outputName] = decoder
+
+    try:
+        frames = decoder.decode(av.Packet(bytes(msg.getData())))
+    except Exception:
+        return lastDecodedFrames.get(outputName)
+
+    if frames:
+        frame = frames[-1].to_ndarray(format="bgr24")
+        lastDecodedFrames[outputName] = frame
+        return frame
+
+    return lastDecodedFrames.get(outputName)
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -299,10 +336,13 @@ with contextlib.ExitStack() as stack:
         # Send frames from slave output queues to sync node input queues
         camOutputQueue = slaveQueues[deviceName][socketName]
         while running:
-            if camOutputQueue.has():
-                inputQueues[f"slave_{deviceName}_{socketName}"].send(camOutputQueue.get())
-            else:
-                time.sleep(0.001)
+            try:
+                if camOutputQueue.has():
+                    inputQueues[f"slave_{deviceName}_{socketName}"].send(camOutputQueue.get())
+                else:
+                    time.sleep(0.001)
+            except dai.MessageQueue.QueueException:
+                break
 
     threads = {}
 
@@ -336,7 +376,7 @@ with contextlib.ExitStack() as stack:
         if latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames):
             tsValues = {}
             for name in outputNames:
-                tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
+                tsValues[name] = latestFrameGroup[name].getTimestamp().total_seconds()
             
             # Build individual image arrays for each camera socket, displayed side-by-side
             imgs = []
@@ -381,7 +421,10 @@ with contextlib.ExitStack() as stack:
                 
                 # Get frame for this output
                 msg = latestFrameGroup[outputName]
-                frame = msg.getCvFrame()
+                frame = decodeH265(outputName, msg)
+                if frame is None:
+                    continue
+                frame = frame.copy()
 
                 # Add output name to frame
                 cv2.putText(
@@ -410,6 +453,8 @@ with contextlib.ExitStack() as stack:
 
             # Add absolute maximum time difference between all frames
             for i, img in enumerate(imgs):
+                if not img:
+                    continue
                 cv2.putText(
                     imgs[i][0],
                     f"{syncStatusStr} | delta = {delta*1e3:.3f} ms",
@@ -423,6 +468,8 @@ with contextlib.ExitStack() as stack:
 
             # Show the frame
             for i, img in enumerate(imgs):
+                if not img:
+                    continue
                 cv2.imshow(f"synced_view_{camSockets[i]}", cv2.hconcat(imgs[i]))
 
             latestFrameGroup = None  # Wait for next batch
@@ -431,7 +478,7 @@ with contextlib.ExitStack() as stack:
             running = False
             break
 
-    for t in threads.keys():
-        threads[t].join()
+    for t in threads.values():
+        t.join()
 
 cv2.destroyAllWindows()
