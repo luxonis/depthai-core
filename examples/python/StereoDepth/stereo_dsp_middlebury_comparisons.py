@@ -16,6 +16,7 @@ import numpy as np
 DISPARITIES = 64
 FRACTIONAL_BITS = 4
 Q4_SCALE = 1 << FRACTIONAL_BITS
+DIFF_VISUALIZATION_MAX_PX = 3
 POSTPROCESS_NORMALIZATION = 1 << 13
 POSTPROCESS_SCALE = POSTPROCESS_NORMALIZATION // ((DISPARITIES - 1) * Q4_SCALE)
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -26,8 +27,10 @@ MIDDLEBURY_URL = "https://vision.middlebury.edu/stereo/data/scenes2014/zip/"
 EVA_SIZE = (1280, 800)
 GPU_SIZE = (1280, 800)
 GPU_CONFIDENCE_THRESHOLD = 25
-NEURAL_MODEL = dai.DeviceModelZoo.NEURAL_DEPTH_LARGE
+NEURAL_MODEL = dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM
 NEURAL_SIZE = dai.node.NeuralDepth.getInputSize(NEURAL_MODEL)
+NEURAL_LABEL = f"NeuralDepth {NEURAL_SIZE[0]}x{NEURAL_SIZE[1]}"
+NEURAL_CONFIDENCE_THRESHOLD = 30
 
 
 def parse_args():
@@ -41,7 +44,7 @@ def parse_args():
     parser.add_argument("--p2", type=int, default=32)
     parser.add_argument("--uniqueness-ratio", type=int, default=10)
     parser.add_argument("--timeout", type=float, default=120.0)
-    parser.add_argument("--display", action="store_true")
+    parser.add_argument("--no_display", dest="display", action="store_false", default=True)
     return parser.parse_args()
 
 
@@ -184,27 +187,6 @@ def create_eva_pipeline():
     return (pipeline, *queues)
 
 
-def create_neural_pipeline():
-    pipeline = dai.Pipeline()
-    calibration = pipeline.getDefaultDevice().readCalibration()
-    neural = pipeline.create(dai.node.NeuralDepth)
-    neural.neuralNetwork.setModelFromDeviceZoo(NEURAL_MODEL)
-    neural.rectification.setOutputSize(NEURAL_SIZE)
-    neural.initialConfig.setConfidenceThreshold(30)
-    neural.setRectification(False)
-    neural.left.setBlocking(True)
-    neural.right.setBlocking(True)
-    neural.left.setMaxSize(8)
-    neural.right.setMaxSize(8)
-    return (
-        pipeline,
-        neural.left.createInputQueue(),
-        neural.right.createInputQueue(),
-        neural.disparity.createOutputQueue(),
-        calibration,
-    )
-
-
 def make_frame(image, sequence_num, timestamp_ms, socket):
     frame = dai.ImgFrame()
     frame.setData(image.reshape(-1))
@@ -218,27 +200,10 @@ def make_frame(image, sequence_num, timestamp_ms, socket):
     return frame
 
 
-def calibrated_frame(image, sequence_num, timestamp_ms, socket, calibration):
-    frame = make_frame(image, sequence_num, timestamp_ms, socket)
-    height, width = image.shape
-    transformation = dai.ImgTransformation()
-    transformation.setSize(width, height)
-    transformation.setSourceSize(width, height)
-    transformation.setIntrinsicMatrix(calibration.getCameraIntrinsics(socket, width, height))
-    extrinsics = dai.Extrinsics()
-    extrinsics.toCameraSocket = dai.CameraBoardSocket.CAM_A
-    extrinsics.setTransformationMatrix(calibration.getCameraExtrinsics(socket, dai.CameraBoardSocket.CAM_A))
-    transformation.setExtrinsics(extrinsics)
-    frame.setTransformation(transformation)
-    return frame
-
-
-def send_pair(left_queue, right_queue, pair, sequence_num, calibration=None):
+def send_pair(left_queue, right_queue, pair, sequence_num):
     timestamp_ms = sequence_num * 50
-    frame_factory = calibrated_frame if calibration is not None else make_frame
-    extra = (calibration,) if calibration is not None else ()
-    left_queue.send(frame_factory(pair[0], sequence_num, timestamp_ms, dai.CameraBoardSocket.CAM_B, *extra))
-    right_queue.send(frame_factory(pair[1], sequence_num, timestamp_ms, dai.CameraBoardSocket.CAM_C, *extra))
+    left_queue.send(make_frame(pair[0], sequence_num, timestamp_ms, dai.CameraBoardSocket.CAM_B))
+    right_queue.send(make_frame(pair[1], sequence_num, timestamp_ms, dai.CameraBoardSocket.CAM_C))
 
 
 def pad_pair_for_eva(pair):
@@ -289,18 +254,6 @@ def run_pipeline(bundle, pairs, timeout):
     return disparities, rectified_left, rectified_right
 
 
-def run_calibrated_pipeline(bundle, pairs, timeout):
-    pipeline, left_queue, right_queue, disparity_queue, calibration = bundle
-    disparities = {}
-    with pipeline:
-        pipeline.start()
-        send_pair(left_queue, right_queue, pairs[0], 0, calibration)
-        for sequence_num, pair in enumerate(pairs, 1):
-            send_pair(left_queue, right_queue, pair, sequence_num, calibration)
-            disparities[sequence_num - 1] = receive_frames(disparity_queue, {sequence_num}, timeout)[sequence_num]
-    return disparities
-
-
 def run_gpu_pipeline(pairs, timeout):
     pipeline = dai.Pipeline()
     stereo = pipeline.create(dai.node.GPUStereo)
@@ -312,10 +265,49 @@ def run_gpu_pipeline(pairs, timeout):
     disparities = {}
     with pipeline:
         pipeline.start()
-        send_pair(left_queue, right_queue, pairs[0], 0)
-        for sequence_num, pair in enumerate(pairs, 1):
-            send_pair(left_queue, right_queue, pair, sequence_num)
-            disparities[sequence_num - 1] = receive_frames(disparity_queue, {sequence_num}, timeout)[sequence_num]
+        for sequence_num, pair in enumerate(pairs):
+            deadline = time.monotonic() + timeout
+            next_send = 0.0
+            while True:
+                now = time.monotonic()
+                if now >= deadline:
+                    raise TimeoutError(f"Timed out waiting for GPUStereo sequence {sequence_num}")
+                if now >= next_send:
+                    send_pair(left_queue, right_queue, pair, sequence_num)
+                    next_send = now + 1.0
+                message = disparity_queue.tryGet()
+                if message is not None and message.getSequenceNum() == sequence_num:
+                    disparities[sequence_num] = message.getFrame().copy()
+                    break
+                time.sleep(0.01)
+    return disparities
+
+
+def run_neural_pipeline(pairs, timeout):
+    pipeline = dai.Pipeline()
+    neural = pipeline.create(dai.node.NeuralDepth)
+    neural.neuralNetwork.setModelFromDeviceZoo(NEURAL_MODEL)
+    neural.rectification.setOutputSize(NEURAL_SIZE)
+    neural.initialConfig.setConfidenceThreshold(NEURAL_CONFIDENCE_THRESHOLD)
+    neural.setRectification(False)
+    inputs = {input_ref.getName(): input_ref for input_ref in neural.getInputs()}
+    left_metadata_queue = inputs["leftFrameInternal"].createInputQueue()
+    right_metadata_queue = inputs["rightFrameInternal"].createInputQueue()
+    left_nn_queue = neural.neuralNetwork.inputs["left"].createInputQueue()
+    right_nn_queue = neural.neuralNetwork.inputs["right"].createInputQueue()
+    disparity_queue = neural.disparity.createOutputQueue()
+    disparities = {}
+    with pipeline:
+        pipeline.start()
+        for sequence_num, pair in enumerate(pairs):
+            left = make_frame(pair[0], sequence_num, sequence_num * 50, dai.CameraBoardSocket.CAM_B)
+            right = make_frame(pair[1], sequence_num, sequence_num * 50, dai.CameraBoardSocket.CAM_C)
+            left_metadata_queue.send(left)
+            if sequence_num == 0:
+                right_metadata_queue.send(right)
+            left_nn_queue.send(left)
+            right_nn_queue.send(right)
+            disparities[sequence_num] = receive_frames(disparity_queue, {sequence_num}, timeout)[sequence_num]
     return disparities
 
 
@@ -395,7 +387,7 @@ def difference_panel(backend, opencv, label):
     both_valid = (backend > 0) & (opencv > 0)
     validity_disagreement = (backend > 0) ^ (opencv > 0)
     difference_q4 = np.abs(backend.astype(np.int32) - opencv.astype(np.int32))
-    normalized = np.clip(difference_q4 * 255.0 / Q4_SCALE, 0, 255).astype(np.uint8)
+    normalized = np.clip(difference_q4 * 255.0 / (DIFF_VISUALIZATION_MAX_PX * Q4_SCALE), 0, 255).astype(np.uint8)
     panel = cv2.applyColorMap(normalized, cv2.COLORMAP_INFERNO)
     panel[~both_valid] = 0
     panel[validity_disagreement] = (255, 0, 255)
@@ -408,7 +400,7 @@ def make_visualization(scene_name, ground_truth, backends):
     top = [add_label(disparity_color(disparity), f"{scene_name}: {name}") for name, disparity in cropped]
     top.append(add_label(disparity_color(ground_truth), f"{scene_name}: Ground truth"))
     bottom = [difference_panel(disparity, ground_truth, f"{name} - GT") for name, disparity in cropped]
-    bottom.append(difference_panel(ground_truth, ground_truth, "GT - GT (0..1 px; magenta = validity)"))
+    bottom.append(difference_panel(ground_truth, ground_truth, "GT - GT (0..3 px; magenta = validity)"))
     return np.vstack((np.hstack(top), np.hstack(bottom)))
 
 
@@ -472,9 +464,9 @@ def main():
     eva_padded, eva_crops = zip(*(pad_pair_for_eva(pair) for pair in pairs))
     eva_disparities, eva_rectified_left, eva_rectified_right = run_pipeline(create_eva_pipeline(), eva_padded, args.timeout)
     gpu_disparities = run_gpu_pipeline(gpu_pairs, args.timeout)
-    neural_disparities = run_calibrated_pipeline(create_neural_pipeline(), neural_pairs, args.timeout)
+    neural_disparities = run_neural_pipeline(neural_pairs, args.timeout)
 
-    backend_order = ("DSP_GPU", "OpenCV SGBM_3WAY", "EVA", "NeuralDepth MEDIUM", "GPUStereo")
+    backend_order = ("DSP_GPU", "OpenCV SGBM_3WAY", "EVA", NEURAL_LABEL, "GPUStereo")
     results = {backend: [] for backend in backend_order}
     dsp_opencv_results = []
     overview = []
@@ -497,7 +489,7 @@ def main():
             ("DSP_GPU", dsp),
             ("OpenCV SGBM_3WAY", opencv),
             ("EVA", eva),
-            ("NeuralDepth MEDIUM", neural),
+            (NEURAL_LABEL, neural),
             ("GPUStereo", gpu),
         )
 
@@ -539,8 +531,9 @@ def main():
             "output_dir": str(args.output_dir),
             "gpu_input_size": GPU_SIZE,
             "gpu_confidence_threshold": GPU_CONFIDENCE_THRESHOLD,
-            "neural_model": "NEURAL_DEPTH_MEDIUM",
+            "neural_model": str(NEURAL_MODEL),
             "neural_input_size": NEURAL_SIZE,
+            "neural_confidence_threshold": NEURAL_CONFIDENCE_THRESHOLD,
             "scaling": {
                 "target_size": target_size,
                 "gpu_disparity_multiplier": args.width / GPU_SIZE[0],
