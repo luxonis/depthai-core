@@ -24,6 +24,9 @@ DEFAULT_OUTPUT = SCRIPT_DIR / "stereo_dsp_gpu_results"
 DEFAULT_SCENES = ("Adirondack-perfect", "Motorcycle-perfect", "Pipes-perfect")
 MIDDLEBURY_URL = "https://vision.middlebury.edu/stereo/data/scenes2014/zip/"
 EVA_SIZE = (1280, 800)
+GPU_SIZE = (1280, 800)
+NEURAL_MODEL = dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM
+NEURAL_SIZE = dai.node.NeuralDepth.getInputSize(NEURAL_MODEL)
 
 
 def parse_args():
@@ -79,6 +82,40 @@ def load_pair(scene, size):
     if left.shape != right.shape:
         raise RuntimeError(f"Input dimensions differ in {scene}: {left.shape} and {right.shape}")
     return cv2.resize(left, size, interpolation=cv2.INTER_AREA), cv2.resize(right, size, interpolation=cv2.INTER_AREA)
+
+
+def read_pfm(path):
+    with path.open("rb") as stream:
+        if stream.readline().rstrip() != b"Pf":
+            raise RuntimeError(f"Expected a grayscale PFM file: {path}")
+        width, height = map(int, stream.readline().split())
+        scale = float(stream.readline())
+        endian = "<" if scale < 0 else ">"
+        disparity = np.fromfile(stream, endian + "f4")
+    if disparity.size != width * height:
+        raise RuntimeError(f"Malformed PFM payload: {path}")
+    return np.flip(disparity.reshape(height, width), axis=0)
+
+
+def resize_disparity_pixels(disparity, size):
+    _, source_width = disparity.shape
+    valid = np.isfinite(disparity) & (disparity > 0)
+    values = np.where(valid, disparity, 0).astype(np.float32)
+    weights = valid.astype(np.float32)
+    resized_values = cv2.resize(values, size, interpolation=cv2.INTER_LINEAR)
+    resized_weights = cv2.resize(weights, size, interpolation=cv2.INTER_LINEAR)
+    resized = np.divide(resized_values, resized_weights, out=np.zeros_like(resized_values), where=resized_weights > 1e-6)
+    resized_valid = cv2.resize(valid.astype(np.uint8), size, interpolation=cv2.INTER_NEAREST).astype(bool)
+    resized[~resized_valid] = 0
+    return resized * (size[0] / source_width)
+
+
+def pixels_to_q4(disparity):
+    return np.rint(np.clip(disparity, 0, np.iinfo(np.uint16).max / Q4_SCALE) * Q4_SCALE).astype(np.uint16)
+
+
+def resize_q4(disparity, size):
+    return pixels_to_q4(resize_disparity_pixels(disparity.astype(np.float32) / Q4_SCALE, size))
 
 
 def confidence_threshold(uniqueness_ratio):
@@ -146,6 +183,44 @@ def create_eva_pipeline():
     return (pipeline, *queues)
 
 
+def create_gpu_pipeline():
+    pipeline = dai.Pipeline()
+    calibration = pipeline.getDefaultDevice().readCalibration()
+    stereo = pipeline.create(dai.node.GPUStereo)
+    stereo.setRectification(False)
+    stereo.left.setBlocking(True)
+    stereo.right.setBlocking(True)
+    stereo.left.setMaxSize(8)
+    stereo.right.setMaxSize(8)
+    return (
+        pipeline,
+        stereo.left.createInputQueue(),
+        stereo.right.createInputQueue(),
+        stereo.disparity.createOutputQueue(),
+        calibration,
+    )
+
+
+def create_neural_pipeline():
+    pipeline = dai.Pipeline()
+    calibration = pipeline.getDefaultDevice().readCalibration()
+    neural = pipeline.create(dai.node.NeuralDepth)
+    neural.neuralNetwork.setModelFromDeviceZoo(NEURAL_MODEL)
+    neural.rectification.setOutputSize(NEURAL_SIZE)
+    neural.setRectification(False)
+    neural.left.setBlocking(True)
+    neural.right.setBlocking(True)
+    neural.left.setMaxSize(8)
+    neural.right.setMaxSize(8)
+    return (
+        pipeline,
+        neural.left.createInputQueue(),
+        neural.right.createInputQueue(),
+        neural.disparity.createOutputQueue(),
+        calibration,
+    )
+
+
 def make_frame(image, sequence_num, timestamp_ms, socket):
     frame = dai.ImgFrame()
     frame.setData(image.reshape(-1))
@@ -159,10 +234,27 @@ def make_frame(image, sequence_num, timestamp_ms, socket):
     return frame
 
 
-def send_pair(left_queue, right_queue, pair, sequence_num):
+def calibrated_frame(image, sequence_num, timestamp_ms, socket, calibration):
+    frame = make_frame(image, sequence_num, timestamp_ms, socket)
+    height, width = image.shape
+    transformation = dai.ImgTransformation()
+    transformation.setSize(width, height)
+    transformation.setSourceSize(width, height)
+    transformation.setIntrinsicMatrix(calibration.getCameraIntrinsics(socket, width, height))
+    extrinsics = dai.Extrinsics()
+    extrinsics.toCameraSocket = dai.CameraBoardSocket.CAM_A
+    extrinsics.setTransformationMatrix(calibration.getCameraExtrinsics(socket, dai.CameraBoardSocket.CAM_A))
+    transformation.setExtrinsics(extrinsics)
+    frame.setTransformation(transformation)
+    return frame
+
+
+def send_pair(left_queue, right_queue, pair, sequence_num, calibration=None):
     timestamp_ms = sequence_num * 50
-    left_queue.send(make_frame(pair[0], sequence_num, timestamp_ms, dai.CameraBoardSocket.CAM_B))
-    right_queue.send(make_frame(pair[1], sequence_num, timestamp_ms, dai.CameraBoardSocket.CAM_C))
+    frame_factory = calibrated_frame if calibration is not None else make_frame
+    extra = (calibration,) if calibration is not None else ()
+    left_queue.send(frame_factory(pair[0], sequence_num, timestamp_ms, dai.CameraBoardSocket.CAM_B, *extra))
+    right_queue.send(frame_factory(pair[1], sequence_num, timestamp_ms, dai.CameraBoardSocket.CAM_C, *extra))
 
 
 def pad_pair_for_eva(pair):
@@ -213,6 +305,18 @@ def run_pipeline(bundle, pairs, timeout):
     return disparities, rectified_left, rectified_right
 
 
+def run_calibrated_pipeline(bundle, pairs, timeout):
+    pipeline, left_queue, right_queue, disparity_queue, calibration = bundle
+    disparities = {}
+    with pipeline:
+        pipeline.start()
+        send_pair(left_queue, right_queue, pairs[0], 0, calibration)
+        for sequence_num, pair in enumerate(pairs, 1):
+            send_pair(left_queue, right_queue, pair, sequence_num, calibration)
+            disparities[sequence_num - 1] = receive_frames(disparity_queue, {sequence_num}, timeout)[sequence_num]
+    return disparities
+
+
 def opencv_disparity(left, right, p1, p2, uniqueness_ratio):
     matcher = cv2.StereoSGBM_create(
         minDisparity=0,
@@ -236,28 +340,28 @@ def dsp_to_q4(disparity):
     return disparity // POSTPROCESS_SCALE
 
 
-def compare(dsp, opencv):
-    dsp = dsp.astype(np.int32)
-    opencv = opencv.astype(np.int32)
-    dsp = dsp[:, DISPARITIES:]
-    opencv = opencv[:, DISPARITIES:]
-    dsp_valid = dsp > 0
-    opencv_valid = opencv > 0
-    both_valid = dsp_valid & opencv_valid
-    validity_disagreement = dsp_valid ^ opencv_valid
-    differences = np.abs(dsp[both_valid] - opencv[both_valid])
-    canonical_dsp = np.where(dsp_valid, dsp, 0)
-    canonical_opencv = np.where(opencv_valid, opencv, 0)
-    total = dsp.size
+def compare(backend, reference):
+    backend = backend.astype(np.int32)
+    reference = reference.astype(np.int32)
+    backend = backend[:, DISPARITIES:]
+    reference = reference[:, DISPARITIES:]
+    backend_valid = backend > 0
+    reference_valid = reference > 0
+    both_valid = backend_valid & reference_valid
+    validity_disagreement = backend_valid ^ reference_valid
+    differences = np.abs(backend[both_valid] - reference[both_valid])
+    canonical_backend = np.where(backend_valid, backend, 0)
+    canonical_reference = np.where(reference_valid, reference, 0)
+    total = backend.size
     compared = differences.size
 
     return {
         "evaluated_pixels": int(total),
         "compared": int(compared),
-        "backend_valid_pct": 100.0 * np.count_nonzero(dsp_valid) / total,
-        "opencv_valid_pct": 100.0 * np.count_nonzero(opencv_valid) / total,
+        "backend_valid_pct": 100.0 * np.count_nonzero(backend_valid) / total,
+        "reference_valid_pct": 100.0 * np.count_nonzero(reference_valid) / total,
         "validity_agreement_pct": 100.0 * (total - np.count_nonzero(validity_disagreement)) / total,
-        "canonical_exact_pct": 100.0 * np.count_nonzero(canonical_dsp == canonical_opencv) / total,
+        "canonical_exact_pct": 100.0 * np.count_nonzero(canonical_backend == canonical_reference) / total,
         "exact_q4_pct": 100.0 * np.count_nonzero(differences == 0) / max(compared, 1),
         "within_1q4_pct": 100.0 * np.count_nonzero(differences <= 1) / max(compared, 1),
         "within_1px_pct": 100.0 * np.count_nonzero(differences <= Q4_SCALE) / max(compared, 1),
@@ -296,31 +400,28 @@ def difference_panel(backend, opencv, label):
     return add_label(panel, label)
 
 
-def make_visualization(scene_name, dsp, opencv, eva):
-    dsp = dsp[:, DISPARITIES:]
-    opencv = opencv[:, DISPARITIES:]
-    eva = eva[:, DISPARITIES:]
-    panels = (
-        add_label(disparity_color(dsp), f"{scene_name}: DSP_GPU"),
-        add_label(disparity_color(opencv), "OpenCV SGBM_3WAY"),
-        add_label(disparity_color(eva), "EVA"),
-        difference_panel(dsp, opencv, "DSP - OpenCV: 0..1 px; magenta = validity"),
-        difference_panel(eva, opencv, "EVA - OpenCV: 0..1 px; magenta = validity"),
-    )
-    return np.hstack(panels)
+def make_visualization(scene_name, ground_truth, backends):
+    ground_truth = ground_truth[:, DISPARITIES:]
+    cropped = [(name, disparity[:, DISPARITIES:]) for name, disparity in backends]
+    top = [add_label(disparity_color(disparity), f"{scene_name}: {name}") for name, disparity in cropped]
+    top.append(add_label(disparity_color(ground_truth), f"{scene_name}: Ground truth"))
+    bottom = [difference_panel(disparity, ground_truth, f"{name} - GT") for name, disparity in cropped]
+    bottom.append(difference_panel(ground_truth, ground_truth, "GT - GT (0..1 px; magenta = validity)"))
+    return np.vstack((np.hstack(top), np.hstack(bottom)))
 
 
-def aggregate_results(results, backend):
+def aggregate_results(results, backend, reference):
     differences = np.concatenate([result["differences_q4"] for result in results])
     total = sum(result["evaluated_pixels"] for result in results)
     compared = differences.size
     return {
         "backend": backend,
+        "reference": reference,
         "scene": "ALL",
         "evaluated_pixels": total,
         "compared": int(compared),
         "backend_valid_pct": sum(result["backend_valid_pct"] * result["evaluated_pixels"] for result in results) / total,
-        "opencv_valid_pct": sum(result["opencv_valid_pct"] * result["evaluated_pixels"] for result in results) / total,
+        "reference_valid_pct": sum(result["reference_valid_pct"] * result["evaluated_pixels"] for result in results) / total,
         "validity_agreement_pct": sum(result["validity_agreement_pct"] * result["evaluated_pixels"] for result in results) / total,
         "canonical_exact_pct": sum(result["canonical_exact_pct"] * result["evaluated_pixels"] for result in results) / total,
         "exact_q4_pct": 100.0 * np.count_nonzero(differences == 0) / max(compared, 1),
@@ -354,18 +455,27 @@ def main():
         raise ValueError("Uniqueness ratio must be in [0, 100]")
 
     scenes = find_scenes(args.dataset, args.scenes)
-    pairs = [load_pair(scene, (args.width, args.height)) for scene in scenes]
+    target_size = (args.width, args.height)
+    pairs = [load_pair(scene, target_size) for scene in scenes]
+    gpu_pairs = [load_pair(scene, GPU_SIZE) for scene in scenes]
+    native_ground_truth = [read_pfm(scene / "disp0.pfm") for scene in scenes]
+    ground_truth = [pixels_to_q4(resize_disparity_pixels(disparity, target_size)) for disparity in native_ground_truth]
+    ground_truth_scales = {scene.name: args.width / disparity.shape[1] for scene, disparity in zip(scenes, native_ground_truth)}
     args.output_dir.mkdir(parents=True, exist_ok=True)
+
     dsp_disparities, rectified_left, rectified_right = run_pipeline(
         create_dsp_pipeline(args.width, args.height, args.p1, args.p2, args.uniqueness_ratio), pairs, args.timeout
     )
     eva_padded, eva_crops = zip(*(pad_pair_for_eva(pair) for pair in pairs))
     eva_disparities, eva_rectified_left, eva_rectified_right = run_pipeline(create_eva_pipeline(), eva_padded, args.timeout)
+    gpu_disparities = run_calibrated_pipeline(create_gpu_pipeline(), gpu_pairs, args.timeout)
+    neural_disparities = run_calibrated_pipeline(create_neural_pipeline(), pairs, args.timeout)
 
-    dsp_results = []
-    eva_results = []
+    backend_order = ("DSP_GPU", "OpenCV SGBM_3WAY", "EVA", "NeuralDepth MEDIUM", "GPUStereo")
+    results = {backend: [] for backend in backend_order}
+    dsp_opencv_results = []
     overview = []
-    for sequence_num, (scene, pair) in enumerate(zip(scenes, pairs)):
+    for sequence_num, (scene, pair, gt) in enumerate(zip(scenes, pairs, ground_truth)):
         dsp = dsp_to_q4(dsp_disparities[sequence_num])
         reference_pair = (rectified_left[sequence_num], rectified_right[sequence_num])
         if not np.array_equal(pair[0], reference_pair[0]) or not np.array_equal(pair[1], reference_pair[1]):
@@ -375,43 +485,71 @@ def main():
             padded_pair[1], eva_rectified_right[sequence_num]
         ):
             raise RuntimeError(f"EVA changed the input pair for {scene.name} while rectification was disabled")
+
+        opencv = opencv_disparity(reference_pair[0], reference_pair[1], args.p1, args.p2, args.uniqueness_ratio)
         eva = crop_eva(eva_disparities[sequence_num], eva_crops[sequence_num])
-        reference = opencv_disparity(reference_pair[0], reference_pair[1], args.p1, args.p2, args.uniqueness_ratio)
+        neural = resize_q4(neural_disparities[sequence_num], target_size)
+        gpu = resize_q4(gpu_disparities[sequence_num], target_size)
+        backends = (
+            ("DSP_GPU", dsp),
+            ("OpenCV SGBM_3WAY", opencv),
+            ("EVA", eva),
+            ("NeuralDepth MEDIUM", neural),
+            ("GPUStereo", gpu),
+        )
 
-        dsp_result = compare(dsp, reference)
-        dsp_result.update({"scene": scene.name, "backend": "DSP_GPU"})
-        dsp_results.append(dsp_result)
-        eva_result = compare(eva, reference)
-        eva_result.update({"scene": scene.name, "backend": "EVA"})
-        eva_results.append(eva_result)
+        for backend, disparity in backends:
+            result = compare(disparity, gt)
+            result.update({"scene": scene.name, "backend": backend, "reference": "Ground truth"})
+            results[backend].append(result)
+            print(json.dumps(printable_result(result), sort_keys=True))
+        dsp_opencv = compare(dsp, opencv)
+        dsp_opencv.update({"scene": scene.name, "backend": "DSP_GPU", "reference": "OpenCV SGBM_3WAY"})
+        dsp_opencv_results.append(dsp_opencv)
 
-        visualization = make_visualization(scene.name, dsp, reference, eva)
+        visualization = make_visualization(scene.name, gt, backends)
         cv2.imwrite(str(args.output_dir / f"{scene.name}_comparison.png"), visualization)
-        np.save(args.output_dir / f"{scene.name}_dsp_gpu_q4.npy", dsp)
-        np.save(args.output_dir / f"{scene.name}_opencv_q4.npy", reference)
-        np.save(args.output_dir / f"{scene.name}_eva_q4.npy", eva)
+        for backend, disparity in backends:
+            filename = backend.lower().replace(" ", "_")
+            np.save(args.output_dir / f"{scene.name}_{filename}_q4.npy", disparity)
+        np.save(args.output_dir / f"{scene.name}_ground_truth_q4.npy", gt)
         preview = cv2.resize(
             visualization, (visualization.shape[1] // 2, visualization.shape[0] // 2), interpolation=cv2.INTER_AREA
         )
         overview.append(preview)
-        print(json.dumps(printable_result(dsp_result), sort_keys=True))
-        print(json.dumps(printable_result(eva_result), sort_keys=True))
         if args.display:
-            cv2.imshow("DSP_GPU vs OpenCV SGBM_3WAY vs EVA", preview)
+            cv2.imshow("Stereo backends and absolute differences to Middlebury ground truth", preview)
             cv2.waitKey(0)
 
-    dsp_aggregate = aggregate_results(dsp_results, "DSP_GPU")
-    eva_aggregate = aggregate_results(eva_results, "EVA")
-    rows = [printable_result(result) for result in dsp_results + eva_results] + [dsp_aggregate, eva_aggregate]
+    scene_rows = [printable_result(result) for backend in backend_order for result in results[backend]]
+    scene_rows.extend(printable_result(result) for result in dsp_opencv_results)
+    aggregates = [aggregate_results(results[backend], backend, "Ground truth") for backend in backend_order]
+    aggregates.append(aggregate_results(dsp_opencv_results, "DSP_GPU", "OpenCV SGBM_3WAY"))
+    rows = scene_rows + aggregates
     with (args.output_dir / "metrics.csv").open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=rows[0].keys())
         writer.writeheader()
         writer.writerows(rows)
     with (args.output_dir / "metrics.json").open("w") as stream:
-        json.dump({"settings": vars(args) | {"dataset": str(args.dataset), "output_dir": str(args.output_dir)}, "results": rows}, stream, indent=2)
+        settings = vars(args) | {
+            "dataset": str(args.dataset),
+            "output_dir": str(args.output_dir),
+            "gpu_input_size": GPU_SIZE,
+            "neural_model": "NEURAL_DEPTH_MEDIUM",
+            "neural_input_size": NEURAL_SIZE,
+            "scaling": {
+                "target_size": target_size,
+                "gpu_disparity_multiplier": args.width / GPU_SIZE[0],
+                "neural_disparity_multiplier": args.width / NEURAL_SIZE[0],
+                "ground_truth_disparity_multipliers": ground_truth_scales,
+                "spatial_interpolation": "validity-weighted bilinear with nearest-neighbor validity mask",
+                "output_units": "Q4 disparity at target_size",
+            },
+        }
+        json.dump({"settings": settings, "results": rows}, stream, indent=2)
     cv2.imwrite(str(args.output_dir / "comparison_overview.png"), np.vstack(overview))
-    print(json.dumps(dsp_aggregate, sort_keys=True))
-    print(json.dumps(eva_aggregate, sort_keys=True))
+    for aggregate in aggregates:
+        print(json.dumps(aggregate, sort_keys=True))
     print(f"Results written to {args.output_dir}")
 
 
