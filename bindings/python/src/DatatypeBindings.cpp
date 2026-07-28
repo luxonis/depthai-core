@@ -52,6 +52,7 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack);
 void bind_gate_control(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BETA
 void bind_beta_classifications(pybind11::module& m, void* pCallstack);
+void bind_beta_keypoints(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_BETA
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
@@ -108,6 +109,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #ifdef DEPTHAI_HAVE_BETA
     callstack.push_front(bind_beta_classifications);
+    callstack.push_front(bind_beta_keypoints);
 #endif  // DEPTHAI_HAVE_BETA
 }
 
@@ -180,6 +182,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
 #ifdef DEPTHAI_HAVE_BETA
     datatypeEnum.value("ImgDetectionsFilterConfig", DatatypeEnum::ImgDetectionsFilterConfig);
     datatypeEnum.value("Classifications", DatatypeEnum::Classifications);
+    datatypeEnum.value("Keypoints", DatatypeEnum::Keypoints);
 #endif  // DEPTHAI_HAVE_BETA
     datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

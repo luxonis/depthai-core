@@ -12,6 +12,7 @@
 #ifdef DEPTHAI_HAVE_BETA
     #include "depthai/beta/datatype/Classifications.hpp"
     #include "depthai/beta/datatype/ImgDetectionsFilterConfig.hpp"
+    #include "depthai/beta/datatype/Keypoints.hpp"
 #endif
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
@@ -340,6 +341,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::Classifications:
 #ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Classifications>(metadataStart, serializedObjectSize, data, fd);
+#else
+            break;
+#endif
+        case DatatypeEnum::Keypoints:
+#ifdef DEPTHAI_HAVE_BETA
+            return parseDatatype<beta::Keypoints>(metadataStart, serializedObjectSize, data, fd);
 #else
             break;
 #endif
