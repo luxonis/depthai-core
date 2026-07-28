@@ -457,6 +457,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/RegressionParser.cpp
         src/beta/node/SuperAnimalParser.cpp
         src/beta/node/XFeatMonoParser.cpp
+        src/beta/node/XFeatStereoParser.cpp
         src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp

@@ -16,5 +16,6 @@
 #include "node/RegressionParser.hpp"
 #include "node/SuperAnimalParser.hpp"
 #include "node/XFeatMonoParser.hpp"
+#include "node/XFeatStereoParser.hpp"
 
 // IWYU pragma: end_exports
