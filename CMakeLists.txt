@@ -445,6 +445,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/HRNetParser.cpp
         src/beta/node/ImgDetectionsFilter.cpp
         src/beta/node/KeypointParser.cpp
+        src/beta/node/SuperAnimalParser.cpp
         src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Keypoints/KeypointsUtils.cpp

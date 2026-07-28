@@ -179,6 +179,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/HRNetParserBindings.cpp
         src/beta/node/ImgDetectionsFilterBindings.cpp
         src/beta/node/KeypointParserBindings.cpp
+        src/beta/node/SuperAnimalParserBindings.cpp
     )
 endif()
 

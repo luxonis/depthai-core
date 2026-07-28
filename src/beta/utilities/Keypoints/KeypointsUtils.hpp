@@ -40,6 +40,16 @@ struct HrnetKeypoints {
 };
 
 /**
+ * @brief Normalized keypoints and their confidence scores extracted from SuperAnimal heatmaps.
+ */
+struct SuperAnimalKeypoints {
+    /// Keypoint coordinates of shape (numKeypoints, 2), normalized by the scale factor.
+    KeypointCoordinates coordinates;
+    /// Per-keypoint confidence scores taken from the heatmap maxima, not clipped, scores.size() == numKeypoints.
+    std::vector<float> scores;
+};
+
+/**
  * @brief Reshape and normalize a flattened keypoint tensor.
  *
  * The number of coordinates per keypoint is derived from the tensor size as
@@ -70,6 +80,29 @@ KeypointCoordinates computeKeypoints(std::vector<float> values, std::int64_t nKe
  * @return Normalized keypoints of shape (numKeypoints, 2) and their scores.
  */
 HrnetKeypoints computeHrnetKeypoints(const std::vector<float>& values, const std::vector<std::size_t>& dims);
+
+/**
+ * @brief Extract normalized keypoints and confidence scores from SuperAnimal heatmaps.
+ *
+ * The heatmap tensor must be a 4D tensor in (batch, height, width, numKeypoints) orientation,
+ * stored row-major, with a batch size of exactly 1 and a non-empty heatmap. The number of
+ * keypoints is derived from the tensor's last dimension.
+ *
+ * Per keypoint, the score is the heatmap value at the position of the first maximum in
+ * row-major scan order (matching np.argmax tie behavior), taken as-is without clipping; scores
+ * outside [0, 1] are rejected later by createKeypointsMessage(), matching the source parser.
+ * The keypoint is the (x, y) position of that maximum mapped to input-image pixels with a
+ * 0.5-pixel center offset, x = (col + 0.5) * scaleFactor / width and
+ * y = (row + 0.5) * scaleFactor / height, then normalized by the scale factor. The coordinates
+ * are not clipped.
+ *
+ * @param values Heatmap tensor values, stored row-major over dims.
+ * @param dims Heatmap tensor shape, (batch, height, width, numKeypoints).
+ * @param scaleFactor Scale factor the keypoint coordinates are scaled and normalized by, must be
+ *                    greater than 0.
+ * @return Normalized keypoints of shape (numKeypoints, 2) and their scores.
+ */
+SuperAnimalKeypoints computeSuperAnimalKeypoints(const std::vector<float>& values, const std::vector<std::size_t>& dims, float scaleFactor);
 
 /**
  * @brief Create a Keypoints message from keypoint coordinates.
