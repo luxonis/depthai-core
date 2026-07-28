@@ -8,5 +8,6 @@
 #include "datatype/Keypoints.hpp"
 #include "datatype/Lines.hpp"
 #include "datatype/Map2D.hpp"
+#include "datatype/Predictions.hpp"
 
 // IWYU pragma: end_exports

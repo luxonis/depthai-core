@@ -119,6 +119,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::Clusters:
         case DatatypeEnum::Map2D:
         case DatatypeEnum::Lines:
+        case DatatypeEnum::Predictions:
         case DatatypeEnum::COUNT:
             break;
     }
@@ -210,6 +211,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::Clusters:
         case DatatypeEnum::Map2D:
         case DatatypeEnum::Lines:
+        case DatatypeEnum::Predictions:
         case DatatypeEnum::COUNT:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }

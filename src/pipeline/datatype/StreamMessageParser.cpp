@@ -16,6 +16,7 @@
     #include "depthai/beta/datatype/Keypoints.hpp"
     #include "depthai/beta/datatype/Lines.hpp"
     #include "depthai/beta/datatype/Map2D.hpp"
+    #include "depthai/beta/datatype/Predictions.hpp"
 #endif
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
@@ -368,6 +369,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::Lines:
 #ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Lines>(metadataStart, serializedObjectSize, data, fd);
+#else
+            break;
+#endif
+        case DatatypeEnum::Predictions:
+#ifdef DEPTHAI_HAVE_BETA
+            return parseDatatype<beta::Predictions>(metadataStart, serializedObjectSize, data, fd);
 #else
             break;
 #endif

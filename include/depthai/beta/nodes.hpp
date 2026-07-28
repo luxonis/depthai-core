@@ -13,6 +13,7 @@
 #include "node/MLSDParser.hpp"
 #include "node/MPPalmDetectionParser.hpp"
 #include "node/MapOutputParser.hpp"
+#include "node/RegressionParser.hpp"
 #include "node/SuperAnimalParser.hpp"
 
 // IWYU pragma: end_exports

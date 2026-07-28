@@ -176,6 +176,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/KeypointsBindings.cpp
         src/beta/datatype/LinesBindings.cpp
         src/beta/datatype/Map2DBindings.cpp
+        src/beta/datatype/PredictionsBindings.cpp
         src/beta/node/ClassificationParserBindings.cpp
         src/beta/node/ClassificationSequenceParserBindings.cpp
         src/beta/node/EmbeddingsParserBindings.cpp
@@ -187,6 +188,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/MapOutputParserBindings.cpp
         src/beta/node/MLSDParserBindings.cpp
         src/beta/node/MPPalmDetectionParserBindings.cpp
+        src/beta/node/RegressionParserBindings.cpp
         src/beta/node/SuperAnimalParserBindings.cpp
     )
 endif()
