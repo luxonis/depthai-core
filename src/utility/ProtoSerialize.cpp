@@ -276,6 +276,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::PacketizedData:
         case DatatypeEnum::ImgDetectionsFilterConfig:
+        case DatatypeEnum::Classifications:
         case DatatypeEnum::COUNT:
             return false;
     }

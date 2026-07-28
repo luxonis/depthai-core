@@ -436,9 +436,12 @@ set(TARGET_CORE_SOURCES
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
+        src/beta/datatype/Classifications.cpp
         src/beta/datatype/ImgDetectionsFilterConfig.cpp
+        src/beta/node/ClassificationParser.cpp
         src/beta/node/ImgDetectionsFilter.cpp
         src/beta/properties/ImgDetectionsFilterProperties.cpp
+        src/beta/utilities/Classification/ClassificationUtils.cpp
     )
 endif()
 

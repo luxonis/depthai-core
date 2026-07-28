@@ -171,6 +171,8 @@ set(SOURCE_LIST
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND SOURCE_LIST
+        src/beta/datatype/ClassificationsBindings.cpp
+        src/beta/node/ClassificationParserBindings.cpp
         src/beta/node/ImgDetectionsFilterBindings.cpp
     )
 endif()
