@@ -446,6 +446,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/ClassificationParser.cpp
         src/beta/node/ClassificationSequenceParser.cpp
         src/beta/node/EmbeddingsParser.cpp
+        src/beta/node/FastSAMParser.cpp
         src/beta/node/HRNetParser.cpp
         src/beta/node/ImageOutputParser.cpp
         src/beta/node/ImgDetectionsFilter.cpp
@@ -465,6 +466,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp
         src/beta/utilities/Detection/MaskUtils.cpp
+        src/beta/utilities/FastSAM/FastSAMUtils.cpp
         src/beta/utilities/Keypoints/KeypointsUtils.cpp
         src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
         src/beta/utilities/MediaPipe/MediaPipeUtils.cpp

@@ -43,8 +43,10 @@ void cropMask(std::vector<float>& mask, std::size_t maskHeight, std::size_t mask
     }
 }
 
-std::vector<std::uint8_t> resizeNearest(
-    const std::vector<std::uint8_t>& src, std::size_t srcHeight, std::size_t srcWidth, std::size_t dstHeight, std::size_t dstWidth) {
+namespace {
+
+template <typename T>
+std::vector<T> resizeNearestImpl(const std::vector<T>& src, std::size_t srcHeight, std::size_t srcWidth, std::size_t dstHeight, std::size_t dstWidth) {
     DAI_CHECK(srcHeight > 0 && srcWidth > 0, "Nearest-neighbor resize requires a non-empty source mask.");
     DAI_CHECK_V(src.size() == srcHeight * srcWidth, "Mask size {} does not match the mask shape ({}, {}).", src.size(), srcHeight, srcWidth);
 
@@ -60,16 +62,27 @@ std::vector<std::uint8_t> resizeNearest(
         columnOffsets[dstColumn] = std::min(srcColumn, srcWidth - 1);
     }
 
-    std::vector<std::uint8_t> dst(dstHeight * dstWidth);
+    std::vector<T> dst(dstHeight * dstWidth);
     for(std::size_t dstRow = 0; dstRow < dstHeight; ++dstRow) {
         const auto srcRow = std::min(static_cast<std::size_t>(std::floor(static_cast<double>(dstRow) * inverseScaleY)), srcHeight - 1);
-        const std::uint8_t* srcRowData = src.data() + srcRow * srcWidth;
-        std::uint8_t* dstRowData = dst.data() + dstRow * dstWidth;
+        const T* srcRowData = src.data() + srcRow * srcWidth;
+        T* dstRowData = dst.data() + dstRow * dstWidth;
         for(std::size_t dstColumn = 0; dstColumn < dstWidth; ++dstColumn) {
             dstRowData[dstColumn] = srcRowData[columnOffsets[dstColumn]];
         }
     }
     return dst;
+}
+
+}  // namespace
+
+std::vector<std::uint8_t> resizeNearest(
+    const std::vector<std::uint8_t>& src, std::size_t srcHeight, std::size_t srcWidth, std::size_t dstHeight, std::size_t dstWidth) {
+    return resizeNearestImpl(src, srcHeight, srcWidth, dstHeight, dstWidth);
+}
+
+std::vector<float> resizeNearest(const std::vector<float>& src, std::size_t srcHeight, std::size_t srcWidth, std::size_t dstHeight, std::size_t dstWidth) {
+    return resizeNearestImpl(src, srcHeight, srcWidth, dstHeight, dstWidth);
 }
 
 std::vector<std::uint8_t> processSingleMaskRfdetr(span<const float> maskLogits,

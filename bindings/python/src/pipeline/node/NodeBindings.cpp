@@ -196,6 +196,7 @@ void bind_gate(pybind11::module& m, void* pCallstack);
 void bind_beta_classificationparser(pybind11::module& m, void* pCallstack);
 void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstack);
 void bind_beta_embeddingsparser(pybind11::module& m, void* pCallstack);
+void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack);
 void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack);
 void bind_beta_imageoutputparser(pybind11::module& m, void* pCallstack);
 void bind_beta_imgdetectionsfilter(pybind11::module& m, void* pCallstack);
@@ -274,6 +275,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_classificationparser);
     callstack.push_front(bind_beta_classificationsequenceparser);
     callstack.push_front(bind_beta_embeddingsparser);
+    callstack.push_front(bind_beta_fastsamparser);
     callstack.push_front(bind_beta_hrnetparser);
     callstack.push_front(bind_beta_imageoutputparser);
     callstack.push_front(bind_beta_imgdetectionsfilter);

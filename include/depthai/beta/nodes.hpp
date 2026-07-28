@@ -5,6 +5,7 @@
 #include "node/ClassificationParser.hpp"
 #include "node/ClassificationSequenceParser.hpp"
 #include "node/EmbeddingsParser.hpp"
+#include "node/FastSAMParser.hpp"
 #include "node/HRNetParser.hpp"
 #include "node/ImageOutputParser.hpp"
 #include "node/ImgDetectionsFilter.hpp"

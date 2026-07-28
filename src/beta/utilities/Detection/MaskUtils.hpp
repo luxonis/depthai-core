@@ -56,6 +56,22 @@ std::vector<std::uint8_t> resizeNearest(
     const std::vector<std::uint8_t>& src, std::size_t srcHeight, std::size_t srcWidth, std::size_t dstHeight, std::size_t dstWidth);
 
 /**
+ * @brief Nearest-neighbor resize of a (height, width) single-channel float mask, replicating
+ * cv2.resize(src, (dstWidth, dstHeight), interpolation=cv2.INTER_NEAREST) on a float32 mask.
+ *
+ * Uses the same OpenCV resizeNN index mapping as the uint8 overload; values are copied
+ * unchanged.
+ *
+ * @param src Row-major source values of size srcHeight * srcWidth.
+ * @param srcHeight Source height, must be greater than 0.
+ * @param srcWidth Source width, must be greater than 0.
+ * @param dstHeight Destination height.
+ * @param dstWidth Destination width.
+ * @return Row-major resized values of size dstHeight * dstWidth.
+ */
+std::vector<float> resizeNearest(const std::vector<float>& src, std::size_t srcHeight, std::size_t srcWidth, std::size_t dstHeight, std::size_t dstWidth);
+
+/**
  * @brief Process a single RF-DETR instance segmentation mask, mirroring the source
  * process_single_mask_rfdetr().
  *
