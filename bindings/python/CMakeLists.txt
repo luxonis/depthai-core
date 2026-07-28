@@ -178,6 +178,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/ClassificationSequenceParserBindings.cpp
         src/beta/node/EmbeddingsParserBindings.cpp
         src/beta/node/HRNetParserBindings.cpp
+        src/beta/node/ImageOutputParserBindings.cpp
         src/beta/node/ImgDetectionsFilterBindings.cpp
         src/beta/node/KeypointParserBindings.cpp
         src/beta/node/LaneDetectionParserBindings.cpp
