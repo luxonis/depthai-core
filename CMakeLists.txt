@@ -455,6 +455,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/MapOutputParser.cpp
         src/beta/node/MLSDParser.cpp
         src/beta/node/MPPalmDetectionParser.cpp
+        src/beta/node/PPTextDetectionParser.cpp
         src/beta/node/RegressionParser.cpp
         src/beta/node/RFDETRParser.cpp
         src/beta/node/SCRFDParser.cpp
@@ -471,6 +472,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
         src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
         src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/PPText/PPTextUtils.cpp
         src/beta/utilities/RFDETR/RFDETRUtils.cpp
         src/beta/utilities/SCRFD/SCRFDUtils.cpp
         src/beta/utilities/XFeat/XFeatUtils.cpp
