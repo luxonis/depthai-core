@@ -409,6 +409,17 @@ std::vector<std::int64_t> argsortDescending(const std::vector<float>& values) {
     return order;
 }
 
+std::vector<std::int64_t> argsortAscending(const std::vector<float>& values) {
+    const std::int64_t num = static_cast<std::int64_t>(values.size());
+
+    // idxs = np.argsort(values): argsort the identity permutation ascending with numpy's
+    // generic introsort.
+    std::vector<std::int64_t> order(num);
+    std::iota(order.begin(), order.end(), 0);
+    argQuickSort(values.data(), order.data(), num);
+    return order;
+}
+
 MlsdLines computeMlsdLines(const std::vector<float>& tpMapValues,
                            const std::vector<std::size_t>& tpMapDims,
                            const std::vector<float>& heatValues,

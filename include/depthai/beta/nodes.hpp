@@ -14,6 +14,7 @@
 #include "node/MPPalmDetectionParser.hpp"
 #include "node/MapOutputParser.hpp"
 #include "node/RegressionParser.hpp"
+#include "node/SCRFDParser.hpp"
 #include "node/SuperAnimalParser.hpp"
 #include "node/XFeatMonoParser.hpp"
 #include "node/XFeatStereoParser.hpp"

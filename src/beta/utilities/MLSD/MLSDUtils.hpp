@@ -93,6 +93,18 @@ std::vector<std::int64_t> topKIndicesByScore(const std::vector<float>& heatValue
  */
 std::vector<std::int64_t> argsortDescending(const std::vector<float>& values);
 
+/**
+ * @brief Return the indices that sort the values in ascending order.
+ *
+ * Replicates numpy's np.argsort(values), including the generic (portable scalar) introsort
+ * tie ordering. An empty input yields an empty result. Reversing the result replicates
+ * numpy's values.argsort()[::-1], whose tie ordering differs from np.argsort(-values).
+ *
+ * @param values Values to sort.
+ * @return Indices into values ordered by ascending value.
+ */
+std::vector<std::int64_t> argsortAscending(const std::vector<float>& values);
+
 }  // namespace MLSDUtils
 }  // namespace utilities
 }  // namespace beta
