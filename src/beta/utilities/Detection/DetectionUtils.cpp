@@ -97,8 +97,15 @@ std::shared_ptr<dai::ImgDetections> createDetectionMessage(const std::vector<std
                                                            const std::vector<std::uint32_t>& labels,
                                                            const std::vector<std::string>& labelNames,
                                                            const std::vector<std::vector<Keypoint>>& keypoints,
-                                                           const std::vector<Edge>& keypointEdges) {
+                                                           const std::vector<Edge>& keypointEdges,
+                                                           const std::vector<std::uint8_t>& segmentationMask,
+                                                           std::size_t segmentationMaskWidth,
+                                                           std::size_t segmentationMaskHeight) {
     auto message = std::make_shared<dai::ImgDetections>();
+    // The mask is applied even when there are no detections, mirroring the source creator.
+    if(!segmentationMask.empty()) {
+        message->setSegmentationMask(segmentationMask, segmentationMaskWidth, segmentationMaskHeight);
+    }
     if(bboxes.empty()) {
         return message;
     }

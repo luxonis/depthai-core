@@ -57,6 +57,10 @@ std::vector<int> nmsBoxes(const std::vector<std::array<double, 4>>& bboxes,
  * Validates that scores, and, when provided, angles, labels, label names and keypoints have the
  * same length as bboxes and that every angle lies in [-360, 360].
  *
+ * A non-empty segmentation mask is stored on the message even when bboxes are empty, mirroring
+ * the source creator's masks path. The mask is a row-major (height, width) uint8 array where a
+ * pixel holds the index of the detection it belongs to and 255 marks background.
+ *
  * @param bboxes Bounding boxes as [xCenter, yCenter, width, height], normalized.
  * @param scores Confidence scores, index-aligned with bboxes.
  * @param angles Optional angles of the bounding boxes in degrees, each in [-360, 360],
@@ -68,6 +72,11 @@ std::vector<int> nmsBoxes(const std::vector<std::array<double, 4>>& bboxes,
  *                  provided.
  * @param keypointEdges Optional keypoint skeleton edges as pairs of keypoint indices, applied to
  *                      every detection with keypoints. Empty when not provided.
+ * @param segmentationMask Optional row-major instance segmentation mask of size
+ *                         segmentationMaskWidth * segmentationMaskHeight. Empty when not
+ *                         provided.
+ * @param segmentationMaskWidth Segmentation mask width; only used when the mask is provided.
+ * @param segmentationMaskHeight Segmentation mask height; only used when the mask is provided.
  * @return ImgDetections message with the detections.
  */
 std::shared_ptr<dai::ImgDetections> createDetectionMessage(const std::vector<std::array<float, 4>>& bboxes,
@@ -76,7 +85,10 @@ std::shared_ptr<dai::ImgDetections> createDetectionMessage(const std::vector<std
                                                            const std::vector<std::uint32_t>& labels = {},
                                                            const std::vector<std::string>& labelNames = {},
                                                            const std::vector<std::vector<Keypoint>>& keypoints = {},
-                                                           const std::vector<Edge>& keypointEdges = {});
+                                                           const std::vector<Edge>& keypointEdges = {},
+                                                           const std::vector<std::uint8_t>& segmentationMask = {},
+                                                           std::size_t segmentationMaskWidth = 0,
+                                                           std::size_t segmentationMaskHeight = 0);
 
 }  // namespace DetectionUtils
 }  // namespace utilities

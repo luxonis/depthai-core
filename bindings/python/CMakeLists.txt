@@ -189,6 +189,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/MLSDParserBindings.cpp
         src/beta/node/MPPalmDetectionParserBindings.cpp
         src/beta/node/RegressionParserBindings.cpp
+        src/beta/node/RFDETRParserBindings.cpp
         src/beta/node/SCRFDParserBindings.cpp
         src/beta/node/SuperAnimalParserBindings.cpp
         src/beta/node/XFeatMonoParserBindings.cpp

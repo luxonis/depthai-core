@@ -455,6 +455,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/MLSDParser.cpp
         src/beta/node/MPPalmDetectionParser.cpp
         src/beta/node/RegressionParser.cpp
+        src/beta/node/RFDETRParser.cpp
         src/beta/node/SCRFDParser.cpp
         src/beta/node/SuperAnimalParser.cpp
         src/beta/node/XFeatMonoParser.cpp
@@ -463,10 +464,12 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp
+        src/beta/utilities/Detection/MaskUtils.cpp
         src/beta/utilities/Keypoints/KeypointsUtils.cpp
         src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
         src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
         src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/RFDETR/RFDETRUtils.cpp
         src/beta/utilities/SCRFD/SCRFDUtils.cpp
         src/beta/utilities/XFeat/XFeatUtils.cpp
         src/beta/utilities/YuNet/YuNetUtils.cpp
