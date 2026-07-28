@@ -56,6 +56,7 @@ with dai.Pipeline() as pipeline:
         # Show the frame
         cv2.imshow(name, frame)
 
+    lastPrintTime = 0.0
     while pipeline.isRunning():
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
@@ -76,7 +77,10 @@ with dai.Pipeline() as pipeline:
 
         if frame is not None:
             displayFrame("rgb", frame)
-            print("FPS: {:.2f}".format(counter / (time.monotonic() - startTime)))
+            now = time.monotonic()
+            if now - lastPrintTime >= 1.0:
+                print("FPS: {:.2f}".format(counter / (now - startTime)))
+                lastPrintTime = now
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()
             break

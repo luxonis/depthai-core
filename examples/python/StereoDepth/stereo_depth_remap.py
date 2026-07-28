@@ -1,6 +1,7 @@
 import depthai as dai
 import cv2
 import numpy as np
+import time
 
 def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
     """
@@ -57,6 +58,7 @@ with dai.Pipeline() as pipeline:
     stereoOut = stereo.depth.createOutputQueue()
 
     pipeline.start()
+    lastPrintTime = 0.0
     while pipeline.isRunning():
         colorFrame = colorOut.get()
         stereoFrame = stereoOut.get()
@@ -70,8 +72,11 @@ with dai.Pipeline() as pipeline:
         rect = dai.RotatedRect(dai.Point2f(300, 200), dai.Size2f(200, 100), 10)
         remappedRect = colorFrame.getTransformation().remapRectTo(stereoFrame.getTransformation(), rect)
 
-        print(f"Original rect x: {rect.center.x} y: {rect.center.y} width: {rect.size.width} height: {rect.size.height} angle: {rect.angle}")
-        print(f"Remapped rect x: {remappedRect.center.x} y: {remappedRect.center.y} width: {remappedRect.size.width} height: {remappedRect.size.height} angle: {remappedRect.angle}")
+        now = time.monotonic()
+        if now - lastPrintTime >= 1.0:
+            print(f"Original rect x: {rect.center.x} y: {rect.center.y} width: {rect.size.width} height: {rect.size.height} angle: {rect.angle}")
+            print(f"Remapped rect x: {remappedRect.center.x} y: {remappedRect.center.y} width: {remappedRect.size.width} height: {remappedRect.size.height} angle: {remappedRect.angle}")
+            lastPrintTime = now
 
         draw_rotated_rectangle(clr, (rect.center.x, rect.center.y), (rect.size.width, rect.size.height), rect.angle, (255, 0, 0))
         draw_rotated_rectangle(depth, (remappedRect.center.x, remappedRect.center.y), (remappedRect.size.width, remappedRect.size.height), remappedRect.angle, (255, 0, 0))
