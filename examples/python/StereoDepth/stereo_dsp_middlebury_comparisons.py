@@ -25,7 +25,8 @@ DEFAULT_SCENES = ("Adirondack-perfect", "Motorcycle-perfect", "Pipes-perfect")
 MIDDLEBURY_URL = "https://vision.middlebury.edu/stereo/data/scenes2014/zip/"
 EVA_SIZE = (1280, 800)
 GPU_SIZE = (1280, 800)
-NEURAL_MODEL = dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM
+GPU_CONFIDENCE_THRESHOLD = 25
+NEURAL_MODEL = dai.DeviceModelZoo.NEURAL_DEPTH_LARGE
 NEURAL_SIZE = dai.node.NeuralDepth.getInputSize(NEURAL_MODEL)
 
 
@@ -183,30 +184,13 @@ def create_eva_pipeline():
     return (pipeline, *queues)
 
 
-def create_gpu_pipeline():
-    pipeline = dai.Pipeline()
-    calibration = pipeline.getDefaultDevice().readCalibration()
-    stereo = pipeline.create(dai.node.GPUStereo)
-    stereo.setRectification(False)
-    stereo.left.setBlocking(True)
-    stereo.right.setBlocking(True)
-    stereo.left.setMaxSize(8)
-    stereo.right.setMaxSize(8)
-    return (
-        pipeline,
-        stereo.left.createInputQueue(),
-        stereo.right.createInputQueue(),
-        stereo.disparity.createOutputQueue(),
-        calibration,
-    )
-
-
 def create_neural_pipeline():
     pipeline = dai.Pipeline()
     calibration = pipeline.getDefaultDevice().readCalibration()
     neural = pipeline.create(dai.node.NeuralDepth)
     neural.neuralNetwork.setModelFromDeviceZoo(NEURAL_MODEL)
     neural.rectification.setOutputSize(NEURAL_SIZE)
+    neural.initialConfig.setConfidenceThreshold(30)
     neural.setRectification(False)
     neural.left.setBlocking(True)
     neural.right.setBlocking(True)
@@ -313,6 +297,24 @@ def run_calibrated_pipeline(bundle, pairs, timeout):
         send_pair(left_queue, right_queue, pairs[0], 0, calibration)
         for sequence_num, pair in enumerate(pairs, 1):
             send_pair(left_queue, right_queue, pair, sequence_num, calibration)
+            disparities[sequence_num - 1] = receive_frames(disparity_queue, {sequence_num}, timeout)[sequence_num]
+    return disparities
+
+
+def run_gpu_pipeline(pairs, timeout):
+    pipeline = dai.Pipeline()
+    stereo = pipeline.create(dai.node.GPUStereo)
+    stereo.initialConfig.setConfidenceThreshold(GPU_CONFIDENCE_THRESHOLD)
+    inputs = {input_ref.getName(): input_ref for input_ref in stereo.getInputs()}
+    left_queue = inputs["leftFrameInternal"].createInputQueue()
+    right_queue = inputs["rightFrameInternal"].createInputQueue()
+    disparity_queue = stereo.disparity.createOutputQueue()
+    disparities = {}
+    with pipeline:
+        pipeline.start()
+        send_pair(left_queue, right_queue, pairs[0], 0)
+        for sequence_num, pair in enumerate(pairs, 1):
+            send_pair(left_queue, right_queue, pair, sequence_num)
             disparities[sequence_num - 1] = receive_frames(disparity_queue, {sequence_num}, timeout)[sequence_num]
     return disparities
 
@@ -458,6 +460,7 @@ def main():
     target_size = (args.width, args.height)
     pairs = [load_pair(scene, target_size) for scene in scenes]
     gpu_pairs = [load_pair(scene, GPU_SIZE) for scene in scenes]
+    neural_pairs = [load_pair(scene, NEURAL_SIZE) for scene in scenes]
     native_ground_truth = [read_pfm(scene / "disp0.pfm") for scene in scenes]
     ground_truth = [pixels_to_q4(resize_disparity_pixels(disparity, target_size)) for disparity in native_ground_truth]
     ground_truth_scales = {scene.name: args.width / disparity.shape[1] for scene, disparity in zip(scenes, native_ground_truth)}
@@ -468,8 +471,8 @@ def main():
     )
     eva_padded, eva_crops = zip(*(pad_pair_for_eva(pair) for pair in pairs))
     eva_disparities, eva_rectified_left, eva_rectified_right = run_pipeline(create_eva_pipeline(), eva_padded, args.timeout)
-    gpu_disparities = run_calibrated_pipeline(create_gpu_pipeline(), gpu_pairs, args.timeout)
-    neural_disparities = run_calibrated_pipeline(create_neural_pipeline(), pairs, args.timeout)
+    gpu_disparities = run_gpu_pipeline(gpu_pairs, args.timeout)
+    neural_disparities = run_calibrated_pipeline(create_neural_pipeline(), neural_pairs, args.timeout)
 
     backend_order = ("DSP_GPU", "OpenCV SGBM_3WAY", "EVA", "NeuralDepth MEDIUM", "GPUStereo")
     results = {backend: [] for backend in backend_order}
@@ -535,6 +538,7 @@ def main():
             "dataset": str(args.dataset),
             "output_dir": str(args.output_dir),
             "gpu_input_size": GPU_SIZE,
+            "gpu_confidence_threshold": GPU_CONFIDENCE_THRESHOLD,
             "neural_model": "NEURAL_DEPTH_MEDIUM",
             "neural_input_size": NEURAL_SIZE,
             "scaling": {

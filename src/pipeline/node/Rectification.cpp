@@ -34,7 +34,26 @@ bool Rectification::runOnHost() const {
 
 #if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
 void Rectification::run() {
-    throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
+    if(properties.enableRectification) {
+        throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
+    }
+
+    while(mainLoop()) {
+        std::shared_ptr<dai::ImgFrame> input1Frame;
+        std::shared_ptr<dai::ImgFrame> input2Frame;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            input1Frame = input1.get<dai::ImgFrame>();
+            input2Frame = input2.get<dai::ImgFrame>();
+        }
+        {
+            auto blockEvent = this->outputBlockEvent();
+            output1.send(input1Frame);
+            output2.send(input2Frame);
+            passthrough1.send(input1Frame);
+            passthrough2.send(input2Frame);
+        }
+    }
 }
 #else   // DEPTHAI_HAVE_OPENCV_SUPPORT
 
@@ -133,6 +152,16 @@ void Rectification::run() {
             input1Frame = input1.get<dai::ImgFrame>();
             input2Frame = input2.get<dai::ImgFrame>();
         }
+
+        if(!properties.enableRectification) {
+            auto blockEvent = this->outputBlockEvent();
+            output1.send(input1Frame);
+            output2.send(input2Frame);
+            passthrough1.send(input1Frame);
+            passthrough2.send(input2Frame);
+            continue;
+        }
+
         uint32_t output1FrameWidth;
         uint32_t output1FrameHeight;
         uint32_t output2FrameWidth;
@@ -200,13 +229,6 @@ void Rectification::run() {
 
             auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
             auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2);
-
-            if(properties.enableRectification == false) {
-                cv_R1 = cv::Mat::eye(3, 3, CV_32FC1);
-                cv_R2 = cv::Mat::eye(3, 3, CV_32FC1);
-                cv_d1 = cv::Mat::zeros(1, d1.size(), CV_32FC1);
-                cv_d2 = cv::Mat::zeros(1, d2.size(), CV_32FC1);
-            }
 
             dai::Extrinsics output1Extrinsics = input1ImgTransformation.getExtrinsics();
             dai::Extrinsics output2Extrinsics = input2ImgTransformation.getExtrinsics();
