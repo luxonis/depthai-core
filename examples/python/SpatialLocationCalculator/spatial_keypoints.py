@@ -26,7 +26,12 @@ requiredCamCapabilities.enableUndistortion = True
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
-    cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    colorSocket = dai.CameraBoardSocket.CAM_A
+    for features in device.getConnectedCameraFeatures():
+        if dai.CameraSensorType.COLOR in features.supportedTypes:
+            colorSocket = features.socket
+            break
+    cameraNode = pipeline.create(dai.node.Camera).build(colorSocket)
 
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
 
@@ -34,11 +39,6 @@ with dai.Pipeline(device) as pipeline:
     spatialCalculator.initialConfig.setCalculateSpatialKeypoints(True)
     detNN.out.link(spatialCalculator.inputDetections)
 
-    # The Depth node manages its own stereo cameras and backend, and aligns depth
-    # to the detection network's passthrough output internally via setAlignTo, so
-    # no explicit left/right cameras or ImageAlign node are needed. The (640, 400)
-    # size keeps the depth resolution the same as the previous explicit stereo setup
-    # (the node would otherwise default to the full stereo sensor resolution).
     depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
 
     depth.setAlignTo(detNN.passthrough)
@@ -50,7 +50,6 @@ with dai.Pipeline(device) as pipeline:
     pipeline.start()
     print("Pipeline created.")
 
-    # Prepare Open3D visualization for spatial keypoints (converted to centimeters)
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name="Spatial Keypoints 3D", width=1280, height=720)
     opt = vis.get_render_option()
@@ -84,8 +83,8 @@ with dai.Pipeline(device) as pipeline:
         colorizedDepth = cv2.applyColorMap(cv2.convertScaleAbs(depthImg, alpha=0.03), cv2.COLORMAP_JET)
         image = passthrough.getCvFrame()
 
-        filterKeypoints = [0, 3, 4, 7, 8, 13, 14, 15, 16] # filter out nose, ears, elbows, knees, ankles
-        connectedKeypoints = [[0, 1], [2, 3], [2, 4], [3, 5], [2, 6], [3, 7]] # indices of keypoints that are connected with lines.
+        filterKeypoints = [0, 3, 4, 7, 8, 13, 14, 15, 16]
+        connectedKeypoints = [[0, 1], [2, 3], [2, 4], [3, 5], [2, 6], [3, 7]]
 
         for (i, det) in enumerate(spatialData.detections):
             bbox = det.getBoundingBox().denormalize(image.shape[1], image.shape[0])
@@ -124,14 +123,12 @@ with dai.Pipeline(device) as pipeline:
                     except IndexError:
                         continue
 
-        # origin=[0,0,0]. X=Red, Y=Green, Z=Blue
         npPoints = np.array(spatialPointsCm, dtype=np.float32)
         lineSet.points = o3d.utility.Vector3dVector(npPoints)
         lineSet.lines = o3d.utility.Vector2iVector(np.array(lines))
         lineSet.colors = o3d.utility.Vector3dVector(np.tile([0,1 ,0], (len(lines),1)))
 
         pc.points = o3d.utility.Vector3dVector(npPoints)
-        # Color points bright magenta in 3D view
         colors = np.tile([1.0, 0.0, 1.0], (len(npPoints), 1))
         pc.colors = o3d.utility.Vector3dVector(colors)
         vis.update_geometry(pc)

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <atomic>
 #include <csignal>
 #include <iostream>
@@ -74,7 +75,7 @@ cv::Mat makeTopPanel(int width, bool useSegmentation) {
     return topPanel;
 }
 
-}  // namespace
+}
 
 int main() {
     signal(SIGTERM, signalHandler);
@@ -96,18 +97,19 @@ int main() {
 
         dai::Pipeline pipeline{device};
 
+        auto colorSocket = dai::CameraBoardSocket::CAM_A;
+        for(const auto& features : device->getConnectedCameraFeatures()) {
+            if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
+                colorSocket = features.socket;
+                break;
+            }
+        }
         auto cameraNode = pipeline.create<dai::node::Camera>();
-        cameraNode->build(dai::CameraBoardSocket::CAM_A);
+        cameraNode->build(colorSocket);
 
         auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>()->build(cameraNode, modelName, cap);
         detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
 
-        // The Depth node manages its own stereo cameras and backend internally,
-        // and aligns depth to the detection network's passthrough output via
-        // setAlignTo (no separate ImageAlign node is needed). The (1280, 800) size
-        // keeps the stereo input at the sensor's full mono resolution on OAK-D
-        // while staying within the stereo backend's 1280-wide input limit
-        // (unbounded full resolution would exceed it on e.g. OAK-D-LR).
         auto depth = pipeline.create<dai::node::Depth>();
         depth->build(dai::node::Depth::Algorithm::AUTO, fps, std::make_pair(1280u, 800u));
         depth->setAlignTo(detectionNetwork->passthrough);

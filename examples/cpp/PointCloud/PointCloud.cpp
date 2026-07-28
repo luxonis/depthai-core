@@ -1,4 +1,4 @@
-// Minimal PointCloud example: colorized point cloud from stereo depth + RGB.
+#include <algorithm>
 #include <iostream>
 
 #include "depthai/depthai.hpp"
@@ -6,21 +6,21 @@
 int main() {
     dai::Pipeline pipeline;
 
-    // Color camera
-    auto color = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto colorSocket = dai::CameraBoardSocket::CAM_A;
+    for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
+            colorSocket = features.socket;
+            break;
+        }
+    }
+    auto color = pipeline.create<dai::node::Camera>()->build(colorSocket);
 
-    // Color output aligned to depth
     auto colorOut = color->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
 
-    // Unified Depth node. It manages its own stereo cameras and backend, and aligns
-    // depth to the color output internally via setAlignTo (no ImageAlign node needed).
-    // The (640, 400) size keeps the depth resolution the same as before instead
-    // of computing depth at the full stereo sensor resolution.
     auto depth = pipeline.create<dai::node::Depth>();
     depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
     depth->setAlignTo(*colorOut);
 
-    // Point cloud
     auto pc = pipeline.create<dai::node::PointCloud>();
     pc->initialConfig->setLengthUnit(dai::LengthUnit::METER);
 

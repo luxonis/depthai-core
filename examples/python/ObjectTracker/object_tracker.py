@@ -7,18 +7,17 @@ import time
 
 fullFrameTracking = False
 useSpatialAssociation = False
+fps = 20
 
-# Create pipeline
 with dai.Pipeline() as pipeline:
-    # Define sources and outputs
-    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    colorSocket = dai.CameraBoardSocket.CAM_A
+    for features in pipeline.getDefaultDevice().getConnectedCameraFeatures():
+        if dai.CameraSensorType.COLOR in features.supportedTypes:
+            colorSocket = features.socket
+            break
+    camRgb = pipeline.create(dai.node.Camera).build(colorSocket, sensorFps=fps)
 
-    # The Depth node manages its own stereo cameras and backend internally, so no
-    # explicit left/right cameras are needed. SpatialDetectionNetwork aligns the
-    # depth to the color camera internally. The (640, 400) size matches the
-    # previous stereo input and stays within the stereo backend's 1280-wide input
-    # limit (full sensor resolution would exceed it on e.g. OAK-D-LR).
-    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
 
     spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, depth, "yolov6-nano")
     objectTracker = pipeline.create(dai.node.ObjectTracker)
@@ -30,10 +29,8 @@ with dai.Pipeline() as pipeline:
     spatialDetectionNetwork.setDepthUpperThreshold(5000)
     labelMap = spatialDetectionNetwork.getClasses()
 
-    objectTracker.setDetectionLabelsToTrack([0])  # track only person
-    # possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS, SHORT_TERM_IMAGELESS, SHORT_TERM_KCF
+    objectTracker.setDetectionLabelsToTrack([0])
     objectTracker.setTrackerType(dai.TrackerType.SHORT_TERM_IMAGELESS)
-    # take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
     objectTracker.setTrackerIdAssignmentPolicy(dai.TrackerIdAssignmentPolicy.SMALLEST_ID)
     if useSpatialAssociation:
         objectTracker.setSpatialAssociation(True)
@@ -46,7 +43,6 @@ with dai.Pipeline() as pipeline:
 
     if fullFrameTracking:
         camRgb.requestFullResolutionOutput().link(objectTracker.inputTrackerFrame)
-        # do not block the pipeline if it's too slow on full frame
         objectTracker.inputTrackerFrame.setBlocking(False)
         objectTracker.inputTrackerFrame.setMaxSize(1)
     else:

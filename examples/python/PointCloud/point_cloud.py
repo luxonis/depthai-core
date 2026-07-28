@@ -5,19 +5,19 @@ import depthai as dai
 
 pipeline = dai.Pipeline()
 
-# Color camera
-color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+colorSocket = dai.CameraBoardSocket.CAM_A
+for features in pipeline.getDefaultDevice().getConnectedCameraFeatures():
+    if dai.CameraSensorType.COLOR in features.supportedTypes:
+        colorSocket = features.socket
+        break
+color = pipeline.create(dai.node.Camera).build(colorSocket)
 
-# Color output aligned to depth
 colorOut = color.requestOutput((640, 400), type=dai.ImgFrame.Type.RGB888i,
                                resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=True)
 
-# Unified Depth node. It manages its own stereo cameras and backend, and aligns
-# depth to the color output internally via setAlignTo (no ImageAlign node needed).
 depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
 depth.setAlignTo(colorOut)
 
-# Point cloud
 pc = pipeline.create(dai.node.PointCloud)
 pc.initialConfig.setLengthUnit(dai.LengthUnit.METER)
 
