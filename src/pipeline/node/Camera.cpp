@@ -244,7 +244,7 @@ Node::Output* Camera::requestOutput(const std::pair<uint32_t, uint32_t>& size,
     cap.type = type;
     cap.resizeMode = resizeMode;
     if(alphaScaling.has_value()) {
-        if (!(0.0f <= alphaScaling.value() && alphaScaling.value() <= 1.0f)) {
+        if (alphaScaling.value() < 0.0f || alphaScaling.value() > 1.0f) {
             throw std::runtime_error("alphaScaling must be between 0.0 and 1.0");
         }
         cap.enableUndistortion = true;
