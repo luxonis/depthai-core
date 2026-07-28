@@ -63,6 +63,7 @@ enum class DatatypeEnum : std::int32_t {
     Keypoints,
     Clusters,
     Map2D,
+    Lines,
     COUNT  // Sentinel used by consistency checks; must remain the last enum entry.
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);

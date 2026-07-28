@@ -54,6 +54,7 @@ void bind_gate_control(pybind11::module& m, void* pCallstack);
 void bind_beta_classifications(pybind11::module& m, void* pCallstack);
 void bind_beta_clusters(pybind11::module& m, void* pCallstack);
 void bind_beta_keypoints(pybind11::module& m, void* pCallstack);
+void bind_beta_lines(pybind11::module& m, void* pCallstack);
 void bind_beta_map2d(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_BETA
 
@@ -113,6 +114,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_classifications);
     callstack.push_front(bind_beta_clusters);
     callstack.push_front(bind_beta_keypoints);
+    callstack.push_front(bind_beta_lines);
     callstack.push_front(bind_beta_map2d);
 #endif  // DEPTHAI_HAVE_BETA
 }
@@ -189,6 +191,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
     datatypeEnum.value("Keypoints", DatatypeEnum::Keypoints);
     datatypeEnum.value("Clusters", DatatypeEnum::Clusters);
     datatypeEnum.value("Map2D", DatatypeEnum::Map2D);
+    datatypeEnum.value("Lines", DatatypeEnum::Lines);
 #endif  // DEPTHAI_HAVE_BETA
     datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

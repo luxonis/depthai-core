@@ -280,6 +280,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::Keypoints:
         case DatatypeEnum::Clusters:
         case DatatypeEnum::Map2D:
+        case DatatypeEnum::Lines:
         case DatatypeEnum::COUNT:
             return false;
     }
