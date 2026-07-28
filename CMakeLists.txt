@@ -456,6 +456,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/MPPalmDetectionParser.cpp
         src/beta/node/RegressionParser.cpp
         src/beta/node/SuperAnimalParser.cpp
+        src/beta/node/XFeatMonoParser.cpp
         src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp
@@ -463,6 +464,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
         src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
         src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/XFeat/XFeatUtils.cpp
     )
 endif()
 

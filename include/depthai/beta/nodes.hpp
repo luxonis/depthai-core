@@ -15,5 +15,6 @@
 #include "node/MapOutputParser.hpp"
 #include "node/RegressionParser.hpp"
 #include "node/SuperAnimalParser.hpp"
+#include "node/XFeatMonoParser.hpp"
 
 // IWYU pragma: end_exports

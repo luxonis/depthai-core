@@ -394,6 +394,21 @@ std::vector<std::int64_t> topKIndicesByScore(const std::vector<float>& heatValue
     return sortedIndices;
 }
 
+std::vector<std::int64_t> argsortDescending(const std::vector<float>& values) {
+    const std::int64_t num = static_cast<std::int64_t>(values.size());
+
+    // idxs = np.argsort(-values): negate in float32 and argsort the identity permutation
+    // ascending with numpy's generic introsort.
+    std::vector<float> negValues(num);
+    for(std::int64_t i = 0; i < num; i++) {
+        negValues[i] = -values[i];
+    }
+    std::vector<std::int64_t> order(num);
+    std::iota(order.begin(), order.end(), 0);
+    argQuickSort(negValues.data(), order.data(), num);
+    return order;
+}
+
 MlsdLines computeMlsdLines(const std::vector<float>& tpMapValues,
                            const std::vector<std::size_t>& tpMapDims,
                            const std::vector<float>& heatValues,

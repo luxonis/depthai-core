@@ -82,6 +82,17 @@ std::shared_ptr<Lines> createLinesMessage(const MlsdLines& mlsdLines);
  */
 std::vector<std::int64_t> topKIndicesByScore(const std::vector<float>& heatValues, int topK);
 
+/**
+ * @brief Return the indices that sort the values in descending order.
+ *
+ * Replicates numpy's np.argsort(-values), including the generic (portable scalar) introsort
+ * tie ordering. An empty input yields an empty result.
+ *
+ * @param values Values to sort.
+ * @return Indices into values ordered by descending value.
+ */
+std::vector<std::int64_t> argsortDescending(const std::vector<float>& values);
+
 }  // namespace MLSDUtils
 }  // namespace utilities
 }  // namespace beta

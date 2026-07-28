@@ -206,6 +206,7 @@ void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_regressionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack);
+void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack);
 #endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
@@ -279,6 +280,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_mppalmdetectionparser);
     callstack.push_front(bind_beta_regressionparser);
     callstack.push_front(bind_beta_superanimalparser);
+    callstack.push_front(bind_beta_xfeatmonoparser);
 #endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);

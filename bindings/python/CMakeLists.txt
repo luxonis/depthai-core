@@ -190,6 +190,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/MPPalmDetectionParserBindings.cpp
         src/beta/node/RegressionParserBindings.cpp
         src/beta/node/SuperAnimalParserBindings.cpp
+        src/beta/node/XFeatMonoParserBindings.cpp
     )
 endif()
 
