@@ -459,6 +459,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/SuperAnimalParser.cpp
         src/beta/node/XFeatMonoParser.cpp
         src/beta/node/XFeatStereoParser.cpp
+        src/beta/node/YuNetParser.cpp
         src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp
@@ -468,6 +469,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/utilities/MLSD/MLSDUtils.cpp
         src/beta/utilities/SCRFD/SCRFDUtils.cpp
         src/beta/utilities/XFeat/XFeatUtils.cpp
+        src/beta/utilities/YuNet/YuNetUtils.cpp
     )
 endif()
 

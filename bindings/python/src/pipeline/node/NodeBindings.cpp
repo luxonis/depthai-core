@@ -209,6 +209,7 @@ void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack);
 void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack);
 void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack);
 void bind_beta_xfeatstereoparser(pybind11::module& m, void* pCallstack);
+void bind_beta_yunetparser(pybind11::module& m, void* pCallstack);
 #endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
@@ -285,6 +286,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_superanimalparser);
     callstack.push_front(bind_beta_xfeatmonoparser);
     callstack.push_front(bind_beta_xfeatstereoparser);
+    callstack.push_front(bind_beta_yunetparser);
 #endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);

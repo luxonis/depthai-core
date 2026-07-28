@@ -18,5 +18,6 @@
 #include "node/SuperAnimalParser.hpp"
 #include "node/XFeatMonoParser.hpp"
 #include "node/XFeatStereoParser.hpp"
+#include "node/YuNetParser.hpp"
 
 // IWYU pragma: end_exports

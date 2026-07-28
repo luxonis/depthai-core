@@ -193,6 +193,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/SuperAnimalParserBindings.cpp
         src/beta/node/XFeatMonoParserBindings.cpp
         src/beta/node/XFeatStereoParserBindings.cpp
+        src/beta/node/YuNetParserBindings.cpp
     )
 endif()
 
