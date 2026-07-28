@@ -184,6 +184,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/KeypointParserBindings.cpp
         src/beta/node/LaneDetectionParserBindings.cpp
         src/beta/node/MapOutputParserBindings.cpp
+        src/beta/node/MPPalmDetectionParserBindings.cpp
         src/beta/node/SuperAnimalParserBindings.cpp
     )
 endif()

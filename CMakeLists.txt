@@ -450,11 +450,14 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/KeypointParser.cpp
         src/beta/node/LaneDetectionParser.cpp
         src/beta/node/MapOutputParser.cpp
+        src/beta/node/MPPalmDetectionParser.cpp
         src/beta/node/SuperAnimalParser.cpp
         src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
+        src/beta/utilities/Detection/DetectionUtils.cpp
         src/beta/utilities/Keypoints/KeypointsUtils.cpp
         src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
+        src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
     )
 endif()
 
