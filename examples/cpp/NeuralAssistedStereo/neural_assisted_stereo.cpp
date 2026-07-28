@@ -24,12 +24,12 @@ int main() {
     auto neuralAssistedStereo = pipeline.create<dai::node::NeuralAssistedStereo>()->build(*monoLeftOut, *monoRightOut, dai::DeviceModelZoo::NEURAL_DEPTH_NANO);
 
     // 6. Get output queue
-    auto disparityQueue = neuralAssistedStereo->disparity.createOutputQueue();
+    auto depthQueue = neuralAssistedStereo->depth.createOutputQueue();
 
     pipeline.start();
     while(pipeline.isRunning()) {
-        auto disparityPacket = disparityQueue->get<dai::ImgFrame>();
-        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*disparityPacket, 500.0f, 12000.0f, cv::COLORMAP_TURBO, false).getCvFrame());
+        auto depthPacket = depthQueue->get<dai::ImgFrame>();
+        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*depthPacket, 500.0f, 12000.0f, cv::COLORMAP_TURBO, false).getCvFrame());
         int key = cv::waitKey(1);
         if(key == 'q') {
             break;
