@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <vector>
 
 namespace dai {
@@ -45,8 +46,11 @@ cv::Mat colorizeDepthFrame(const cv::Mat& frame, float minDepth, float maxDepth,
         cv::Mat depth32f;
         frame.convertTo(depth32f, CV_32F);
 
-        // Zero depth values are treated as invalid/missing.
-        cv::Mat invalidMask = depth32f == 0.0f;
+        // Non-positive and non-finite depth values are treated as invalid/missing.
+        cv::Mat invalidMask = depth32f <= 0.0f;
+        cv::Mat finiteMask;
+        cv::inRange(depth32f, -std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), finiteMask);
+        invalidMask |= finiteMask == 0;
 
         if(maxDepth <= minDepth) {
             const auto range = computeAutoDepthRange(depth32f, invalidMask);
