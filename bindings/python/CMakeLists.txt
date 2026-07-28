@@ -172,6 +172,7 @@ set(SOURCE_LIST
 if(DEPTHAI_BUILD_BETA)
     list(APPEND SOURCE_LIST
         src/beta/datatype/ClassificationsBindings.cpp
+        src/beta/datatype/ClustersBindings.cpp
         src/beta/datatype/KeypointsBindings.cpp
         src/beta/node/ClassificationParserBindings.cpp
         src/beta/node/ClassificationSequenceParserBindings.cpp
@@ -179,6 +180,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/HRNetParserBindings.cpp
         src/beta/node/ImgDetectionsFilterBindings.cpp
         src/beta/node/KeypointParserBindings.cpp
+        src/beta/node/LaneDetectionParserBindings.cpp
         src/beta/node/SuperAnimalParserBindings.cpp
     )
 endif()

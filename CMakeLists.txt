@@ -437,6 +437,7 @@ set(TARGET_CORE_SOURCES
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
         src/beta/datatype/Classifications.cpp
+        src/beta/datatype/Clusters.cpp
         src/beta/datatype/ImgDetectionsFilterConfig.cpp
         src/beta/datatype/Keypoints.cpp
         src/beta/node/ClassificationParser.cpp
@@ -445,10 +446,12 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/HRNetParser.cpp
         src/beta/node/ImgDetectionsFilter.cpp
         src/beta/node/KeypointParser.cpp
+        src/beta/node/LaneDetectionParser.cpp
         src/beta/node/SuperAnimalParser.cpp
         src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Keypoints/KeypointsUtils.cpp
+        src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
     )
 endif()
 
