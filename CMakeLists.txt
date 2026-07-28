@@ -440,6 +440,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/Clusters.cpp
         src/beta/datatype/ImgDetectionsFilterConfig.cpp
         src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/Map2D.cpp
         src/beta/node/ClassificationParser.cpp
         src/beta/node/ClassificationSequenceParser.cpp
         src/beta/node/EmbeddingsParser.cpp
@@ -448,6 +449,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/ImgDetectionsFilter.cpp
         src/beta/node/KeypointParser.cpp
         src/beta/node/LaneDetectionParser.cpp
+        src/beta/node/MapOutputParser.cpp
         src/beta/node/SuperAnimalParser.cpp
         src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp

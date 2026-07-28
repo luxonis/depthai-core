@@ -14,6 +14,7 @@
     #include "depthai/beta/datatype/Clusters.hpp"
     #include "depthai/beta/datatype/ImgDetectionsFilterConfig.hpp"
     #include "depthai/beta/datatype/Keypoints.hpp"
+    #include "depthai/beta/datatype/Map2D.hpp"
 #endif
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
@@ -354,6 +355,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::Clusters:
 #ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Clusters>(metadataStart, serializedObjectSize, data, fd);
+#else
+            break;
+#endif
+        case DatatypeEnum::Map2D:
+#ifdef DEPTHAI_HAVE_BETA
+            return parseDatatype<beta::Map2D>(metadataStart, serializedObjectSize, data, fd);
 #else
             break;
 #endif

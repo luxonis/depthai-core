@@ -10,6 +10,7 @@
 #include "node/ImgDetectionsFilter.hpp"
 #include "node/KeypointParser.hpp"
 #include "node/LaneDetectionParser.hpp"
+#include "node/MapOutputParser.hpp"
 #include "node/SuperAnimalParser.hpp"
 
 // IWYU pragma: end_exports
