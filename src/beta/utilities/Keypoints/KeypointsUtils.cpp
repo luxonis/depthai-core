@@ -1,6 +1,7 @@
 #include "beta/utilities/Keypoints/KeypointsUtils.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -33,6 +34,49 @@ KeypointCoordinates computeKeypoints(std::vector<float> values, std::int64_t nKe
     coordinates.values = std::move(values);
     coordinates.numCoords = numCoords;
     return coordinates;
+}
+
+HrnetKeypoints computeHrnetKeypoints(const std::vector<float>& values, const std::vector<std::size_t>& dims) {
+    std::vector<std::size_t> shape = dims;
+    // A leading dimension of 1 (typically the batch dimension) is dropped exactly once; a batch
+    // of more than 1 is not squeezed and fails the 3D check below, mirroring the source parser.
+    if(!shape.empty() && shape.front() == 1) {
+        shape.erase(shape.begin());
+    }
+    DAI_CHECK_V(shape.size() == 3, "Expected 3D output tensor, got {}D.", shape.size());
+
+    const std::size_t numKeypoints = shape[0];
+    const std::size_t mapHeight = shape[1];
+    const std::size_t mapWidth = shape[2];
+    const std::size_t mapSize = mapHeight * mapWidth;
+    DAI_CHECK_V(numKeypoints > 0 && mapSize > 0, "Expected non-empty heatmaps, got shape ({}, {}, {}).", numKeypoints, mapHeight, mapWidth);
+    DAI_CHECK_V(
+        values.size() == numKeypoints * mapSize, "Cannot interpret {} heatmap values as shape ({}, {}, {}).", values.size(), numKeypoints, mapHeight, mapWidth);
+
+    HrnetKeypoints result;
+    result.coordinates.numCoords = 2;
+    result.coordinates.values.reserve(numKeypoints * 2);
+    result.scores.reserve(numKeypoints);
+
+    for(std::size_t keypointIndex = 0; keypointIndex < numKeypoints; ++keypointIndex) {
+        const float* heatmap = values.data() + keypointIndex * mapSize;
+        // First maximum in row-major scan order, matching np.argmax: ties keep the first
+        // occurrence and the first NaN is treated as the maximum.
+        std::size_t maxIndex = 0;
+        float maxValue = heatmap[0];
+        for(std::size_t i = 1; i < mapSize && !std::isnan(maxValue); ++i) {
+            if(std::isnan(heatmap[i]) || heatmap[i] > maxValue) {
+                maxValue = heatmap[i];
+                maxIndex = i;
+            }
+        }
+        result.scores.push_back(std::clamp(maxValue, 0.0f, 1.0f));
+        const std::size_t row = maxIndex / mapWidth;
+        const std::size_t col = maxIndex % mapWidth;
+        result.coordinates.values.push_back(static_cast<float>(col) / static_cast<float>(mapWidth));
+        result.coordinates.values.push_back(static_cast<float>(row) / static_cast<float>(mapHeight));
+    }
+    return result;
 }
 
 std::shared_ptr<Keypoints> createKeypointsMessage(const KeypointCoordinates& coordinates,

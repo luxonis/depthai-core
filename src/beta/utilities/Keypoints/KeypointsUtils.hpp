@@ -30,6 +30,16 @@ struct KeypointCoordinates {
 };
 
 /**
+ * @brief Normalized keypoints and their confidence scores extracted from HRNet heatmaps.
+ */
+struct HrnetKeypoints {
+    /// Keypoint coordinates of shape (numKeypoints, 2), normalized by the heatmap size.
+    KeypointCoordinates coordinates;
+    /// Per-keypoint confidence scores, clipped to [0, 1], scores.size() == numKeypoints.
+    std::vector<float> scores;
+};
+
+/**
  * @brief Reshape and normalize a flattened keypoint tensor.
  *
  * The number of coordinates per keypoint is derived from the tensor size as
@@ -42,6 +52,24 @@ struct KeypointCoordinates {
  * @return Keypoint coordinates of shape (nKeypoints, numCoords).
  */
 KeypointCoordinates computeKeypoints(std::vector<float> values, std::int64_t nKeypoints, float scaleFactor);
+
+/**
+ * @brief Extract normalized keypoints and confidence scores from HRNet heatmaps.
+ *
+ * The heatmap tensor must be provided in (numKeypoints, height, width) orientation, stored
+ * row-major. A leading dimension of 1 (typically the batch dimension) is dropped exactly once;
+ * the remaining tensor must be 3D, so a batch of more than 1 is rejected. The number of
+ * keypoints and the heatmap size are derived from the tensor shape.
+ *
+ * Per heatmap, the score is the maximum value clipped to [0, 1] and the keypoint is the (x, y)
+ * position of the first maximum in row-major scan order (matching np.argmax tie behavior),
+ * normalized by the heatmap (width, height).
+ *
+ * @param values Heatmap tensor values, stored row-major over dims.
+ * @param dims Heatmap tensor shape.
+ * @return Normalized keypoints of shape (numKeypoints, 2) and their scores.
+ */
+HrnetKeypoints computeHrnetKeypoints(const std::vector<float>& values, const std::vector<std::size_t>& dims);
 
 /**
  * @brief Create a Keypoints message from keypoint coordinates.
