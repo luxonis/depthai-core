@@ -59,7 +59,7 @@ with pipeline:
         frameDepth = outputDepthIMage.getFrame()
         print("Median depth value: ", np.median(frameDepth))
 
-        depthFrameColor = dai.colorizeDepthFrame(outputDepthIMage, 500, 12000).getCvFrame()
+        depthFrameColor = dai.colorizeDepthFrame(outputDepthIMage, 500, 12000, useLog=True).getCvFrame()
         for depthData in spatialData:
             roi = depthData.config.roi
             roi = roi.denormalize(width=depthFrameColor.shape[1], height=depthFrameColor.shape[0])

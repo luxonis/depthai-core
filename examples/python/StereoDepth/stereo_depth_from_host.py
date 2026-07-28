@@ -1139,7 +1139,7 @@ def convertToCv2Frame(name, image, config):
 
         depthImg = dai.ImgFrame()
         depthImg.setCvFrame(frame.astype(np.float32), dai.ImgFrame.Type.GRAYF16)
-        frame = dai.colorizeDepthFrame(depthImg, 500, 12000, cv2.COLORMAP_HOT, False).getCvFrame()
+        frame = dai.colorizeDepthFrame(depthImg, 500, 12000, cv2.COLORMAP_HOT, useLog=True).getCvFrame()
     elif "confidence_map" in name:
         pass
     elif name == "disparity_cost_dump":

@@ -19,7 +19,7 @@ int main() {
     pipeline.start();
     while(pipeline.isRunning()) {
         auto depth = depthOutputQueue->get<dai::ImgFrame>();
-        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth, minDepth, maxDepth).getCvFrame());
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth, minDepth, maxDepth, cv::COLORMAP_JET, true).getCvFrame());
 
         if(cv::waitKey(1) == 'q') {
             break;

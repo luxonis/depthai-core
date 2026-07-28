@@ -25,7 +25,7 @@ def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
     cv2.polylines(frame, [box], isClosed=True, color=color, thickness=thickness)
 
 def processDepthFrame(depthFrame: dai.ImgFrame):
-    return dai.colorizeDepthFrame(depthFrame, 500, 12000, cv2.COLORMAP_HOT, False).getCvFrame()
+    return dai.colorizeDepthFrame(depthFrame, 500, 12000, cv2.COLORMAP_HOT, useLog=True).getCvFrame()
 
 with dai.Pipeline() as pipeline:
     color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)

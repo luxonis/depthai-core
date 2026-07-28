@@ -88,7 +88,7 @@ int main() {
             }
 
             // Process depth frame for visualization
-            cv::Mat depthFrameColor = dai::utility::colorizeDepthFrame(*outputDepthImage, 500.0f, 12000.0f).getCvFrame();
+            cv::Mat depthFrameColor = dai::utility::colorizeDepthFrame(*outputDepthImage, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame();
 
             // Draw spatial data
             for(const auto& depthData : spatialData->spatialLocations) {

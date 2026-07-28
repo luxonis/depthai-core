@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
             cv.imshow("vpp_left", vpp_out_left.getCvFrame())
             cv.imshow("vpp_right", vpp_out_right.getCvFrame())
-            cv.imshow("Depth", dai.colorizeDepthFrame(depth, 500, 12000, cv.COLORMAP_TURBO, False).getCvFrame())
+            cv.imshow("Depth", dai.colorizeDepthFrame(depth, 500, 12000, cv.COLORMAP_TURBO, useLog=True).getCvFrame())
 
             key = cv.waitKey(1)
             if key == ord('q'):

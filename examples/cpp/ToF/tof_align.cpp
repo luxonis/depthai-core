@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
             cv::cvtColor(cvFrame, cvFrame, cv::COLOR_GRAY2BGR);
         }
 
-        cv::Mat depthColorized = dai::utility::colorizeDepthFrame(*frameDepth, MIN_DEPTH, MAX_DEPTH).getCvFrame();
+        cv::Mat depthColorized = dai::utility::colorizeDepthFrame(*frameDepth, MIN_DEPTH, MAX_DEPTH, cv::COLORMAP_JET, true).getCvFrame();
         if(depthColorized.size() != cvFrame.size()) {
             cv::resize(depthColorized, depthColorized, cvFrame.size());
         }

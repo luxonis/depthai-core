@@ -48,7 +48,7 @@ int main() {
             cv::Mat displayFrame;
 
             if(name == "depth" || name == "rawDepth") {
-                displayFrame = dai::utility::colorizeDepthFrame(*frame, minDepth, maxDepth).getCvFrame();
+                displayFrame = dai::utility::colorizeDepthFrame(*frame, minDepth, maxDepth, cv::COLORMAP_JET, true).getCvFrame();
             } else {
                 displayFrame = normalizeFrame(frame->getCvFrame());
             }

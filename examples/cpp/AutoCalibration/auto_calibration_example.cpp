@@ -129,7 +129,7 @@ int main() {
         }
 
         auto depth = stereoOut->get<dai::ImgFrame>();
-        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*depth, 500.0f, 12000.0f, cv::COLORMAP_TURBO, false).getCvFrame());
+        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*depth, 500.0f, 12000.0f, cv::COLORMAP_TURBO, true).getCvFrame());
 
         if(cv::waitKey(1) == 'q') break;
     }

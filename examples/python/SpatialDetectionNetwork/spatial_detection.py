@@ -36,7 +36,7 @@ class SpatialVisualizer(dai.node.HostNode):
         self.displayResults(rgbPreview, depthFrameColor, detections.detections)
 
     def processDepthFrame(self, depthFrame):
-        return dai.colorizeDepthFrame(depthFrame, 500, 12000, cv2.COLORMAP_HOT, False).getCvFrame()
+        return dai.colorizeDepthFrame(depthFrame, 500, 12000, cv2.COLORMAP_HOT, useLog=True).getCvFrame()
 
     def displayResults(self, rgbFrame, depthFrameColor, detections):
         height, width, _ = rgbFrame.shape

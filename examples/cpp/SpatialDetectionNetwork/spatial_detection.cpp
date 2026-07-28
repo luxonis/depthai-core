@@ -52,7 +52,7 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
 
    private:
     cv::Mat processDepthFrame(const dai::ImgFrame& depthFrameImg) {
-        return dai::utility::colorizeDepthFrame(depthFrameImg, 500.0f, 12000.0f, cv::COLORMAP_HOT, false).getCvFrame();
+        return dai::utility::colorizeDepthFrame(depthFrameImg, 500.0f, 12000.0f, cv::COLORMAP_HOT, true).getCvFrame();
     }
 
     void displayResults(cv::Mat& rgbFrame, cv::Mat& depthFrameColor, const std::vector<dai::SpatialImgDetection>& detections) {

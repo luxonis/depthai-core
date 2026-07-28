@@ -344,7 +344,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         py::arg("minDepth") = 500.0f,
         py::arg("maxDepth") = 12000.0f,
         py::arg("colormap") = static_cast<int>(cv::COLORMAP_JET),
-        py::arg("useLog") = true,
+          py::arg("useLog") = true,
         "Colorize a single-channel depth frame. Depth values (including minDepth and maxDepth) are usually in millimeters. "
         "If maxDepth <= minDepth (e.g. 0,0) the 3rd/95th percentile range is auto-computed from valid (non-zero) pixels.");
 #endif

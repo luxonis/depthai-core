@@ -295,7 +295,7 @@ int main(int argc, char** argv) {
             auto confidenceFrame = confidenceQueue->get<dai::ImgFrame>();
 
             if(depthFrame != nullptr) {
-                cv::imshow("depth", dai::utility::colorizeDepthFrame(*depthFrame, 500.0f, 12000.0f).getCvFrame());
+                cv::imshow("depth", dai::utility::colorizeDepthFrame(*depthFrame, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame());
             }
             if(confidenceFrame != nullptr) {
                 cv::imshow("confidence", colorizeConfidence(confidenceFrame->getFrame()));

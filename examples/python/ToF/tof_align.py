@@ -93,7 +93,7 @@ def main():
             if len(cvFrame.shape) == 2:
                 cvFrame = cv2.cvtColor(cvFrame, cv2.COLOR_GRAY2BGR)
 
-            depthColorized = dai.colorizeDepthFrame(frameDepth, MIN_DEPTH, MAX_DEPTH).getCvFrame()
+            depthColorized = dai.colorizeDepthFrame(frameDepth, MIN_DEPTH, MAX_DEPTH, useLog=True).getCvFrame()
             if depthColorized.shape[:2] != cvFrame.shape[:2]:
                 depthColorized = cv2.resize(
                     depthColorized, (cvFrame.shape[1], cvFrame.shape[0])

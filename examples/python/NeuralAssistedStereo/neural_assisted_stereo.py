@@ -18,13 +18,13 @@ if __name__ == "__main__":
 
     neuralAssistedStereo = pipeline.create(dai.node.NeuralAssistedStereo).build(monoLeftOut, monoRightOut, neuralModel=dai.DeviceModelZoo.NEURAL_DEPTH_NANO)
 
-    disparityQueue = neuralAssistedStereo.disparity.createOutputQueue()
+    depthQueue = neuralAssistedStereo.depth.createOutputQueue()
 
     with pipeline:
         pipeline.start()
         while pipeline.isRunning():
-            disparity = disparityQueue.get()
-            cv.imshow("Depth", dai.colorizeDepthFrame(disparity, 500, 12000, cv.COLORMAP_TURBO, False).getCvFrame())
+            depth = depthQueue.get()
+            cv.imshow("Depth", dai.colorizeDepthFrame(depth, 500, 12000, cv.COLORMAP_TURBO, useLog=True).getCvFrame())
 
             key = cv.waitKey(1)
             if key == ord('q'):

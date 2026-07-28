@@ -74,7 +74,7 @@ int main() {
         cv::imshow("vppLeft", vppLeftFrame->getCvFrame());
         cv::imshow("vppRight", vppRightFrame->getCvFrame());
 
-        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*depthFrame, 500.0f, 12000.0f, cv::COLORMAP_TURBO, false).getCvFrame());
+        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*depthFrame, 500.0f, 12000.0f, cv::COLORMAP_TURBO, true).getCvFrame());
 
         if(cv::waitKey(1) == 'q') {
             break;

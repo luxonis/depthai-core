@@ -134,7 +134,7 @@ int main() {
 
         if(frameDepth != nullptr) {
             cv::Mat cvFrame = frameRgb->getCvFrame();
-            cv::Mat alignedDepthColorized = dai::utility::colorizeDepthFrame(*frameDepth, 500.0f, 12000.0f).getCvFrame();
+            cv::Mat alignedDepthColorized = dai::utility::colorizeDepthFrame(*frameDepth, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame();
             cv::imshow("Depth aligned", alignedDepthColorized);
 
             if(cvFrame.channels() == 1) {

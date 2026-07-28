@@ -32,7 +32,7 @@ void drawRotatedRectangle(cv::Mat& frame, const cv::Point2f& center, const cv::S
 
 // Helper function to process depth frame
 cv::Mat processDepthFrame(const dai::ImgFrame& depthFrame) {
-    return dai::utility::colorizeDepthFrame(depthFrame, 500.0f, 12000.0f).getCvFrame();
+    return dai::utility::colorizeDepthFrame(depthFrame, 500.0f, 12000.0f, cv::COLORMAP_HOT, true).getCvFrame();
 }
 
 int main() {
