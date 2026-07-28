@@ -323,6 +323,43 @@ TEST_CASE("FocusController::selectTier: routes a crop to the smallest tier that 
     }
 }
 
+TEST_CASE("FocusController::selectLargest: keeps only the largest detection", "[FocusController]") {
+    const std::vector<std::array<float, 4>> boxes = {
+        box(0.05f, 0.05f, 0.20f, 0.20f),
+        box(0.20f, 0.10f, 0.80f, 0.70f),
+        box(0.10f, 0.10f, 0.40f, 0.90f),
+    };
+    const auto largest = FocusController::selectLargest(boxes);
+    REQUIRE(largest.size() == 1);
+    REQUIRE(largest[0] == boxes[1]);
+    REQUIRE(FocusController::selectLargest({}).empty());
+}
+
+TEST_CASE("FocusController::selectTier: uses configurable tier dimensions", "[FocusController]") {
+    const std::array<FocusController::Tier, FocusController::kNumTiers> tiers{{
+        {dai::DeviceModelZoo::NEURAL_DEPTH_NANO, 384, 240},
+        {dai::DeviceModelZoo::NEURAL_DEPTH_SMALL, 480, 300},
+        {dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM, 576, 360},
+    }};
+    REQUIRE(FocusController::selectTier(tiers, 3, 385, 241) == 1);
+    REQUIRE(FocusController::selectTier(tiers, 3, 481, 301) == 2);
+    REQUIRE(FocusController::selectTier(tiers, 3, 900, 500) == 2);
+    REQUIRE(FocusController::selectTier(tiers, 1, 500, 500) == 0);
+}
+
+TEST_CASE("FocusController::orderCropsByArea: largest crops are dispatched first", "[FocusController]") {
+    const std::vector<FocusController::MergedCrop> crops = {
+        {0, 0, 20, 20, {}},
+        {0, 0, 80, 10, {}},
+        {0, 0, 30, 30, {}},
+    };
+    const auto ordered = FocusController::orderCropsByArea(crops);
+    REQUIRE(ordered.size() == crops.size());
+    REQUIRE(ordered[0].w * ordered[0].h == 900);
+    REQUIRE(ordered[1].w * ordered[1].h == 800);
+    REQUIRE(ordered[2].w * ordered[2].h == 400);
+}
+
 TEST_CASE("FocusController::depthFocalScale: makes depth crop-size invariant", "[FocusController]") {
     // Full rectified frame focal (1280-wide) and neural backend output width.
     constexpr float fxFull = 570.42f;

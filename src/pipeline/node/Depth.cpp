@@ -530,6 +530,24 @@ std::shared_ptr<Depth> Depth::setConfig(Config config) {
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
+std::shared_ptr<Depth> Depth::setFocusModels(const std::vector<DeviceModelZoo>& models) {
+    requireNotBuilt("Depth::setFocusModels");
+    (*focusedBackend_)->setFocusModels(models);
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
+std::shared_ptr<Depth> Depth::setFocusSelectionMode(FocusController::SelectionMode mode) {
+    requireNotBuilt("Depth::setFocusSelectionMode");
+    (*focusedBackend_)->setFocusSelectionMode(mode);
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
+std::shared_ptr<Depth> Depth::setFocusDispatchMode(FocusController::DispatchMode mode) {
+    requireNotBuilt("Depth::setFocusDispatchMode");
+    (*focusedBackend_)->setFocusDispatchMode(mode);
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
 std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
     requireNotBuilt("Depth::setAlignTo");
     alignToOutput_ = &alignTo;

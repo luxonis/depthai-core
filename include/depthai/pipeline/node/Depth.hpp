@@ -169,6 +169,16 @@ class Depth : public DeviceNodeGroup {
     std::shared_ptr<Depth> setConfig(Config config);
 
     /**
+     * Configure the focused-depth backend models before focused outputs are wired.
+     * One to three models are accepted; a single model is used for all physical backend slots.
+     */
+    std::shared_ptr<Depth> setFocusModels(const std::vector<DeviceModelZoo>& models);
+
+    std::shared_ptr<Depth> setFocusSelectionMode(FocusController::SelectionMode mode);
+
+    std::shared_ptr<Depth> setFocusDispatchMode(FocusController::DispatchMode mode);
+
+    /**
      * Get the algorithm actually wired (AUTO resolved).
      * Valid after first depth() access.
      */

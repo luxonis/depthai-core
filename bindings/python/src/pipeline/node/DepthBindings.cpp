@@ -40,6 +40,13 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("TOF", Depth::Algorithm::TOF)
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
+    py::enum_<FocusController::SelectionMode>(node, "FocusSelectionMode")
+        .value("ALL", FocusController::SelectionMode::ALL)
+        .value("LARGEST", FocusController::SelectionMode::LARGEST);
+    py::enum_<FocusController::DispatchMode>(node, "FocusDispatchMode")
+        .value("SINGLE_TIER_PER_FRAME", FocusController::DispatchMode::SINGLE_TIER_PER_FRAME)
+        .value("TIME_BUDGET", FocusController::DispatchMode::TIME_BUDGET);
+
     node.def("getRequestedAlgorithm", &Depth::getRequestedAlgorithm, DOC(dai, node, Depth, getRequestedAlgorithm))
         .def("setAlgorithm", &Depth::setAlgorithm, py::arg("algorithm"), DOC(dai, node, Depth, setAlgorithm))
         .def(
@@ -55,6 +62,9 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, Depth, setConfig))
         .def(
             "setConfig", [](Depth& self, py::none) { return self.setConfig(std::monostate{}); }, py::arg("config"), DOC(dai, node, Depth, setConfig))
+        .def("setFocusModels", &Depth::setFocusModels, py::arg("models"))
+        .def("setFocusSelectionMode", &Depth::setFocusSelectionMode, py::arg("mode"))
+        .def("setFocusDispatchMode", &Depth::setFocusDispatchMode, py::arg("mode"))
         .def("getResolvedAlgorithm", &Depth::getResolvedAlgorithm, DOC(dai, node, Depth, getResolvedAlgorithm))
         .def(
             "getResolvedConfig", [configToPy](const Depth& d) { return configToPy(d.getResolvedConfig()); }, DOC(dai, node, Depth, getResolvedConfig))

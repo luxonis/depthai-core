@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/host/FocusController.hpp"
 
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
+#include <depthai/pipeline/node/NeuralDepth.hpp>
 
 #include <algorithm>
 #include <array>
@@ -8,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 namespace dai {
@@ -66,13 +68,42 @@ Node::Output& FocusController::rightConfigTier(int tier) {
     }
 }
 
-int FocusController::selectTier(int cropW, int cropH) {
+void FocusController::setModels(const std::vector<DeviceModelZoo>& models) {
+    if(models.empty() || static_cast<int>(models.size()) > kNumTiers) {
+        throw std::invalid_argument("FocusController requires between one and three models");
+    }
+    tierCount_ = static_cast<int>(models.size());
     for(int tier = 0; tier < kNumTiers; ++tier) {
-        if(kTiers[tier].w >= cropW && kTiers[tier].h >= cropH) {
+        const auto model = models[std::min(tier, tierCount_ - 1)];
+        const auto size = NeuralDepth::getInputSize(model);
+        tiers_[tier] = Tier{model, size.first, size.second};
+    }
+}
+
+int FocusController::selectTier(const std::array<Tier, kNumTiers>& tiers, int tierCount, int cropW, int cropH) {
+    tierCount = std::clamp(tierCount, 1, kNumTiers);
+    for(int tier = 0; tier < tierCount; ++tier) {
+        if(tiers[tier].w >= cropW && tiers[tier].h >= cropH) {
             return tier;
         }
     }
-    return kNumTiers - 1;
+    return tierCount - 1;
+}
+
+int FocusController::selectTier(int cropW, int cropH) {
+    return selectTier(kTiers, kNumTiers, cropW, cropH);
+}
+
+int FocusController::selectTier(const std::array<Tier, kNumTiers>& tiers, int cropW, int cropH) {
+    return selectTier(tiers, kNumTiers, cropW, cropH);
+}
+
+std::vector<FocusController::MergedCrop> FocusController::orderCropsByArea(const std::vector<MergedCrop>& crops) {
+    auto ordered = crops;
+    std::stable_sort(ordered.begin(), ordered.end(), [](const MergedCrop& lhs, const MergedCrop& rhs) {
+        return static_cast<long long>(lhs.w) * lhs.h > static_cast<long long>(rhs.w) * rhs.h;
+    });
+    return ordered;
 }
 
 std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
@@ -121,6 +152,16 @@ std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
     }
 
     return crops;
+}
+
+std::vector<std::array<float, 4>> FocusController::selectLargest(const std::vector<std::array<float, 4>>& normalizedBoxes) {
+    if(normalizedBoxes.empty()) {
+        return {};
+    }
+    const auto largest = std::max_element(normalizedBoxes.begin(), normalizedBoxes.end(), [](const auto& lhs, const auto& rhs) {
+        return (lhs[2] - lhs[0]) * (lhs[3] - lhs[1]) < (rhs[2] - rhs[0]) * (rhs[3] - rhs[1]);
+    });
+    return {*largest};
 }
 
 std::vector<FocusController::MergedCrop> FocusController::mergeCrops(const std::vector<Crop>& crops) {
@@ -212,6 +253,7 @@ float FocusController::depthFocalScale(float fxFull, float fxUsed, int outW, int
 }
 
 std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGroup> in) {
+    const auto processStart = std::chrono::steady_clock::now();
     if(!in) {
         return nullptr;
     }
@@ -271,6 +313,9 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
             continue;
         }
     }
+    if(selectionMode_ == SelectionMode::LARGEST) {
+        boxes = selectLargest(boxes);
+    }
 
     const std::vector<Crop> crops = computeCrops(frameWidth, frameHeight, boxes);
 
@@ -313,40 +358,15 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         maxW = std::max(maxW, mc.w);
         maxH = std::max(maxH, mc.h);
     }
-    const int tier = selectTier(maxW, maxH);
-    const int outW = kTiers[tier].w;
-
-    // Phase 1 (dispatch): queue every crop's ImageManip config on the selected tier up front, so the
-    // crop ImageManips and the tier's NeuralDepth backend run back-to-back (pipelined) instead of the
-    // frame costing one full host<->device round-trip per crop, which was the dominant cost.
-    for(std::size_t idx = 0; idx < merged.size(); ++idx) {
-        const auto& mc = merged[idx];
-
-        auto cfg = std::make_shared<ImageManipConfig>();
-        cfg->setReusePreviousImage(idx > 0);
-        cfg->setOutputSize(static_cast<std::uint32_t>(kTiers[tier].w), static_cast<std::uint32_t>(kTiers[tier].h), ImageManipConfig::ResizeMode::STRETCH);
-        cfg->base.center = false;
-        cfg->addCrop(dai::Rect(static_cast<float>(mc.x), static_cast<float>(mc.y), static_cast<float>(mc.w), static_cast<float>(mc.h)), false);
-
-        leftConfigTier(tier).send(cfg);
-        rightConfigTier(tier).send(cfg);
-    }
-
-    // Phase 2 (collect): the tier emits one depth/confidence pair per crop, in dispatch order.
-    for(std::size_t idx = 0; idx < merged.size(); ++idx) {
-        const auto& mc = merged[idx];
-
-        bool hasTimedOut = false;
-        auto depthMsg = depthCropTier(tier).get<ImgFrame>(timeout, hasTimedOut);
-        auto confMsg = confidenceCropTier(tier).get<ImgFrame>(timeout, hasTimedOut);
+    auto reassemble = [&](const MergedCrop& mc, const std::shared_ptr<ImgFrame>& depthMsg, const std::shared_ptr<ImgFrame>& confMsg, int outW) {
         if(!depthMsg || !confMsg) {
-            continue;
+            return;
         }
 
         cv::Mat depthCropMat = depthMsg->getFrame();
         cv::Mat confCropMat = confMsg->getFrame();
         if(depthCropMat.empty() || confCropMat.empty()) {
-            continue;
+            return;
         }
 
         // Rescale the backend depth to the crop's correct focal length. The backend estimates
@@ -389,6 +409,65 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
             cv::Mat fullConfRoi(fullConf, cv::Rect(region.dstX, region.dstY, region.w, region.h));
             cropDepth.copyTo(fullDepthRoi);
             cropConf.copyTo(fullConfRoi);
+        }
+    };
+
+    auto dispatchAndCollect = [&](const MergedCrop& mc, int selectedTier, bool reusePrevious) {
+        auto cfg = std::make_shared<ImageManipConfig>();
+        cfg->setReusePreviousImage(reusePrevious);
+        cfg->setOutputSize(static_cast<std::uint32_t>(tiers_[selectedTier].w),
+                           static_cast<std::uint32_t>(tiers_[selectedTier].h),
+                           ImageManipConfig::ResizeMode::STRETCH);
+        cfg->base.center = false;
+        cfg->addCrop(dai::Rect(static_cast<float>(mc.x), static_cast<float>(mc.y), static_cast<float>(mc.w), static_cast<float>(mc.h)), false);
+        leftConfigTier(selectedTier).send(cfg);
+        rightConfigTier(selectedTier).send(cfg);
+        bool hasTimedOut = false;
+        auto depthMsg = depthCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
+        auto confMsg = confidenceCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
+        reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
+    };
+
+    if(dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME) {
+        const int selectedTier = selectTier(tiers_, tierCount_, maxW, maxH);
+        // Dispatch every crop first so the selected backend remains pipelined across the frame.
+        for(std::size_t idx = 0; idx < merged.size(); ++idx) {
+            const auto& mc = merged[idx];
+            auto cfg = std::make_shared<ImageManipConfig>();
+            cfg->setReusePreviousImage(idx > 0);
+            cfg->setOutputSize(static_cast<std::uint32_t>(tiers_[selectedTier].w),
+                               static_cast<std::uint32_t>(tiers_[selectedTier].h),
+                               ImageManipConfig::ResizeMode::STRETCH);
+            cfg->base.center = false;
+            cfg->addCrop(dai::Rect(static_cast<float>(mc.x), static_cast<float>(mc.y), static_cast<float>(mc.w), static_cast<float>(mc.h)), false);
+            leftConfigTier(selectedTier).send(cfg);
+            rightConfigTier(selectedTier).send(cfg);
+        }
+        for(const auto& mc : merged) {
+            bool hasTimedOut = false;
+            auto depthMsg = depthCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
+            auto confMsg = confidenceCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
+            reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
+        }
+    } else {
+        const auto ordered = orderCropsByArea(merged);
+        const double budgetMs = 1000.0 / std::max(0.1, static_cast<double>(targetFps_));
+        double runningAverageMs = 0.0;
+        std::size_t processed = 0;
+        std::array<bool, kNumTiers> consumed{};
+        for(const auto& mc : ordered) {
+            const auto now = std::chrono::steady_clock::now();
+            const double elapsedMs = std::chrono::duration<double, std::milli>(now - processStart).count();
+            if(processed > 0 && elapsedMs + runningAverageMs > budgetMs) {
+                break;
+            }
+            const int selectedTier = elapsedMs > budgetMs / 2.0 ? 0 : selectTier(tiers_, tierCount_, mc.w, mc.h);
+            const auto cropStart = std::chrono::steady_clock::now();
+            dispatchAndCollect(mc, selectedTier, consumed[selectedTier]);
+            consumed[selectedTier] = true;
+            const double cropMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cropStart).count();
+            runningAverageMs = (runningAverageMs * static_cast<double>(processed) + cropMs) / static_cast<double>(processed + 1);
+            ++processed;
         }
     }
 

@@ -8,6 +8,8 @@
 #include <depthai/pipeline/node/Rectification.hpp>
 #include <depthai/pipeline/node/host/FocusController.hpp>
 
+#include <vector>
+
 namespace dai {
 namespace node {
 
@@ -20,6 +22,10 @@ class FocusedDepth : public DeviceNodeGroup {
                                         Node::Output& right,
                                         std::optional<float> fps = std::nullopt,
                                         std::optional<std::pair<uint32_t, uint32_t>> resolution = std::nullopt);
+
+    std::shared_ptr<FocusedDepth> setFocusModels(const std::vector<DeviceModelZoo>& models);
+    std::shared_ptr<FocusedDepth> setFocusSelectionMode(FocusController::SelectionMode mode);
+    std::shared_ptr<FocusedDepth> setFocusDispatchMode(FocusController::DispatchMode mode);
 
     constexpr static const char* NAME = "FocusedDepth";
 

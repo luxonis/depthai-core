@@ -9,6 +9,21 @@ FocusedDepth::FocusedDepth()
       depth(focusController->out),
       confidence(focusController->confidenceOut) {}
 
+std::shared_ptr<FocusedDepth> FocusedDepth::setFocusModels(const std::vector<DeviceModelZoo>& models) {
+    focusController->setModels(models);
+    return std::static_pointer_cast<FocusedDepth>(shared_from_this());
+}
+
+std::shared_ptr<FocusedDepth> FocusedDepth::setFocusSelectionMode(FocusController::SelectionMode mode) {
+    focusController->setSelectionMode(mode);
+    return std::static_pointer_cast<FocusedDepth>(shared_from_this());
+}
+
+std::shared_ptr<FocusedDepth> FocusedDepth::setFocusDispatchMode(FocusController::DispatchMode mode) {
+    focusController->setDispatchMode(mode);
+    return std::static_pointer_cast<FocusedDepth>(shared_from_this());
+}
+
 std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
                                                   Node::Output& right,
                                                   std::optional<float> fps,
@@ -67,7 +82,8 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
         focusController->leftConfigTier(tier).link(lm->inputConfig);
         focusController->rightConfigTier(tier).link(rm->inputConfig);
 
-        nd->setRectification(false).build(lm->out, rm->out, FocusController::kTiers[tier].model);
+        const auto& tierConfig = focusController->getTiers()[tier];
+        nd->setRectification(false).build(lm->out, rm->out, tierConfig.model);
         nd->depth.link(focusController->depthCropTier(tier));
         nd->confidence.link(focusController->confidenceCropTier(tier));
     }

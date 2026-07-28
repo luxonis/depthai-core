@@ -20,6 +20,9 @@ class FocusController : public CustomNode<FocusController> {
    public:
     FocusController() = default;
 
+    enum class SelectionMode { ALL, LARGEST };
+    enum class DispatchMode { SINGLE_TIER_PER_FRAME, TIME_BUDGET };
+
     std::shared_ptr<FocusController> build(float targetFps = 30.0f);
 
     // A backend tier: a NeuralDepth model of a fixed input size. Crops are routed to the smallest
@@ -39,6 +42,26 @@ class FocusController : public CustomNode<FocusController> {
         {DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300},
         {DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480},
     }};
+
+    void setModels(const std::vector<DeviceModelZoo>& models);
+    const std::array<Tier, kNumTiers>& getTiers() const {
+        return tiers_;
+    }
+    int getTierCount() const {
+        return tierCount_;
+    }
+    void setSelectionMode(SelectionMode mode) {
+        selectionMode_ = mode;
+    }
+    SelectionMode getSelectionMode() const {
+        return selectionMode_;
+    }
+    void setDispatchMode(DispatchMode mode) {
+        dispatchMode_ = mode;
+    }
+    DispatchMode getDispatchMode() const {
+        return dispatchMode_;
+    }
 
     // Upper bound on merged crops processed per frame. Also the depth/confidence crop input queue
     // depth, so every crop dispatched in a frame can be buffered before it is collected (the
@@ -100,6 +123,7 @@ class FocusController : public CustomNode<FocusController> {
     // crops are clamped so they always stay within the frame. Pure and free of device state so
     // the crop geometry (multiple/varying/edge-touching regions) can be tested on host.
     static std::vector<Crop> computeCrops(int frameWidth, int frameHeight, const std::vector<std::array<float, 4>>& normalizedBoxes);
+    static std::vector<std::array<float, 4>> selectLargest(const std::vector<std::array<float, 4>>& normalizedBoxes);
 
     // Merge crops whose backend rectangles overlap into their bounding union, accumulating the
     // detection boxes each union covers. Non-overlapping crops become single-detection merged
@@ -108,6 +132,11 @@ class FocusController : public CustomNode<FocusController> {
 
     // Smallest tier whose model fits a cropW x cropH crop; the largest tier if none fit. Pure.
     static int selectTier(int cropW, int cropH);
+    static int selectTier(const std::array<Tier, kNumTiers>& tiers, int cropW, int cropH);
+    static int selectTier(const std::array<Tier, kNumTiers>& tiers, int tierCount, int cropW, int cropH);
+
+    // Return crops in descending area order. Pure so dispatch ordering can be tested without a device.
+    static std::vector<MergedCrop> orderCropsByArea(const std::vector<MergedCrop>& crops);
 
     // Where a crop's depth/confidence is written back into the full frame. src* index into the
     // crop mat (sized w x h from Crop), dst* index into the frameWidth x frameHeight output, and
@@ -134,6 +163,10 @@ class FocusController : public CustomNode<FocusController> {
 
    private:
     float targetFps_ = 30.0f;
+    std::array<Tier, kNumTiers> tiers_ = kTiers;
+    int tierCount_ = kNumTiers;
+    SelectionMode selectionMode_ = SelectionMode::ALL;
+    DispatchMode dispatchMode_ = DispatchMode::SINGLE_TIER_PER_FRAME;
 };
 
 }  // namespace node
