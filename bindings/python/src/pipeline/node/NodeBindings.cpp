@@ -195,6 +195,7 @@ void bind_gate(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BETA
 void bind_beta_classificationparser(pybind11::module& m, void* pCallstack);
 void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstack);
+void bind_beta_embeddingsparser(pybind11::module& m, void* pCallstack);
 void bind_beta_imgdetectionsfilter(pybind11::module& m, void* pCallstack);
 #endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
@@ -258,6 +259,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
 #ifdef DEPTHAI_HAVE_BETA
     callstack.push_front(bind_beta_classificationparser);
     callstack.push_front(bind_beta_classificationsequenceparser);
+    callstack.push_front(bind_beta_embeddingsparser);
     callstack.push_front(bind_beta_imgdetectionsfilter);
 #endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT

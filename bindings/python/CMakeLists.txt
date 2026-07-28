@@ -174,6 +174,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/ClassificationsBindings.cpp
         src/beta/node/ClassificationParserBindings.cpp
         src/beta/node/ClassificationSequenceParserBindings.cpp
+        src/beta/node/EmbeddingsParserBindings.cpp
         src/beta/node/ImgDetectionsFilterBindings.cpp
     )
 endif()
