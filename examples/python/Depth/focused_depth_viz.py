@@ -50,9 +50,14 @@ def read_debug(debug_queue, block=False):
 
 
 def close_windows():
-    """Tear down any OpenCV windows before the pipeline closes (no-op when headless)."""
-    if cv2 is not None:
+    """Tear down any OpenCV windows before the pipeline closes. No-op when OpenCV has no GUI
+    support (e.g. opencv-python-headless), where destroyAllWindows raises cv2.error."""
+    if cv2 is None:
+        return
+    try:
         cv2.destroyAllWindows()
+    except cv2.error:
+        pass
 
 
 def show(window, depth_mm, max_mm, lines, headless):
@@ -64,5 +69,9 @@ def show(window, depth_mm, max_mm, lines, headless):
     for line in lines:
         cv2.putText(canvas, line, (6, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
         y += 18
-    cv2.imshow(window, canvas)
-    return cv2.waitKey(1) != ord("q")
+    try:
+        cv2.imshow(window, canvas)
+        return cv2.waitKey(1) != ord("q")
+    except cv2.error:
+        # OpenCV without GUI support (opencv-python-headless): carry on without a window.
+        return True
