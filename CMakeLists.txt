@@ -201,7 +201,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d" "opencv_stitching")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -471,6 +471,7 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
     src/pipeline/node/ImageFilters.cpp
+    src/pipeline/node/host/Stitching.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )

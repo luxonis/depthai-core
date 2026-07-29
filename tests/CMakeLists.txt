@@ -532,6 +532,13 @@ dai_set_test_labels(model_slug_test onhost ci)
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
+# Stitching node tests
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+    target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+    dai_set_test_labels(stitching_node_test onhost ci)
+endif()
+
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
