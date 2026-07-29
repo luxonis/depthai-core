@@ -138,5 +138,10 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             "focusedConfidence",
             [](Depth& d) -> Node::Output& { return d.focusedConfidence(); },
             py::return_value_policy::reference_internal,
-            DOC(dai, node, Depth, focusedConfidence));
+            DOC(dai, node, Depth, focusedConfidence))
+        .def_property_readonly(
+            "focusDebug",
+            [](Depth& d) -> Node::Output& { return d.focusDebug(); },
+            py::return_value_policy::reference_internal,
+            "Per-frame focused dispatch trace output (Buffer of UTF-8 text: detections, mode, budget, per-crop model/size/time).");
 }

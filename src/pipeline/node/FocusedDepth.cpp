@@ -7,7 +7,8 @@ FocusedDepth::FocusedDepth()
     : DeviceNodeGroup(nullptr),
       inputDetections(focusController->inputs["inputDetections"]),
       depth(focusController->out),
-      confidence(focusController->confidenceOut) {}
+      confidence(focusController->confidenceOut),
+      focusDebug(focusController->focusDebug) {}
 
 std::shared_ptr<FocusedDepth> FocusedDepth::setFocusModels(const std::vector<DeviceModelZoo>& models) {
     focusController->setModels(models);

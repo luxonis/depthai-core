@@ -93,6 +93,11 @@ class FocusController : public CustomNode<FocusController> {
 
     Output confidenceOut{*this, {"confidenceOut", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
+    // Per-frame human-readable dispatch trace (one Buffer of UTF-8 text per processed group):
+    // detection count, dispatch mode, budget, and per-crop tier/model/size/time. Host-only output,
+    // so reading it adds no device XLink stream. Sent every frame; consumers use tryGet.
+    Output focusDebug{*this, {"focusDebug", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+
     // Per-tier port accessors (tier in [0, kNumTiers)).
     Input& depthCropTier(int tier);
     Input& confidenceCropTier(int tier);

@@ -57,6 +57,7 @@ class FocusedDepth : public DeviceNodeGroup {
     Input& inputDetections;
     Output& depth;
     Output& confidence;
+    Output& focusDebug;
 };
 
 }  // namespace node

@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/host/FocusController.hpp"
 
+#include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
 #include <depthai/pipeline/node/NeuralDepth.hpp>
 
@@ -9,7 +10,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace dai {
@@ -354,6 +358,12 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         auto depth = makeZeroFrame(ImgFrame::Type::RAW16, 2);
         auto conf = makeZeroFrame(ImgFrame::Type::RAW8, 1);
         confidenceOut.send(conf);
+        std::ostringstream dbg;
+        dbg << "dets=" << detections.size() << " boxes=" << boxes.size() << " crops=0 processed=0 (no regions)";
+        const std::string dbgStr = dbg.str();
+        auto dbgBuf = std::make_shared<Buffer>();
+        dbgBuf->setData(std::vector<std::uint8_t>(dbgStr.begin(), dbgStr.end()));
+        focusDebug.send(dbgBuf);
         return depth;
     }
 
@@ -452,6 +462,17 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
     };
 
+    // Per-crop dispatch trace filled below and formatted into the focusDebug output.
+    struct CropTrace {
+        int tier;
+        int cropW;
+        int cropH;
+        int modelW;
+        int modelH;
+        double ms;
+    };
+    std::vector<CropTrace> trace;
+
     if(dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME) {
         const int selectedTier = selectTier(tiers_, tierCount_, maxW, maxH);
         // Dispatch every crop first so the selected backend remains pipelined across the frame.
@@ -468,10 +489,13 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
             rightConfigTier(selectedTier).send(cfg);
         }
         for(const auto& mc : merged) {
+            const auto cropStart = std::chrono::steady_clock::now();
             bool hasTimedOut = false;
             auto depthMsg = depthCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
             auto confMsg = confidenceCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
             reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
+            const double cropMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cropStart).count();
+            trace.push_back({selectedTier, mc.w, mc.h, tiers_[selectedTier].w, tiers_[selectedTier].h, cropMs});
         }
     } else {
         // Process crops largest-first within a per-frame time budget of one frame period. For each
@@ -497,10 +521,35 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
                     break;
                 }
             }
+            const auto cropStart = std::chrono::steady_clock::now();
             dispatchAndCollect(mc, selectedTier, consumed[selectedTier]);
             consumed[selectedTier] = true;
+            const double cropMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cropStart).count();
+            trace.push_back({selectedTier, mc.w, mc.h, tiers_[selectedTier].w, tiers_[selectedTier].h, cropMs});
             ++processed;
         }
+    }
+
+    {
+        const double budgetMs = 1000.0 / std::max(0.1, static_cast<double>(targetFps_));
+        std::ostringstream dbg;
+        dbg << "dets=" << detections.size() << " boxes=" << boxes.size() << " crops=" << merged.size() << " processed=" << trace.size()
+            << " mode=" << (dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME ? "SINGLE_TIER" : "TIME_BUDGET")
+            << " sel=" << (selectionMode_ == SelectionMode::LARGEST ? "LARGEST" : "ALL") << " fps=" << std::fixed << std::setprecision(1) << targetFps_
+            << " budget_ms=" << std::setprecision(1) << budgetMs << " tiers=[";
+        for(int t = 0; t < tierCount_; ++t) {
+            dbg << tiers_[t].w << "x" << tiers_[t].h << (t + 1 < tierCount_ ? "," : "");
+        }
+        dbg << "]";
+        for(std::size_t i = 0; i < trace.size(); ++i) {
+            const auto& e = trace[i];
+            dbg << " | crop" << i << " tier" << e.tier << " model=" << e.modelW << "x" << e.modelH << " src=" << e.cropW << "x" << e.cropH << " "
+                << std::setprecision(1) << e.ms << "ms";
+        }
+        const std::string dbgStr = dbg.str();
+        auto dbgBuf = std::make_shared<Buffer>();
+        dbgBuf->setData(std::vector<std::uint8_t>(dbgStr.begin(), dbgStr.end()));
+        focusDebug.send(dbgBuf);
     }
 
     auto depthImg = std::make_shared<ImgFrame>();

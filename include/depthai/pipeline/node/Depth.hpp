@@ -263,9 +263,16 @@ class Depth : public DeviceNodeGroup {
      */
     Node::Output& focusedConfidence();
 
+    /**
+     * Output per-frame focused dispatch trace (a Buffer of UTF-8 text): detections, dispatch mode,
+     * FPS budget, and per-crop tier/model/size/time. Host-side, so reading it adds no XLink stream.
+     */
+    Node::Output& focusDebug();
+
    private:
     Node::Output* focusedDepthOut_{nullptr};
     Node::Output* focusedConfidenceOut_{nullptr};
+    Node::Output* focusDebugOut_{nullptr};
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;
     std::unique_ptr<::dai::Subnode<GPUStereo>> gpuStereoBackend_;

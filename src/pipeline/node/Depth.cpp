@@ -516,6 +516,14 @@ Node::Output& Depth::focusedConfidence() {
     return *focusedConfidenceOut_;
 }
 
+Node::Output& Depth::focusDebug() {
+    if(!graphBuilt_) {
+        buildInternal();
+    }
+    DAI_CHECK_V(focusDebugOut_ != nullptr, "Depth focused backend debug output missing.");
+    return *focusDebugOut_;
+}
+
 // --- Setters ---
 
 std::shared_ptr<Depth> Depth::setAlgorithm(Algorithm algorithm) {
@@ -769,6 +777,7 @@ void Depth::buildFocusedBackend(Pipeline& pipeline, const std::shared_ptr<Device
         (*focusedBackend_)->build(*stereo.left, *stereo.right, stereo.maxCameraFps, std::nullopt);
         focusedDepthOut_ = &(*focusedBackend_)->depth;
         focusedConfidenceOut_ = &(*focusedBackend_)->confidence;
+        focusDebugOut_ = &(*focusedBackend_)->focusDebug;
     }
 }
 
