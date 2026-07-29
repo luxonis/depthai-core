@@ -60,33 +60,36 @@ def main():
         print("Resolved algorithm:", depth.getResolvedAlgorithm())
         print(f"Focus mode: detector / LARGEST / SINGLE_TIER_PER_FRAME / model={args.model}")
         start = time.monotonic()
-        for index in range(args.frames):
-            frame = output.get()
-            pcd = pcd_queue.get()
-            detection_message = detections.tryGet()
-            count = len(detection_message.detections) if detection_message else 0
-            elapsed = time.monotonic() - start
-            valid = int(np.count_nonzero(frame.getFrame()))
-            xyz = pcd.getPoints()
-            points = int(np.count_nonzero(xyz[:, 2] > 0))
-            if args.ply_dir:
-                save_ply(os.path.join(args.ply_dir, f"frame_{index:03d}.ply"), xyz)
-            summary = (
-                f"frame={index:03d} detections={count} valid={valid} points={points} "
-                f"Z=[{pcd.getMinZ():.2f},{pcd.getMaxZ():.2f}] "
-                f"time_ms={elapsed * 1000:.1f} fps={(index + 1) / elapsed:.2f}"
-            )
-            debug = viz.read_debug(debug_queue)
-            print(summary)
-            print(f"debug: {debug}")
-            if not viz.show(
-                "focused depth",
-                frame.getFrame(),
-                args.max_depth,
-                [summary, debug[:120]],
-                args.headless,
-            ):
-                break
+        try:
+            for index in range(args.frames):
+                frame = output.get()
+                pcd = pcd_queue.get()
+                detection_message = detections.tryGet()
+                count = len(detection_message.detections) if detection_message else 0
+                elapsed = time.monotonic() - start
+                valid = int(np.count_nonzero(frame.getFrame()))
+                xyz = pcd.getPoints()
+                points = int(np.count_nonzero(xyz[:, 2] > 0))
+                if args.ply_dir:
+                    save_ply(os.path.join(args.ply_dir, f"frame_{index:03d}.ply"), xyz)
+                summary = (
+                    f"frame={index:03d} detections={count} valid={valid} points={points} "
+                    f"Z=[{pcd.getMinZ():.2f},{pcd.getMaxZ():.2f}] "
+                    f"time_ms={elapsed * 1000:.1f} fps={(index + 1) / elapsed:.2f}"
+                )
+                debug = viz.read_debug(debug_queue, block=True)
+                print(summary)
+                print(f"debug: {debug}")
+                if not viz.show(
+                    "focused depth",
+                    frame.getFrame(),
+                    args.max_depth,
+                    [summary, debug[:120]],
+                    args.headless,
+                ):
+                    break
+        finally:
+            viz.close_windows()
 
 
 if __name__ == "__main__":

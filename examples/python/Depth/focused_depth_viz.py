@@ -37,14 +37,22 @@ def colorize_depth(depth_mm, max_mm):
     return canvas
 
 
-def read_debug(debug_queue):
-    """Return the latest focusDebug trace string, or '' if none is pending."""
+def read_debug(debug_queue, block=False):
+    """Return the focusDebug trace string. focusDebug is emitted once per focused-depth frame,
+    so block=True keeps it aligned 1:1 with the depth output; block=False returns '' if none is
+    pending."""
     if debug_queue is None:
         return ""
-    message = debug_queue.tryGet()
+    message = debug_queue.get() if block else debug_queue.tryGet()
     if message is None:
         return ""
     return bytes(message.getData()).decode("utf-8", "replace")
+
+
+def close_windows():
+    """Tear down any OpenCV windows before the pipeline closes (no-op when headless)."""
+    if cv2 is not None:
+        cv2.destroyAllWindows()
 
 
 def show(window, depth_mm, max_mm, lines, headless):

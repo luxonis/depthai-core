@@ -53,13 +53,16 @@ def main():
     depth.setFocusDispatchMode(dai.node.Depth.FocusDispatchMode.SINGLE_TIER_PER_FRAME)
     depth.build(args.fps)
 
+    # Connect the host detection input first: accessing depth.focusedDepth below triggers the
+    # focused backend build, which is only wired when inputDetections is already connected.
+    roi_queue = depth.inputDetections.createInputQueue()
+
     # Render the focused depth as a point cloud. PointCloud runs on host by default, so it does not
     # add a device XLink stream to the focused pipeline; it reads the depth frame's intrinsics.
     point_cloud = pipeline.create(dai.node.PointCloud)
     point_cloud.initialConfig.setLengthUnit(dai.LengthUnit.METER)
     depth.focusedDepth.link(point_cloud.inputDepth)
 
-    roi_queue = depth.inputDetections.createInputQueue()
     output_queue = depth.focusedDepth.createOutputQueue(maxSize=4, blocking=False)
     pcd_queue = point_cloud.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
     debug_queue = depth.focusDebug.createOutputQueue(maxSize=4, blocking=False)
@@ -99,7 +102,7 @@ def main():
                     f"Z=[{pcd.getMinZ():.2f},{pcd.getMaxZ():.2f}] "
                     f"time_ms={elapsed * 1000:.1f} fps={(index + 1) / elapsed:.2f}"
                 )
-                debug = viz.read_debug(debug_queue)
+                debug = viz.read_debug(debug_queue, block=True)
                 print(summary)
                 print(f"debug: {debug}")
                 if not viz.show(
@@ -113,6 +116,7 @@ def main():
         finally:
             stop_event.set()
             publisher.join(timeout=2)
+            viz.close_windows()
 
 
 if __name__ == "__main__":
