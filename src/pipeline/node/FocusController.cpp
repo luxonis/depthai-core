@@ -176,6 +176,20 @@ std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
             continue;
         }
 
+        constexpr int aspectWidth = 8;
+        constexpr int aspectHeight = 5;
+        if(cropW * aspectHeight > cropH * aspectWidth) {
+            const int targetHeight = std::min(frameHeight, (cropW * aspectHeight + aspectWidth - 1) / aspectWidth);
+            const int centerY = static_cast<int>(std::round((fy + fy2) * 0.5f));
+            cropY = std::clamp(centerY - targetHeight / 2, 0, frameHeight - targetHeight);
+            cropH = targetHeight;
+        } else if(cropH * aspectWidth > cropW * aspectHeight) {
+            const int targetWidth = std::min(frameWidth, (cropH * aspectWidth + aspectHeight - 1) / aspectHeight);
+            const int centerX = cropX + cropW / 2;
+            cropX = std::clamp(centerX - targetWidth / 2, 0, frameWidth - targetWidth);
+            cropW = targetWidth;
+        }
+
         crops.push_back({cropX, cropY, cropW, cropH, fx, fy, fw, fh});
     }
 
@@ -319,6 +333,7 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         frame->setHeight(frameHeight);
         frame->setType(type);
         frame->setBufferMetadataFrom(leftImg.get());
+        frame->setInstanceNum(leftImg->getInstanceNum());
         frame->setTransformation(leftImg->getTransformation());
         std::vector<std::uint8_t> data(frameWidth * frameHeight * elemSize, 0);
         frame->setData(std::move(data));
@@ -557,6 +572,7 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     depthImg->setHeight(frameHeight);
     depthImg->setType(ImgFrame::Type::RAW16);
     depthImg->setBufferMetadataFrom(leftImg.get());
+    depthImg->setInstanceNum(leftImg->getInstanceNum());
     depthImg->setTransformation(leftImg->getTransformation());
     depthImg->setFrame(fullDepth);
 
@@ -565,6 +581,7 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     confImg->setHeight(frameHeight);
     confImg->setType(ImgFrame::Type::RAW8);
     confImg->setBufferMetadataFrom(leftImg.get());
+    confImg->setInstanceNum(leftImg->getInstanceNum());
     confImg->setTransformation(leftImg->getTransformation());
     confImg->setFrame(fullConf);
 

@@ -178,6 +178,48 @@ FocusedResult analyzeFocused(const cv::Mat& depth, const std::vector<Box>& boxes
 
 }  // namespace
 
+TEST_CASE("FocusedDepth: output preserves the left stereo camera instance") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    skipUnlessFocusedDepthSupported(device);
+    const auto stereoPair = device->getStereoPairs().front();
+
+    auto depth = pipeline.create<node::Depth>();
+    depth->build();
+    auto detQueue = depth->inputDetections.createInputQueue();
+    auto focusedDepthQueue = depth->focusedDepth().createOutputQueue(4, false);
+    auto focusedConfQueue = depth->focusedConfidence().createOutputQueue(4, false);
+
+    pipeline.start();
+    std::atomic<bool> stop{false};
+    std::thread sender([&]() {
+        while(!stop.load()) {
+            try {
+                detQueue->send(makeDetections({{0.25f, 0.25f, 0.75f, 0.75f}}));
+            } catch(...) {
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        }
+    });
+
+    bool depthTimedOut = false;
+    auto focusedDepth = focusedDepthQueue->get<ImgFrame>(std::chrono::seconds(20), depthTimedOut);
+    bool confidenceTimedOut = false;
+    auto focusedConfidence = focusedConfQueue->get<ImgFrame>(std::chrono::seconds(20), confidenceTimedOut);
+
+    stop.store(true);
+    sender.join();
+    pipeline.stop();
+
+    REQUIRE_FALSE(depthTimedOut);
+    REQUIRE(focusedDepth != nullptr);
+    REQUIRE(focusedDepth->getInstanceNum() == static_cast<unsigned int>(stereoPair.left));
+    REQUIRE_FALSE(confidenceTimedOut);
+    REQUIRE(focusedConfidence != nullptr);
+    REQUIRE(focusedConfidence->getInstanceNum() == static_cast<unsigned int>(stereoPair.left));
+}
+
 TEST_CASE("FocusedDepth: multiple detection regions each get filled, nothing outside them") {
     const std::vector<Box> boxes = {
         {0.10f, 0.15f, 0.30f, 0.45f},

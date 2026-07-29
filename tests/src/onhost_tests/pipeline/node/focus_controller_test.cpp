@@ -2,6 +2,7 @@
 #include <array>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 #include <depthai/pipeline/node/host/FocusController.hpp>
 #include <vector>
 
@@ -61,6 +62,7 @@ TEST_CASE("FocusController::computeCrops: multiple regions map to one crop each"
         REQUIRE(crops[i].detH == Catch::Approx((boxes[i][3] - boxes[i][1]) * kH));
         // The backend crop is padded horizontally for disparity, so it is wider than the detection.
         REQUIRE(static_cast<float>(crops[i].w) >= crops[i].detW);
+        REQUIRE(std::abs(crops[i].w * 5 - crops[i].h * 8) <= 7);
     }
 }
 

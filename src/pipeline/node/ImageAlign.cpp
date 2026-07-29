@@ -429,10 +429,7 @@ void ImageAlign::run() {
         depthSourceIntrinsics = inputImg->transformation.getIntrinsicMatrix();
         depthDistortionCoefficients = inputImg->transformation.getDistortionCoefficients();
 
-        if(alignFrom == alignTo) {
-            logger->error("Cannot align image to itself (camera socket {}), possible misconfiguration, skipping frame!", (int)alignFrom);
-            continue;
-        }
+        const bool sameCamera = alignFrom == alignTo;
 
         if(!supportedFrameTypes.count(inputFrameType)) {
             logger->error("Frame type '{}' is not supported in ImageAlign.", (int)inputFrameType);  // todo toStr
@@ -456,7 +453,37 @@ void ImageAlign::run() {
         }
 
         try {
-            extractCalibrationData(width, height, alignWidth, alignHeight);
+            if(sameCamera && !calibrationSet) {
+                map_x_1.create(height, width, CV_32FC1);
+                map_y_1.create(height, width, CV_32FC1);
+                for(uint32_t y = 0; y < height; ++y) {
+                    for(uint32_t x = 0; x < width; ++x) {
+                        map_x_1.at<float>(y, x) = static_cast<float>(x);
+                        map_y_1.at<float>(y, x) = static_cast<float>(y);
+                    }
+                }
+
+                auto alignToTransform = inputAlignToTransform;
+                auto inputTransform = inputImg->transformation;
+                alignToTransform.setExtrinsics(dai::Extrinsics{});
+                inputTransform.setExtrinsics(dai::Extrinsics{});
+
+                map_x_2.create(alignHeight, alignWidth, CV_32FC1);
+                map_y_2.create(alignHeight, alignWidth, CV_32FC1);
+                for(int y = 0; y < alignHeight; ++y) {
+                    for(int x = 0; x < alignWidth; ++x) {
+                        const auto sourcePoint =
+                            alignToTransform.remapPointTo(inputTransform, dai::Point2f(static_cast<float>(x), static_cast<float>(y), false));
+                        map_x_2.at<float>(y, x) = sourcePoint.x;
+                        map_y_2.at<float>(y, x) = sourcePoint.y;
+                    }
+                }
+
+                depthToAlignExtrinsics = {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
+                calibrationSet = true;
+            } else if(!sameCamera) {
+                extractCalibrationData(width, height, alignWidth, alignHeight);
+            }
         } catch(const std::exception& e) {
             throw std::runtime_error(e.what());
         }
@@ -522,7 +549,7 @@ void ImageAlign::run() {
 
         auto warp2Input = depthImgRectified;
 
-        if(inputIsDepth && staticDepthPlane == 0) {
+        if(inputIsDepth && staticDepthPlane == 0 && !sameCamera) {
             shiftedOutput->setMetadata(*inputImg);
             shiftedOutput->setWidth(inputImg->getWidth());
             shiftedOutput->setHeight(inputImg->getHeight());
