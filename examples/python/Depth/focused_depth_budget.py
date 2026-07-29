@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Focused-depth detector deployment example with a per-frame time budget."""
+"""Focused-depth detector deployment example with a per-frame time budget.
+
+Crops are processed largest-first within a budget of one frame period (1000/fps ms).
+For each crop the controller picks the smallest Nano/S/M model that fits both the crop
+size and the remaining budget (downgrading toward Nano when time is short), using
+per-model cost estimates fitted to the on-device benchmark in luxonis/depthai-core#1912
+(Nano ~49 ms, S ~57 ms, M ~68 ms per inference). Remaining crops are skipped once the
+budget is exhausted, so the node stays within the frame period.
+"""
 
 import argparse
 import time

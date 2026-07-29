@@ -138,6 +138,18 @@ class FocusController : public CustomNode<FocusController> {
     // Return crops in descending area order. Pure so dispatch ordering can be tested without a device.
     static std::vector<MergedCrop> orderCropsByArea(const std::vector<MergedCrop>& crops);
 
+    // Estimated single-inference latency (ms) for a NeuralDepth model of w x h input, used to
+    // budget TIME_BUDGET dispatch. Linear in pixel count: 31.7 + 1.88e-4 * (w*h), fitted to the
+    // on-device benchmark in luxonis/depthai-core#1912 (Nano 384x240 ~49 ms, S 480x300 ~57 ms,
+    // M 576x360 ~68 ms, L 768x480 ~101 ms). Pure and host-testable.
+    static float estimateInferenceCostMs(int w, int h);
+
+    // Smallest tier that fits a cropW x cropH crop AND whose estimated inference cost fits within
+    // remainingMs. Prefers the crop-appropriate tier (selectTier) but downgrades toward the
+    // fastest (smallest) tier when the budget is tight. Returns -1 when even the fastest tier does
+    // not fit the remaining budget. Pure and host-testable.
+    static int selectTierWithinBudget(const std::array<Tier, kNumTiers>& tiers, int tierCount, int cropW, int cropH, double remainingMs);
+
     // Where a crop's depth/confidence is written back into the full frame. src* index into the
     // crop mat (sized w x h from Crop), dst* index into the frameWidth x frameHeight output, and
     // (w, h) is the copied region. The region is clamped to both the crop mat and the frame, so

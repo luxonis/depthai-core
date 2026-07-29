@@ -106,6 +106,30 @@ std::vector<FocusController::MergedCrop> FocusController::orderCropsByArea(const
     return ordered;
 }
 
+float FocusController::estimateInferenceCostMs(int w, int h) {
+    if(w <= 0 || h <= 0) {
+        return 0.0f;
+    }
+    // Fitted to luxonis/depthai-core#1912 on-device NeuralDepth latencies (see header).
+    constexpr float kBaseMs = 31.7f;
+    constexpr float kMsPerPixel = 1.88e-4f;
+    return kBaseMs + kMsPerPixel * static_cast<float>(w) * static_cast<float>(h);
+}
+
+int FocusController::selectTierWithinBudget(const std::array<Tier, kNumTiers>& tiers, int tierCount, int cropW, int cropH, double remainingMs) {
+    tierCount = std::clamp(tierCount, 1, kNumTiers);
+    // Start at the crop-appropriate tier and downgrade toward the fastest tier until one fits the
+    // remaining budget. A downgraded tier is smaller than the crop, so the crop is downscaled into
+    // it (with per-crop focal correction keeping depth metric) - trading resolution for time.
+    const int ideal = selectTier(tiers, tierCount, cropW, cropH);
+    for(int tier = ideal; tier >= 0; --tier) {
+        if(static_cast<double>(estimateInferenceCostMs(tiers[tier].w, tiers[tier].h)) <= remainingMs) {
+            return tier;
+        }
+    }
+    return -1;
+}
+
 std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
                                                                 int frameHeight,
                                                                 const std::vector<std::array<float, 4>>& normalizedBoxes) {
@@ -450,23 +474,31 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
             reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
         }
     } else {
+        // Process crops largest-first within a per-frame time budget of one frame period. For each
+        // crop, pick the smallest model that fits both the crop size and the remaining budget
+        // (measured elapsed vs the #1912-derived per-model cost estimate), downgrading toward the
+        // fastest model when time runs short, and stop once even the fastest model would overrun.
+        // Elapsed time is measured (so model-reload cost between differently sized models is
+        // accounted for); only the next crop's cost is estimated.
         const auto ordered = orderCropsByArea(merged);
         const double budgetMs = 1000.0 / std::max(0.1, static_cast<double>(targetFps_));
-        double runningAverageMs = 0.0;
         std::size_t processed = 0;
         std::array<bool, kNumTiers> consumed{};
         for(const auto& mc : ordered) {
             const auto now = std::chrono::steady_clock::now();
-            const double elapsedMs = std::chrono::duration<double, std::milli>(now - processStart).count();
-            if(processed > 0 && elapsedMs + runningAverageMs > budgetMs) {
-                break;
+            const double remainingMs = budgetMs - std::chrono::duration<double, std::milli>(now - processStart).count();
+            int selectedTier = selectTierWithinBudget(tiers_, tierCount_, mc.w, mc.h, remainingMs);
+            if(selectedTier < 0) {
+                // Nothing fits the remaining budget: always process at least one crop (the fastest
+                // model) so a frame is never left completely empty, then stop.
+                if(processed == 0) {
+                    selectedTier = 0;
+                } else {
+                    break;
+                }
             }
-            const int selectedTier = elapsedMs > budgetMs / 2.0 ? 0 : selectTier(tiers_, tierCount_, mc.w, mc.h);
-            const auto cropStart = std::chrono::steady_clock::now();
             dispatchAndCollect(mc, selectedTier, consumed[selectedTier]);
             consumed[selectedTier] = true;
-            const double cropMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cropStart).count();
-            runningAverageMs = (runningAverageMs * static_cast<double>(processed) + cropMs) / static_cast<double>(processed + 1);
             ++processed;
         }
     }
