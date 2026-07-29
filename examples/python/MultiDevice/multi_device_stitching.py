@@ -27,8 +27,8 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     stitching = pipeline.create(dai.node.Stitching).build(outputs)
     stitching.setCameraModel(dai.node.Stitching.CameraModel.SPHERICAL)
     stitching.setContinuous(args.continuous)
-    # Free running cameras are not hardware synced, so allow a group to span most of a frame interval
-    stitching.setSyncThreshold(timedelta(seconds=0.5 / args.fps))
+    # Free running cameras are not hardware synced, so allow a group to span a couple of frame intervals
+    stitching.setSyncThreshold(timedelta(seconds=2.0 / args.fps))
 
     panoramaQueue = stitching.out.createOutputQueue()
 
