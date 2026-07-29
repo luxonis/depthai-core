@@ -697,6 +697,13 @@ class Pipeline {
         return impl()->defaultDevice;
     }
 
+    /**
+     * Get all devices the nodes of this pipeline are assigned to.
+     */
+    std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const {
+        return impl()->getAllAssignedDevices();
+    }
+
     std::string getTelemetryPipelineId() const {
         return impl()->telemetryPipelineId;
     }

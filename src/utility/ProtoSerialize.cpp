@@ -277,6 +277,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::MultiDeviceCalibrationResult:
         case DatatypeEnum::COUNT:
             return false;
     }

@@ -181,3 +181,26 @@ TEST_CASE("ImgTransformation equality accounts for the reference frame") {
     REQUIRE_FALSE(transformation.isEqualTransformation(other));
     REQUIRE_FALSE(transformation.isAlignedTo(other));
 }
+
+TEST_CASE("MultiDeviceCalibrationResult survives serialization") {
+    dai::MultiDeviceCalibrationData data;
+    data.edges = {makeEdge(frameA, frameB, 10.0f)};
+
+    const dai::MultiDeviceCalibrationResult result(data, 0.75, "estimated");
+    std::vector<std::uint8_t> metadata;
+    dai::DatatypeEnum datatype = dai::DatatypeEnum::Buffer;
+    result.serialize(metadata, datatype);
+    REQUIRE(datatype == dai::DatatypeEnum::MultiDeviceCalibrationResult);
+
+    dai::MultiDeviceCalibrationResult deserialized;
+    REQUIRE(dai::utility::deserialize(metadata, deserialized));
+    REQUIRE(deserialized.passed);
+    REQUIRE(deserialized.dataConfidence == Catch::Approx(0.75));
+    REQUIRE(deserialized.info == "estimated");
+    REQUIRE(deserialized.calibration.edges.size() == 1);
+    REQUIRE(deserialized.calibration.edges.front().from == frameA);
+    REQUIRE(deserialized.calibration.edges.front().to == frameB);
+    // The result carries a rig that the handler accepts as-is
+    const dai::MultiDeviceCalibrationHandler handler(deserialized.calibration);
+    REQUIRE(handler.getTransform(frameA, frameB)[0][3] == Catch::Approx(10.0f));
+}

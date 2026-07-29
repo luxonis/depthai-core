@@ -58,6 +58,7 @@ enum class DatatypeEnum : std::int32_t {
     VppConfig,
     PacketizedData,
     Transformable,
+    MultiDeviceCalibrationResult,
     COUNT  // Sentinel used by consistency checks; must remain the last enum entry.
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);

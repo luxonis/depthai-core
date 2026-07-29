@@ -111,6 +111,7 @@ set(SOURCE_LIST
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/StitchingBindings.cpp
     src/pipeline/node/CoordinateFrameTransformBindings.cpp
+    src/pipeline/datatype/MultiDeviceCalibrationResultBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
     src/pipeline/node/RectificationBindings.cpp
     src/pipeline/node/NeuralDepthBindings.cpp
@@ -196,6 +197,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/DynamicCalibrationResultsBindings.cpp
         src/pipeline/datatype/DynamicCalibrationControlBindings.cpp
         src/pipeline/node/AutoCalibrationBindings.cpp
+        src/pipeline/node/MultiDeviceCalibrationBindings.cpp
         src/pipeline/datatype/AutoCalibrationConfigBindings.cpp
         src/pipeline/datatype/AutoCalibrationResultBindings.cpp
     )

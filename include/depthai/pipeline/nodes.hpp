@@ -14,6 +14,7 @@
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "node/AutoCalibration.hpp"
     #include "node/DynamicCalibrationNode.hpp"
+    #include "node/host/MultiDeviceCalibration.hpp"
 #endif
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"

@@ -42,6 +42,7 @@ void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
 void bind_mapdata(pybind11::module& m, void* pCallstack);
+void bind_multi_device_calibration_result(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack);
 void bind_dynamic_calibration_control(pybind11::module& m, void* pCallstack);
@@ -95,6 +96,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imageannotations);
     callstack.push_front(bind_rgbddata);
     callstack.push_front(bind_mapdata);
+    callstack.push_front(bind_multi_device_calibration_result);
     callstack.push_front(bind_vppconfig);
     callstack.push_front(bind_gate_control);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
@@ -170,6 +172,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("DynamicCalibrationResult", DatatypeEnum::DynamicCalibrationResult)
         .value("AutoCalibrationConfig", DatatypeEnum::AutoCalibrationConfig)
         .value("AutoCalibrationResult", DatatypeEnum::AutoCalibrationResult)
+        .value("MultiDeviceCalibrationResult", DatatypeEnum::MultiDeviceCalibrationResult)
         .value("CalibrationQuality", DatatypeEnum::CalibrationQuality)
         .value("CoverageData", DatatypeEnum::CoverageData);
 }

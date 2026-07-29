@@ -335,6 +335,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/internal/XLinkInHost.cpp
     src/pipeline/node/internal/XLinkOutHost.cpp
     src/pipeline/node/host/CoordinateFrameTransform.cpp
+    src/pipeline/datatype/MultiDeviceCalibrationResult.cpp
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/node/Vpp.cpp
@@ -462,6 +463,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/DynamicCalibrationControl.cpp
         src/pipeline/node/AutoCalibration.cpp
         src/pipeline/datatype/AutoCalibrationResult.cpp
+        src/pipeline/node/host/MultiDeviceCalibration.cpp
         src/pipeline/datatype/AutoCalibrationConfig.cpp
     )
 endif()
