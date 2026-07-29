@@ -535,11 +535,17 @@ void Stitching::run() {
                     for(auto index : component) {
                         contributing.push_back(images[index]);
                     }
-                    if(component.size() != images.size() && logger) {
-                        logger->warn("Stitching used {} of {} inputs, the rest did not match confidently", component.size(), images.size());
+                    if(component.size() != images.size()) {
+                        if(logger) {
+                            logger->warn("Stitching used {} of {} inputs, the rest did not match confidently", component.size(), images.size());
+                        }
+                        // The sizes cv::Stitcher kept from matching are still indexed by the full
+                        // input set, so composing only the component warps against the wrong ones.
+                        // Re-registering the component on its own keeps the two consistent.
+                        status = impl->stitcher->stitch(contributing, pano);
+                    } else {
+                        status = impl->stitcher->composePanorama(contributing, pano);
                     }
-
-                    status = impl->stitcher->composePanorama(contributing, pano);
 
                     // Averaging is only meaningful while the component stays the same, otherwise
                     // cameras() is indexed differently from one group to the next
