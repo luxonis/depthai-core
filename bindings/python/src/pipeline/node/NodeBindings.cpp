@@ -95,7 +95,8 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
     // Register stream insertion operator (if possible)
     detail::map_if_insertion_operator<Map, Class_>(cl, name);
 
-    cl.def("__bool__", [](const Map& m) -> bool { return !m.empty(); }, "Check whether the map is nonempty");
+    cl.def(
+        "__bool__", [](const Map& m) -> bool { return !m.empty(); }, "Check whether the map is nonempty");
 
     cl.def(
         "__iter__", [](Map& m) { return make_key_iterator(m.begin(), m.end()); }, keep_alive<0, 1>() /* Essential: keep list alive while iterator exists */
@@ -187,6 +188,7 @@ void bind_replay(pybind11::module& m, void* pCallstack);
 void bind_imagealign(pybind11::module& m, void* pCallstack);
 void bind_rgbd(pybind11::module& m, void* pCallstack);
 void bind_stitching(pybind11::module& m, void* pCallstack);
+void bind_coordinateframetransform(pybind11::module& m, void* pCallstack);
 void bind_rectification(pybind11::module& m, void* pCallstack);
 void bind_neuraldepth(pybind11::module& m, void* pCallstack);
 void bind_gpustereo(pybind11::module& m, void* pCallstack);
@@ -246,6 +248,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imagealign);
     callstack.push_front(bind_rgbd);
     callstack.push_front(bind_stitching);
+    callstack.push_front(bind_coordinateframetransform);
     callstack.push_front(bind_rectification);
     callstack.push_front(bind_neuraldepth);
     callstack.push_front(bind_gpustereo);

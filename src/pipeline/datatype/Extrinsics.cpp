@@ -1,5 +1,7 @@
 #include "depthai/common/Extrinsics.hpp"
 
+#include <fmt/format.h>
+
 #include <array>
 #include <cmath>
 #include <cstring>
@@ -128,8 +130,12 @@ std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(co
         throw std::runtime_error(
             "Cannot get extrinsics transformation to or from an extrinsics with AUTO camera socket. Please specify the camera socket for both extrinsics.");
     }
-    if(this->toCameraSocket != to.toCameraSocket) {
-        throw std::runtime_error("Cannot get extrinsics to a transformation with a different base camera socket.");
+    if(this->getReferenceFrame() != to.getReferenceFrame()) {
+        throw std::runtime_error(
+            fmt::format("Cannot get extrinsics between transformations expressed in different reference frames ({} and {}). Use a CoordinateFrameTransform "
+                        "node (or MultiDeviceCalibrationHandler::reexpress) to bring both into a common reference frame first.",
+                        toString(this->getReferenceFrame()),
+                        toString(to.getReferenceFrame())));
     }
 
     // this -> Common

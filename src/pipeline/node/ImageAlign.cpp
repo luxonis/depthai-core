@@ -451,7 +451,9 @@ void ImageAlign::run() {
         if(latestEepromId > currentEepromId) {
             logger->debug("EEPROM data changed (ID: {} -> {}), reconfiguring ...", currentEepromId, latestEepromId);
             calibrationSet = false;
-            calibHandler = pipeline.getCalibrationData();
+            // NOTE: ImageAlign identifies cameras by instanceNum, which is device-unqualified, so this node does not
+            // support inputs coming from different devices.
+            calibHandler = getDevice() ? getDevice()->getCalibration() : pipeline.getCalibrationData();
             currentEepromId = latestEepromId;
         }
 

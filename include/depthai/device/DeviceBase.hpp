@@ -386,6 +386,16 @@ class DeviceBase {
     DeviceProperties getProperties();
 
     /**
+     * Revision of this device's calibration, incremented every time the calibration changes. Nodes caching derived
+     * calibration data (rectification maps, intrinsics, ...) should invalidate their cache when it changes.
+     *
+     * Unlike `Pipeline::getEepromId()`, this is device-specific and therefore usable in multi-device pipelines.
+     *
+     * @returns calibration revision of this device
+     */
+    uint32_t getCalibrationRevision();
+
+    /**
      * Sets the camera tuning blob for the device.
      *
      * @param uri URI of the tuning blob retrieved using the asset manager

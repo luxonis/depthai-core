@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CoordinateFrame.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -46,9 +47,31 @@ struct Extrinsics {
     CameraBoardSocket toCameraSocket = CameraBoardSocket::AUTO;
 
     /**
+     * MXID of the device owning `toCameraSocket`. Empty means unknown - which is the case for messages produced by
+     * devices with older firmware and for host-created messages that do not set it. An unknown device id is never
+     * treated as equal to a known one.
+     */
+    std::string toDeviceId;
+
+    /**
      * The distance unit for the translation vector.
      */
     LengthUnit lengthUnit = LengthUnit::CENTIMETER;
+
+    /**
+     * The reference frame these extrinsics are expressed with respect to, i.e. `{toDeviceId, toCameraSocket}`.
+     */
+    CoordinateFrame getReferenceFrame() const {
+        return {toDeviceId, toCameraSocket};
+    }
+
+    /**
+     * Set the reference frame these extrinsics are expressed with respect to.
+     */
+    void setReferenceFrame(const CoordinateFrame& frame) {
+        toDeviceId = frame.deviceId;
+        toCameraSocket = frame.socket;
+    }
 
     /**
      * Get the extrinsic rotation matrix in array format.
@@ -151,7 +174,7 @@ struct Extrinsics {
                                                                       bool useSpecTranslation = false,
                                                                       LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
-    DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit);
+    DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit, toDeviceId);
 };
 
 }  // namespace dai

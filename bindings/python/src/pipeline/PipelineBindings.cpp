@@ -247,6 +247,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setSippDmaBufferSize", &Pipeline::setSippDmaBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippDmaBufferSize))
         .def("setCalibrationData", &Pipeline::setCalibrationData, py::arg("calibrationDataHandler"), DOC(dai, Pipeline, setCalibrationData))
         .def("getCalibrationData", &Pipeline::getCalibrationData, DOC(dai, Pipeline, getCalibrationData))
+        .def("setMultiDeviceCalibration",
+             &Pipeline::setMultiDeviceCalibration,
+             py::arg("multiDeviceCalibrationHandler"),
+             DOC(dai, Pipeline, setMultiDeviceCalibration))
+        .def("getMultiDeviceCalibration", &Pipeline::getMultiDeviceCalibration, DOC(dai, Pipeline, getMultiDeviceCalibration))
         .def("getDeviceConfig", &Pipeline::getDeviceConfig, DOC(dai, Pipeline, getDeviceConfig))
         .def("serializeToJson", &Pipeline::serializeToJson, DOC(dai, Pipeline, serializeToJson))
         .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))

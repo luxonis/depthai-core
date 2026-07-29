@@ -279,6 +279,7 @@ set(TARGET_CORE_SOURCES
     src/device/HealthCheck.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
+    src/device/MultiDeviceCalibrationHandler.cpp
     src/device/Platform.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
@@ -333,6 +334,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/UVC.cpp
     src/pipeline/node/internal/XLinkInHost.cpp
     src/pipeline/node/internal/XLinkOutHost.cpp
+    src/pipeline/node/host/CoordinateFrameTransform.cpp
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/node/Vpp.cpp

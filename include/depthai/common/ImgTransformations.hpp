@@ -3,6 +3,7 @@
 #include <array>
 
 #include "depthai/common/CameraModel.hpp"
+#include "depthai/common/CoordinateFrame.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
@@ -151,8 +152,15 @@ struct ImgTransformation {
     Extrinsics getExtrinsics() const;
 
     /**
+     * Retrieve the reference frame the extrinsics of this transformation are expressed in, i.e. the camera
+     * (device + socket) this transformation's pose is relative to.
+     * @return Reference frame
+     */
+    CoordinateFrame getReferenceFrame() const;
+
+    /**
      * Two transformations are equal if the transformation matrices, intrinsic matrices, distortion models,
-     * distortion coefficients, extrinsics, and sizes are all equal.
+     * distortion coefficients, extrinsics (including their reference frame), and sizes are all equal.
      * @param other Transformation to compare with
      * @return True if the transformations are equal, false otherwise
      */
@@ -251,6 +259,10 @@ struct ImgTransformation {
     ImgTransformation& setSize(size_t width, size_t height);
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
+    /**
+     * Set the reference frame the extrinsics of this transformation are expressed in.
+     */
+    ImgTransformation& setReferenceFrame(const CoordinateFrame& referenceFrame);
     ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
     ImgTransformation& setDistortionModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
@@ -382,6 +394,7 @@ struct ImgTransformation {
     /**
      * Check if the transformations are aligned
      * @param to Transformation to compare with
+     * @note Transformations expressed in different reference frames are never aligned.
      */
     bool isAlignedTo(const ImgTransformation& to) const;
 

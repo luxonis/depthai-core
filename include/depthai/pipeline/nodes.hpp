@@ -39,6 +39,7 @@
 #include "node/UVC.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
+#include "node/host/CoordinateFrameTransform.hpp"
 #include "node/host/RGBD.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "node/NeuralAssistedStereo.hpp"

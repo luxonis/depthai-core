@@ -56,6 +56,7 @@ set(SOURCE_LIST
     src/XLinkBindings.cpp
     src/DeviceBindings.cpp
     src/CalibrationHandlerBindings.cpp
+    src/MultiDeviceCalibrationHandlerBindings.cpp
     src/DeviceBootloaderBindings.cpp
     src/DatatypeBindings.cpp
     src/MessageQueueBindings.cpp
@@ -109,6 +110,7 @@ set(SOURCE_LIST
     src/pipeline/node/ImageAlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/StitchingBindings.cpp
+    src/pipeline/node/CoordinateFrameTransformBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
     src/pipeline/node/RectificationBindings.cpp
     src/pipeline/node/NeuralDepthBindings.cpp

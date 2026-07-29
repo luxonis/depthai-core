@@ -33,6 +33,7 @@ message Extrinsics {
     Point3f specTranslation = 3;
     CameraBoardSocket toCameraSocket = 4;
     optional LengthUnit lengthUnit = 5;
+    optional string toDeviceId = 6;
 }
 
 message ImgTransformation {

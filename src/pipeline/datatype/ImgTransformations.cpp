@@ -57,6 +57,8 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
     std::array<float, 3> normalizedUndistortedRay = pixelToRay(sourcePt, from);
 
     std::array<std::array<float, 3>, 3> rotationMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    // TODO(pre-existing): when either reference socket is AUTO the rotation silently degrades to identity instead of
+    // reporting that the reference frame is unknown.
     if(from.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO && to.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO) {
         const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
         rotationMatrix = matrix::getRotationMatrixFromProjection4x4(extriniscTransformation);
@@ -118,6 +120,7 @@ bool ImgTransformation::isEqualTransformation(const ImgTransformation& other) co
 
     auto thisExtrinsics = getExtrinsics();
     auto otherExtrinsics = other.getExtrinsics();
+    if(thisExtrinsics.getReferenceFrame() != otherExtrinsics.getReferenceFrame()) return false;
     if(!thisExtrinsics.isEqualExtrinsics(otherExtrinsics)) return false;
 
     if(getSize() != other.getSize()) return false;
@@ -239,6 +242,9 @@ std::vector<float> ImgTransformation::getDistortionCoefficients() const {
 Extrinsics ImgTransformation::getExtrinsics() const {
     return extrinsics;
 }
+CoordinateFrame ImgTransformation::getReferenceFrame() const {
+    return extrinsics.getReferenceFrame();
+}
 std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
     return srcCrops;
 }
@@ -349,6 +355,10 @@ ImgTransformation& ImgTransformation::setIntrinsicMatrix(const std::array<std::a
 }
 ImgTransformation& ImgTransformation::setExtrinsics(const Extrinsics& extrinsics) {
     this->extrinsics = extrinsics;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setReferenceFrame(const CoordinateFrame& referenceFrame) {
+    extrinsics.setReferenceFrame(referenceFrame);
     return *this;
 }
 ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
@@ -532,6 +542,10 @@ std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformati
 }
 
 bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
+    // TODO(pre-existing): this only compares the image geometry, not the extrinsics, so two cameras with matching
+    // intrinsics are reported as aligned regardless of their pose. The reference frame check below prevents the
+    // cross-device case, but the intra-device case remains.
+    if(getReferenceFrame() != to.getReferenceFrame()) return false;
     if(width != to.width || height != to.height) return false;
     if(this->distortionModel != to.distortionModel) return false;
     auto approxEqual = [](float a, float b, float absTol = ROUND_UP_EPS, float relTol = 2 * ROUND_UP_EPS) {

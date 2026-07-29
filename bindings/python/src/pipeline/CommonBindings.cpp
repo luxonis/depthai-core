@@ -1,6 +1,7 @@
 #include "CommonBindings.hpp"
 
 #include <pybind11/detail/common.h>
+#include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 
 #include <array>
@@ -19,6 +20,7 @@
 #include "depthai/common/Color.hpp"
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/ConnectionInterface.hpp"
+#include "depthai/common/CoordinateFrame.hpp"
 #include "depthai/common/CpuUsage.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
@@ -76,6 +78,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<CpuUsage> cpuUsage(m, "CpuUsage", DOC(dai, CpuUsage));
     py::enum_<CameraModel> cameraModel(m, "CameraModel", DOC(dai, CameraModel));
     py::class_<StereoRectification> stereoRectification(m, "StereoRectification", DOC(dai, StereoRectification));
+    py::class_<CoordinateFrame> coordinateFrame(m, "CoordinateFrame", DOC(dai, CoordinateFrame));
     py::class_<Extrinsics> extrinsics(m, "Extrinsics", DOC(dai, Extrinsics));
     py::class_<CameraInfo> cameraInfo(m, "CameraInfo", DOC(dai, CameraInfo));
     py::class_<EepromData> eepromData(m, "EepromData", DOC(dai, EepromData));
@@ -528,6 +531,20 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("leftCameraSocket", &StereoRectification::leftCameraSocket)
         .def_readwrite("rightCameraSocket", &StereoRectification::rightCameraSocket);
 
+    // CoordinateFrame
+    coordinateFrame.def(py::init<>())
+        .def(py::init<std::string, CameraBoardSocket>(), py::arg("deviceId"), py::arg("socket"))
+        .def(py::init<CameraBoardSocket>(), py::arg("socket"))
+        .def_readwrite("deviceId", &CoordinateFrame::deviceId)
+        .def_readwrite("socket", &CoordinateFrame::socket)
+        .def("isQualified", &CoordinateFrame::isQualified, DOC(dai, CoordinateFrame, isQualified))
+        .def("isUnknown", &CoordinateFrame::isUnknown, DOC(dai, CoordinateFrame, isUnknown))
+        .def(py::self == py::self)  // NOLINT(misc-redundant-expression)
+        .def(py::self != py::self)  // NOLINT(misc-redundant-expression)
+        .def(py::self < py::self)   // NOLINT(misc-redundant-expression)
+        .def("__hash__", [](const CoordinateFrame& frame) { return py::hash(py::make_tuple(frame.deviceId, static_cast<int>(frame.socket))); })
+        .def("__repr__", [](const CoordinateFrame& frame) { return toString(frame); });
+
     // Extrinsics
     extrinsics.def(py::init<>())
         .def(py::init<std::vector<std::vector<float>>, Point3f, CameraBoardSocket, LengthUnit>(),
@@ -543,7 +560,10 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
         .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket)
+        .def_readwrite("toDeviceId", &Extrinsics::toDeviceId)
         .def_readwrite("lengthUnit", &Extrinsics::lengthUnit)
+        .def("getReferenceFrame", &Extrinsics::getReferenceFrame, DOC(dai, Extrinsics, getReferenceFrame))
+        .def("setReferenceFrame", &Extrinsics::setReferenceFrame, py::arg("frame"), DOC(dai, Extrinsics, setReferenceFrame))
         .def("getRotationMatrix", &Extrinsics::getRotationMatrix, DOC(dai, Extrinsics, getRotationMatrix))
         .def("getInverseRotationMatrix", &Extrinsics::getInverseRotationMatrix, DOC(dai, Extrinsics, getInverseRotationMatrix))
         .def("getTransformationMatrix",
