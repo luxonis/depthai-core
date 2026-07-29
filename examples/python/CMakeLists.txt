@@ -237,6 +237,9 @@ dai_set_example_test_labels(get_pipeline_state ondevice rvc2_all rvc4 ci)
 add_python_example(node_pipeline_events Misc/PipelineDebugging/node_pipeline_events.py)
 dai_set_example_test_labels(node_pipeline_events ondevice rvc4 ci)
 
+add_python_example(ir_leds Misc/IrLeds/ir_leds.py)
+dai_set_example_test_labels(ir_leds ondevice rvc2_all rvc4 ci)
+
 ## SystemLogger
 add_python_example(system_logger Misc/SystemLogger/system_logger.py)
 dai_set_example_test_labels(system_logger ondevice rvc2_all rvc4 ci)
