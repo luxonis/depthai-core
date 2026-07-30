@@ -543,6 +543,12 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(stitching_node_test onhost ci)
 endif()
 
+# Planar projection (bird's eye view) stitching tests, rendered from a virtual rig so they need no artifacts
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+    dai_set_test_labels(planar_stitching_node_test onhost ci)
+endif()
+
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)

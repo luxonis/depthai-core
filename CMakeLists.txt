@@ -476,6 +476,7 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/Replay.cpp
     src/pipeline/node/ImageFilters.cpp
     src/pipeline/node/host/Stitching.cpp
+    src/pipeline/node/host/PlanarStitcher.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )

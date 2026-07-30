@@ -30,6 +30,8 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     py::enum_<Stitching::Blender> stitchingBlender(stitchingNode, "Blender", DOC(dai, node, Stitching, Blender));
     py::enum_<Stitching::WaveCorrection> stitchingWaveCorrection(stitchingNode, "WaveCorrection", DOC(dai, node, Stitching, WaveCorrection));
     py::enum_<Stitching::Interpolation> stitchingInterpolation(stitchingNode, "Interpolation", DOC(dai, node, Stitching, Interpolation));
+    py::class_<Stitching::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, node, Stitching, Plane));
+    py::class_<Stitching::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, node, Stitching, VirtualCamera));
 #endif
 
     ///////////////////////////////////////////////////////////////////////
@@ -92,6 +94,32 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
         .value("AREA", Stitching::Interpolation::AREA)
         .value("LANCZOS4", Stitching::Interpolation::LANCZOS4);
 
+    stitchingPlane.def(py::init<>())
+        .def(py::init([](const Point3f& point, const Point3f& normal, LengthUnit unit) { return Stitching::Plane{point, normal, unit}; }),
+             py::arg("point"),
+             py::arg("normal"),
+             py::arg("unit") = LengthUnit::CENTIMETER)
+        .def_readwrite("point", &Stitching::Plane::point, DOC(dai, node, Stitching, Plane, point))
+        .def_readwrite("normal", &Stitching::Plane::normal, DOC(dai, node, Stitching, Plane, normal))
+        .def_readwrite("unit", &Stitching::Plane::unit, DOC(dai, node, Stitching, Plane, unit));
+
+    stitchingVirtualCamera.def(py::init<>())
+        .def_static("lookAt",
+                    &Stitching::VirtualCamera::lookAt,
+                    py::arg("position"),
+                    py::arg("target"),
+                    py::arg("up"),
+                    py::arg("hFovDegrees"),
+                    py::arg("width"),
+                    py::arg("height"),
+                    py::arg("unit") = LengthUnit::CENTIMETER,
+                    DOC(dai, node, Stitching, VirtualCamera, lookAt))
+        .def_readwrite("pose", &Stitching::VirtualCamera::pose, DOC(dai, node, Stitching, VirtualCamera, pose))
+        .def_readwrite("unit", &Stitching::VirtualCamera::unit, DOC(dai, node, Stitching, VirtualCamera, unit))
+        .def_readwrite("intrinsics", &Stitching::VirtualCamera::intrinsics, DOC(dai, node, Stitching, VirtualCamera, intrinsics))
+        .def_readwrite("width", &Stitching::VirtualCamera::width, DOC(dai, node, Stitching, VirtualCamera, width))
+        .def_readwrite("height", &Stitching::VirtualCamera::height, DOC(dai, node, Stitching, VirtualCamera, height));
+
     stitchingNode.def_readonly("sync", &Stitching::sync, DOC(dai, node, Stitching, sync))
         .def_property_readonly(
             "inputs", [](Stitching& node) { return &node.inputs; }, py::return_value_policy::reference_internal, DOC(dai, node, Stitching, inputs))
@@ -108,6 +136,22 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
         .def("setSyncThreshold", &Stitching::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, Stitching, setSyncThreshold))
         .def("setMode", &Stitching::setMode, py::arg("mode"), DOC(dai, node, Stitching, setMode))
         .def("getMode", &Stitching::getMode, DOC(dai, node, Stitching, getMode))
+        .def("setPlane", static_cast<void (Stitching::*)(const Stitching::Plane&)>(&Stitching::setPlane), py::arg("plane"), DOC(dai, node, Stitching, setPlane))
+        .def("setPlane",
+             static_cast<void (Stitching::*)(const Point3f&, const Point3f&, LengthUnit)>(&Stitching::setPlane),
+             py::arg("point"),
+             py::arg("normal"),
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, node, Stitching, setPlane, 2))
+        .def("getPlane", &Stitching::getPlane, DOC(dai, node, Stitching, getPlane))
+        .def("setView", &Stitching::setView, py::arg("view"), DOC(dai, node, Stitching, setView))
+        .def("setViewAuto", &Stitching::setViewAuto, DOC(dai, node, Stitching, setViewAuto))
+        .def("getView", &Stitching::getView, DOC(dai, node, Stitching, getView))
+        .def("setMaxViewSize", &Stitching::setMaxViewSize, py::arg("width"), py::arg("height"), DOC(dai, node, Stitching, setMaxViewSize))
+        .def("setMaxRange", &Stitching::setMaxRange, py::arg("range"), py::arg("unit") = LengthUnit::CENTIMETER, DOC(dai, node, Stitching, setMaxRange))
+        .def("getMaxRange", &Stitching::getMaxRange, py::arg("unit") = LengthUnit::CENTIMETER, DOC(dai, node, Stitching, getMaxRange))
+        .def("setMinIncidenceAngle", &Stitching::setMinIncidenceAngle, py::arg("degrees"), DOC(dai, node, Stitching, setMinIncidenceAngle))
+        .def("getMinIncidenceAngle", &Stitching::getMinIncidenceAngle, DOC(dai, node, Stitching, getMinIncidenceAngle))
         .def("setCameraModel", &Stitching::setCameraModel, py::arg("model"), DOC(dai, node, Stitching, setCameraModel))
         .def("getCameraModel", &Stitching::getCameraModel, DOC(dai, node, Stitching, getCameraModel))
         .def("setContinuous", &Stitching::setContinuous, py::arg("continuous"), DOC(dai, node, Stitching, setContinuous))

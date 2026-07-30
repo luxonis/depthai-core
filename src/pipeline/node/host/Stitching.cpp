@@ -2,16 +2,11 @@
 
 #include <cmath>
 #include <opencv2/core.hpp>
-#include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/stitching.hpp>
-#include <opencv2/stitching/detail/blenders.hpp>
-#include <opencv2/stitching/detail/exposure_compensate.hpp>
-#include <opencv2/stitching/detail/matchers.hpp>
-#include <opencv2/stitching/detail/motion_estimators.hpp>
-#include <opencv2/stitching/detail/seam_finders.hpp>
-#include <opencv2/stitching/warpers.hpp>
 
+#include "PlanarStitcher.hpp"
+#include "StitchingCompositing.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -121,14 +116,50 @@ class Stitching::Impl {
     Blender blender = Blender::MULTI_BAND;
     float blendStrength = 5.0f;
 
+    std::optional<Plane> plane;
+    std::optional<VirtualCamera> view;
+    uint32_t maxViewWidth = 1920;
+    uint32_t maxViewHeight = 1920;
+    float maxRange = 1000.0f;
+    float minIncidenceAngle = 5.0f;
+
     cv::Ptr<cv::Stitcher> stitcher;
     std::vector<std::vector<cv::detail::CameraParams>> samples;
     bool transformFixed = false;
+    PlanarStitcher planar;
 
     void invalidate() {
         stitcher.release();
         samples.clear();
         transformFixed = false;
+        planar.reset();
+    }
+
+    /// Push the planar projection settings into the implementation, dropping what was built from the old ones.
+    void configurePlanar() {
+        PlanarStitcher::Config config;
+        config.plane = plane;
+        config.view = view;
+        config.maxViewWidth = maxViewWidth;
+        config.maxViewHeight = maxViewHeight;
+        config.maxRange = maxRange;
+        config.minIncidenceAngle = minIncidenceAngle;
+        config.seamEstimationResolution = seamEstimationResolution;
+        config.interpolation = interpolation;
+        config.exposureCompensator = exposureCompensator;
+        config.seamFinder = seamFinder;
+        config.blender = blender;
+        config.blendStrength = blendStrength;
+        planar.setConfig(config);
+    }
+
+    /// Metadata describing the rendered image: a pinhole camera placed in the reference frame of the inputs.
+    ImgTransformation viewTransformation() const {
+        const auto& resolved = planar.getResolvedView();
+        Extrinsics extrinsics;
+        extrinsics.setTransformationMatrix(resolved.pose, resolved.unit);
+        extrinsics.setReferenceFrame(planar.getReferenceFrame());
+        return {resolved.width, resolved.height, resolved.intrinsics, dai::CameraModel::Perspective, {}, extrinsics};
     }
 
     /**
@@ -146,139 +177,15 @@ class Stitching::Impl {
         if(waveCorrection != WaveCorrection::NONE) {
             stitcher->setWaveCorrectKind(waveCorrection == WaveCorrection::HORIZONTAL ? cv::detail::WAVE_CORRECT_HORIZ : cv::detail::WAVE_CORRECT_VERT);
         }
-        stitcher->setInterpolationFlags(toInterpolationFlag(interpolation));
-        stitcher->setFeaturesFinder(createFeaturesFinder());
-        stitcher->setFeaturesMatcher(createFeaturesMatcher());
-        stitcher->setEstimator(createEstimator());
-        stitcher->setBundleAdjuster(createBundleAdjuster());
-        stitcher->setWarper(createWarper());
-        stitcher->setExposureCompensator(cv::detail::ExposureCompensator::createDefault(toExposureCompensatorType(exposureCompensator)));
-        stitcher->setSeamFinder(createSeamFinder());
-        stitcher->setBlender(createBlender(panoSizeHint));
-    }
-
-   private:
-    static cv::InterpolationFlags toInterpolationFlag(Interpolation interpolation) {
-        switch(interpolation) {
-            case Interpolation::NEAREST:
-                return cv::INTER_NEAREST;
-            case Interpolation::LINEAR:
-                return cv::INTER_LINEAR;
-            case Interpolation::CUBIC:
-                return cv::INTER_CUBIC;
-            case Interpolation::AREA:
-                return cv::INTER_AREA;
-            case Interpolation::LANCZOS4:
-                return cv::INTER_LANCZOS4;
-        }
-        return cv::INTER_LINEAR;
-    }
-
-    static int toExposureCompensatorType(ExposureCompensator compensator) {
-        switch(compensator) {
-            case ExposureCompensator::NONE:
-                return cv::detail::ExposureCompensator::NO;
-            case ExposureCompensator::GAIN:
-                return cv::detail::ExposureCompensator::GAIN;
-            case ExposureCompensator::GAIN_BLOCKS:
-                return cv::detail::ExposureCompensator::GAIN_BLOCKS;
-            case ExposureCompensator::CHANNELS:
-                return cv::detail::ExposureCompensator::CHANNELS;
-            case ExposureCompensator::CHANNELS_BLOCKS:
-                return cv::detail::ExposureCompensator::CHANNELS_BLOCKS;
-        }
-        return cv::detail::ExposureCompensator::GAIN_BLOCKS;
-    }
-
-    cv::Ptr<cv::Feature2D> createFeaturesFinder() const {
-        switch(featuresFinder) {
-            case FeaturesFinder::ORB:
-                return cv::ORB::create();
-            case FeaturesFinder::SIFT:
-                return cv::SIFT::create();
-            case FeaturesFinder::AKAZE:
-                return cv::AKAZE::create();
-            case FeaturesFinder::BRISK:
-                return cv::BRISK::create();
-        }
-        return cv::ORB::create();
-    }
-
-    cv::Ptr<cv::detail::FeaturesMatcher> createFeaturesMatcher() const {
-        // Matches OpenCV's own defaults when the user did not override the confidence
-        const float confidence = matchConfidence >= 0.0f ? matchConfidence : (featuresFinder == FeaturesFinder::ORB ? 0.3f : 0.65f);
-        if(featuresMatcher == FeaturesMatcher::AFFINE) {
-            return cv::makePtr<cv::detail::AffineBestOf2NearestMatcher>(false, false, confidence);
-        }
-        return cv::makePtr<cv::detail::BestOf2NearestMatcher>(false, confidence);
-    }
-
-    cv::Ptr<cv::detail::Estimator> createEstimator() const {
-        if(estimator == Estimator::AFFINE) {
-            return cv::makePtr<cv::detail::AffineBasedEstimator>();
-        }
-        return cv::makePtr<cv::detail::HomographyBasedEstimator>();
-    }
-
-    cv::Ptr<cv::detail::BundleAdjusterBase> createBundleAdjuster() const {
-        switch(bundleAdjuster) {
-            case BundleAdjuster::NONE:
-                return cv::makePtr<cv::detail::NoBundleAdjuster>();
-            case BundleAdjuster::RAY:
-                return cv::makePtr<cv::detail::BundleAdjusterRay>();
-            case BundleAdjuster::REPROJECTION:
-                return cv::makePtr<cv::detail::BundleAdjusterReproj>();
-            case BundleAdjuster::AFFINE:
-                return cv::makePtr<cv::detail::BundleAdjusterAffine>();
-            case BundleAdjuster::AFFINE_PARTIAL:
-                return cv::makePtr<cv::detail::BundleAdjusterAffinePartial>();
-        }
-        return cv::makePtr<cv::detail::BundleAdjusterRay>();
-    }
-
-    cv::Ptr<cv::WarperCreator> createWarper() const {
-        switch(cameraModel) {
-            case CameraModel::SPHERICAL:
-                return cv::makePtr<cv::SphericalWarper>();
-            case CameraModel::PINHOLE:
-                return cv::makePtr<cv::PlaneWarper>();
-            case CameraModel::CYLINDRICAL:
-                return cv::makePtr<cv::CylindricalWarper>();
-        }
-        return cv::makePtr<cv::SphericalWarper>();
-    }
-
-    cv::Ptr<cv::detail::SeamFinder> createSeamFinder() const {
-        switch(seamFinder) {
-            case SeamFinder::NONE:
-                return cv::makePtr<cv::detail::NoSeamFinder>();
-            case SeamFinder::VORONOI:
-                return cv::makePtr<cv::detail::VoronoiSeamFinder>();
-            case SeamFinder::DP_COLOR:
-                return cv::makePtr<cv::detail::DpSeamFinder>(cv::detail::DpSeamFinder::COLOR);
-            case SeamFinder::DP_COLOR_GRAD:
-                return cv::makePtr<cv::detail::DpSeamFinder>(cv::detail::DpSeamFinder::COLOR_GRAD);
-            case SeamFinder::GRAPHCUT_COLOR:
-                return cv::makePtr<cv::detail::GraphCutSeamFinder>(cv::detail::GraphCutSeamFinderBase::COST_COLOR);
-            case SeamFinder::GRAPHCUT_COLOR_GRAD:
-                return cv::makePtr<cv::detail::GraphCutSeamFinder>(cv::detail::GraphCutSeamFinderBase::COST_COLOR_GRAD);
-        }
-        return cv::makePtr<cv::detail::GraphCutSeamFinder>(cv::detail::GraphCutSeamFinderBase::COST_COLOR);
-    }
-
-    cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) const {
-        const float blendWidth = std::sqrt(static_cast<float>(panoSizeHint.area())) * blendStrength / 100.0f;
-        if(blender == Blender::NONE || blendWidth < 1.0f) {
-            return cv::detail::Blender::createDefault(cv::detail::Blender::NO, false);
-        }
-        if(blender == Blender::FEATHER) {
-            auto feather = cv::makePtr<cv::detail::FeatherBlender>();
-            feather->setSharpness(1.0f / blendWidth);
-            return feather;
-        }
-        auto multiBand = cv::makePtr<cv::detail::MultiBandBlender>();
-        multiBand->setNumBands(static_cast<int>(std::ceil(std::log(blendWidth) / std::log(2.0)) - 1.0));
-        return multiBand;
+        stitcher->setInterpolationFlags(stitching::toInterpolationFlag(interpolation));
+        stitcher->setFeaturesFinder(stitching::createFeaturesFinder(featuresFinder));
+        stitcher->setFeaturesMatcher(stitching::createFeaturesMatcher(featuresMatcher, featuresFinder, matchConfidence));
+        stitcher->setEstimator(stitching::createEstimator(estimator));
+        stitcher->setBundleAdjuster(stitching::createBundleAdjuster(bundleAdjuster));
+        stitcher->setWarper(stitching::createWarper(cameraModel));
+        stitcher->setExposureCompensator(cv::detail::ExposureCompensator::createDefault(stitching::toExposureCompensatorType(exposureCompensator)));
+        stitcher->setSeamFinder(stitching::createSeamFinder(seamFinder));
+        stitcher->setBlender(stitching::createBlender(blender, blendStrength, panoSizeHint));
     }
 };
 
@@ -326,13 +233,95 @@ void Stitching::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
 }
 
 void Stitching::setMode(Mode mode) {
-    DAI_CHECK_V(mode != Mode::PLANAR_PROJECTION, "Stitching mode PLANAR_PROJECTION is not implemented yet");
     impl->mode = mode;
     impl->invalidate();
 }
 
 Stitching::Mode Stitching::getMode() const {
     return impl->mode;
+}
+
+Stitching::VirtualCamera Stitching::VirtualCamera::lookAt(
+    const Point3f& position, const Point3f& target, const Point3f& up, float hFovDegrees, uint32_t width, uint32_t height, LengthUnit unit) {
+    DAI_CHECK_V(width > 0 && height > 0, "The view must not be empty, got {}x{} pixels", width, height);
+    DAI_CHECK_V(hFovDegrees > 0.0f && hFovDegrees < 180.0f, "The horizontal field of view must be within (0, 180) degrees, got {}", hFovDegrees);
+
+    const cv::Vec3d towardsTarget(target.x - position.x, target.y - position.y, target.z - position.z);
+    DAI_CHECK_V(cv::norm(towardsTarget) > 1e-6, "The camera cannot look at its own position");
+    const cv::Vec3d forward = cv::normalize(towardsTarget);
+    cv::Vec3d right = forward.cross(cv::Vec3d(up.x, up.y, up.z));
+    DAI_CHECK_V(cv::norm(right) > 1e-6, "The up direction must not be parallel to the optical axis");
+    right = cv::normalize(right);
+    const cv::Vec3d down = forward.cross(right);
+
+    VirtualCamera camera;
+    camera.width = width;
+    camera.height = height;
+    camera.unit = unit;
+    const auto focal = static_cast<float>(0.5 * width / std::tan(0.5 * static_cast<double>(hFovDegrees) * CV_PI / 180.0));
+    camera.intrinsics = {{{focal, 0.0f, 0.5f * (width - 1)}, {0.0f, focal, 0.5f * (height - 1)}, {0.0f, 0.0f, 1.0f}}};
+    camera.pose = {{{static_cast<float>(right[0]), static_cast<float>(down[0]), static_cast<float>(forward[0]), position.x},
+                    {static_cast<float>(right[1]), static_cast<float>(down[1]), static_cast<float>(forward[1]), position.y},
+                    {static_cast<float>(right[2]), static_cast<float>(down[2]), static_cast<float>(forward[2]), position.z},
+                    {0.0f, 0.0f, 0.0f, 1.0f}}};
+    return camera;
+}
+
+void Stitching::setPlane(const Plane& plane) {
+    DAI_CHECK_V(plane.normal.x != 0.0f || plane.normal.y != 0.0f || plane.normal.z != 0.0f, "The plane normal must not be a zero vector");
+    impl->plane = plane;
+    impl->invalidate();
+}
+
+void Stitching::setPlane(const Point3f& point, const Point3f& normal, LengthUnit unit) {
+    setPlane(Plane{point, normal, unit});
+}
+
+std::optional<Stitching::Plane> Stitching::getPlane() const {
+    return impl->plane;
+}
+
+void Stitching::setView(const VirtualCamera& view) {
+    DAI_CHECK_V(view.width > 0 && view.height > 0, "The view must not be empty, got {}x{} pixels", view.width, view.height);
+    DAI_CHECK_V(view.intrinsics[0][0] > 0.0f && view.intrinsics[1][1] > 0.0f, "The view needs a positive focal length");
+    impl->view = view;
+    impl->invalidate();
+}
+
+void Stitching::setViewAuto() {
+    impl->view.reset();
+    impl->invalidate();
+}
+
+std::optional<Stitching::VirtualCamera> Stitching::getView() const {
+    return impl->view;
+}
+
+void Stitching::setMaxViewSize(uint32_t width, uint32_t height) {
+    DAI_CHECK_V(width > 0 && height > 0, "The maximum view size must not be empty, got {}x{} pixels", width, height);
+    impl->maxViewWidth = width;
+    impl->maxViewHeight = height;
+    impl->invalidate();
+}
+
+void Stitching::setMaxRange(float range, LengthUnit unit) {
+    DAI_CHECK_V(range > 0.0f, "The maximum range must be positive, got {}", range);
+    impl->maxRange = range * getDistanceUnitScale(LengthUnit::CENTIMETER, unit);
+    impl->invalidate();
+}
+
+float Stitching::getMaxRange(LengthUnit unit) const {
+    return impl->maxRange * getDistanceUnitScale(unit, LengthUnit::CENTIMETER);
+}
+
+void Stitching::setMinIncidenceAngle(float degrees) {
+    DAI_CHECK_V(degrees >= 0.0f && degrees < 90.0f, "The minimum incidence angle must be within [0, 90) degrees, got {}", degrees);
+    impl->minIncidenceAngle = degrees;
+    impl->invalidate();
+}
+
+float Stitching::getMinIncidenceAngle() const {
+    return impl->minIncidenceAngle;
 }
 
 void Stitching::setCameraModel(CameraModel model) {
@@ -499,8 +488,10 @@ void Stitching::run() {
         if(group == nullptr) continue;
 
         std::vector<cv::Mat> images;
+        std::vector<ImgTransformation> transformations;
         std::shared_ptr<ImgFrame> first;
         images.reserve(inputNames.size());
+        transformations.reserve(inputNames.size());
         for(const auto& name : inputNames) {
             auto frame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(name));
             DAI_CHECK_V(frame != nullptr, "Stitching input {} did not receive an ImgFrame", name);
@@ -511,6 +502,36 @@ void Stitching::run() {
                 cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
             }
             images.push_back(std::move(image));
+            transformations.push_back(frame->getTransformation());
+        }
+
+        if(impl->mode == Mode::PLANAR_PROJECTION) {
+            cv::Mat projected;
+            try {
+                if(!impl->planar.isPrepared()) {
+                    impl->configurePlanar();
+                    impl->planar.prepare(transformations);
+                    const auto& resolved = impl->planar.getResolvedView();
+                    if(logger) {
+                        logger->info("Planar projection rendering {}x{} pixels of the plane in {}",
+                                     resolved.width,
+                                     resolved.height,
+                                     toString(impl->planar.getReferenceFrame()));
+                    }
+                }
+                projected = impl->planar.compose(images);
+            } catch(const cv::Exception& e) {
+                if(logger) logger->warn("Planar projection failed: {}", e.what());
+                impl->planar.reset();
+                continue;
+            }
+
+            auto stitched = std::make_shared<ImgFrame>();
+            stitched->setCvFrame(projected, ImgFrame::Type::BGR888i);
+            stitched->setBufferMetadataFrom(first);
+            stitched->setTransformation(impl->viewTransformation());
+            out.send(stitched);
+            continue;
         }
 
         if(!impl->stitcher) {

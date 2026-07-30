@@ -48,14 +48,11 @@ TEST_CASE("Stitching rejects fewer than two inputs", "[Stitching]") {
     REQUIRE_THROWS(stitching->build(1));
 }
 
-TEST_CASE("Stitching rejects the unimplemented planar projection mode", "[Stitching]") {
+TEST_CASE("Stitching stitches panoramas by default", "[Stitching]") {
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::node::Stitching>();
 
-    REQUIRE_THROWS(stitching->setMode(dai::node::Stitching::Mode::PLANAR_PROJECTION));
     REQUIRE(stitching->getMode() == dai::node::Stitching::Mode::PANORAMA);
-
-    REQUIRE_NOTHROW(stitching->setMode(dai::node::Stitching::Mode::PANORAMA));
 }
 
 TEST_CASE("Stitching combines three rotated views into a wider panorama", "[Stitching]") {
