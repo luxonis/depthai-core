@@ -85,6 +85,9 @@ class CoordinateFrameTransform : public NodeCRTP<ThreadedHostNode, CoordinateFra
     /// Rig calibration to use: the explicitly set one, else the pipeline's.
     std::shared_ptr<const MultiDeviceCalibrationHandler> resolveCalibration() const;
 
+    /// The rig completed with the intra-device transformations of the devices assigned to the pipeline.
+    std::shared_ptr<const MultiDeviceCalibrationHandler> withDeviceCalibrations(const MultiDeviceCalibrationHandler& rig) const;
+
     static std::string inputName(size_t index);
     static std::string outputName(size_t index);
 

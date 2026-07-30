@@ -3,7 +3,9 @@
 #include <fmt/format.h>
 
 #include <chrono>
+#include <optional>
 
+#include "depthai/device/Device.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
@@ -25,6 +27,15 @@ CoordinateFrame completeFrame(const CoordinateFrame& current, const CoordinateFr
         completed.socket = declared.socket;
     }
     return completed;
+}
+
+/// Frame of a device the rig already knows, i.e. the one the other cameras of that device are attached to.
+std::optional<CoordinateFrame> rigFrameOf(const MultiDeviceCalibrationHandler& rig, const std::string& deviceId, const CoordinateFrame& target) {
+    if(target.deviceId == deviceId) return target;
+    for(const auto& frame : rig.getFrames()) {
+        if(frame.deviceId == deviceId) return frame;
+    }
+    return std::nullopt;
 }
 
 }  // namespace
@@ -93,14 +104,48 @@ std::shared_ptr<const MultiDeviceCalibrationHandler> CoordinateFrameTransform::r
     return getParentPipeline().getMultiDeviceCalibration();
 }
 
+std::shared_ptr<const MultiDeviceCalibrationHandler> CoordinateFrameTransform::withDeviceCalibrations(const MultiDeviceCalibrationHandler& rig) const {
+    // A rig only holds the transformations *between* devices; how the cameras of one device see each other is factory
+    // calibrated and read from the device itself, so that a rig file stays valid whatever the devices are recalibrated to.
+    auto augmented = std::make_shared<MultiDeviceCalibrationHandler>(rig);
+    for(const auto& device : getParentPipeline().getAllAssignedDevices()) {
+        const auto deviceId = device->getDeviceId();
+        const auto anchor = rigFrameOf(*augmented, deviceId, target);
+        if(!anchor.has_value()) continue;
+
+        const auto deviceCalibration = device->getCalibration();
+        for(const auto& camera : deviceCalibration.getEepromData().cameraData) {
+            const CoordinateFrame frame{deviceId, camera.first};
+            if(frame == *anchor || augmented->canTransform(frame, *anchor)) continue;
+
+            RigEdge edge;
+            edge.from = frame;
+            edge.to = *anchor;
+            edge.source = "device-calibration";
+            try {
+                edge.transform.setTransformationMatrix(deviceCalibration.getCameraExtrinsics(frame.socket, anchor->socket));
+            } catch(const std::exception& e) {
+                // Cameras the device is not calibrated against simply stay out of the rig
+                pimpl->logger->debug("No calibration between {} and {}: {}", toString(frame), toString(*anchor), e.what());
+                continue;
+            }
+            edge.transform.setReferenceFrame(*anchor);
+            augmented->setEdge(edge);
+            pimpl->logger->trace("Added {} -> {} from the calibration of the device", toString(frame), toString(*anchor));
+        }
+    }
+    return augmented;
+}
+
 void CoordinateFrameTransform::run() {
     DAI_CHECK_V(numInputs > 0, "CoordinateFrameTransform node was not built, call build() with the sources to re-express");
     auto& logger = pimpl->logger;
 
-    const auto rig = resolveCalibration();
-    DAI_CHECK_V(rig != nullptr,
+    const auto configured = resolveCalibration();
+    DAI_CHECK_V(configured != nullptr,
                 "CoordinateFrameTransform requires a multi-device calibration. Set it with Pipeline::setMultiDeviceCalibration() or "
                 "CoordinateFrameTransform::setCalibration().");
+    const auto rig = withDeviceCalibrations(*configured);
 
     const auto reexpress = [this, &rig, &logger](size_t index, const std::shared_ptr<ADatatype>& message) {
         const auto declared = sourceFrames.find(index);
