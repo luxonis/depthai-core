@@ -869,6 +869,9 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 endif()
 
+dai_add_test(video_encoder_latency_test src/ondevice_tests/video_encoder_latency_test.cpp)
+dai_set_test_labels(video_encoder_latency_test ondevice rvc4 rvc4rgb ci noreplayci)
+
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_test.cpp)
 dai_set_test_labels(xlink_test ondevice rvc2_all rvc4 rvc4rgb ci)
