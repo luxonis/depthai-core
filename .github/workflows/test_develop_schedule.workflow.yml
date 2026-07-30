@@ -1,0 +1,38 @@
+name: DepthAI Core HIL Testing Develop Schedule
+
+on:
+  schedule:
+    - cron: '0 3 * * 6' # Saturdays at 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger develop HIL testing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run test.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop
+
+      - name: Notify Slack
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_BOT_CHANNEL_ID: ${{ secrets.SLACK_BOT_CHANNEL_ID_TEST }}
+          SCHEDULER_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          MESSAGE="*Scheduled DepthAI Core HIL tests triggered*
+          Branch: develop
+          Workflow: DepthAI Core HIL Testing
+          Scheduler Run: $SCHEDULER_RUN_URL"
+
+          jq -n --arg user_id "$SLACK_BOT_CHANNEL_ID" --arg message "$MESSAGE" \
+            '{"channel": $user_id, "text": $message}' > payload.json
+
+          curl -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-type: application/json" \
+            --data @payload.json
