@@ -18,6 +18,7 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     friend XLinkInHostTestable;
     std::shared_ptr<XLinkConnection> conn;
     std::string streamName;
+    std::string deviceId;
     std::condition_variable isWaitingForReconnect;
     std::mutex mtx;
     bool isDisconnected = false;
@@ -35,6 +36,8 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     // XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName);
     void setStreamName(const std::string& name);
+    /// Device the messages come from, used to qualify the reference frame of their transformations.
+    void setDeviceId(const std::string& id);
     void setConnection(std::shared_ptr<XLinkConnection> conn);
     void disconnect();
     void run() override;

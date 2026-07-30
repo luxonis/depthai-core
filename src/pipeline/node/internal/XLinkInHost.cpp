@@ -9,16 +9,62 @@
 #include "spdlog/fmt/chrono.h"
 
 // libraries
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#include "depthai/pipeline/datatype/ImgAnnotations.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "utility/Logging.hpp"
 
 namespace dai {
 namespace node {
 namespace internal {
+
+namespace {
+
+/// Name the device a transformation is expressed in, unless the message already knows it.
+void qualifyReferenceFrame(ImgTransformation& transformation, const std::string& deviceId) {
+    if(!transformation.isValid()) return;
+    auto extrinsics = transformation.getExtrinsics();
+    if(!extrinsics.toDeviceId.empty()) return;
+    extrinsics.toDeviceId = deviceId;
+    transformation.setExtrinsics(extrinsics);
+}
+
+void qualifyReferenceFrame(std::optional<ImgTransformation>& transformation, const std::string& deviceId) {
+    if(transformation.has_value()) qualifyReferenceFrame(*transformation, deviceId);
+}
+
+/**
+ * Devices do not know their own MXID in the messages they produce - the field is not even part of the protocol - so
+ * the host names the device every message came from. That is what makes the frames of several devices tellable apart
+ * downstream, e.g. in CoordinateFrameTransform.
+ */
+void qualifyReferenceFrame(const std::shared_ptr<ADatatype>& message, const std::string& deviceId) {
+    if(message == nullptr || deviceId.empty()) return;
+    if(auto imgFrame = std::dynamic_pointer_cast<ImgFrame>(message)) {
+        qualifyReferenceFrame(imgFrame->getTransformation(), deviceId);
+    } else if(auto encodedFrame = std::dynamic_pointer_cast<EncodedFrame>(message)) {
+        qualifyReferenceFrame(encodedFrame->transformation, deviceId);
+    } else if(auto transformable = std::dynamic_pointer_cast<Transformable>(message)) {
+        qualifyReferenceFrame(transformable->transformation, deviceId);
+    } else if(auto nnData = std::dynamic_pointer_cast<NNData>(message)) {
+        qualifyReferenceFrame(nnData->transformation, deviceId);
+    } else if(auto annotations = std::dynamic_pointer_cast<ImgAnnotations>(message)) {
+        qualifyReferenceFrame(annotations->transformation, deviceId);
+    }
+}
+
+}  // namespace
 // XLinkInHost::XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName) : conn(std::move(conn)), streamName(std::move(streamName)){};
 
 void XLinkInHost::setStreamName(const std::string& name) {
     streamName = name;
+}
+
+void XLinkInHost::setDeviceId(const std::string& id) {
+    deviceId = id;
 }
 
 void XLinkInHost::setConnection(std::shared_ptr<XLinkConnection> conn) {
@@ -44,8 +90,11 @@ std::shared_ptr<ADatatype> XLinkInHost::readData() const {
         parseMessageGroup(messageGroup);
     }
     if(auto packetizedData = std::dynamic_pointer_cast<PacketizedData>(msg)) {
-        return parsePacketizedData(packetizedData);
+        auto data = parsePacketizedData(packetizedData);
+        qualifyReferenceFrame(data, deviceId);
+        return data;
     }
+    qualifyReferenceFrame(msg, deviceId);
     return msg;
 }
 

@@ -206,6 +206,28 @@ TEST_CASE("XLinkInHost - readData") {
         REQUIRE(cv::countNonZero(cvFrame != mat) == 0);
     }
 
+    SECTION("Reference frame is qualified with the device the message came from") {
+        // Devices do not know their own id, so what arrives is a frame whose reference frame has no device
+        dai::Extrinsics extrinsics;
+        extrinsics.toCameraSocket = dai::CameraBoardSocket::CAM_B;
+        dai::ImgTransformation transformation(2, 2, {{{1.0F, 0.0F, 1.0F}, {0.0F, 1.0F, 1.0F}, {0.0F, 0.0F, 1.0F}}});
+        transformation.setExtrinsics(extrinsics);
+
+        auto frame = std::make_shared<dai::ImgFrame>();
+        cv::Mat mat(2, 2, CV_8UC1, cv::Scalar(1));
+        frame->setCvFrame(mat, dai::ImgFrame::Type::GRAY8);
+        frame->setTransformation(transformation);
+        REQUIRE(frame->getTransformation().getExtrinsics().toDeviceId.empty());
+
+        dai::StreamPacketDesc packet = getRawBuffer(frame);
+        REQUIRE_CALL(xlinkIn, readStreamMessage()).LR_RETURN(std::move(packet));
+
+        xlinkIn.setDeviceId("14442C10D1");
+        auto img = std::dynamic_pointer_cast<dai::ImgFrame>(xlinkIn.readData());
+        REQUIRE(img != nullptr);
+        REQUIRE(img->getTransformation().getExtrinsics().getReferenceFrame() == dai::CoordinateFrame{"14442C10D1", dai::CameraBoardSocket::CAM_B});
+    }
+
     SECTION("PacketizedFrame Failed") {
         auto frame = std::make_shared<dai::ImgFrame>();
         cv::Mat mat(2, 2, CV_8UC1, cv::Scalar(1));

@@ -1119,6 +1119,16 @@ void PipelineImpl::build() {
     std::unordered_set<std::string> uniqueStreamNames;
     xlinkBridges.clear();
     bridgeHostDevices.clear();
+
+    // Asking a device for its id is a round trip, so do it once per device
+    std::unordered_map<Device*, std::string> deviceIds;
+    auto deviceIdOf = [&deviceIds](const std::shared_ptr<Device>& device) -> const std::string& {
+        auto it = deviceIds.find(device.get());
+        if(it == deviceIds.end()) {
+            it = deviceIds.emplace(device.get(), device->getDeviceId()).first;
+        }
+        return it->second;
+    };
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
         auto outNode = connection.outputNode.lock();
@@ -1163,6 +1173,7 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkOut->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setConnection(outDevice->getConnection());
+                xLinkBridge.xLinkInHost->setDeviceId(deviceIdOf(outDevice));
                 connection.out->link(xLinkBridge.xLinkOut->input);
                 bridgeHostDevices[xLinkBridge.xLinkInHost->id] = outDevice;
 
@@ -1243,6 +1254,7 @@ void PipelineImpl::build() {
                     xLinkBridge.xLinkOut->setStreamName(streamName);
                     xLinkBridge.xLinkInHost->setStreamName(streamName);
                     xLinkBridge.xLinkInHost->setConnection(outputDevice->getConnection());
+                    xLinkBridge.xLinkInHost->setDeviceId(deviceIdOf(outputDevice));
                     queueConnection.output->link(xLinkBridge.xLinkOut->input);
                     bridgeHostDevices[xLinkBridge.xLinkInHost->id] = outputDevice;
 
@@ -1354,6 +1366,7 @@ void PipelineImpl::resetConnections() {
             auto device = it != bridgeHostDevices.end() ? it->second : defaultDevice;
             if(device == nullptr || device->getConnection() == nullptr) throw std::runtime_error("Connection lost");
             tmp->setConnection(device->getConnection());
+            tmp->setDeviceId(device->getDeviceId());
         }
         auto tmp2 = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node);
         if(tmp2) {

@@ -47,9 +47,11 @@ struct Extrinsics {
     CameraBoardSocket toCameraSocket = CameraBoardSocket::AUTO;
 
     /**
-     * MXID of the device owning `toCameraSocket`. Empty means unknown - which is the case for messages produced by
-     * devices with older firmware and for host-created messages that do not set it. An unknown device id is never
-     * treated as equal to a known one.
+     * MXID of the device owning `toCameraSocket`. Empty means unknown - which is the case for host-created messages
+     * that do not set it. An unknown device id is never treated as equal to a known one.
+     *
+     * The field is not part of the host-device protocol; messages coming from a device are qualified by the host with
+     * the device they arrived from.
      */
     std::string toDeviceId;
 
@@ -174,7 +176,12 @@ struct Extrinsics {
                                                                       bool useSpecTranslation = false,
                                                                       LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
-    DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit, toDeviceId);
+    // `toDeviceId` is serialized to json and protobuf, but deliberately left out of the libnop wire format: libnop
+    // structures have a fixed member count, so adding a member makes the host reject every message of devices whose
+    // firmware was built without it. The host fills the field in instead, see XLinkInHost.
+    DEPTHAI_DEFERRED_EXPAND(
+        DEPTHAI_NLOHMANN_DEFINE_TYPE_OPTIONAL_INTRUSIVE(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit, toDeviceId))
+    DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit));
 };
 
 }  // namespace dai
