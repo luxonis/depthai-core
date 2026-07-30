@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--calibration", type=Path, required=True, help="Rig calibration json, as written by MultiDeviceCalibrationHandler.toJsonFile()")
 parser.add_argument("-d", "--device", action="append", help="Device to use, by IP or MX id. The first one holds the reference camera")
 parser.add_argument("-n", "--num-devices", type=int, default=2, help="Number of devices to discover when none are given explicitly")
+parser.add_argument("-s", "--socket", default="CAM_A", help="Camera socket used on every device")
 parser.add_argument("-r", "--resolution", type=int, nargs=2, default=(640, 400), help="Resolution requested from every camera")
 parser.add_argument("-f", "--fps", type=float, default=10.0, help="Frame rate requested from every camera")
 parser.add_argument("--plane-point", type=float, nargs=3, default=(0.0, 150.0, 0.0), help="A point of the plane, in cm in the reference camera frame")
@@ -24,9 +25,10 @@ parser.add_argument("--range", type=float, default=1000.0, help="How far from th
 parser.add_argument("--view-size", type=int, nargs=2, default=(1280, 1280), help="Upper bound on the size of the computed view")
 args = parser.parse_args()
 
+socket = dai.CameraBoardSocket.__members__[args.socket]
 devices = [dai.Device(dai.DeviceInfo(name)) for name in args.device] if args.device else [dai.Device() for _ in range(args.num_devices)]
 # The plane and the rendered view are expressed in the frame of this camera
-reference = dai.CoordinateFrame(devices[0].getDeviceId(), dai.CameraBoardSocket.CAM_A)
+reference = dai.CoordinateFrame(devices[0].getDeviceId(), socket)
 
 with dai.Pipeline(createImplicitDevice=False) as pipeline:
     # Poses between the devices, so that the streams can be brought into a single frame
@@ -34,7 +36,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
     outputs = []
     for device in devices:
-        camera = pipeline.create(dai.node.Camera, device).build(dai.CameraBoardSocket.CAM_A)
+        camera = pipeline.create(dai.node.Camera, device).build(socket)
         outputs.append(camera.requestOutput(tuple(args.resolution), fps=args.fps))
 
     # Metadata only: the images keep their pixels, but their extrinsics now all point at the reference camera
