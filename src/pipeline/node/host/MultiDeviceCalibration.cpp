@@ -113,6 +113,8 @@ MultiDeviceCalibration::~MultiDeviceCalibration() = default;
 
 void MultiDeviceCalibration::buildInternal() {
     sync->out.link(syncInput);
+    // The streams come from several devices, so they can only be brought together on the host
+    sync->setRunOnHost(true);
 }
 
 void MultiDeviceCalibration::addCamera(const CoordinateFrame& frame, Node::Output& source) {
