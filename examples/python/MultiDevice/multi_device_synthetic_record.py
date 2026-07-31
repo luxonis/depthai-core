@@ -214,7 +214,7 @@ class VirtualCamera:
         self.intrinsics = intrinsics(width, height, hfov)
         self.hfov = hfov
 
-        pixels = np.stack(np.meshgrid(np.arange(width, dtype=np.float64), np.arange(height, dtype=np.float64)) + [np.ones((height, width))], axis=-1)
+        pixels = np.stack([*np.meshgrid(np.arange(width, dtype=np.float64), np.arange(height, dtype=np.float64)), np.ones((height, width))], axis=-1)
         rays = pixels @ np.linalg.inv(self.intrinsics).T
         self.directions = rays @ self.pose[:3, :3].T
         self.center = self.pose[:3, 3]
