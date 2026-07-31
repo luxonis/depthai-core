@@ -148,6 +148,32 @@ Rig written to rig_calibration.json
 `result.passed` is `False` when the rig could not be estimated — `result.info` says why (too few features, an edge
 without a scale constraint, …). `setContinuous(True)` keeps re-estimating instead of stopping after the first result.
 
+#### Coverage and the performance mode
+
+Before estimating, the library checks that the matched features **cover** enough of each camera's field of view: it
+lays an 8×6 grid over the whole (normalized) image and requires the mean fraction of occupied cells to clear a
+threshold. Cameras that look at the scene from very different angles only match features in the small region they
+share, so most cells stay empty and the estimate is rejected with **"Not enough coverage"** — even though the scene
+*is* shared. `setPerformanceMode()` selects how strict this is:
+
+| Mode | mean-coverage ≥ | features ≥ | Use when |
+| --- | --- | --- | --- |
+| `OPTIMIZE_PERFORMANCE` | 75 % | 4000 | Best accuracy, cooperative scene |
+| `DEFAULT` | 70 % | 2000 | Normal, well-overlapping rigs |
+| `STATIC_SCENERY` | 50 % | 1500 | Static scene, moderate overlap |
+| `OPTIMIZE_SPEED` | 60 % | 800 | Faster, fewer features |
+| `RELAXED_COVERAGE` | 30 % | 2000 | Small shared FOV, but still needs many features |
+| `SKIP_CHECKS` | 0 % | 0 | Force an estimate regardless of coverage |
+
+```python
+calibration.setPerformanceMode(dai.DynamicCalibrationControl.PerformanceMode.SKIP_CHECKS)
+```
+
+For a rig whose cameras share only a small part of their view, `SKIP_CHECKS` is what lets the estimation run at all;
+mind that with little overlap the result is only as good as the geometry allows, and the inter-device **scale** is
+still unobserved unless a stereo pair (CAM_B + CAM_C) is registered per device or a `setKnownDistance()` is given.
+The real fix for a poor estimate is more overlap: sweep a textured target across the volume the cameras share.
+
 ---
 
 ## 3) Panorama stitching

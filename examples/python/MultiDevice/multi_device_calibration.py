@@ -30,6 +30,14 @@ parser.add_argument("-o", "--output", type=Path, default=Path("rig_calibration.j
 parser.add_argument("-s", "--samples", type=int, default=10, help="Number of synchronized image sets to estimate from")
 parser.add_argument("-r", "--resolution", type=int, nargs=2, default=(1280, 800), help="Resolution requested from every camera")
 parser.add_argument("-f", "--fps", type=float, default=10.0, help="Frame rate requested from every camera")
+parser.add_argument(
+    "-p",
+    "--performance-mode",
+    choices=[mode.name for mode in dai.DynamicCalibrationControl.PerformanceMode.__members__.values()],
+    default="DEFAULT",
+    help="Coverage/quality preset. Lower it (RELAXED_COVERAGE, or SKIP_CHECKS to bypass entirely) if the estimate is "
+    "rejected for 'Not enough coverage' because the cameras share only a small part of their field of view",
+)
 args = parser.parse_args()
 
 # The stereo pair of every device: seeing the scene from two cameras of known baseline is what fixes the metric scale
@@ -69,6 +77,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
     calibration = pipeline.create(dai.node.MultiDeviceCalibration).build(sources)
     calibration.setSampleCount(args.samples)
+    calibration.setPerformanceMode(dai.DynamicCalibrationControl.PerformanceMode.__members__[args.performance_mode])
     # Free running cameras are not hardware synced, so allow a group to span a couple of frame intervals
     calibration.sync.setSyncThreshold(timedelta(seconds=2.0 / args.fps))
 

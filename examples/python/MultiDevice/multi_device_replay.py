@@ -24,6 +24,12 @@ parser.add_argument("--plane-normal", type=float, nargs=3, help="Normal of the p
 parser.add_argument("--range", type=float, default=600.0, help="How far from the cameras the plane is still rendered, in cm")
 parser.add_argument("--view-size", type=int, nargs=2, default=(1400, 1400), help="Upper bound on the size of the computed view")
 parser.add_argument("--samples", type=int, default=10, help="Image sets to accumulate before estimating the rig (calibrate mode)")
+parser.add_argument(
+    "--performance-mode",
+    choices=[mode.name for mode in dai.DynamicCalibrationControl.PerformanceMode.__members__.values()],
+    default="DEFAULT",
+    help="Coverage/quality preset for the estimation. RELAXED_COVERAGE or SKIP_CHECKS help when the cameras share only a small part of their field of view",
+)
 parser.add_argument("-o", "--output", type=Path, help="Save the first stitched frame / estimated rig here")
 args = parser.parse_args()
 
@@ -112,6 +118,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         for deviceId, handler in calibrations.items():
             calibration.setDeviceCalibration(deviceId, handler)
         calibration.setSampleCount(args.samples)
+        calibration.setPerformanceMode(dai.DynamicCalibrationControl.PerformanceMode.__members__[args.performance_mode])
         # Independent devices are not hardware-synced, so replayed streams only need to be grouped loosely
         calibration.sync.setSyncThreshold(timedelta(seconds=max(1.0, 5.0 / manifest["fps"])))
 
