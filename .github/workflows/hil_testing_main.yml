@@ -4,17 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       test_os:
-        description: Run Linux, Windows, and macOS tests (none selected = all tests)
+        description: Run Linux, Windows, and macOS tests
         type: boolean
-        default: false
+        default: true
       test_replay:
-        description: Run replay tests (none selected = all tests)
+        description: Run replay tests
         type: boolean
-        default: false
+        default: true
       test_sanitizers:
-        description: Run sanitizer tests (none selected = all tests)
+        description: Run sanitizer tests
         type: boolean
-        default: false
+        default: true
 
 # Only allow latest run on same branch to be tested
 concurrency:
@@ -39,8 +39,6 @@ jobs:
       luxonis_os_versions_to_test: "['1.20.5','1.27.1','1.33.0']"
       luxonis_os_versions_to_test_rgb: "['1.33.0']"
       luxonis_os_versions_to_test_usb: "['1.33.0']"
-      luxonis_os_versions_to_test_fsync: "['1.33.0']"
-      luxonis_os_versions_to_test_ptp: "['1.33.0']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}

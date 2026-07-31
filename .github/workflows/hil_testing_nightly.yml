@@ -1,0 +1,25 @@
+name: DepthAI Core HIL Testing Nightly
+
+on:
+  workflow_dispatch:
+
+# Only allow latest nightly run on same branch to be tested
+concurrency:
+  group: ci-nightly-tests-${{ github.ref }}-1
+  cancel-in-progress: true
+
+jobs:
+  run_ptp_fsync_tests:
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "vanilla"
+      job_prefix: "vanilla-nightly"
+      run_standard_tests: false
+      luxonis_os_versions_to_test: "[]"
+      luxonis_os_versions_to_test_fsync: "['1.33.0']"
+      luxonis_os_versions_to_test_ptp: "['1.33.0']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}

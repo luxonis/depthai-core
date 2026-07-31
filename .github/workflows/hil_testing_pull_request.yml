@@ -1,4 +1,4 @@
-name: DepthAI Core PR Testing
+name: DepthAI Core HIL Testing PR
 
 # Trigger on submitted reviews
 on:

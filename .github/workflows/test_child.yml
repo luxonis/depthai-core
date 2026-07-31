@@ -17,6 +17,10 @@ on:
         required: false
         type: number
         default: 720
+      run_standard_tests:
+        required: false
+        type: boolean
+        default: true
       luxonis_os_versions_to_test:
         required: true
         type: string
@@ -79,6 +83,7 @@ jobs:
 
  linux_rvc2_test:
     needs: [build_docker_container]
+    if: inputs.run_standard_tests
     runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: ${{ inputs.rvc2_timeout_minutes }}
     steps:
@@ -106,6 +111,7 @@ jobs:
   #  Testing
  linux_rvc4_test:
       needs: [build_docker_container]
+      if: inputs.run_standard_tests
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
@@ -135,6 +141,7 @@ jobs:
 
  linux_rvc4_usb_test:
       needs: [build_docker_container]
+      if: inputs.run_standard_tests
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
@@ -160,6 +167,7 @@ jobs:
 
  linux_rvc4_rgb_test:
       needs: [build_docker_container]
+      if: inputs.run_standard_tests
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_rgb) }}
@@ -186,7 +194,7 @@ jobs:
  report_linux_test_results:
     name: Report Linux test results (${{ inputs.job_prefix || inputs.flavor }})
     needs: [linux_rvc2_test, linux_rvc4_test,linux_rvc4_usb_test, linux_rvc4_rgb_test]
-    if: always()
+    if: ${{ always() && inputs.run_standard_tests }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
