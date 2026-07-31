@@ -30,6 +30,7 @@ parser.add_argument(
     default="DEFAULT",
     help="Coverage/quality preset for the estimation. RELAXED_COVERAGE or SKIP_CHECKS help when the cameras share only a small part of their field of view",
 )
+parser.add_argument("--rig", default="rig.json", help="Rig json inside the recording to use, as the geometry for a stitch and as the initial guess for an estimation")
 parser.add_argument("-o", "--output", type=Path, help="Save the first stitched frame / estimated rig here")
 args = parser.parse_args()
 
@@ -60,7 +61,7 @@ def makeReplay(pipeline, stream):
 def augmentedRig():
     """The stored rig holds only inter-device edges; add each device's intra-device edges so a device-less pipeline
     can transform any camera to the reference (the same completion CoordinateFrameTransform does from live devices)."""
-    rig = dai.MultiDeviceCalibrationHandler(str(args.input / "rig.json"))
+    rig = dai.MultiDeviceCalibrationHandler(str(args.input / args.rig))
     candidates = (dai.CameraBoardSocket.CAM_A, dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C, dai.CameraBoardSocket.CAM_D)
     for deviceId, calibration in calibrations.items():
         anchor = dai.CoordinateFrame(deviceId, anchorSocket)
@@ -124,7 +125,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
         # Seed the optimization with the stored rig, if any
         if manifest.get("hasRig"):
-            rig = dai.MultiDeviceCalibrationHandler(str(args.input / "rig.json"))
+            rig = dai.MultiDeviceCalibrationHandler(str(args.input / args.rig))
             for deviceId in manifest["devices"][1:]:
                 source = dai.CoordinateFrame(deviceId, anchorSocket)
                 if not rig.canTransform(source, reference):

@@ -15,6 +15,8 @@ from image content) or a **bird's-eye view** (a calibrated projection onto a pla
 | [`planar_stitching_synthetic.py`](planar_stitching_synthetic.py) | The same bird's-eye view on a synthetic rig, so it runs without any hardware |
 | [`multi_device_record.py`](multi_device_record.py) | Record the synced streams of a rig, with every device's calibration and the rig, into one self-contained folder |
 | [`multi_device_replay.py`](multi_device_replay.py) | Replay such a recording with **no devices connected** — through calibration or bird's-eye view |
+| [`multi_device_synthetic_record.py`](multi_device_synthetic_record.py) | Render such a recording from a virtual rig, with ground truth — replay works with no hardware at all |
+| [`multi_device_rig_compare.py`](multi_device_rig_compare.py) | Compare an estimated rig against a reference one, e.g. the ground truth of a synthetic recording |
 | [`multi_device_cam_sync.py`](multi_device_cam_sync.py), [`multi_device_frame_sync.py`](multi_device_frame_sync.py) | Frame level syncing of two devices |
 
 ---
@@ -311,6 +313,9 @@ python3 multi_device_replay.py -i rec -m stitch -o rec_bev.png
 
 # rig estimation on the recording, no hardware
 python3 multi_device_replay.py -i rec -m calibrate --samples 8 -o rig_estimated.json
+
+# seed the estimation with a different rig of the recording instead of rig.json
+python3 multi_device_replay.py -i rec -m calibrate --rig rig_guess.json -o rig_estimated.json
 ```
 
 The recording is **self-contained**: besides the per-camera video (`.avi`) and metadata (`.mcap`) it stores every
@@ -330,6 +335,45 @@ post): the reference frame's device id is stamped on the host, so it survives in
 
 > Independent devices are not hardware-synced, so their recorded timestamps are tens to hundreds of ms apart. The
 > replay groups them loosely (a generous `setSyncThreshold`); for a static calibration/stitching scene that is fine.
+
+---
+
+## 6) A synthetic recording, with ground truth
+
+**Scripts:** `multi_device_synthetic_record.py`, `multi_device_rig_compare.py`
+
+A recording of a real rig has no ground truth: when an estimate comes out at 4.3 m you have to go and measure. This
+script renders a recording of a **virtual** rig instead — three devices, `CAM_B` + `CAM_C` each, standing around a
+textured room with boxes and a calibration chart sweeping through the volume they share — in exactly the layout
+`multi_device_record.py` writes, so both replay modes work on it unchanged.
+
+```bash
+python3 multi_device_synthetic_record.py -o rec_synth
+
+python3 multi_device_replay.py -i rec_synth -m stitch -o rec_synth_bev.png
+python3 multi_device_replay.py -i rec_synth -m calibrate --rig rig_guess.json --samples 16 -o rig_estimated.json
+python3 multi_device_rig_compare.py rec_synth/rig.json rig_estimated.json
+```
+
+Besides everything a recorded session holds, it writes what only a synthetic scene can provide:
+
+| File | Contents |
+| --- | --- |
+| `rig.json` | The **exact** inter-device poses the frames were rendered with |
+| `rig_guess.json` | The same rig, rotated and shifted by `--guess-error` (8°, 25 cm by default) — a realistic seed for the estimation |
+| `ground_truth.json` | Every camera's pose, intrinsics and field of view in the reference frame, the floor plane, and the distances between the devices |
+
+So the two replay modes become checks rather than demos: a bird's-eye view built from `rig.json` must show the floor
+grid running straight through the seams (anything above the floor still doubles — see the plane's caveat above), and
+an estimation seeded with `rig_guess.json` must come back to `rig.json`. On the default scene it recovers the
+rotations to ~0.01° while the translation keeps the magnitude of the guess, which is the inter-device scale the
+images cannot observe — exactly what a stereo baseline or `setKnownDistance()` is for.
+
+The defaults are deliberately a *cooperative* rig: 15° of azimuth between neighbouring devices, which is what the
+default performance mode reliably matches through. Pulling the devices apart (`--azimuth -50 0 50`) reproduces the
+"Not enough coverage" / "Not enough data" wall of a real wide-baseline rig, on data whose answer is known — handy
+when working on the matching itself. `--hfov`, `--radius`, `--height`, `--noise`, `--frames` and `--seed` shape the
+rest of the scene; rendering is a few seconds per configuration.
 
 ---
 
