@@ -275,10 +275,10 @@ A multi-device rig is awkward to keep plugged in, so record it once and iterate 
 cameras or from `ReplayVideo`, so a recording can be fed straight back through them.
 
 ```bash
-# record ~7 s of CAM_B + CAM_C of three devices, plus a rig to store with it
+# record ~7 s of CAM_B + CAM_C of three devices, plus a rig and the stitching plane to store with it
 python3 multi_device_record.py -o rec \
     -d 10.12.228.177 -d 10.12.228.137 -d 10.12.228.157 -s CAM_B -s CAM_C \
-    -t 7 -c rig_calibration.json
+    -t 7 -c rig_calibration.json --plane-point -10.8 124.5 49.3 --plane-normal -0.087 0.929 0.359
 
 # bird's-eye view of the recording, no hardware
 python3 multi_device_replay.py -i rec -m stitch -o rec_bev.png
@@ -289,7 +289,9 @@ python3 multi_device_replay.py -i rec -m calibrate --samples 8 -o rig_estimated.
 
 The recording is **self-contained**: besides the per-camera video (`.avi`) and metadata (`.mcap`) it stores every
 device's factory calibration (`<deviceId>_calibration.json`), the rig (`rig.json`, when given) and a manifest
-(`session.json`). That is everything the geometry needs, so nothing is read from a live device on replay:
+(`session.json`, which also carries the stitching plane when `--plane-point/--plane-normal` are given, so the replay
+reproduces the same view without re-specifying it). That is everything the geometry needs, so nothing is read from a
+live device on replay:
 
 * `MultiDeviceCalibration.setDeviceCalibration(deviceId, calibration)` supplies the per-device calibration that would
   otherwise be read from the assigned device — the one thing that used to force a live device into a replay pipeline.

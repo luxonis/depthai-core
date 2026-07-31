@@ -19,16 +19,21 @@ import depthai as dai
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=Path, required=True, help="Recording directory written by multi_device_record.py")
 parser.add_argument("-m", "--mode", choices=("stitch", "calibrate"), default="stitch")
-parser.add_argument("--plane-point", type=float, nargs=3, default=(0.0, 150.0, 0.0), help="A point of the plane, in cm in the reference camera frame")
-parser.add_argument("--plane-normal", type=float, nargs=3, default=(0.0, -1.0, 0.0), help="Normal of the plane, in the reference camera frame")
-parser.add_argument("--range", type=float, default=1000.0, help="How far from the cameras the plane is still rendered, in cm")
-parser.add_argument("--view-size", type=int, nargs=2, default=(1280, 1280), help="Upper bound on the size of the computed view")
+parser.add_argument("--plane-point", type=float, nargs=3, help="A point of the plane, in cm in the reference camera frame (defaults to the plane stored with the recording)")
+parser.add_argument("--plane-normal", type=float, nargs=3, help="Normal of the plane, in the reference camera frame (defaults to the plane stored with the recording)")
+parser.add_argument("--range", type=float, default=600.0, help="How far from the cameras the plane is still rendered, in cm")
+parser.add_argument("--view-size", type=int, nargs=2, default=(1400, 1400), help="Upper bound on the size of the computed view")
 parser.add_argument("--samples", type=int, default=10, help="Image sets to accumulate before estimating the rig (calibrate mode)")
 parser.add_argument("-o", "--output", type=Path, help="Save the first stitched frame / estimated rig here")
 args = parser.parse_args()
 
 manifest = json.loads((args.input / "session.json").read_text())
 streams = manifest["streams"]
+
+# The plane can be overridden on the command line, otherwise it comes from the recording (else a level floor 1.5 m down)
+storedPlane = manifest.get("plane", {})
+planePoint = args.plane_point or storedPlane.get("point", (0.0, 150.0, 0.0))
+planeNormal = args.plane_normal or storedPlane.get("normal", (0.0, -1.0, 0.0))
 reference = dai.CoordinateFrame(manifest["reference"]["deviceId"], dai.CameraBoardSocket.__members__[manifest["reference"]["socket"]])
 anchorSocket = dai.CameraBoardSocket.__members__[manifest["reference"]["socket"]]
 calibrations = {deviceId: dai.CalibrationHandler(str(args.input / f"{deviceId}_calibration.json")) for deviceId in manifest["devices"]}
@@ -83,7 +88,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
         stitching = pipeline.create(dai.node.Stitching).build([unified.outputs[f"output{index}"] for index in range(len(replays))])
         stitching.setMode(dai.node.Stitching.Mode.PLANAR_PROJECTION)
-        stitching.setPlane(dai.Point3f(*args.plane_point), dai.Point3f(*args.plane_normal))
+        stitching.setPlane(dai.Point3f(*planePoint), dai.Point3f(*planeNormal))
         stitching.setMaxRange(args.range)
         stitching.setMaxViewSize(*args.view_size)
         # Independent devices are not hardware-synced, so replayed streams only need to be grouped loosely

@@ -9,7 +9,7 @@ Layout written to the output directory:
     <deviceId>_<SOCKET>.avi / .mcap   one pair per camera stream
     <deviceId>_calibration.json       factory calibration of every device
     rig.json                          the rig calibration, copied from --calibration when given
-    session.json                      manifest describing the streams
+    session.json                      manifest describing the streams (and the plane, when given)
 """
 import argparse
 import json
@@ -27,6 +27,8 @@ parser.add_argument("-r", "--resolution", type=int, nargs=2, default=(1280, 800)
 parser.add_argument("-f", "--fps", type=float, default=10.0, help="Frame rate requested from every camera")
 parser.add_argument("-t", "--seconds", type=float, default=6.0, help="How long to record")
 parser.add_argument("-c", "--calibration", type=Path, help="Rig calibration json to store with the recording")
+parser.add_argument("--plane-point", type=float, nargs=3, help="A point of the stitching plane, in cm in the reference camera frame, stored with the recording")
+parser.add_argument("--plane-normal", type=float, nargs=3, help="Normal of the stitching plane, in the reference camera frame, stored with the recording")
 args = parser.parse_args()
 
 sockets = [dai.CameraBoardSocket.__members__[name] for name in (args.socket or ["CAM_B", "CAM_C"])]
@@ -64,6 +66,9 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         "streams": streams,
         "hasRig": args.calibration is not None,
     }
+    if args.plane_point is not None and args.plane_normal is not None:
+        # The stitching plane is a scene choice, not device data, so store it so a replay reproduces the same view
+        manifest["plane"] = {"point": list(args.plane_point), "normal": list(args.plane_normal)}
     (args.output / "session.json").write_text(json.dumps(manifest, indent=2))
 
     pipeline.start()
