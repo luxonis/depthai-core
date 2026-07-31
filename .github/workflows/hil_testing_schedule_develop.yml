@@ -2,8 +2,8 @@ name: DepthAI Core HIL Testing Develop Schedule
 
 on:
   schedule:
+    - cron: '0 1 * * *' # Every day at 01:00 UTC
     - cron: '0 3 * * 6' # Saturdays at 03:00 UTC
-  workflow_dispatch:
 
 permissions:
   actions: write
@@ -13,12 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger develop HIL testing
+        if: github.event.schedule == '0 3 * * 6'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run test.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop
+        run: gh workflow run hil_testing_main.yml --repo "$GITHUB_REPOSITORY" --ref develop
+
+      - name: Trigger nightly develop HIL testing
+        if: github.event.schedule == '0 1 * * *'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop
 
       - name: Notify Slack
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: github.event.schedule == '0 3 * * 6'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_BOT_CHANNEL_ID: ${{ secrets.SLACK_BOT_CHANNEL_ID_TEST }}
