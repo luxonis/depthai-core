@@ -1,11 +1,13 @@
 #include <catch2/catch_all.hpp>
 #include <chrono>
-#include <opencv2/opencv.hpp>
 #include <thread>
 
-#include "depthai/depthai.hpp"
+#include <opencv2/opencv.hpp>
+
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
+
+#include "depthai/depthai.hpp"
 
 static constexpr unsigned int NUM_FRAMES = 350;
 static constexpr double PSNR_TOLERANCE_DB = 0.2;

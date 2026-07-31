@@ -487,6 +487,8 @@ TEST_CASE("flipRotateFlip") {
     REQUIRE_THAT(p2.y, Catch::Matchers::WithinAbs(p.y, 0.01));
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
 // -----------------------------------------------------------------------------
 // Purpose:
 //  Compares the custom getOuterRotatedRect implementation against OpenCV's
@@ -520,3 +522,5 @@ TEST_CASE("Get outer rect opencv comparison") {
         REQUIRE_THAT(rrImpl.angle, Catch::Matchers::WithinAbs(rrCv.angle, 0.01));
     }
 }
+
+#endif

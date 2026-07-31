@@ -8,7 +8,7 @@
 #include "depthai/utility/RecordReplay.hpp"
 #include "utility.hpp"
 #ifndef DEPTHAI_MERGED_TARGET
-    #error This example needs OpenCV support, which is not available on your system
+    #error This example needs DEPTHAI_MERGED_TARGET to be enabled
 #endif
 
 // Signal handling for clean shutdown

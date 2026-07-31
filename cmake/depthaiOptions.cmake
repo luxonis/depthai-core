@@ -40,6 +40,11 @@ option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_INSTALL "Enable install target for depthai-core targets" ON)
 
+if(DEPTHAI_BUILD_EXAMPLES AND NOT DEPTHAI_OPENCV_SUPPORT)
+    message(WARNING "DEPTHAI_BUILD_EXAMPLES requires DEPTHAI_OPENCV_SUPPORT to be ON. Turning DEPTHAI_BUILD_EXAMPLES OFF.")
+    set(DEPTHAI_BUILD_EXAMPLES OFF CACHE BOOL "Build examples - Requires OpenCV library to be installed" FORCE)
+endif()
+
 # ---------- Dependency Management -------------
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_VCPKG_INTERNAL_ONLY "Use VCPKG internally, but not for interface libraries" ON)
@@ -55,12 +60,6 @@ option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_IN
 
 option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ${DEPTHAI_DEFAULT_DYNAMIC_CALIBRATION_SUPPORT})
 
-# ---------- Platform / Compiler Tweaks ---------
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    # There is not 32b build of Dynamic Calibration Library
-    message(FATAL_ERROR "Dynamic calibration is not supported on 32b machines. Build with DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=OFF")
-endif()
-
 # AprilTag node support
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
@@ -71,6 +70,18 @@ endif()
 # Disable merged target when OpenCV is disabled
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
+endif()
+
+# Disable dynamic calibration support when merged target is disabled
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
+    message(WARNING "DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT requires DEPTHAI_MERGED_TARGET to be ON. Turning DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT OFF.")
+    set(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT OFF CACHE BOOL "Enable Dynamic Calibration support" FORCE)
+endif()
+
+# ---------- Platform / Compiler Tweaks ---------
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    # There is not 32b build of Dynamic Calibration Library
+    message(FATAL_ERROR "Dynamic calibration is not supported on 32b machines. Build with DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=OFF")
 endif()
 
 # Backward stacktrace printing

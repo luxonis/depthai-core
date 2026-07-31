@@ -318,7 +318,7 @@ function(dai_add_test test_name test_src)
 
     # Link to core and Catch2 testing framework
     set(DEPTHAI_TARGET depthai::core)
-    if(NOT DEPTHAI_MERGED_TARGET)
+    if(NOT DEPTHAI_MERGED_TARGET AND DEPTHAI_HAVE_OPENCV_SUPPORT)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
     target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
@@ -580,22 +580,30 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 endif()
 
 # Vpp node tests
-dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
-dai_set_test_labels(vpp_test ondevice rvc4 ci)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
+    dai_set_test_labels(vpp_test ondevice rvc4 ci)
+endif()
 
 # GPUStereo node (device execution) test
 dai_add_test(gpu_stereo_device_test src/ondevice_tests/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 
-# Dynamic calibration tests
-if(DEPTHAI_FETCH_ARTIFACTS)
-    dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
-    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
-    target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
-endif()
+# Dynamic calibration and AutoCalibration tests
+if(DEPTHAI_MERGED_TARGET)
+    if(DEPTHAI_FETCH_ARTIFACTS)
+        dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
+        dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
+        target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
+    endif()
 
-dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
-dai_set_test_labels(dynamic_calibration_onhost_test onhost)
+    dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
+    dai_set_test_labels(dynamic_calibration_onhost_test onhost)
+
+    # AutoCalibration test
+    dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
+    dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
+endif()
 
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
 dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4)
@@ -675,9 +683,11 @@ dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
 dai_add_test(input_output_naming_test src/ondevice_tests/input_output_naming_test.cpp)
 dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
-# Resolutions test
-dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
-dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    # Resolutions test
+    dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
+    dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
+endif()
 
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
@@ -807,7 +817,7 @@ dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cp
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
 # ImageManip test
-if(DEPTHAI_FETCH_ARTIFACTS)
+if(DEPTHAI_FETCH_ARTIFACTS AND DEPTHAI_HAVE_OPENCV_SUPPORT)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
     target_compile_definitions(image_manip_node_test PRIVATE LENNA_PATH="${lenna_png}")
     dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
@@ -841,7 +851,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 endif()
 
 # Record & Replay tests
-if(DEPTHAI_FETCH_ARTIFACTS)
+if(DEPTHAI_FETCH_ARTIFACTS AND DEPTHAI_MERGED_TARGET)
     dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
     dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4) # TODO(Morato) add to CI once the test is stable
     target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recording_path}")
@@ -863,7 +873,7 @@ dai_set_test_labels(camera_fps_config_part_2_test ondevice rvc2_all rvc4 ci nore
 set_property(TEST camera_fps_config_part_2_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
-if(DEPTHAI_FETCH_ARTIFACTS)
+if(DEPTHAI_FETCH_ARTIFACTS AND DEPTHAI_MERGED_TARGET)
     dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
     dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
     target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
@@ -896,10 +906,6 @@ dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
 # Gate tests
 dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
 dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci noreplayci)
-
-# AutoCalibration test
-dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
-dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)

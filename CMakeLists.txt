@@ -453,7 +453,25 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     )
 endif()
 
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+set(TARGET_OPENCV_SOURCES
+    src/opencv/ImgFrame.cpp
+    src/opencv/ImgDetectionsT.cpp
+    src/opencv/SegmentationMask.cpp
+    src/opencv/DetectionNetwork.cpp
+    src/opencv/NeuralNetwork.cpp
+    src/opencv/EventsManager.cpp
+    src/opencv/Camera.cpp
+    src/opencv/matrixOps.cpp
+    src/pipeline/node/host/Display.cpp
+    src/pipeline/node/host/HostCamera.cpp
+    src/pipeline/node/host/Record.cpp
+    src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/ImageFilters.cpp
+    src/opencv/RecordReplay.cpp
+    src/opencv/HolisticRecordReplay.cpp
+)
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND DEPTHAI_MERGED_TARGET)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
@@ -463,17 +481,6 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/AutoCalibrationConfig.cpp
     )
 endif()
-
-set(TARGET_OPENCV_SOURCES
-    src/opencv/ImgFrame.cpp
-    src/pipeline/node/host/Display.cpp
-    src/pipeline/node/host/HostCamera.cpp
-    src/pipeline/node/host/Record.cpp
-    src/pipeline/node/host/Replay.cpp
-    src/pipeline/node/ImageFilters.cpp
-    src/opencv/RecordReplay.cpp
-    src/opencv/HolisticRecordReplay.cpp
-)
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 
@@ -652,7 +659,7 @@ if(NOT BUILD_SHARED_LIBS)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
 endif()
 
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link the dynamic calibration target
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
@@ -988,7 +995,7 @@ if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
     add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 endif()
 # Add dynamic calibration dll in build time
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND DEPTHAI_MERGED_TARGET)
     add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
 endif()
 
@@ -1009,12 +1016,21 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 
     # Link to OpenCV (publicly)
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_OPENCV_NAME} PRIVATE spdlog::spdlog)
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
     # Add public dependency to depthai::core library
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
+    target_include_directories(${TARGET_OPENCV_NAME}
+        PRIVATE
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/depthai>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
+            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
+            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+    )
 
     # Add to clangformat target
     if(COMMAND target_clangformat_setup)

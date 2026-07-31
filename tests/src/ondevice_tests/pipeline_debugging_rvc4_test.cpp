@@ -10,6 +10,8 @@
 
 #define VIDEO_DURATION_SECONDS 5
 
+#ifdef DEPTHAI_MERGED_TARGET
+
 TEST_CASE("Object Tracker Pipeline Debugging") {
     // Create pipeline
     dai::Pipeline pipeline;
@@ -77,6 +79,8 @@ TEST_CASE("Object Tracker Pipeline Debugging") {
         }
     }
 }
+
+#endif
 
 TEST_CASE("FPS check") {
     // Create pipeline

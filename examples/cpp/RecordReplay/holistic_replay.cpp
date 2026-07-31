@@ -3,7 +3,7 @@
 #include "depthai/depthai.hpp"
 
 #ifndef DEPTHAI_MERGED_TARGET
-    #error This example needs OpenCV support, which is not available on your system
+    #error This example needs DEPTHAI_MERGED_TARGET to be enabled
 #endif
 
 int main(int argc, char** argv) {

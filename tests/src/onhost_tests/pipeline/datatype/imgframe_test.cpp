@@ -1,5 +1,3 @@
-#include <opencv2/core/cvdef.h>
-
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <chrono>
@@ -12,6 +10,8 @@
 #include <vector>
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core/cvdef.h>
+
     #include <opencv2/core.hpp>
     #include <opencv2/imgproc.hpp>
 #endif

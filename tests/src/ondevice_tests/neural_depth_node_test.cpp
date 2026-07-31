@@ -101,6 +101,8 @@ void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
 }
 }  // namespace
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
 constexpr size_t FRAMES_TO_SAMPLE = 12;
 
 struct DepthStats {
@@ -237,6 +239,8 @@ TEST_CASE("NeuralDepth replay aligns with StereoDepth medians") {
         REQUIRE(neuralStats.median < (1.1 * stereoStats.median));
     }
 }
+
+#endif
 
 TEST_CASE("Test NeuralDepth node live-camera models") {
     const auto& testCase = GENERATE_REF(from_range(kLiveCameraTestCases));

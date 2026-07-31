@@ -7,6 +7,8 @@
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
 TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subnodes") {
     // Create pipeline
     dai::Pipeline p;
@@ -66,6 +68,8 @@ TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subnod
     REQUIRE(vppLeftGotCv.cols == rectifiedLeftGotCv.cols);
     REQUIRE(disparityGotCv.cols == disparityGotCv.cols);
 }
+
+#endif
 
 TEST_CASE("[NeuralAssistedStereo] Case without rectification") {
     // Create pipeline

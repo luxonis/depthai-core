@@ -100,6 +100,28 @@ class ImgDetectionsT : public Buffer {
      */
     std::optional<cv::Mat> getCvSegmentationMaskByClass(uint8_t semanticClass, cv::MatAllocator* allocator = nullptr);
 
+#else
+
+    template <typename... T>
+    struct dependent_false {
+        static constexpr bool value = false;
+    };
+    template <typename... T>
+    void setCvSegmentationMask(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+    template <typename... T>
+    void getCvSegmentationMask(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+    template <typename... T>
+    void getCvSegmentationMaskByIndex(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+    template <typename... T>
+    void getCvSegmentationMaskByClass(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
 #endif
 };
 

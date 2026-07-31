@@ -15,19 +15,17 @@ namespace node {
 
 namespace {
 
-bool usesImageFilters(const std::shared_ptr<Device>& device) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+bool usesImageFilters(const std::shared_ptr<Device>& device) {
     return device && device->getPlatform() == Platform::RVC2;
-#else
-    (void)device;
-    return false;
-#endif
 }
+#endif
 
 bool usesAutoCamera(const std::shared_ptr<const Device>& device) {
     return device && device->getPlatform() == Platform::RVC4;
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 ImageFiltersPresetMode profileToPresetMode(ToFConfig::Profile profile) {
     switch(profile) {
         case ToFConfig::Profile::LOW_RANGE:
@@ -40,6 +38,7 @@ ImageFiltersPresetMode profileToPresetMode(ToFConfig::Profile profile) {
 
     throw std::runtime_error("Unknown ToF profile");
 }
+#endif
 
 ToFConfig::Profile presetModeToProfile(ImageFiltersPresetMode presetMode) {
     switch(presetMode) {
@@ -193,8 +192,8 @@ std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ToFConf
     tofBase->build(boardSocket, profile, fps);
     buildAutoCamera();
 
-    const auto presetMode = profileToPresetMode(profile);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    const auto presetMode = profileToPresetMode(profile);
     if(usesImageFilters(getDevice()) && imageFilters) {
         (*imageFilters)->build(presetMode);
     }

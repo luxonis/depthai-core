@@ -2,13 +2,13 @@
 #include <chrono>
 #include <iostream>
 #include <iterator>
-#include <opencv2/imgproc.hpp>
 #include <stdexcept>
 
 // Libraries
 #include <catch2/catch_all.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <tuple>
 
 // Includes common necessary includes for development using depthai library
@@ -20,7 +20,13 @@
 #include "image_comparator.hpp"
 
 static const std::vector<std::pair<uint32_t, uint32_t>> bestResolutions = {
-    {320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000},
+    {320, 240},
+    {640, 480},
+    {960, 720},
+    {1280, 960},
+    {1440, 1080},
+    {1920, 1440},
+    {4000, 3000},
     // TODO(jakgra) this is probably sensor dependent.
     // add the max resolution with nice FOV
     // When we add support for getConnectedCameraFeatures() on rvc4 revisit this

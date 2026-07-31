@@ -2,7 +2,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <fstream>
 #include <iostream>
-#include <opencv2/opencv.hpp>
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/opencv.hpp>
+#endif
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -26,6 +29,8 @@ TEST_CASE("OLD_OUTPUT") {
         REQUIRE_NOTHROW(outputQueue->get<dai::ImgFrame>());
     }
 }
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 
 TEST_CASE("JPEG_ENCODING_LOSSLESS") {
     dai::Pipeline pipeline;
@@ -83,6 +88,8 @@ TEST_CASE("JPEG_ENCODING_LOSSLESS") {
     std::filesystem::remove("original");
     std::filesystem::remove("encoded");
 }
+
+#endif
 
 TEST_CASE("JPEG_ENCODING_LOSSY") {
     dai::Pipeline pipeline;

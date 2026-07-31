@@ -1,6 +1,5 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Gate.hpp"

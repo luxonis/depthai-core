@@ -97,6 +97,8 @@ std::vector<dai::StreamPacketDesc> getPackets(std::shared_ptr<dai::ImgFrame> fra
     return result;
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
 TEST_CASE("XLinkInHost - readData") {
     using namespace dai::node::internal;
 
@@ -234,3 +236,5 @@ TEST_CASE("XLinkInHost - readData") {
         REQUIRE_THROWS_AS(xlinkIn.readData(), std::runtime_error);
     }
 }
+
+#endif
