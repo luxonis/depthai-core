@@ -151,6 +151,11 @@ void MultiDeviceCalibration::setInitialGuess(const CoordinateFrame& from, const 
     pimpl->initialGuesses.push_back(edge);
 }
 
+void MultiDeviceCalibration::setDeviceCalibration(const std::string& deviceId, const CalibrationHandler& calibration) {
+    DAI_CHECK_V(!deviceId.empty(), "MultiDeviceCalibration device calibration needs a non-empty device id");
+    pimpl->calibrations.insert_or_assign(deviceId, calibration);
+}
+
 void MultiDeviceCalibration::setKnownDistance(const CoordinateFrame& from, const CoordinateFrame& to, float distance, LengthUnit unit) {
     DAI_CHECK_V(distance > 0.0f, "MultiDeviceCalibration known distance must be positive, got {}", distance);
     pimpl->knownDistances[{from, to}] = distance * getDistanceUnitScale(LengthUnit::METER, unit);
@@ -185,14 +190,16 @@ void MultiDeviceCalibration::run() {
                 "DynamicCalibration node for a single device.",
                 *deviceIds.begin());
 
-    // Per-device calibration is authoritative, so read it from the live devices
+    // Per-device calibration is authoritative. An explicitly supplied one (setDeviceCalibration, e.g. for a recorded
+    // session) takes precedence; otherwise it is read from the live device assigned to the pipeline.
     for(const auto& device : getParentPipeline().getAllAssignedDevices()) {
         if(deviceIds.count(device->getDeviceId()) == 0) continue;
         pimpl->calibrations.emplace(device->getDeviceId(), device->getCalibration());
     }
     for(const auto& deviceId : deviceIds) {
         DAI_CHECK_V(pimpl->calibrations.count(deviceId) == 1,
-                    "MultiDeviceCalibration was given cameras of device {}, but no such device is assigned to the pipeline",
+                    "MultiDeviceCalibration was given cameras of device {}, but neither is that device assigned to the pipeline nor was its "
+                    "calibration supplied with setDeviceCalibration() - required to replay a recorded session.",
                     deviceId);
     }
 

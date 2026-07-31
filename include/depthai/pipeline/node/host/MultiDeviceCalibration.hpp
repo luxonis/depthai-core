@@ -8,6 +8,7 @@
 
 #include "depthai/common/CoordinateFrame.hpp"
 #include "depthai/common/Extrinsics.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
@@ -95,6 +96,16 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
      * @param unit Unit of `distance`
      */
     void setKnownDistance(const CoordinateFrame& from, const CoordinateFrame& to, float distance, LengthUnit unit = LengthUnit::CENTIMETER);
+
+    /**
+     * Per-device factory calibration, supplied explicitly instead of reading it from a live device. Needed to run the
+     * node on recorded streams, where the devices are not assigned to the pipeline. When a device is both assigned and
+     * given here, the explicit calibration takes precedence.
+     *
+     * @param deviceId Device the calibration belongs to
+     * @param calibration Factory calibration of that device
+     */
+    void setDeviceCalibration(const std::string& deviceId, const CalibrationHandler& calibration);
 
     /**
      * Number of synchronized image sets to accumulate before estimating the rig. Defaults to 10.
