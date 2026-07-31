@@ -42,7 +42,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
     /**
      * Stereo depth backend selector. Currently used on RVC4 only.
      */
-    enum class StereoBackend : std::int32_t { EVA, DSP_GPU };
+    enum class StereoBackend : std::int32_t { EVA, DSP_GPU, DSP_RVC2 };
 
     /// Initial stereo config
     StereoDepthConfig initialConfig;

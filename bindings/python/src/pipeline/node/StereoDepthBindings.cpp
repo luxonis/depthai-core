@@ -77,7 +77,8 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def_readwrite("stereoBackend", &StereoDepthProperties::stereoBackend, DOC(dai, StereoDepthProperties, stereoBackend));
 
     stereoDepthStereoBackend.value("EVA", StereoDepthProperties::StereoBackend::EVA)
-        .value("DSP_GPU", StereoDepthProperties::StereoBackend::DSP_GPU);
+        .value("DSP_GPU", StereoDepthProperties::StereoBackend::DSP_GPU)
+        .value("DSP_RVC2", StereoDepthProperties::StereoBackend::DSP_RVC2);
 
     stereoDepthPresetMode.value("FAST_ACCURACY", StereoDepth::PresetMode::FAST_ACCURACY)
         .value("FAST_DENSITY", StereoDepth::PresetMode::FAST_DENSITY)

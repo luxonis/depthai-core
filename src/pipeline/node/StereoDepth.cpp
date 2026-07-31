@@ -213,6 +213,12 @@ void StereoDepth::setStereoBackend(Properties::StereoBackend backend) {
         // chain does the filtering, so keep the same median on by default.
         initialConfig->setMedianFilter(MedianFilter::KERNEL_3x3);
         properties.initialConfig = *initialConfig;
+    } else if(backend == Properties::StereoBackend::DSP_RVC2) {
+        initialConfig->costMatching.disparityWidth = StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
+        initialConfig->setExtendedDisparity(false);
+        initialConfig->setSubpixel(false);
+        initialConfig->setMedianFilter(MedianFilter::MEDIAN_OFF);
+        properties.initialConfig = *initialConfig;
     }
 }
 
