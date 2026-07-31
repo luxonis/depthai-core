@@ -92,6 +92,9 @@ class MultiDeviceCalibration::Impl {
     size_t sampleCount = 10;
     bool continuous = false;
     DynamicCalibrationControl::PerformanceMode performanceMode = DynamicCalibrationControl::PerformanceMode::DEFAULT;
+    MultiDeviceCalibration::Method method = MultiDeviceCalibration::Method::DYNAMIC_CALIBRATION;
+    /// Synchronized image sets accumulated for the FEATURE_TRACKS method, per registered camera.
+    std::vector<std::vector<std::shared_ptr<ImgFrame>>> trackFrames;
 
     /// Frame the whole rig is expressed in, i.e. the first registered camera.
     CoordinateFrame baseFrame;
@@ -121,10 +124,8 @@ class MultiDeviceCalibration::Impl {
         auto edges = initialGuesses;
         if(yawDegrees != 0.0f) {
             const float yaw = yawDegrees * 0.017453292519943295f;  // pi / 180
-            const Transform rotate = {{std::cos(yaw), 0.0f, std::sin(yaw), 0.0f},
-                                      {0.0f, 1.0f, 0.0f, 0.0f},
-                                      {-std::sin(yaw), 0.0f, std::cos(yaw), 0.0f},
-                                      {0.0f, 0.0f, 0.0f, 1.0f}};
+            const Transform rotate = {
+                {std::cos(yaw), 0.0f, std::sin(yaw), 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {-std::sin(yaw), 0.0f, std::cos(yaw), 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
             for(auto& edge : edges) {
                 if(edge.from.deviceId != deviceId) continue;
                 const auto current = matrix::toVecMatrix4x4(edge.transform.getTransformationMatrix(false, LengthUnit::CENTIMETER));
@@ -244,7 +245,678 @@ void MultiDeviceCalibration::setGuessYawSweep(const std::vector<float>& offsetsD
     pimpl->guessYawOffsets = offsetsDegrees.empty() ? std::vector<float>{0.0f} : offsetsDegrees;
 }
 
+void MultiDeviceCalibration::setMethod(Method method) {
+    pimpl->method = method;
+}
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
+}  // namespace node
+}  // namespace dai
+
+    #include <opencv2/calib3d.hpp>
+    #include <opencv2/core.hpp>
+    #include <opencv2/features2d.hpp>
+    #include <opencv2/imgproc.hpp>
+
+namespace dai {
+namespace node {
+
+namespace {
+
+// Target-free relative-pose estimation ported from luxonis/multicamera_calibration. All linear algebra is done with
+// double precision cv::Mat / cv::Vec to mirror the reference implementation closely.
+
+/// Matching thresholds of the feature-tracks method.
+struct FeatureConfig {
+    double ratioTest = 0.8;
+    double stereoMaxReprojErrorPx = 1.0;
+    double crossRansacReprojErrorPx = 2.0;
+};
+
+/// Intrinsics, distortion and metric stereo pose of one device.
+struct StereoGeometry {
+    cv::Mat kLeft, distLeft, kRight, distRight;  // CV_64F
+    cv::Mat leftFromRight;                       // 4x4 CV_64F, meters (pose of the right camera in the left frame)
+};
+
+/// Metric relative pose of one device pair and the quality metrics of the estimate.
+struct TracksPoseResult {
+    bool ok = false;
+    cv::Mat refFromOther;  // 4x4 CV_64F, meters: pose of the other device's left camera in the reference left frame
+    int numTracks = 0;
+    int numInliers = 0;
+    double reprojRmsePx = 0.0;
+    double scaleRmseM = 0.0;
+    std::string error;
+};
+
+cv::Mat toMat33(const std::vector<std::vector<float>>& values) {
+    cv::Mat matrix(3, 3, CV_64F);
+    for(int i = 0; i < 3; ++i)
+        for(int j = 0; j < 3; ++j) matrix.at<double>(i, j) = static_cast<double>(values[i][j]);
+    return matrix;
+}
+
+cv::Mat orthonormalizeRotation(const cv::Mat& rotation) {
+    cv::Mat u, w, vt;
+    cv::SVD::compute(rotation, w, u, vt);
+    cv::Mat result = u * vt;
+    if(cv::determinant(result) < 0) {
+        u.col(2) *= -1;
+        result = u * vt;
+    }
+    return result;
+}
+
+double meanFocal(const cv::Mat& k) {
+    return 0.5 * (k.at<double>(0, 0) + k.at<double>(1, 1));
+}
+
+StereoGeometry deviceGeometry(const CalibrationHandler& calibration, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket, int width, int height) {
+    StereoGeometry geometry;
+    geometry.kLeft = toMat33(calibration.getCameraIntrinsics(leftSocket, width, height));
+    geometry.kRight = toMat33(calibration.getCameraIntrinsics(rightSocket, width, height));
+
+    const auto distL = calibration.getDistortionCoefficients(leftSocket);
+    const auto distR = calibration.getDistortionCoefficients(rightSocket);
+    geometry.distLeft = cv::Mat(1, std::min<int>(8, static_cast<int>(distL.size())), CV_64F);
+    geometry.distRight = cv::Mat(1, std::min<int>(8, static_cast<int>(distR.size())), CV_64F);
+    for(int i = 0; i < geometry.distLeft.cols; ++i) geometry.distLeft.at<double>(0, i) = static_cast<double>(distL[i]);
+    for(int i = 0; i < geometry.distRight.cols; ++i) geometry.distRight.at<double>(0, i) = static_cast<double>(distR[i]);
+
+    const auto rotation = calibration.getCameraRotationMatrix(leftSocket, rightSocket);
+    const auto translation = calibration.getCameraTranslationVector(leftSocket, rightSocket, false, LengthUnit::METER);
+    cv::Mat rightFromLeft = cv::Mat::eye(4, 4, CV_64F);
+    orthonormalizeRotation(toMat33(rotation)).copyTo(rightFromLeft(cv::Rect(0, 0, 3, 3)));
+    for(int i = 0; i < 3; ++i) rightFromLeft.at<double>(i, 3) = static_cast<double>(translation[i]);
+    geometry.leftFromRight = rightFromLeft.inv();
+    return geometry;
+}
+
+cv::Mat toGray(const cv::Mat& frame) {
+    cv::Mat gray = frame;
+    if(gray.channels() == 3)
+        cv::cvtColor(gray, gray, cv::COLOR_BGR2GRAY);
+    else if(gray.channels() == 1 && gray.dims == 2)
+        gray = gray;  // already single channel
+    if(gray.depth() != CV_8U) gray.convertTo(gray, CV_8U);
+    return gray;
+}
+
+std::vector<cv::Point2d> keypointsToPoints(const std::vector<cv::KeyPoint>& keypoints, const std::vector<int>& indices) {
+    std::vector<cv::Point2d> points;
+    points.reserve(indices.size());
+    for(const int index : indices) points.emplace_back(keypoints[index].pt.x, keypoints[index].pt.y);
+    return points;
+}
+
+/// Ratio-tested, cross-checked mutual nearest neighbors between two descriptor sets (queryIdx -> trainIdx).
+std::map<int, int> ratioCrossMatches(const cv::Mat& descriptorsA, const cv::Mat& descriptorsB, double ratio) {
+    if(descriptorsA.empty() || descriptorsB.empty()) return {};
+    cv::BFMatcher matcher(cv::NORM_L2);
+    std::vector<std::vector<cv::DMatch>> forward, reverse;
+    matcher.knnMatch(descriptorsA, descriptorsB, forward, 2);
+    matcher.knnMatch(descriptorsB, descriptorsA, reverse, 2);
+
+    const auto filterKnn = [ratio](const std::vector<std::vector<cv::DMatch>>& matches) {
+        std::map<int, std::pair<int, float>> good;
+        for(const auto& pair : matches) {
+            if(pair.size() < 2) continue;
+            if(static_cast<double>(pair[0].distance) < ratio * static_cast<double>(pair[1].distance)) {
+                const auto existing = good.find(pair[0].queryIdx);
+                if(existing == good.end() || pair[0].distance < existing->second.second) good[pair[0].queryIdx] = {pair[0].trainIdx, pair[0].distance};
+            }
+        }
+        return good;
+    };
+    const auto forwardGood = filterKnn(forward);
+    const auto reverseGood = filterKnn(reverse);
+    std::map<int, int> crossChecked;
+    for(const auto& [queryIndex, trained] : forwardGood) {
+        const auto reverseMatch = reverseGood.find(trained.first);
+        if(reverseMatch != reverseGood.end() && reverseMatch->second.first == queryIndex) crossChecked[queryIndex] = trained.first;
+    }
+    return crossChecked;
+}
+
+std::vector<cv::Point2d> normalizeUndistort(const std::vector<cv::Point2d>& pointsPx, const cv::Mat& intrinsics) {
+    if(pointsPx.empty()) return {};
+    std::vector<cv::Point2d> normalized;
+    cv::undistortPoints(pointsPx, normalized, intrinsics, cv::noArray());
+    return normalized;
+}
+
+/// Triangulate corresponding pixels of two cameras of known relative pose, returning 3D points in camera A's frame.
+void triangulate(const std::vector<cv::Point2d>& pointsAPx,
+                 const std::vector<cv::Point2d>& pointsBPx,
+                 const cv::Mat& intrinsicsA,
+                 const cv::Mat& intrinsicsB,
+                 const cv::Mat& transformAFromB,
+                 std::vector<cv::Point3d>& pointsA,
+                 std::vector<cv::Point3d>& pointsB,
+                 std::vector<char>& positiveDepth) {
+    const size_t count = pointsAPx.size();
+    pointsA.assign(count, cv::Point3d(std::nan(""), std::nan(""), std::nan("")));
+    pointsB.assign(count, cv::Point3d(std::nan(""), std::nan(""), std::nan("")));
+    positiveDepth.assign(count, 0);
+    if(count == 0) return;
+
+    const auto normalizedA = normalizeUndistort(pointsAPx, intrinsicsA);
+    const auto normalizedB = normalizeUndistort(pointsBPx, intrinsicsB);
+    const cv::Mat projectionA = cv::Mat::eye(3, 4, CV_64F);
+    const cv::Mat transformBFromA = transformAFromB.inv();
+    const cv::Mat projectionB = transformBFromA(cv::Rect(0, 0, 4, 3)).clone();
+
+    cv::Mat matA(2, static_cast<int>(count), CV_64F), matB(2, static_cast<int>(count), CV_64F);
+    for(size_t i = 0; i < count; ++i) {
+        matA.at<double>(0, i) = normalizedA[i].x;
+        matA.at<double>(1, i) = normalizedA[i].y;
+        matB.at<double>(0, i) = normalizedB[i].x;
+        matB.at<double>(1, i) = normalizedB[i].y;
+    }
+    cv::Mat points4d;
+    cv::triangulatePoints(projectionA, projectionB, matA, matB, points4d);
+
+    const cv::Mat rotationBFromA = transformBFromA(cv::Rect(0, 0, 3, 3));
+    for(size_t i = 0; i < count; ++i) {
+        const double w = points4d.at<double>(3, static_cast<int>(i));
+        if(std::abs(w) <= 1e-8) continue;
+        const cv::Point3d pa(
+            points4d.at<double>(0, static_cast<int>(i)) / w, points4d.at<double>(1, static_cast<int>(i)) / w, points4d.at<double>(2, static_cast<int>(i)) / w);
+        cv::Mat pbMat = rotationBFromA * (cv::Mat_<double>(3, 1) << pa.x, pa.y, pa.z);
+        const cv::Point3d pb(pbMat.at<double>(0) + transformBFromA.at<double>(0, 3),
+                             pbMat.at<double>(1) + transformBFromA.at<double>(1, 3),
+                             pbMat.at<double>(2) + transformBFromA.at<double>(2, 3));
+        pointsA[i] = pa;
+        pointsB[i] = pb;
+        positiveDepth[i] = (pa.z > 0.0 && pb.z > 0.0) ? 1 : 0;
+    }
+}
+
+/// Pinhole projection of already-undistorted camera points (no distortion), NaN where the point is behind the camera.
+cv::Point2d projectPoint(const cv::Point3d& point, const cv::Mat& intrinsics) {
+    if(!(point.z > 1e-8) || !std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z)) return {std::nan(""), std::nan("")};
+    return {intrinsics.at<double>(0, 0) * point.x / point.z + intrinsics.at<double>(0, 2),
+            intrinsics.at<double>(1, 1) * point.y / point.z + intrinsics.at<double>(1, 2)};
+}
+
+/// Keep only stereo matches whose triangulated point reprojects within tolerance in both views.
+std::map<int, int> filterMatchesByReprojection(const std::vector<cv::KeyPoint>& keypointsA,
+                                               const std::vector<cv::KeyPoint>& keypointsB,
+                                               const std::map<int, int>& matches,
+                                               const cv::Mat& intrinsicsA,
+                                               const cv::Mat& intrinsicsB,
+                                               const cv::Mat& transformAFromB,
+                                               double maxReprojectionErrorPx) {
+    if(matches.empty()) return {};
+    std::vector<int> queryIndices, trainIndices;
+    for(const auto& [query, train] : matches) {
+        queryIndices.push_back(query);
+        trainIndices.push_back(train);
+    }
+    const auto pointsAPx = keypointsToPoints(keypointsA, queryIndices);
+    const auto pointsBPx = keypointsToPoints(keypointsB, trainIndices);
+
+    std::vector<cv::Point3d> pointsA, pointsB;
+    std::vector<char> positiveDepth;
+    triangulate(pointsAPx, pointsBPx, intrinsicsA, intrinsicsB, transformAFromB, pointsA, pointsB, positiveDepth);
+
+    std::map<int, int> filtered;
+    for(size_t i = 0; i < queryIndices.size(); ++i) {
+        if(!positiveDepth[i]) continue;
+        const auto projectedA = projectPoint(pointsA[i], intrinsicsA);
+        const auto projectedB = projectPoint(pointsB[i], intrinsicsB);
+        if(!std::isfinite(projectedA.x) || !std::isfinite(projectedB.x)) continue;
+        const double errorA = cv::norm(projectedA - pointsAPx[i]);
+        const double errorB = cv::norm(projectedB - pointsBPx[i]);
+        if(errorA <= maxReprojectionErrorPx && errorB <= maxReprojectionErrorPx) filtered[queryIndices[i]] = trainIndices[i];
+    }
+    return filtered;
+}
+
+/// Keep only cross-device matches consistent with a fundamental matrix estimated by RANSAC.
+std::map<int, int> filterMatchesByFundamental(const std::vector<cv::KeyPoint>& keypointsA,
+                                              const std::vector<cv::KeyPoint>& keypointsB,
+                                              const std::map<int, int>& matches,
+                                              double ransacReprojErrorPx) {
+    if(matches.size() < 8) return matches;
+    std::vector<int> queryIndices, trainIndices;
+    std::vector<cv::Point2d> pointsA, pointsB;
+    for(const auto& [query, train] : matches) {
+        queryIndices.push_back(query);
+        trainIndices.push_back(train);
+        pointsA.emplace_back(keypointsA[query].pt.x, keypointsA[query].pt.y);
+        pointsB.emplace_back(keypointsB[train].pt.x, keypointsB[train].pt.y);
+    }
+    cv::Mat mask;
+    cv::Mat fundamental;
+    for(const int method : {static_cast<int>(cv::USAC_MAGSAC), static_cast<int>(cv::FM_RANSAC)}) {
+        try {
+            fundamental = cv::findFundamentalMat(pointsA, pointsB, method, ransacReprojErrorPx, 0.999, mask);
+        } catch(const cv::Exception&) {
+            fundamental = cv::Mat();
+            mask = cv::Mat();
+        }
+        if(!fundamental.empty() && !mask.empty()) break;
+    }
+    if(fundamental.empty() || mask.empty()) return {};
+
+    std::map<int, int> filtered;
+    for(size_t i = 0; i < queryIndices.size(); ++i)
+        if(mask.at<uchar>(static_cast<int>(i))) filtered[queryIndices[i]] = trainIndices[i];
+    return filtered;
+}
+
+double medianOf(std::vector<double> values) {
+    if(values.empty()) return 0.0;
+    std::sort(values.begin(), values.end());
+    const size_t mid = values.size() / 2;
+    return values.size() % 2 == 0 ? 0.5 * (values[mid - 1] + values[mid]) : values[mid];
+}
+
+/// Robust scalar that scales the unit translation so the two metric point clouds align along it (median + Huber).
+bool robustScalarScaleFit(const std::vector<cv::Point3d>& pointsCam1,
+                          const std::vector<cv::Point3d>& pointsCam3,
+                          const cv::Matx33d& rotation1From3,
+                          const cv::Vec3d& translationUnit,
+                          double& scaleOut,
+                          double& rmseOut) {
+    cv::Vec3d unit = translationUnit;
+    const double unitNorm = cv::norm(unit);
+    if(unitNorm < 1e-12) return false;
+    unit /= unitNorm;
+
+    std::vector<double> perTrackScales;
+    std::vector<cv::Vec3d> residualVectors;
+    perTrackScales.reserve(pointsCam1.size());
+    residualVectors.reserve(pointsCam1.size());
+    for(size_t i = 0; i < pointsCam1.size(); ++i) {
+        const cv::Vec3d p1(pointsCam1[i].x, pointsCam1[i].y, pointsCam1[i].z);
+        const cv::Vec3d p3(pointsCam3[i].x, pointsCam3[i].y, pointsCam3[i].z);
+        const cv::Vec3d residual = p1 - rotation1From3 * p3;
+        if(!std::isfinite(residual[0]) || !std::isfinite(residual[1]) || !std::isfinite(residual[2])) continue;
+        residualVectors.push_back(residual);
+        perTrackScales.push_back(residual.dot(unit));
+    }
+    if(perTrackScales.size() < 4) return false;
+
+    double scale = medianOf(perTrackScales);
+    std::vector<double> deviations;
+    deviations.reserve(perTrackScales.size());
+    for(const double value : perTrackScales) deviations.push_back(std::abs(value - scale));
+    const double mad = medianOf(deviations);
+    const double sigma = std::max(1.4826 * mad, 1e-4);
+
+    std::vector<size_t> inliers;
+    for(size_t i = 0; i < perTrackScales.size(); ++i)
+        if(std::abs(perTrackScales[i] - scale) <= 3.0 * sigma) inliers.push_back(i);
+    if(inliers.size() < 4) {
+        inliers.clear();
+        for(size_t i = 0; i < perTrackScales.size(); ++i) inliers.push_back(i);
+    }
+
+    const double huberScale = std::max(1.345 * sigma, 1e-4);
+    for(int iteration = 0; iteration < 5; ++iteration) {
+        double weightSum = 0.0, weightedValue = 0.0;
+        for(const size_t index : inliers) {
+            const double residual = perTrackScales[index] - scale;
+            const double weight = std::abs(residual) > huberScale ? huberScale / std::abs(residual) : 1.0;
+            weightSum += weight;
+            weightedValue += weight * perTrackScales[index];
+        }
+        if(weightSum > 0.0) scale = weightedValue / weightSum;
+    }
+
+    double squaredSum = 0.0;
+    for(const size_t index : inliers) {
+        const cv::Vec3d pointResidual = residualVectors[index] - scale * unit;
+        squaredSum += pointResidual.dot(pointResidual);
+    }
+    scaleOut = scale;
+    rmseOut = inliers.empty() ? 0.0 : std::sqrt(squaredSum / static_cast<double>(inliers.size()));
+    return true;
+}
+
+cv::Vec3d normalize(const cv::Vec3d& vector) {
+    const double norm = cv::norm(vector);
+    return norm < 1e-12 ? vector : vector / norm;
+}
+
+/// 4N reprojection residuals of the two-view pose over triangulated points; behind-camera points get a large penalty.
+std::vector<double> poseReprojectionResiduals(const cv::Matx33d& rotation3From1,
+                                              const cv::Vec3d& translation3From1,
+                                              const std::vector<cv::Point2d>& points1Px,
+                                              const std::vector<cv::Point2d>& points3Px,
+                                              const std::vector<cv::Point2d>& points1Norm,
+                                              const std::vector<cv::Point2d>& points3Norm,
+                                              const cv::Mat& intrinsics1,
+                                              const cv::Mat& intrinsics3) {
+    const size_t count = points1Px.size();
+    std::vector<double> residuals(4 * count, 1e3);
+
+    cv::Mat transform3From1 = cv::Mat::eye(4, 4, CV_64F);
+    cv::Mat(rotation3From1).copyTo(transform3From1(cv::Rect(0, 0, 3, 3)));
+    for(int i = 0; i < 3; ++i) transform3From1.at<double>(i, 3) = translation3From1[i];
+
+    std::vector<cv::Point3d> pointsCam1, pointsCam3;
+    std::vector<char> positiveDepth;
+    triangulate(points1Norm, points3Norm, cv::Mat::eye(3, 3, CV_64F), cv::Mat::eye(3, 3, CV_64F), transform3From1.inv(), pointsCam1, pointsCam3, positiveDepth);
+
+    for(size_t i = 0; i < count; ++i) {
+        if(!positiveDepth[i]) continue;
+        const auto projected1 = projectPoint(pointsCam1[i], intrinsics1);
+        const auto projected3 = projectPoint(pointsCam3[i], intrinsics3);
+        if(!std::isfinite(projected1.x) || !std::isfinite(projected3.x)) continue;
+        residuals[4 * i + 0] = projected1.x - points1Px[i].x;
+        residuals[4 * i + 1] = projected1.y - points1Px[i].y;
+        residuals[4 * i + 2] = projected3.x - points3Px[i].x;
+        residuals[4 * i + 3] = projected3.y - points3Px[i].y;
+    }
+    return residuals;
+}
+
+double rootMeanSquare(const std::vector<double>& residuals) {
+    if(residuals.empty()) return 0.0;
+    double sum = 0.0;
+    for(const double value : residuals) sum += value * value;
+    return std::sqrt(sum / static_cast<double>(residuals.size()));
+}
+
+/// Levenberg-Marquardt refinement of the two-view pose (rvec + unit translation) under a Huber loss.
+void refinePose(cv::Matx33d& rotation3From1,
+                cv::Vec3d& translation3From1,
+                const std::vector<cv::Point2d>& points1Px,
+                const std::vector<cv::Point2d>& points3Px,
+                const std::vector<cv::Point2d>& points1Norm,
+                const std::vector<cv::Point2d>& points3Norm,
+                const cv::Mat& intrinsics1,
+                const cv::Mat& intrinsics3) {
+    cv::Mat rvec;
+    cv::Rodrigues(cv::Mat(rotation3From1), rvec);
+    cv::Vec6d params;
+    for(int i = 0; i < 3; ++i) params[i] = rvec.at<double>(i);
+    const cv::Vec3d unit = normalize(translation3From1);
+    for(int i = 0; i < 3; ++i) params[3 + i] = unit[i];
+
+    const auto residualsOf = [&](const cv::Vec6d& p) {
+        cv::Mat r;
+        const cv::Mat rotationVector = (cv::Mat_<double>(3, 1) << p[0], p[1], p[2]);
+        cv::Rodrigues(rotationVector, r);
+        cv::Matx33d rotation;
+        for(int i = 0; i < 3; ++i)
+            for(int j = 0; j < 3; ++j) rotation(i, j) = r.at<double>(i, j);
+        const cv::Vec3d translation = normalize(cv::Vec3d(p[3], p[4], p[5]));
+        return poseReprojectionResiduals(rotation, translation, points1Px, points3Px, points1Norm, points3Norm, intrinsics1, intrinsics3);
+    };
+
+    const double fScale = 1.0;
+    const auto huberCost = [fScale](const std::vector<double>& residuals) {
+        double cost = 0.0;
+        for(const double value : residuals) {
+            const double absValue = std::abs(value);
+            cost += absValue <= fScale ? 0.5 * value * value : fScale * (absValue - 0.5 * fScale);
+        }
+        return cost;
+    };
+
+    std::vector<double> residuals = residualsOf(params);
+    double cost = huberCost(residuals);
+    double lambda = 1e-3;
+    const double epsilon = 1e-6;
+
+    for(int iteration = 0; iteration < 30; ++iteration) {
+        const size_t residualCount = residuals.size();
+        cv::Mat jacobian(static_cast<int>(residualCount), 6, CV_64F);
+        for(int column = 0; column < 6; ++column) {
+            cv::Vec6d plus = params, minus = params;
+            plus[column] += epsilon;
+            minus[column] -= epsilon;
+            const auto residualsPlus = residualsOf(plus);
+            const auto residualsMinus = residualsOf(minus);
+            for(size_t row = 0; row < residualCount; ++row)
+                jacobian.at<double>(static_cast<int>(row), column) = (residualsPlus[row] - residualsMinus[row]) / (2.0 * epsilon);
+        }
+
+        cv::Matx66d hessian = cv::Matx66d::zeros();
+        cv::Vec6d gradient = cv::Vec6d::all(0.0);
+        for(size_t row = 0; row < residualCount; ++row) {
+            const double absResidual = std::abs(residuals[row]);
+            const double weight = absResidual <= fScale ? 1.0 : fScale / absResidual;  // squared IRLS weight
+            for(int i = 0; i < 6; ++i) {
+                const double ji = jacobian.at<double>(static_cast<int>(row), i);
+                gradient[i] += weight * ji * residuals[row];
+                for(int j = 0; j < 6; ++j) hessian(i, j) += weight * ji * jacobian.at<double>(static_cast<int>(row), j);
+            }
+        }
+
+        bool stepAccepted = false;
+        for(int attempt = 0; attempt < 8 && !stepAccepted; ++attempt) {
+            cv::Matx66d damped = hessian;
+            for(int i = 0; i < 6; ++i) damped(i, i) += lambda * hessian(i, i);
+            cv::Mat deltaMat;
+            if(!cv::solve(cv::Mat(damped), cv::Mat(-gradient), deltaMat, cv::DECOMP_SVD)) {
+                lambda *= 10.0;
+                continue;
+            }
+            cv::Vec6d delta;
+            for(int i = 0; i < 6; ++i) delta[i] = deltaMat.at<double>(i);
+            const cv::Vec6d candidate = params + delta;
+            const auto candidateResiduals = residualsOf(candidate);
+            const double candidateCost = huberCost(candidateResiduals);
+            if(candidateCost < cost) {
+                params = candidate;
+                residuals = candidateResiduals;
+                cost = candidateCost;
+                lambda = std::max(lambda * 0.5, 1e-9);
+                stepAccepted = true;
+            } else {
+                lambda *= 4.0;
+            }
+        }
+        if(!stepAccepted) break;
+    }
+
+    cv::Mat refined;
+    const cv::Mat refinedVector = (cv::Mat_<double>(3, 1) << params[0], params[1], params[2]);
+    cv::Rodrigues(refinedVector, refined);
+    for(int i = 0; i < 3; ++i)
+        for(int j = 0; j < 3; ++j) rotation3From1(i, j) = refined.at<double>(i, j);
+    translation3From1 = normalize(cv::Vec3d(params[3], params[4], params[5]));
+}
+
+/// Accumulated four-view tracks and reference-camera correspondences across all captured frames.
+struct TrackBundle {
+    std::vector<cv::Point2d> points1Px, points3Px;            // reference<->other (CAM_B) matches
+    std::vector<cv::Point2d> track1, track2, track3, track4;  // four-view track pixels per camera
+};
+
+/// Detect SIFT features, build stereo + cross-device matches and accumulate four-view tracks over all frames.
+TrackBundle detectTracks(const std::vector<cv::Mat>& refLeft,
+                         const std::vector<cv::Mat>& refRight,
+                         const std::vector<cv::Mat>& otherLeft,
+                         const std::vector<cv::Mat>& otherRight,
+                         const StereoGeometry& refGeometry,
+                         const StereoGeometry& otherGeometry,
+                         const FeatureConfig& config) {
+    TrackBundle bundle;
+    auto sift = cv::SIFT::create();
+    const size_t frames = std::min({refLeft.size(), refRight.size(), otherLeft.size(), otherRight.size()});
+
+    for(size_t frame = 0; frame < frames; ++frame) {
+        cv::Mat image1, image2, image3, image4;
+        cv::undistort(toGray(refLeft[frame]), image1, refGeometry.kLeft, refGeometry.distLeft);
+        cv::undistort(toGray(refRight[frame]), image2, refGeometry.kRight, refGeometry.distRight);
+        cv::undistort(toGray(otherLeft[frame]), image3, otherGeometry.kLeft, otherGeometry.distLeft);
+        cv::undistort(toGray(otherRight[frame]), image4, otherGeometry.kRight, otherGeometry.distRight);
+
+        std::vector<cv::KeyPoint> keypoints1, keypoints2, keypoints3, keypoints4;
+        cv::Mat descriptors1, descriptors2, descriptors3, descriptors4;
+        sift->detectAndCompute(image1, cv::noArray(), keypoints1, descriptors1);
+        sift->detectAndCompute(image2, cv::noArray(), keypoints2, descriptors2);
+        sift->detectAndCompute(image3, cv::noArray(), keypoints3, descriptors3);
+        sift->detectAndCompute(image4, cv::noArray(), keypoints4, descriptors4);
+
+        const auto matches12 = filterMatchesByReprojection(keypoints1,
+                                                           keypoints2,
+                                                           ratioCrossMatches(descriptors1, descriptors2, config.ratioTest),
+                                                           refGeometry.kLeft,
+                                                           refGeometry.kRight,
+                                                           refGeometry.leftFromRight,
+                                                           config.stereoMaxReprojErrorPx);
+        const auto matches13 = filterMatchesByFundamental(
+            keypoints1, keypoints3, ratioCrossMatches(descriptors1, descriptors3, config.ratioTest), config.crossRansacReprojErrorPx);
+        const auto matches24 = filterMatchesByFundamental(
+            keypoints2, keypoints4, ratioCrossMatches(descriptors2, descriptors4, config.ratioTest), config.crossRansacReprojErrorPx);
+        const auto matches34 = filterMatchesByReprojection(keypoints3,
+                                                           keypoints4,
+                                                           ratioCrossMatches(descriptors3, descriptors4, config.ratioTest),
+                                                           otherGeometry.kLeft,
+                                                           otherGeometry.kRight,
+                                                           otherGeometry.leftFromRight,
+                                                           config.stereoMaxReprojErrorPx);
+
+        for(const auto& [index1, index3] : matches13) {
+            bundle.points1Px.emplace_back(keypoints1[index1].pt.x, keypoints1[index1].pt.y);
+            bundle.points3Px.emplace_back(keypoints3[index3].pt.x, keypoints3[index3].pt.y);
+        }
+
+        std::set<std::tuple<int, int, int, int>> usedTracks;
+        for(const auto& [index1, index2] : matches12) {
+            const auto matched13 = matches13.find(index1);
+            if(matched13 == matches13.end()) continue;
+            const int index3 = matched13->second;
+            const auto matched24 = matches24.find(index2);
+            const auto matched34 = matches34.find(index3);
+            if(matched24 == matches24.end() || matched34 == matches34.end() || matched24->second != matched34->second) continue;
+            const int index4 = matched24->second;
+            const auto track = std::make_tuple(index1, index2, index3, index4);
+            if(!usedTracks.insert(track).second) continue;
+            bundle.track1.emplace_back(keypoints1[index1].pt.x, keypoints1[index1].pt.y);
+            bundle.track2.emplace_back(keypoints2[index2].pt.x, keypoints2[index2].pt.y);
+            bundle.track3.emplace_back(keypoints3[index3].pt.x, keypoints3[index3].pt.y);
+            bundle.track4.emplace_back(keypoints4[index4].pt.x, keypoints4[index4].pt.y);
+        }
+    }
+    return bundle;
+}
+
+template <typename T>
+std::vector<T> selectByMask(const std::vector<T>& values, const cv::Mat& mask) {
+    std::vector<T> selected;
+    for(size_t i = 0; i < values.size(); ++i)
+        if(mask.at<uchar>(static_cast<int>(i))) selected.push_back(values[i]);
+    return selected;
+}
+
+/// Estimate the metric pose of the other device's reference camera in the reference device's frame from four-view
+/// tracks: essential matrix (rotation + translation direction) refined by reprojection, then a robust metric scale.
+TracksPoseResult computeRelativePose(const std::vector<cv::Mat>& refLeft,
+                                     const std::vector<cv::Mat>& refRight,
+                                     const std::vector<cv::Mat>& otherLeft,
+                                     const std::vector<cv::Mat>& otherRight,
+                                     const StereoGeometry& refGeometry,
+                                     const StereoGeometry& otherGeometry,
+                                     const FeatureConfig& config) {
+    TracksPoseResult result;
+    const TrackBundle bundle = detectTracks(refLeft, refRight, otherLeft, otherRight, refGeometry, otherGeometry, config);
+    if(bundle.points1Px.size() < 8) {
+        result.error = fmt::format("only {} reference<->other correspondences, need at least 8", bundle.points1Px.size());
+        return result;
+    }
+    if(bundle.track1.size() < 4) {
+        result.error = fmt::format("only {} four-view tracks, need at least 4", bundle.track1.size());
+        return result;
+    }
+
+    std::vector<cv::Point2d> points1Px = bundle.points1Px;
+    std::vector<cv::Point2d> points3Px = bundle.points3Px;
+    auto points1Norm = normalizeUndistort(points1Px, refGeometry.kLeft);
+    auto points3Norm = normalizeUndistort(points3Px, otherGeometry.kLeft);
+
+    const double threshold = 1.0 / (0.5 * (meanFocal(refGeometry.kLeft) + meanFocal(otherGeometry.kLeft)));
+    cv::Mat essentialMask;
+    const cv::Mat essential = cv::findEssentialMat(points1Norm, points3Norm, cv::Mat::eye(3, 3, CV_64F), cv::RANSAC, 0.999, threshold, essentialMask);
+    if(essential.empty() || essentialMask.empty()) {
+        result.error = "essential matrix estimation failed";
+        return result;
+    }
+    points1Px = selectByMask(points1Px, essentialMask);
+    points3Px = selectByMask(points3Px, essentialMask);
+    points1Norm = selectByMask(points1Norm, essentialMask);
+    points3Norm = selectByMask(points3Norm, essentialMask);
+    if(points1Px.size() < 8) {
+        result.error = fmt::format("only {} essential-matrix inliers, need at least 8", points1Px.size());
+        return result;
+    }
+
+    cv::Mat rotationMat, translationMat, poseMask = cv::Mat::ones(static_cast<int>(points1Norm.size()), 1, CV_8U) * 255;
+    cv::recoverPose(essential, points1Norm, points3Norm, cv::Mat::eye(3, 3, CV_64F), rotationMat, translationMat, poseMask);
+    points1Px = selectByMask(points1Px, poseMask);
+    points3Px = selectByMask(points3Px, poseMask);
+    points1Norm = selectByMask(points1Norm, poseMask);
+    points3Norm = selectByMask(points3Norm, poseMask);
+    if(points1Px.size() < 8) {
+        result.error = fmt::format("only {} recoverPose inliers, need at least 8", points1Px.size());
+        return result;
+    }
+
+    cv::Matx33d rotation3From1;
+    for(int i = 0; i < 3; ++i)
+        for(int j = 0; j < 3; ++j) rotation3From1(i, j) = rotationMat.at<double>(i, j);
+    cv::Vec3d translation3From1 = normalize(cv::Vec3d(translationMat.at<double>(0), translationMat.at<double>(1), translationMat.at<double>(2)));
+
+    refinePose(rotation3From1, translation3From1, points1Px, points3Px, points1Norm, points3Norm, refGeometry.kLeft, otherGeometry.kLeft);
+    result.reprojRmsePx = rootMeanSquare(
+        poseReprojectionResiduals(rotation3From1, translation3From1, points1Px, points3Px, points1Norm, points3Norm, refGeometry.kLeft, otherGeometry.kLeft));
+
+    // T_1_3 (reference-from-other) is the inverse of the recovered other-from-reference pose; only its direction is
+    // known, so its magnitude is fixed next from the metric tracks.
+    cv::Mat transform3From1 = cv::Mat::eye(4, 4, CV_64F);
+    cv::Mat(rotation3From1).copyTo(transform3From1(cv::Rect(0, 0, 3, 3)));
+    for(int i = 0; i < 3; ++i) transform3From1.at<double>(i, 3) = translation3From1[i];
+    cv::Mat transform1From3 = transform3From1.inv();
+    cv::Matx33d rotation1From3;
+    for(int i = 0; i < 3; ++i)
+        for(int j = 0; j < 3; ++j) rotation1From3(i, j) = transform1From3.at<double>(i, j);
+    const cv::Vec3d translationUnit =
+        normalize(cv::Vec3d(transform1From3.at<double>(0, 3), transform1From3.at<double>(1, 3), transform1From3.at<double>(2, 3)));
+
+    // Metric scale: triangulate the same tracks in each device's own stereo pair and fit the scalar aligning them.
+    std::vector<cv::Point3d> pointsCam1, pointsCam3, pointsCam1Other, pointsCam3Other;
+    std::vector<char> valid12, valid34;
+    triangulate(bundle.track1, bundle.track2, refGeometry.kLeft, refGeometry.kRight, refGeometry.leftFromRight, pointsCam1, pointsCam1Other, valid12);
+    triangulate(bundle.track3, bundle.track4, otherGeometry.kLeft, otherGeometry.kRight, otherGeometry.leftFromRight, pointsCam3, pointsCam3Other, valid34);
+
+    std::vector<cv::Point3d> alignedCam1, alignedCam3;
+    for(size_t i = 0; i < pointsCam1.size(); ++i)
+        if(valid12[i] && valid34[i]) {
+            alignedCam1.push_back(pointsCam1[i]);
+            alignedCam3.push_back(pointsCam3[i]);
+        }
+    if(alignedCam1.size() < 4) {
+        result.error = fmt::format("only {} valid triangulated tracks, need at least 4", alignedCam1.size());
+        return result;
+    }
+
+    double scale = 0.0, scaleRmse = 0.0;
+    if(!robustScalarScaleFit(alignedCam1, alignedCam3, rotation1From3, translationUnit, scale, scaleRmse)) {
+        result.error = "robust scale fit failed";
+        return result;
+    }
+
+    const cv::Vec3d translation = scale * translationUnit;
+    for(int i = 0; i < 3; ++i) transform1From3.at<double>(i, 3) = translation[i];
+
+    result.ok = true;
+    result.refFromOther = transform1From3;
+    result.numTracks = static_cast<int>(alignedCam1.size());
+    result.numInliers = static_cast<int>(alignedCam1.size());
+    result.scaleRmseM = scaleRmse;
+    return result;
+}
+
+}  // namespace
 
 void MultiDeviceCalibration::run() {
     auto& logger = ThreadedNode::pimpl->logger;
@@ -278,19 +950,23 @@ void MultiDeviceCalibration::run() {
     for(const auto& camera : cameras) {
         pimpl->deviceReference.emplace(camera.frame.deviceId, camera.frame);
     }
-    const MultiDeviceCalibrationHandler guesses(MultiDeviceCalibrationData{1, 0, pimpl->initialGuesses, {}});
-    for(auto& camera : cameras) {
-        const auto& reference = pimpl->deviceReference.at(camera.frame.deviceId);
-        Transform referenceToRigBase = identityTransform();
-        if(reference != baseFrame) {
-            DAI_CHECK_V(guesses.canTransform(reference, baseFrame),
-                        "MultiDeviceCalibration has no initial guess connecting {} to {}. Supply a rough one with setInitialGuess().",
-                        toString(reference),
-                        toString(baseFrame));
-            referenceToRigBase = matrix::toVecMatrix4x4(guesses.getTransform(reference, baseFrame, LengthUnit::METER));
+    // The feature-tracks method estimates the geometry from scratch, so it needs neither an initial guess nor the
+    // dynamic calibration library seeding below.
+    if(pimpl->method == Method::DYNAMIC_CALIBRATION) {
+        const MultiDeviceCalibrationHandler guesses(MultiDeviceCalibrationData{1, 0, pimpl->initialGuesses, {}});
+        for(auto& camera : cameras) {
+            const auto& reference = pimpl->deviceReference.at(camera.frame.deviceId);
+            Transform referenceToRigBase = identityTransform();
+            if(reference != baseFrame) {
+                DAI_CHECK_V(guesses.canTransform(reference, baseFrame),
+                            "MultiDeviceCalibration has no initial guess connecting {} to {}. Supply a rough one with setInitialGuess().",
+                            toString(reference),
+                            toString(baseFrame));
+                referenceToRigBase = matrix::toVecMatrix4x4(guesses.getTransform(reference, baseFrame, LengthUnit::METER));
+            }
+            // T_camera<-rigBase == T_camera<-deviceReference * T_deviceReference<-rigBase
+            camera.toRigBase = matrix::matMul(pimpl->referenceToCamera(camera.frame), inverted(referenceToRigBase));
         }
-        // T_camera<-rigBase == T_camera<-deviceReference * T_deviceReference<-rigBase
-        camera.toRigBase = matrix::matMul(pimpl->referenceToCamera(camera.frame), inverted(referenceToRigBase));
     }
 
     // Wait for the first synchronized set to learn the resolutions and intrinsics actually produced
@@ -306,6 +982,42 @@ void MultiDeviceCalibration::run() {
         DAI_CHECK_V(frame != nullptr, "MultiDeviceCalibration is missing an image of camera {}", toString(camera.frame));
         camera.resolution = {frame->getWidth(), frame->getHeight()};
         camera.transformation = frame->getTransformation();
+    }
+
+    // The feature-tracks method just accumulates the raw synchronized image sets and solves them itself.
+    if(pimpl->method == Method::FEATURE_TRACKS) {
+        pimpl->trackFrames.assign(cameras.size(), {});
+        size_t collected = 0;
+        while(mainLoop()) {
+            if(group == nullptr) {
+                auto blockEvent = this->inputBlockEvent();
+                group = syncInput.get<MessageGroup>();
+                if(group == nullptr) continue;
+            }
+            bool complete = true;
+            for(const auto& camera : cameras) {
+                if(group->get<ImgFrame>(camera.inputName) == nullptr) {
+                    logger->trace("Missing image of camera {} in the synchronized group", toString(camera.frame));
+                    complete = false;
+                    break;
+                }
+            }
+            if(complete) {
+                for(size_t i = 0; i < cameras.size(); ++i) pimpl->trackFrames[i].push_back(group->get<ImgFrame>(cameras[i].inputName));
+                ++collected;
+            }
+            group = nullptr;
+            if(collected < pimpl->sampleCount) continue;
+
+            collected = 0;
+            estimateFromTracks();
+            for(auto& frames : pimpl->trackFrames) frames.clear();
+            if(!pimpl->continuous) {
+                logger->info("Rig calibration emitted, MultiDeviceCalibration is done. Use setContinuous(true) to keep estimating.");
+                return;
+            }
+        }
+        return;
     }
 
     pimpl->dclDevice = pimpl->dcl.addDevice();
@@ -433,8 +1145,7 @@ void MultiDeviceCalibration::estimate() {
         }
         const auto baseDeviceId = pimpl->baseFrame.deviceId;
         if(componentDevices.count(baseDeviceId) == 0) {
-            notes.push_back(
-                fmt::format("devices [{}] did not share a scene with the reference device {}", fmt::join(componentDevices, ", "), baseDeviceId));
+            notes.push_back(fmt::format("devices [{}] did not share a scene with the reference device {}", fmt::join(componentDevices, ", "), baseDeviceId));
             continue;
         }
 
@@ -470,8 +1181,8 @@ void MultiDeviceCalibration::estimate() {
                     sensors.push_back(cameras[index].sensor);
                 }
 
-                auto result = pimpl->dcl.findNewCalibration(
-                    sensors, DclUtils::daiPerformanceModeToDclPerformanceMode(mode), keepCenters, pimpl->baselineEdges(subset));
+                auto result =
+                    pimpl->dcl.findNewCalibration(sensors, DclUtils::daiPerformanceModeToDclPerformanceMode(mode), keepCenters, pimpl->baselineEdges(subset));
                 if(!result.passed() || result.value.calibrations.size() != sensors.size()) return;
 
                 std::map<CoordinateFrame, Transform> estimated;
@@ -488,8 +1199,8 @@ void MultiDeviceCalibration::estimate() {
                 if(confResult.passed()) confidence = confResult.value;
                 const double sampson = result.value.sampsonErrorNew;
 
-                const bool better = !best.found || confidence > best.confidence + 1e-6
-                                    || (std::abs(confidence - best.confidence) <= 1e-6 && sampson < best.sampson);
+                const bool better =
+                    !best.found || confidence > best.confidence + 1e-6 || (std::abs(confidence - best.confidence) <= 1e-6 && sampson < best.sampson);
                 if(!better) return;
                 best.found = true;
                 best.confidence = confidence;
@@ -559,6 +1270,157 @@ void MultiDeviceCalibration::estimate() {
     rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(rig, dataConfidence, info));
 }
 
+void MultiDeviceCalibration::estimateFromTracks() {
+    auto& logger = ThreadedNode::pimpl->logger;
+    const auto& cameras = pimpl->cameras;
+
+    // Each device is a stereo pair: its reference camera (first registered) is the left, the second is the right.
+    struct DeviceCameras {
+        std::string deviceId;
+        size_t leftIndex = 0;
+        size_t rightIndex = 0;
+        bool hasRight = false;
+    };
+    std::vector<DeviceCameras> devices;
+    const auto deviceIndex = [&devices](const std::string& deviceId) -> DeviceCameras& {
+        for(auto& device : devices)
+            if(device.deviceId == deviceId) return device;
+        devices.push_back(DeviceCameras{deviceId, 0, 0, false});
+        return devices.back();
+    };
+    for(size_t i = 0; i < cameras.size(); ++i) {
+        auto& device = deviceIndex(cameras[i].frame.deviceId);
+        if(cameras[i].frame == pimpl->deviceReference.at(cameras[i].frame.deviceId)) {
+            device.leftIndex = i;
+        } else if(!device.hasRight) {
+            device.rightIndex = i;
+            device.hasRight = true;
+        }
+    }
+    for(const auto& device : devices) {
+        DAI_CHECK_V(device.hasRight,
+                    "MultiDeviceCalibration FEATURE_TRACKS needs a stereo pair (two cameras) per device, but device {} has only one registered camera",
+                    device.deviceId);
+    }
+
+    const auto toVecMatrix = [](const cv::Mat& matrix) {
+        std::vector<std::vector<float>> values(4, std::vector<float>(4, 0.0f));
+        for(int i = 0; i < 4; ++i)
+            for(int j = 0; j < 4; ++j) values[i][j] = static_cast<float>(matrix.at<double>(i, j));
+        return values;
+    };
+
+    // Factory intrinsics/distortion and metric stereo pose of every device.
+    std::map<std::string, StereoGeometry> geometries;
+    for(const auto& device : devices) {
+        const auto& leftCamera = cameras[device.leftIndex];
+        const auto& rightCamera = cameras[device.rightIndex];
+        geometries.emplace(device.deviceId,
+                           deviceGeometry(pimpl->calibrations.at(device.deviceId),
+                                          leftCamera.frame.socket,
+                                          rightCamera.frame.socket,
+                                          static_cast<int>(leftCamera.resolution.first),
+                                          static_cast<int>(leftCamera.resolution.second)));
+    }
+
+    const std::string baseDeviceId = pimpl->baseFrame.deviceId;
+    const FeatureConfig config;
+
+    // Grey-scale views of every device, ready for feature detection.
+    const auto viewsOf = [&](size_t cameraIndex) {
+        std::vector<cv::Mat> views;
+        views.reserve(pimpl->trackFrames[cameraIndex].size());
+        for(const auto& frame : pimpl->trackFrames[cameraIndex]) views.push_back(frame->getCvFrame());
+        return views;
+    };
+
+    MultiDeviceCalibrationData rig;
+    rig.timestamp = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    std::vector<std::string> notes;
+
+    // Spanning tree: start from the reference device and attach every other device through the pair estimate with the
+    // most four-view tracks, so a badly overlapping direct pair can still be reached by chaining through a third one.
+    std::map<std::string, cv::Mat> baseFromDevice;  // 4x4, meters
+    baseFromDevice.emplace(baseDeviceId, cv::Mat::eye(4, 4, CV_64F));
+
+    bool progress = true;
+    while(progress) {
+        progress = false;
+        for(const auto& device : devices) {
+            if(baseFromDevice.count(device.deviceId)) continue;
+            TracksPoseResult bestResult;
+            std::string bestReference;
+            for(const auto& reference : devices) {
+                if(!baseFromDevice.count(reference.deviceId)) continue;
+                const auto result = computeRelativePose(viewsOf(reference.leftIndex),
+                                                        viewsOf(reference.rightIndex),
+                                                        viewsOf(device.leftIndex),
+                                                        viewsOf(device.rightIndex),
+                                                        geometries.at(reference.deviceId),
+                                                        geometries.at(device.deviceId),
+                                                        config);
+                if(!result.ok) {
+                    logger->trace("Pair {} <- {} failed: {}", reference.deviceId, device.deviceId, result.error);
+                    continue;
+                }
+                if(!bestResult.ok || result.numTracks > bestResult.numTracks) {
+                    bestResult = result;
+                    bestReference = reference.deviceId;
+                }
+            }
+            if(!bestResult.ok) continue;
+
+            baseFromDevice.emplace(device.deviceId, baseFromDevice.at(bestReference) * bestResult.refFromOther);
+            const double translationMagnitude = cv::norm(bestResult.refFromOther(cv::Rect(3, 0, 1, 3)));
+            notes.push_back(fmt::format("device {} <- {}: {} tracks, reproj RMSE {:.3f} px, scale RMSE {:.3f} m, |t| {:.3f} m",
+                                        bestReference,
+                                        device.deviceId,
+                                        bestResult.numTracks,
+                                        bestResult.reprojRmsePx,
+                                        bestResult.scaleRmseM,
+                                        translationMagnitude));
+            logger->info("Estimated pose of device {} relative to {}: {} tracks, reproj RMSE {:.3f} px, scale RMSE {:.3f} m, |t| {:.3f} m",
+                         device.deviceId,
+                         bestReference,
+                         bestResult.numTracks,
+                         bestResult.reprojRmsePx,
+                         bestResult.scaleRmseM,
+                         translationMagnitude);
+            progress = true;
+        }
+    }
+
+    const auto& baseReference = pimpl->deviceReference.at(baseDeviceId);
+    for(const auto& device : devices) {
+        if(device.deviceId == baseDeviceId) continue;
+        const auto found = baseFromDevice.find(device.deviceId);
+        if(found == baseFromDevice.end()) {
+            notes.push_back(fmt::format("device {} could not be connected to the reference device {}", device.deviceId, baseDeviceId));
+            logger->warn("Device {} could not be connected to the reference device {}", device.deviceId, baseDeviceId);
+            continue;
+        }
+        const auto& deviceReferenceFrame = pimpl->deviceReference.at(device.deviceId);
+
+        RigEdge edge;
+        edge.from = deviceReferenceFrame;
+        edge.to = baseReference;
+        edge.transform = Extrinsics(toVecMatrix(found->second), baseReference.socket, LengthUnit::METER);
+        edge.transform.setReferenceFrame(baseReference);
+        edge.timestamp = rig.timestamp;
+        edge.source = "tracks-relative-pose";
+        rig.edges.push_back(edge);
+    }
+
+    const auto info = fmt::format("{}", fmt::join(notes, "; "));
+    if(rig.edges.empty()) {
+        logger->warn("No inter-device transformation could be estimated: {}", info);
+        rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(info));
+        return;
+    }
+    logger->info("Estimated {} inter-device transformation(s) from feature tracks{}{}", rig.edges.size(), info.empty() ? "" : ", ", info);
+    rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(rig, 1.0, info));
+}
+
 float MultiDeviceCalibration::resolveScale(const std::vector<std::vector<float>>& transform,
                                            const CoordinateFrame& baseReference,
                                            const CoordinateFrame& reference,
@@ -617,6 +1479,8 @@ void MultiDeviceCalibration::run() {
 }
 
 void MultiDeviceCalibration::estimate() {}
+
+void MultiDeviceCalibration::estimateFromTracks() {}
 
 float MultiDeviceCalibration::resolveScale(const std::vector<std::vector<float>>&,
                                            const CoordinateFrame&,

@@ -13,6 +13,9 @@ void bind_multi_device_calibration(pybind11::module& m, void* pCallstack) {
     using namespace pybind11::literals;
 
     auto multiDeviceCalibration = ADD_NODE_DERIVED(MultiDeviceCalibration, ThreadedHostNode);
+    py::enum_<MultiDeviceCalibration::Method>(multiDeviceCalibration, "Method", DOC(dai, node, MultiDeviceCalibration, Method))
+        .value("DYNAMIC_CALIBRATION", MultiDeviceCalibration::Method::DYNAMIC_CALIBRATION)
+        .value("FEATURE_TRACKS", MultiDeviceCalibration::Method::FEATURE_TRACKS);
 
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
@@ -47,8 +50,6 @@ void bind_multi_device_calibration(pybind11::module& m, void* pCallstack) {
         .def("setContinuous", &MultiDeviceCalibration::setContinuous, py::arg("continuous"), DOC(dai, node, MultiDeviceCalibration, setContinuous))
         .def("setPerformanceMode", &MultiDeviceCalibration::setPerformanceMode, py::arg("mode"), DOC(dai, node, MultiDeviceCalibration, setPerformanceMode))
         .def("setAutoStrategy", &MultiDeviceCalibration::setAutoStrategy, py::arg("enable"), DOC(dai, node, MultiDeviceCalibration, setAutoStrategy))
-        .def("setGuessYawSweep",
-             &MultiDeviceCalibration::setGuessYawSweep,
-             py::arg("offsetsDegrees"),
-             DOC(dai, node, MultiDeviceCalibration, setGuessYawSweep));
+        .def("setGuessYawSweep", &MultiDeviceCalibration::setGuessYawSweep, py::arg("offsetsDegrees"), DOC(dai, node, MultiDeviceCalibration, setGuessYawSweep))
+        .def("setMethod", &MultiDeviceCalibration::setMethod, py::arg("method"), DOC(dai, node, MultiDeviceCalibration, setMethod));
 }
