@@ -22,6 +22,7 @@
 #include "depthai/utility/matrixOps.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+#include "pipeline/node/MultiDeviceScaleEstimation.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -83,6 +84,14 @@ class MultiDeviceCalibration::Impl {
     std::vector<RigEdge> initialGuesses;
     /// Known distances between camera centers, in meters, keyed by the frame pair.
     std::map<std::pair<CoordinateFrame, CoordinateFrame>, float> knownDistances;
+    /// Metric distances recovered from the scene, in meters, keyed by the device reference frame pair. Recomputed each
+    /// estimation cycle; a user `setKnownDistance()` always takes precedence over these.
+    std::map<std::pair<CoordinateFrame, CoordinateFrame>, float> autoKnownDistances;
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    /// Synchronized images retained for the current estimation cycle, keyed by camera input name, used to recover the
+    /// metric inter-device scale from the shared scene.
+    std::map<std::string, std::vector<cv::Mat>> sampleImages;
+#endif
     /// Calibration of every device involved, read from the live devices.
     std::map<std::string, CalibrationHandler> calibrations;
     /// Frame every device is represented by in the rig, i.e. its first registered camera.
@@ -90,6 +99,7 @@ class MultiDeviceCalibration::Impl {
 
     size_t sampleCount = 10;
     bool continuous = false;
+    bool estimateScale = true;
     DynamicCalibrationControl::PerformanceMode performanceMode = DynamicCalibrationControl::PerformanceMode::DEFAULT;
 
     std::optional<float> findKnownDistance(const CoordinateFrame& a, const CoordinateFrame& b) const {
@@ -97,6 +107,10 @@ class MultiDeviceCalibration::Impl {
         if(direct != knownDistances.end()) return direct->second;
         const auto reverse = knownDistances.find({b, a});
         if(reverse != knownDistances.end()) return reverse->second;
+        const auto autoDirect = autoKnownDistances.find({a, b});
+        if(autoDirect != autoKnownDistances.end()) return autoDirect->second;
+        const auto autoReverse = autoKnownDistances.find({b, a});
+        if(autoReverse != autoKnownDistances.end()) return autoReverse->second;
         return std::nullopt;
     }
 
@@ -172,6 +186,10 @@ void MultiDeviceCalibration::setContinuous(bool continuous) {
 
 void MultiDeviceCalibration::setPerformanceMode(DynamicCalibrationControl::PerformanceMode mode) {
     pimpl->performanceMode = mode;
+}
+
+void MultiDeviceCalibration::setEstimateInterDeviceScale(bool enable) {
+    pimpl->estimateScale = enable;
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -261,6 +279,7 @@ void MultiDeviceCalibration::run() {
 
         dcl::DeviceImageList images;
         images.reserve(cameras.size());
+        std::vector<std::pair<std::string, cv::Mat>> retained;
         dcl::timestamp_t timestamp = 0;
         bool complete = true;
         for(const auto& camera : cameras) {
@@ -275,9 +294,13 @@ void MultiDeviceCalibration::run() {
             }
             auto cvFrame = frame->getCvFrame();
             images.emplace_back(camera.sensor, DclUtils::cvMatToImageData(cvFrame));
+            if(pimpl->estimateScale) retained.emplace_back(camera.inputName, cvFrame.clone());
         }
         group = nullptr;
         if(!complete) continue;
+        for(auto& [inputName, image] : retained) {
+            pimpl->sampleImages[inputName].push_back(std::move(image));
+        }
 
         auto loadResult = pimpl->dcl.loadImages(images, timestamp);
         if(!loadResult.passed()) {
@@ -319,6 +342,60 @@ void MultiDeviceCalibration::estimate() {
         components[root(i)].push_back(i);
     }
 
+    // Metric inter-device scale from the shared scene: for each device that exposes a stereo pair (both cameras
+    // registered), triangulate scene points metrically using its factory baseline, then robustly align the two
+    // devices' metric point clouds to recover the true inter-device distance. It is fed to the solve exactly like a
+    // known distance, so the scale is observed from the scene instead of inherited from the initial guess.
+    pimpl->autoKnownDistances.clear();
+    std::map<std::string, std::vector<const CameraStream*>> deviceStreams;
+    for(const auto& camera : cameras) {
+        deviceStreams[camera.frame.deviceId].push_back(&camera);
+    }
+    const auto toMatx33 = [](const std::array<std::array<float, 3>, 3>& m) {
+        return cv::Matx33d(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]);
+    };
+    const auto buildViews = [&](const std::string& deviceId) {
+        impl::StereoDeviceViews views;
+        const auto& streams = deviceStreams.at(deviceId);
+        const CameraStream* left = streams[0];
+        const CameraStream* right = streams[1];
+        views.intrinsicsLeft = toMatx33(left->transformation.getIntrinsicMatrix());
+        views.intrinsicsRight = toMatx33(right->transformation.getIntrinsicMatrix());
+        for(const float c : left->transformation.getDistortionCoefficients()) views.distortionLeft.push_back(c);
+        for(const float c : right->transformation.getDistortionCoefficients()) views.distortionRight.push_back(c);
+        // getCameraExtrinsics(a, b) is T_b<-a, so the left-from-right stereo transform is its inverse.
+        const Transform leftFromRight = inverted(pimpl->calibrations.at(deviceId).getCameraExtrinsics(left->frame.socket, right->frame.socket, false, LengthUnit::METER));
+        for(int i = 0; i < 4; ++i)
+            for(int j = 0; j < 4; ++j) views.leftFromRight(i, j) = leftFromRight[i][j];
+        views.left = pimpl->sampleImages[left->inputName];
+        views.right = pimpl->sampleImages[right->inputName];
+        return views;
+    };
+    const auto recoverInterDeviceScale = [&](const std::string& deviceA, const std::string& deviceB, std::vector<std::string>& notes) {
+        if(!pimpl->estimateScale) return;
+        const auto& refA = pimpl->deviceReference.at(deviceA);
+        const auto& refB = pimpl->deviceReference.at(deviceB);
+        if(pimpl->findKnownDistance(refA, refB).has_value()) return;  // user distance or already recovered
+        if(deviceStreams[deviceA].size() < 2 || deviceStreams[deviceB].size() < 2) return;
+        const impl::StereoDeviceViews viewsA = buildViews(deviceA);
+        const impl::StereoDeviceViews viewsB = buildViews(deviceB);
+        if(viewsA.left.size() < 2 || viewsB.left.size() < 2) return;
+        const auto result = impl::estimateInterDeviceScale(viewsA, viewsB);
+        if(result.observable) {
+            pimpl->autoKnownDistances[{refA, refB}] = static_cast<float>(result.distanceMeters);
+            notes.push_back(fmt::format("recovered the metric distance between {} and {} from the scene: {:.1f} cm ({} inliers, rmse {:.1f} cm)",
+                                        deviceA,
+                                        deviceB,
+                                        result.distanceMeters * 100.0,
+                                        result.inliers,
+                                        result.rmseMeters * 100.0));
+            logger->info("Recovered inter-device distance {} <-> {} from the scene: {:.1f} cm", deviceA, deviceB, result.distanceMeters * 100.0);
+        } else {
+            notes.push_back(fmt::format("could not recover the metric scale between {} and {} from the scene ({})", deviceA, deviceB, result.note));
+            logger->info("Inter-device scale {} <-> {} unobservable from the scene: {}", deviceA, deviceB, result.note);
+        }
+    };
+
     MultiDeviceCalibrationData rig;
     rig.timestamp = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
     std::vector<std::string> notes;
@@ -333,6 +410,13 @@ void MultiDeviceCalibration::estimate() {
         if(componentDevices.size() < 2) {
             notes.push_back(fmt::format("cameras of device {} did not observe a scene shared with another device", *componentDevices.begin()));
             continue;
+        }
+
+        const std::vector<std::string> componentDeviceList(componentDevices.begin(), componentDevices.end());
+        for(size_t i = 0; i < componentDeviceList.size(); ++i) {
+            for(size_t j = i + 1; j < componentDeviceList.size(); ++j) {
+                recoverInterDeviceScale(componentDeviceList[i], componentDeviceList[j], notes);
+            }
         }
 
         std::vector<std::shared_ptr<const dcl::CameraSensorHandle>> sensors;
@@ -418,6 +502,7 @@ void MultiDeviceCalibration::estimate() {
     }
 
     const auto info = fmt::format("{}", fmt::join(notes, "; "));
+    pimpl->sampleImages.clear();
     if(rig.edges.empty()) {
         logger->warn("No inter-device transformation could be estimated: {}", info);
         rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(info));
@@ -435,7 +520,9 @@ float MultiDeviceCalibration::resolveScale(const std::vector<std::vector<float>>
     // known distance. Scaling the edge translation by `s` moves the whole device along the edge, so the distance
     // between a camera of the base device (center `centerA`, unaffected) and one of the moved device is
     // ||s * t + v|| - one quadratic equation in `s`.
-    for(const auto& [pair, distance] : pimpl->knownDistances) {
+    std::vector<std::pair<std::pair<CoordinateFrame, CoordinateFrame>, float>> combined(pimpl->knownDistances.begin(), pimpl->knownDistances.end());
+    combined.insert(combined.end(), pimpl->autoKnownDistances.begin(), pimpl->autoKnownDistances.end());
+    for(const auto& [pair, distance] : combined) {
         for(const auto ordered : {std::pair{pair.first, pair.second}, std::pair{pair.second, pair.first}}) {
             const auto& a = ordered.first;
             const auto& b = ordered.second;

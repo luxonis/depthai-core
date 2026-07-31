@@ -123,6 +123,15 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
      */
     void setPerformanceMode(DynamicCalibrationControl::PerformanceMode mode);
 
+    /**
+     * Recover the metric inter-device scale from the shared scene for devices that expose a stereo pair, instead of
+     * requiring a `setKnownDistance()`. Each device's factory stereo baseline fixes metric depth; scene points
+     * co-visible across both devices' stereo pairs are triangulated in each and aligned in 3D to recover the true
+     * inter-device translation magnitude. On by default. A `setKnownDistance()` for a pair takes precedence, and when
+     * the scene does not constrain the scale the recovery is skipped rather than guessed.
+     */
+    void setEstimateInterDeviceScale(bool enable);
+
     void buildInternal() override;
 
    private:

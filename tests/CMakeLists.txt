@@ -614,6 +614,11 @@ endif()
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 
+# Inter-device metric-scale estimation (compiles the implementation directly, no device needed)
+dai_add_test(multi_device_scale_test src/onhost_tests/multi_device_scale_test.cpp)
+target_sources(multi_device_scale_test PRIVATE ${CMAKE_SOURCE_DIR}/src/pipeline/node/MultiDeviceScaleEstimation.cpp)
+dai_set_test_labels(multi_device_scale_test onhost ci)
+
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
 dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4)
 
