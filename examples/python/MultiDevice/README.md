@@ -13,6 +13,8 @@ from image content) or a **bird's-eye view** (a calibrated projection onto a pla
 | [`multi_device_stitching.py`](multi_device_stitching.py) | Panorama stitching, no calibration needed |
 | [`multi_device_planar_stitching.py`](multi_device_planar_stitching.py) | Bird's-eye view: calibrated projection onto a plane |
 | [`planar_stitching_synthetic.py`](planar_stitching_synthetic.py) | The same bird's-eye view on a synthetic rig, so it runs without any hardware |
+| [`multi_device_record.py`](multi_device_record.py) | Record the synced streams of a rig, with every device's calibration and the rig, into one self-contained folder |
+| [`multi_device_replay.py`](multi_device_replay.py) | Replay such a recording with **no devices connected** — through calibration or bird's-eye view |
 | [`multi_device_cam_sync.py`](multi_device_cam_sync.py), [`multi_device_frame_sync.py`](multi_device_frame_sync.py) | Frame level syncing of two devices |
 
 ---
@@ -261,6 +263,45 @@ transformation = projected.getTransformation()
 intrinsics = transformation.getIntrinsicMatrix()
 pose = transformation.getExtrinsics().getTransformationMatrix()  # virtual camera -> reference frame
 ```
+
+---
+
+## 5) Record & replay
+
+**Scripts:** `multi_device_record.py`, `multi_device_replay.py`
+
+A multi-device rig is awkward to keep plugged in, so record it once and iterate offline. The host nodes
+(`MultiDeviceCalibration`, `CoordinateFrameTransform`, `Stitching`) run the same whether their frames come from live
+cameras or from `ReplayVideo`, so a recording can be fed straight back through them.
+
+```bash
+# record ~7 s of CAM_B + CAM_C of three devices, plus a rig to store with it
+python3 multi_device_record.py -o rec \
+    -d 10.12.228.177 -d 10.12.228.137 -d 10.12.228.157 -s CAM_B -s CAM_C \
+    -t 7 -c rig_calibration.json
+
+# bird's-eye view of the recording, no hardware
+python3 multi_device_replay.py -i rec -m stitch -o rec_bev.png
+
+# rig estimation on the recording, no hardware
+python3 multi_device_replay.py -i rec -m calibrate --samples 8 -o rig_estimated.json
+```
+
+The recording is **self-contained**: besides the per-camera video (`.avi`) and metadata (`.mcap`) it stores every
+device's factory calibration (`<deviceId>_calibration.json`), the rig (`rig.json`, when given) and a manifest
+(`session.json`). That is everything the geometry needs, so nothing is read from a live device on replay:
+
+* `MultiDeviceCalibration.setDeviceCalibration(deviceId, calibration)` supplies the per-device calibration that would
+  otherwise be read from the assigned device — the one thing that used to force a live device into a replay pipeline.
+* `CoordinateFrameTransform` needs both the inter-device rig (stored) and each device's intra-device edges; the
+  replay script completes the stored rig with those edges from the saved per-device calibrations, exactly as the node
+  does from live devices.
+
+Record and replay each work with **stock 3.8.0 firmware** on the devices (see the compatibility note in the blog
+post): the reference frame's device id is stamped on the host, so it survives into the recording.
+
+> Independent devices are not hardware-synced, so their recorded timestamps are tens to hundreds of ms apart. The
+> replay groups them loosely (a generous `setSyncThreshold`); for a static calibration/stitching scene that is fine.
 
 ---
 
