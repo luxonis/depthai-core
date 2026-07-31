@@ -6,6 +6,7 @@
 #include <DynamicCalibration.hpp>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -92,6 +93,13 @@ class MultiDeviceCalibration::Impl {
     bool continuous = false;
     DynamicCalibrationControl::PerformanceMode performanceMode = DynamicCalibrationControl::PerformanceMode::DEFAULT;
 
+    /// Frame the whole rig is expressed in, i.e. the first registered camera.
+    CoordinateFrame baseFrame;
+    /// Try several strategies and keep the best-scoring one instead of trusting a single solve.
+    bool autoStrategy = true;
+    /// Yaw perturbations (degrees) of the initial guess explored by the automatic strategy.
+    std::vector<float> guessYawOffsets = {0.0f, -30.0f, 30.0f, -60.0f, 60.0f};
+
     std::optional<float> findKnownDistance(const CoordinateFrame& a, const CoordinateFrame& b) const {
         const auto direct = knownDistances.find({a, b});
         if(direct != knownDistances.end()) return direct->second;
@@ -106,6 +114,66 @@ class MultiDeviceCalibration::Impl {
         if(reference == frame) return identityTransform();
         return calibrations.at(frame.deviceId).getCameraExtrinsics(reference.socket, frame.socket, false, LengthUnit::METER);
     }
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    /// Initial guesses with an extra yaw rotation (about the reference vertical axis) applied to `deviceId`'s edge.
+    MultiDeviceCalibrationHandler guessesWithYaw(const std::string& deviceId, float yawDegrees) const {
+        auto edges = initialGuesses;
+        if(yawDegrees != 0.0f) {
+            const float yaw = yawDegrees * 0.017453292519943295f;  // pi / 180
+            const Transform rotate = {{std::cos(yaw), 0.0f, std::sin(yaw), 0.0f},
+                                      {0.0f, 1.0f, 0.0f, 0.0f},
+                                      {-std::sin(yaw), 0.0f, std::cos(yaw), 0.0f},
+                                      {0.0f, 0.0f, 0.0f, 1.0f}};
+            for(auto& edge : edges) {
+                if(edge.from.deviceId != deviceId) continue;
+                const auto current = matrix::toVecMatrix4x4(edge.transform.getTransformationMatrix(false, LengthUnit::CENTIMETER));
+                const auto rotated = matrix::matMul(rotate, current);
+                edge.transform.setTransformationMatrix(rotated, LengthUnit::CENTIMETER);
+                edge.transform.setReferenceFrame(edge.to);
+            }
+        }
+        return MultiDeviceCalibrationHandler(MultiDeviceCalibrationData{1, 0, edges, {}});
+    }
+
+    /// Pose of camera `frame` w.r.t. the rig base, composed from the (possibly perturbed) guesses, in meters.
+    Transform seedToRigBase(const CoordinateFrame& frame, const MultiDeviceCalibrationHandler& guesses) const {
+        const auto& reference = deviceReference.at(frame.deviceId);
+        Transform referenceToRigBase = identityTransform();
+        if(reference != baseFrame) {
+            referenceToRigBase = matrix::toVecMatrix4x4(guesses.getTransform(reference, baseFrame, LengthUnit::METER));
+        }
+        return matrix::matMul(referenceToCamera(frame), inverted(referenceToRigBase));
+    }
+
+    /// Re-seed the DCL calibration of a camera with a new pose w.r.t. the rig base.
+    void reseed(const CameraStream& camera, const Transform& toRigBase) {
+        const auto calibration = DclUtils::createDclCalibration(camera.transformation.getIntrinsicMatrix(),
+                                                                camera.transformation.getDistortionCoefficients(),
+                                                                matrix::extractRotationMatrix(toRigBase),
+                                                                matrix::extractTranslationVector(toRigBase),
+                                                                camera.transformation.getDistortionModel());
+        dcl.setCalibration(camera.sensor, calibration);
+    }
+
+    /// Known metric baselines within a subset of cameras, indexed by their position in the subset.
+    std::vector<dcl::EdgeBaseline> baselineEdges(const std::vector<size_t>& subset) const {
+        std::vector<dcl::EdgeBaseline> edges;
+        for(size_t i = 0; i < subset.size(); ++i) {
+            for(size_t j = i + 1; j < subset.size(); ++j) {
+                const auto& a = cameras[subset[i]].frame;
+                const auto& b = cameras[subset[j]].frame;
+                std::optional<float> distance = findKnownDistance(a, b);
+                if(!distance.has_value() && a.deviceId == b.deviceId) {
+                    distance = calibrations.at(a.deviceId).getBaselineDistance(a.socket, b.socket, true, LengthUnit::METER);
+                }
+                if(!distance.has_value() || *distance <= 0.0f) continue;
+                edges.push_back({i, j, static_cast<double>(*distance)});
+            }
+        }
+        return edges;
+    }
+#endif
 };
 
 MultiDeviceCalibration::MultiDeviceCalibration() : pimpl(spimpl::make_unique_impl<Impl>()) {}
@@ -165,6 +233,15 @@ void MultiDeviceCalibration::setContinuous(bool continuous) {
 
 void MultiDeviceCalibration::setPerformanceMode(DynamicCalibrationControl::PerformanceMode mode) {
     pimpl->performanceMode = mode;
+    pimpl->autoStrategy = false;
+}
+
+void MultiDeviceCalibration::setAutoStrategy(bool enable) {
+    pimpl->autoStrategy = enable;
+}
+
+void MultiDeviceCalibration::setGuessYawSweep(const std::vector<float>& offsetsDegrees) {
+    pimpl->guessYawOffsets = offsetsDegrees.empty() ? std::vector<float>{0.0f} : offsetsDegrees;
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -197,6 +274,7 @@ void MultiDeviceCalibration::run() {
     // The rig is expressed w.r.t. the first registered camera; the initial pose of every other camera is composed from
     // the user supplied inter-device guesses and the intra-device calibration of its own device.
     const auto baseFrame = cameras.front().frame;
+    pimpl->baseFrame = baseFrame;
     for(const auto& camera : cameras) {
         pimpl->deviceReference.emplace(camera.frame.deviceId, camera.frame);
     }
@@ -315,6 +393,34 @@ void MultiDeviceCalibration::estimate() {
     std::vector<std::string> notes;
     double dataConfidence = 0.0;
 
+    // A single solve can land in a poor local minimum or fail a coverage gate, so instead of trusting one attempt the
+    // node sweeps several strategies and keeps, per device, the edge that scores best on the dynamic calibration
+    // library's own metrics. The attempted performance modes, whether the initial camera centers are kept and the yaw
+    // perturbations of the initial guess make up the search; an explicit setPerformanceMode() narrows it to one solve.
+    std::vector<DynamicCalibrationControl::PerformanceMode> modes;
+    if(pimpl->autoStrategy) {
+        modes = {DynamicCalibrationControl::PerformanceMode::DEFAULT,
+                 DynamicCalibrationControl::PerformanceMode::RELAXED_COVERAGE,
+                 DynamicCalibrationControl::PerformanceMode::OPTIMIZE_PERFORMANCE,
+                 DynamicCalibrationControl::PerformanceMode::STATIC_SCENERY,
+                 DynamicCalibrationControl::PerformanceMode::SKIP_CHECKS};
+    } else {
+        modes = {pimpl->performanceMode};
+    }
+    // keepCameraCenters=true is incompatible with the known baseline edges the scale relies on, so the centers are
+    // always solved; the strategies vary instead by performance mode, joint vs. pairwise and the guess perturbation.
+    const std::vector<bool> keepCentersOptions = {false};
+    const std::vector<float> yawOffsets = pimpl->autoStrategy ? pimpl->guessYawOffsets : std::vector<float>{0.0f};
+
+    // Best-scoring result kept for one inter-device edge across all attempted strategies.
+    struct BestEdge {
+        bool found = false;
+        double confidence = -1.0;
+        double sampson = std::numeric_limits<double>::max();
+        Transform transform;  // T_baseReference<-deviceReference
+        std::string approach;
+    };
+
     for(const auto& [componentRoot, indices] : components) {
         (void)componentRoot;
         std::set<std::string> componentDevices;
@@ -325,79 +431,112 @@ void MultiDeviceCalibration::estimate() {
             notes.push_back(fmt::format("cameras of device {} did not observe a scene shared with another device", *componentDevices.begin()));
             continue;
         }
-
-        std::vector<std::shared_ptr<const dcl::CameraSensorHandle>> sensors;
-        sensors.reserve(indices.size());
-        for(const auto index : indices) {
-            sensors.push_back(cameras[index].sensor);
-        }
-
-        // Metric scale: the distances that are known upfront. Distances between cameras of one device come from the
-        // device calibration, the inter-device ones have to be supplied by the user.
-        std::vector<dcl::EdgeBaseline> keptBaselineEdges;
-        for(size_t i = 0; i < indices.size(); ++i) {
-            for(size_t j = i + 1; j < indices.size(); ++j) {
-                const auto& a = cameras[indices[i]].frame;
-                const auto& b = cameras[indices[j]].frame;
-                std::optional<float> distance = pimpl->findKnownDistance(a, b);
-                if(!distance.has_value() && a.deviceId == b.deviceId) {
-                    distance = pimpl->calibrations.at(a.deviceId).getBaselineDistance(a.socket, b.socket, true, LengthUnit::METER);
-                }
-                if(!distance.has_value() || *distance <= 0.0f) continue;
-                keptBaselineEdges.push_back({i, j, static_cast<double>(*distance)});
-            }
-        }
-
-        auto confidence = pimpl->dcl.computeDataConfidence(sensors);
-        if(confidence.passed()) {
-            dataConfidence = std::max(dataConfidence, confidence.value);
-        }
-
-        auto result = pimpl->dcl.findNewCalibration(
-            sensors, DclUtils::daiPerformanceModeToDclPerformanceMode(pimpl->performanceMode), /*keepCameraCenters=*/false, keptBaselineEdges);
-        if(!result.passed()) {
-            notes.push_back(fmt::format("estimation failed for devices [{}]: {}", fmt::join(componentDevices, ", "), result.errorMessage()));
-            logger->warn("Rig estimation failed for devices [{}]: {}", fmt::join(componentDevices, ", "), result.errorMessage());
-            continue;
-        }
-        if(result.value.calibrations.size() != sensors.size()) {
-            notes.push_back("the dynamic calibration library returned an unexpected number of calibrations");
+        const auto baseDeviceId = pimpl->baseFrame.deviceId;
+        if(componentDevices.count(baseDeviceId) == 0) {
+            notes.push_back(
+                fmt::format("devices [{}] did not share a scene with the reference device {}", fmt::join(componentDevices, ", "), baseDeviceId));
             continue;
         }
 
-        // Poses of the component's cameras w.r.t. its first camera, as estimated
-        std::map<CoordinateFrame, Transform> estimated;
-        for(size_t i = 0; i < indices.size(); ++i) {
-            estimated.emplace(cameras[indices[i]].frame, DclUtils::calibrationHandleToTransform(result.value.calibrations[i]));
+        {
+            std::vector<std::shared_ptr<const dcl::CameraSensorHandle>> componentSensors;
+            for(const auto index : indices) componentSensors.push_back(cameras[index].sensor);
+            auto confidence = pimpl->dcl.computeDataConfidence(componentSensors);
+            if(confidence.passed()) dataConfidence = std::max(dataConfidence, confidence.value);
         }
+
+        std::map<std::string, std::vector<size_t>> byDevice;
+        for(const auto index : indices) byDevice[cameras[index].frame.deviceId].push_back(index);
+
+        const auto& baseReference = pimpl->deviceReference.at(baseDeviceId);
 
         // Only the inter-device edges are the result - the intra-device geometry stays with the device. Emitting them
-        // as a star around the component's base device keeps the rig a forest and every edge independent.
-        const auto& baseReference = pimpl->deviceReference.at(cameras[indices.front()].frame.deviceId);
-        const auto& baseTransform = estimated.at(baseReference);
+        // as a star around the reference device keeps the rig a forest and every edge independent.
         for(const auto& deviceId : componentDevices) {
-            const auto& reference = pimpl->deviceReference.at(deviceId);
-            if(reference == baseReference) continue;
-            const auto found = estimated.find(reference);
-            if(found == estimated.end()) {
-                notes.push_back(fmt::format("device {} is only represented by cameras outside of the solved set", deviceId));
+            if(deviceId == baseDeviceId) continue;
+            const auto& deviceReferenceFrame = pimpl->deviceReference.at(deviceId);
+
+            BestEdge best;
+            const auto evaluate = [&](const std::vector<size_t>& subset,
+                                      float yawDegrees,
+                                      DynamicCalibrationControl::PerformanceMode mode,
+                                      bool keepCenters,
+                                      const char* approach) {
+                const auto guesses = pimpl->guessesWithYaw(deviceId, yawDegrees);
+                std::vector<std::shared_ptr<const dcl::CameraSensorHandle>> sensors;
+                sensors.reserve(subset.size());
+                for(const auto index : subset) {
+                    pimpl->reseed(cameras[index], pimpl->seedToRigBase(cameras[index].frame, guesses));
+                    sensors.push_back(cameras[index].sensor);
+                }
+
+                auto result = pimpl->dcl.findNewCalibration(
+                    sensors, DclUtils::daiPerformanceModeToDclPerformanceMode(mode), keepCenters, pimpl->baselineEdges(subset));
+                if(!result.passed() || result.value.calibrations.size() != sensors.size()) return;
+
+                std::map<CoordinateFrame, Transform> estimated;
+                for(size_t k = 0; k < subset.size(); ++k) {
+                    estimated.emplace(cameras[subset[k]].frame, DclUtils::calibrationHandleToTransform(result.value.calibrations[k]));
+                }
+                const auto baseIt = estimated.find(baseReference);
+                const auto deviceIt = estimated.find(deviceReferenceFrame);
+                if(baseIt == estimated.end() || deviceIt == estimated.end()) return;
+
+                // Score the calibration itself, so SKIP_CHECKS solves that ignore coverage do not win on merit alone.
+                double confidence = result.value.dataConfidence;
+                auto confResult = pimpl->dcl.computeCalibrationConfidence(result.value.calibrations, sensors);
+                if(confResult.passed()) confidence = confResult.value;
+                const double sampson = result.value.sampsonErrorNew;
+
+                const bool better = !best.found || confidence > best.confidence + 1e-6
+                                    || (std::abs(confidence - best.confidence) <= 1e-6 && sampson < best.sampson);
+                if(!better) return;
+                best.found = true;
+                best.confidence = confidence;
+                best.sampson = sampson;
+                best.transform = matrix::matMul(baseIt->second, inverted(deviceIt->second));
+                best.approach = fmt::format("{}, mode {}, keepCenters {}, yaw {:+.0f}deg", approach, static_cast<int>(mode), keepCenters, yawDegrees);
+            };
+
+            // Pairwise: only the reference device and this one, which is robust when not every pair shares a scene.
+            std::vector<size_t> pairSubset = byDevice.at(baseDeviceId);
+            pairSubset.insert(pairSubset.end(), byDevice.at(deviceId).begin(), byDevice.at(deviceId).end());
+            for(const float yaw : yawOffsets) {
+                for(const auto mode : modes) {
+                    for(const bool keepCenters : keepCentersOptions) {
+                        evaluate(pairSubset, yaw, mode, keepCenters, "pairwise");
+                    }
+                }
+            }
+
+            // Joint: solve all cameras of the component together, letting the other devices constrain this one.
+            if(componentDevices.size() > 2) {
+                const std::vector<size_t> jointSubset(indices.begin(), indices.end());
+                for(const auto mode : modes) {
+                    for(const bool keepCenters : keepCentersOptions) {
+                        evaluate(jointSubset, 0.0f, mode, keepCenters, "joint");
+                    }
+                }
+            }
+
+            if(!best.found) {
+                notes.push_back(fmt::format("no strategy produced a valid calibration for device {}", deviceId));
+                logger->warn("No strategy produced a valid calibration for device {}", deviceId);
                 continue;
             }
 
-            // T_baseReference<-reference
-            auto transform = matrix::matMul(baseTransform, inverted(found->second));
-            const auto scale = resolveScale(transform, baseReference, reference, notes);
+            auto transform = best.transform;
+            const auto scale = resolveScale(transform, baseReference, deviceReferenceFrame, notes);
             for(int i = 0; i < 3; ++i) {
                 transform[i][3] *= scale;
             }
-
             auto translation = matrix::extractTranslationVector(transform);
             for(auto& value : translation) {
                 value *= getDistanceUnitScale(LengthUnit::CENTIMETER, LengthUnit::METER);
             }
 
             RigEdge edge;
-            edge.from = reference;
+            edge.from = deviceReferenceFrame;
             edge.to = baseReference;
             edge.transform =
                 Extrinsics(matrix::extractRotationMatrix(transform), Point3f(translation[0], translation[1], translation[2]), baseReference.socket);
@@ -405,6 +544,8 @@ void MultiDeviceCalibration::estimate() {
             edge.timestamp = rig.timestamp;
             edge.source = "multi-device-calibration";
             rig.edges.push_back(edge);
+            notes.push_back(fmt::format("device {}: {} (confidence {:.3f}, Sampson {:.4f})", deviceId, best.approach, best.confidence, best.sampson));
+            logger->info("Device {} rig edge from {} (confidence {:.3f}, Sampson error {:.4f})", deviceId, best.approach, best.confidence, best.sampson);
         }
     }
 

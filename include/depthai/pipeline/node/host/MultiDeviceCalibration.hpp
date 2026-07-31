@@ -108,9 +108,26 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
     void setContinuous(bool continuous);
 
     /**
-     * Performance mode passed to the dynamic calibration library.
+     * Performance mode passed to the dynamic calibration library. Setting an explicit mode turns the automatic
+     * multi-strategy search off, so only this mode is attempted.
      */
     void setPerformanceMode(DynamicCalibrationControl::PerformanceMode mode);
+
+    /**
+     * When enabled (the default), the node does not trust a single solve: it attempts several strategies - a joint
+     * solve over all cameras and a pairwise solve per device, each across a sweep of performance modes, of the
+     * keep-camera-centers flag and of yaw perturbations of the initial guess - scores every candidate with the
+     * dynamic calibration library's own calibration-confidence and Sampson-error metrics, and keeps the best edge per
+     * device. Disabled implicitly by `setPerformanceMode()`.
+     */
+    void setAutoStrategy(bool enable);
+
+    /**
+     * Yaw offsets, in degrees, added to the initial guess of each device when searching for the best rig during the
+     * automatic strategy. A rough or stale guess is a common reason for a poor solve, so perturbing it and keeping the
+     * best-scoring result makes the estimation robust to it. Defaults to a small symmetric sweep around zero.
+     */
+    void setGuessYawSweep(const std::vector<float>& offsetsDegrees);
 
     void buildInternal() override;
 

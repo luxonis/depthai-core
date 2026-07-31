@@ -45,5 +45,10 @@ void bind_multi_device_calibration(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, MultiDeviceCalibration, setKnownDistance))
         .def("setSampleCount", &MultiDeviceCalibration::setSampleCount, py::arg("sampleCount"), DOC(dai, node, MultiDeviceCalibration, setSampleCount))
         .def("setContinuous", &MultiDeviceCalibration::setContinuous, py::arg("continuous"), DOC(dai, node, MultiDeviceCalibration, setContinuous))
-        .def("setPerformanceMode", &MultiDeviceCalibration::setPerformanceMode, py::arg("mode"), DOC(dai, node, MultiDeviceCalibration, setPerformanceMode));
+        .def("setPerformanceMode", &MultiDeviceCalibration::setPerformanceMode, py::arg("mode"), DOC(dai, node, MultiDeviceCalibration, setPerformanceMode))
+        .def("setAutoStrategy", &MultiDeviceCalibration::setAutoStrategy, py::arg("enable"), DOC(dai, node, MultiDeviceCalibration, setAutoStrategy))
+        .def("setGuessYawSweep",
+             &MultiDeviceCalibration::setGuessYawSweep,
+             py::arg("offsetsDegrees"),
+             DOC(dai, node, MultiDeviceCalibration, setGuessYawSweep));
 }
