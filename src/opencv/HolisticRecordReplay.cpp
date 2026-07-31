@@ -24,6 +24,7 @@
 #include "depthai/utility/RecordReplay.hpp"
 #include "pipeline/Node.hpp"
 #include "utility/CompilerWarnings.hpp"
+#include "utility/Environment.hpp"
 
 #define UNUSED(x) (void)(x)
 
@@ -448,6 +449,8 @@ bool setupHolisticReplay(Pipeline pipeline,
 
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
 
+        bool loopEnabled = utility::getEnvAs<bool>("DEPTHAI_REPLAY_LOOP", true);
+
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
@@ -466,6 +469,7 @@ bool setupHolisticReplay(Pipeline pipeline,
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
                 replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + videoExt));
                 replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
+                replay->setLoop(loopEnabled);
 
                 auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
                 auto [vidWidth, vidHeight, vidFps] = utility::getVideoSize(replay->getReplayVideoFile().string());
@@ -489,6 +493,7 @@ bool setupHolisticReplay(Pipeline pipeline,
             } else {
                 auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
                 replay->setReplayFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
+                replay->setLoop(loopEnabled);
                 replay->out.link(nodeS->getReplayInput());
             }
         }
