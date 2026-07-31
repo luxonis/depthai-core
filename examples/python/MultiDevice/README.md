@@ -366,14 +366,20 @@ Besides everything a recorded session holds, it writes what only a synthetic sce
 So the two replay modes become checks rather than demos: a bird's-eye view built from `rig.json` must show the floor
 grid running straight through the seams (anything above the floor still doubles — see the plane's caveat above), and
 an estimation seeded with `rig_guess.json` must come back to `rig.json`. On the default scene it recovers the
-rotations to ~0.01° while the translation keeps the magnitude of the guess, which is the inter-device scale the
-images cannot observe — exactly what a stereo baseline or `setKnownDistance()` is for.
+rotations to ~0.01° **and** the metric inter-device distances to well under a centimetre, because
+`MultiDeviceCalibration`'s scale estimator recovers the translation magnitude from the shared scene via each device's
+stereo pair (turn it off with `setEstimateInterDeviceScale(False)`, and the translation falls back to the guess
+magnitude — the scale a single view cannot observe, which is then what a stereo pair or `setKnownDistance()` is for).
 
 The defaults are deliberately a *cooperative* rig: 15° of azimuth between neighbouring devices, which is what the
 default performance mode reliably matches through. Pulling the devices apart (`--azimuth -50 0 50`) reproduces the
 "Not enough coverage" / "Not enough data" wall of a real wide-baseline rig, on data whose answer is known — handy
 when working on the matching itself. `--hfov`, `--radius`, `--height`, `--noise`, `--frames` and `--seed` shape the
 rest of the scene; rendering is a few seconds per configuration.
+
+A full walk-through of generating the synthetic data and running every multi-device test against it — the C++
+scale-estimator unit test, calibrate replay, planar stitch and rig compare — is in
+[`SYNTHETIC_TESTING.md`](SYNTHETIC_TESTING.md).
 
 ---
 
