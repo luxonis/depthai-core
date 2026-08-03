@@ -32,11 +32,14 @@ void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
             "data",
             [](py::object& obj) {
                 dai::Asset& a = obj.cast<dai::Asset&>();
-                return py::array_t<std::uint8_t>(a.data.size(), a.data.data(), obj);
+                auto& data = a.getData();
+                return py::array_t<std::uint8_t>(data.size(), data.data(), obj);
             },
             [](py::object& obj, py::array_t<std::uint8_t, py::array::c_style> array) {
                 dai::Asset& a = obj.cast<dai::Asset&>();
                 a.data = {array.data(), array.data() + array.size()};
+                a.path.clear();
+                a.size = a.data.size();
             })
         .def_readwrite("alignment", &Asset::alignment);
 

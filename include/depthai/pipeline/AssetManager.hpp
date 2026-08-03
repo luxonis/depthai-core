@@ -16,8 +16,12 @@ struct Asset {
     Asset() = default;
     explicit Asset(std::string k) : key(std::move(k)) {}
     const std::string key;
-    std::vector<std::uint8_t> data;
+    mutable std::vector<std::uint8_t> data;
+    std::filesystem::path path;
+    std::size_t size = 0;
     std::uint32_t alignment = 1;
+    std::vector<std::uint8_t>& getData();
+    std::size_t getSize() const;
     std::string getRelativeUri();
 };
 
@@ -127,6 +131,7 @@ class AssetManager /*: public Assets*/ {
 
     /// Serializes
     void serialize(AssetsMutable& assets, std::vector<std::uint8_t>& assetStorage, std::string prefix = "") const;
+    std::size_t getSerializedSize(std::size_t offset = 0) const;
 };
 
 }  // namespace dai

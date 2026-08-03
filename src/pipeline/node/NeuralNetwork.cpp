@@ -229,7 +229,7 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     }
     auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
-    properties.blobSize = static_cast<uint32_t>(asset->data.size());
+    properties.blobSize = static_cast<uint32_t>(asset->getSize());
     properties.modelSource = Properties::ModelSource::BLOB;
 }
 

@@ -6,12 +6,28 @@
 #include "utility/spdlog-fmt.hpp"
 
 // std
+#include <array>
 #include <fstream>
 
 namespace dai {
 
 std::string Asset::getRelativeUri() {
     return fmt::format("{}:{}", "asset", key);
+}
+
+std::vector<std::uint8_t>& Asset::getData() {
+    if(data.empty() && !path.empty()) {
+        std::ifstream stream(path, std::ios::in | std::ios::binary);
+        if(!stream.is_open()) {
+            throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
+        }
+        data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    }
+    return data;
+}
+
+std::size_t Asset::getSize() const {
+    return size != 0 ? size : data.size();
 }
 
 AssetManager::AssetManager() {}
@@ -55,7 +71,10 @@ std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asset) {
     // Rename the asset with supplied key and store
     Asset a(key);
+    const auto assetSize = asset.size != 0 ? asset.size : asset.data.size();
     a.data = std::move(asset.data);
+    a.path = std::move(asset.path);
+    a.size = assetSize;
     a.alignment = asset.alignment;
     return set(std::move(a));
 }
@@ -72,7 +91,8 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    binaryAsset.path = path;
+    binaryAsset.size = static_cast<std::size_t>(std::filesystem::file_size(path));
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -82,6 +102,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
     binaryAsset.data = std::move(data);
+    binaryAsset.size = binaryAsset.data.size();
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -91,6 +112,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vecto
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
     binaryAsset.data = std::move(data);
+    binaryAsset.size = binaryAsset.data.size();
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -166,12 +188,40 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         // Add alignment bytes
         storage.resize(storage.size() + toAdd);
 
-        // copy data
-        storage.insert(storage.end(), a.data.begin(), a.data.end());
+        if(!a.path.empty()) {
+            std::ifstream stream(a.path, std::ios::in | std::ios::binary);
+            if(!stream.is_open()) {
+                throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", a.path));
+            }
+            std::array<std::uint8_t, 1024 * 1024> buffer{};
+            std::size_t streamedSize = 0;
+            while(stream) {
+                stream.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+                auto bytesRead = stream.gcount();
+                storage.insert(storage.end(), buffer.data(), buffer.data() + bytesRead);
+                streamedSize += static_cast<std::size_t>(bytesRead);
+            }
+            if(streamedSize != a.getSize()) {
+                throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
+            }
+        } else {
+            storage.insert(storage.end(), a.data.begin(), a.data.end());
+        }
 
         // Add to map the currently added asset
-        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
+        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.getSize()), a.alignment);
     }
+}
+
+std::size_t AssetManager::getSerializedSize(std::size_t offset) const {
+    for(const auto& kv : assetMap) {
+        const auto& a = *kv.second;
+        if(a.alignment > 1 && offset % a.alignment != 0) {
+            offset += a.alignment - (offset % a.alignment);
+        }
+        offset += a.getSize();
+    }
+    return offset;
 }
 
 void AssetsMutable::set(const std::string& key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment) {
