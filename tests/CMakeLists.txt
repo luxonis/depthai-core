@@ -490,6 +490,10 @@ dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
 
+# Telemetry fork safety test
+dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
+dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
+
 # Circular buffer test
 dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
 dai_set_test_labels(circular_buffer_test onhost ci)
