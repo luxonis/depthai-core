@@ -12,6 +12,7 @@ from image content) or a **bird's-eye view** (a calibrated projection onto a pla
 | [`multi_device_calibration.py`](multi_device_calibration.py) | Estimating the rig — the poses *between* the devices — and saving it as json |
 | [`multi_device_stitching.py`](multi_device_stitching.py) | Panorama stitching, no calibration needed |
 | [`multi_device_planar_stitching.py`](multi_device_planar_stitching.py) | Bird's-eye view: calibrated projection onto a plane |
+| [`multi_device_physical_calibrate_stitch.py`](multi_device_physical_calibrate_stitch.py) | Physical CAM_B/C rig calibration followed by planar stitching |
 | [`planar_stitching_synthetic.py`](planar_stitching_synthetic.py) | The same bird's-eye view on a synthetic rig, so it runs without any hardware |
 | [`multi_device_record.py`](multi_device_record.py) | Record the synced streams of a rig, with every device's calibration and the rig, into one self-contained folder |
 | [`multi_device_replay.py`](multi_device_replay.py) | Replay such a recording with **no devices connected** — through calibration or bird's-eye view |
@@ -294,7 +295,33 @@ pose = transformation.getExtrinsics().getTransformationMatrix()  # virtual camer
 
 ---
 
-## 5) Record & replay
+## 5) Physical CAM_B/C calibrate + stitch
+
+**Script:** `multi_device_physical_calibrate_stitch.py`
+
+This wraps rig estimation and calibrated planar stitching for a real CAM_B/C stereo setup. It defaults to the three
+checked lab devices and never opens `CAM_A`:
+
+```bash
+python3 multi_device_physical_calibrate_stitch.py --headless \
+    -g 0 0 0 100 -g 0 0 0 200 \
+    --stitched-output .codex-tmp/multidevice_physical/planar_stitch_cam_b.png
+```
+
+On `poc/multi-device-stitching`, `--method dcl` is the supported calibration path and needs one rough `--guess` for
+each device after the first. After rebasing the smart multi-device calibration changes, the same script can run:
+
+```bash
+python3 multi_device_physical_calibrate_stitch.py --method feature-tracks --headless
+```
+
+The calibration stage always feeds both `CAM_B` and `CAM_C` from every device so the stereo baselines can constrain
+metric scale. The stitching stage defaults to `CAM_B`; repeat `--stitch-socket` with `CAM_B` and `CAM_C` to compare a
+six-input planar projection.
+
+---
+
+## 6) Record & replay
 
 **Scripts:** `multi_device_record.py`, `multi_device_replay.py`
 
@@ -338,7 +365,7 @@ post): the reference frame's device id is stamped on the host, so it survives in
 
 ---
 
-## 6) A synthetic recording, with ground truth
+## 7) A synthetic recording, with ground truth
 
 **Scripts:** `multi_device_synthetic_record.py`, `multi_device_rig_compare.py`
 
