@@ -48,6 +48,7 @@ int main() {
     cv::Scalar textColor(255, 255, 255);
 
     pipeline.start();
+    auto lastPrintTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     while(pipeline.isRunning() && !quitEvent) {
         auto inRgb = qRgb->get<dai::ImgFrame>();
         auto inDet = qDet->get<dai::ImgDetections>();
@@ -90,7 +91,10 @@ int main() {
 
             auto currentTime = std::chrono::steady_clock::now();
             float fps = counter / std::chrono::duration<float>(currentTime - startTime).count();
-            std::cout << "FPS: " << fps << std::endl;
+            if(currentTime - lastPrintTime >= std::chrono::seconds(1)) {
+                std::cout << "FPS: " << fps << std::endl;
+                lastPrintTime = currentTime;
+            }
         }
 
         if(cv::waitKey(1) == 'q') {

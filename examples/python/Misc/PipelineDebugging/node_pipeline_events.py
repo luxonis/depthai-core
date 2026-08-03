@@ -1,3 +1,5 @@
+import time
+
 import depthai as dai
 import numpy as np
 import cv2
@@ -29,6 +31,7 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
     maxDisparity = 1
+    lastPrintTime = 0.0
     while pipeline.isRunning():
         disparity = disparityQueue.get()
         latestEvent = monoLeftEventQueue.tryGet()
@@ -37,7 +40,10 @@ with dai.Pipeline() as pipeline:
         maxDisparity = max(maxDisparity, np.max(npDisparity))
         colorizedDisparity = cv2.applyColorMap(((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap)
         cv2.imshow("disparity", colorizedDisparity)
-        print(f"Latest event from MonoLeft camera node: {latestEvent if latestEvent is not None else 'No event'}")
+        now = time.monotonic()
+        if now - lastPrintTime >= 1.0:
+            print(f"Latest event from MonoLeft camera node: {latestEvent if latestEvent is not None else 'No event'}")
+            lastPrintTime = now
         key = cv2.waitKey(1)
         if key == ord('q'):
             pipeline.stop()

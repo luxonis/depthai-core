@@ -1,4 +1,5 @@
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -112,6 +113,7 @@ int main() {
 
     pipeline.start();
 
+    auto lastPrintTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     while(pipeline.isRunning() && !quitEvent) {
         auto colorFrame = colorOut->get<dai::ImgFrame>();
         auto stereoFrame = stereoOut->get<dai::ImgFrame>();
@@ -132,11 +134,15 @@ int main() {
         dai::RotatedRect rect(dai::Point2f(300, 200), dai::Size2f(200, 100), 10);
         auto remappedRect = colorFrame->transformation.remapRectTo(stereoFrame->transformation, rect);
 
-        // Print rectangle information
-        std::cout << "Original rect x: " << rect.center.x << " y: " << rect.center.y << " width: " << rect.size.width << " height: " << rect.size.height
-                  << " angle: " << rect.angle << std::endl;
-        std::cout << "Remapped rect x: " << remappedRect.center.x << " y: " << remappedRect.center.y << " width: " << remappedRect.size.width
-                  << " height: " << remappedRect.size.height << " angle: " << remappedRect.angle << std::endl;
+        const auto now = std::chrono::steady_clock::now();
+        if(now - lastPrintTime >= std::chrono::seconds(1)) {
+            // Print rectangle information at most once per second.
+            std::cout << "Original rect x: " << rect.center.x << " y: " << rect.center.y << " width: " << rect.size.width << " height: " << rect.size.height
+                      << " angle: " << rect.angle << std::endl;
+            std::cout << "Remapped rect x: " << remappedRect.center.x << " y: " << remappedRect.center.y << " width: " << remappedRect.size.width
+                      << " height: " << remappedRect.size.height << " angle: " << remappedRect.angle << std::endl;
+            lastPrintTime = now;
+        }
 
         // Draw rectangles
         drawRotatedRectangle(clr, cv::Point2f(rect.center.x, rect.center.y), cv::Size2f(rect.size.width, rect.size.height), rect.angle, cv::Scalar(255, 0, 0));
