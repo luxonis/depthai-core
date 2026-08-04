@@ -13,6 +13,9 @@
 
 namespace dai {
 namespace beta {
+
+EmbeddingsParserProperties::~EmbeddingsParserProperties() = default;
+
 namespace node {
 
 NNArchive EmbeddingsParser::createNNArchive(NNModelDescription& modelDesc) {
@@ -97,11 +100,19 @@ void EmbeddingsParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void EmbeddingsParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string EmbeddingsParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
+}
+
+void EmbeddingsParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool EmbeddingsParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void EmbeddingsParser::run() {
@@ -117,7 +128,7 @@ void EmbeddingsParser::run() {
         // Extract: validate that exactly one output layer is selected. When the output layer name
         // is configured, the selection is trivially unambiguous and no per-message check is needed,
         // mirroring the source parser behavior.
-        if(outputLayerName.empty()) {
+        if(properties.outputLayerName.empty()) {
             const auto layerNames = nnData->getAllLayerNames();
             DAI_CHECK_V(layerNames.size() == 1,
                         "EmbeddingsParser: Embeddings head should have only one output layer, got {} layers. Please provide the output layer name.",

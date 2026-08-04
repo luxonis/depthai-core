@@ -7,10 +7,11 @@
 #include <variant>
 
 #include "depthai/beta/datatype/Lines.hpp"
+#include "depthai/beta/properties/MLSDParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -29,11 +30,11 @@ namespace node {
  * size of all known M-LSD models, hard-coded by the source parser); building from a full NNArchive derives it from the model input's declared shape and
  * layout (NHWC or NCHW), and setInputSize() overrides it.
  *
- * @note This node runs on the host only.
  */
-class MLSDParser : public NodeCRTP<dai::node::ThreadedHostNode, MLSDParser> {
+class MLSDParser : public DeviceNodeCRTP<DeviceNode, MLSDParser, MLSDParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "MLSDParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -163,6 +164,18 @@ class MLSDParser : public NodeCRTP<dai::node::ThreadedHostNode, MLSDParser> {
      */
     std::pair<std::uint32_t, std::uint32_t> getInputSize() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -171,12 +184,7 @@ class MLSDParser : public NodeCRTP<dai::node::ThreadedHostNode, MLSDParser> {
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerTPMap;
-    std::string outputLayerHeat;
-    int topK = 200;
-    float scoreThreshold = 0.10f;
-    float distanceThreshold = 20.0f;
-    std::pair<std::uint32_t, std::uint32_t> inputSize{512, 512};
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

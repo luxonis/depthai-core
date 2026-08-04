@@ -19,6 +19,9 @@
 
 namespace dai {
 namespace beta {
+
+LaneDetectionParserProperties::~LaneDetectionParserProperties() = default;
+
 namespace node {
 
 NNArchive LaneDetectionParser::createNNArchive(NNModelDescription& modelDesc) {
@@ -146,65 +149,73 @@ void LaneDetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void LaneDetectionParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string LaneDetectionParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
 }
 
 void LaneDetectionParser::setRowAnchors(const std::vector<std::int64_t>& rowAnchors) {
     DAI_CHECK(!rowAnchors.empty(), "Row anchors must not be empty.");
-    this->rowAnchors = rowAnchors;
+    properties.rowAnchors = rowAnchors;
 }
 
 std::vector<std::int64_t> LaneDetectionParser::getRowAnchors() const {
-    return rowAnchors;
+    return properties.rowAnchors;
 }
 
 void LaneDetectionParser::setGridingNum(std::int64_t gridingNum) {
     DAI_CHECK(gridingNum > 1, "Griding number must be greater than 1.");
-    this->gridingNum = gridingNum;
+    properties.gridingNum = gridingNum;
 }
 
 std::optional<std::int64_t> LaneDetectionParser::getGridingNum() const {
-    return gridingNum;
+    return properties.gridingNum;
 }
 
 void LaneDetectionParser::setClsNumPerLane(std::int64_t clsNumPerLane) {
     DAI_CHECK(clsNumPerLane > 0, "Number of points per lane must be greater than 0.");
-    this->clsNumPerLane = clsNumPerLane;
+    properties.clsNumPerLane = clsNumPerLane;
 }
 
 std::optional<std::int64_t> LaneDetectionParser::getClsNumPerLane() const {
-    return clsNumPerLane;
+    return properties.clsNumPerLane;
 }
 
 void LaneDetectionParser::setInputSize(std::uint32_t width, std::uint32_t height) {
     DAI_CHECK(width > 0 && height > 0, "Input size must be greater than 0.");
-    this->inputSize = std::make_pair(width, height);
+    properties.inputSize = std::make_pair(width, height);
 }
 
 std::optional<std::pair<std::uint32_t, std::uint32_t>> LaneDetectionParser::getInputSize() const {
-    return inputSize;
+    return properties.inputSize;
+}
+
+void LaneDetectionParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool LaneDetectionParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void LaneDetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("LaneDetectionParser started");
 
-    DAI_CHECK(!rowAnchors.empty(), "Row anchors must be specified!");
-    DAI_CHECK(gridingNum.has_value(), "Griding number must be specified!");
-    DAI_CHECK(clsNumPerLane.has_value(), "Number of points per lane must be specified!");
-    DAI_CHECK(inputSize.has_value(), "Input size must be specified! Configure it from a full NNArchive or with setInputSize().");
-    DAI_CHECK_V(rowAnchors.size() >= static_cast<std::size_t>(*clsNumPerLane),
+    DAI_CHECK(!properties.rowAnchors.empty(), "Row anchors must be specified!");
+    DAI_CHECK(properties.gridingNum.has_value(), "Griding number must be specified!");
+    DAI_CHECK(properties.clsNumPerLane.has_value(), "Number of points per lane must be specified!");
+    DAI_CHECK(properties.inputSize.has_value(), "Input size must be specified! Configure it from a full NNArchive or with setInputSize().");
+    DAI_CHECK_V(properties.rowAnchors.size() >= static_cast<std::size_t>(*properties.clsNumPerLane),
                 "Expected at least clsNumPerLane = {} row anchors, got {} row anchors.",
-                *clsNumPerLane,
-                rowAnchors.size());
+                *properties.clsNumPerLane,
+                properties.rowAnchors.size());
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -226,8 +237,13 @@ void LaneDetectionParser::run() {
         auto tensor = utilities::ClassificationUtils::getShapedTensorData(*nnData, resolvedOutputLayerName);
 
         // Compute. The number of lanes is derived from the tensor's last dimension.
-        auto points =
-            utilities::LaneDetectionUtils::decodeUfld(tensor.values, tensor.dims, rowAnchors, *gridingNum, *clsNumPerLane, inputSize->first, inputSize->second);
+        auto points = utilities::LaneDetectionUtils::decodeUfld(tensor.values,
+                                                                tensor.dims,
+                                                                properties.rowAnchors,
+                                                                *properties.gridingNum,
+                                                                *properties.clsNumPerLane,
+                                                                properties.inputSize->first,
+                                                                properties.inputSize->second);
 
         // Emit. Every lane produces one cluster, including empty lanes, labeled sequentially
         // from 0.

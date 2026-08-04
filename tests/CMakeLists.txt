@@ -687,6 +687,11 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
+if(DEPTHAI_BUILD_BETA)
+    dai_add_test(beta_parser_properties_test src/onhost_tests/beta_parser_properties_test.cpp)
+    dai_set_test_labels(beta_parser_properties_test onhost ci)
+endif()
+
 # GPU availability test
 dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)
 dai_set_test_labels(gpu_availability_test ondevice rvc4)

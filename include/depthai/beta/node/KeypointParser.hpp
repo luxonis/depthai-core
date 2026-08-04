@@ -8,10 +8,11 @@
 #include <vector>
 
 #include "depthai/beta/datatype/Keypoints.hpp"
+#include "depthai/beta/properties/KeypointParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -26,11 +27,11 @@ namespace node {
  * coordinates per keypoint (2 or 3) is derived from the tensor size and the configured number of keypoints. Keypoint coordinates are divided by the configured
  * scale factor and clipped to [0, 1].
  *
- * @note This node runs on the host only.
  */
-class KeypointParser : public NodeCRTP<dai::node::ThreadedHostNode, KeypointParser> {
+class KeypointParser : public DeviceNodeCRTP<DeviceNode, KeypointParser, KeypointParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "KeypointParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -150,6 +151,18 @@ class KeypointParser : public NodeCRTP<dai::node::ThreadedHostNode, KeypointPars
      */
     std::vector<Edge> getEdges() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -158,12 +171,7 @@ class KeypointParser : public NodeCRTP<dai::node::ThreadedHostNode, KeypointPars
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerName;
-    float scaleFactor = 1.0f;
-    std::optional<std::int64_t> nKeypoints;
-    std::optional<float> scoreThreshold;
-    std::vector<std::string> labelNames;
-    std::vector<Edge> edges;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

@@ -7,7 +7,7 @@ void bind_beta_imageoutputparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto imageOutputParser = ADD_BETA_NODE_DERIVED(ImageOutputParser, dai::node::ThreadedHostNode);
+    auto imageOutputParser = ADD_BETA_NODE_DERIVED(ImageOutputParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -38,5 +38,7 @@ void bind_beta_imageoutputparser(pybind11::module& m, void* pCallstack) {
              DOC(dai, beta, node, ImageOutputParser, setOutputLayerName))
         .def("getOutputLayerName", &ImageOutputParser::getOutputLayerName, DOC(dai, beta, node, ImageOutputParser, getOutputLayerName))
         .def("setBGROutput", &ImageOutputParser::setBGROutput, py::arg("outputIsBGR") = true, DOC(dai, beta, node, ImageOutputParser, setBGROutput))
-        .def("getBGROutput", &ImageOutputParser::getBGROutput, DOC(dai, beta, node, ImageOutputParser, getBGROutput));
+        .def("getBGROutput", &ImageOutputParser::getBGROutput, DOC(dai, beta, node, ImageOutputParser, getBGROutput))
+        .def("setRunOnHost", &ImageOutputParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, ImageOutputParser, setRunOnHost))
+        .def("runOnHost", &ImageOutputParser::runOnHost, DOC(dai, beta, node, ImageOutputParser, runOnHost));
 }

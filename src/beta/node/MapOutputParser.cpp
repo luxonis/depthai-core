@@ -17,6 +17,9 @@
 
 namespace dai {
 namespace beta {
+
+MapOutputParserProperties::~MapOutputParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -208,19 +211,27 @@ void MapOutputParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void MapOutputParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string MapOutputParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
 }
 
 void MapOutputParser::setMinMaxScaling(bool minMaxScaling) {
-    this->minMaxScaling = minMaxScaling;
+    properties.minMaxScaling = minMaxScaling;
 }
 
 bool MapOutputParser::getMinMaxScaling() const {
-    return minMaxScaling;
+    return properties.minMaxScaling;
+}
+
+void MapOutputParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool MapOutputParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void MapOutputParser::run() {
@@ -229,7 +240,7 @@ void MapOutputParser::run() {
 
     // The resolved layer name persists across messages once auto-selected from a single-tensor
     // NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -251,7 +262,7 @@ void MapOutputParser::run() {
         auto map = computeMapOutput(std::move(tensor));
 
         // Emit
-        auto message = createMapMessage(std::move(map), minMaxScaling);
+        auto message = createMapMessage(std::move(map), properties.minMaxScaling);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

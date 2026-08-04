@@ -7,7 +7,7 @@ void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto fastsamParser = ADD_BETA_NODE_DERIVED(FastSAMParser, dai::node::ThreadedHostNode);
+    auto fastsamParser = ADD_BETA_NODE_DERIVED(FastSAMParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -54,5 +54,7 @@ void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack) {
         .def("setMaskOutputs", &FastSAMParser::setMaskOutputs, py::arg("maskOutputs"), DOC(dai, beta, node, FastSAMParser, setMaskOutputs))
         .def("getMaskOutputs", &FastSAMParser::getMaskOutputs, DOC(dai, beta, node, FastSAMParser, getMaskOutputs))
         .def("setProtosOutput", &FastSAMParser::setProtosOutput, py::arg("protosOutput"), DOC(dai, beta, node, FastSAMParser, setProtosOutput))
-        .def("getProtosOutput", &FastSAMParser::getProtosOutput, DOC(dai, beta, node, FastSAMParser, getProtosOutput));
+        .def("getProtosOutput", &FastSAMParser::getProtosOutput, DOC(dai, beta, node, FastSAMParser, getProtosOutput))
+        .def("setRunOnHost", &FastSAMParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, FastSAMParser, setRunOnHost))
+        .def("runOnHost", &FastSAMParser::runOnHost, DOC(dai, beta, node, FastSAMParser, runOnHost));
 }

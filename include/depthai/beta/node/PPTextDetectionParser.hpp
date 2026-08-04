@@ -4,10 +4,11 @@
 #include <string>
 #include <variant>
 
+#include "depthai/beta/properties/PPTextDetectionParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -25,11 +26,11 @@ namespace node {
  * inside its (slightly shrunk) corner polygon, candidates scoring below the confidence threshold are dropped, and the kept rectangles are expanded by sqrt(2)
  * in both dimensions. The emitted bounding boxes are normalized to [0, 1] with angles in degrees rounded to whole numbers; the detections carry no labels.
  *
- * @note This node runs on the host only and requires OpenCV support; without it, parsing fails with a runtime error.
  */
-class PPTextDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, PPTextDetectionParser> {
+class PPTextDetectionParser : public DeviceNodeCRTP<DeviceNode, PPTextDetectionParser, PPTextDetectionParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "PPTextDetectionParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -125,6 +126,18 @@ class PPTextDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, PPTex
      */
     int getMaxDetections() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -133,10 +146,7 @@ class PPTextDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, PPTex
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerName;
-    float confidenceThreshold = 0.5f;
-    float maskThreshold = 0.25f;
-    int maxDetections = 100;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

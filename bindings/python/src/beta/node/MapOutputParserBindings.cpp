@@ -7,7 +7,7 @@ void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto mapOutputParser = ADD_BETA_NODE_DERIVED(MapOutputParser, dai::node::ThreadedHostNode);
+    auto mapOutputParser = ADD_BETA_NODE_DERIVED(MapOutputParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -35,5 +35,7 @@ void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack) {
         .def("setOutputLayerName", &MapOutputParser::setOutputLayerName, py::arg("outputLayerName"), DOC(dai, beta, node, MapOutputParser, setOutputLayerName))
         .def("getOutputLayerName", &MapOutputParser::getOutputLayerName, DOC(dai, beta, node, MapOutputParser, getOutputLayerName))
         .def("setMinMaxScaling", &MapOutputParser::setMinMaxScaling, py::arg("minMaxScaling") = true, DOC(dai, beta, node, MapOutputParser, setMinMaxScaling))
-        .def("getMinMaxScaling", &MapOutputParser::getMinMaxScaling, DOC(dai, beta, node, MapOutputParser, getMinMaxScaling));
+        .def("getMinMaxScaling", &MapOutputParser::getMinMaxScaling, DOC(dai, beta, node, MapOutputParser, getMinMaxScaling))
+        .def("setRunOnHost", &MapOutputParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, MapOutputParser, setRunOnHost))
+        .def("runOnHost", &MapOutputParser::runOnHost, DOC(dai, beta, node, MapOutputParser, runOnHost));
 }

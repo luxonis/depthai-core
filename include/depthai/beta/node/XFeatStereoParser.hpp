@@ -7,10 +7,11 @@
 #include <utility>
 #include <variant>
 
+#include "depthai/beta/properties/XFeatStereoParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 
@@ -36,12 +37,11 @@ namespace node {
  * and the reference frame's sequence number, like the source parser.
  *
  * The original image size must be configured before the pipeline starts, either through head metadata or with setOriginalSize().
- *
- * @note This node runs on the host only.
  */
-class XFeatStereoParser : public NodeCRTP<dai::node::ThreadedHostNode, XFeatStereoParser> {
+class XFeatStereoParser : public DeviceNodeCRTP<DeviceNode, XFeatStereoParser, XFeatStereoParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "XFeatStereoParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -177,20 +177,25 @@ class XFeatStereoParser : public NodeCRTP<dai::node::ThreadedHostNode, XFeatSter
      */
     int getMaxKeypoints() const;
 
+    /**
+     * Specify whether to run on host or device.
+     * By default, the node runs on the device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
+    bool runOnHostVar = false;
     void setConfig(const dai::NNArchiveVersionedConfig& config);
     void setConfig(const dai::nn_archive::v1::Head& head);
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-
-    std::string outputLayerFeats = "feats";
-    std::string outputLayerKeypoints = "keypoints";
-    std::string outputLayerHeatmaps = "heatmaps";
-    std::optional<std::pair<std::uint32_t, std::uint32_t>> originalSize;
-    std::pair<std::uint32_t, std::uint32_t> inputSize{640, 352};
-    int maxKeypoints = 4096;
 };
 
 }  // namespace node

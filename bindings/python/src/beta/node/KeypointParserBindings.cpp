@@ -7,7 +7,7 @@ void bind_beta_keypointparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto keypointParser = ADD_BETA_NODE_DERIVED(KeypointParser, dai::node::ThreadedHostNode);
+    auto keypointParser = ADD_BETA_NODE_DERIVED(KeypointParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -43,5 +43,7 @@ void bind_beta_keypointparser(pybind11::module& m, void* pCallstack) {
         .def("setLabelNames", &KeypointParser::setLabelNames, py::arg("labelNames"), DOC(dai, beta, node, KeypointParser, setLabelNames))
         .def("getLabelNames", &KeypointParser::getLabelNames, DOC(dai, beta, node, KeypointParser, getLabelNames))
         .def("setEdges", &KeypointParser::setEdges, py::arg("edges"), DOC(dai, beta, node, KeypointParser, setEdges))
-        .def("getEdges", &KeypointParser::getEdges, DOC(dai, beta, node, KeypointParser, getEdges));
+        .def("getEdges", &KeypointParser::getEdges, DOC(dai, beta, node, KeypointParser, getEdges))
+        .def("setRunOnHost", &KeypointParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, KeypointParser, setRunOnHost))
+        .def("runOnHost", &KeypointParser::runOnHost, DOC(dai, beta, node, KeypointParser, runOnHost));
 }

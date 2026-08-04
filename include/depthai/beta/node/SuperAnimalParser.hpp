@@ -7,10 +7,11 @@
 #include <vector>
 
 #include "depthai/beta/datatype/Keypoints.hpp"
+#include "depthai/beta/properties/SuperAnimalParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -28,11 +29,11 @@ namespace node {
  * is the heatmap value at that position, which must lie in [0, 1]. Keypoints with a score strictly below the score threshold are dropped and the skeleton
  * edges are remapped to the kept keypoints.
  *
- * @note This node runs on the host only.
  */
-class SuperAnimalParser : public NodeCRTP<dai::node::ThreadedHostNode, SuperAnimalParser> {
+class SuperAnimalParser : public DeviceNodeCRTP<DeviceNode, SuperAnimalParser, SuperAnimalParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "SuperAnimalParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -152,20 +153,25 @@ class SuperAnimalParser : public NodeCRTP<dai::node::ThreadedHostNode, SuperAnim
      */
     std::vector<Edge> getEdges() const;
 
+    /**
+     * Specify whether to run on host or device.
+     * By default, the node runs on the device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
+    bool runOnHostVar = false;
     void setConfig(const dai::NNArchiveVersionedConfig& config);
     void setConfig(const dai::nn_archive::v1::Head& head);
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-
-    std::string outputLayerName;
-    float scaleFactor = 256.0f;
-    std::int64_t nKeypoints = 39;
-    float scoreThreshold = 0.5f;
-    std::vector<std::string> labelNames;
-    std::vector<Edge> edges;
 };
 
 }  // namespace node

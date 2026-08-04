@@ -9,10 +9,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/properties/FastSAMParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 
@@ -37,11 +38,11 @@ namespace node {
  * pixels), "bbox" keeps the single mask with the highest IoU against the prompt bounding box, and "point" combines the masks containing the prompt point
  * (added for point label 1, subtracted for 0). With no detections, a fully-background mask is emitted.
  *
- * @note This node runs on the host only.
  */
-class FastSAMParser : public NodeCRTP<dai::node::ThreadedHostNode, FastSAMParser> {
+class FastSAMParser : public DeviceNodeCRTP<DeviceNode, FastSAMParser, FastSAMParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "FastSAMParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -227,6 +228,18 @@ class FastSAMParser : public NodeCRTP<dai::node::ThreadedHostNode, FastSAMParser
      */
     std::string getProtosOutput() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -235,17 +248,7 @@ class FastSAMParser : public NodeCRTP<dai::node::ThreadedHostNode, FastSAMParser
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    float confidenceThreshold = 0.5f;
-    std::int32_t numClasses = 1;
-    float iouThreshold = 0.5f;
-    float maskConfidence = 0.5f;
-    std::string prompt = "everything";
-    std::optional<std::pair<std::int32_t, std::int32_t>> points;
-    std::optional<std::int32_t> pointLabel;
-    std::optional<std::array<std::int32_t, 4>> boundingBox;
-    std::vector<std::string> yoloOutputs = {"output1_yolov8", "output2_yolov8", "output3_yolov8"};
-    std::vector<std::string> maskOutputs = {"output1_masks", "output2_masks", "output3_masks"};
-    std::string protosOutput = "protos_output";
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

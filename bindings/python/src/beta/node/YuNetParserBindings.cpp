@@ -7,7 +7,7 @@ void bind_beta_yunetparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto yunetParser = ADD_BETA_NODE_DERIVED(YuNetParser, dai::node::ThreadedHostNode);
+    auto yunetParser = ADD_BETA_NODE_DERIVED(YuNetParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -47,5 +47,7 @@ void bind_beta_yunetparser(pybind11::module& m, void* pCallstack) {
         .def("setInputSize", &YuNetParser::setInputSize, py::arg("width"), py::arg("height"), DOC(dai, beta, node, YuNetParser, setInputSize))
         .def("getInputSize", &YuNetParser::getInputSize, DOC(dai, beta, node, YuNetParser, getInputSize))
         .def("setLabelNames", &YuNetParser::setLabelNames, py::arg("labelNames"), DOC(dai, beta, node, YuNetParser, setLabelNames))
-        .def("getLabelNames", &YuNetParser::getLabelNames, DOC(dai, beta, node, YuNetParser, getLabelNames));
+        .def("getLabelNames", &YuNetParser::getLabelNames, DOC(dai, beta, node, YuNetParser, getLabelNames))
+        .def("setRunOnHost", &YuNetParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, YuNetParser, setRunOnHost))
+        .def("runOnHost", &YuNetParser::runOnHost, DOC(dai, beta, node, YuNetParser, runOnHost));
 }

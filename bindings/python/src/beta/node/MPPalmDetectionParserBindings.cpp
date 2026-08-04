@@ -7,7 +7,7 @@ void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto mpPalmDetectionParser = ADD_BETA_NODE_DERIVED(MPPalmDetectionParser, dai::node::ThreadedHostNode);
+    auto mpPalmDetectionParser = ADD_BETA_NODE_DERIVED(MPPalmDetectionParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -52,5 +52,7 @@ void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack) {
         .def("setScale", &MPPalmDetectionParser::setScale, py::arg("scale"), DOC(dai, beta, node, MPPalmDetectionParser, setScale))
         .def("getScale", &MPPalmDetectionParser::getScale, DOC(dai, beta, node, MPPalmDetectionParser, getScale))
         .def("setLabelNames", &MPPalmDetectionParser::setLabelNames, py::arg("labelNames"), DOC(dai, beta, node, MPPalmDetectionParser, setLabelNames))
-        .def("getLabelNames", &MPPalmDetectionParser::getLabelNames, DOC(dai, beta, node, MPPalmDetectionParser, getLabelNames));
+        .def("getLabelNames", &MPPalmDetectionParser::getLabelNames, DOC(dai, beta, node, MPPalmDetectionParser, getLabelNames))
+        .def("setRunOnHost", &MPPalmDetectionParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, MPPalmDetectionParser, setRunOnHost))
+        .def("runOnHost", &MPPalmDetectionParser::runOnHost, DOC(dai, beta, node, MPPalmDetectionParser, runOnHost));
 }

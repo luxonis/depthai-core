@@ -5,10 +5,11 @@
 #include <variant>
 
 #include "depthai/beta/datatype/Map2D.hpp"
+#include "depthai/beta/properties/MapOutputParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -26,11 +27,11 @@ namespace node {
  *
  * When min-max scaling is enabled, the map values are scaled to the [0, 1] range; a constant map is left unchanged.
  *
- * @note This node runs on the host only.
  */
-class MapOutputParser : public NodeCRTP<dai::node::ThreadedHostNode, MapOutputParser> {
+class MapOutputParser : public DeviceNodeCRTP<DeviceNode, MapOutputParser, MapOutputParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "MapOutputParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -100,6 +101,18 @@ class MapOutputParser : public NodeCRTP<dai::node::ThreadedHostNode, MapOutputPa
      */
     bool getMinMaxScaling() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -108,8 +121,7 @@ class MapOutputParser : public NodeCRTP<dai::node::ThreadedHostNode, MapOutputPa
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerName;
-    bool minMaxScaling = false;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

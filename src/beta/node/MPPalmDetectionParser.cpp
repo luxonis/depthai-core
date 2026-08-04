@@ -20,6 +20,9 @@
 
 namespace dai {
 namespace beta {
+
+MPPalmDetectionParserProperties::~MPPalmDetectionParserProperties() = default;
+
 namespace node {
 
 NNArchive MPPalmDetectionParser::createNNArchive(NNModelDescription& modelDesc) {
@@ -126,51 +129,59 @@ void MPPalmDetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
 
 void MPPalmDetectionParser::setOutputLayerNames(const std::vector<std::string>& outputLayerNames) {
     DAI_CHECK_V(outputLayerNames.size() == 2, "Only two output layers are supported for MPPalmDetectionParser, got {} layers.", outputLayerNames.size());
-    this->outputLayerNames = outputLayerNames;
+    properties.outputLayerNames = outputLayerNames;
 }
 
 std::vector<std::string> MPPalmDetectionParser::getOutputLayerNames() const {
-    return outputLayerNames;
+    return properties.outputLayerNames;
 }
 
 void MPPalmDetectionParser::setConfidenceThreshold(float threshold) {
-    this->confidenceThreshold = threshold;
+    properties.confidenceThreshold = threshold;
 }
 
 float MPPalmDetectionParser::getConfidenceThreshold() const {
-    return confidenceThreshold;
+    return properties.confidenceThreshold;
 }
 
 void MPPalmDetectionParser::setIouThreshold(float threshold) {
-    this->iouThreshold = threshold;
+    properties.iouThreshold = threshold;
 }
 
 float MPPalmDetectionParser::getIouThreshold() const {
-    return iouThreshold;
+    return properties.iouThreshold;
 }
 
 void MPPalmDetectionParser::setMaxDetections(int maxDetections) {
-    this->maxDetections = maxDetections;
+    properties.maxDetections = maxDetections;
 }
 
 int MPPalmDetectionParser::getMaxDetections() const {
-    return maxDetections;
+    return properties.maxDetections;
 }
 
 void MPPalmDetectionParser::setScale(int scale) {
-    this->scale = scale;
+    properties.scale = scale;
 }
 
 int MPPalmDetectionParser::getScale() const {
-    return scale;
+    return properties.scale;
 }
 
 void MPPalmDetectionParser::setLabelNames(const std::vector<std::string>& labelNames) {
-    this->labelNames = labelNames;
+    properties.labelNames = labelNames;
 }
 
 std::vector<std::string> MPPalmDetectionParser::getLabelNames() const {
-    return labelNames;
+    return properties.labelNames;
+}
+
+void MPPalmDetectionParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool MPPalmDetectionParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void MPPalmDetectionParser::run() {
@@ -223,21 +234,26 @@ void MPPalmDetectionParser::run() {
                     bboxesTensor->values.size());
 
         // Compute
-        const int currentScale = scale;
+        const int currentScale = properties.scale;
         if(!anchorsCached || cachedAnchorScale != currentScale) {
             anchors = utilities::MediaPipeUtils::generateHandtrackerAnchors(currentScale, currentScale);
             cachedAnchorScale = currentScale;
             anchorsCached = true;
         }
-        const auto detections = utilities::MediaPipeUtils::computeMediaPipePalmDetections(
-            bboxesTensor->values, scoresTensor->values, anchors, confidenceThreshold, iouThreshold, maxDetections, currentScale);
+        const auto detections = utilities::MediaPipeUtils::computeMediaPipePalmDetections(bboxesTensor->values,
+                                                                                          scoresTensor->values,
+                                                                                          anchors,
+                                                                                          properties.confidenceThreshold,
+                                                                                          properties.iouThreshold,
+                                                                                          properties.maxDetections,
+                                                                                          currentScale);
 
         // Emit. All detections carry label 0; the first label name (when configured) is mapped
         // to every detection.
         const std::vector<std::uint32_t> labels(detections.bboxes.size(), 0);
         std::vector<std::string> mappedLabelNames;
-        if(!labelNames.empty()) {
-            mappedLabelNames.assign(detections.bboxes.size(), labelNames.front());
+        if(!properties.labelNames.empty()) {
+            mappedLabelNames.assign(detections.bboxes.size(), properties.labelNames.front());
         }
         auto message = utilities::DetectionUtils::createDetectionMessage(detections.bboxes, detections.scores, detections.angles, labels, mappedLabelNames);
         if(nnData->transformation.has_value()) {

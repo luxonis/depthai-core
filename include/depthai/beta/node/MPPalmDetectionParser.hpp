@@ -5,10 +5,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/properties/MPPalmDetectionParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -27,11 +28,11 @@ namespace node {
  * middle-finger direction with the rectangle's y-axis and expanded to squares, and non-maximum suppression keeps at most the configured maximum number of
  * detections. The emitted bounding boxes are normalized to [0, 1].
  *
- * @note This node runs on the host only.
  */
-class MPPalmDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, MPPalmDetectionParser> {
+class MPPalmDetectionParser : public DeviceNodeCRTP<DeviceNode, MPPalmDetectionParser, MPPalmDetectionParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "MPPalmDetectionParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -148,6 +149,18 @@ class MPPalmDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, MPPal
      */
     std::vector<std::string> getLabelNames() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -156,12 +169,7 @@ class MPPalmDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, MPPal
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::vector<std::string> outputLayerNames;
-    float confidenceThreshold = 0.5f;
-    float iouThreshold = 0.5f;
-    int maxDetections = 100;
-    int scale = 192;
-    std::vector<std::string> labelNames{"Palm"};
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

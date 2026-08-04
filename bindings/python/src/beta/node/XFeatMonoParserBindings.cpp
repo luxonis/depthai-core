@@ -7,7 +7,7 @@ void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto xfeatMonoParser = ADD_BETA_NODE_DERIVED(XFeatMonoParser, dai::node::ThreadedHostNode);
+    auto xfeatMonoParser = ADD_BETA_NODE_DERIVED(XFeatMonoParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -53,5 +53,7 @@ void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack) {
         .def("getInputSize", &XFeatMonoParser::getInputSize, DOC(dai, beta, node, XFeatMonoParser, getInputSize))
         .def("setMaxKeypoints", &XFeatMonoParser::setMaxKeypoints, py::arg("maxKeypoints"), DOC(dai, beta, node, XFeatMonoParser, setMaxKeypoints))
         .def("getMaxKeypoints", &XFeatMonoParser::getMaxKeypoints, DOC(dai, beta, node, XFeatMonoParser, getMaxKeypoints))
-        .def("setTrigger", &XFeatMonoParser::setTrigger, DOC(dai, beta, node, XFeatMonoParser, setTrigger));
+        .def("setTrigger", &XFeatMonoParser::setTrigger, DOC(dai, beta, node, XFeatMonoParser, setTrigger))
+        .def("setRunOnHost", &XFeatMonoParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, XFeatMonoParser, setRunOnHost))
+        .def("runOnHost", &XFeatMonoParser::runOnHost, DOC(dai, beta, node, XFeatMonoParser, runOnHost));
 }

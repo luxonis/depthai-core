@@ -7,7 +7,7 @@ void bind_beta_classificationparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto classificationParser = ADD_BETA_NODE_DERIVED(ClassificationParser, dai::node::ThreadedHostNode);
+    auto classificationParser = ADD_BETA_NODE_DERIVED(ClassificationParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -40,5 +40,7 @@ void bind_beta_classificationparser(pybind11::module& m, void* pCallstack) {
         .def("setClasses", &ClassificationParser::setClasses, py::arg("classes"), DOC(dai, beta, node, ClassificationParser, setClasses))
         .def("getClasses", &ClassificationParser::getClasses, DOC(dai, beta, node, ClassificationParser, getClasses))
         .def("setSoftmax", &ClassificationParser::setSoftmax, py::arg("isSoftmax"), DOC(dai, beta, node, ClassificationParser, setSoftmax))
-        .def("getSoftmax", &ClassificationParser::getSoftmax, DOC(dai, beta, node, ClassificationParser, getSoftmax));
+        .def("getSoftmax", &ClassificationParser::getSoftmax, DOC(dai, beta, node, ClassificationParser, getSoftmax))
+        .def("setRunOnHost", &ClassificationParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, ClassificationParser, setRunOnHost))
+        .def("runOnHost", &ClassificationParser::runOnHost, DOC(dai, beta, node, ClassificationParser, runOnHost));
 }

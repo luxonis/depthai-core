@@ -19,6 +19,9 @@
 
 namespace dai {
 namespace beta {
+
+ImageOutputParserProperties::~ImageOutputParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -273,19 +276,27 @@ void ImageOutputParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void ImageOutputParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string ImageOutputParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
 }
 
 void ImageOutputParser::setBGROutput(bool outputIsBGR) {
-    this->outputIsBGR = outputIsBGR;
+    properties.outputIsBGR = outputIsBGR;
 }
 
 bool ImageOutputParser::getBGROutput() const {
-    return outputIsBGR;
+    return properties.outputIsBGR;
+}
+
+void ImageOutputParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool ImageOutputParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void ImageOutputParser::run() {
@@ -303,7 +314,7 @@ void ImageOutputParser::run() {
 
     // The resolved layer name persists across messages once auto-selected from a single-tensor
     // NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -325,7 +336,7 @@ void ImageOutputParser::run() {
         auto image = computeImageOutput(std::move(tensor));
 
         // Emit
-        auto message = createImageMessage(image, outputIsBGR, requestedFrameType);
+        auto message = createImageMessage(image, properties.outputIsBGR, requestedFrameType);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

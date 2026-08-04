@@ -8,10 +8,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/properties/RFDETRParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -34,11 +35,11 @@ namespace node {
  * through a sigmoid, cropped to its bounding box, binarized with the mask confidence threshold and resized to the model input size with nearest-neighbor
  * interpolation; the pixels not claimed by an earlier (higher-scoring) detection receive the detection's index, with 255 marking background.
  *
- * @note This node runs on the host only.
  */
-class RFDETRParser : public NodeCRTP<dai::node::ThreadedHostNode, RFDETRParser> {
+class RFDETRParser : public DeviceNodeCRTP<DeviceNode, RFDETRParser, RFDETRParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "RFDETRParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -169,6 +170,18 @@ class RFDETRParser : public NodeCRTP<dai::node::ThreadedHostNode, RFDETRParser> 
      */
     std::optional<std::pair<std::uint32_t, std::uint32_t>> getInputSize() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -177,12 +190,7 @@ class RFDETRParser : public NodeCRTP<dai::node::ThreadedHostNode, RFDETRParser> 
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    float confidenceThreshold = 0.5f;
-    int maxDetections = 300;
-    std::vector<std::string> labelNames;
-    float maskConfidence = 0.5f;
-    std::vector<std::string> outputLayerNames;
-    std::optional<std::pair<std::uint32_t, std::uint32_t>> inputSize;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

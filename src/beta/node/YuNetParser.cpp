@@ -23,6 +23,9 @@
 
 namespace dai {
 namespace beta {
+
+YuNetParserProperties::~YuNetParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -175,68 +178,76 @@ void YuNetParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void YuNetParser::setOutputLayerLoc(const std::string& locOutputLayerName) {
-    this->locOutputLayerName = locOutputLayerName;
+    properties.locOutputLayerName = locOutputLayerName;
 }
 
 std::string YuNetParser::getOutputLayerLoc() const {
-    return locOutputLayerName;
+    return properties.locOutputLayerName;
 }
 
 void YuNetParser::setOutputLayerConf(const std::string& confOutputLayerName) {
-    this->confOutputLayerName = confOutputLayerName;
+    properties.confOutputLayerName = confOutputLayerName;
 }
 
 std::string YuNetParser::getOutputLayerConf() const {
-    return confOutputLayerName;
+    return properties.confOutputLayerName;
 }
 
 void YuNetParser::setOutputLayerIou(const std::string& iouOutputLayerName) {
-    this->iouOutputLayerName = iouOutputLayerName;
+    properties.iouOutputLayerName = iouOutputLayerName;
 }
 
 std::string YuNetParser::getOutputLayerIou() const {
-    return iouOutputLayerName;
+    return properties.iouOutputLayerName;
 }
 
 void YuNetParser::setConfidenceThreshold(float threshold) {
-    this->confidenceThreshold = threshold;
+    properties.confidenceThreshold = threshold;
 }
 
 float YuNetParser::getConfidenceThreshold() const {
-    return confidenceThreshold;
+    return properties.confidenceThreshold;
 }
 
 void YuNetParser::setIouThreshold(float threshold) {
-    this->iouThreshold = threshold;
+    properties.iouThreshold = threshold;
 }
 
 float YuNetParser::getIouThreshold() const {
-    return iouThreshold;
+    return properties.iouThreshold;
 }
 
 void YuNetParser::setMaxDetections(int maxDetections) {
-    this->maxDetections = maxDetections;
+    properties.maxDetections = maxDetections;
 }
 
 int YuNetParser::getMaxDetections() const {
-    return maxDetections;
+    return properties.maxDetections;
 }
 
 void YuNetParser::setInputSize(std::uint32_t width, std::uint32_t height) {
     DAI_CHECK(width > 0 && height > 0, "Input size must be greater than 0.");
-    this->inputSize = std::make_pair(width, height);
+    properties.inputSize = std::make_pair(width, height);
 }
 
 std::optional<std::pair<std::uint32_t, std::uint32_t>> YuNetParser::getInputSize() const {
-    return inputSize;
+    return properties.inputSize;
 }
 
 void YuNetParser::setLabelNames(const std::vector<std::string>& labelNames) {
-    this->labelNames = labelNames;
+    properties.labelNames = labelNames;
 }
 
 std::vector<std::string> YuNetParser::getLabelNames() const {
-    return labelNames;
+    return properties.labelNames;
+}
+
+void YuNetParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool YuNetParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void YuNetParser::run() {
@@ -245,9 +256,9 @@ void YuNetParser::run() {
 
     // The layer names resolved from the first incoming NNData persist across messages,
     // mirroring the source parser behavior.
-    std::string resolvedLocLayerName = locOutputLayerName;
-    std::string resolvedConfLayerName = confOutputLayerName;
-    std::string resolvedIouLayerName = iouOutputLayerName;
+    std::string resolvedLocLayerName = properties.locOutputLayerName;
+    std::string resolvedConfLayerName = properties.confOutputLayerName;
+    std::string resolvedIouLayerName = properties.iouOutputLayerName;
 
     // The anchors depend only on the input size; they are cached across messages and refreshed
     // when the input size changes, mirroring the source parser's anchor cache.
@@ -264,8 +275,8 @@ void YuNetParser::run() {
         // The input size the anchors are generated from and the coordinates are normalized by
         // must be configured; the source parser requires it as well (its decoding fails with a
         // None input size).
-        DAI_CHECK(inputSize.has_value(), "YuNetParser: the input size is not set. Configure the parser from an NNArchive or with setInputSize().");
-        const auto currentInputSize = *inputSize;
+        DAI_CHECK(properties.inputSize.has_value(), "YuNetParser: the input size is not set. Configure the parser from an NNArchive or with setInputSize().");
+        const auto currentInputSize = *properties.inputSize;
 
         // Extract: resolve the loc, conf and iou layer names (auto-detected by the "loc",
         // "conf" and "iou" name prefixes when not configured) and read the dequantized
@@ -300,16 +311,23 @@ void YuNetParser::run() {
             cachedInputSize = currentInputSize;
             anchorsCached = true;
         }
-        const auto detections = utilities::YuNetUtils::computeYuNetDetections(
-            locTensor, confTensor, iouTensor, anchors, currentInputSize.first, currentInputSize.second, confidenceThreshold, iouThreshold, maxDetections);
+        const auto detections = utilities::YuNetUtils::computeYuNetDetections(locTensor,
+                                                                              confTensor,
+                                                                              iouTensor,
+                                                                              anchors,
+                                                                              currentInputSize.first,
+                                                                              currentInputSize.second,
+                                                                              properties.confidenceThreshold,
+                                                                              properties.iouThreshold,
+                                                                              properties.maxDetections);
 
         // Emit. All detections carry label 0; the first label name (when configured) is mapped
         // to every detection. Every detection carries 5 keypoints without confidence scores
         // (confidence -1), mirroring the source message creator.
         const std::vector<std::uint32_t> labels(detections.bboxes.size(), 0);
         std::vector<std::string> mappedLabelNames;
-        if(!labelNames.empty()) {
-            mappedLabelNames.assign(detections.bboxes.size(), labelNames.front());
+        if(!properties.labelNames.empty()) {
+            mappedLabelNames.assign(detections.bboxes.size(), properties.labelNames.front());
         }
         std::vector<std::vector<Keypoint>> keypoints;
         keypoints.reserve(detections.keypoints.size());

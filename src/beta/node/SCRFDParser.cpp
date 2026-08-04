@@ -23,6 +23,9 @@
 
 namespace dai {
 namespace beta {
+
+SCRFDParserProperties::~SCRFDParserProperties() = default;
+
 namespace node {
 
 NNArchive SCRFDParser::createNNArchive(NNModelDescription& modelDesc) {
@@ -171,71 +174,79 @@ void SCRFDParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void SCRFDParser::setOutputLayerNames(const std::vector<std::string>& outputLayerNames) {
-    this->outputLayerNames = outputLayerNames;
+    properties.outputLayerNames = outputLayerNames;
 }
 
 std::vector<std::string> SCRFDParser::getOutputLayerNames() const {
-    return outputLayerNames;
+    return properties.outputLayerNames;
 }
 
 void SCRFDParser::setConfidenceThreshold(float threshold) {
-    this->confidenceThreshold = threshold;
+    properties.confidenceThreshold = threshold;
 }
 
 float SCRFDParser::getConfidenceThreshold() const {
-    return confidenceThreshold;
+    return properties.confidenceThreshold;
 }
 
 void SCRFDParser::setIouThreshold(float threshold) {
-    this->iouThreshold = threshold;
+    properties.iouThreshold = threshold;
 }
 
 float SCRFDParser::getIouThreshold() const {
-    return iouThreshold;
+    return properties.iouThreshold;
 }
 
 void SCRFDParser::setMaxDetections(int maxDetections) {
-    this->maxDetections = maxDetections;
+    properties.maxDetections = maxDetections;
 }
 
 int SCRFDParser::getMaxDetections() const {
-    return maxDetections;
+    return properties.maxDetections;
 }
 
 void SCRFDParser::setInputSize(std::uint32_t width, std::uint32_t height) {
     DAI_CHECK(width > 0 && height > 0, "Input size must be greater than 0.");
-    this->inputSize = std::make_pair(width, height);
+    properties.inputSize = std::make_pair(width, height);
 }
 
 std::pair<std::uint32_t, std::uint32_t> SCRFDParser::getInputSize() const {
-    return inputSize;
+    return properties.inputSize;
 }
 
 void SCRFDParser::setFeatStrideFPN(const std::vector<std::int64_t>& featStrideFpn) {
     for(const std::int64_t stride : featStrideFpn) {
         DAI_CHECK_V(stride > 0, "Feature stride must be positive, got {}.", stride);
     }
-    this->featStrideFpn = featStrideFpn;
+    properties.featStrideFpn = featStrideFpn;
 }
 
 std::vector<std::int64_t> SCRFDParser::getFeatStrideFPN() const {
-    return featStrideFpn;
+    return properties.featStrideFpn;
 }
 
 void SCRFDParser::setNumAnchors(std::int64_t numAnchors) {
-    this->numAnchors = numAnchors;
+    properties.numAnchors = numAnchors;
 }
 
 std::int64_t SCRFDParser::getNumAnchors() const {
-    return numAnchors;
+    return properties.numAnchors;
 }
 
 void SCRFDParser::setLabelNames(const std::vector<std::string>& labelNames) {
-    this->labelNames = labelNames;
+    properties.labelNames = labelNames;
 }
 
 std::vector<std::string> SCRFDParser::getLabelNames() const {
-    return labelNames;
+    return properties.labelNames;
+}
+
+void SCRFDParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool SCRFDParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void SCRFDParser::run() {
@@ -244,7 +255,7 @@ void SCRFDParser::run() {
 
     // The layer name list resolved from the first incoming NNData persists across messages,
     // mirroring the source parser behavior.
-    std::vector<std::string> resolvedOutputLayerNames = outputLayerNames;
+    std::vector<std::string> resolvedOutputLayerNames = properties.outputLayerNames;
 
     // The anchor centers depend only on the input size, the feature strides and the number of
     // anchors; they are cached across messages and refreshed when any of the three changes,
@@ -261,9 +272,9 @@ void SCRFDParser::run() {
             continue;
         }
 
-        const auto currentInputSize = inputSize;
-        const auto currentStrides = featStrideFpn;
-        const std::int64_t currentNumAnchors = numAnchors;
+        const auto currentInputSize = properties.inputSize;
+        const auto currentStrides = properties.featStrideFpn;
+        const std::int64_t currentNumAnchors = properties.numAnchors;
 
         // Extract: one score/bbox/kps layer triple per stride. The score tensor is flattened;
         // the bbox and kps tensors are paired 4 and 10 values per score, which accepts both
@@ -326,8 +337,8 @@ void SCRFDParser::run() {
                                                                               currentStrides,
                                                                               currentInputSize.first,
                                                                               currentInputSize.second,
-                                                                              confidenceThreshold,
-                                                                              iouThreshold,
+                                                                              properties.confidenceThreshold,
+                                                                              properties.iouThreshold,
                                                                               anchors);
 
         // Emit. All detections carry label 0; the first label name (when configured) is mapped
@@ -335,8 +346,8 @@ void SCRFDParser::run() {
         // (confidence -1), mirroring the source message creator.
         const std::vector<std::uint32_t> labels(detections.bboxes.size(), 0);
         std::vector<std::string> mappedLabelNames;
-        if(!labelNames.empty()) {
-            mappedLabelNames.assign(detections.bboxes.size(), labelNames.front());
+        if(!properties.labelNames.empty()) {
+            mappedLabelNames.assign(detections.bboxes.size(), properties.labelNames.front());
         }
         std::vector<std::vector<Keypoint>> keypoints;
         keypoints.reserve(detections.keypoints.size());

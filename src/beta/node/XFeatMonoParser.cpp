@@ -17,6 +17,9 @@
 
 namespace dai {
 namespace beta {
+
+XFeatMonoParserProperties::~XFeatMonoParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -178,71 +181,79 @@ void XFeatMonoParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void XFeatMonoParser::setOutputLayerFeats(const std::string& outputLayerFeats) {
-    this->outputLayerFeats = outputLayerFeats;
+    properties.outputLayerFeats = outputLayerFeats;
 }
 
 std::string XFeatMonoParser::getOutputLayerFeats() const {
-    return outputLayerFeats;
+    return properties.outputLayerFeats;
 }
 
 void XFeatMonoParser::setOutputLayerKeypoints(const std::string& outputLayerKeypoints) {
-    this->outputLayerKeypoints = outputLayerKeypoints;
+    properties.outputLayerKeypoints = outputLayerKeypoints;
 }
 
 std::string XFeatMonoParser::getOutputLayerKeypoints() const {
-    return outputLayerKeypoints;
+    return properties.outputLayerKeypoints;
 }
 
 void XFeatMonoParser::setOutputLayerHeatmaps(const std::string& outputLayerHeatmaps) {
-    this->outputLayerHeatmaps = outputLayerHeatmaps;
+    properties.outputLayerHeatmaps = outputLayerHeatmaps;
 }
 
 std::string XFeatMonoParser::getOutputLayerHeatmaps() const {
-    return outputLayerHeatmaps;
+    return properties.outputLayerHeatmaps;
 }
 
 void XFeatMonoParser::setOriginalSize(std::uint32_t width, std::uint32_t height) {
     DAI_CHECK(width > 0 && height > 0, "Original image size must be greater than 0.");
-    this->originalSize = std::make_pair(width, height);
+    properties.originalSize = std::make_pair(width, height);
 }
 
 std::optional<std::pair<std::uint32_t, std::uint32_t>> XFeatMonoParser::getOriginalSize() const {
-    return originalSize;
+    return properties.originalSize;
 }
 
 void XFeatMonoParser::setInputSize(std::uint32_t width, std::uint32_t height) {
     DAI_CHECK(width > 0 && height > 0, "Input image size must be greater than 0.");
-    this->inputSize = std::make_pair(width, height);
+    properties.inputSize = std::make_pair(width, height);
 }
 
 std::pair<std::uint32_t, std::uint32_t> XFeatMonoParser::getInputSize() const {
-    return inputSize;
+    return properties.inputSize;
 }
 
 void XFeatMonoParser::setMaxKeypoints(int maxKeypoints) {
-    this->maxKeypoints = maxKeypoints;
+    properties.maxKeypoints = maxKeypoints;
 }
 
 int XFeatMonoParser::getMaxKeypoints() const {
-    return maxKeypoints;
+    return properties.maxKeypoints;
 }
 
 void XFeatMonoParser::setTrigger() {
     trigger = true;
 }
 
+void XFeatMonoParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool XFeatMonoParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
+}
+
 void XFeatMonoParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("XFeatMonoParser started");
 
-    DAI_CHECK(originalSize.has_value(), "Original image size must be specified!");
-    DAI_CHECK(!outputLayerFeats.empty(), "Output layer containing features must be specified!");
-    DAI_CHECK(!outputLayerKeypoints.empty(), "Output layer containing keypoints must be specified!");
-    DAI_CHECK(!outputLayerHeatmaps.empty(), "Output layer containing heatmaps must be specified!");
+    DAI_CHECK(properties.originalSize.has_value(), "Original image size must be specified!");
+    DAI_CHECK(!properties.outputLayerFeats.empty(), "Output layer containing features must be specified!");
+    DAI_CHECK(!properties.outputLayerKeypoints.empty(), "Output layer containing keypoints must be specified!");
+    DAI_CHECK(!properties.outputLayerHeatmaps.empty(), "Output layer containing heatmaps must be specified!");
 
     // The resize rates are computed once before the loop, like the source run().
-    const double resizeRateW = static_cast<double>(originalSize->first) / static_cast<double>(inputSize.first);
-    const double resizeRateH = static_cast<double>(originalSize->second) / static_cast<double>(inputSize.second);
+    const double resizeRateW = static_cast<double>(properties.originalSize->first) / static_cast<double>(properties.inputSize.first);
+    const double resizeRateH = static_cast<double>(properties.originalSize->second) / static_cast<double>(properties.inputSize.second);
 
     // The reference result the current frame's keypoints are matched against, None initially.
     std::optional<utilities::XFeatUtils::XFeatResult> previousResult;
@@ -254,11 +265,18 @@ void XFeatMonoParser::run() {
         }
 
         // Extract
-        auto tensors = utilities::XFeatUtils::extractXFeatTensors(*nnData, outputLayerFeats, outputLayerKeypoints, outputLayerHeatmaps);
+        auto tensors =
+            utilities::XFeatUtils::extractXFeatTensors(*nnData, properties.outputLayerFeats, properties.outputLayerKeypoints, properties.outputLayerHeatmaps);
 
         // Compute
-        const auto result = utilities::XFeatUtils::detectAndCompute(
-            tensors.feats, tensors.keypoints, tensors.heatmaps, resizeRateW, resizeRateH, inputSize.first, inputSize.second, maxKeypoints);
+        const auto result = utilities::XFeatUtils::detectAndCompute(tensors.feats,
+                                                                    tensors.keypoints,
+                                                                    tensors.heatmaps,
+                                                                    resizeRateW,
+                                                                    resizeRateH,
+                                                                    properties.inputSize.first,
+                                                                    properties.inputSize.second,
+                                                                    properties.maxKeypoints);
 
         // Emit
         if(!result.has_value()) {

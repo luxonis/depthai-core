@@ -18,6 +18,9 @@
 
 namespace dai {
 namespace beta {
+
+KeypointParserProperties::~KeypointParserProperties() = default;
+
 namespace node {
 
 NNArchive KeypointParser::createNNArchive(NNModelDescription& modelDesc) {
@@ -149,65 +152,73 @@ void KeypointParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void KeypointParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string KeypointParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
 }
 
 void KeypointParser::setScaleFactor(float scaleFactor) {
     DAI_CHECK(scaleFactor > 0.0f, "Scale factor must be greater than 0.");
-    this->scaleFactor = scaleFactor;
+    properties.scaleFactor = scaleFactor;
 }
 
 float KeypointParser::getScaleFactor() const {
-    return scaleFactor;
+    return properties.scaleFactor;
 }
 
 void KeypointParser::setNumKeypoints(std::int64_t nKeypoints) {
     DAI_CHECK(nKeypoints > 0, "Number of keypoints must be greater than 0.");
-    this->nKeypoints = nKeypoints;
+    properties.nKeypoints = nKeypoints;
 }
 
 std::optional<std::int64_t> KeypointParser::getNumKeypoints() const {
-    return nKeypoints;
+    return properties.nKeypoints;
 }
 
 void KeypointParser::setScoreThreshold(float threshold) {
     DAI_CHECK(threshold >= 0.0f && threshold <= 1.0f, "Confidence threshold must be between 0 and 1.");
-    this->scoreThreshold = threshold;
+    properties.scoreThreshold = threshold;
 }
 
 std::optional<float> KeypointParser::getScoreThreshold() const {
-    return scoreThreshold;
+    return properties.scoreThreshold;
 }
 
 void KeypointParser::setLabelNames(const std::vector<std::string>& labelNames) {
-    this->labelNames = labelNames;
+    properties.labelNames = labelNames;
 }
 
 std::vector<std::string> KeypointParser::getLabelNames() const {
-    return labelNames;
+    return properties.labelNames;
 }
 
 void KeypointParser::setEdges(const std::vector<Edge>& edges) {
-    this->edges = edges;
+    properties.edges = edges;
 }
 
 std::vector<Edge> KeypointParser::getEdges() const {
-    return edges;
+    return properties.edges;
+}
+
+void KeypointParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool KeypointParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void KeypointParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("KeypointParser started");
 
-    DAI_CHECK(nKeypoints.has_value(), "Number of keypoints must be specified!");
+    DAI_CHECK(properties.nKeypoints.has_value(), "Number of keypoints must be specified!");
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -226,12 +237,12 @@ void KeypointParser::run() {
         auto values = utilities::ClassificationUtils::getFlattenedTensorData(*nnData, resolvedOutputLayerName);
 
         // Compute
-        auto coordinates = utilities::KeypointsUtils::computeKeypoints(std::move(values), *nKeypoints, scaleFactor);
+        auto coordinates = utilities::KeypointsUtils::computeKeypoints(std::move(values), *properties.nKeypoints, properties.scaleFactor);
 
         // Emit. The source parser passes no scores and no confidence threshold to the message
         // creator, so every keypoint is kept with a confidence of -1 and the edges are only
         // filtered against out-of-range indices.
-        auto message = utilities::KeypointsUtils::createKeypointsMessage(coordinates, std::nullopt, std::nullopt, labelNames, edges);
+        auto message = utilities::KeypointsUtils::createKeypointsMessage(coordinates, std::nullopt, std::nullopt, properties.labelNames, properties.edges);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

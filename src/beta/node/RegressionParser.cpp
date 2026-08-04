@@ -19,6 +19,9 @@
 
 namespace dai {
 namespace beta {
+
+RegressionParserProperties::~RegressionParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -146,11 +149,19 @@ void RegressionParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void RegressionParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string RegressionParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
+}
+
+void RegressionParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool RegressionParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void RegressionParser::run() {
@@ -159,7 +170,7 @@ void RegressionParser::run() {
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();

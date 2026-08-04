@@ -4,10 +4,11 @@
 #include <string>
 #include <variant>
 
+#include "depthai/beta/properties/ImageOutputParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -27,11 +28,11 @@ namespace node {
  * BGR888i frame otherwise, including in a device-less pipeline. The model output is treated as RGB and converted to BGR unless the BGR-output flag marks it
  * as already BGR.
  *
- * @note This node runs on the host only.
  */
-class ImageOutputParser : public NodeCRTP<dai::node::ThreadedHostNode, ImageOutputParser> {
+class ImageOutputParser : public DeviceNodeCRTP<DeviceNode, ImageOutputParser, ImageOutputParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "ImageOutputParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -101,6 +102,18 @@ class ImageOutputParser : public NodeCRTP<dai::node::ThreadedHostNode, ImageOutp
      */
     bool getBGROutput() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -109,8 +122,7 @@ class ImageOutputParser : public NodeCRTP<dai::node::ThreadedHostNode, ImageOutp
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerName;
-    bool outputIsBGR = false;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

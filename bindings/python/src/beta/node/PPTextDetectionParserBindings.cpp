@@ -7,7 +7,7 @@ void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto ppTextDetectionParser = ADD_BETA_NODE_DERIVED(PPTextDetectionParser, dai::node::ThreadedHostNode);
+    auto ppTextDetectionParser = ADD_BETA_NODE_DERIVED(PPTextDetectionParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -51,5 +51,7 @@ void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack) {
              &PPTextDetectionParser::setMaxDetections,
              py::arg("maxDetections"),
              DOC(dai, beta, node, PPTextDetectionParser, setMaxDetections))
-        .def("getMaxDetections", &PPTextDetectionParser::getMaxDetections, DOC(dai, beta, node, PPTextDetectionParser, getMaxDetections));
+        .def("getMaxDetections", &PPTextDetectionParser::getMaxDetections, DOC(dai, beta, node, PPTextDetectionParser, getMaxDetections))
+        .def("setRunOnHost", &PPTextDetectionParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, PPTextDetectionParser, setRunOnHost))
+        .def("runOnHost", &PPTextDetectionParser::runOnHost, DOC(dai, beta, node, PPTextDetectionParser, runOnHost));
 }

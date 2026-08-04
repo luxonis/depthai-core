@@ -7,7 +7,7 @@ void bind_beta_lanedetectionparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto laneDetectionParser = ADD_BETA_NODE_DERIVED(LaneDetectionParser, dai::node::ThreadedHostNode);
+    auto laneDetectionParser = ADD_BETA_NODE_DERIVED(LaneDetectionParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -44,5 +44,7 @@ void bind_beta_lanedetectionparser(pybind11::module& m, void* pCallstack) {
         .def("setClsNumPerLane", &LaneDetectionParser::setClsNumPerLane, py::arg("clsNumPerLane"), DOC(dai, beta, node, LaneDetectionParser, setClsNumPerLane))
         .def("getClsNumPerLane", &LaneDetectionParser::getClsNumPerLane, DOC(dai, beta, node, LaneDetectionParser, getClsNumPerLane))
         .def("setInputSize", &LaneDetectionParser::setInputSize, py::arg("width"), py::arg("height"), DOC(dai, beta, node, LaneDetectionParser, setInputSize))
-        .def("getInputSize", &LaneDetectionParser::getInputSize, DOC(dai, beta, node, LaneDetectionParser, getInputSize));
+        .def("getInputSize", &LaneDetectionParser::getInputSize, DOC(dai, beta, node, LaneDetectionParser, getInputSize))
+        .def("setRunOnHost", &LaneDetectionParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, LaneDetectionParser, setRunOnHost))
+        .def("runOnHost", &LaneDetectionParser::runOnHost, DOC(dai, beta, node, LaneDetectionParser, runOnHost));
 }

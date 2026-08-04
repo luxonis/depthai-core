@@ -20,6 +20,9 @@
 
 namespace dai {
 namespace beta {
+
+MLSDParserProperties::~MLSDParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -185,61 +188,71 @@ void MLSDParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void MLSDParser::setOutputLayerTPMap(const std::string& outputLayerTPMap) {
-    this->outputLayerTPMap = outputLayerTPMap;
+    properties.outputLayerTPMap = outputLayerTPMap;
 }
 
 std::string MLSDParser::getOutputLayerTPMap() const {
-    return outputLayerTPMap;
+    return properties.outputLayerTPMap;
 }
 
 void MLSDParser::setOutputLayerHeat(const std::string& outputLayerHeat) {
-    this->outputLayerHeat = outputLayerHeat;
+    properties.outputLayerHeat = outputLayerHeat;
 }
 
 std::string MLSDParser::getOutputLayerHeat() const {
-    return outputLayerHeat;
+    return properties.outputLayerHeat;
 }
 
 void MLSDParser::setTopK(int topK) {
     DAI_CHECK(topK > 0, "topk_n must be a positive integer.");
-    this->topK = topK;
+    properties.topK = topK;
 }
 
 int MLSDParser::getTopK() const {
-    return topK;
+    return properties.topK;
 }
 
 void MLSDParser::setScoreThreshold(float scoreThreshold) {
-    this->scoreThreshold = scoreThreshold;
+    properties.scoreThreshold = scoreThreshold;
 }
 
 float MLSDParser::getScoreThreshold() const {
-    return scoreThreshold;
+    return properties.scoreThreshold;
 }
 
 void MLSDParser::setDistanceThreshold(float distanceThreshold) {
-    this->distanceThreshold = distanceThreshold;
+    properties.distanceThreshold = distanceThreshold;
 }
 
 float MLSDParser::getDistanceThreshold() const {
-    return distanceThreshold;
+    return properties.distanceThreshold;
 }
 
 void MLSDParser::setInputSize(std::uint32_t width, std::uint32_t height) {
     DAI_CHECK(width > 0 && height > 0, "Input size must be greater than 0.");
-    this->inputSize = std::make_pair(width, height);
+    properties.inputSize = std::make_pair(width, height);
 }
 
 std::pair<std::uint32_t, std::uint32_t> MLSDParser::getInputSize() const {
-    return inputSize;
+    return properties.inputSize;
+}
+
+void MLSDParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool MLSDParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void MLSDParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("MLSDParser started");
 
-    DAI_CHECK(!outputLayerTPMap.empty(), "Output layer containing the tpMap tensor is not set. Please use setOutputLayerTPMap method or correct NN archive.");
-    DAI_CHECK(!outputLayerHeat.empty(), "Output layer containing the heat tensor is not set. Please use setOutputLayerHeat method or correct NN archive.");
+    DAI_CHECK(!properties.outputLayerTPMap.empty(),
+              "Output layer containing the tpMap tensor is not set. Please use setOutputLayerTPMap method or correct NN archive.");
+    DAI_CHECK(!properties.outputLayerHeat.empty(),
+              "Output layer containing the heat tensor is not set. Please use setOutputLayerHeat method or correct NN archive.");
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -249,12 +262,18 @@ void MLSDParser::run() {
 
         // Extract. The tpMap tensor is permuted to NCHW orientation; the heat tensor is read in
         // its stored order and flattened.
-        auto tpMap = getNchwTensorData(*nnData, outputLayerTPMap);
-        auto heat = utilities::ClassificationUtils::getFlattenedTensorData(*nnData, outputLayerHeat);
+        auto tpMap = getNchwTensorData(*nnData, properties.outputLayerTPMap);
+        auto heat = utilities::ClassificationUtils::getFlattenedTensorData(*nnData, properties.outputLayerHeat);
 
         // Compute. The heat map grid size is derived from the tpMap tensor shape.
-        auto decoded =
-            utilities::MLSDUtils::computeMlsdLines(tpMap.values, tpMap.dims, heat, topK, scoreThreshold, distanceThreshold, inputSize.first, inputSize.second);
+        auto decoded = utilities::MLSDUtils::computeMlsdLines(tpMap.values,
+                                                              tpMap.dims,
+                                                              heat,
+                                                              properties.topK,
+                                                              properties.scoreThreshold,
+                                                              properties.distanceThreshold,
+                                                              properties.inputSize.first,
+                                                              properties.inputSize.second);
 
         // Emit. Lines are ordered by descending confidence score.
         auto message = utilities::MLSDUtils::createLinesMessage(decoded);

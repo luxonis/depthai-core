@@ -5,10 +5,11 @@
 #include <variant>
 
 #include "depthai/beta/datatype/Predictions.hpp"
+#include "depthai/beta/properties/RegressionParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -23,12 +24,11 @@ namespace node {
  * name must be configured explicitly or through an NNArchive head. The tensor is dequantized and all its singleton dimensions are squeezed; the remaining
  * values become the predictions, so any tensor with at most one non-singleton dimension is accepted regardless of rank (for example (1, 1, 1, 3), (1, 1) or
  * (1,)) and an empty tensor yields a message with no predictions. A tensor with more than one non-singleton dimension after squeezing is rejected.
- *
- * @note This node runs on the host only.
  */
-class RegressionParser : public NodeCRTP<dai::node::ThreadedHostNode, RegressionParser> {
+class RegressionParser : public DeviceNodeCRTP<DeviceNode, RegressionParser, RegressionParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "RegressionParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -84,6 +84,18 @@ class RegressionParser : public NodeCRTP<dai::node::ThreadedHostNode, Regression
      */
     std::string getOutputLayerName() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -92,7 +104,7 @@ class RegressionParser : public NodeCRTP<dai::node::ThreadedHostNode, Regression
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerName;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

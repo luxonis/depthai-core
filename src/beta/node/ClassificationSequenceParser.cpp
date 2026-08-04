@@ -15,6 +15,9 @@
 
 namespace dai {
 namespace beta {
+
+ClassificationSequenceParserProperties::~ClassificationSequenceParserProperties() = default;
+
 namespace node {
 
 NNArchive ClassificationSequenceParser::createNNArchive(NNModelDescription& modelDesc) {
@@ -103,7 +106,7 @@ void ClassificationSequenceParser::setConfig(const dai::nn_archive::v1::Head& he
         setClasses(*head.metadata.classes);
     }
     if(head.metadata.nClasses.has_value()) {
-        nClasses = *head.metadata.nClasses;
+        properties.nClasses = *head.metadata.nClasses;
     }
     if(head.metadata.isSoftmax.has_value()) {
         setSoftmax(*head.metadata.isSoftmax);
@@ -137,52 +140,60 @@ void ClassificationSequenceParser::setConfig(const dai::nn_archive::v1::Head& he
 }
 
 void ClassificationSequenceParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string ClassificationSequenceParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
 }
 
 void ClassificationSequenceParser::setClasses(const std::vector<std::string>& classes) {
-    this->classes = classes;
-    this->nClasses = static_cast<std::int64_t>(classes.size());
+    properties.classes = classes;
+    properties.nClasses = static_cast<std::int64_t>(classes.size());
 }
 
 std::vector<std::string> ClassificationSequenceParser::getClasses() const {
-    return classes;
+    return properties.classes;
 }
 
 void ClassificationSequenceParser::setSoftmax(bool isSoftmax) {
-    this->isSoftmax = isSoftmax;
+    properties.isSoftmax = isSoftmax;
 }
 
 bool ClassificationSequenceParser::getSoftmax() const {
-    return isSoftmax;
+    return properties.isSoftmax;
 }
 
 void ClassificationSequenceParser::setIgnoredIndexes(const std::vector<std::int32_t>& ignoredIndexes) {
-    this->ignoredIndexes = ignoredIndexes;
+    properties.ignoredIndexes = ignoredIndexes;
 }
 
 std::vector<std::int32_t> ClassificationSequenceParser::getIgnoredIndexes() const {
-    return ignoredIndexes;
+    return properties.ignoredIndexes;
 }
 
 void ClassificationSequenceParser::setRemoveDuplicates(bool removeDuplicates) {
-    this->removeDuplicates = removeDuplicates;
+    properties.removeDuplicates = removeDuplicates;
 }
 
 bool ClassificationSequenceParser::getRemoveDuplicates() const {
-    return removeDuplicates;
+    return properties.removeDuplicates;
 }
 
 void ClassificationSequenceParser::setConcatenateClasses(bool concatenateClasses) {
-    this->concatenateClasses = concatenateClasses;
+    properties.concatenateClasses = concatenateClasses;
 }
 
 bool ClassificationSequenceParser::getConcatenateClasses() const {
-    return concatenateClasses;
+    return properties.concatenateClasses;
+}
+
+void ClassificationSequenceParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool ClassificationSequenceParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void ClassificationSequenceParser::run() {
@@ -191,7 +202,7 @@ void ClassificationSequenceParser::run() {
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -208,16 +219,16 @@ void ClassificationSequenceParser::run() {
             resolvedOutputLayerName = layerNames.front();
         }
 
-        DAI_CHECK(nClasses != 0, "ClassificationSequenceParser: classes must be provided for classification.");
+        DAI_CHECK(properties.nClasses != 0, "ClassificationSequenceParser: classes must be provided for classification.");
 
         auto tensor = utilities::ClassificationUtils::getShapedTensorData(*nnData, resolvedOutputLayerName);
 
         // Compute
-        auto scores = utilities::ClassificationUtils::computeClassificationSequenceScores(std::move(tensor), isSoftmax);
+        auto scores = utilities::ClassificationUtils::computeClassificationSequenceScores(std::move(tensor), properties.isSoftmax);
 
         // Emit
-        auto message =
-            utilities::ClassificationUtils::createClassificationSequenceMessage(classes, scores, ignoredIndexes, removeDuplicates, concatenateClasses);
+        auto message = utilities::ClassificationUtils::createClassificationSequenceMessage(
+            properties.classes, scores, properties.ignoredIndexes, properties.removeDuplicates, properties.concatenateClasses);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

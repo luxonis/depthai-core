@@ -7,7 +7,7 @@ void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto scrfdParser = ADD_BETA_NODE_DERIVED(SCRFDParser, dai::node::ThreadedHostNode);
+    auto scrfdParser = ADD_BETA_NODE_DERIVED(SCRFDParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -47,5 +47,7 @@ void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack) {
         .def("setNumAnchors", &SCRFDParser::setNumAnchors, py::arg("numAnchors"), DOC(dai, beta, node, SCRFDParser, setNumAnchors))
         .def("getNumAnchors", &SCRFDParser::getNumAnchors, DOC(dai, beta, node, SCRFDParser, getNumAnchors))
         .def("setLabelNames", &SCRFDParser::setLabelNames, py::arg("labelNames"), DOC(dai, beta, node, SCRFDParser, setLabelNames))
-        .def("getLabelNames", &SCRFDParser::getLabelNames, DOC(dai, beta, node, SCRFDParser, getLabelNames));
+        .def("getLabelNames", &SCRFDParser::getLabelNames, DOC(dai, beta, node, SCRFDParser, getLabelNames))
+        .def("setRunOnHost", &SCRFDParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, SCRFDParser, setRunOnHost))
+        .def("runOnHost", &SCRFDParser::runOnHost, DOC(dai, beta, node, SCRFDParser, runOnHost));
 }

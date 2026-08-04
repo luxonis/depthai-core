@@ -7,10 +7,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/properties/SCRFDParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -29,11 +30,11 @@ namespace node {
  * the original SCRFD non-maximum suppression (+1 offset box areas, overlaps at most the IoU threshold survive). The anchor centers are cached across messages
  * and refreshed when the input size, feature strides or number of anchors change.
  *
- * @note This node runs on the host only.
  */
-class SCRFDParser : public NodeCRTP<dai::node::ThreadedHostNode, SCRFDParser> {
+class SCRFDParser : public DeviceNodeCRTP<DeviceNode, SCRFDParser, SCRFDParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "SCRFDParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -185,6 +186,18 @@ class SCRFDParser : public NodeCRTP<dai::node::ThreadedHostNode, SCRFDParser> {
      */
     std::vector<std::string> getLabelNames() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -193,14 +206,7 @@ class SCRFDParser : public NodeCRTP<dai::node::ThreadedHostNode, SCRFDParser> {
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::vector<std::string> outputLayerNames;
-    float confidenceThreshold = 0.5f;
-    float iouThreshold = 0.5f;
-    int maxDetections = 100;
-    std::pair<std::uint32_t, std::uint32_t> inputSize{640, 640};
-    std::vector<std::int64_t> featStrideFpn{8, 16, 32};
-    std::int64_t numAnchors = 2;
-    std::vector<std::string> labelNames{"Face"};
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

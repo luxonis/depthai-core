@@ -7,7 +7,7 @@ void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto mlsdParser = ADD_BETA_NODE_DERIVED(MLSDParser, dai::node::ThreadedHostNode);
+    auto mlsdParser = ADD_BETA_NODE_DERIVED(MLSDParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -43,5 +43,7 @@ void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack) {
         .def("setDistanceThreshold", &MLSDParser::setDistanceThreshold, py::arg("distanceThreshold"), DOC(dai, beta, node, MLSDParser, setDistanceThreshold))
         .def("getDistanceThreshold", &MLSDParser::getDistanceThreshold, DOC(dai, beta, node, MLSDParser, getDistanceThreshold))
         .def("setInputSize", &MLSDParser::setInputSize, py::arg("width"), py::arg("height"), DOC(dai, beta, node, MLSDParser, setInputSize))
-        .def("getInputSize", &MLSDParser::getInputSize, DOC(dai, beta, node, MLSDParser, getInputSize));
+        .def("getInputSize", &MLSDParser::getInputSize, DOC(dai, beta, node, MLSDParser, getInputSize))
+        .def("setRunOnHost", &MLSDParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, MLSDParser, setRunOnHost))
+        .def("runOnHost", &MLSDParser::runOnHost, DOC(dai, beta, node, MLSDParser, runOnHost));
 }

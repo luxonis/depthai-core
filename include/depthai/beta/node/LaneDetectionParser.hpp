@@ -9,10 +9,11 @@
 #include <vector>
 
 #include "depthai/beta/datatype/Clusters.hpp"
+#include "depthai/beta/properties/LaneDetectionParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -30,11 +31,11 @@ namespace node {
  * building from a full NNArchive derives it from the model input's declared shape and layout (NHWC or NCHW), while building from a specific head requires
  * setInputSize() because a head carries no model input metadata.
  *
- * @note This node runs on the host only.
  */
-class LaneDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, LaneDetectionParser> {
+class LaneDetectionParser : public DeviceNodeCRTP<DeviceNode, LaneDetectionParser, LaneDetectionParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "LaneDetectionParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -152,6 +153,18 @@ class LaneDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, LaneDet
      */
     std::optional<std::pair<std::uint32_t, std::uint32_t>> getInputSize() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -160,11 +173,7 @@ class LaneDetectionParser : public NodeCRTP<dai::node::ThreadedHostNode, LaneDet
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerName;
-    std::vector<std::int64_t> rowAnchors;
-    std::optional<std::int64_t> gridingNum;
-    std::optional<std::int64_t> clsNumPerLane;
-    std::optional<std::pair<std::uint32_t, std::uint32_t>> inputSize;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

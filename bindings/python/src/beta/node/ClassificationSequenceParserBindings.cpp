@@ -7,7 +7,7 @@ void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstac
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto classificationSequenceParser = ADD_BETA_NODE_DERIVED(ClassificationSequenceParser, dai::node::ThreadedHostNode);
+    auto classificationSequenceParser = ADD_BETA_NODE_DERIVED(ClassificationSequenceParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -63,5 +63,8 @@ void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstac
              DOC(dai, beta, node, ClassificationSequenceParser, setConcatenateClasses))
         .def("getConcatenateClasses",
              &ClassificationSequenceParser::getConcatenateClasses,
-             DOC(dai, beta, node, ClassificationSequenceParser, getConcatenateClasses));
+             DOC(dai, beta, node, ClassificationSequenceParser, getConcatenateClasses))
+        .def(
+            "setRunOnHost", &ClassificationSequenceParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, ClassificationSequenceParser, setRunOnHost))
+        .def("runOnHost", &ClassificationSequenceParser::runOnHost, DOC(dai, beta, node, ClassificationSequenceParser, runOnHost));
 }

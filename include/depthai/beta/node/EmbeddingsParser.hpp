@@ -4,10 +4,11 @@
 #include <string>
 #include <variant>
 
+#include "depthai/beta/properties/EmbeddingsParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -20,12 +21,11 @@ namespace node {
  * The parser expects a single output tensor carrying the embedding vector. When the output layer name is left unconfigured, every incoming NNData must contain
  * exactly one tensor; otherwise the message is rejected. The message itself is forwarded without modification, so all tensors, sequence number, timestamps,
  * and image transformation metadata are preserved.
- *
- * @note This node runs on the host only.
  */
-class EmbeddingsParser : public NodeCRTP<dai::node::ThreadedHostNode, EmbeddingsParser> {
+class EmbeddingsParser : public DeviceNodeCRTP<DeviceNode, EmbeddingsParser, EmbeddingsParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "EmbeddingsParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -81,6 +81,18 @@ class EmbeddingsParser : public NodeCRTP<dai::node::ThreadedHostNode, Embeddings
      */
     std::string getOutputLayerName() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -89,7 +101,7 @@ class EmbeddingsParser : public NodeCRTP<dai::node::ThreadedHostNode, Embeddings
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerName;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

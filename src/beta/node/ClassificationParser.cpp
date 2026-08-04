@@ -15,6 +15,9 @@
 
 namespace dai {
 namespace beta {
+
+ClassificationParserProperties::~ClassificationParserProperties() = default;
+
 namespace node {
 
 NNArchive ClassificationParser::createNNArchive(NNModelDescription& modelDesc) {
@@ -101,7 +104,7 @@ void ClassificationParser::setConfig(const dai::nn_archive::v1::Head& head) {
         setClasses(*head.metadata.classes);
     }
     if(head.metadata.nClasses.has_value()) {
-        nClasses = *head.metadata.nClasses;
+        properties.nClasses = *head.metadata.nClasses;
     }
     if(head.metadata.isSoftmax.has_value()) {
         setSoftmax(*head.metadata.isSoftmax);
@@ -109,28 +112,36 @@ void ClassificationParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void ClassificationParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string ClassificationParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
 }
 
 void ClassificationParser::setClasses(const std::vector<std::string>& classes) {
-    this->classes = classes;
-    this->nClasses = static_cast<std::int64_t>(classes.size());
+    properties.classes = classes;
+    properties.nClasses = static_cast<std::int64_t>(classes.size());
 }
 
 std::vector<std::string> ClassificationParser::getClasses() const {
-    return classes;
+    return properties.classes;
 }
 
 void ClassificationParser::setSoftmax(bool isSoftmax) {
-    this->isSoftmax = isSoftmax;
+    properties.isSoftmax = isSoftmax;
 }
 
 bool ClassificationParser::getSoftmax() const {
-    return isSoftmax;
+    return properties.isSoftmax;
+}
+
+void ClassificationParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool ClassificationParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void ClassificationParser::run() {
@@ -139,7 +150,7 @@ void ClassificationParser::run() {
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -157,16 +168,16 @@ void ClassificationParser::run() {
         }
 
         auto scores = utilities::ClassificationUtils::getFlattenedTensorData(*nnData, resolvedOutputLayerName);
-        DAI_CHECK_V(nClasses == 0 || static_cast<std::int64_t>(scores.size()) == nClasses,
+        DAI_CHECK_V(properties.nClasses == 0 || static_cast<std::int64_t>(scores.size()) == properties.nClasses,
                     "ClassificationParser: number of labels and scores mismatch. Provided {} class names and {} scores.",
-                    nClasses,
+                    properties.nClasses,
                     scores.size());
 
         // Compute
-        scores = utilities::ClassificationUtils::computeClassificationScores(std::move(scores), isSoftmax);
+        scores = utilities::ClassificationUtils::computeClassificationScores(std::move(scores), properties.isSoftmax);
 
         // Emit
-        auto message = utilities::ClassificationUtils::createClassificationMessage(classes, scores);
+        auto message = utilities::ClassificationUtils::createClassificationMessage(properties.classes, scores);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

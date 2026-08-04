@@ -8,10 +8,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/properties/YuNetParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -31,12 +32,11 @@ namespace node {
  * the YuNet anchors generated from the input size, suppressed with cv2.dnn.NMSBoxes-semantics non-maximum suppression (IoU threshold, maximum number of
  * detections as the top-k limit) and emitted in descending score order. Keypoint coordinates are truncated to whole pixels before normalization, mirroring the
  * source parser. The anchors are cached across messages and refreshed when the input size changes.
- *
- * @note This node runs on the host only.
  */
-class YuNetParser : public NodeCRTP<dai::node::ThreadedHostNode, YuNetParser> {
+class YuNetParser : public DeviceNodeCRTP<DeviceNode, YuNetParser, YuNetParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "YuNetParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -187,22 +187,25 @@ class YuNetParser : public NodeCRTP<dai::node::ThreadedHostNode, YuNetParser> {
      */
     std::vector<std::string> getLabelNames() const;
 
+    /**
+     * Specify whether to run on host or device.
+     * By default, the node runs on the device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
+    bool runOnHostVar = false;
     void setConfig(const dai::NNArchiveVersionedConfig& config);
     void setConfig(const dai::nn_archive::v1::Head& head);
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-
-    std::string locOutputLayerName;
-    std::string confOutputLayerName;
-    std::string iouOutputLayerName;
-    float confidenceThreshold = 0.8f;
-    float iouThreshold = 0.3f;
-    int maxDetections = 5000;
-    std::optional<std::pair<std::uint32_t, std::uint32_t>> inputSize;
-    std::vector<std::string> labelNames{"Face"};
 };
 
 }  // namespace node

@@ -7,10 +7,11 @@
 #include <vector>
 
 #include "depthai/beta/datatype/Classifications.hpp"
+#include "depthai/beta/properties/ClassificationSequenceParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -29,12 +30,12 @@ namespace node {
  * incoming NNData contains exactly one tensor, it is selected automatically; otherwise the output layer name must be configured explicitly or through an
  * NNArchive head. Raw scores are dequantized; when the model output is not already softmaxed, the parser applies softmax along each sequence step to convert
  * the scores to probabilities.
- *
- * @note This node runs on the host only.
  */
-class ClassificationSequenceParser : public NodeCRTP<dai::node::ThreadedHostNode, ClassificationSequenceParser> {
+class ClassificationSequenceParser : public DeviceNodeCRTP<DeviceNode, ClassificationSequenceParser, ClassificationSequenceParserProperties>,
+                                     public HostRunnable {
    public:
     constexpr static const char* NAME = "ClassificationSequenceParser";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     /**
@@ -164,6 +165,18 @@ class ClassificationSequenceParser : public NodeCRTP<dai::node::ThreadedHostNode
      */
     bool getConcatenateClasses() const;
 
+    /**
+     * Select whether the node runs on the host or device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Returns true when this node runs on the host.
+     *
+     * Host-only pipelines always run the node on the host.
+     */
+    bool runOnHost() const override;
+
     void run() override;
 
    private:
@@ -172,13 +185,7 @@ class ClassificationSequenceParser : public NodeCRTP<dai::node::ThreadedHostNode
     NNArchive decodeModel(const Model& model);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
-    std::string outputLayerName;
-    std::vector<std::string> classes;
-    std::int64_t nClasses = 0;
-    bool isSoftmax = true;
-    std::vector<std::int32_t> ignoredIndexes;
-    bool removeDuplicates = false;
-    bool concatenateClasses = false;
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

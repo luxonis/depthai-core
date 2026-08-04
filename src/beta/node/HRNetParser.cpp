@@ -18,6 +18,9 @@
 
 namespace dai {
 namespace beta {
+
+HRNetParserProperties::~HRNetParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -174,36 +177,44 @@ void HRNetParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void HRNetParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string HRNetParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
 }
 
 void HRNetParser::setScoreThreshold(float threshold) {
     DAI_CHECK(threshold >= 0.0f && threshold <= 1.0f, "Confidence threshold must be between 0 and 1.");
-    this->scoreThreshold = threshold;
+    properties.scoreThreshold = threshold;
 }
 
 float HRNetParser::getScoreThreshold() const {
-    return scoreThreshold;
+    return properties.scoreThreshold;
 }
 
 void HRNetParser::setLabelNames(const std::vector<std::string>& labelNames) {
-    this->labelNames = labelNames;
+    properties.labelNames = labelNames;
 }
 
 std::vector<std::string> HRNetParser::getLabelNames() const {
-    return labelNames;
+    return properties.labelNames;
 }
 
 void HRNetParser::setEdges(const std::vector<Edge>& edges) {
-    this->edges = edges;
+    properties.edges = edges;
 }
 
 std::vector<Edge> HRNetParser::getEdges() const {
-    return edges;
+    return properties.edges;
+}
+
+void HRNetParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool HRNetParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void HRNetParser::run() {
@@ -212,7 +223,7 @@ void HRNetParser::run() {
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -235,8 +246,8 @@ void HRNetParser::run() {
 
         // Emit. Keypoints with a score below the score threshold are dropped and the edges are
         // filtered and remapped to the kept keypoints.
-        auto message =
-            utilities::KeypointsUtils::createKeypointsMessage(hrnetKeypoints.coordinates, std::move(hrnetKeypoints.scores), scoreThreshold, labelNames, edges);
+        auto message = utilities::KeypointsUtils::createKeypointsMessage(
+            hrnetKeypoints.coordinates, std::move(hrnetKeypoints.scores), properties.scoreThreshold, properties.labelNames, properties.edges);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

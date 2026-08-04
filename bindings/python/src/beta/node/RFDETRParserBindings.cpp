@@ -7,7 +7,7 @@ void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto rfdetrParser = ADD_BETA_NODE_DERIVED(RFDETRParser, dai::node::ThreadedHostNode);
+    auto rfdetrParser = ADD_BETA_NODE_DERIVED(RFDETRParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -43,5 +43,7 @@ void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack) {
         .def("setOutputLayerNames", &RFDETRParser::setOutputLayerNames, py::arg("outputLayerNames"), DOC(dai, beta, node, RFDETRParser, setOutputLayerNames))
         .def("getOutputLayerNames", &RFDETRParser::getOutputLayerNames, DOC(dai, beta, node, RFDETRParser, getOutputLayerNames))
         .def("setInputSize", &RFDETRParser::setInputSize, py::arg("width"), py::arg("height"), DOC(dai, beta, node, RFDETRParser, setInputSize))
-        .def("getInputSize", &RFDETRParser::getInputSize, DOC(dai, beta, node, RFDETRParser, getInputSize));
+        .def("getInputSize", &RFDETRParser::getInputSize, DOC(dai, beta, node, RFDETRParser, getInputSize))
+        .def("setRunOnHost", &RFDETRParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, RFDETRParser, setRunOnHost))
+        .def("runOnHost", &RFDETRParser::runOnHost, DOC(dai, beta, node, RFDETRParser, runOnHost));
 }

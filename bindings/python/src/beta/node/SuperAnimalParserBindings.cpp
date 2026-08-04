@@ -7,7 +7,7 @@ void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto superAnimalParser = ADD_BETA_NODE_DERIVED(SuperAnimalParser, dai::node::ThreadedHostNode);
+    auto superAnimalParser = ADD_BETA_NODE_DERIVED(SuperAnimalParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -46,5 +46,7 @@ void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack) {
         .def("setLabelNames", &SuperAnimalParser::setLabelNames, py::arg("labelNames"), DOC(dai, beta, node, SuperAnimalParser, setLabelNames))
         .def("getLabelNames", &SuperAnimalParser::getLabelNames, DOC(dai, beta, node, SuperAnimalParser, getLabelNames))
         .def("setEdges", &SuperAnimalParser::setEdges, py::arg("edges"), DOC(dai, beta, node, SuperAnimalParser, setEdges))
-        .def("getEdges", &SuperAnimalParser::getEdges, DOC(dai, beta, node, SuperAnimalParser, getEdges));
+        .def("getEdges", &SuperAnimalParser::getEdges, DOC(dai, beta, node, SuperAnimalParser, getEdges))
+        .def("setRunOnHost", &SuperAnimalParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, SuperAnimalParser, setRunOnHost))
+        .def("runOnHost", &SuperAnimalParser::runOnHost, DOC(dai, beta, node, SuperAnimalParser, runOnHost));
 }

@@ -19,6 +19,9 @@
 
 namespace dai {
 namespace beta {
+
+FastSAMParserProperties::~FastSAMParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -199,102 +202,111 @@ void FastSAMParser::setConfig(const dai::nn_archive::v1::Head& head) {
 
 void FastSAMParser::setConfidenceThreshold(float threshold) {
     DAI_CHECK(threshold >= 0.0f && threshold <= 1.0f, "Confidence threshold must be between 0 and 1.");
-    this->confidenceThreshold = threshold;
+    properties.confidenceThreshold = threshold;
 }
 
 float FastSAMParser::getConfidenceThreshold() const {
-    return confidenceThreshold;
+    return properties.confidenceThreshold;
 }
 
 void FastSAMParser::setNumClasses(std::int32_t numClasses) {
     DAI_CHECK(numClasses >= 1, "Number of classes must be greater than 0.");
-    this->numClasses = numClasses;
+    properties.numClasses = numClasses;
 }
 
 std::int32_t FastSAMParser::getNumClasses() const {
-    return numClasses;
+    return properties.numClasses;
 }
 
 void FastSAMParser::setIouThreshold(float iouThreshold) {
     DAI_CHECK(iouThreshold >= 0.0f && iouThreshold <= 1.0f, "IOU threshold must be between 0 and 1.");
-    this->iouThreshold = iouThreshold;
+    properties.iouThreshold = iouThreshold;
 }
 
 float FastSAMParser::getIouThreshold() const {
-    return iouThreshold;
+    return properties.iouThreshold;
 }
 
 void FastSAMParser::setMaskConfidence(float maskConfidence) {
     DAI_CHECK(maskConfidence >= 0.0f && maskConfidence <= 1.0f, "Mask confidence must be between 0 and 1.");
-    this->maskConfidence = maskConfidence;
+    properties.maskConfidence = maskConfidence;
 }
 
 float FastSAMParser::getMaskConfidence() const {
-    return maskConfidence;
+    return properties.maskConfidence;
 }
 
 void FastSAMParser::setPrompt(const std::string& prompt) {
     DAI_CHECK(prompt == "everything" || prompt == "bbox" || prompt == "point", "Prompt must be one of 'everything', 'bbox', or 'point'");
-    this->prompt = prompt;
+    properties.prompt = prompt;
 }
 
 std::string FastSAMParser::getPrompt() const {
-    return prompt;
+    return properties.prompt;
 }
 
 void FastSAMParser::setPoints(std::int32_t x, std::int32_t y) {
-    this->points = std::make_pair(x, y);
+    properties.points = std::make_pair(x, y);
 }
 
 std::optional<std::pair<std::int32_t, std::int32_t>> FastSAMParser::getPoints() const {
-    return points;
+    return properties.points;
 }
 
 void FastSAMParser::setPointLabel(std::int32_t pointLabel) {
-    this->pointLabel = pointLabel;
+    properties.pointLabel = pointLabel;
 }
 
 std::optional<std::int32_t> FastSAMParser::getPointLabel() const {
-    return pointLabel;
+    return properties.pointLabel;
 }
 
 void FastSAMParser::setBoundingBox(const std::array<std::int32_t, 4>& bbox) {
-    this->boundingBox = bbox;
+    properties.boundingBox = bbox;
 }
 
 std::optional<std::array<std::int32_t, 4>> FastSAMParser::getBoundingBox() const {
-    return boundingBox;
+    return properties.boundingBox;
 }
 
 void FastSAMParser::setYoloOutputs(const std::vector<std::string>& yoloOutputs) {
-    this->yoloOutputs = yoloOutputs;
+    properties.yoloOutputs = yoloOutputs;
 }
 
 std::vector<std::string> FastSAMParser::getYoloOutputs() const {
-    return yoloOutputs;
+    return properties.yoloOutputs;
 }
 
 void FastSAMParser::setMaskOutputs(const std::vector<std::string>& maskOutputs) {
-    this->maskOutputs = maskOutputs;
+    properties.maskOutputs = maskOutputs;
 }
 
 std::vector<std::string> FastSAMParser::getMaskOutputs() const {
-    return maskOutputs;
+    return properties.maskOutputs;
 }
 
 void FastSAMParser::setProtosOutput(const std::string& protosOutput) {
-    this->protosOutput = protosOutput;
+    properties.protosOutput = protosOutput;
 }
 
 std::string FastSAMParser::getProtosOutput() const {
-    return protosOutput;
+    return properties.protosOutput;
+}
+
+void FastSAMParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool FastSAMParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void FastSAMParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("FastSAMParser started");
 
-    DAI_CHECK(prompt == "everything" || prompt == "bbox" || prompt == "point", "Prompt must be one of 'everything', 'bbox', or 'point'");
+    DAI_CHECK(properties.prompt == "everything" || properties.prompt == "bbox" || properties.prompt == "point",
+              "Prompt must be one of 'everything', 'bbox', or 'point'");
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -307,7 +319,7 @@ void FastSAMParser::run() {
         // substring and sorted by name, and the protos output layer ("protos_output" when not
         // configured), each as dequantized FP32 NCHW tensors, mirroring the source extract()
         // and get_segmentation_outputs().
-        std::vector<std::string> yoloLayerNames = yoloOutputs;
+        std::vector<std::string> yoloLayerNames = properties.yoloOutputs;
         std::sort(yoloLayerNames.begin(), yoloLayerNames.end());
         std::vector<utilities::ClassificationUtils::ShapedTensorData> yoloTensors;
         yoloTensors.reserve(yoloLayerNames.size());
@@ -315,7 +327,7 @@ void FastSAMParser::run() {
             yoloTensors.push_back(getNchwTensorData(*nnData, name));
         }
 
-        std::vector<std::string> maskLayerNames = maskOutputs.empty() ? nnData->getAllLayerNames() : maskOutputs;
+        std::vector<std::string> maskLayerNames = properties.maskOutputs.empty() ? nnData->getAllLayerNames() : properties.maskOutputs;
         maskLayerNames.erase(
             std::remove_if(maskLayerNames.begin(), maskLayerNames.end(), [](const std::string& name) { return name.find("mask") == std::string::npos; }),
             maskLayerNames.end());
@@ -326,7 +338,7 @@ void FastSAMParser::run() {
             maskTensors.push_back(getNchwTensorData(*nnData, name));
         }
 
-        const std::string protosLayerName = protosOutput.empty() ? "protos_output" : protosOutput;
+        const std::string protosLayerName = properties.protosOutput.empty() ? "protos_output" : properties.protosOutput;
         const auto protosTensor = getNchwTensorData(*nnData, protosLayerName);
         DAI_CHECK_V(protosTensor.dims.size() == 4,
                     "FastSAM protos output '{}' must be a 4D NCHW tensor, got {} dimensions.",
@@ -336,12 +348,19 @@ void FastSAMParser::run() {
 
         // Compute
         utilities::FastSAMUtils::PromptConfig promptConfig;
-        promptConfig.prompt = prompt;
-        promptConfig.points = points;
-        promptConfig.pointLabel = pointLabel;
-        promptConfig.bbox = boundingBox;
-        const auto result = utilities::FastSAMUtils::computeFastsamMask(
-            yoloTensors, maskTensors, protosTensor, protosLen, confidenceThreshold, numClasses, iouThreshold, maskConfidence, promptConfig);
+        promptConfig.prompt = properties.prompt;
+        promptConfig.points = properties.points;
+        promptConfig.pointLabel = properties.pointLabel;
+        promptConfig.bbox = properties.boundingBox;
+        const auto result = utilities::FastSAMUtils::computeFastsamMask(yoloTensors,
+                                                                        maskTensors,
+                                                                        protosTensor,
+                                                                        protosLen,
+                                                                        properties.confidenceThreshold,
+                                                                        properties.numClasses,
+                                                                        properties.iouThreshold,
+                                                                        properties.maskConfidence,
+                                                                        promptConfig);
 
         // Emit
         auto message = std::make_shared<dai::SegmentationMask>();

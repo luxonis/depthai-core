@@ -7,7 +7,7 @@ void bind_beta_regressionparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto regressionParser = ADD_BETA_NODE_DERIVED(RegressionParser, dai::node::ThreadedHostNode);
+    auto regressionParser = ADD_BETA_NODE_DERIVED(RegressionParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -34,5 +34,7 @@ void bind_beta_regressionparser(pybind11::module& m, void* pCallstack) {
         .def("setNNArchiveHead", &RegressionParser::setNNArchiveHead, py::arg("head"), DOC(dai, beta, node, RegressionParser, setNNArchiveHead))
         .def(
             "setOutputLayerName", &RegressionParser::setOutputLayerName, py::arg("outputLayerName"), DOC(dai, beta, node, RegressionParser, setOutputLayerName))
-        .def("getOutputLayerName", &RegressionParser::getOutputLayerName, DOC(dai, beta, node, RegressionParser, getOutputLayerName));
+        .def("getOutputLayerName", &RegressionParser::getOutputLayerName, DOC(dai, beta, node, RegressionParser, getOutputLayerName))
+        .def("setRunOnHost", &RegressionParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, RegressionParser, setRunOnHost))
+        .def("runOnHost", &RegressionParser::runOnHost, DOC(dai, beta, node, RegressionParser, runOnHost));
 }

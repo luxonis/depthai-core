@@ -7,7 +7,7 @@ void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    auto hrnetParser = ADD_BETA_NODE_DERIVED(HRNetParser, dai::node::ThreadedHostNode);
+    auto hrnetParser = ADD_BETA_NODE_DERIVED(HRNetParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
@@ -39,5 +39,7 @@ void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack) {
         .def("setLabelNames", &HRNetParser::setLabelNames, py::arg("labelNames"), DOC(dai, beta, node, HRNetParser, setLabelNames))
         .def("getLabelNames", &HRNetParser::getLabelNames, DOC(dai, beta, node, HRNetParser, getLabelNames))
         .def("setEdges", &HRNetParser::setEdges, py::arg("edges"), DOC(dai, beta, node, HRNetParser, setEdges))
-        .def("getEdges", &HRNetParser::getEdges, DOC(dai, beta, node, HRNetParser, getEdges));
+        .def("getEdges", &HRNetParser::getEdges, DOC(dai, beta, node, HRNetParser, getEdges))
+        .def("setRunOnHost", &HRNetParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, HRNetParser, setRunOnHost))
+        .def("runOnHost", &HRNetParser::runOnHost, DOC(dai, beta, node, HRNetParser, runOnHost));
 }

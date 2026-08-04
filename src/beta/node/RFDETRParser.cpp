@@ -22,6 +22,9 @@
 
 namespace dai {
 namespace beta {
+
+RFDETRParserProperties::~RFDETRParserProperties() = default;
+
 namespace node {
 
 NNArchive RFDETRParser::createNNArchive(NNModelDescription& modelDesc) {
@@ -149,54 +152,62 @@ void RFDETRParser::setConfig(const dai::nn_archive::v1::Head& head) {
 
 void RFDETRParser::setConfidenceThreshold(float threshold) {
     DAI_CHECK(threshold >= 0.0f && threshold <= 1.0f, "Confidence threshold must be between 0 and 1.");
-    this->confidenceThreshold = threshold;
+    properties.confidenceThreshold = threshold;
 }
 
 float RFDETRParser::getConfidenceThreshold() const {
-    return confidenceThreshold;
+    return properties.confidenceThreshold;
 }
 
 void RFDETRParser::setMaxDetections(int maxDetections) {
     DAI_CHECK(maxDetections >= 1, "Max detections must be greater than 0.");
-    this->maxDetections = maxDetections;
+    properties.maxDetections = maxDetections;
 }
 
 int RFDETRParser::getMaxDetections() const {
-    return maxDetections;
+    return properties.maxDetections;
 }
 
 void RFDETRParser::setLabelNames(const std::vector<std::string>& labelNames) {
-    this->labelNames = labelNames;
+    properties.labelNames = labelNames;
 }
 
 std::vector<std::string> RFDETRParser::getLabelNames() const {
-    return labelNames;
+    return properties.labelNames;
 }
 
 void RFDETRParser::setMaskConfidence(float maskConfidence) {
     DAI_CHECK(maskConfidence >= 0.0f && maskConfidence <= 1.0f, "Mask confidence threshold must be between 0 and 1.");
-    this->maskConfidence = maskConfidence;
+    properties.maskConfidence = maskConfidence;
 }
 
 float RFDETRParser::getMaskConfidence() const {
-    return maskConfidence;
+    return properties.maskConfidence;
 }
 
 void RFDETRParser::setOutputLayerNames(const std::vector<std::string>& outputLayerNames) {
-    this->outputLayerNames = outputLayerNames;
+    properties.outputLayerNames = outputLayerNames;
 }
 
 std::vector<std::string> RFDETRParser::getOutputLayerNames() const {
-    return outputLayerNames;
+    return properties.outputLayerNames;
 }
 
 void RFDETRParser::setInputSize(std::uint32_t width, std::uint32_t height) {
     DAI_CHECK(width > 0 && height > 0, "Input size must be greater than 0.");
-    this->inputSize = std::make_pair(width, height);
+    properties.inputSize = std::make_pair(width, height);
 }
 
 std::optional<std::pair<std::uint32_t, std::uint32_t>> RFDETRParser::getInputSize() const {
-    return inputSize;
+    return properties.inputSize;
+}
+
+void RFDETRParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool RFDETRParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void RFDETRParser::run() {
@@ -212,7 +223,7 @@ void RFDETRParser::run() {
         // Extract: the configured output layer names or, when not configured, all layer names
         // of the incoming NNData in their reported order; positionally boxes, class logits and
         // the optional mask logits, mirroring the source extract().
-        const std::vector<std::string> layerNames = outputLayerNames.empty() ? nnData->getAllLayerNames() : outputLayerNames;
+        const std::vector<std::string> layerNames = properties.outputLayerNames.empty() ? nnData->getAllLayerNames() : properties.outputLayerNames;
         DAI_CHECK_V(layerNames.size() >= 2 && layerNames.size() <= 3,
                     "Expected 2 or 3 output layers (boxes, logits, optional masks), got {} layers.",
                     layerNames.size());
@@ -225,8 +236,14 @@ void RFDETRParser::run() {
         }
 
         // Compute
-        const auto detections = utilities::RFDETRUtils::computeRfDetrDetections(
-            boxesTensor, logitsTensor, masksTensor, confidenceThreshold, maxDetections, labelNames, maskConfidence, inputSize);
+        const auto detections = utilities::RFDETRUtils::computeRfDetrDetections(boxesTensor,
+                                                                                logitsTensor,
+                                                                                masksTensor,
+                                                                                properties.confidenceThreshold,
+                                                                                properties.maxDetections,
+                                                                                properties.labelNames,
+                                                                                properties.maskConfidence,
+                                                                                properties.inputSize);
         if(detections.ignoredInstances > 0) {
             logger->warn("RFDETRParser can encode at most 255 instances in SegmentationMask; ignoring {} lowest-scoring instances.",
                          detections.ignoredInstances);

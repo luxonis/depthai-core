@@ -17,6 +17,9 @@
 
 namespace dai {
 namespace beta {
+
+PPTextDetectionParserProperties::~PPTextDetectionParserProperties() = default;
+
 namespace node {
 
 namespace {
@@ -151,35 +154,43 @@ void PPTextDetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
 }
 
 void PPTextDetectionParser::setOutputLayerName(const std::string& outputLayerName) {
-    this->outputLayerName = outputLayerName;
+    properties.outputLayerName = outputLayerName;
 }
 
 std::string PPTextDetectionParser::getOutputLayerName() const {
-    return outputLayerName;
+    return properties.outputLayerName;
 }
 
 void PPTextDetectionParser::setConfidenceThreshold(float threshold) {
-    this->confidenceThreshold = threshold;
+    properties.confidenceThreshold = threshold;
 }
 
 float PPTextDetectionParser::getConfidenceThreshold() const {
-    return confidenceThreshold;
+    return properties.confidenceThreshold;
 }
 
 void PPTextDetectionParser::setMaskThreshold(float maskThreshold) {
-    this->maskThreshold = maskThreshold;
+    properties.maskThreshold = maskThreshold;
 }
 
 float PPTextDetectionParser::getMaskThreshold() const {
-    return maskThreshold;
+    return properties.maskThreshold;
 }
 
 void PPTextDetectionParser::setMaxDetections(int maxDetections) {
-    this->maxDetections = maxDetections;
+    properties.maxDetections = maxDetections;
 }
 
 int PPTextDetectionParser::getMaxDetections() const {
-    return maxDetections;
+    return properties.maxDetections;
+}
+
+void PPTextDetectionParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool PPTextDetectionParser::runOnHost() const {
+    return getDevice() == nullptr || runOnHostVar;
 }
 
 void PPTextDetectionParser::run() {
@@ -188,7 +199,7 @@ void PPTextDetectionParser::run() {
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
-    std::string resolvedOutputLayerName = outputLayerName;
+    std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
         auto nnData = input.get<dai::NNData>();
@@ -205,8 +216,8 @@ void PPTextDetectionParser::run() {
         auto predictions = getNchwTensorData(*nnData, resolvedOutputLayerName);
 
         // Compute. The probability map height/width are derived from the tensor shape.
-        const auto detections =
-            utilities::PPTextUtils::parsePaddleDetectionOutputs(predictions.values, predictions.dims, maskThreshold, confidenceThreshold, maxDetections);
+        const auto detections = utilities::PPTextUtils::parsePaddleDetectionOutputs(
+            predictions.values, predictions.dims, properties.maskThreshold, properties.confidenceThreshold, properties.maxDetections);
 
         // Emit. The detections carry no labels, mirroring the source
         // create_detection_message(bboxes, scores, angles=angles) call.
