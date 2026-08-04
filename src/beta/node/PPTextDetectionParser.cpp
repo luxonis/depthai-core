@@ -202,9 +202,13 @@ void PPTextDetectionParser::run() {
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         // Extract
@@ -228,7 +232,10 @@ void PPTextDetectionParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("PPTextDetectionParser created message with {} detections", message->detections.size());
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
     }
 }
 

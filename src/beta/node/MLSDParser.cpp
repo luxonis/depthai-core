@@ -255,9 +255,13 @@ void MLSDParser::run() {
               "Output layer containing the heat tensor is not set. Please use setOutputLayerHeat method or correct NN archive.");
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         // Extract. The tpMap tensor is permuted to NCHW orientation; the heat tensor is read in
@@ -283,7 +287,10 @@ void MLSDParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("MLSDParser created message with {} lines", message->lines.size());
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
     }
 }
 

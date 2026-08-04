@@ -120,9 +120,13 @@ void EmbeddingsParser::run() {
     logger->debug("EmbeddingsParser started");
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         // Extract: validate that exactly one output layer is selected. When the output layer name
@@ -138,7 +142,10 @@ void EmbeddingsParser::run() {
         // Compute is the identity and emit forwards the same message unchanged, so all tensors,
         // sequence number, timestamps, and image transformation metadata are preserved.
         logger->debug("EmbeddingsParser forwarding NNData message");
-        out.send(nnData);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(nnData);
+        }
     }
 }
 

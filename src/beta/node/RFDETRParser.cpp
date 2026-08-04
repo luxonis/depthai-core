@@ -215,9 +215,13 @@ void RFDETRParser::run() {
     logger->debug("RFDETRParser started");
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         // Extract: the configured output layer names or, when not configured, all layer names
@@ -266,7 +270,10 @@ void RFDETRParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("RFDETRParser created message with {} detections", message->detections.size());
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
     }
 }
 

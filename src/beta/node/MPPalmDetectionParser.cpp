@@ -195,9 +195,13 @@ void MPPalmDetectionParser::run() {
     std::vector<std::array<double, 4>> anchors;
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         // Extract: identify the bboxes and scores tensors by their last dimension; the tensor
@@ -262,7 +266,10 @@ void MPPalmDetectionParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("MPPalmDetectionParser created message with {} detections", message->detections.size());
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
     }
 }
 

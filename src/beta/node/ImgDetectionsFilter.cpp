@@ -163,19 +163,26 @@ void ImgDetectionsFilter::run() {
     auto config = getProperties().initialConfig;
 
     while(mainLoop()) {
-        auto detections = input.get<ImgDetections>();
-        if(!detections) {
-            continue;
-        }
+        std::shared_ptr<ImgDetections> detections;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            detections = input.get<ImgDetections>();
+            if(!detections) {
+                continue;
+            }
 
-        while(inputConfig.has()) {
-            auto nextConfig = inputConfig.get<ImgDetectionsFilterConfig>();
-            if(nextConfig) {
-                config = *nextConfig;
+            while(inputConfig.has()) {
+                auto nextConfig = inputConfig.get<ImgDetectionsFilterConfig>();
+                if(nextConfig) {
+                    config = *nextConfig;
+                }
             }
         }
 
-        output.send(applyConfig(detections, config));
+        {
+            auto blockEvent = this->outputBlockEvent();
+            output.send(applyConfig(detections, config));
+        }
     }
 }
 

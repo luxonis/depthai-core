@@ -309,9 +309,13 @@ void FastSAMParser::run() {
               "Prompt must be one of 'everything', 'bbox', or 'point'");
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         // Extract: the YOLO output layers sorted by name, the mask output layers (all layer
@@ -371,7 +375,10 @@ void FastSAMParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("FastSAMParser created segmentation message with {} masks", result.maskCount);
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
     }
 }
 
