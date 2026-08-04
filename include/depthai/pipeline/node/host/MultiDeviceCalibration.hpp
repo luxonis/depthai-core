@@ -39,6 +39,27 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
    public:
     constexpr static const char* NAME = "MultiDeviceCalibration";
 
+    /**
+     * How the inter-device transformations are estimated.
+     */
+    enum class Method {
+        /**
+         * The dynamic calibration library. Works with a single camera per device but needs a rough initial guess of
+         * every device's pose (`setInitialGuess()`) and, unless every device has a stereo pair, a known inter-device
+         * distance (`setKnownDistance()`) to fix the metric scale.
+         */
+        DYNAMIC_CALIBRATION,
+        /**
+         * A target-free structure-from-motion estimate that needs no initial guess and no known distance. SIFT
+         * four-view tracks are matched within each device's stereo pair and across the devices, an essential matrix
+         * between the two reference cameras gives the rotation and the translation direction, and the metric
+         * translation scale is recovered by triangulating the same tracks in each device's own metric stereo pair and
+         * robustly fitting the scalar that aligns the two point clouds. Requires exactly a stereo pair (two cameras)
+         * per device.
+         */
+        FEATURE_TRACKS,
+    };
+
     MultiDeviceCalibration();
     ~MultiDeviceCalibration() override;
 
@@ -119,7 +140,8 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
     void setContinuous(bool continuous);
 
     /**
-     * Performance mode passed to the dynamic calibration library.
+     * Performance mode passed to the dynamic calibration library. Setting an explicit mode turns the automatic
+     * multi-strategy search off, so only this mode is attempted.
      */
     void setPerformanceMode(DynamicCalibrationControl::PerformanceMode mode);
 
@@ -132,13 +154,39 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
      */
     void setEstimateInterDeviceScale(bool enable);
 
+    /**
+     * When enabled (the default), the node does not trust a single solve: it attempts several strategies - a joint
+     * solve over all cameras and a pairwise solve per device, each across a sweep of performance modes, of the
+     * keep-camera-centers flag and of yaw perturbations of the initial guess - scores every candidate with the
+     * dynamic calibration library's own calibration-confidence and Sampson-error metrics, and keeps the best edge per
+     * device. Disabled implicitly by `setPerformanceMode()`.
+     */
+    void setAutoStrategy(bool enable);
+
+    /**
+     * Yaw offsets, in degrees, added to the initial guess of each device when searching for the best rig during the
+     * automatic strategy. A rough or stale guess is a common reason for a poor solve, so perturbing it and keeping the
+     * best-scoring result makes the estimation robust to it. Defaults to a small symmetric sweep around zero.
+     */
+    void setGuessYawSweep(const std::vector<float>& offsetsDegrees);
+
+    /**
+     * Method used to estimate the inter-device transformations. Defaults to `DYNAMIC_CALIBRATION`. Select
+     * `FEATURE_TRACKS` for a target-free estimate that needs neither an initial guess nor a known distance, at the
+     * cost of requiring a stereo pair per device.
+     */
+    void setMethod(Method method);
+
     void buildInternal() override;
 
    private:
     void run() override;
 
-    /// Estimate the rig from the images accumulated so far and emit the result.
+    /// Estimate the rig with the dynamic calibration library and emit the result.
     void estimate();
+
+    /// Estimate the rig from SIFT four-view tracks (no DCL) and emit the result.
+    void estimateFromTracks();
 
     /// Scale correction of one inter-device edge, derived from the known distances.
     float resolveScale(const std::vector<std::vector<float>>& transform,
