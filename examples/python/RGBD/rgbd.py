@@ -35,25 +35,12 @@ class RerunNode(dai.node.ThreadedHostNode):
 with dai.Pipeline() as p:
     fps = 30
     # Define sources and outputs
-    # Pick a COLOR-capable socket for the color camera so it does not take the
-    # socket the Depth node needs (e.g. the ToF sensor on ToF-only devices, where
-    # the default AUTO socket would otherwise grab the only ToF-capable sensor).
-    colorSocket = dai.CameraBoardSocket.CAM_A
-    for features in p.getDefaultDevice().getConnectedCameraFeatures():
-        if dai.CameraSensorType.COLOR in features.supportedTypes:
-            colorSocket = features.socket
-            break
+    colorSockets = p.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
     color = p.create(dai.node.Camera).build(colorSocket)
-    # The Depth node manages its own stereo cameras and backend internally, so no
-    # explicit left/right cameras or StereoDepth node are needed. The (640, 400)
-    # size keeps the depth resolution the same as the RGBD frame size instead of
-    # computing depth at the full stereo sensor resolution.
     depth = p.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
     rerunViewer = p.create(RerunNode)
 
-    # RGBD wires the color camera and aligns the Depth node's depth to it
-    # internally (using the Depth node's own alignment), so no ImageAlign node is
-    # needed.
     rgbd = p.create(dai.node.RGBD).build(color, depth, (640, 400), fps)
     rgbd.setDepthUnits(dai.StereoDepthConfig.AlgorithmControl.DepthUnit.METER)
 

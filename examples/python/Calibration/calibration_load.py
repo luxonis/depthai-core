@@ -13,8 +13,6 @@ calibData = dai.CalibrationHandler(args.calibJsonFile)
 with dai.Pipeline() as pipeline:
     pipeline.setCalibrationData(calibData)
     # Define sources and output
-    # The Depth node manages its own stereo cameras and backend internally and
-    # uses the calibration data set on the pipeline above.
     resolution = (640, 480)
     depth = pipeline.create(dai.node.Depth).build(
         dai.node.Depth.Algorithm.STEREO, size=resolution

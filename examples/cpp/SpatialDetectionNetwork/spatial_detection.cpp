@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <argparse/argparse.hpp>
 #include <csignal>
 #include <iostream>
@@ -17,6 +16,7 @@ void signalHandler(int) {
     quitEvent = true;
 }
 
+// Custom host node for spatial visualization
 class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisualizer> {
    public:
     Input& depthInput = inputs["depth"];
@@ -53,18 +53,22 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
 
    private:
     cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
+        // Downscale depth frame
         cv::Mat depthDownscaled;
         cv::resize(depthFrame, depthDownscaled, cv::Size(), 0.25, 0.25);
 
+        // Find min and max depth values
         double minDepth = 0, maxDepth = 0;
         cv::Mat mask = (depthDownscaled != 0);
         if(cv::countNonZero(mask) > 0) {
             cv::minMaxLoc(depthDownscaled, &minDepth, &maxDepth, nullptr, nullptr, mask);
         }
 
+        // Normalize depth frame
         cv::Mat depthFrameColor;
         depthFrame.convertTo(depthFrameColor, CV_8UC1, 255.0 / (maxDepth - minDepth), -minDepth * 255.0 / (maxDepth - minDepth));
 
+        // Apply color map
         cv::Mat colorized;
         cv::applyColorMap(depthFrameColor, colorized, cv::COLORMAP_HOT);
         return colorized;
@@ -141,11 +145,13 @@ int main(int argc, char** argv) {
     signal(SIGTERM, signalHandler);
     signal(SIGINT, signalHandler);
 
+    // Initialize argument parser
     argparse::ArgumentParser program("spatial_detection", "1.0.0");
     program.add_description("Spatial detection network example with configurable depth source");
     program.add_argument("--depthSource").default_value(std::string("stereo")).help("Depth source: stereo, neural, tof");
 
     try {
+        // Parse arguments
         program.parse_args(argc, argv);
     } catch(const std::runtime_error& err) {
         std::cerr << err.what() << '\n';
@@ -153,8 +159,10 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    // Get arguments
     std::string depthSourceArg = program.get<std::string>("--depthSource");
 
+    // Validate depth source argument
     if(depthSourceArg != "stereo" && depthSourceArg != "neural" && depthSourceArg != "tof") {
         std::cerr << "Invalid depth source: " << depthSourceArg << '\n';
         std::cerr << "Valid options are: stereo, neural, tof" << '\n';
@@ -167,18 +175,16 @@ int main(int argc, char** argv) {
             fps = NEURAL_FPS;
         }
 
+        // Create pipeline
         dai::Pipeline pipeline;
 
-        auto colorSocket = dai::CameraBoardSocket::CAM_A;
-        for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
-            if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
-                colorSocket = features.socket;
-                break;
-            }
-        }
+        // Define sources and outputs
+        auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+        auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
         auto camRgb = pipeline.create<dai::node::Camera>();
         camRgb->build(colorSocket, std::nullopt, fps);
 
+        // Create depth source based on argument
         dai::node::DepthSource depthSource;
 
         if(depthSourceArg == "stereo") {
@@ -202,25 +208,33 @@ int main(int argc, char** argv) {
             depthSource = tof;
         }
 
+        // Create spatial detection network using the unified build method with DepthSource variant
         auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>();
         auto visualizer = pipeline.create<SpatialVisualizer>();
 
+        // Configure spatial detection network
         spatialDetectionNetwork->input.setBlocking(false);
         spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5f);
         spatialDetectionNetwork->setDepthLowerThreshold(100);
         spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
+        // Set up model and build with DepthSource variant
         dai::NNModelDescription modelDesc;
+        // For better results on OAK4, use a segmentation model like "luxonis/yolov8-instance-segmentation-large:coco-640x480"
+        // for depth estimation over the objects mask instead of the full bounding box.
         modelDesc.model = "yolov6-nano";
         spatialDetectionNetwork->build(camRgb, depthSource, modelDesc);
 
+        // Set label map
         visualizer->labelMap = spatialDetectionNetwork->getClasses().value();
         spatialDetectionNetwork->spatialLocationCalculator->initialConfig->setSegmentationPassthrough(false);
 
+        // Linking
         visualizer->build(spatialDetectionNetwork->passthroughDepth, spatialDetectionNetwork->out, spatialDetectionNetwork->passthrough);
 
         std::cout << "Pipeline starting with depth source: " << depthSourceArg << '\n';
 
+        // Start pipeline
         pipeline.run();
 
     } catch(const std::exception& e) {

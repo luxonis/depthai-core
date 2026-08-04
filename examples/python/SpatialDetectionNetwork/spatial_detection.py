@@ -12,7 +12,7 @@ class SpatialVisualizer(dai.node.HostNode):
         dai.node.HostNode.__init__(self)
         self.sendProcessingToPipeline(True)
     def build(self, depth:dai.Node.Output, detections: dai.Node.Output, rgb: dai.Node.Output):
-        self.link_args(depth, detections, rgb)
+        self.link_args(depth, detections, rgb) # Must match the inputs to the process method
 
     def process(self, depthPreview, detections, rgbPreview):
         depthPreview = depthPreview.getCvFrame()
@@ -63,12 +63,11 @@ class SpatialVisualizer(dai.node.HostNode):
         cv2.putText(frame, f"Z: {int(detection.spatialCoordinates.z)} mm", (x1 + 10, y1 + 80), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 1)
 
+# Creates the pipeline and a default device implicitly
 with dai.Pipeline() as p:
-    colorSocket = dai.CameraBoardSocket.CAM_A
-    for features in p.getDefaultDevice().getConnectedCameraFeatures():
-        if dai.CameraSensorType.COLOR in features.supportedTypes:
-            colorSocket = features.socket
-            break
+    # Define sources and outputs
+    colorSockets = p.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
     camRgb = p.create(dai.node.Camera).build(colorSocket, sensorFps=fps)
     depth = p.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
 

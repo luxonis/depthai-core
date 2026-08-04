@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <chrono>
 #include <depthai/depthai.hpp>
 #include <opencv2/opencv.hpp>
@@ -11,20 +10,18 @@ int main() {
     bool useSpatialAssociation = false;
     float sensorFps = 20.0f;
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
-    auto colorSocket = dai::CameraBoardSocket::CAM_A;
-    for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
-        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
-            colorSocket = features.socket;
-            break;
-        }
-    }
+    // Define sources and outputs
+    auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
     auto camRgb = pipeline.create<dai::node::Camera>()->build(colorSocket, std::nullopt, sensorFps);
 
     auto depth = pipeline.create<dai::node::Depth>();
     depth->build(dai::node::Depth::Algorithm::AUTO, sensorFps, std::make_pair(640u, 400u));
 
+    // Create spatial detection network
     dai::NNModelDescription modelDescription{"yolov6-nano"};
     auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>()->build(camRgb, depth, modelDescription);
     spatialDetectionNetwork->setConfidenceThreshold(0.6f);
@@ -33,8 +30,9 @@ int main() {
     spatialDetectionNetwork->setDepthLowerThreshold(100);
     spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
+    // Create object tracker
     auto objectTracker = pipeline.create<dai::node::ObjectTracker>();
-    objectTracker->setDetectionLabelsToTrack({0});
+    objectTracker->setDetectionLabelsToTrack({0});  // track only person
     objectTracker->setTrackerType(dai::TrackerType::SHORT_TERM_IMAGELESS);
     objectTracker->setTrackerIdAssignmentPolicy(dai::TrackerIdAssignmentPolicy::SMALLEST_ID);
     if(useSpatialAssociation) {
@@ -44,9 +42,11 @@ int main() {
         objectTracker->setSpatialDepthAwareScale(0.1f);
     }
 
+    // Create output queues
     auto preview = objectTracker->passthroughTrackerFrame.createOutputQueue();
     auto tracklets = objectTracker->out.createOutputQueue();
 
+    // Link nodes
     if(fullFrameTracking) {
         camRgb->requestFullResolutionOutput()->link(objectTracker->inputTrackerFrame);
         objectTracker->inputTrackerFrame.setBlocking(false);
@@ -58,8 +58,10 @@ int main() {
     spatialDetectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
     spatialDetectionNetwork->out.link(objectTracker->inputDetections);
 
+    // Start pipeline
     pipeline.start();
 
+    // FPS calculation variables
     auto startTime = std::chrono::steady_clock::now();
     int counter = 0;
     float fps = 0;

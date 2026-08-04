@@ -41,11 +41,9 @@ def main() -> None:
     print(f"Device: {device.getDeviceName()}  (ID: {device.getDeviceId()})\n")
 
     with dai.Pipeline(device) as pipeline:
-        colorSocket = dai.CameraBoardSocket.CAM_A
-        for features in device.getConnectedCameraFeatures():
-            if dai.CameraSensorType.COLOR in features.supportedTypes:
-                colorSocket = features.socket
-                break
+        # ── Camera + Depth ─────────────────────────────────────
+        colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
+        colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
         color = pipeline.create(dai.node.Camera).build(colorSocket)
         colorOut = color.requestOutput(
             (640, 400), type=dai.ImgFrame.Type.RGB888i,
@@ -55,6 +53,7 @@ def main() -> None:
         depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
         depth.setAlignTo(colorOut)
 
+        # ── PointCloud node ───────────────────────────────────────────
         pc = pipeline.create(dai.node.PointCloud)
         pc.setRunOnHost(True)
         pc.initialConfig.setLengthUnit(dai.LengthUnit.METER)
@@ -64,6 +63,7 @@ def main() -> None:
         queue = pc.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
         qDepth = pc.passthroughDepth.createOutputQueue(maxSize=4, blocking=False)
 
+        # ── Open3D setup ──────────────────────────────────────────────
         vis = o3d.visualization.Visualizer()
         vis.create_window("PointCloud Visualizer")
         pcd = o3d.geometry.PointCloud()
@@ -71,10 +71,11 @@ def main() -> None:
         vis.add_geometry(coord)
         first = True
 
+        # ── Start pipeline & wait for auto-exposure ───────────────────
         pipeline.start()
         print("Waiting for auto-exposure to settle...")
         time.sleep(1)
-        queue.tryGetAll()
+        queue.tryGetAll()  # drain stale frames
         qDepth.tryGetAll()
 
         print("Streaming... Press Q in the Open3D window to quit.")
@@ -111,6 +112,7 @@ def main() -> None:
 
                 depthMsg = qDepth.tryGet()
                 if depthMsg is not None:
+                    # Show colorized depth in an OpenCV window
                     cv2.imshow("Depth", colorizeDepth(depthMsg.getCvFrame()))
 
                 if cv2.waitKey(1) == ord("q"):

@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <atomic>
 #include <csignal>
 #include <iostream>
@@ -75,7 +74,7 @@ cv::Mat makeTopPanel(int width, bool useSegmentation) {
     return topPanel;
 }
 
-}
+}  // namespace
 
 int main() {
     signal(SIGTERM, signalHandler);
@@ -97,13 +96,8 @@ int main() {
 
         dai::Pipeline pipeline{device};
 
-        auto colorSocket = dai::CameraBoardSocket::CAM_A;
-        for(const auto& features : device->getConnectedCameraFeatures()) {
-            if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
-                colorSocket = features.socket;
-                break;
-            }
-        }
+        auto colorSockets = device->getConnectedCameras(dai::CameraSensorType::COLOR);
+        auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
         auto cameraNode = pipeline.create<dai::node::Camera>();
         cameraNode->build(colorSocket);
 
@@ -111,7 +105,12 @@ int main() {
         detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
 
         auto depth = pipeline.create<dai::node::Depth>();
-        depth->build(dai::node::Depth::Algorithm::AUTO, fps, std::make_pair(1280u, 800u));
+        if(device->getPlatform() == dai::Platform::RVC2) {
+            // RVC2 has a limited number of shaves, use the FAST_DENSITY stereo preset
+            depth->build(dai::node::Depth::Algorithm::STEREO, dai::node::StereoDepth::PresetMode::FAST_DENSITY, fps, std::make_pair(1280u, 800u));
+        } else {
+            depth->build(dai::node::Depth::Algorithm::AUTO, fps, std::make_pair(1280u, 800u));
+        }
         depth->setAlignTo(detectionNetwork->passthrough);
 
         auto spatialCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();

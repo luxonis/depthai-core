@@ -49,29 +49,14 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline;
     // Define sources and outputs
-    // Pick a COLOR-capable socket for the color camera so it does not take the
-    // socket the Depth node needs (e.g. the ToF sensor on ToF-only devices, where
-    // the default AUTO socket would otherwise grab the only ToF-capable sensor).
-    auto colorSocket = dai::CameraBoardSocket::CAM_A;
-    for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
-        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
-            colorSocket = features.socket;
-            break;
-        }
-    }
+    auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
     auto color = pipeline.create<dai::node::Camera>();
     color->build(colorSocket);
-    // The Depth node manages its own stereo cameras and backend internally, so no
-    // explicit left/right cameras or StereoDepth node are needed. The (640, 400)
-    // size keeps the depth resolution the same as the RGBD frame size instead of
-    // computing depth at the full stereo sensor resolution.
     auto depth = pipeline.create<dai::node::Depth>();
     depth->build(dai::node::Depth::Algorithm::AUTO, 30.0f, std::make_pair(640u, 400u));
     auto rerun = pipeline.create<RerunNode>();
 
-    // RGBD wires the color camera and aligns the Depth node's depth to it
-    // internally (using the Depth node's own alignment), so no ImageAlign node is
-    // needed.
     auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth, std::make_pair(640, 400), 30.0f);
     rgbd->setDepthUnit(dai::StereoDepthConfig::AlgorithmControl::DepthUnit::METER);
 

@@ -105,25 +105,12 @@ int main() {
 
     dai::Pipeline pipeline;
 
-    // Pick a COLOR-capable socket for the RGB camera so it does not take the
-    // socket the Depth node needs (e.g. the ToF sensor on ToF-capable devices,
-    // where the default AUTO socket could otherwise grab the only ToF-capable
-    // sensor).
-    auto colorSocket = dai::CameraBoardSocket::CAM_A;
-    for(const auto& features : pipeline.getDefaultDevice()->getConnectedCameraFeatures()) {
-        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::COLOR) != features.supportedTypes.end()) {
-            colorSocket = features.socket;
-            break;
-        }
-    }
+    // Pick a COLOR-capable socket so the RGB camera does not take the socket the Depth node needs
+    auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
     auto rgb = pipeline.create<dai::node::Camera>()->build(colorSocket);
 
-    // The Depth node manages its own cameras and backend (stereo / ToF / neural)
-    // internally, so this example stays device-agnostic. We click a point on the
-    // depth image (its own sensor frame), read the depth there, and remap that 3D
-    // point into the RGB sensor via projectPointTo. The (640, 400) size keeps a
-    // stereo backend within its 1280-wide input limit (full sensor resolution
-    // would exceed it on e.g. OAK-D-LR).
+    // Click a point on the depth image, read the depth there and remap that 3D point into the RGB sensor
     auto depth = pipeline.create<dai::node::Depth>();
     depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
 

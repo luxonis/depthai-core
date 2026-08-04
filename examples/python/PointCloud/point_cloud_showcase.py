@@ -12,6 +12,9 @@ import time
 import depthai as dai
 
 
+# ---------------------------------------------------------------------------
+# Print helpers
+# ---------------------------------------------------------------------------
 def printHeader(title: str) -> None:
     print("\n╔══════════════════════════════════════════════╗")
     print(f"║  {title:<44s}║")
@@ -34,6 +37,7 @@ def printPointCloudInfo(pcd: dai.PointCloudData, frameNum: int) -> None:
 NUM_FRAMES = 3
 
 
+# ===========================================================================
 def main() -> None:
     print("PointCloud Node Showcase")
     print("========================")
@@ -43,11 +47,12 @@ def main() -> None:
     print(f"Device: {device.getDeviceName()}  (ID: {device.getDeviceId()})\n")
 
     with dai.Pipeline(device) as pipeline:
-        colorSocket = dai.CameraBoardSocket.CAM_A
-        for features in device.getConnectedCameraFeatures():
-            if dai.CameraSensorType.COLOR in features.supportedTypes:
-                colorSocket = features.socket
-                break
+        # ------------------------------------------------------------------
+        # Single pipeline – shared Camera + Depth, multiple PointCloud
+        # nodes configured differently.
+        # ------------------------------------------------------------------
+        colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
+        colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
         color = pipeline.create(dai.node.Camera).build(colorSocket)
         colorOut = color.requestOutput(
             (640, 400), type=dai.ImgFrame.Type.RGB888i,
@@ -57,12 +62,14 @@ def main() -> None:
         depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
         depth.setAlignTo(colorOut)
 
+        # ── 1. Filtered point cloud  (METER) ────
         pcSparse = pipeline.create(dai.node.PointCloud)
         pcSparse.setRunOnHost(True)
         pcSparse.initialConfig.setLengthUnit(dai.LengthUnit.METER)
         depth.depth.link(pcSparse.inputDepth)
         qSparse = pcSparse.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
 
+        # ── 2. Organized point cloud  (MILLIMETER) ───────
         pcOrganized = pipeline.create(dai.node.PointCloud)
         pcOrganized.setRunOnHost(True)
         pcOrganized.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
@@ -70,13 +77,17 @@ def main() -> None:
         depth.depth.link(pcOrganized.inputDepth)
         qOrganized = pcOrganized.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
 
+        # ── 3. Transform pointcloud into another device's coordinate system ───
         pcCam = pipeline.create(dai.node.PointCloud)
         pcCam.setRunOnHost(True)
         pcCam.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
         pcCam.initialConfig.setTargetCoordinateSystem(dai.CameraBoardSocket.CAM_A)
+        # Or transform to a housing coordinate system instead, e.g.:
+        # pcCam.initialConfig.setTargetCoordinateSystem(dai.HousingCoordinateSystem.VESA_A)
         depth.depth.link(pcCam.inputDepth)
         qCam = pcCam.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
 
+        # ── 4. Custom 4×4 transform  (90° Z rotation) + passthrough ──────
         pcCustom = pipeline.create(dai.node.PointCloud)
         pcCustom.setRunOnHost(True)
         pcCustom.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
@@ -92,6 +103,7 @@ def main() -> None:
         qCustom = pcCustom.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
         qDepth = pcCustom.passthroughDepth.createOutputQueue(maxSize=4, blocking=False)
 
+        # ── 5. Colorized point cloud (aligned RGB from color camera) ─────
         pcColorized = pipeline.create(dai.node.PointCloud)
         pcColorized.setRunOnHost(True)
         pcColorized.initialConfig.setLengthUnit(dai.LengthUnit.METER)
@@ -99,6 +111,10 @@ def main() -> None:
         colorOut.link(pcColorized.inputColor)
         qColorized = pcColorized.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
 
+        # Note: Housing coordinate system transform is also available, e.g.:
+        #   pc.initialConfig.setTargetCoordinateSystem(dai.HousingCoordinateSystem.VESA_A)
+        # See the docstring at the top of this file for all available
+        # CameraBoardSocket and HousingCoordinateSystem values.
 
         sparseFrames = []
         organizedFrames = []
@@ -109,9 +125,11 @@ def main() -> None:
 
         pipeline.start()
 
+        # Wait for auto-exposure to settle and stereo depth to stabilize
         print("Waiting for auto-exposure to settle...")
         time.sleep(1)
 
+        # Drain stale frames that arrived during warm-up
         qSparse.tryGetAll()
         qOrganized.tryGetAll()
         qCam.tryGetAll()
@@ -128,21 +146,29 @@ def main() -> None:
             colorizedFrames.append(qColorized.get())
 
 
+    # ------------------------------------------------------------------
+    # Display results grouped by feature
+    # ------------------------------------------------------------------
+
+    # 1 ── Sparse point cloud
     printHeader("1. Basic sparse point cloud")
     print("  Config: METER")
     for i, pcd in enumerate(sparseFrames):
         printPointCloudInfo(pcd, i)
 
+    # 2 ── Organized point cloud
     printHeader("2. Organized point cloud")
     print("  Config: MILLIMETER, initialConfig.setOrganized(True)")
     for i, pcd in enumerate(organizedFrames):
         printPointCloudInfo(pcd, i)
 
+    # 3 ── Transform pointcloud into another device's coordinate system
     printHeader("3. Camera-to-camera transform")
     print("  Config: setTargetCoordinateSystem(CAM_A)")
     for i, pcd in enumerate(camFrames):
         printPointCloudInfo(pcd, i)
 
+    # 4 ── Custom transform + passthrough depth
     printHeader("4. Custom transform matrix + passthrough")
     print("  Config: 90° Z rotation via initialConfig")
     if len(customFrames) != len(depthFrames):
@@ -151,6 +177,7 @@ def main() -> None:
         printPointCloudInfo(pcd, i)
         print(f"  Depth frame  : {depth.getWidth()} × {depth.getHeight()}")
 
+    # 5 ── Colorized point cloud
     printHeader("5. Colorized point cloud (RGB)")
     print("  Config: METER, aligned color camera linked to inputColor")
     for i, pcd in enumerate(colorizedFrames):

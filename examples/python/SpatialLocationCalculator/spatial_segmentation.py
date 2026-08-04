@@ -23,15 +23,17 @@ def addTopPanel(image: np.ndarray, useSegmentation: bool) -> np.ndarray:
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
-    colorSocket = dai.CameraBoardSocket.CAM_A
-    for features in device.getConnectedCameraFeatures():
-        if dai.CameraSensorType.COLOR in features.supportedTypes:
-            colorSocket = features.socket
-            break
+    colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
     cameraNode = pipeline.create(dai.node.Camera).build(colorSocket)
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
 
-    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (1280, 800))
+    depth = pipeline.create(dai.node.Depth)
+    if device.getPlatform() == dai.Platform.RVC2:
+        # RVC2 has a limited number of shaves, use the FAST_DENSITY stereo preset
+        depth.build(dai.node.Depth.Algorithm.STEREO, dai.node.StereoDepth.PresetMode.FAST_DENSITY, fps, (1280, 800))
+    else:
+        depth.build(dai.node.Depth.Algorithm.AUTO, fps, (1280, 800))
     depth.setAlignTo(detNN.passthrough)
 
     spatialCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
@@ -65,7 +67,7 @@ with dai.Pipeline(device) as pipeline:
 
         if segmentationMask is not None and useSegmentation:
             scaledMask = segmentationMask.copy()
-            scaledMask[segmentationMask != 255] = segmentationMask[segmentationMask != 255] * 25
+            scaledMask[segmentationMask != 255] = segmentationMask[segmentationMask != 255] * 25 # scale for better visualization
             coloredMask = cv2.applyColorMap(scaledMask, cv2.COLORMAP_JET)
             coloredMask[segmentationMask == 255] = image[segmentationMask == 255]
             image = cv2.addWeighted(image, 0.7, coloredMask, 0.3, 0)
@@ -79,6 +81,7 @@ with dai.Pipeline(device) as pipeline:
                 outerPoints = np.array(outerPoints, dtype=np.int32)
                 cv2.polylines(image, [outerPoints], isClosed=True, color=(0, 255, 0), thickness=2)
 
+                # depth
                 depth_coordinate = det.spatialCoordinates
                 depth = depth_coordinate.z
                 text = f"X: {int(depth_coordinate.x / 10 )} cm, Y: {int(depth_coordinate.y / 10)} cm, Z: {int(depth / 10)} cm"

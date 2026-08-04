@@ -51,22 +51,12 @@ def sampleDepth(point, depthFrame, patchRadius=2):
 if __name__ == "__main__":
     pipeline = dai.Pipeline()
 
-    # Pick a COLOR-capable socket for the RGB camera so it does not take the socket
-    # the Depth node needs (e.g. the ToF sensor on ToF-capable devices, where the
-    # default AUTO socket could otherwise grab the only ToF-capable sensor).
-    colorSocket = dai.CameraBoardSocket.CAM_A
-    for features in pipeline.getDefaultDevice().getConnectedCameraFeatures():
-        if dai.CameraSensorType.COLOR in features.supportedTypes:
-            colorSocket = features.socket
-            break
+    # Pick a COLOR-capable socket so the RGB camera does not take the socket the Depth node needs
+    colorSockets = pipeline.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
     rgb = pipeline.create(dai.node.Camera).build(colorSocket)
 
-    # The Depth node manages its own cameras and backend (stereo / ToF / neural)
-    # internally, so this example stays device-agnostic. We click a point on the
-    # depth image (its own sensor frame), read the depth there, and remap that 3D
-    # point into the RGB sensor via projectPointTo. The (640, 400) size keeps a
-    # stereo backend within its 1280-wide input limit (full sensor resolution would
-    # exceed it on e.g. OAK-D-LR).
+    # Click a point on the depth image, read the depth there and remap that 3D point into the RGB sensor
     depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
 
     rgbOut = rgb.requestOutput((720, 480), enableUndistortion=False, resizeMode=dai.ImgResizeMode.CROP)

@@ -26,11 +26,8 @@ requiredCamCapabilities.enableUndistortion = True
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
-    colorSocket = dai.CameraBoardSocket.CAM_A
-    for features in device.getConnectedCameraFeatures():
-        if dai.CameraSensorType.COLOR in features.supportedTypes:
-            colorSocket = features.socket
-            break
+    colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
     cameraNode = pipeline.create(dai.node.Camera).build(colorSocket)
 
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
@@ -39,7 +36,12 @@ with dai.Pipeline(device) as pipeline:
     spatialCalculator.initialConfig.setCalculateSpatialKeypoints(True)
     detNN.out.link(spatialCalculator.inputDetections)
 
-    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
+    depth = pipeline.create(dai.node.Depth)
+    if device.getPlatform() == dai.Platform.RVC2:
+        # RVC2 has a limited number of shaves, use the FAST_DENSITY stereo preset
+        depth.build(dai.node.Depth.Algorithm.STEREO, dai.node.StereoDepth.PresetMode.FAST_DENSITY, fps, (640, 400))
+    else:
+        depth.build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
 
     depth.setAlignTo(detNN.passthrough)
     depth.depth.link(spatialCalculator.inputDepth)
@@ -83,8 +85,8 @@ with dai.Pipeline(device) as pipeline:
         colorizedDepth = cv2.applyColorMap(cv2.convertScaleAbs(depthImg, alpha=0.03), cv2.COLORMAP_JET)
         image = passthrough.getCvFrame()
 
-        filterKeypoints = [0, 3, 4, 7, 8, 13, 14, 15, 16]
-        connectedKeypoints = [[0, 1], [2, 3], [2, 4], [3, 5], [2, 6], [3, 7]]
+        filterKeypoints = [0, 3, 4, 7, 8, 13, 14, 15, 16] # filter out nose, ears, elbows, knees, ankles
+        connectedKeypoints = [[0, 1], [2, 3], [2, 4], [3, 5], [2, 6], [3, 7]] # indices of keypoints that are connected with lines.
 
         for (i, det) in enumerate(spatialData.detections):
             bbox = det.getBoundingBox().denormalize(image.shape[1], image.shape[0])
@@ -123,12 +125,14 @@ with dai.Pipeline(device) as pipeline:
                     except IndexError:
                         continue
 
+        # origin=[0,0,0]. X=Red, Y=Green, Z=Blue
         npPoints = np.array(spatialPointsCm, dtype=np.float32)
         lineSet.points = o3d.utility.Vector3dVector(npPoints)
         lineSet.lines = o3d.utility.Vector2iVector(np.array(lines))
         lineSet.colors = o3d.utility.Vector3dVector(np.tile([0,1 ,0], (len(lines),1)))
 
         pc.points = o3d.utility.Vector3dVector(npPoints)
+        # Color points bright magenta in 3D view
         colors = np.tile([1.0, 0.0, 1.0], (len(npPoints), 1))
         pc.colors = o3d.utility.Vector3dVector(colors)
         vis.update_geometry(pc)

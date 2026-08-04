@@ -511,6 +511,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, getConnectedCameras))
         .def(
+            "getConnectedCameras",
+            [](DeviceBase& d, CameraSensorType type) {
+                py::gil_scoped_release release;
+                return d.getConnectedCameras(type);
+            },
+            py::arg("type"),
+            "Get sockets of connected cameras that support the given sensor type")
+        .def(
             "getConnectionInterfaces",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
