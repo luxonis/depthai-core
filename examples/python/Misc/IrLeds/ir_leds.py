@@ -27,13 +27,13 @@ def main():
 
     with dai.Pipeline(device) as pipeline:
         mono_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        mono_right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+        # mono_right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
         left_out = mono_left.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
-        right_out = mono_right.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
+        # right_out = mono_right.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
 
         left_queue = left_out.createOutputQueue()
-        right_queue = right_out.createOutputQueue()
+        # right_queue = right_out.createOutputQueue()
 
         dot_intensity = 0.0
         flood_intensity = 0.0
@@ -53,12 +53,12 @@ def main():
 
         while pipeline.isRunning():
             left = left_queue.get()
-            right = right_queue.get()
+            # right = right_queue.get()
             assert isinstance(left, dai.ImgFrame)
-            assert isinstance(right, dai.ImgFrame)
+            # assert isinstance(right, dai.ImgFrame)
 
             cv2.imshow("left", left.getCvFrame())
-            cv2.imshow("right", right.getCvFrame())
+            # cv2.imshow("right", right.getCvFrame())
 
             key = cv2.waitKey(1)
             changed = False
