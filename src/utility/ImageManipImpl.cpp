@@ -3015,7 +3015,7 @@ void WarpH::buildUndistort(bool enable,
                            const uint32_t dstHeight) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(enable) {
-        this->alphaScaling = alpha; // unused
+        this->alphaScaling = alpha;  // unused
         if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
         auto undistortStatus = undistortImpl->build(cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
         switch(undistortStatus) {

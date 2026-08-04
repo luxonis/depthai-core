@@ -47,4 +47,3 @@ void bind_beta_imgdetectionsfilter(pybind11::module& m, void* pCallstack) {
     imgDetectionsFilter.attr("Properties") = imgDetectionsFilterProperties;
     imgDetectionsFilter.attr("Config") = imgDetectionsFilterConfig;
 }
-
