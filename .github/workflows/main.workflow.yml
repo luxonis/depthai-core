@@ -138,7 +138,7 @@ jobs:
     needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
     env:
-      DEPTHAI_BUILD_BETA: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release') || startsWith(github.ref, 'refs/tags/v')) && 'ON' || 'OFF' }}
+      DEPTHAI_BUILD_BETA: ${{ (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release') || startsWith(github.ref, 'refs/tags/v')) && 'ON' || 'OFF' }}
     strategy:
       matrix:
         os: [macos-latest, windows-2022, ubuntu-latest]
