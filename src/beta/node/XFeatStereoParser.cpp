@@ -258,10 +258,15 @@ void XFeatStereoParser::run() {
     while(mainLoop()) {
         // One reference message followed by one target message per iteration; two sequential
         // blocking reads without further synchronization, like the source run().
-        auto referenceOutput = referenceInput.get<dai::NNData>();
-        auto targetOutput = targetInput.get<dai::NNData>();
-        if(!referenceOutput || !targetOutput) {
-            continue;
+        std::shared_ptr<dai::NNData> referenceOutput;
+        std::shared_ptr<dai::NNData> targetOutput;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            referenceOutput = referenceInput.get<dai::NNData>();
+            targetOutput = targetInput.get<dai::NNData>();
+            if(!referenceOutput || !targetOutput) {
+                continue;
+            }
         }
 
         // Extract
@@ -295,7 +300,10 @@ void XFeatStereoParser::run() {
             auto message = std::make_shared<dai::TrackedFeatures>();
             message->setBufferMetadataFrom(referenceOutput);
             logger->debug("XFeatStereoParser: no reference keypoints found, sending empty TrackedFeatures message");
-            out.send(message);
+            {
+                auto blockEvent = this->outputBlockEvent();
+                out.send(message);
+            }
             continue;
         }
         if(!targetResult.has_value()) {
@@ -303,7 +311,10 @@ void XFeatStereoParser::run() {
             message->setBufferMetadataFrom(targetOutput);
             message->setSequenceNum(referenceOutput->getSequenceNum());
             logger->debug("XFeatStereoParser: no target keypoints found, sending empty TrackedFeatures message");
-            out.send(message);
+            {
+                auto blockEvent = this->outputBlockEvent();
+                out.send(message);
+            }
             continue;
         }
 
@@ -314,7 +325,10 @@ void XFeatStereoParser::run() {
         message->setBufferMetadataFrom(targetOutput);
         message->setSequenceNum(referenceOutput->getSequenceNum());
         logger->debug("XFeatStereoParser created message with {} tracked features", message->trackedFeatures.size());
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
     }
 }
 

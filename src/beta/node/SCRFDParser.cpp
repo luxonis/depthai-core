@@ -267,9 +267,13 @@ void SCRFDParser::run() {
     std::vector<std::vector<std::array<float, 2>>> anchors;
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         const auto currentInputSize = properties.inputSize;
@@ -370,7 +374,10 @@ void SCRFDParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("SCRFDParser created message with {} detections", message->detections.size());
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
     }
 }
 

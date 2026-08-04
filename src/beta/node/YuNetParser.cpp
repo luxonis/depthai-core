@@ -267,9 +267,13 @@ void YuNetParser::run() {
     std::vector<std::array<float, 4>> anchors;
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         // The input size the anchors are generated from and the coordinates are normalized by
@@ -350,7 +354,10 @@ void YuNetParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("YuNetParser created message with {} detections", message->detections.size());
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
     }
 }
 

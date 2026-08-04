@@ -259,9 +259,13 @@ void XFeatMonoParser::run() {
     std::optional<utilities::XFeatUtils::XFeatResult> previousResult;
 
     while(mainLoop()) {
-        auto nnData = input.get<dai::NNData>();
-        if(!nnData) {
-            continue;
+        std::shared_ptr<dai::NNData> nnData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            nnData = input.get<dai::NNData>();
+            if(!nnData) {
+                continue;
+            }
         }
 
         // Extract
@@ -285,7 +289,10 @@ void XFeatMonoParser::run() {
             auto message = std::make_shared<dai::TrackedFeatures>();
             message->setBufferMetadataFrom(nnData);
             logger->debug("XFeatMonoParser: no keypoints found, sending empty TrackedFeatures message");
-            out.send(message);
+            {
+                auto blockEvent = this->outputBlockEvent();
+                out.send(message);
+            }
             continue;
         }
 
@@ -299,7 +306,10 @@ void XFeatMonoParser::run() {
         }
         message->setBufferMetadataFrom(nnData);
         logger->debug("XFeatMonoParser created message with {} tracked features", message->trackedFeatures.size());
-        out.send(message);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(message);
+        }
 
         // The reference updates after the emission, consuming a pending trigger.
         if(trigger.exchange(false)) {
