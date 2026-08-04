@@ -41,8 +41,10 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
 
     /**
      * Stereo depth backend selector. Currently used on RVC4 only.
+     * DSP_RVC2_DEFAULT_64 applies the DSP_RVC2_DEFAULT profile with a 64-pixel
+     * disparity search range instead of 96 pixels.
      */
-    enum class StereoBackend : std::int32_t { EVA, DSP_GPU, DSP_RVC2 };
+    enum class StereoBackend : std::int32_t { EVA, DSP_GPU, DSP_RVC2, DSP_RVC2_DEFAULT, DSP_RVC2_DEFAULT_64 };
 
     /// Initial stereo config
     StereoDepthConfig initialConfig;

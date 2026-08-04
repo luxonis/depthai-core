@@ -219,6 +219,13 @@ void StereoDepth::setStereoBackend(Properties::StereoBackend backend) {
         initialConfig->setSubpixel(false);
         initialConfig->setMedianFilter(MedianFilter::MEDIAN_OFF);
         properties.initialConfig = *initialConfig;
+    } else if(backend == Properties::StereoBackend::DSP_RVC2_DEFAULT) {
+        setRvc2ProfilePreset(PresetMode::DEFAULT);
+        properties.initialConfig = *initialConfig;
+    } else if(backend == Properties::StereoBackend::DSP_RVC2_DEFAULT_64) {
+        setRvc2ProfilePreset(PresetMode::DEFAULT);
+        initialConfig->costMatching.disparityWidth = StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64;
+        properties.initialConfig = *initialConfig;
     }
 }
 

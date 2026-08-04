@@ -47,3 +47,30 @@ TEST_CASE("Roundtrip") {
         REQUIRE(des.numFramesPool == 42);
     }
 }
+
+TEST_CASE("StereoDepth DSP_RVC2_DEFAULT_64 only changes the DEFAULT disparity width") {
+    dai::Pipeline pipeline;
+    auto stereoDefault = pipeline.create<dai::node::StereoDepth>();
+    auto stereoDefault64 = pipeline.create<dai::node::StereoDepth>();
+
+    stereoDefault->setStereoBackend(dai::StereoDepthProperties::StereoBackend::DSP_RVC2_DEFAULT);
+    stereoDefault64->setStereoBackend(dai::StereoDepthProperties::StereoBackend::DSP_RVC2_DEFAULT_64);
+
+    using DisparityWidth = dai::StereoDepthConfig::CostMatching::DisparityWidth;
+    REQUIRE(stereoDefault->initialConfig->costMatching.disparityWidth == DisparityWidth::DISPARITY_96);
+    REQUIRE(stereoDefault64->initialConfig->costMatching.disparityWidth == DisparityWidth::DISPARITY_64);
+
+    auto defaultConfig = *stereoDefault->initialConfig;
+    auto default64Config = *stereoDefault64->initialConfig;
+    default64Config.costMatching.disparityWidth = DisparityWidth::DISPARITY_96;
+    REQUIRE(dai::utility::serialize(defaultConfig) == dai::utility::serialize(default64Config));
+
+    REQUIRE(stereoDefault->properties.numPostProcessingShaves == stereoDefault64->properties.numPostProcessingShaves);
+    REQUIRE(stereoDefault->properties.numPostProcessingMemorySlices == stereoDefault64->properties.numPostProcessingMemorySlices);
+
+    auto serialized = dai::utility::serialize(stereoDefault64->properties);
+    dai::StereoDepthProperties deserialized;
+    dai::utility::deserialize(serialized, deserialized);
+    REQUIRE(deserialized.stereoBackend == dai::StereoDepthProperties::StereoBackend::DSP_RVC2_DEFAULT_64);
+    REQUIRE(deserialized.initialConfig.costMatching.disparityWidth == DisparityWidth::DISPARITY_64);
+}

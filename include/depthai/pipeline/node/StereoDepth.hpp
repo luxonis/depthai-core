@@ -329,6 +329,13 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * setConfidenceThreshold() sets how much a second candidate has to lose by
      * for a pixel to be kept, rescaled from 0..255 onto the matcher's percentage
      * margin, so it behaves as a confidence threshold with no confidence map.
+     *
+     * StereoBackend::DSP_RVC2 reproduces the raw Myriad X D64 integer matcher.
+     * StereoBackend::DSP_RVC2_DEFAULT selects the complete RVC2 DEFAULT profile:
+     * D96, mean Census, Q3 subpixel interpolation, left-right checking, 2x
+     * decimation, 7x7 median, speckle, spatial, and temporal filtering.
+     * StereoBackend::DSP_RVC2_DEFAULT_64 selects the same complete profile with
+     * D64; all other configuration settings are identical.
      */
     void setStereoBackend(Properties::StereoBackend backend);
 
