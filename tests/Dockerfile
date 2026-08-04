@@ -123,12 +123,7 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
         -D DEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
         -D VCPKG_OVERLAY_TRIPLETS="/workspace/cmake/triplets/release" \
         -D DEPTHAI_BUILD_TESTS=ON \
-        ${REPLAY_CMAKE_ARG} \
-        $(if [ "$PULL_REQUEST" = "false" ]; then echo "-D DEPTHAI_BUILD_EXAMPLES=ON \
-        -D DEPTHAI_TEST_EXAMPLES=ON \
-        -D DEPTHAI_BUILD_PYTHON=ON \
-        -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON \
-        -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON"; fi)
+        ${REPLAY_CMAKE_ARG}
 
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
