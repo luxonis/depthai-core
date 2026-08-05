@@ -1,4 +1,4 @@
-name: DepthAI Core HIL Testing
+name: DepthAI Core HIL Testing Weekly
 
 on:
   workflow_dispatch:
