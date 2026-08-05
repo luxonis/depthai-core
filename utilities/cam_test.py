@@ -70,6 +70,7 @@ cam_socket_opts = {
 ALL_SOCKETS = list(cam_socket_opts.keys())
 DEPTH_STREAM_NAME = "stereo_depth"
 DEFAULT_RESOLUTION = (1280, 800)
+CAM_A_FULL_RESOLUTION_MAX_FPS = 18.0
 
 def unpackRaw10(rawData, width, height, stride=None):
     """
@@ -199,12 +200,13 @@ parser.add_argument('-res', '--resolution', type=resolution_entry, action='appen
                     metavar='[socket:](width,height)',
                     help="Select camera resolution as a tuple (width, height). "
                     "Use socket:(width,height) to override specific sockets (same names as -cams). "
-                    "Default is auto-selected from connected camera features. Can be provided multiple times."
-                    "Example is -res cama:1920,1080, -res 640,480")
+                    "CAM_A uses its highest full resolution unless explicitly overridden; other cameras default to an auto-selected resolution. "
+                    "Can be provided multiple times. "
+                    "Example is -res camb:640,400 -res 640,480")
 parser.add_argument('-rot', '--rotate', const='all', choices={'all', 'rgb', 'mono'}, nargs="?",
                     help="Which cameras to rotate 180 degrees. All if not filtered")
 parser.add_argument('-fps', '--fps', type=float, default=30,
-                    help="FPS to set for all cameras")
+                    help="FPS to set for all cameras (CAM_A is capped at 18 FPS only for its default highest full-resolution output)")
 parser.add_argument('-isp3afps', '--isp3afps', type=int, default=0,
                     help="3A FPS to set for all cameras")
 parser.add_argument('-ds', '--isp-downscale', default=1, type=int,
@@ -242,6 +244,14 @@ parser.add_argument('-btimeout', '--boot-timeout', default=30000,
 
 parser.add_argument("-stereo", action="store_true", default=False,
                     help="Create a stereo depth node if the device has a stereo pair.")
+
+parser.add_argument('-fsyncrole', '--fsync-role', choices=['auto', 'master', 'slave'], default=None,
+                    help="Override the external frame sync role (RVC4). Useful when M8 auto-detect "
+                    "selects slave but no external sync signal is present.")
+
+parser.add_argument('-hdr', '--hdr', action='store_true',
+                    help="Enable HDR on the Camera nodes (initialControl.setHdr). Selects HDR-tagged "
+                    "sensor modes (e.g. on AR2020 the GRR shutter mode is exposed as an HDR mode).")
 
 parser.add_argument("-gui", action="store_true",
                     help="Use GUI instead of CLI")
@@ -283,7 +293,11 @@ def build_socket_resolution_defaults(camera_features):
     resolutions = {}
     for cam_feature in camera_features:
         socket_name = socket_to_socket_opt(cam_feature.socket)
-        resolution, source = get_default_resolution(cam_feature)
+        if cam_feature.socket == dai.CameraBoardSocket.CAM_A:
+            resolution = (cam_feature.width, cam_feature.height)
+            source = f"{cam_feature.width}x{cam_feature.height} (highest full resolution)"
+        else:
+            resolution, source = get_default_resolution(cam_feature)
         resolutions[socket_name] = resolution
         print(f"Auto resolution {socket_name}: {source}")
     return resolutions
@@ -390,6 +404,14 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     cam_type_thermal = {}
 
     device: dai.Device = pipeline.getDefaultDevice()
+    if args.fsync_role is not None:
+        fsync_role_map = {
+            'auto': dai.ExternalFrameSyncRole.AUTO_DETECT,
+            'master': dai.ExternalFrameSyncRole.MASTER,
+            'slave': dai.ExternalFrameSyncRole.SLAVE,
+        }
+        ok, err = device.setExternalFrameSyncRole(fsync_role_map[args.fsync_role])
+        print(f"External frame sync role set to {args.fsync_role}: ok={ok}{'' if ok else ' err=' + err}")
     connected_cameras = device.getConnectedCameraFeatures()
     if not args.cameras:
         args.cameras = [(socket_to_socket_opt(cam.socket), cam.supportedTypes[0] ==
@@ -452,12 +474,24 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         else:
             cam[c] = pipeline.create(dai.node.Camera)
             cam[c].setSensorType(dai.CameraSensorType.COLOR if cam_type_color[c] else dai.CameraSensorType.MONO)
-            cam[c].build(cam_socket_opts[c], sensorFps=args.fps)
-            cap = dai.ImgFrameCapability()
-            cap.size.fixed(get_socket_resolution(c, socket_default_resolutions))
-            cap.fps.fixed(args.fps)
+            if args.hdr:
+                cam[c].initialControl.setHdr(True)
+            is_cam_a = cam_socket_opts[c] == dai.CameraBoardSocket.CAM_A
+            has_resolution_override = c in socket_resolution_overrides or resolution_default_override is not None
+            use_cam_a_full_resolution = is_cam_a and not has_resolution_override
+            camera_fps = min(args.fps, CAM_A_FULL_RESOLUTION_MAX_FPS) if use_cam_a_full_resolution else args.fps
+            cam[c].build(cam_socket_opts[c], sensorFps=camera_fps)
             stream_name = c
-            xout[stream_name] = cam[c].requestOutput(cap, True)
+            if use_cam_a_full_resolution:
+                print(f"CAM_A: requesting highest full resolution at {camera_fps:g} FPS")
+                xout[stream_name] = cam[c].requestFullResolutionOutput(fps=camera_fps, useHighestResolution=True)
+            else:
+                requested_resolution = get_socket_resolution(c, socket_default_resolutions)
+                print(f"{c}: requesting {requested_resolution[0]}x{requested_resolution[1]} at {camera_fps:g} FPS")
+                cap = dai.ImgFrameCapability()
+                cap.size.fixed(requested_resolution)
+                cap.fps.fixed(camera_fps)
+                xout[stream_name] = cam[c].requestOutput(cap, True)
             control_queues.append(cam[c].inputControl.createInputQueue())
             streams.append(stream_name)
             if args.enable_raw or tofEnableRaw:
