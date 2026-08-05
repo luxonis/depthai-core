@@ -1,13 +1,15 @@
 name: DepthAI Core HIL Testing PR
 
-# Trigger on submitted reviews
+# Trigger on submitted reviews or when manually marked as testable
 on:
   pull_request_review:
     types: [submitted]
+  pull_request:
+    types: [labeled]
 
-# Cancel older runs for the same PR and review state.
+# Cancel older runs for the same PR and trigger.
 concurrency:
-  group: depthai-core-pr-testing-${{ github.event.pull_request.number }}-${{ github.event.review.state }}
+  group: depthai-core-pr-testing-${{ github.event.pull_request.number }}-${{ github.event.review.state || github.event.label.name }}
   cancel-in-progress: true
 
 jobs:
@@ -15,7 +17,10 @@ jobs:
   build_docker_container:
     name: Build HIL test container
     if: >
-      github.event.review.state == 'approved' &&
+      (
+        github.event.review.state == 'approved' ||
+        (github.event_name == 'pull_request' && github.event.label.name == 'testable')
+      ) &&
       (
         github.event.pull_request.base.ref == 'main' ||
         github.event.pull_request.base.ref == 'develop'
@@ -107,11 +112,14 @@ jobs:
 
   # Final step, report on the tests, etc.
   required_hil_test_report:
-    name: Required HIL test report (${{ github.event.review.state }})
+    name: Required HIL test report (${{ github.event.review.state || github.event.label.name }})
     needs: [linux_rvc2_test, linux_rvc4_test]
     if: >
       always() &&
-      github.event.review.state == 'approved' &&
+      (
+        github.event.review.state == 'approved' ||
+        (github.event_name == 'pull_request' && github.event.label.name == 'testable')
+      ) &&
       (
         github.event.pull_request.base.ref == 'main' ||
         github.event.pull_request.base.ref == 'develop'
