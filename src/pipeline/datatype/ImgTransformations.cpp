@@ -17,7 +17,24 @@
 #include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
 namespace dai {
 
+namespace {
+
 constexpr float ROUND_UP_EPS = 1e-3f;
+
+bool differentKnownDeviceIds(const ImgTransformation& lhs, const ImgTransformation& rhs) {
+    const auto& lhsDeviceId = lhs.getDeviceId();
+    const auto& rhsDeviceId = rhs.getDeviceId();
+    return !lhsDeviceId.empty() && !rhsDeviceId.empty() && lhsDeviceId != rhsDeviceId;
+}
+
+void validateSameKnownDevice(const ImgTransformation& lhs, const ImgTransformation& rhs, const std::string& operation) {
+    if(differentKnownDeviceIds(lhs, rhs)) {
+        throw std::runtime_error(
+            fmt::format("Cannot {} ImgTransformations from different devices: '{}' and '{}'.", operation, lhs.getDeviceId(), rhs.getDeviceId()));
+    }
+}
+
+}  // namespace
 
 // Function to check if a point is inside a rotated rectangle
 inline bool isPointInRotatedRectangle(const dai::Point2f& p, const dai::RotatedRect& rect) {
@@ -50,6 +67,7 @@ inline bool RRinRR(const dai::RotatedRect& in, const dai::RotatedRect& out) {
 }
 
 dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransformation& from, const ImgTransformation& to) {
+    validateSameKnownDevice(from, to, "remap between");
     if(from.isEqualTransformation(to)) {
         return sourcePt;
     }
@@ -67,6 +85,7 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
 }
 
 dai::RotatedRect interSourceFrameTransform(const dai::RotatedRect& sourceRect, const ImgTransformation& from, const ImgTransformation& to) {
+    validateSameKnownDevice(from, to, "remap between");
     if(from.isEqualTransformation(to)) {
         return sourceRect;
     }
@@ -119,6 +138,7 @@ bool ImgTransformation::isEqualTransformation(const ImgTransformation& other) co
     auto thisExtrinsics = getExtrinsics();
     auto otherExtrinsics = other.getExtrinsics();
     if(!thisExtrinsics.isEqualExtrinsics(otherExtrinsics)) return false;
+    if(getDeviceId() != other.getDeviceId()) return false;
 
     if(getSize() != other.getSize()) return false;
     if(getSourceSize() != other.getSourceSize()) return false;
@@ -239,6 +259,9 @@ std::vector<float> ImgTransformation::getDistortionCoefficients() const {
 Extrinsics ImgTransformation::getExtrinsics() const {
     return extrinsics;
 }
+const std::string& ImgTransformation::getDeviceId() const {
+    return deviceId;
+}
 std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
     return srcCrops;
 }
@@ -349,6 +372,10 @@ ImgTransformation& ImgTransformation::setIntrinsicMatrix(const std::array<std::a
 }
 ImgTransformation& ImgTransformation::setExtrinsics(const Extrinsics& extrinsics) {
     this->extrinsics = extrinsics;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setDeviceId(const std::string& deviceId) {
+    this->deviceId = deviceId;
     return *this;
 }
 ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
@@ -528,10 +555,12 @@ std::array<float, 3> ImgTransformation::getTranslationVectorTo(const ImgTransfor
 std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
                                                                                            const bool useSpecTranslation,
                                                                                            const LengthUnit sourceUnit) const {
+    validateSameKnownDevice(*this, to, "get extrinsics transformation between");
     return this->extrinsics.getExtrinsicsTransformationTo(to.getExtrinsics(), useSpecTranslation, sourceUnit);
 }
 
 bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
+    if(differentKnownDeviceIds(*this, to)) return false;
     if(width != to.width || height != to.height) return false;
     if(this->distortionModel != to.distortionModel) return false;
     auto approxEqual = [](float a, float b, float absTol = ROUND_UP_EPS, float relTol = 2 * ROUND_UP_EPS) {

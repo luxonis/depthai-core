@@ -137,13 +137,14 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("distortionModel"),
              py::arg("distortionCoefficients"),
              DOC(dai, ImgTransformation, ImgTransformation, 5))
-        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>, Extrinsics>(),
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>, Extrinsics, std::string>(),
              py::arg("width"),
              py::arg("height"),
              py::arg("sourceIntrinsicMatrix"),
              py::arg("distortionModel"),
              py::arg("distortionCoefficients"),
              py::arg("extrinsics"),
+             py::arg("deviceId") = "",
              DOC(dai, ImgTransformation, ImgTransformation, 6))
 
         .def("getTransformationMatrix", &ImgTransformation::getTransformationMatrix, DOC(dai, ImgTransformation, getTransformationMatrix))
@@ -165,6 +166,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getDistortionModel", &ImgTransformation::getDistortionModel, DOC(dai, ImgTransformation, getDistortionModel))
         .def("getDistortionCoefficients", &ImgTransformation::getDistortionCoefficients, DOC(dai, ImgTransformation, getDistortionCoefficients))
         .def("getExtrinsics", &ImgTransformation::getExtrinsics, DOC(dai, ImgTransformation, getExtrinsics))
+        .def("getDeviceId", &ImgTransformation::getDeviceId)
         .def("getSrcCrops", &ImgTransformation::getSrcCrops, DOC(dai, ImgTransformation, getSrcCrops))
         .def("getSrcMaskPt", &ImgTransformation::getSrcMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getSrcMaskPt))
         .def("getDstMaskPt", &ImgTransformation::getDstMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getDstMaskPt))
@@ -179,6 +181,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("coefficients"),
              DOC(dai, ImgTransformation, setDistortionCoefficients))
         .def("setExtrinsics", &ImgTransformation::setExtrinsics, py::arg("extrinsics"), DOC(dai, ImgTransformation, setExtrinsics))
+        .def("setDeviceId", &ImgTransformation::setDeviceId, py::arg("deviceId"))
         .def("setSize", &ImgTransformation::setSize, py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, setSize))
         .def("setSourceSize", &ImgTransformation::setSourceSize, py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, setSourceSize))
         .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))

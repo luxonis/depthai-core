@@ -91,16 +91,15 @@ std::vector<std::vector<float> > applyRectificationMatrix(const dai::Extrinsics&
     return dai::matrix::matrix3x3ToVectorMatrix(dai::matrix::matMul(inputRotationMatrix, arrayR1Inv));
 }
 
-dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& extrinsics,
-                                                        const cv::Mat& cvIntrinsicMatrix,
-                                                        uint32_t outputWidth,
-                                                        uint32_t outputHeight) {
+dai::ImgTransformation createRectifiedImgTransformation(
+    const dai::Extrinsics& extrinsics, const cv::Mat& cvIntrinsicMatrix, uint32_t outputWidth, uint32_t outputHeight, const std::string& deviceId) {
     dai::ImgTransformation outputImgTransformation;
     // Rectified frame is treated as a brand new camera, so source size is set to output size
     outputImgTransformation.setSourceSize(outputWidth, outputHeight);
     outputImgTransformation.setSize(outputWidth, outputHeight);
     outputImgTransformation.setIntrinsicMatrix(dai::matrix::cvMatToMatrix3x3(cvIntrinsicMatrix));
     outputImgTransformation.setExtrinsics(extrinsics);
+    outputImgTransformation.setDeviceId(deviceId);
     outputImgTransformation.setDistortionCoefficients({});
     return outputImgTransformation;
 }
@@ -230,8 +229,10 @@ void Rectification::run() {
                                         cv_rectificationMap2X,
                                         cv_rectificationMap2Y);
 
-            output1ImgTransformation = createRectifiedImgTransformation(output1Extrinsics, cv_targetCameraMatrix1, output1FrameWidth, output1FrameHeight);
-            output2ImgTransformation = createRectifiedImgTransformation(output2Extrinsics, cv_targetCameraMatrix2, output2FrameWidth, output2FrameHeight);
+            output1ImgTransformation = createRectifiedImgTransformation(
+                output1Extrinsics, cv_targetCameraMatrix1, output1FrameWidth, output1FrameHeight, input1ImgTransformation.getDeviceId());
+            output2ImgTransformation = createRectifiedImgTransformation(
+                output2Extrinsics, cv_targetCameraMatrix2, output2FrameWidth, output2FrameHeight, input2ImgTransformation.getDeviceId());
 
             logger->debug("R = {}", matToString(cv_R));
             logger->debug("T = {}", matToString(cv_T));
