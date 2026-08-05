@@ -247,6 +247,13 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         LOCATION test_recording
     )
 
+        private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/neural_depth_recording.tar"
+        SHA1 "fa2248c56fc16f3ced3d4a4d39b3ce32a889a494"
+        FILE "neural_depth_recording.tar"
+        LOCATION neural_depth_recording
+    )
+
     private_data(
         URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/holistic_recording_transformations.tar"
         SHA1 "be6ef1f24a26d8e604283a6dac59ede035425feb"
@@ -489,6 +496,10 @@ dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
 dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
+
+# Telemetry fork safety test
+dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
+dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
 
 # Circular buffer test
 dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
@@ -885,7 +896,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_depth_node_test src/ondevice_tests/neural_depth_node_test.cpp)
     dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci noreplayci)
     target_compile_definitions(neural_depth_node_test PRIVATE
-        NEURAL_REPLAY_PATH="${test_recording}"
+        NEURAL_REPLAY_PATH="${neural_depth_recording}"
         NEURAL_CALIBRATION_PATH="${test_calib}"
     )
     # TODO(Morato) - shouldn't be needed, but AUTOCALIBRATION seems to impact the FPS a bit at the beginning

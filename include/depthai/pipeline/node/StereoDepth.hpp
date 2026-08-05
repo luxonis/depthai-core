@@ -309,6 +309,8 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Sets a default preset based on specified option.
      * @param mode Stereo depth preset mode
+     *
+     * @warning If using alpha scaling on RVC4 the DEFAULT, DENSITY, and FAST_DENSITY presets can produce inaccurate depth in black padded regions, as they prioritize coverage.
      */
     void setDefaultProfilePreset(PresetMode mode);
 

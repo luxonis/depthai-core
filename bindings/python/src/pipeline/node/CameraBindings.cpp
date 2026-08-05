@@ -62,13 +62,14 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         // .def("setCamera", &Camera::setCamera, "name"_a, DOC(dai, node, Camera, setCamera))
         // .def("getCamera", &Camera::getCamera, DOC(dai, node, Camera, getCamera))
         .def("requestOutput",
-             py::overload_cast<const std::pair<uint32_t, uint32_t>&, std::optional<ImgFrame::Type>, ImgResizeMode, std::optional<float>, std::optional<bool>>(
+             py::overload_cast<const std::pair<uint32_t, uint32_t>&, std::optional<ImgFrame::Type>, ImgResizeMode, std::optional<float>, std::optional<bool>, std::optional<float>>(
                  &Camera::requestOutput),
              "size"_a,
              "type"_a = std::nullopt,
              "resizeMode"_a = dai::ImgResizeMode::CROP,
              "fps"_a = std::nullopt,
              "enableUndistortion"_a = std::nullopt,
+             "alphaScaling"_a = std::nullopt,
              py::return_value_policy::reference_internal,
              DOC(dai, node, Camera, requestOutput))
         .def("requestIspOutput",
