@@ -16,7 +16,7 @@ jobs:
         if: github.event.schedule == '0 3 * * 6'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run hil_testing_main.yml --repo "$GITHUB_REPOSITORY" --ref develop
+        run: gh workflow run hil_testing_weekly.yml --repo "$GITHUB_REPOSITORY" --ref develop
 
       - name: Trigger nightly develop HIL testing
         if: github.event.schedule == '0 1 * * *'
