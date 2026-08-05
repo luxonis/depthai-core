@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <string>
+#include <vector>
 
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Extrinsics.hpp"
@@ -24,6 +26,7 @@ struct ImgTransformation {
     CameraModel distortionModel = CameraModel::Perspective;
     std::vector<float> distortionCoefficients;
     Extrinsics extrinsics = {};
+    std::string deviceId;
 
     size_t srcWidth = 0;
     size_t srcHeight = 0;
@@ -67,11 +70,13 @@ struct ImgTransformation {
                       std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix,
                       CameraModel distortionModel,
                       std::vector<float> distortionCoefficients,
-                      Extrinsics extrinsics)
+                      Extrinsics extrinsics,
+                      std::string deviceId = {})
         : sourceIntrinsicMatrix(sourceIntrinsicMatrix),
           distortionModel(distortionModel),
           distortionCoefficients(std::move(distortionCoefficients)),
           extrinsics(std::move(extrinsics)),
+          deviceId(std::move(deviceId)),
           srcWidth(width),
           srcHeight(height),
           width(width),
@@ -149,10 +154,15 @@ struct ImgTransformation {
      * @return Extrinsics
      */
     Extrinsics getExtrinsics() const;
+    /**
+     * Retrieve the device id of the source sensor.
+     * @return Device id string, or empty if not known.
+     */
+    const std::string& getDeviceId() const;
 
     /**
      * Two transformations are equal if the transformation matrices, intrinsic matrices, distortion models,
-     * distortion coefficients, extrinsics, and sizes are all equal.
+     * distortion coefficients, extrinsics, device ids, and sizes are all equal.
      * @param other Transformation to compare with
      * @return True if the transformations are equal, false otherwise
      */
@@ -251,6 +261,7 @@ struct ImgTransformation {
     ImgTransformation& setSize(size_t width, size_t height);
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
+    ImgTransformation& setDeviceId(const std::string& deviceId);
     ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
     ImgTransformation& setDistortionModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
@@ -402,7 +413,8 @@ struct ImgTransformation {
                       srcHeight,
                       width,
                       height,
-                      srcCrops);
+                      srcCrops,
+                      deviceId);
 };
 
 }  // namespace dai

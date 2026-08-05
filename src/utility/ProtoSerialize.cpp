@@ -91,6 +91,7 @@ void serializeImgTransformation(proto::common::ImgTransformation* imgTransformat
     }
 
     imgTransformation->set_distortionmodel(static_cast<proto::common::CameraModel>(transformation.getDistortionModel()));
+    imgTransformation->set_deviceid(transformation.getDeviceId());
     proto::common::FloatArray* distortionCoefficients = imgTransformation->mutable_distortioncoefficients();
     for(const auto& value : transformation.getDistortionCoefficients()) {
         distortionCoefficients->add_values(value);
@@ -185,6 +186,7 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
                                        static_cast<CameraModel>(imgTransformation.distortionmodel()),
                                        distortionCoefficients,
                                        extrinsics);
+    transformation.setDeviceId(imgTransformation.deviceid());
     if(transformation.isValid()) {
         transformation.addTransformation(transformationMatrix);
         if(!srcCrops.empty()) {

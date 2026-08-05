@@ -4,6 +4,7 @@
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
+#include "depthai/utility/Serialization.hpp"
 #define CATCH_CONFIG_MAIN
 
 #include <catch2/catch_all.hpp>
@@ -229,6 +230,33 @@ TEST_CASE("identityTransformation") {
     REQUIRE_THAT(back.y, Catch::Matchers::WithinAbs(r.y, 1e-6));
     REQUIRE_THAT(back.width, Catch::Matchers::WithinAbs(r.width, 1e-6));
     REQUIRE_THAT(back.height, Catch::Matchers::WithinAbs(r.height, 1e-6));
+}
+
+TEST_CASE("ImgTransformation deviceId metadata") {
+    dai::ImgTransformation source(640, 480);
+    REQUIRE(source.getDeviceId().empty());
+
+    source.setDeviceId("mxid-a");
+    REQUIRE(source.getDeviceId() == "mxid-a");
+
+    dai::ImgTransformation sameDevice(640, 480);
+    sameDevice.setDeviceId("mxid-a");
+    REQUIRE(source.isEqualTransformation(sameDevice));
+    REQUIRE(source.isAlignedTo(sameDevice));
+
+    dai::ImgTransformation otherDevice(640, 480);
+    otherDevice.setDeviceId("mxid-b");
+    REQUIRE_FALSE(source.isEqualTransformation(otherDevice));
+    REQUIRE_FALSE(source.isAlignedTo(otherDevice));
+
+    dai::Point2f point{10.0f, 20.0f};
+    REQUIRE_THROWS(source.remapPointTo(otherDevice, point));
+
+    const auto serialized = dai::utility::serialize(source);
+    dai::ImgTransformation deserialized;
+    dai::utility::deserialize(serialized, deserialized);
+    REQUIRE(deserialized.getDeviceId() == "mxid-a");
+    REQUIRE(deserialized.isEqualTransformation(source));
 }
 
 // -----------------------------------------------------------------------------
