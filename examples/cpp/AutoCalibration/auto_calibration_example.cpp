@@ -109,9 +109,6 @@ int main() {
     botchCalibration(device);
 
     // Nodes
-    // AutoCalibration requires the explicit left/right camera nodes, so they are
-    // kept. The Depth node reuses these same stereo cameras for its depth output
-    // and manages the stereo backend internally.
     auto camLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto camRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
     auto depth = pipeline.create<dai::node::Depth>();

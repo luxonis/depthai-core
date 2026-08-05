@@ -34,10 +34,10 @@ def printPointCloudInfo(pcd: dai.PointCloudData, frameNum: int) -> None:
           f"  Z [{pcd.getMinZ()}, {pcd.getMaxZ()}]")
 
 
+# ===========================================================================
 NUM_FRAMES = 3
 
 
-# ===========================================================================
 def main() -> None:
     print("PointCloud Node Showcase")
     print("========================")
@@ -46,11 +46,11 @@ def main() -> None:
     device = dai.Device()
     print(f"Device: {device.getDeviceName()}  (ID: {device.getDeviceId()})\n")
 
+    # ------------------------------------------------------------------
+    # Single pipeline – shared Camera + StereoDepth, multiple PointCloud
+    # nodes configured differently.
+    # ------------------------------------------------------------------
     with dai.Pipeline(device) as pipeline:
-        # ------------------------------------------------------------------
-        # Single pipeline – shared Camera + Depth, multiple PointCloud
-        # nodes configured differently.
-        # ------------------------------------------------------------------
         colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
         colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
         color = pipeline.create(dai.node.Camera).build(colorSocket)
@@ -144,7 +144,6 @@ def main() -> None:
             customFrames.append(qCustom.get())
             depthFrames.append(qDepth.get())
             colorizedFrames.append(qColorized.get())
-
 
     # ------------------------------------------------------------------
     # Display results grouped by feature

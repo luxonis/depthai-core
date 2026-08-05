@@ -38,7 +38,7 @@ with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build(colorSocket)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
     labelMap = detectionNetwork.getClasses()
-    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (1280, 720))
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None)
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()

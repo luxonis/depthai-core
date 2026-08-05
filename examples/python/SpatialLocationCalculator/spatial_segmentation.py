@@ -31,9 +31,9 @@ with dai.Pipeline(device) as pipeline:
     depth = pipeline.create(dai.node.Depth)
     if device.getPlatform() == dai.Platform.RVC2:
         # RVC2 has a limited number of shaves, use the FAST_DENSITY stereo preset
-        depth.build(dai.node.Depth.Algorithm.STEREO, dai.node.StereoDepth.PresetMode.FAST_DENSITY, fps, (1280, 800))
+        depth.build(dai.node.Depth.Algorithm.STEREO, dai.node.StereoDepth.PresetMode.FAST_DENSITY, fps)
     else:
-        depth.build(dai.node.Depth.Algorithm.AUTO, fps, (1280, 800))
+        depth.build(dai.node.Depth.Algorithm.AUTO, fps)
     depth.setAlignTo(detNN.passthrough)
 
     spatialCalculator = pipeline.create(dai.node.SpatialLocationCalculator)

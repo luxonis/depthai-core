@@ -110,9 +110,9 @@ def main() -> None:
                         else:
                             vis.update_geometry(pcd)
 
+                # Show colorized depth in an OpenCV window
                 depthMsg = qDepth.tryGet()
                 if depthMsg is not None:
-                    # Show colorized depth in an OpenCV window
                     cv2.imshow("Depth", colorizeDepth(depthMsg.getCvFrame()))
 
                 if cv2.waitKey(1) == ord("q"):

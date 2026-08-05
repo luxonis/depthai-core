@@ -6,6 +6,9 @@
 
 #include "depthai/depthai.hpp"
 
+// NOTE: Using autocreate takes over the cameras and cannot yet be used in complex
+// pipelines where the cameras would also be used by other nodes.
+
 // Signal handling for clean shutdown
 static bool isRunning = true;
 void signalHandler(int signum) {

@@ -40,7 +40,7 @@ with dai.Pipeline() as pipeline:
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
     objectTracker = pipeline.create(dai.node.ObjectTracker)
     labelMap = detectionNetwork.getClasses()
-    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (1280, 720))
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO)
 
     detectionNetwork.out.link(objectTracker.inputDetections)
     detectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)

@@ -107,9 +107,9 @@ int main() {
         auto depth = pipeline.create<dai::node::Depth>();
         if(device->getPlatform() == dai::Platform::RVC2) {
             // RVC2 has a limited number of shaves, use the FAST_DENSITY stereo preset
-            depth->build(dai::node::Depth::Algorithm::STEREO, dai::node::StereoDepth::PresetMode::FAST_DENSITY, fps, std::make_pair(1280u, 800u));
+            depth->build(dai::node::Depth::Algorithm::STEREO, dai::node::StereoDepth::PresetMode::FAST_DENSITY, fps);
         } else {
-            depth->build(dai::node::Depth::Algorithm::AUTO, fps, std::make_pair(1280u, 800u));
+            depth->build(dai::node::Depth::Algorithm::AUTO, fps);
         }
         depth->setAlignTo(detectionNetwork->passthrough);
 

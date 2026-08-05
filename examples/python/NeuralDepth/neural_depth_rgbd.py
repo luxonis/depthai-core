@@ -20,15 +20,11 @@ with dai.Pipeline() as p:
     rgbd = p.create(dai.node.RGBD).build()
     align = None
 
-    colorSocket = dai.CameraBoardSocket.CAM_A
-    for features in p.getDefaultDevice().getConnectedCameraFeatures():
-        if dai.CameraSensorType.COLOR in features.supportedTypes:
-            colorSocket = features.socket
-            break
-    color.build(colorSocket, sensorFps=FPS)
+    color.build(sensorFps=FPS)
     left.build(dai.CameraBoardSocket.CAM_B, sensorFps=FPS)
     right.build(dai.CameraBoardSocket.CAM_C, sensorFps=FPS)
 
+    # Linking
     stereo.build(left.requestFullResolutionOutput(), right.requestFullResolutionOutput(), dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
     out = color.requestOutput((1280, 800), dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
     align = p.create(dai.node.ImageAlign)

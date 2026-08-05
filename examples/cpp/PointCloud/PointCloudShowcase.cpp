@@ -52,7 +52,7 @@ int main() {
 
     try {
         // ==============================================================
-        // Single pipeline – shared Camera + Depth, multiple
+        // Single pipeline – shared Camera + StereoDepth, multiple
         // PointCloud nodes configured differently.
         // ==============================================================
         dai::Pipeline pipeline(device);

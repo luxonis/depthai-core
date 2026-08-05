@@ -151,7 +151,7 @@ int main() {
     auto labelMap = detectionNetwork->getClasses().value_or(std::vector<std::string>{});
 
     auto depth = pipeline.create<dai::node::Depth>();
-    depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(1280u, 720u));
+    depth->build(dai::node::Depth::Algorithm::AUTO);
 
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
     auto qDet = detectionNetwork->out.createOutputQueue();
