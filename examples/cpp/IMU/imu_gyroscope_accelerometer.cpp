@@ -47,26 +47,29 @@ int main() {
     // Set up output formatting
     std::cout << std::fixed << std::setprecision(6);
 
+    auto lastPrintTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     while(pipeline.isRunning() && !quitEvent) {
         auto imuData = imuQueue->get<dai::IMUData>();
-        if(imuData == nullptr) continue;
+        if(imuData == nullptr || imuData->packets.empty()) continue;
 
-        for(const auto& imuPacket : imuData->packets) {
-            auto acceleroValues = imuPacket.acceleroMeter;
-            auto gyroValues = imuPacket.gyroscope;
+        const auto now = std::chrono::steady_clock::now();
+        
+        const auto& imuPacket = imuData->packets.back();
+        auto acceleroValues = imuPacket.acceleroMeter;
+        auto gyroValues = imuPacket.gyroscope;
+        
+        auto acceleroTs = acceleroValues.getTimestamp();
+        auto gyroTs = gyroValues.getTimestamp();
+        if(now - lastPrintTime < std::chrono::seconds(1)) continue;
+        lastPrintTime = now;
 
-            auto acceleroTs = acceleroValues.getTimestamp();
-            auto gyroTs = gyroValues.getTimestamp();
+        // Print the latest IMU sample at most once per second.
+        std::cout << "Accelerometer timestamp: " << acceleroTs.time_since_epoch().count() << std::endl;
+        std::cout << "Latency [ms]: " << timeDeltaToMilliS(std::chrono::steady_clock::now() - acceleroValues.getTimestamp()) << std::endl;
+        std::cout << "Accelerometer [m/s^2]: x: " << acceleroValues.x << " y: " << acceleroValues.y << " z: " << acceleroValues.z << std::endl;
 
-            // Print accelerometer data
-            std::cout << "Accelerometer timestamp: " << acceleroTs.time_since_epoch().count() << std::endl;
-            std::cout << "Latency [ms]: " << timeDeltaToMilliS(std::chrono::steady_clock::now() - acceleroValues.getTimestamp()) << std::endl;
-            std::cout << "Accelerometer [m/s^2]: x: " << acceleroValues.x << " y: " << acceleroValues.y << " z: " << acceleroValues.z << std::endl;
-
-            // Print gyroscope data
-            std::cout << "Gyroscope timestamp: " << gyroTs.time_since_epoch().count() << std::endl;
-            std::cout << "Gyroscope [rad/s]: x: " << gyroValues.x << " y: " << gyroValues.y << " z: " << gyroValues.z << std::endl;
-        }
+        std::cout << "Gyroscope timestamp: " << gyroTs.time_since_epoch().count() << std::endl;
+        std::cout << "Gyroscope [rad/s]: x: " << gyroValues.x << " y: " << gyroValues.y << " z: " << gyroValues.z << std::endl;
     }
 
     // Cleanup

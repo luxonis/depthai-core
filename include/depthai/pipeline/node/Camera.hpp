@@ -27,7 +27,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
                                 std::optional<ImgFrame::Type> type = std::nullopt,
                                 ImgResizeMode resizeMode = ImgResizeMode::CROP,
                                 std::optional<float> fps = std::nullopt,
-                                std::optional<bool> enableUndistortion = std::nullopt);
+                                std::optional<bool> enableUndistortion = std::nullopt,
+                                std::optional<float> alphaScaling = std::nullopt);
     /**
      * Request output with advanced controls. Mainly to be used by custom node writers.
      */
