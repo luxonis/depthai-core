@@ -5,6 +5,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "beta/utilities/Detection/DetectionUtils.hpp"
@@ -21,6 +22,15 @@ namespace beta {
 PPTextDetectionParserProperties::~PPTextDetectionParserProperties() = default;
 
 namespace node {
+
+PPTextDetectionParser::PPTextDetectionParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, PPTextDetectionParser, PPTextDetectionParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<PPTextDetectionParserConfig>(properties.initialConfig)) {}
+
+PPTextDetectionParser::Properties& PPTextDetectionParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
 
 namespace {
 
@@ -162,27 +172,27 @@ std::string PPTextDetectionParser::getOutputLayerName() const {
 }
 
 void PPTextDetectionParser::setConfidenceThreshold(float threshold) {
-    properties.confidenceThreshold = threshold;
+    initialConfig->setConfidenceThreshold(threshold);
 }
 
 float PPTextDetectionParser::getConfidenceThreshold() const {
-    return properties.confidenceThreshold;
+    return initialConfig->getConfidenceThreshold();
 }
 
 void PPTextDetectionParser::setMaskThreshold(float maskThreshold) {
-    properties.maskThreshold = maskThreshold;
+    initialConfig->setMaskThreshold(maskThreshold);
 }
 
 float PPTextDetectionParser::getMaskThreshold() const {
-    return properties.maskThreshold;
+    return initialConfig->getMaskThreshold();
 }
 
 void PPTextDetectionParser::setMaxDetections(int maxDetections) {
-    properties.maxDetections = maxDetections;
+    initialConfig->setMaxDetections(maxDetections);
 }
 
 int PPTextDetectionParser::getMaxDetections() const {
-    return properties.maxDetections;
+    return initialConfig->getMaxDetections();
 }
 
 void PPTextDetectionParser::setRunOnHost(bool runOnHost) {
@@ -197,6 +207,10 @@ void PPTextDetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("PPTextDetectionParser started");
 
+    PPTextDetectionParserConfig activeConfig = getProperties().initialConfig;
+    DAI_CHECK(activeConfig.validate(), "PPTextDetectionParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
+
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
@@ -205,11 +219,30 @@ void PPTextDetectionParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<PPTextDetectionParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<PPTextDetectionParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<PPTextDetectionParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    activeConfig = *candidate;
+                } else {
+                    logger->warn("PPTextDetectionParser ignored an invalid runtime configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+
+        const PPTextDetectionParserConfig config = activeConfig;
 
         // Extract
         const auto layerNames = nnData->getAllLayerNames();
@@ -221,7 +254,7 @@ void PPTextDetectionParser::run() {
 
         // Compute. The probability map height/width are derived from the tensor shape.
         const auto detections = utilities::PPTextUtils::parsePaddleDetectionOutputs(
-            predictions.values, predictions.dims, properties.maskThreshold, properties.confidenceThreshold, properties.maxDetections);
+            predictions.values, predictions.dims, config.maskThreshold, config.confidenceThreshold, config.maxDetections);
 
         // Emit. The detections carry no labels, mirroring the source
         // create_detection_message(bboxes, scores, angles=angles) call.

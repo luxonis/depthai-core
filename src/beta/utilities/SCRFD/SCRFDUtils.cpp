@@ -160,8 +160,10 @@ ScrfdDetections computeScrfdDetections(const std::vector<std::vector<float>>& bb
                                        std::uint32_t inputHeight,
                                        float scoreThreshold,
                                        float nmsThreshold,
+                                       int maxDetections,
                                        const std::vector<std::vector<std::array<float, 2>>>& anchors) {
     DAI_CHECK(!featStrideFpn.empty(), "SCRFD decoding requires at least one feature stride.");
+    DAI_CHECK(maxDetections > 0, "Maximum detections must be positive.");
     DAI_CHECK_V(bboxesPerStride.size() == featStrideFpn.size() && scoresPerStride.size() == featStrideFpn.size() && kpsPerStride.size() == featStrideFpn.size()
                     && anchors.size() == featStrideFpn.size(),
                 "Expected {} per-stride score, bbox, kps and anchor vectors, got {}, {}, {} and {}.",
@@ -242,6 +244,7 @@ ScrfdDetections computeScrfdDetections(const std::vector<std::vector<float>>& bb
     }
 
     const std::vector<std::int64_t> keep = nms(preDet, nmsThreshold);
+    const std::size_t numDetections = std::min(keep.size(), static_cast<std::size_t>(maxDetections));
 
     // Normalize in double precision: the source divides float32 values by int64 arrays, which
     // numpy promotes to float64. x coordinates are normalized by the input width and y
@@ -250,10 +253,11 @@ ScrfdDetections computeScrfdDetections(const std::vector<std::vector<float>>& bb
     const double height = static_cast<double>(inputHeight);
 
     ScrfdDetections detections;
-    detections.bboxes.reserve(keep.size());
-    detections.scores.reserve(keep.size());
-    detections.keypoints.reserve(keep.size());
-    for(const std::int64_t keptIdx : keep) {
+    detections.bboxes.reserve(numDetections);
+    detections.scores.reserve(numDetections);
+    detections.keypoints.reserve(numDetections);
+    for(std::size_t detectionIndex = 0; detectionIndex < numDetections; detectionIndex++) {
+        const std::int64_t keptIdx = keep[detectionIndex];
         const auto& row = preDet[keptIdx];
         // bboxes = np.clip(det[:, :4] / [width, height, width, height], 0, 1).
         const double x1 = clip01(static_cast<double>(row[0]) / width);

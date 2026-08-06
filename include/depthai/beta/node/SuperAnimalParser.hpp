@@ -31,10 +31,25 @@ namespace node {
  *
  */
 class SuperAnimalParser : public DeviceNodeCRTP<BetaNode, SuperAnimalParser, SuperAnimalParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "SuperAnimalParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    SuperAnimalParser() = default;
+    SuperAnimalParser(std::unique_ptr<Properties> props);
+
+    /** Configuration used until a message is received on inputConfig. */
+    std::shared_ptr<SuperAnimalParserConfig> initialConfig = std::make_shared<SuperAnimalParserConfig>();
+
+    /**
+     * Runtime parser configuration. When synchronized, one configuration is consumed per frame;
+     * otherwise all queued configurations are drained and the newest valid one is used.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::SuperAnimalParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with heatmaps data to parse.
@@ -119,6 +134,7 @@ class SuperAnimalParser : public DeviceNodeCRTP<BetaNode, SuperAnimalParser, Sup
      * Sets the confidence score threshold for detected keypoints. Keypoints with a score strictly below the threshold are dropped.
      *
      * @param threshold Confidence score threshold, must be between 0 and 1
+     * @note Configures startup behavior. Send SuperAnimalParserConfig to inputConfig after the pipeline starts.
      */
     void setScoreThreshold(float threshold);
 

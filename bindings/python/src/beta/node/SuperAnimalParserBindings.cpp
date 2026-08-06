@@ -7,6 +7,8 @@ void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::SuperAnimalParserProperties> properties(betaModule, "SuperAnimalParserProperties");
     auto superAnimalParser = ADD_BETA_NODE_DERIVED(SuperAnimalParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,7 +19,16 @@ void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
-    superAnimalParser.def_readonly("input", &SuperAnimalParser::input, DOC(dai, beta, node, SuperAnimalParser, input))
+    properties.def_readwrite("initialConfig", &beta::SuperAnimalParserProperties::initialConfig)
+        .def_readwrite("outputLayerName", &beta::SuperAnimalParserProperties::outputLayerName)
+        .def_readwrite("scaleFactor", &beta::SuperAnimalParserProperties::scaleFactor)
+        .def_readwrite("nKeypoints", &beta::SuperAnimalParserProperties::nKeypoints)
+        .def_readwrite("labelNames", &beta::SuperAnimalParserProperties::labelNames)
+        .def_readwrite("edges", &beta::SuperAnimalParserProperties::edges);
+
+    superAnimalParser.def_readonly("inputConfig", &SuperAnimalParser::inputConfig, DOC(dai, beta, node, SuperAnimalParser, inputConfig))
+        .def_readonly("initialConfig", &SuperAnimalParser::initialConfig, DOC(dai, beta, node, SuperAnimalParser, initialConfig))
+        .def_readonly("input", &SuperAnimalParser::input, DOC(dai, beta, node, SuperAnimalParser, input))
         .def_readonly("out", &SuperAnimalParser::out, DOC(dai, beta, node, SuperAnimalParser, out))
         .def(
             "build",
@@ -49,4 +60,6 @@ void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack) {
         .def("getEdges", &SuperAnimalParser::getEdges, DOC(dai, beta, node, SuperAnimalParser, getEdges))
         .def("setRunOnHost", &SuperAnimalParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, SuperAnimalParser, setRunOnHost))
         .def("runOnHost", &SuperAnimalParser::runOnHost, DOC(dai, beta, node, SuperAnimalParser, runOnHost));
+
+    superAnimalParser.attr("Properties") = properties;
 }

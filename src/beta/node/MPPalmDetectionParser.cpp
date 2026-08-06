@@ -25,6 +25,15 @@ MPPalmDetectionParserProperties::~MPPalmDetectionParserProperties() = default;
 
 namespace node {
 
+MPPalmDetectionParser::MPPalmDetectionParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, MPPalmDetectionParser, MPPalmDetectionParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<MPPalmDetectionParserConfig>(properties.initialConfig)) {}
+
+MPPalmDetectionParser::Properties& MPPalmDetectionParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 NNArchive MPPalmDetectionParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -137,27 +146,27 @@ std::vector<std::string> MPPalmDetectionParser::getOutputLayerNames() const {
 }
 
 void MPPalmDetectionParser::setConfidenceThreshold(float threshold) {
-    properties.confidenceThreshold = threshold;
+    initialConfig->setConfidenceThreshold(threshold);
 }
 
 float MPPalmDetectionParser::getConfidenceThreshold() const {
-    return properties.confidenceThreshold;
+    return initialConfig->getConfidenceThreshold();
 }
 
 void MPPalmDetectionParser::setIouThreshold(float threshold) {
-    properties.iouThreshold = threshold;
+    initialConfig->setIouThreshold(threshold);
 }
 
 float MPPalmDetectionParser::getIouThreshold() const {
-    return properties.iouThreshold;
+    return initialConfig->getIouThreshold();
 }
 
 void MPPalmDetectionParser::setMaxDetections(int maxDetections) {
-    properties.maxDetections = maxDetections;
+    initialConfig->setMaxDetections(maxDetections);
 }
 
 int MPPalmDetectionParser::getMaxDetections() const {
-    return properties.maxDetections;
+    return initialConfig->getMaxDetections();
 }
 
 void MPPalmDetectionParser::setScale(int scale) {
@@ -188,6 +197,10 @@ void MPPalmDetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("MPPalmDetectionParser started");
 
+    MPPalmDetectionParserConfig activeConfig = getProperties().initialConfig;
+    DAI_CHECK(activeConfig.validate(), "MPPalmDetectionParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
+
     // The SSD anchors depend only on the scale; they are generated once and cached across
     // messages, keyed on the scale.
     bool anchorsCached = false;
@@ -198,11 +211,30 @@ void MPPalmDetectionParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<MPPalmDetectionParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<MPPalmDetectionParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<MPPalmDetectionParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    activeConfig = *candidate;
+                } else {
+                    logger->warn("MPPalmDetectionParser ignored an invalid runtime configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+
+        const MPPalmDetectionParserConfig config = activeConfig;
 
         // Extract: identify the bboxes and scores tensors by their last dimension; the tensor
         // with the larger last dimension holds the bboxes and the tensor with the smaller last
@@ -244,13 +276,8 @@ void MPPalmDetectionParser::run() {
             cachedAnchorScale = currentScale;
             anchorsCached = true;
         }
-        const auto detections = utilities::MediaPipeUtils::computeMediaPipePalmDetections(bboxesTensor->values,
-                                                                                          scoresTensor->values,
-                                                                                          anchors,
-                                                                                          properties.confidenceThreshold,
-                                                                                          properties.iouThreshold,
-                                                                                          properties.maxDetections,
-                                                                                          currentScale);
+        const auto detections = utilities::MediaPipeUtils::computeMediaPipePalmDetections(
+            bboxesTensor->values, scoresTensor->values, anchors, config.confidenceThreshold, config.iouThreshold, config.maxDetections, currentScale);
 
         // Emit. All detections carry label 0; the first label name (when configured) is mapped
         // to every detection.

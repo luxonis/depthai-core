@@ -7,6 +7,8 @@ void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::HRNetParserProperties> properties(betaModule, "HRNetParserProperties");
     auto hrnetParser = ADD_BETA_NODE_DERIVED(HRNetParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,7 +19,14 @@ void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
-    hrnetParser.def_readonly("input", &HRNetParser::input, DOC(dai, beta, node, HRNetParser, input))
+    properties.def_readwrite("initialConfig", &beta::HRNetParserProperties::initialConfig)
+        .def_readwrite("outputLayerName", &beta::HRNetParserProperties::outputLayerName)
+        .def_readwrite("labelNames", &beta::HRNetParserProperties::labelNames)
+        .def_readwrite("edges", &beta::HRNetParserProperties::edges);
+
+    hrnetParser.def_readonly("inputConfig", &HRNetParser::inputConfig, DOC(dai, beta, node, HRNetParser, inputConfig))
+        .def_readonly("initialConfig", &HRNetParser::initialConfig, DOC(dai, beta, node, HRNetParser, initialConfig))
+        .def_readonly("input", &HRNetParser::input, DOC(dai, beta, node, HRNetParser, input))
         .def_readonly("out", &HRNetParser::out, DOC(dai, beta, node, HRNetParser, out))
         .def(
             "build",
@@ -42,4 +51,6 @@ void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack) {
         .def("getEdges", &HRNetParser::getEdges, DOC(dai, beta, node, HRNetParser, getEdges))
         .def("setRunOnHost", &HRNetParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, HRNetParser, setRunOnHost))
         .def("runOnHost", &HRNetParser::runOnHost, DOC(dai, beta, node, HRNetParser, runOnHost));
+
+    hrnetParser.attr("Properties") = properties;
 }

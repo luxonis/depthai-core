@@ -28,6 +28,15 @@ SCRFDParserProperties::~SCRFDParserProperties() = default;
 
 namespace node {
 
+SCRFDParser::SCRFDParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, SCRFDParser, SCRFDParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<SCRFDParserConfig>(properties.initialConfig)) {}
+
+SCRFDParser::Properties& SCRFDParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 NNArchive SCRFDParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -182,27 +191,27 @@ std::vector<std::string> SCRFDParser::getOutputLayerNames() const {
 }
 
 void SCRFDParser::setConfidenceThreshold(float threshold) {
-    properties.confidenceThreshold = threshold;
+    initialConfig->setConfidenceThreshold(threshold);
 }
 
 float SCRFDParser::getConfidenceThreshold() const {
-    return properties.confidenceThreshold;
+    return initialConfig->getConfidenceThreshold();
 }
 
 void SCRFDParser::setIouThreshold(float threshold) {
-    properties.iouThreshold = threshold;
+    initialConfig->setIouThreshold(threshold);
 }
 
 float SCRFDParser::getIouThreshold() const {
-    return properties.iouThreshold;
+    return initialConfig->getIouThreshold();
 }
 
 void SCRFDParser::setMaxDetections(int maxDetections) {
-    properties.maxDetections = maxDetections;
+    initialConfig->setMaxDetections(maxDetections);
 }
 
 int SCRFDParser::getMaxDetections() const {
-    return properties.maxDetections;
+    return initialConfig->getMaxDetections();
 }
 
 void SCRFDParser::setInputSize(std::uint32_t width, std::uint32_t height) {
@@ -253,6 +262,10 @@ void SCRFDParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("SCRFDParser started");
 
+    SCRFDParserConfig activeConfig = getProperties().initialConfig;
+    DAI_CHECK(activeConfig.validate(), "SCRFDParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
+
     // The layer name list resolved from the first incoming NNData persists across messages,
     // mirroring the source parser behavior.
     std::vector<std::string> resolvedOutputLayerNames = properties.outputLayerNames;
@@ -270,11 +283,30 @@ void SCRFDParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<SCRFDParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<SCRFDParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<SCRFDParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    activeConfig = *candidate;
+                } else {
+                    logger->warn("SCRFDParser ignored an invalid runtime configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+
+        const SCRFDParserConfig config = activeConfig;
 
         const auto currentInputSize = properties.inputSize;
         const auto currentStrides = properties.featStrideFpn;
@@ -341,8 +373,9 @@ void SCRFDParser::run() {
                                                                               currentStrides,
                                                                               currentInputSize.first,
                                                                               currentInputSize.second,
-                                                                              properties.confidenceThreshold,
-                                                                              properties.iouThreshold,
+                                                                              config.confidenceThreshold,
+                                                                              config.iouThreshold,
+                                                                              config.maxDetections,
                                                                               anchors);
 
         // Emit. All detections carry label 0; the first label name (when configured) is mapped

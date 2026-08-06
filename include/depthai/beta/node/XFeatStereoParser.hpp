@@ -39,10 +39,25 @@ namespace node {
  * The original image size must be configured before the pipeline starts, either through head metadata or with setOriginalSize().
  */
 class XFeatStereoParser : public DeviceNodeCRTP<BetaNode, XFeatStereoParser, XFeatStereoParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "XFeatStereoParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    XFeatStereoParser() = default;
+    XFeatStereoParser(std::unique_ptr<Properties> props);
+
+    /** Configuration used until a message is received on inputConfig. */
+    std::shared_ptr<XFeatStereoParserConfig> initialConfig = std::make_shared<XFeatStereoParserConfig>();
+
+    /**
+     * Runtime parser configuration. When synchronized, one configuration is consumed per frame pair;
+     * otherwise all queued configurations are drained and the newest valid one is used.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::XFeatStereoParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results of the reference source (e.g. the left camera) with XFeat data to parse.
@@ -169,6 +184,7 @@ class XFeatStereoParser : public DeviceNodeCRTP<BetaNode, XFeatStereoParser, XFe
      * Sets the maximum number of keypoints to keep per frame.
      *
      * @param maxKeypoints Maximum number of keypoints
+     * @note Configures startup behavior. Send XFeatStereoParserConfig to inputConfig after the pipeline starts.
      */
     void setMaxKeypoints(int maxKeypoints);
 

@@ -32,10 +32,25 @@ namespace node {
  * the scores to probabilities.
  */
 class ClassificationSequenceParser : public DeviceNodeCRTP<BetaNode, ClassificationSequenceParser, ClassificationSequenceParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "ClassificationSequenceParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    ClassificationSequenceParser() = default;
+    ClassificationSequenceParser(std::unique_ptr<Properties> props);
+
+    /** Configuration used until a message is received on inputConfig. */
+    std::shared_ptr<ClassificationSequenceParserConfig> initialConfig = std::make_shared<ClassificationSequenceParserConfig>();
+
+    /**
+     * Runtime parser configuration. When synchronized, one configuration is consumed per frame;
+     * otherwise all queued configurations are drained and the newest valid one is used.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ClassificationSequenceParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with classification sequence data to parse.
@@ -127,6 +142,7 @@ class ClassificationSequenceParser : public DeviceNodeCRTP<BetaNode, Classificat
      * Sequence steps whose most probable class index is listed here are dropped from the output. Every index must be within [0, nClasses - 1].
      *
      * @param ignoredIndexes Vector of class indexes to ignore
+     * @note Configures startup behavior. Send ClassificationSequenceParserConfig to inputConfig after the pipeline starts.
      */
     void setIgnoredIndexes(const std::vector<std::int32_t>& ignoredIndexes);
 
@@ -141,6 +157,7 @@ class ClassificationSequenceParser : public DeviceNodeCRTP<BetaNode, Classificat
      * Only consecutive duplicates are removed; repeated classes separated by other classes are kept.
      *
      * @param removeDuplicates True to remove consecutive duplicates from the sequence
+     * @note Configures startup behavior. Send ClassificationSequenceParserConfig to inputConfig after the pipeline starts.
      */
     void setRemoveDuplicates(bool removeDuplicates);
 
@@ -156,6 +173,7 @@ class ClassificationSequenceParser : public DeviceNodeCRTP<BetaNode, Classificat
      * words with a per-word mean score; otherwise all class names are joined into a single string with a " " separator and one mean score.
      *
      * @param concatenateClasses True to concatenate the remaining classes
+     * @note Configures startup behavior. Send ClassificationSequenceParserConfig to inputConfig after the pipeline starts.
      */
     void setConcatenateClasses(bool concatenateClasses);
 

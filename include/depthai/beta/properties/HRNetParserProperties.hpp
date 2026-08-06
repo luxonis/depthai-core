@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "depthai/beta/datatype/HRNetParserConfig.hpp"
 #include "depthai/common/KeypointsListT.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -14,14 +15,14 @@ namespace beta {
  */
 struct HRNetParserProperties : PropertiesSerializable<Properties, HRNetParserProperties> {
     std::string outputLayerName;
-    float scoreThreshold = 0.5f;
+    HRNetParserConfig initialConfig;
     std::vector<std::string> labelNames;
     std::vector<Edge> edges;
 
     ~HRNetParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(HRNetParserProperties, outputLayerName, scoreThreshold, labelNames, edges);
+DEPTHAI_SERIALIZE_EXT(HRNetParserProperties, outputLayerName, initialConfig, labelNames, edges);
 
 }  // namespace beta
 }  // namespace dai

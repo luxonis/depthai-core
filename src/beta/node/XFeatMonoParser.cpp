@@ -22,6 +22,15 @@ XFeatMonoParserProperties::~XFeatMonoParserProperties() = default;
 
 namespace node {
 
+XFeatMonoParser::XFeatMonoParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, XFeatMonoParser, XFeatMonoParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+
+XFeatMonoParser::Properties& XFeatMonoParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 namespace {
 
 /**
@@ -223,11 +232,11 @@ std::pair<std::uint32_t, std::uint32_t> XFeatMonoParser::getInputSize() const {
 }
 
 void XFeatMonoParser::setMaxKeypoints(int maxKeypoints) {
-    properties.maxKeypoints = maxKeypoints;
+    initialConfig->setMaxKeypoints(maxKeypoints);
 }
 
 int XFeatMonoParser::getMaxKeypoints() const {
-    return properties.maxKeypoints;
+    return initialConfig->getMaxKeypoints();
 }
 
 void XFeatMonoParser::setTrigger() {
@@ -245,6 +254,9 @@ bool XFeatMonoParser::runOnHost() const {
 void XFeatMonoParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("XFeatMonoParser started");
+    auto config = getProperties().initialConfig;
+    DAI_CHECK(config.validate(), "XFeatMonoParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     DAI_CHECK(properties.originalSize.has_value(), "Original image size must be specified!");
     DAI_CHECK(!properties.outputLayerFeats.empty(), "Output layer containing features must be specified!");
@@ -262,11 +274,29 @@ void XFeatMonoParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<XFeatMonoParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<XFeatMonoParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<XFeatMonoParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    config = *candidate;
+                } else {
+                    logger->warn("XFeatMonoParser received an invalid configuration; retaining the previous configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+        const XFeatMonoParserConfig configSnapshot = config;
 
         // Extract
         auto tensors =
@@ -280,7 +310,7 @@ void XFeatMonoParser::run() {
                                                                     resizeRateH,
                                                                     properties.inputSize.first,
                                                                     properties.inputSize.second,
-                                                                    properties.maxKeypoints);
+                                                                    configSnapshot.maxKeypoints);
 
         // Emit
         if(!result.has_value()) {

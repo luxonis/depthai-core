@@ -7,6 +7,8 @@ void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstac
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::ClassificationSequenceParserProperties> properties(betaModule, "ClassificationSequenceParserProperties");
     auto classificationSequenceParser = ADD_BETA_NODE_DERIVED(ClassificationSequenceParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,7 +19,15 @@ void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstac
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
-    classificationSequenceParser.def_readonly("input", &ClassificationSequenceParser::input, DOC(dai, beta, node, ClassificationSequenceParser, input))
+    properties.def_readwrite("initialConfig", &beta::ClassificationSequenceParserProperties::initialConfig)
+        .def_readwrite("outputLayerName", &beta::ClassificationSequenceParserProperties::outputLayerName)
+        .def_readwrite("classes", &beta::ClassificationSequenceParserProperties::classes)
+        .def_readwrite("nClasses", &beta::ClassificationSequenceParserProperties::nClasses)
+        .def_readwrite("isSoftmax", &beta::ClassificationSequenceParserProperties::isSoftmax);
+
+    classificationSequenceParser.def_readonly("inputConfig", &ClassificationSequenceParser::inputConfig, DOC(dai, beta, node, ClassificationSequenceParser, inputConfig))
+        .def_readonly("initialConfig", &ClassificationSequenceParser::initialConfig, DOC(dai, beta, node, ClassificationSequenceParser, initialConfig))
+        .def_readonly("input", &ClassificationSequenceParser::input, DOC(dai, beta, node, ClassificationSequenceParser, input))
         .def_readonly("out", &ClassificationSequenceParser::out, DOC(dai, beta, node, ClassificationSequenceParser, out))
         .def(
             "build",
@@ -67,4 +77,6 @@ void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstac
         .def(
             "setRunOnHost", &ClassificationSequenceParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, ClassificationSequenceParser, setRunOnHost))
         .def("runOnHost", &ClassificationSequenceParser::runOnHost, DOC(dai, beta, node, ClassificationSequenceParser, runOnHost));
+
+    classificationSequenceParser.attr("Properties") = properties;
 }

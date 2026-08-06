@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "depthai/beta/datatype/ClassificationSequenceParserConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -17,15 +18,12 @@ struct ClassificationSequenceParserProperties : PropertiesSerializable<Propertie
     std::vector<std::string> classes;
     std::int64_t nClasses = 0;
     bool isSoftmax = true;
-    std::vector<std::int32_t> ignoredIndexes;
-    bool removeDuplicates = false;
-    bool concatenateClasses = false;
+    ClassificationSequenceParserConfig initialConfig;
 
     ~ClassificationSequenceParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(
-    ClassificationSequenceParserProperties, outputLayerName, classes, nClasses, isSoftmax, ignoredIndexes, removeDuplicates, concatenateClasses);
+DEPTHAI_SERIALIZE_EXT(ClassificationSequenceParserProperties, outputLayerName, classes, nClasses, isSoftmax, initialConfig);
 
 }  // namespace beta
 }  // namespace dai

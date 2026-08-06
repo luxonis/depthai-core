@@ -39,10 +39,25 @@ namespace node {
  * The original image size must be configured before the pipeline starts, either through head metadata or with setOriginalSize().
  */
 class XFeatMonoParser : public DeviceNodeCRTP<BetaNode, XFeatMonoParser, XFeatMonoParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "XFeatMonoParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    XFeatMonoParser() = default;
+    XFeatMonoParser(std::unique_ptr<Properties> props);
+
+    /** Configuration used until a message is received on inputConfig. */
+    std::shared_ptr<XFeatMonoParserConfig> initialConfig = std::make_shared<XFeatMonoParserConfig>();
+
+    /**
+     * Runtime parser configuration. When synchronized, one configuration is consumed per frame;
+     * otherwise all queued configurations are drained and the newest valid one is used.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::XFeatMonoParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with XFeat data to parse.
@@ -159,6 +174,7 @@ class XFeatMonoParser : public DeviceNodeCRTP<BetaNode, XFeatMonoParser, XFeatMo
      * Sets the maximum number of keypoints to keep per frame.
      *
      * @param maxKeypoints Maximum number of keypoints
+     * @note Configures startup behavior. Send XFeatMonoParserConfig to inputConfig after the pipeline starts.
      */
     void setMaxKeypoints(int maxKeypoints);
 

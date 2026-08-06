@@ -7,6 +7,8 @@ void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::XFeatMonoParserProperties> properties(betaModule, "XFeatMonoParserProperties");
     auto xfeatMonoParser = ADD_BETA_NODE_DERIVED(XFeatMonoParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,7 +19,16 @@ void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
-    xfeatMonoParser.def_readonly("input", &XFeatMonoParser::input, DOC(dai, beta, node, XFeatMonoParser, input))
+    properties.def_readwrite("initialConfig", &beta::XFeatMonoParserProperties::initialConfig)
+        .def_readwrite("outputLayerFeats", &beta::XFeatMonoParserProperties::outputLayerFeats)
+        .def_readwrite("outputLayerKeypoints", &beta::XFeatMonoParserProperties::outputLayerKeypoints)
+        .def_readwrite("outputLayerHeatmaps", &beta::XFeatMonoParserProperties::outputLayerHeatmaps)
+        .def_readwrite("originalSize", &beta::XFeatMonoParserProperties::originalSize)
+        .def_readwrite("inputSize", &beta::XFeatMonoParserProperties::inputSize);
+
+    xfeatMonoParser.def_readonly("inputConfig", &XFeatMonoParser::inputConfig, DOC(dai, beta, node, XFeatMonoParser, inputConfig))
+        .def_readonly("initialConfig", &XFeatMonoParser::initialConfig, DOC(dai, beta, node, XFeatMonoParser, initialConfig))
+        .def_readonly("input", &XFeatMonoParser::input, DOC(dai, beta, node, XFeatMonoParser, input))
         .def_readonly("out", &XFeatMonoParser::out, DOC(dai, beta, node, XFeatMonoParser, out))
         .def(
             "build",
@@ -56,4 +67,6 @@ void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack) {
         .def("setTrigger", &XFeatMonoParser::setTrigger, DOC(dai, beta, node, XFeatMonoParser, setTrigger))
         .def("setRunOnHost", &XFeatMonoParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, XFeatMonoParser, setRunOnHost))
         .def("runOnHost", &XFeatMonoParser::runOnHost, DOC(dai, beta, node, XFeatMonoParser, runOnHost));
+
+    xfeatMonoParser.attr("Properties") = properties;
 }

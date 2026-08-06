@@ -7,6 +7,8 @@ void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::MapOutputParserProperties> properties(betaModule, "MapOutputParserProperties");
     auto mapOutputParser = ADD_BETA_NODE_DERIVED(MapOutputParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,7 +19,12 @@ void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
-    mapOutputParser.def_readonly("input", &MapOutputParser::input, DOC(dai, beta, node, MapOutputParser, input))
+    properties.def_readwrite("initialConfig", &beta::MapOutputParserProperties::initialConfig)
+        .def_readwrite("outputLayerName", &beta::MapOutputParserProperties::outputLayerName);
+
+    mapOutputParser.def_readonly("inputConfig", &MapOutputParser::inputConfig, DOC(dai, beta, node, MapOutputParser, inputConfig))
+        .def_readonly("initialConfig", &MapOutputParser::initialConfig, DOC(dai, beta, node, MapOutputParser, initialConfig))
+        .def_readonly("input", &MapOutputParser::input, DOC(dai, beta, node, MapOutputParser, input))
         .def_readonly("out", &MapOutputParser::out, DOC(dai, beta, node, MapOutputParser, out))
         .def(
             "build",
@@ -38,4 +45,6 @@ void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack) {
         .def("getMinMaxScaling", &MapOutputParser::getMinMaxScaling, DOC(dai, beta, node, MapOutputParser, getMinMaxScaling))
         .def("setRunOnHost", &MapOutputParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, MapOutputParser, setRunOnHost))
         .def("runOnHost", &MapOutputParser::runOnHost, DOC(dai, beta, node, MapOutputParser, runOnHost));
+
+    mapOutputParser.attr("Properties") = properties;
 }

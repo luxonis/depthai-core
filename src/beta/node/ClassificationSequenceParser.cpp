@@ -20,6 +20,15 @@ ClassificationSequenceParserProperties::~ClassificationSequenceParserProperties(
 
 namespace node {
 
+ClassificationSequenceParser::ClassificationSequenceParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, ClassificationSequenceParser, ClassificationSequenceParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+
+ClassificationSequenceParser::Properties& ClassificationSequenceParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 NNArchive ClassificationSequenceParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -165,27 +174,27 @@ bool ClassificationSequenceParser::getSoftmax() const {
 }
 
 void ClassificationSequenceParser::setIgnoredIndexes(const std::vector<std::int32_t>& ignoredIndexes) {
-    properties.ignoredIndexes = ignoredIndexes;
+    initialConfig->setIgnoredIndexes(ignoredIndexes);
 }
 
 std::vector<std::int32_t> ClassificationSequenceParser::getIgnoredIndexes() const {
-    return properties.ignoredIndexes;
+    return initialConfig->getIgnoredIndexes();
 }
 
 void ClassificationSequenceParser::setRemoveDuplicates(bool removeDuplicates) {
-    properties.removeDuplicates = removeDuplicates;
+    initialConfig->setRemoveDuplicates(removeDuplicates);
 }
 
 bool ClassificationSequenceParser::getRemoveDuplicates() const {
-    return properties.removeDuplicates;
+    return initialConfig->getRemoveDuplicates();
 }
 
 void ClassificationSequenceParser::setConcatenateClasses(bool concatenateClasses) {
-    properties.concatenateClasses = concatenateClasses;
+    initialConfig->setConcatenateClasses(concatenateClasses);
 }
 
 bool ClassificationSequenceParser::getConcatenateClasses() const {
-    return properties.concatenateClasses;
+    return initialConfig->getConcatenateClasses();
 }
 
 void ClassificationSequenceParser::setRunOnHost(bool runOnHost) {
@@ -199,6 +208,9 @@ bool ClassificationSequenceParser::runOnHost() const {
 void ClassificationSequenceParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("ClassificationSequenceParser started");
+    auto config = getProperties().initialConfig;
+    DAI_CHECK(config.validate(), "ClassificationSequenceParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
@@ -208,11 +220,29 @@ void ClassificationSequenceParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<ClassificationSequenceParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<ClassificationSequenceParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<ClassificationSequenceParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    config = *candidate;
+                } else {
+                    logger->warn("ClassificationSequenceParser received an invalid configuration; retaining the previous configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+        const ClassificationSequenceParserConfig configSnapshot = config;
 
         // Extract
         const auto layerNames = nnData->getAllLayerNames();
@@ -232,7 +262,7 @@ void ClassificationSequenceParser::run() {
 
         // Emit
         auto message = utilities::ClassificationUtils::createClassificationSequenceMessage(
-            properties.classes, scores, properties.ignoredIndexes, properties.removeDuplicates, properties.concatenateClasses);
+            properties.classes, scores, configSnapshot.ignoredIndexes, configSnapshot.removeDuplicates, configSnapshot.concatenateClasses);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

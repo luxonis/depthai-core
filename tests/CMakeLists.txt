@@ -474,6 +474,10 @@ dai_set_test_labels(message_queue_test onhost ci)
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 dai_set_test_labels(stream_message_parser_test onhost ci)
 
+# Datatype hierarchy completeness
+dai_add_test(datatype_enum_test src/onhost_tests/pipeline/datatype/datatype_enum_test.cpp)
+dai_set_test_labels(datatype_enum_test onhost ci)
+
 # Bootloader version tests
 dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
 dai_set_test_labels(bootloader_version_test onhost ci)
@@ -695,6 +699,9 @@ dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
 if(DEPTHAI_BUILD_BETA)
+    dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
+    dai_set_test_labels(beta_parser_config_test onhost ci)
+
     dai_add_test(beta_parser_properties_test src/onhost_tests/beta_parser_properties_test.cpp)
     dai_set_test_labels(beta_parser_properties_test onhost ci)
 

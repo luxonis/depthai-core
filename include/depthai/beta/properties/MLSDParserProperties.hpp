@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 
+#include "depthai/beta/datatype/MLSDParserConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -15,15 +16,13 @@ namespace beta {
 struct MLSDParserProperties : PropertiesSerializable<Properties, MLSDParserProperties> {
     std::string outputLayerTPMap;
     std::string outputLayerHeat;
-    int topK = 200;
-    float scoreThreshold = 0.10f;
-    float distanceThreshold = 20.0f;
+    MLSDParserConfig initialConfig;
     std::pair<std::uint32_t, std::uint32_t> inputSize{512, 512};
 
     ~MLSDParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MLSDParserProperties, outputLayerTPMap, outputLayerHeat, topK, scoreThreshold, distanceThreshold, inputSize);
+DEPTHAI_SERIALIZE_EXT(MLSDParserProperties, outputLayerTPMap, outputLayerHeat, initialConfig, inputSize);
 
 }  // namespace beta
 }  // namespace dai

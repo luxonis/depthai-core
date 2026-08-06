@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "depthai/beta/datatype/YuNetParserConfig.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -19,24 +20,14 @@ struct YuNetParserProperties : PropertiesSerializable<Properties, YuNetParserPro
     std::string locOutputLayerName;
     std::string confOutputLayerName;
     std::string iouOutputLayerName;
-    float confidenceThreshold = 0.8f;
-    float iouThreshold = 0.3f;
-    int maxDetections = 5000;
+    YuNetParserConfig initialConfig;
     std::optional<std::pair<std::uint32_t, std::uint32_t>> inputSize;
     std::vector<std::string> labelNames{"Face"};
 
     ~YuNetParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(YuNetParserProperties,
-                      locOutputLayerName,
-                      confOutputLayerName,
-                      iouOutputLayerName,
-                      confidenceThreshold,
-                      iouThreshold,
-                      maxDetections,
-                      inputSize,
-                      labelNames);
+DEPTHAI_SERIALIZE_EXT(YuNetParserProperties, locOutputLayerName, confOutputLayerName, iouOutputLayerName, initialConfig, inputSize, labelNames);
 
 }  // namespace beta
 }  // namespace dai

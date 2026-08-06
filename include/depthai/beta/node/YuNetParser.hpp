@@ -34,10 +34,27 @@ namespace node {
  * source parser. The anchors are cached across messages and refreshed when the input size changes.
  */
 class YuNetParser : public DeviceNodeCRTP<BetaNode, YuNetParser, YuNetParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "YuNetParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    YuNetParser() = default;
+    YuNetParser(std::unique_ptr<Properties> props);
+
+    /**
+     * Configuration used when the parser starts.
+     */
+    std::shared_ptr<YuNetParserConfig> initialConfig = std::make_shared<YuNetParserConfig>();
+
+    /**
+     * Runtime parser configuration. In synchronized mode one configuration is consumed per input frame;
+     * otherwise all queued configurations are drained and the newest valid one is retained.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::YuNetParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with YuNet detection data to parse.
@@ -125,6 +142,7 @@ class YuNetParser : public DeviceNodeCRTP<BetaNode, YuNetParser, YuNetParserProp
      * Sets the confidence score threshold for detected faces. Detections with a score strictly greater than the threshold are kept.
      *
      * @param threshold Confidence score threshold
+     * @note Configures startup behavior. Send YuNetParserConfig to inputConfig after the pipeline starts.
      */
     void setConfidenceThreshold(float threshold);
 
@@ -138,6 +156,7 @@ class YuNetParser : public DeviceNodeCRTP<BetaNode, YuNetParser, YuNetParserProp
      * suppression.
      *
      * @param threshold Non-maximum suppression threshold
+     * @note Configures startup behavior. Send YuNetParserConfig to inputConfig after the pipeline starts.
      */
     void setIouThreshold(float threshold);
 
@@ -150,6 +169,7 @@ class YuNetParser : public DeviceNodeCRTP<BetaNode, YuNetParser, YuNetParserProp
      * Sets the maximum number of detections to keep, applied as the non-maximum suppression top-k limit (no limit when 0 or negative).
      *
      * @param maxDetections Maximum number of detections to keep
+     * @note Configures startup behavior. Send YuNetParserConfig to inputConfig after the pipeline starts.
      */
     void setMaxDetections(int maxDetections);
 

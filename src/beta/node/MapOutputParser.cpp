@@ -22,6 +22,15 @@ MapOutputParserProperties::~MapOutputParserProperties() = default;
 
 namespace node {
 
+MapOutputParser::MapOutputParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, MapOutputParser, MapOutputParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+
+MapOutputParser::Properties& MapOutputParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 namespace {
 
 /**
@@ -219,11 +228,11 @@ std::string MapOutputParser::getOutputLayerName() const {
 }
 
 void MapOutputParser::setMinMaxScaling(bool minMaxScaling) {
-    properties.minMaxScaling = minMaxScaling;
+    initialConfig->setMinMaxScaling(minMaxScaling);
 }
 
 bool MapOutputParser::getMinMaxScaling() const {
-    return properties.minMaxScaling;
+    return initialConfig->getMinMaxScaling();
 }
 
 void MapOutputParser::setRunOnHost(bool runOnHost) {
@@ -237,6 +246,9 @@ bool MapOutputParser::runOnHost() const {
 void MapOutputParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("MapOutputParser started");
+    auto config = getProperties().initialConfig;
+    DAI_CHECK(config.validate(), "MapOutputParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     // The resolved layer name persists across messages once auto-selected from a single-tensor
     // NNData, mirroring the source parser behavior.
@@ -246,11 +258,29 @@ void MapOutputParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<MapOutputParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<MapOutputParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<MapOutputParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    config = *candidate;
+                } else {
+                    logger->warn("MapOutputParser received an invalid configuration; retaining the previous configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+        const MapOutputParserConfig configSnapshot = config;
 
         // Extract
         const auto layerNames = nnData->getAllLayerNames();
@@ -266,7 +296,7 @@ void MapOutputParser::run() {
         auto map = computeMapOutput(std::move(tensor));
 
         // Emit
-        auto message = createMapMessage(std::move(map), properties.minMaxScaling);
+        auto message = createMapMessage(std::move(map), configSnapshot.minMaxScaling);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

@@ -475,10 +475,10 @@ std::vector<std::uint8_t> boxPrompt(
 
     // The source rescales the box when the mask shape differs from the original shape; in this
     // parser both are the model input size, so only the clamp applies.
-    const std::int64_t x1 = std::max(static_cast<std::int64_t>(bbox[0]), std::int64_t{0});
-    const std::int64_t y1 = std::max(static_cast<std::int64_t>(bbox[1]), std::int64_t{0});
-    const std::int64_t x2 = std::min(static_cast<std::int64_t>(bbox[2]), static_cast<std::int64_t>(width));
-    const std::int64_t y2 = std::min(static_cast<std::int64_t>(bbox[3]), static_cast<std::int64_t>(height));
+    const std::int64_t x1 = std::clamp(static_cast<std::int64_t>(bbox[0]), std::int64_t{0}, static_cast<std::int64_t>(width));
+    const std::int64_t y1 = std::clamp(static_cast<std::int64_t>(bbox[1]), std::int64_t{0}, static_cast<std::int64_t>(height));
+    const std::int64_t x2 = std::clamp(static_cast<std::int64_t>(bbox[2]), std::int64_t{0}, static_cast<std::int64_t>(width));
+    const std::int64_t y2 = std::clamp(static_cast<std::int64_t>(bbox[3]), std::int64_t{0}, static_cast<std::int64_t>(height));
 
     const std::int64_t bboxArea = (y2 - y1) * (x2 - x1);
 

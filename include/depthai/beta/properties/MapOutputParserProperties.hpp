@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "depthai/beta/datatype/MapOutputParserConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -12,12 +13,12 @@ namespace beta {
  */
 struct MapOutputParserProperties : PropertiesSerializable<Properties, MapOutputParserProperties> {
     std::string outputLayerName;
-    bool minMaxScaling = false;
+    MapOutputParserConfig initialConfig;
 
     ~MapOutputParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MapOutputParserProperties, outputLayerName, minMaxScaling);
+DEPTHAI_SERIALIZE_EXT(MapOutputParserProperties, outputLayerName, initialConfig);
 
 }  // namespace beta
 }  // namespace dai

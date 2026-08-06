@@ -32,10 +32,27 @@ namespace node {
  *
  */
 class SCRFDParser : public DeviceNodeCRTP<BetaNode, SCRFDParser, SCRFDParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "SCRFDParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    SCRFDParser() = default;
+    SCRFDParser(std::unique_ptr<Properties> props);
+
+    /**
+     * Configuration used when the parser starts.
+     */
+    std::shared_ptr<SCRFDParserConfig> initialConfig = std::make_shared<SCRFDParserConfig>();
+
+    /**
+     * Runtime parser configuration. In synchronized mode one configuration is consumed per input frame;
+     * otherwise all queued configurations are drained and the newest valid one is retained.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::SCRFDParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with SCRFD detection data to parse.
@@ -100,6 +117,7 @@ class SCRFDParser : public DeviceNodeCRTP<BetaNode, SCRFDParser, SCRFDParserProp
      * Sets the confidence score threshold for detected objects. Detections with a score greater than or equal to the threshold (inclusive) are kept.
      *
      * @param threshold Confidence score threshold
+     * @note Configures startup behavior. Send SCRFDParserConfig to inputConfig after the pipeline starts.
      */
     void setConfidenceThreshold(float threshold);
 
@@ -113,6 +131,7 @@ class SCRFDParser : public DeviceNodeCRTP<BetaNode, SCRFDParser, SCRFDParserProp
      * suppression.
      *
      * @param threshold Non-maximum suppression threshold
+     * @note Configures startup behavior. Send SCRFDParserConfig to inputConfig after the pipeline starts.
      */
     void setIouThreshold(float threshold);
 
@@ -125,7 +144,7 @@ class SCRFDParser : public DeviceNodeCRTP<BetaNode, SCRFDParser, SCRFDParserProp
      * Sets the maximum number of detections to keep.
      *
      * @param maxDetections Maximum number of detections to keep
-     * @note Retained for configuration parity with the source parser; the SCRFD decoding does not apply it, matching the source behavior.
+     * @note Configures startup behavior. Send SCRFDParserConfig to inputConfig after the pipeline starts.
      */
     void setMaxDetections(int maxDetections);
 

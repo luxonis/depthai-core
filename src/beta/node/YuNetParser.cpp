@@ -28,6 +28,15 @@ YuNetParserProperties::~YuNetParserProperties() = default;
 
 namespace node {
 
+YuNetParser::YuNetParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, YuNetParser, YuNetParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<YuNetParserConfig>(properties.initialConfig)) {}
+
+YuNetParser::Properties& YuNetParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 namespace {
 
 /**
@@ -202,27 +211,27 @@ std::string YuNetParser::getOutputLayerIou() const {
 }
 
 void YuNetParser::setConfidenceThreshold(float threshold) {
-    properties.confidenceThreshold = threshold;
+    initialConfig->setConfidenceThreshold(threshold);
 }
 
 float YuNetParser::getConfidenceThreshold() const {
-    return properties.confidenceThreshold;
+    return initialConfig->getConfidenceThreshold();
 }
 
 void YuNetParser::setIouThreshold(float threshold) {
-    properties.iouThreshold = threshold;
+    initialConfig->setIouThreshold(threshold);
 }
 
 float YuNetParser::getIouThreshold() const {
-    return properties.iouThreshold;
+    return initialConfig->getIouThreshold();
 }
 
 void YuNetParser::setMaxDetections(int maxDetections) {
-    properties.maxDetections = maxDetections;
+    initialConfig->setMaxDetections(maxDetections);
 }
 
 int YuNetParser::getMaxDetections() const {
-    return properties.maxDetections;
+    return initialConfig->getMaxDetections();
 }
 
 void YuNetParser::setInputSize(std::uint32_t width, std::uint32_t height) {
@@ -254,6 +263,10 @@ void YuNetParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("YuNetParser started");
 
+    YuNetParserConfig activeConfig = getProperties().initialConfig;
+    DAI_CHECK(activeConfig.validate(), "YuNetParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
+
     // The layer names resolved from the first incoming NNData persist across messages,
     // mirroring the source parser behavior.
     std::string resolvedLocLayerName = properties.locOutputLayerName;
@@ -270,11 +283,30 @@ void YuNetParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<YuNetParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<YuNetParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<YuNetParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    activeConfig = *candidate;
+                } else {
+                    logger->warn("YuNetParser ignored an invalid runtime configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+
+        const YuNetParserConfig config = activeConfig;
 
         // The input size the anchors are generated from and the coordinates are normalized by
         // must be configured; the source parser requires it as well (its decoding fails with a
@@ -321,9 +353,9 @@ void YuNetParser::run() {
                                                                               anchors,
                                                                               currentInputSize.first,
                                                                               currentInputSize.second,
-                                                                              properties.confidenceThreshold,
-                                                                              properties.iouThreshold,
-                                                                              properties.maxDetections);
+                                                                              config.confidenceThreshold,
+                                                                              config.iouThreshold,
+                                                                              config.maxDetections);
 
         // Emit. All detections carry label 0; the first label name (when configured) is mapped
         // to every detection. Every detection carries 5 keypoints without confidence scores

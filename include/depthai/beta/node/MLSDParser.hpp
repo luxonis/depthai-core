@@ -32,10 +32,25 @@ namespace node {
  *
  */
 class MLSDParser : public DeviceNodeCRTP<BetaNode, MLSDParser, MLSDParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "MLSDParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    MLSDParser() = default;
+    MLSDParser(std::unique_ptr<Properties> props);
+
+    /** Configuration used until a message is received on inputConfig. */
+    std::shared_ptr<MLSDParserConfig> initialConfig = std::make_shared<MLSDParserConfig>();
+
+    /**
+     * Runtime parser configuration. When synchronized, one configuration is consumed per frame;
+     * otherwise all queued configurations are drained and the newest valid one is used.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::MLSDParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with line detection data to parse.
@@ -116,6 +131,7 @@ class MLSDParser : public DeviceNodeCRTP<BetaNode, MLSDParser, MLSDParserPropert
      * The number of candidates is capped at the heat map size when decoding.
      *
      * @param topK Number of top candidates to keep, must be positive
+     * @note Configures startup behavior. Send MLSDParserConfig to inputConfig after the pipeline starts.
      */
     void setTopK(int topK);
 
@@ -128,6 +144,7 @@ class MLSDParser : public DeviceNodeCRTP<BetaNode, MLSDParser, MLSDParserPropert
      * Sets the confidence score threshold for detected lines. Candidates with a heat score strictly above the threshold are kept.
      *
      * @param scoreThreshold Confidence score threshold
+     * @note Configures startup behavior. Send MLSDParserConfig to inputConfig after the pipeline starts.
      */
     void setScoreThreshold(float scoreThreshold);
 
@@ -140,6 +157,7 @@ class MLSDParser : public DeviceNodeCRTP<BetaNode, MLSDParser, MLSDParserPropert
      * Sets the distance threshold for detected lines. Candidates whose length in heat map grid units is strictly above the threshold are kept.
      *
      * @param distanceThreshold Distance threshold
+     * @note Configures startup behavior. Send MLSDParserConfig to inputConfig after the pipeline starts.
      */
     void setDistanceThreshold(float distanceThreshold);
 

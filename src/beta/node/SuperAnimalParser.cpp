@@ -23,6 +23,15 @@ SuperAnimalParserProperties::~SuperAnimalParserProperties() = default;
 
 namespace node {
 
+SuperAnimalParser::SuperAnimalParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, SuperAnimalParser, SuperAnimalParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+
+SuperAnimalParser::Properties& SuperAnimalParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 NNArchive SuperAnimalParser::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -178,12 +187,11 @@ std::int64_t SuperAnimalParser::getNumKeypoints() const {
 }
 
 void SuperAnimalParser::setScoreThreshold(float threshold) {
-    DAI_CHECK(threshold >= 0.0f && threshold <= 1.0f, "Confidence threshold must be between 0 and 1.");
-    properties.scoreThreshold = threshold;
+    initialConfig->setScoreThreshold(threshold);
 }
 
 float SuperAnimalParser::getScoreThreshold() const {
-    return properties.scoreThreshold;
+    return initialConfig->getScoreThreshold();
 }
 
 void SuperAnimalParser::setLabelNames(const std::vector<std::string>& labelNames) {
@@ -213,6 +221,9 @@ bool SuperAnimalParser::runOnHost() const {
 void SuperAnimalParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("SuperAnimalParser started");
+    auto config = getProperties().initialConfig;
+    DAI_CHECK(config.validate(), "SuperAnimalParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     // Unlike KeypointParser, the number of keypoints is not required here: the decoding derives
     // it from the heatmap tensor's last dimension, mirroring the source parser behavior.
@@ -225,11 +236,29 @@ void SuperAnimalParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<SuperAnimalParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<SuperAnimalParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<SuperAnimalParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    config = *candidate;
+                } else {
+                    logger->warn("SuperAnimalParser received an invalid configuration; retaining the previous configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+        const SuperAnimalParserConfig configSnapshot = config;
 
         // Extract
         const auto layerNames = nnData->getAllLayerNames();
@@ -250,7 +279,7 @@ void SuperAnimalParser::run() {
         // Emit. Keypoints with a score below the score threshold are dropped and the edges are
         // filtered and remapped to the kept keypoints.
         auto message = utilities::KeypointsUtils::createKeypointsMessage(
-            superAnimalKeypoints.coordinates, std::move(superAnimalKeypoints.scores), properties.scoreThreshold, properties.labelNames, properties.edges);
+            superAnimalKeypoints.coordinates, std::move(superAnimalKeypoints.scores), configSnapshot.scoreThreshold, properties.labelNames, properties.edges);
         if(nnData->transformation.has_value()) {
             message->setTransformation(*nnData->transformation);
         }

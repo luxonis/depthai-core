@@ -7,6 +7,8 @@ void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::MLSDParserProperties> properties(betaModule, "MLSDParserProperties");
     auto mlsdParser = ADD_BETA_NODE_DERIVED(MLSDParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,7 +19,14 @@ void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
-    mlsdParser.def_readonly("input", &MLSDParser::input, DOC(dai, beta, node, MLSDParser, input))
+    properties.def_readwrite("initialConfig", &beta::MLSDParserProperties::initialConfig)
+        .def_readwrite("outputLayerTPMap", &beta::MLSDParserProperties::outputLayerTPMap)
+        .def_readwrite("outputLayerHeat", &beta::MLSDParserProperties::outputLayerHeat)
+        .def_readwrite("inputSize", &beta::MLSDParserProperties::inputSize);
+
+    mlsdParser.def_readonly("inputConfig", &MLSDParser::inputConfig, DOC(dai, beta, node, MLSDParser, inputConfig))
+        .def_readonly("initialConfig", &MLSDParser::initialConfig, DOC(dai, beta, node, MLSDParser, initialConfig))
+        .def_readonly("input", &MLSDParser::input, DOC(dai, beta, node, MLSDParser, input))
         .def_readonly("out", &MLSDParser::out, DOC(dai, beta, node, MLSDParser, out))
         .def(
             "build",
@@ -46,4 +55,6 @@ void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack) {
         .def("getInputSize", &MLSDParser::getInputSize, DOC(dai, beta, node, MLSDParser, getInputSize))
         .def("setRunOnHost", &MLSDParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, MLSDParser, setRunOnHost))
         .def("runOnHost", &MLSDParser::runOnHost, DOC(dai, beta, node, MLSDParser, runOnHost));
+
+    mlsdParser.attr("Properties") = properties;
 }

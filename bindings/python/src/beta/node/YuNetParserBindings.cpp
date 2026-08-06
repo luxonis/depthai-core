@@ -7,6 +7,8 @@ void bind_beta_yunetparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::YuNetParserProperties> yunetParserProperties(betaModule, "YuNetParserProperties");
     auto yunetParser = ADD_BETA_NODE_DERIVED(YuNetParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,8 +19,17 @@ void bind_beta_yunetparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
+    yunetParserProperties.def_readwrite("initialConfig", &beta::YuNetParserProperties::initialConfig)
+        .def_readwrite("locOutputLayerName", &beta::YuNetParserProperties::locOutputLayerName)
+        .def_readwrite("confOutputLayerName", &beta::YuNetParserProperties::confOutputLayerName)
+        .def_readwrite("iouOutputLayerName", &beta::YuNetParserProperties::iouOutputLayerName)
+        .def_readwrite("inputSize", &beta::YuNetParserProperties::inputSize)
+        .def_readwrite("labelNames", &beta::YuNetParserProperties::labelNames);
+
     yunetParser.def_readonly("input", &YuNetParser::input, DOC(dai, beta, node, YuNetParser, input))
+        .def_readonly("inputConfig", &YuNetParser::inputConfig, DOC(dai, beta, node, YuNetParser, inputConfig))
         .def_readonly("out", &YuNetParser::out, DOC(dai, beta, node, YuNetParser, out))
+        .def_readonly("initialConfig", &YuNetParser::initialConfig, DOC(dai, beta, node, YuNetParser, initialConfig))
         .def(
             "build",
             [](YuNetParser& self, Node::Output& nnInput, const YuNetParser::Model& model) { return self.build(nnInput, model); },
@@ -50,4 +61,6 @@ void bind_beta_yunetparser(pybind11::module& m, void* pCallstack) {
         .def("getLabelNames", &YuNetParser::getLabelNames, DOC(dai, beta, node, YuNetParser, getLabelNames))
         .def("setRunOnHost", &YuNetParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, YuNetParser, setRunOnHost))
         .def("runOnHost", &YuNetParser::runOnHost, DOC(dai, beta, node, YuNetParser, runOnHost));
+
+    yunetParser.attr("Properties") = yunetParserProperties;
 }

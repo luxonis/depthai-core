@@ -24,6 +24,15 @@ FastSAMParserProperties::~FastSAMParserProperties() = default;
 
 namespace node {
 
+FastSAMParser::FastSAMParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+
+FastSAMParser::Properties& FastSAMParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 namespace {
 
 /**
@@ -171,11 +180,6 @@ void FastSAMParser::setConfig(const dai::nn_archive::v1::Head& head) {
             DAI_CHECK(maskConfJson.is_number(), "mask_conf must be a number.");
             setMaskConfidence(maskConfJson.get<float>());
         }
-        if(extraParams.contains("prompt") && !extraParams.at("prompt").is_null()) {
-            const auto& promptJson = extraParams.at("prompt");
-            DAI_CHECK(promptJson.is_string(), "Prompt must be a string.");
-            setPrompt(promptJson.get<std::string>());
-        }
         if(extraParams.contains("points") && !extraParams.at("points").is_null()) {
             const auto& pointsJson = extraParams.at("points");
             DAI_CHECK(pointsJson.is_array() && pointsJson.size() == 2 && pointsJson.at(0).is_number_integer() && pointsJson.at(1).is_number_integer(),
@@ -197,16 +201,20 @@ void FastSAMParser::setConfig(const dai::nn_archive::v1::Head& head) {
                             bboxJson.at(2).get<std::int32_t>(),
                             bboxJson.at(3).get<std::int32_t>()});
         }
+        if(extraParams.contains("prompt") && !extraParams.at("prompt").is_null()) {
+            const auto& promptJson = extraParams.at("prompt");
+            DAI_CHECK(promptJson.is_string(), "Prompt must be a string.");
+            setPrompt(promptJson.get<std::string>());
+        }
     }
 }
 
 void FastSAMParser::setConfidenceThreshold(float threshold) {
-    DAI_CHECK(threshold >= 0.0f && threshold <= 1.0f, "Confidence threshold must be between 0 and 1.");
-    properties.confidenceThreshold = threshold;
+    initialConfig->setConfidenceThreshold(threshold);
 }
 
 float FastSAMParser::getConfidenceThreshold() const {
-    return properties.confidenceThreshold;
+    return initialConfig->getConfidenceThreshold();
 }
 
 void FastSAMParser::setNumClasses(std::int32_t numClasses) {
@@ -219,54 +227,66 @@ std::int32_t FastSAMParser::getNumClasses() const {
 }
 
 void FastSAMParser::setIouThreshold(float iouThreshold) {
-    DAI_CHECK(iouThreshold >= 0.0f && iouThreshold <= 1.0f, "IOU threshold must be between 0 and 1.");
-    properties.iouThreshold = iouThreshold;
+    initialConfig->setIouThreshold(iouThreshold);
 }
 
 float FastSAMParser::getIouThreshold() const {
-    return properties.iouThreshold;
+    return initialConfig->getIouThreshold();
 }
 
 void FastSAMParser::setMaskConfidence(float maskConfidence) {
-    DAI_CHECK(maskConfidence >= 0.0f && maskConfidence <= 1.0f, "Mask confidence must be between 0 and 1.");
-    properties.maskConfidence = maskConfidence;
+    initialConfig->setMaskConfidence(maskConfidence);
 }
 
 float FastSAMParser::getMaskConfidence() const {
-    return properties.maskConfidence;
+    return initialConfig->getMaskConfidence();
 }
 
 void FastSAMParser::setPrompt(const std::string& prompt) {
     DAI_CHECK(prompt == "everything" || prompt == "bbox" || prompt == "point", "Prompt must be one of 'everything', 'bbox', or 'point'");
-    properties.prompt = prompt;
+    if(prompt == "point") {
+        initialConfig->setPrompt(FastSAMParserConfig::Prompt::POINT);
+    } else if(prompt == "bbox") {
+        initialConfig->setPrompt(FastSAMParserConfig::Prompt::BOUNDING_BOX);
+    } else {
+        initialConfig->setPrompt(FastSAMParserConfig::Prompt::EVERYTHING);
+    }
 }
 
 std::string FastSAMParser::getPrompt() const {
-    return properties.prompt;
+    switch(initialConfig->getPrompt()) {
+        case FastSAMParserConfig::Prompt::POINT:
+            return "point";
+        case FastSAMParserConfig::Prompt::BOUNDING_BOX:
+            return "bbox";
+        case FastSAMParserConfig::Prompt::EVERYTHING:
+            return "everything";
+    }
+    return "everything";
 }
 
 void FastSAMParser::setPoints(std::int32_t x, std::int32_t y) {
-    properties.points = std::make_pair(x, y);
+    initialConfig->setPoints(x, y);
 }
 
 std::optional<std::pair<std::int32_t, std::int32_t>> FastSAMParser::getPoints() const {
-    return properties.points;
+    return initialConfig->getPoints();
 }
 
 void FastSAMParser::setPointLabel(std::int32_t pointLabel) {
-    properties.pointLabel = pointLabel;
+    initialConfig->setPointLabel(pointLabel);
 }
 
 std::optional<std::int32_t> FastSAMParser::getPointLabel() const {
-    return properties.pointLabel;
+    return initialConfig->getPointLabel();
 }
 
 void FastSAMParser::setBoundingBox(const std::array<std::int32_t, 4>& bbox) {
-    properties.boundingBox = bbox;
+    initialConfig->setBoundingBox(bbox);
 }
 
 std::optional<std::array<std::int32_t, 4>> FastSAMParser::getBoundingBox() const {
-    return properties.boundingBox;
+    return initialConfig->getBoundingBox();
 }
 
 void FastSAMParser::setYoloOutputs(const std::vector<std::string>& yoloOutputs) {
@@ -304,19 +324,37 @@ bool FastSAMParser::runOnHost() const {
 void FastSAMParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("FastSAMParser started");
-
-    DAI_CHECK(properties.prompt == "everything" || properties.prompt == "bbox" || properties.prompt == "point",
-              "Prompt must be one of 'everything', 'bbox', or 'point'");
+    auto config = getProperties().initialConfig;
+    DAI_CHECK(config.validate(), "FastSAMParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     while(mainLoop()) {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<FastSAMParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<FastSAMParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<FastSAMParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    config = *candidate;
+                } else {
+                    logger->warn("FastSAMParser received an invalid configuration; retaining the previous configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+        const FastSAMParserConfig configSnapshot = config;
 
         // Extract: the YOLO output layers sorted by name, the mask output layers (all layer
         // names of the incoming NNData when none are configured) filtered by the "mask"
@@ -352,18 +390,28 @@ void FastSAMParser::run() {
 
         // Compute
         utilities::FastSAMUtils::PromptConfig promptConfig;
-        promptConfig.prompt = properties.prompt;
-        promptConfig.points = properties.points;
-        promptConfig.pointLabel = properties.pointLabel;
-        promptConfig.bbox = properties.boundingBox;
+        switch(configSnapshot.prompt) {
+            case FastSAMParserConfig::Prompt::POINT:
+                promptConfig.prompt = "point";
+                break;
+            case FastSAMParserConfig::Prompt::BOUNDING_BOX:
+                promptConfig.prompt = "bbox";
+                break;
+            case FastSAMParserConfig::Prompt::EVERYTHING:
+                promptConfig.prompt = "everything";
+                break;
+        }
+        promptConfig.points = configSnapshot.points;
+        promptConfig.pointLabel = configSnapshot.pointLabel;
+        promptConfig.bbox = configSnapshot.boundingBox;
         const auto result = utilities::FastSAMUtils::computeFastsamMask(yoloTensors,
                                                                         maskTensors,
                                                                         protosTensor,
                                                                         protosLen,
-                                                                        properties.confidenceThreshold,
+                                                                        configSnapshot.confidenceThreshold,
                                                                         properties.numClasses,
-                                                                        properties.iouThreshold,
-                                                                        properties.maskConfidence,
+                                                                        configSnapshot.iouThreshold,
+                                                                        configSnapshot.maskConfidence,
                                                                         promptConfig);
 
         // Emit

@@ -444,6 +444,19 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/Lines.cpp
         src/beta/datatype/Map2D.cpp
         src/beta/datatype/Predictions.cpp
+        src/beta/datatype/ClassificationSequenceParserConfig.cpp
+        src/beta/datatype/FastSAMParserConfig.cpp
+        src/beta/datatype/HRNetParserConfig.cpp
+        src/beta/datatype/MLSDParserConfig.cpp
+        src/beta/datatype/MPPalmDetectionParserConfig.cpp
+        src/beta/datatype/MapOutputParserConfig.cpp
+        src/beta/datatype/PPTextDetectionParserConfig.cpp
+        src/beta/datatype/RFDETRParserConfig.cpp
+        src/beta/datatype/SCRFDParserConfig.cpp
+        src/beta/datatype/SuperAnimalParserConfig.cpp
+        src/beta/datatype/XFeatMonoParserConfig.cpp
+        src/beta/datatype/XFeatStereoParserConfig.cpp
+        src/beta/datatype/YuNetParserConfig.cpp
         src/beta/node/ClassificationParser.cpp
         src/beta/node/ClassificationSequenceParser.cpp
         src/beta/node/EmbeddingsParser.cpp

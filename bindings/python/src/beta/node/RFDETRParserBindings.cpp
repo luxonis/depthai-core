@@ -7,6 +7,8 @@ void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::RFDETRParserProperties> rfdetrParserProperties(betaModule, "RFDETRParserProperties");
     auto rfdetrParser = ADD_BETA_NODE_DERIVED(RFDETRParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,8 +19,15 @@ void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
+    rfdetrParserProperties.def_readwrite("initialConfig", &beta::RFDETRParserProperties::initialConfig)
+        .def_readwrite("labelNames", &beta::RFDETRParserProperties::labelNames)
+        .def_readwrite("outputLayerNames", &beta::RFDETRParserProperties::outputLayerNames)
+        .def_readwrite("inputSize", &beta::RFDETRParserProperties::inputSize);
+
     rfdetrParser.def_readonly("input", &RFDETRParser::input, DOC(dai, beta, node, RFDETRParser, input))
+        .def_readonly("inputConfig", &RFDETRParser::inputConfig, DOC(dai, beta, node, RFDETRParser, inputConfig))
         .def_readonly("out", &RFDETRParser::out, DOC(dai, beta, node, RFDETRParser, out))
+        .def_readonly("initialConfig", &RFDETRParser::initialConfig, DOC(dai, beta, node, RFDETRParser, initialConfig))
         .def(
             "build",
             [](RFDETRParser& self, Node::Output& nnInput, const RFDETRParser::Model& model) { return self.build(nnInput, model); },
@@ -46,4 +55,6 @@ void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack) {
         .def("getInputSize", &RFDETRParser::getInputSize, DOC(dai, beta, node, RFDETRParser, getInputSize))
         .def("setRunOnHost", &RFDETRParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, RFDETRParser, setRunOnHost))
         .def("runOnHost", &RFDETRParser::runOnHost, DOC(dai, beta, node, RFDETRParser, runOnHost));
+
+    rfdetrParser.attr("Properties") = rfdetrParserProperties;
 }

@@ -28,10 +28,27 @@ namespace node {
  *
  */
 class PPTextDetectionParser : public DeviceNodeCRTP<BetaNode, PPTextDetectionParser, PPTextDetectionParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "PPTextDetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    PPTextDetectionParser() = default;
+    PPTextDetectionParser(std::unique_ptr<Properties> props);
+
+    /**
+     * Configuration used when the parser starts.
+     */
+    std::shared_ptr<PPTextDetectionParserConfig> initialConfig = std::make_shared<PPTextDetectionParserConfig>();
+
+    /**
+     * Runtime parser configuration. In synchronized mode one configuration is consumed per input frame;
+     * otherwise all queued configurations are drained and the newest valid one is retained.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::PPTextDetectionParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with text detection probability map to parse.
@@ -93,6 +110,7 @@ class PPTextDetectionParser : public DeviceNodeCRTP<BetaNode, PPTextDetectionPar
      * Sets the confidence score threshold for the detected text bounding boxes. Candidates with a score strictly below the threshold are dropped.
      *
      * @param threshold Confidence score threshold
+     * @note Configures startup behavior. Send PPTextDetectionParserConfig to inputConfig after the pipeline starts.
      */
     void setConfidenceThreshold(float threshold);
 
@@ -106,6 +124,7 @@ class PPTextDetectionParser : public DeviceNodeCRTP<BetaNode, PPTextDetectionPar
      * mask.
      *
      * @param maskThreshold Mask threshold
+     * @note Configures startup behavior. Send PPTextDetectionParserConfig to inputConfig after the pipeline starts.
      */
     void setMaskThreshold(float maskThreshold);
 
@@ -118,6 +137,7 @@ class PPTextDetectionParser : public DeviceNodeCRTP<BetaNode, PPTextDetectionPar
      * Sets the maximum number of candidate bounding boxes. When more candidate contours are found, only the largest by area are kept.
      *
      * @param maxDetections Maximum number of candidate bounding boxes
+     * @note Configures startup behavior. Send PPTextDetectionParserConfig to inputConfig after the pipeline starts.
      */
     void setMaxDetections(int maxDetections);
 

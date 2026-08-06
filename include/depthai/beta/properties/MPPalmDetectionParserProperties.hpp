@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "depthai/beta/datatype/MPPalmDetectionParserConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -13,16 +14,14 @@ namespace beta {
  */
 struct MPPalmDetectionParserProperties : PropertiesSerializable<Properties, MPPalmDetectionParserProperties> {
     std::vector<std::string> outputLayerNames;
-    float confidenceThreshold = 0.5f;
-    float iouThreshold = 0.5f;
-    int maxDetections = 100;
+    MPPalmDetectionParserConfig initialConfig;
     int scale = 192;
     std::vector<std::string> labelNames{"Palm"};
 
     ~MPPalmDetectionParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MPPalmDetectionParserProperties, outputLayerNames, confidenceThreshold, iouThreshold, maxDetections, scale, labelNames);
+DEPTHAI_SERIALIZE_EXT(MPPalmDetectionParserProperties, outputLayerNames, initialConfig, scale, labelNames);
 
 }  // namespace beta
 }  // namespace dai

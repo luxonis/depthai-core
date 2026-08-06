@@ -40,10 +40,25 @@ namespace node {
  *
  */
 class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "FastSAMParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    FastSAMParser() = default;
+    FastSAMParser(std::unique_ptr<Properties> props);
+
+    /** Configuration used until a message is received on inputConfig. */
+    std::shared_ptr<FastSAMParserConfig> initialConfig = std::make_shared<FastSAMParserConfig>();
+
+    /**
+     * Runtime parser configuration. When synchronized, one configuration is consumed per frame;
+     * otherwise all queued configurations are drained and the newest valid one is used.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::FastSAMParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with FastSAM data to parse.
@@ -90,6 +105,7 @@ class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMPars
      * Sets the confidence score threshold for detected objects. Detections whose score is strictly greater than the threshold are kept. Defaults to 0.5.
      *
      * @param threshold Confidence score threshold, must be between 0 and 1
+     * @note Configures startup behavior. Send FastSAMParserConfig to inputConfig after the pipeline starts.
      */
     void setConfidenceThreshold(float threshold);
 
@@ -115,6 +131,7 @@ class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMPars
      * Defaults to 0.5.
      *
      * @param iouThreshold Overlap threshold, must be between 0 and 1
+     * @note Configures startup behavior. Send FastSAMParserConfig to inputConfig after the pipeline starts.
      */
     void setIouThreshold(float iouThreshold);
 
@@ -128,6 +145,7 @@ class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMPars
      * to the instance. Defaults to 0.5.
      *
      * @param maskConfidence Mask confidence threshold, must be between 0 and 1
+     * @note Configures startup behavior. Send FastSAMParserConfig to inputConfig after the pipeline starts.
      */
     void setMaskConfidence(float maskConfidence);
 
@@ -142,6 +160,7 @@ class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMPars
      * Defaults to "everything".
      *
      * @param prompt Prompt type, one of "everything", "bbox" or "point"
+     * @note Configures startup behavior. Send FastSAMParserConfig to inputConfig after the pipeline starts.
      */
     void setPrompt(const std::string& prompt);
 
@@ -155,6 +174,7 @@ class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMPars
      *
      * @param x Point x coordinate
      * @param y Point y coordinate
+     * @note Configures startup behavior. Send FastSAMParserConfig to inputConfig after the pipeline starts.
      */
     void setPoints(std::int32_t x, std::int32_t y);
 
@@ -168,6 +188,7 @@ class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMPars
      * "point" prompt requires it.
      *
      * @param pointLabel Point label
+     * @note Configures startup behavior. Send FastSAMParserConfig to inputConfig after the pipeline starts.
      */
     void setPointLabel(std::int32_t pointLabel);
 
@@ -181,6 +202,7 @@ class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMPars
      * its x2 and y2 coordinates must not be 0.
      *
      * @param bbox Bounding box as (x1, y1, x2, y2)
+     * @note Configures startup behavior. Send FastSAMParserConfig to inputConfig after the pipeline starts.
      */
     void setBoundingBox(const std::array<std::int32_t, 4>& bbox);
 

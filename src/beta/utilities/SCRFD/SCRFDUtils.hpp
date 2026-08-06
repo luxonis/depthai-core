@@ -106,7 +106,7 @@ std::vector<std::int64_t> nms(const std::vector<std::array<float, 5>>& dets, flo
  * against the stride's anchor centers with distance2Bbox and distance2Kps; positions whose
  * score is greater than or equal to scoreThreshold (inclusive) are kept. The kept candidates of
  * all strides are concatenated in stride order, sorted by descending score with numpy's
- * values.argsort()[::-1] tie ordering, and suppressed with the SCRFD nms. The kept boxes and
+ * values.argsort()[::-1] tie ordering, suppressed with the SCRFD nms and limited to maxDetections. The kept boxes and
  * keypoints are normalized in double precision, x coordinates by inputWidth and y coordinates
  * by inputHeight, mirroring the source's float32/int64 -> float64 promotion. Keypoints are
  * clipped to [0, 1]; boxes are clipped to [0, 1], validated to satisfy x1 <= x2 and y1 <= y2,
@@ -128,6 +128,7 @@ std::vector<std::int64_t> nms(const std::vector<std::array<float, 5>>& dets, flo
  * @param inputHeight Model input image height the y coordinates are normalized by.
  * @param scoreThreshold Confidence score threshold (inclusive).
  * @param nmsThreshold Non-maximum suppression (IoU) threshold.
+ * @param maxDetections Maximum number of post-NMS detections to return, must be positive.
  * @param anchors Anchor centers per stride, index-aligned with featStrideFpn.
  * @return Decoded detections ordered by descending score.
  */
@@ -139,6 +140,7 @@ ScrfdDetections computeScrfdDetections(const std::vector<std::vector<float>>& bb
                                        std::uint32_t inputHeight,
                                        float scoreThreshold,
                                        float nmsThreshold,
+                                       int maxDetections,
                                        const std::vector<std::vector<std::array<float, 2>>>& anchors);
 
 }  // namespace SCRFDUtils

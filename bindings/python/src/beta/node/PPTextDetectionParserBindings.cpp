@@ -7,6 +7,8 @@ void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::PPTextDetectionParserProperties> ppTextDetectionParserProperties(betaModule, "PPTextDetectionParserProperties");
     auto ppTextDetectionParser = ADD_BETA_NODE_DERIVED(PPTextDetectionParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,8 +19,13 @@ void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
+    ppTextDetectionParserProperties.def_readwrite("initialConfig", &beta::PPTextDetectionParserProperties::initialConfig)
+        .def_readwrite("outputLayerName", &beta::PPTextDetectionParserProperties::outputLayerName);
+
     ppTextDetectionParser.def_readonly("input", &PPTextDetectionParser::input, DOC(dai, beta, node, PPTextDetectionParser, input))
+        .def_readonly("inputConfig", &PPTextDetectionParser::inputConfig, DOC(dai, beta, node, PPTextDetectionParser, inputConfig))
         .def_readonly("out", &PPTextDetectionParser::out, DOC(dai, beta, node, PPTextDetectionParser, out))
+        .def_readonly("initialConfig", &PPTextDetectionParser::initialConfig, DOC(dai, beta, node, PPTextDetectionParser, initialConfig))
         .def(
             "build",
             [](PPTextDetectionParser& self, Node::Output& nnInput, const PPTextDetectionParser::Model& model) { return self.build(nnInput, model); },
@@ -54,4 +61,6 @@ void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack) {
         .def("getMaxDetections", &PPTextDetectionParser::getMaxDetections, DOC(dai, beta, node, PPTextDetectionParser, getMaxDetections))
         .def("setRunOnHost", &PPTextDetectionParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, PPTextDetectionParser, setRunOnHost))
         .def("runOnHost", &PPTextDetectionParser::runOnHost, DOC(dai, beta, node, PPTextDetectionParser, runOnHost));
+
+    ppTextDetectionParser.attr("Properties") = ppTextDetectionParserProperties;
 }

@@ -52,6 +52,19 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack);
 void bind_gate_control(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BETA
 void bind_beta_classifications(pybind11::module& m, void* pCallstack);
+void bind_beta_classificationsequenceparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_fastsamparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_hrnetparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_mlsdparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_mppalmdetectionparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_mapoutputparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_pptextdetectionparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_rfdetrparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_scrfdparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_superanimalparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_xfeatmonoparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_xfeatstereoparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_yunetparserconfig(pybind11::module& m, void* pCallstack);
 void bind_beta_clusters(pybind11::module& m, void* pCallstack);
 void bind_beta_keypoints(pybind11::module& m, void* pCallstack);
 void bind_beta_lines(pybind11::module& m, void* pCallstack);
@@ -118,6 +131,19 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_lines);
     callstack.push_front(bind_beta_map2d);
     callstack.push_front(bind_beta_predictions);
+    callstack.push_front(bind_beta_classificationsequenceparserconfig);
+    callstack.push_front(bind_beta_fastsamparserconfig);
+    callstack.push_front(bind_beta_hrnetparserconfig);
+    callstack.push_front(bind_beta_mlsdparserconfig);
+    callstack.push_front(bind_beta_mppalmdetectionparserconfig);
+    callstack.push_front(bind_beta_mapoutputparserconfig);
+    callstack.push_front(bind_beta_pptextdetectionparserconfig);
+    callstack.push_front(bind_beta_rfdetrparserconfig);
+    callstack.push_front(bind_beta_scrfdparserconfig);
+    callstack.push_front(bind_beta_superanimalparserconfig);
+    callstack.push_front(bind_beta_xfeatmonoparserconfig);
+    callstack.push_front(bind_beta_xfeatstereoparserconfig);
+    callstack.push_front(bind_beta_yunetparserconfig);
 #endif  // DEPTHAI_HAVE_BETA
 }
 
@@ -195,6 +221,19 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
     datatypeEnum.value("Map2D", DatatypeEnum::Map2D);
     datatypeEnum.value("Lines", DatatypeEnum::Lines);
     datatypeEnum.value("Predictions", DatatypeEnum::Predictions);
+    datatypeEnum.value("FastSAMParserConfig", DatatypeEnum::FastSAMParserConfig);
+    datatypeEnum.value("HRNetParserConfig", DatatypeEnum::HRNetParserConfig);
+    datatypeEnum.value("MLSDParserConfig", DatatypeEnum::MLSDParserConfig);
+    datatypeEnum.value("MPPalmDetectionParserConfig", DatatypeEnum::MPPalmDetectionParserConfig);
+    datatypeEnum.value("PPTextDetectionParserConfig", DatatypeEnum::PPTextDetectionParserConfig);
+    datatypeEnum.value("RFDETRParserConfig", DatatypeEnum::RFDETRParserConfig);
+    datatypeEnum.value("SCRFDParserConfig", DatatypeEnum::SCRFDParserConfig);
+    datatypeEnum.value("SuperAnimalParserConfig", DatatypeEnum::SuperAnimalParserConfig);
+    datatypeEnum.value("YuNetParserConfig", DatatypeEnum::YuNetParserConfig);
+    datatypeEnum.value("ClassificationSequenceParserConfig", DatatypeEnum::ClassificationSequenceParserConfig);
+    datatypeEnum.value("MapOutputParserConfig", DatatypeEnum::MapOutputParserConfig);
+    datatypeEnum.value("XFeatMonoParserConfig", DatatypeEnum::XFeatMonoParserConfig);
+    datatypeEnum.value("XFeatStereoParserConfig", DatatypeEnum::XFeatStereoParserConfig);
 #endif  // DEPTHAI_HAVE_BETA
     datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

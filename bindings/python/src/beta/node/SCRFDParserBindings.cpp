@@ -7,6 +7,8 @@ void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::SCRFDParserProperties> scrfdParserProperties(betaModule, "SCRFDParserProperties");
     auto scrfdParser = ADD_BETA_NODE_DERIVED(SCRFDParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,8 +19,17 @@ void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
+    scrfdParserProperties.def_readwrite("initialConfig", &beta::SCRFDParserProperties::initialConfig)
+        .def_readwrite("outputLayerNames", &beta::SCRFDParserProperties::outputLayerNames)
+        .def_readwrite("inputSize", &beta::SCRFDParserProperties::inputSize)
+        .def_readwrite("featStrideFpn", &beta::SCRFDParserProperties::featStrideFpn)
+        .def_readwrite("numAnchors", &beta::SCRFDParserProperties::numAnchors)
+        .def_readwrite("labelNames", &beta::SCRFDParserProperties::labelNames);
+
     scrfdParser.def_readonly("input", &SCRFDParser::input, DOC(dai, beta, node, SCRFDParser, input))
+        .def_readonly("inputConfig", &SCRFDParser::inputConfig, DOC(dai, beta, node, SCRFDParser, inputConfig))
         .def_readonly("out", &SCRFDParser::out, DOC(dai, beta, node, SCRFDParser, out))
+        .def_readonly("initialConfig", &SCRFDParser::initialConfig, DOC(dai, beta, node, SCRFDParser, initialConfig))
         .def(
             "build",
             [](SCRFDParser& self, Node::Output& nnInput, const SCRFDParser::Model& model) { return self.build(nnInput, model); },
@@ -50,4 +61,6 @@ void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack) {
         .def("getLabelNames", &SCRFDParser::getLabelNames, DOC(dai, beta, node, SCRFDParser, getLabelNames))
         .def("setRunOnHost", &SCRFDParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, SCRFDParser, setRunOnHost))
         .def("runOnHost", &SCRFDParser::runOnHost, DOC(dai, beta, node, SCRFDParser, runOnHost));
+
+    scrfdParser.attr("Properties") = scrfdParserProperties;
 }

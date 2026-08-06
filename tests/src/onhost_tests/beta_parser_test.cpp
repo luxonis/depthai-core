@@ -284,6 +284,64 @@ std::shared_ptr<Output> runParser(const Fixture& fixture, const std::string& pla
     return runParser<Parser, Output>(fixture, platform, [](Parser&) {});
 }
 
+template <typename Parser, typename Output, typename Config, typename Configure, typename Mutate>
+std::pair<std::shared_ptr<Output>, std::shared_ptr<Output>> runParserBeforeAndAfterConfig(const Fixture& fixture,
+                                                                                          const std::string& platform,
+                                                                                          Configure&& configure,
+                                                                                          Mutate&& mutate) {
+    dai::Pipeline pipeline(false);
+    auto parser = pipeline.create<Parser>();
+    const dai::NNArchive archive(resolveArchive(fixture, platform));
+    parser->setNNArchive(archive);
+    std::invoke(std::forward<Configure>(configure), *parser);
+    parser->inputConfig.setWaitForMessage(true);
+
+    auto inputQueue = parser->input.createInputQueue();
+    auto configQueue = parser->inputConfig.createInputQueue();
+    auto outputQueue = parser->out.createOutputQueue();
+
+    auto initial = std::make_shared<Config>(*parser->initialConfig);
+    auto changed = *initial;
+    std::invoke(std::forward<Mutate>(mutate), changed);
+    if(!changed.validate()) {
+        throw std::runtime_error("Runtime parser test produced an invalid Config");
+    }
+
+    const auto getOutput = [&]() {
+        bool timedOut = false;
+        auto output = outputQueue->template get<Output>(OUTPUT_TIMEOUT, timedOut);
+        if(timedOut || output == nullptr) {
+            throw std::runtime_error("Timed out waiting for runtime-config parser output");
+        }
+        return output;
+    };
+
+    bool started = false;
+    try {
+        pipeline.start();
+        started = true;
+
+        configQueue->send(initial);
+        inputQueue->send(fixture.input);
+        auto before = getOutput();
+
+        configQueue->send(std::make_shared<Config>(changed));
+        inputQueue->send(fixture.input);
+        auto after = getOutput();
+
+        pipeline.stop();
+        pipeline.wait();
+        started = false;
+        return {before, after};
+    } catch(...) {
+        if(started) {
+            pipeline.stop();
+            pipeline.wait();
+        }
+        throw;
+    }
+}
+
 void checkRelative(float actual, double expected, const std::string& field) {
     INFO(field << ": expected " << expected << ", actual " << actual);
     CHECK(actual == Catch::Approx(expected).epsilon(1e-2));
@@ -596,4 +654,79 @@ TEST_CASE("YuNetParser matches yunet golden output", "[beta][parser][onhost]") {
     const auto fixture = loadFixture("YuNetParser", "yunet");
     const auto output = runParser<dai::beta::node::YuNetParser, dai::ImgDetections>(fixture, platform);
     checkDetections(*output, fixture.json.at("expected"));
+}
+TEST_CASE("Runtime Config changes parser outputs for recorded NNData", "[beta][parser][config][runtime]") {
+    const std::string platform = "RVC4";
+
+    SECTION("FastSAM prompt changes the mask") {
+        const auto fixture = loadFixture("FastSAMParser", "fastsam-s");
+        const auto [before, after] = runParserBeforeAndAfterConfig<dai::beta::node::FastSAMParser, dai::SegmentationMask, dai::beta::FastSAMParserConfig>(
+            fixture,
+            platform,
+            [](auto&) {},
+            [](auto& config) {
+                config.boundingBox = std::array<std::int32_t, 4>{0, 0, 512, 288};
+                config.prompt = dai::beta::FastSAMParserConfig::Prompt::BOUNDING_BOX;
+            });
+        CHECK(before->getMaskData() != after->getMaskData());
+    }
+
+    SECTION("HRNet threshold changes the keypoint count") {
+        const auto fixture = loadFixture("HRNetParser", "lite-hrnet");
+        const auto [before, after] = runParserBeforeAndAfterConfig<dai::beta::node::HRNetParser, dai::beta::Keypoints, dai::beta::HRNetParserConfig>(
+            fixture, platform, [](auto&) {}, [](auto& config) { config.scoreThreshold = 1.0f; });
+        REQUIRE_FALSE(before->getKeypoints().empty());
+        CHECK(after->getKeypoints().empty());
+    }
+
+    SECTION("MLSD threshold changes the line count") {
+        const auto fixture = loadFixture("MLSDParser", "m-lsd-tiny");
+        const auto [before, after] = runParserBeforeAndAfterConfig<dai::beta::node::MLSDParser, dai::beta::Lines, dai::beta::MLSDParserConfig>(
+            fixture, platform, [](auto&) {}, [](auto& config) { config.scoreThreshold = 1.0f; });
+        REQUIRE_FALSE(before->lines.empty());
+        CHECK(after->lines.empty());
+    }
+
+    SECTION("MPPalm threshold changes the detection count") {
+        const auto fixture = loadFixture("MPPalmDetectionParser", "mediapipe-palm-detection");
+        const auto [before, after] =
+            runParserBeforeAndAfterConfig<dai::beta::node::MPPalmDetectionParser, dai::ImgDetections, dai::beta::MPPalmDetectionParserConfig>(
+                fixture, platform, [](auto&) {}, [](auto& config) { config.confidenceThreshold = 1.0f; });
+        REQUIRE_FALSE(before->detections.empty());
+        CHECK(after->detections.empty());
+    }
+
+    SECTION("PPText threshold changes the detection count") {
+        const auto fixture = loadFixture("PPTextDetectionParser", "paddle-text-detection");
+        const auto [before, after] =
+            runParserBeforeAndAfterConfig<dai::beta::node::PPTextDetectionParser, dai::ImgDetections, dai::beta::PPTextDetectionParserConfig>(
+                fixture, platform, [](auto& parser) { parser.setOutputLayerName("output"); }, [](auto& config) { config.confidenceThreshold = 1.0f; });
+        REQUIRE_FALSE(before->detections.empty());
+        CHECK(after->detections.empty());
+    }
+
+    SECTION("SCRFD threshold changes the detection count") {
+        const auto fixture = loadFixture("SCRFDParser", "scrfd-face-detection");
+        const auto [before, after] = runParserBeforeAndAfterConfig<dai::beta::node::SCRFDParser, dai::ImgDetections, dai::beta::SCRFDParserConfig>(
+            fixture, platform, [](auto&) {}, [](auto& config) { config.confidenceThreshold = 1.0f; });
+        REQUIRE_FALSE(before->detections.empty());
+        CHECK(after->detections.empty());
+    }
+
+    SECTION("SuperAnimal threshold changes the keypoint count") {
+        const auto fixture = loadFixture("SuperAnimalParser", "superanimal-landmarker");
+        const auto [before, after] =
+            runParserBeforeAndAfterConfig<dai::beta::node::SuperAnimalParser, dai::beta::Keypoints, dai::beta::SuperAnimalParserConfig>(
+                fixture, platform, [](auto&) {}, [](auto& config) { config.scoreThreshold = 1.0f; });
+        REQUIRE_FALSE(before->getKeypoints().empty());
+        CHECK(after->getKeypoints().empty());
+    }
+
+    SECTION("YuNet threshold changes the detection count") {
+        const auto fixture = loadFixture("YuNetParser", "yunet");
+        const auto [before, after] = runParserBeforeAndAfterConfig<dai::beta::node::YuNetParser, dai::ImgDetections, dai::beta::YuNetParserConfig>(
+            fixture, platform, [](auto&) {}, [](auto& config) { config.confidenceThreshold = 1.0f; });
+        REQUIRE_FALSE(before->detections.empty());
+        CHECK(after->detections.empty());
+    }
 }

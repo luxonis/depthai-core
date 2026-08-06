@@ -177,6 +177,19 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/LinesBindings.cpp
         src/beta/datatype/Map2DBindings.cpp
         src/beta/datatype/PredictionsBindings.cpp
+        src/beta/datatype/ClassificationSequenceParserConfigBindings.cpp
+        src/beta/datatype/FastSAMParserConfigBindings.cpp
+        src/beta/datatype/HRNetParserConfigBindings.cpp
+        src/beta/datatype/MLSDParserConfigBindings.cpp
+        src/beta/datatype/MPPalmDetectionParserConfigBindings.cpp
+        src/beta/datatype/MapOutputParserConfigBindings.cpp
+        src/beta/datatype/PPTextDetectionParserConfigBindings.cpp
+        src/beta/datatype/RFDETRParserConfigBindings.cpp
+        src/beta/datatype/SCRFDParserConfigBindings.cpp
+        src/beta/datatype/SuperAnimalParserConfigBindings.cpp
+        src/beta/datatype/XFeatMonoParserConfigBindings.cpp
+        src/beta/datatype/XFeatStereoParserConfigBindings.cpp
+        src/beta/datatype/YuNetParserConfigBindings.cpp
         src/beta/node/ClassificationParserBindings.cpp
         src/beta/node/ClassificationSequenceParserBindings.cpp
         src/beta/node/EmbeddingsParserBindings.cpp

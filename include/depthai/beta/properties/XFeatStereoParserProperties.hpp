@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "depthai/beta/datatype/XFeatStereoParserConfig.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -20,12 +21,12 @@ struct XFeatStereoParserProperties : PropertiesSerializable<Properties, XFeatSte
     std::string outputLayerHeatmaps = "heatmaps";
     std::optional<std::pair<std::uint32_t, std::uint32_t>> originalSize;
     std::pair<std::uint32_t, std::uint32_t> inputSize{640, 352};
-    int maxKeypoints = 4096;
+    XFeatStereoParserConfig initialConfig;
 
     ~XFeatStereoParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(XFeatStereoParserProperties, outputLayerFeats, outputLayerKeypoints, outputLayerHeatmaps, originalSize, inputSize, maxKeypoints);
+DEPTHAI_SERIALIZE_EXT(XFeatStereoParserProperties, outputLayerFeats, outputLayerKeypoints, outputLayerHeatmaps, originalSize, inputSize, initialConfig);
 
 }  // namespace beta
 }  // namespace dai

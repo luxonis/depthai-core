@@ -7,6 +7,8 @@ void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::FastSAMParserProperties> properties(betaModule, "FastSAMParserProperties");
     auto fastsamParser = ADD_BETA_NODE_DERIVED(FastSAMParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,7 +19,15 @@ void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
-    fastsamParser.def_readonly("input", &FastSAMParser::input, DOC(dai, beta, node, FastSAMParser, input))
+    properties.def_readwrite("initialConfig", &beta::FastSAMParserProperties::initialConfig)
+        .def_readwrite("numClasses", &beta::FastSAMParserProperties::numClasses)
+        .def_readwrite("yoloOutputs", &beta::FastSAMParserProperties::yoloOutputs)
+        .def_readwrite("maskOutputs", &beta::FastSAMParserProperties::maskOutputs)
+        .def_readwrite("protosOutput", &beta::FastSAMParserProperties::protosOutput);
+
+    fastsamParser.def_readonly("inputConfig", &FastSAMParser::inputConfig, DOC(dai, beta, node, FastSAMParser, inputConfig))
+        .def_readonly("initialConfig", &FastSAMParser::initialConfig, DOC(dai, beta, node, FastSAMParser, initialConfig))
+        .def_readonly("input", &FastSAMParser::input, DOC(dai, beta, node, FastSAMParser, input))
         .def_readonly("out", &FastSAMParser::out, DOC(dai, beta, node, FastSAMParser, out))
         .def(
             "build",
@@ -57,4 +67,6 @@ void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack) {
         .def("getProtosOutput", &FastSAMParser::getProtosOutput, DOC(dai, beta, node, FastSAMParser, getProtosOutput))
         .def("setRunOnHost", &FastSAMParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, FastSAMParser, setRunOnHost))
         .def("runOnHost", &FastSAMParser::runOnHost, DOC(dai, beta, node, FastSAMParser, runOnHost));
+
+    fastsamParser.attr("Properties") = properties;
 }

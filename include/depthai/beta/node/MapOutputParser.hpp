@@ -29,10 +29,25 @@ namespace node {
  *
  */
 class MapOutputParser : public DeviceNodeCRTP<BetaNode, MapOutputParser, MapOutputParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "MapOutputParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    MapOutputParser() = default;
+    MapOutputParser(std::unique_ptr<Properties> props);
+
+    /** Configuration used until a message is received on inputConfig. */
+    std::shared_ptr<MapOutputParserConfig> initialConfig = std::make_shared<MapOutputParserConfig>();
+
+    /**
+     * Runtime parser configuration. When synchronized, one configuration is consumed per frame;
+     * otherwise all queued configurations are drained and the newest valid one is used.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::MapOutputParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with map tensor data to parse.
@@ -93,6 +108,7 @@ class MapOutputParser : public DeviceNodeCRTP<BetaNode, MapOutputParser, MapOutp
      * When true, the map values are min-max scaled to [0, 1]; a constant map is left unchanged. Defaults to false.
      *
      * @param minMaxScaling True to scale the map to the [0, 1] range, defaults to true
+     * @note Configures startup behavior. Send MapOutputParserConfig to inputConfig after the pipeline starts.
      */
     void setMinMaxScaling(bool minMaxScaling = true);
 

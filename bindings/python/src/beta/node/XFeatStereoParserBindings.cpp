@@ -7,6 +7,8 @@ void bind_beta_xfeatstereoparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::XFeatStereoParserProperties> properties(betaModule, "XFeatStereoParserProperties");
     auto xfeatStereoParser = ADD_BETA_NODE_DERIVED(XFeatStereoParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,7 +19,16 @@ void bind_beta_xfeatstereoparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
-    xfeatStereoParser.def_readonly("referenceInput", &XFeatStereoParser::referenceInput, DOC(dai, beta, node, XFeatStereoParser, referenceInput))
+    properties.def_readwrite("initialConfig", &beta::XFeatStereoParserProperties::initialConfig)
+        .def_readwrite("outputLayerFeats", &beta::XFeatStereoParserProperties::outputLayerFeats)
+        .def_readwrite("outputLayerKeypoints", &beta::XFeatStereoParserProperties::outputLayerKeypoints)
+        .def_readwrite("outputLayerHeatmaps", &beta::XFeatStereoParserProperties::outputLayerHeatmaps)
+        .def_readwrite("originalSize", &beta::XFeatStereoParserProperties::originalSize)
+        .def_readwrite("inputSize", &beta::XFeatStereoParserProperties::inputSize);
+
+    xfeatStereoParser.def_readonly("inputConfig", &XFeatStereoParser::inputConfig, DOC(dai, beta, node, XFeatStereoParser, inputConfig))
+        .def_readonly("initialConfig", &XFeatStereoParser::initialConfig, DOC(dai, beta, node, XFeatStereoParser, initialConfig))
+        .def_readonly("referenceInput", &XFeatStereoParser::referenceInput, DOC(dai, beta, node, XFeatStereoParser, referenceInput))
         .def_readonly("targetInput", &XFeatStereoParser::targetInput, DOC(dai, beta, node, XFeatStereoParser, targetInput))
         .def_readonly("out", &XFeatStereoParser::out, DOC(dai, beta, node, XFeatStereoParser, out))
         .def(
@@ -64,4 +75,6 @@ void bind_beta_xfeatstereoparser(pybind11::module& m, void* pCallstack) {
         .def("getMaxKeypoints", &XFeatStereoParser::getMaxKeypoints, DOC(dai, beta, node, XFeatStereoParser, getMaxKeypoints))
         .def("setRunOnHost", &XFeatStereoParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, XFeatStereoParser, setRunOnHost))
         .def("runOnHost", &XFeatStereoParser::runOnHost, DOC(dai, beta, node, XFeatStereoParser, runOnHost));
+
+    xfeatStereoParser.attr("Properties") = properties;
 }

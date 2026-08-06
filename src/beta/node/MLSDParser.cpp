@@ -25,6 +25,15 @@ MLSDParserProperties::~MLSDParserProperties() = default;
 
 namespace node {
 
+MLSDParser::MLSDParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, MLSDParser, MLSDParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+
+MLSDParser::Properties& MLSDParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 namespace {
 
 /**
@@ -204,28 +213,27 @@ std::string MLSDParser::getOutputLayerHeat() const {
 }
 
 void MLSDParser::setTopK(int topK) {
-    DAI_CHECK(topK > 0, "topk_n must be a positive integer.");
-    properties.topK = topK;
+    initialConfig->setTopK(topK);
 }
 
 int MLSDParser::getTopK() const {
-    return properties.topK;
+    return initialConfig->getTopK();
 }
 
 void MLSDParser::setScoreThreshold(float scoreThreshold) {
-    properties.scoreThreshold = scoreThreshold;
+    initialConfig->setScoreThreshold(scoreThreshold);
 }
 
 float MLSDParser::getScoreThreshold() const {
-    return properties.scoreThreshold;
+    return initialConfig->getScoreThreshold();
 }
 
 void MLSDParser::setDistanceThreshold(float distanceThreshold) {
-    properties.distanceThreshold = distanceThreshold;
+    initialConfig->setDistanceThreshold(distanceThreshold);
 }
 
 float MLSDParser::getDistanceThreshold() const {
-    return properties.distanceThreshold;
+    return initialConfig->getDistanceThreshold();
 }
 
 void MLSDParser::setInputSize(std::uint32_t width, std::uint32_t height) {
@@ -248,6 +256,9 @@ bool MLSDParser::runOnHost() const {
 void MLSDParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("MLSDParser started");
+    auto config = getProperties().initialConfig;
+    DAI_CHECK(config.validate(), "MLSDParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     DAI_CHECK(!properties.outputLayerTPMap.empty(),
               "Output layer containing the tpMap tensor is not set. Please use setOutputLayerTPMap method or correct NN archive.");
@@ -258,11 +269,29 @@ void MLSDParser::run() {
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<MLSDParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<MLSDParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<MLSDParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    config = *candidate;
+                } else {
+                    logger->warn("MLSDParser received an invalid configuration; retaining the previous configuration.");
+                }
+            }
+
             nnData = input.get<dai::NNData>();
             if(!nnData) {
                 continue;
             }
         }
+        const MLSDParserConfig configSnapshot = config;
 
         // Extract. The tpMap tensor is permuted to NCHW orientation; the heat tensor is read in
         // its stored order and flattened.
@@ -273,9 +302,9 @@ void MLSDParser::run() {
         auto decoded = utilities::MLSDUtils::computeMlsdLines(tpMap.values,
                                                               tpMap.dims,
                                                               heat,
-                                                              properties.topK,
-                                                              properties.scoreThreshold,
-                                                              properties.distanceThreshold,
+                                                              configSnapshot.topK,
+                                                              configSnapshot.scoreThreshold,
+                                                              configSnapshot.distanceThreshold,
                                                               properties.inputSize.first,
                                                               properties.inputSize.second);
 

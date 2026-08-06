@@ -7,6 +7,8 @@ void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    py::class_<beta::MPPalmDetectionParserProperties> mpPalmDetectionParserProperties(betaModule, "MPPalmDetectionParserProperties");
     auto mpPalmDetectionParser = ADD_BETA_NODE_DERIVED(MPPalmDetectionParser, dai::DeviceNode);
 
     ///////////////////////////////////////////////////////////////////////
@@ -17,8 +19,15 @@ void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     ///////////////////////////////////////////////////////////////////////
 
+    mpPalmDetectionParserProperties.def_readwrite("initialConfig", &beta::MPPalmDetectionParserProperties::initialConfig)
+        .def_readwrite("outputLayerNames", &beta::MPPalmDetectionParserProperties::outputLayerNames)
+        .def_readwrite("scale", &beta::MPPalmDetectionParserProperties::scale)
+        .def_readwrite("labelNames", &beta::MPPalmDetectionParserProperties::labelNames);
+
     mpPalmDetectionParser.def_readonly("input", &MPPalmDetectionParser::input, DOC(dai, beta, node, MPPalmDetectionParser, input))
+        .def_readonly("inputConfig", &MPPalmDetectionParser::inputConfig, DOC(dai, beta, node, MPPalmDetectionParser, inputConfig))
         .def_readonly("out", &MPPalmDetectionParser::out, DOC(dai, beta, node, MPPalmDetectionParser, out))
+        .def_readonly("initialConfig", &MPPalmDetectionParser::initialConfig, DOC(dai, beta, node, MPPalmDetectionParser, initialConfig))
         .def(
             "build",
             [](MPPalmDetectionParser& self, Node::Output& nnInput, const MPPalmDetectionParser::Model& model) { return self.build(nnInput, model); },
@@ -55,4 +64,6 @@ void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack) {
         .def("getLabelNames", &MPPalmDetectionParser::getLabelNames, DOC(dai, beta, node, MPPalmDetectionParser, getLabelNames))
         .def("setRunOnHost", &MPPalmDetectionParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, beta, node, MPPalmDetectionParser, setRunOnHost))
         .def("runOnHost", &MPPalmDetectionParser::runOnHost, DOC(dai, beta, node, MPPalmDetectionParser, runOnHost));
+
+    mpPalmDetectionParser.attr("Properties") = mpPalmDetectionParserProperties;
 }

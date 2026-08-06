@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "depthai/beta/datatype/SCRFDParserConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -15,9 +16,7 @@ namespace beta {
  */
 struct SCRFDParserProperties : PropertiesSerializable<Properties, SCRFDParserProperties> {
     std::vector<std::string> outputLayerNames;
-    float confidenceThreshold = 0.5f;
-    float iouThreshold = 0.5f;
-    int maxDetections = 100;
+    SCRFDParserConfig initialConfig;
     std::pair<std::uint32_t, std::uint32_t> inputSize{640, 640};
     std::vector<std::int64_t> featStrideFpn{8, 16, 32};
     std::int64_t numAnchors = 2;
@@ -26,8 +25,7 @@ struct SCRFDParserProperties : PropertiesSerializable<Properties, SCRFDParserPro
     ~SCRFDParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(
-    SCRFDParserProperties, outputLayerNames, confidenceThreshold, iouThreshold, maxDetections, inputSize, featStrideFpn, numAnchors, labelNames);
+DEPTHAI_SERIALIZE_EXT(SCRFDParserProperties, outputLayerNames, initialConfig, inputSize, featStrideFpn, numAnchors, labelNames);
 
 }  // namespace beta
 }  // namespace dai

@@ -30,10 +30,27 @@ namespace node {
  *
  */
 class MPPalmDetectionParser : public DeviceNodeCRTP<BetaNode, MPPalmDetectionParser, MPPalmDetectionParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "MPPalmDetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    MPPalmDetectionParser() = default;
+    MPPalmDetectionParser(std::unique_ptr<Properties> props);
+
+    /**
+     * Configuration used when the parser starts.
+     */
+    std::shared_ptr<MPPalmDetectionParserConfig> initialConfig = std::make_shared<MPPalmDetectionParserConfig>();
+
+    /**
+     * Runtime parser configuration. In synchronized mode one configuration is consumed per input frame;
+     * otherwise all queued configurations are drained and the newest valid one is retained.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::MPPalmDetectionParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with palm detection data to parse.
@@ -91,6 +108,7 @@ class MPPalmDetectionParser : public DeviceNodeCRTP<BetaNode, MPPalmDetectionPar
      * Sets the confidence score threshold for detected hands. Detections with a sigmoid score strictly above the threshold are kept.
      *
      * @param threshold Confidence score threshold
+     * @note Configures startup behavior. Send MPPalmDetectionParserConfig to inputConfig after the pipeline starts.
      */
     void setConfidenceThreshold(float threshold);
 
@@ -103,6 +121,7 @@ class MPPalmDetectionParser : public DeviceNodeCRTP<BetaNode, MPPalmDetectionPar
      * Sets the non-maximum suppression (IoU) threshold.
      *
      * @param threshold Non-maximum suppression threshold
+     * @note Configures startup behavior. Send MPPalmDetectionParserConfig to inputConfig after the pipeline starts.
      */
     void setIouThreshold(float threshold);
 
@@ -115,6 +134,7 @@ class MPPalmDetectionParser : public DeviceNodeCRTP<BetaNode, MPPalmDetectionPar
      * Sets the maximum number of detections to keep.
      *
      * @param maxDetections Maximum number of detections to keep
+     * @note Configures startup behavior. Send MPPalmDetectionParserConfig to inputConfig after the pipeline starts.
      */
     void setMaxDetections(int maxDetections);
 

@@ -37,10 +37,27 @@ namespace node {
  *
  */
 class RFDETRParser : public DeviceNodeCRTP<BetaNode, RFDETRParser, RFDETRParserProperties> {
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "RFDETRParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Model = std::variant<NNModelDescription, NNArchive, std::string>;
+
+    RFDETRParser() = default;
+    RFDETRParser(std::unique_ptr<Properties> props);
+
+    /**
+     * Configuration used when the parser starts.
+     */
+    std::shared_ptr<RFDETRParserConfig> initialConfig = std::make_shared<RFDETRParserConfig>();
+
+    /**
+     * Runtime parser configuration. In synchronized mode one configuration is consumed per input frame;
+     * otherwise all queued configurations are drained and the newest valid one is retained.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::RFDETRParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input NN results with RF-DETR detection data to parse.
@@ -92,6 +109,7 @@ class RFDETRParser : public DeviceNodeCRTP<BetaNode, RFDETRParser, RFDETRParserP
      * Sets the confidence score threshold for detected objects. Detections with a score strictly greater than the threshold are kept. Defaults to 0.5.
      *
      * @param threshold Confidence score threshold, must be between 0 and 1
+     * @note Configures startup behavior. Send RFDETRParserConfig to inputConfig after the pipeline starts.
      */
     void setConfidenceThreshold(float threshold);
 
@@ -105,6 +123,7 @@ class RFDETRParser : public DeviceNodeCRTP<BetaNode, RFDETRParser, RFDETRParserP
      * additionally capped at 255, the maximum number of instances the segmentation mask can encode. Defaults to 300.
      *
      * @param maxDetections Maximum number of detections to keep, must be greater than 0
+     * @note Configures startup behavior. Send RFDETRParserConfig to inputConfig after the pipeline starts.
      */
     void setMaxDetections(int maxDetections);
 
@@ -131,6 +150,7 @@ class RFDETRParser : public DeviceNodeCRTP<BetaNode, RFDETRParser, RFDETRParserP
      * greater than the threshold belong to the instance. Defaults to 0.5.
      *
      * @param maskConfidence Mask confidence threshold, must be between 0 and 1
+     * @note Configures startup behavior. Send RFDETRParserConfig to inputConfig after the pipeline starts.
      */
     void setMaskConfidence(float maskConfidence);
 

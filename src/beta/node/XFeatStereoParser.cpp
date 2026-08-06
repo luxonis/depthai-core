@@ -22,6 +22,15 @@ XFeatStereoParserProperties::~XFeatStereoParserProperties() = default;
 
 namespace node {
 
+XFeatStereoParser::XFeatStereoParser(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<BetaNode, XFeatStereoParser, XFeatStereoParserProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+
+XFeatStereoParser::Properties& XFeatStereoParser::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 namespace {
 
 /**
@@ -226,11 +235,11 @@ std::pair<std::uint32_t, std::uint32_t> XFeatStereoParser::getInputSize() const 
 }
 
 void XFeatStereoParser::setMaxKeypoints(int maxKeypoints) {
-    properties.maxKeypoints = maxKeypoints;
+    initialConfig->setMaxKeypoints(maxKeypoints);
 }
 
 int XFeatStereoParser::getMaxKeypoints() const {
-    return properties.maxKeypoints;
+    return initialConfig->getMaxKeypoints();
 }
 
 void XFeatStereoParser::setRunOnHost(bool runOnHost) {
@@ -244,6 +253,9 @@ bool XFeatStereoParser::runOnHost() const {
 void XFeatStereoParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->debug("XFeatStereoParser started");
+    auto config = getProperties().initialConfig;
+    DAI_CHECK(config.validate(), "XFeatStereoParser initial configuration is invalid.");
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     DAI_CHECK(properties.originalSize.has_value(), "Original image size must be specified!");
     DAI_CHECK(!properties.outputLayerFeats.empty(), "Output layer containing features must be specified!");
@@ -262,12 +274,30 @@ void XFeatStereoParser::run() {
         std::shared_ptr<dai::NNData> targetOutput;
         {
             auto blockEvent = this->inputBlockEvent();
+            std::shared_ptr<XFeatStereoParserConfig> candidate;
+            if(inputConfigSync) {
+                candidate = inputConfig.get<XFeatStereoParserConfig>();
+            } else {
+                auto candidates = inputConfig.tryGetAll<XFeatStereoParserConfig>();
+                if(!candidates.empty()) {
+                    candidate = candidates.back();
+                }
+            }
+            if(candidate) {
+                if(candidate->validate()) {
+                    config = *candidate;
+                } else {
+                    logger->warn("XFeatStereoParser received an invalid configuration; retaining the previous configuration.");
+                }
+            }
+
             referenceOutput = referenceInput.get<dai::NNData>();
             targetOutput = targetInput.get<dai::NNData>();
             if(!referenceOutput || !targetOutput) {
                 continue;
             }
         }
+        const XFeatStereoParserConfig configSnapshot = config;
 
         // Extract
         auto referenceTensors = utilities::XFeatUtils::extractXFeatTensors(
@@ -283,7 +313,7 @@ void XFeatStereoParser::run() {
                                                                              resizeRateH,
                                                                              properties.inputSize.first,
                                                                              properties.inputSize.second,
-                                                                             properties.maxKeypoints);
+                                                                             configSnapshot.maxKeypoints);
         const auto targetResult = utilities::XFeatUtils::detectAndCompute(targetTensors.feats,
                                                                           targetTensors.keypoints,
                                                                           targetTensors.heatmaps,
@@ -291,7 +321,7 @@ void XFeatStereoParser::run() {
                                                                           resizeRateH,
                                                                           properties.inputSize.first,
                                                                           properties.inputSize.second,
-                                                                          properties.maxKeypoints);
+                                                                          configSnapshot.maxKeypoints);
 
         // Emit. The reference frame is checked first, like the source compute(); an empty
         // message carries the missing frame's timestamps and the reference frame's sequence

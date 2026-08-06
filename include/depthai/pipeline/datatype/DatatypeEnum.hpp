@@ -65,6 +65,19 @@ enum class DatatypeEnum : std::int32_t {
     Map2D,
     Lines,
     Predictions,
+    FastSAMParserConfig,
+    HRNetParserConfig,
+    MLSDParserConfig,
+    MPPalmDetectionParserConfig,
+    PPTextDetectionParserConfig,
+    RFDETRParserConfig,
+    SCRFDParserConfig,
+    SuperAnimalParserConfig,
+    YuNetParserConfig,
+    ClassificationSequenceParserConfig,
+    MapOutputParserConfig,
+    XFeatMonoParserConfig,
+    XFeatStereoParserConfig,
     COUNT  // Sentinel used by consistency checks; must remain the last enum entry.
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
