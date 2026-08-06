@@ -191,6 +191,29 @@ def resolution_entry(arg):
     return None, resolution_tuple(arg)
 
 
+def fps_entry(arg):
+    if ':' in arg:
+        socket, fps = arg.split(':', 1)
+        socket_name = socket.strip()
+        if socket_name not in ALL_SOCKETS:
+            raise argparse.ArgumentTypeError(
+                f"Invalid socket '{socket_name}'. Use one of: {', '.join(ALL_SOCKETS)}.")
+        try:
+            fps_value = float(fps)
+        except ValueError:
+            raise argparse.ArgumentTypeError("FPS must be a number")
+        if fps_value <= 0:
+            raise argparse.ArgumentTypeError("FPS must be positive")
+        return socket_name, fps_value
+    try:
+        fps_value = float(arg)
+    except ValueError:
+        raise argparse.ArgumentTypeError("FPS must be a number")
+    if fps_value <= 0:
+        raise argparse.ArgumentTypeError("FPS must be positive")
+    return None, fps_value
+
+
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('-cams', '--cameras', type=socket_type_pair, nargs='+',
                     default=[],
@@ -203,6 +226,15 @@ parser.add_argument('-res', '--resolution', type=resolution_entry, action='appen
                     "CAM_A uses its highest full resolution unless explicitly overridden; other cameras default to an auto-selected resolution. "
                     "Can be provided multiple times. "
                     "Example is -res camb:640,400 -res 640,480")
+parser.add_argument('-sensorsize', '--sensor-size', type=resolution_entry, action='append', default=[],
+                    metavar='socket:(width,height)',
+                    help="Force Camera.build(sensorResolution=(width, height)) for a socket. "
+                    "This is independent of the requested output resolution. "
+                    "Example: -sensorsize came:1920,1080")
+parser.add_argument('-sensorfps', '--sensor-fps', type=fps_entry, action='append', default=[],
+                    metavar='[socket:]FPS',
+                    help="Override sensorFps passed to Camera.build(). Use socket:FPS for per-socket overrides. "
+                    "Example: -sensorfps rgb:18 -sensorfps left:15")
 parser.add_argument('-rot', '--rotate', const='all', choices={'all', 'rgb', 'mono'}, nargs="?",
                     help="Which cameras to rotate 180 degrees. All if not filtered")
 parser.add_argument('-fps', '--fps', type=float, default=30,
@@ -267,6 +299,28 @@ for socket, resolution in args.resolution:
         socket_resolution_overrides[socket] = resolution
     else:
         resolution_default_override = resolution
+
+socket_sensor_size_overrides = {}
+for socket, sensor_size in args.sensor_size:
+    if socket is None:
+        parser.error("--sensor-size requires a socket, for example came:1920,1080")
+    socket_sensor_size_overrides[socket] = sensor_size
+
+sensor_fps_default_override = None
+socket_sensor_fps_overrides = {}
+for socket, sensor_fps in args.sensor_fps:
+    if socket:
+        socket_sensor_fps_overrides[socket] = sensor_fps
+    else:
+        sensor_fps_default_override = sensor_fps
+
+
+def get_sensor_fps(socket, output_fps):
+    if socket in socket_sensor_fps_overrides:
+        return socket_sensor_fps_overrides[socket]
+    if sensor_fps_default_override is not None:
+        return sensor_fps_default_override
+    return output_fps
 
 
 def get_default_resolution(cam_feature):
@@ -362,6 +416,32 @@ class FPS:
     def get(self):
         return self.fps
 
+
+def overlay_frame_metadata(frame, pkt, measured_fps, sensor_modes, window_name):
+    sensor_fps = pkt.getFps()
+    sensor_fps_text = f"{sensor_fps:.2f}" if sensor_fps >= 0 else "N/A"
+    sensor_mode = pkt.getSensorMode()
+    if 0 <= sensor_mode < len(sensor_modes):
+        mode = sensor_modes[sensor_mode]
+        sensor_size = f"{mode.width}x{mode.height}"
+    else:
+        sensor_size = "N/A"
+    text = f"FPS: {measured_fps:.2f} | Sensor FPS: {sensor_fps_text} | Sensor: {sensor_size} (mode {sensor_mode})"
+    display_width = frame.shape[1]
+    try:
+        _, _, window_width, _ = cv2.getWindowImageRect(window_name)
+        if window_width > 0:
+            display_width = window_width
+    except cv2.error:
+        pass
+    image_to_display_scale = frame.shape[1] / display_width
+    font_scale = 0.8 * image_to_display_scale
+    thickness = max(1, round(2 * image_to_display_scale))
+    origin = (round(8 * image_to_display_scale), round(30 * image_to_display_scale))
+    color = 65535 if frame.ndim == 2 and frame.dtype == np.uint16 else (0, 255, 0)
+    cv2.putText(frame, text, origin, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness, cv2.LINE_AA)
+    return frame
+
 class Cycle:
     def __init__(self, enum_type, start_item=None):
         self.items = [item for name, item in vars(enum_type).items() if name.isupper()]
@@ -413,6 +493,14 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         ok, err = device.setExternalFrameSyncRole(fsync_role_map[args.fsync_role])
         print(f"External frame sync role set to {args.fsync_role}: ok={ok}{'' if ok else ' err=' + err}")
     connected_cameras = device.getConnectedCameraFeatures()
+    camera_sensor_modes = {}
+    for feature in connected_cameras:
+        feature_socket = feature.socket
+        modes = feature.configs
+        camera_sensor_modes[socket_to_socket_opt(feature_socket)] = modes
+        for socket_name, socket in cam_socket_opts.items():
+            if socket == feature_socket:
+                camera_sensor_modes[socket_name] = modes
     if not args.cameras:
         args.cameras = [(socket_to_socket_opt(cam.socket), cam.supportedTypes[0] ==
                          dai.CameraSensorType.COLOR, cam.supportedTypes[0] == dai.CameraSensorType.TOF, cam.supportedTypes[0] == dai.CameraSensorType.THERMAL) for cam in connected_cameras]
@@ -480,14 +568,20 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             has_resolution_override = c in socket_resolution_overrides or resolution_default_override is not None
             use_cam_a_full_resolution = is_cam_a and not has_resolution_override
             camera_fps = min(args.fps, CAM_A_FULL_RESOLUTION_MAX_FPS) if use_cam_a_full_resolution else args.fps
-            cam[c].build(cam_socket_opts[c], sensorFps=camera_fps)
+            sensor_fps = get_sensor_fps(c, camera_fps)
+            if c in socket_sensor_size_overrides:
+                sensor_size = socket_sensor_size_overrides[c]
+                print(f"{c}: forcing sensor mode {sensor_size[0]}x{sensor_size[1]}")
+                cam[c].build(cam_socket_opts[c], sensorResolution=sensor_size, sensorFps=sensor_fps)
+            else:
+                cam[c].build(cam_socket_opts[c], sensorFps=sensor_fps)
             stream_name = c
             if use_cam_a_full_resolution:
-                print(f"CAM_A: requesting highest full resolution at {camera_fps:g} FPS")
+                print(f"CAM_A: requesting highest full resolution at {camera_fps:g} FPS (sensor {sensor_fps:g} FPS)")
                 xout[stream_name] = cam[c].requestFullResolutionOutput(fps=camera_fps, useHighestResolution=True)
             else:
                 requested_resolution = get_socket_resolution(c, socket_default_resolutions)
-                print(f"{c}: requesting {requested_resolution[0]}x{requested_resolution[1]} at {camera_fps:g} FPS")
+                print(f"{c}: requesting {requested_resolution[0]}x{requested_resolution[1]} at {camera_fps:g} FPS (sensor {sensor_fps:g} FPS)")
                 cap = dai.ImgFrameCapability()
                 cap.size.fixed(requested_resolution)
                 cap.fps.fixed(camera_fps)
@@ -696,6 +790,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                         maxDisp = stereo.initialConfig.getMaxDisparity()
                         disp = (pkt.getCvFrame() * (255.0 / maxDisp)).astype(np.uint8)
                         disp = cv2.applyColorMap(disp, cv2.COLORMAP_JET)
+                        overlay_frame_metadata(disp, pkt, fps_host[c].get(), camera_sensor_modes.get(cam_skt, []), c)
                         cv2.imshow(c, disp)
                         continue
 
@@ -751,6 +846,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                         filename = capture_file_info + '.png'
                         print('Saving:', filename)
                         cv2.imwrite(filename, frame)
+                    overlay_frame_metadata(frame, pkt, fps_host[c].get(), camera_sensor_modes.get(cam_skt, []), c)
                     cv2.imshow(c, frame)
             except Exception as e:
                 print(e)
