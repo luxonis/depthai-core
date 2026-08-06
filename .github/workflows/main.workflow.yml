@@ -6,11 +6,6 @@ concurrency:
 
 on:
   workflow_dispatch:
-    inputs:
-      build_beta:
-        description: Build beta APIs
-        type: boolean
-        default: false
   push:
     branches:
       - main
@@ -142,8 +137,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
-    env:
-      DEPTHAI_BUILD_BETA: ${{ (inputs.build_beta || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release') || startsWith(github.ref, 'refs/tags/v')) && 'ON' || 'OFF' }}
     strategy:
       matrix:
         os: [macos-latest, windows-2022, ubuntu-latest]
@@ -178,7 +171,7 @@ jobs:
 
     - name: Build
       run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_BETA=${{ env.DEPTHAI_BUILD_BETA }} ${{ env.CMAKE_ARGS }}
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
         cmake --build build --parallel 4 --config Release
 
   integration:
