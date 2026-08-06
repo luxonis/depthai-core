@@ -16,6 +16,10 @@ on:
         type: boolean
         default: true
 
+permissions:
+  actions: read
+  contents: read
+
 # Only allow latest run on same branch to be tested
 concurrency:
   group: ci-tests-${{ github.ref }}-1
