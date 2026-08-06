@@ -68,7 +68,7 @@ jobs:
         fi
         BRANCH_NAME="${{ github.ref_name }}"
         PULL_REQUEST="false"
-        if [[ -n "${{ github.head_ref }}" ]]; then
+        if [[ -n "${{ github.event.pull_request.number }}" ]]; then
          BRANCH_NAME="${{ github.ref }}"
          PULL_REQUEST="true"
         fi
