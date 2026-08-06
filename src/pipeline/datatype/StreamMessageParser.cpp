@@ -336,48 +336,31 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::PacketizedData: {
             return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data, fd);
         } break;
+#ifdef DEPTHAI_HAVE_BETA
         case DatatypeEnum::ImgDetectionsFilterConfig:
-#ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::ImgDetectionsFilterConfig>(metadataStart, serializedObjectSize, data, fd);
-#else
-            break;
-#endif
         case DatatypeEnum::Classifications:
-#ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Classifications>(metadataStart, serializedObjectSize, data, fd);
-#else
-            break;
-#endif
         case DatatypeEnum::Keypoints:
-#ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Keypoints>(metadataStart, serializedObjectSize, data, fd);
-#else
-            break;
-#endif
         case DatatypeEnum::Clusters:
-#ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Clusters>(metadataStart, serializedObjectSize, data, fd);
-#else
-            break;
-#endif
         case DatatypeEnum::Map2D:
-#ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Map2D>(metadataStart, serializedObjectSize, data, fd);
-#else
-            break;
-#endif
         case DatatypeEnum::Lines:
-#ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Lines>(metadataStart, serializedObjectSize, data, fd);
-#else
-            break;
-#endif
         case DatatypeEnum::Predictions:
-#ifdef DEPTHAI_HAVE_BETA
             return parseDatatype<beta::Predictions>(metadataStart, serializedObjectSize, data, fd);
 #else
-            break;
-#endif
+        case DatatypeEnum::ImgDetectionsFilterConfig:
+        case DatatypeEnum::Classifications:
+        case DatatypeEnum::Keypoints:
+        case DatatypeEnum::Clusters:
+        case DatatypeEnum::Map2D:
+        case DatatypeEnum::Lines:
+        case DatatypeEnum::Predictions:
+            throw std::runtime_error("Cannot parse beta datatype: depthai-core was built without beta support");
+#endif  // DEPTHAI_HAVE_BETA
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);

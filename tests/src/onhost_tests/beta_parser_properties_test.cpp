@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <depthai/depthai.hpp>
+#include <type_traits>
 
 namespace {
 
