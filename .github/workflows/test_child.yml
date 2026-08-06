@@ -111,7 +111,7 @@ jobs:
   #  Testing
  linux_rvc4_test:
       needs: [build_docker_container]
-      if: inputs.run_standard_tests
+      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
@@ -141,7 +141,7 @@ jobs:
 
  linux_rvc4_usb_test:
       needs: [build_docker_container]
-      if: inputs.run_standard_tests
+      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_usb != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
@@ -167,7 +167,7 @@ jobs:
 
  linux_rvc4_rgb_test:
       needs: [build_docker_container]
-      if: inputs.run_standard_tests
+      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_rgb != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_rgb) }}
@@ -250,6 +250,7 @@ jobs:
 
  linux_rvc4_fsync_test:
       needs: [build_docker_container]
+      if: inputs.luxonis_os_versions_to_test_fsync != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_fsync) }}
@@ -273,6 +274,7 @@ jobs:
 
  linux_rvc4_ptp_test:
       needs: [build_docker_container]
+      if: inputs.luxonis_os_versions_to_test_ptp != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_ptp) }}

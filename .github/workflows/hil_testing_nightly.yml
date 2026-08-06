@@ -3,6 +3,9 @@ name: DepthAI Core HIL Testing Nightly
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # Only allow latest nightly run on same branch to be tested
 concurrency:
   group: ci-nightly-tests-${{ github.ref }}-1

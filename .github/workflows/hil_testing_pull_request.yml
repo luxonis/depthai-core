@@ -7,14 +7,17 @@ on:
   pull_request:
     types: [labeled]
 
+permissions:
+  contents: read
+
 # Cancel older runs for the same PR and trigger.
 concurrency:
   group: depthai-core-pr-testing-${{ github.event.pull_request.number }}-${{ github.event.review.state || github.event.label.name }}
   cancel-in-progress: true
 
 jobs:
-  run_vanilla_tests:
-    name: Run required Linux HIL tests
+  run_pr_tests:
+    name: Run Linux PR HIL tests
     if: >
       (
         github.event.review.state == 'approved' ||
@@ -36,8 +39,8 @@ jobs:
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   required_hil_test_report:
-    name: Required HIL test report (${{ github.event.review.state || github.event.label.name }})
-    needs: [run_vanilla_tests]
+    name: Required HIL test report
+    needs: [run_pr_tests]
     if: >
       always() &&
       (
@@ -52,8 +55,8 @@ jobs:
     steps:
     - name: Check required test results
       run: |
-        if [[ "${{ needs.run_vanilla_tests.result }}" != "success" ]]; then
+        if [[ "${{ needs.run_pr_tests.result }}" != "success" ]]; then
           echo "Required HIL tests failed or did not complete."
-          echo "run_vanilla_tests: ${{ needs.run_vanilla_tests.result }}"
+          echo "run_pr_tests: ${{ needs.run_pr_tests.result }}"
           exit 1
         fi
