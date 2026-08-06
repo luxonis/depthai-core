@@ -42,6 +42,7 @@ def parse_args():
     parser.add_argument("--no-lr", action="store_true", help="disable left-right checking on both devices")
     parser.add_argument("--raw", action="store_true", help="disable decimation, median, speckle, spatial, and temporal filters on both devices")
     parser.add_argument("--decimation", type=int, choices=(1, 2, 3, 4), help="override the DEFAULT decimation factor on both devices")
+    parser.add_argument("--speckle-range", type=int, help="override the speckle component size on both devices")
     parser.add_argument("--repeat", type=int, default=1, help="repeat the complete input sequence to exercise temporal state")
     parser.add_argument("--timeout", type=float, default=180.0)
     parser.add_argument("--max-mismatches", type=int, default=0, help="return success when at most this many pixels differ")
@@ -129,6 +130,8 @@ def configure_common(stereo, args):
         config.postProcessing.temporalFilter.enable = False
     if args.decimation is not None:
         config.postProcessing.decimationFilter.decimationFactor = args.decimation
+    if getattr(args, "speckle_range", None) is not None:
+        config.postProcessing.speckleFilter.speckleRange = args.speckle_range
 
 
 def build_endpoint(info, platform, args, passthrough=True):
@@ -234,6 +237,7 @@ def worker_args(config):
         no_lr=config["no_lr"],
         raw=config["raw"],
         decimation=config["decimation"],
+        speckle_range=config.get("speckle_range"),
         repeat=config["repeat"],
         timeout=config["timeout"],
     )
@@ -276,6 +280,7 @@ def launch_worker(args, rvc2_info, directory, pairs):
         "no_lr": args.no_lr,
         "raw": args.raw,
         "decimation": args.decimation,
+        "speckle_range": args.speckle_range,
         "repeat": 1,
         "timeout": args.timeout,
         "result": str(result_path),
@@ -350,6 +355,7 @@ def main():
         "lr": not args.no_lr,
         "raw": args.raw,
         "decimation": args.decimation if args.decimation is not None else (1 if args.raw else 2),
+        "speckle_range": args.speckle_range,
         "mismatches": total_mismatches,
         "exact_percent": float((total_pixels - total_mismatches) * 100 / total_pixels),
         "passed": total_mismatches <= args.max_mismatches,
