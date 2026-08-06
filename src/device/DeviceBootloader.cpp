@@ -703,8 +703,7 @@ bool DeviceBootloader::isUserBootloaderSupported() {
 }
 
 bool DeviceBootloader::isUserBootloader() {
-    // Check if bootloader version is adequate
-    if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
+    if(!isUserBootloaderSupported()) {
         return false;
     }
 
