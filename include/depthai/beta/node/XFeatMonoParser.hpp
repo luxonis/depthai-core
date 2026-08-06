@@ -8,11 +8,11 @@
 #include <utility>
 #include <variant>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/XFeatMonoParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 
@@ -38,7 +38,7 @@ namespace node {
  *
  * The original image size must be configured before the pipeline starts, either through head metadata or with setOriginalSize().
  */
-class XFeatMonoParser : public DeviceNodeCRTP<DeviceNode, XFeatMonoParser, XFeatMonoParserProperties>, public HostRunnable {
+class XFeatMonoParser : public DeviceNodeCRTP<BetaNode, XFeatMonoParser, XFeatMonoParserProperties> {
    public:
     constexpr static const char* NAME = "XFeatMonoParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

@@ -4,12 +4,12 @@
 #include <string>
 #include <variant>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/datatype/Map2D.hpp"
 #include "depthai/beta/properties/MapOutputParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -28,7 +28,7 @@ namespace node {
  * When min-max scaling is enabled, the map values are scaled to the [0, 1] range; a constant map is left unchanged.
  *
  */
-class MapOutputParser : public DeviceNodeCRTP<DeviceNode, MapOutputParser, MapOutputParserProperties>, public HostRunnable {
+class MapOutputParser : public DeviceNodeCRTP<BetaNode, MapOutputParser, MapOutputParserProperties> {
    public:
     constexpr static const char* NAME = "MapOutputParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

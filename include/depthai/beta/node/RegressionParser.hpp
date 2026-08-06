@@ -4,12 +4,12 @@
 #include <string>
 #include <variant>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/datatype/Predictions.hpp"
 #include "depthai/beta/properties/RegressionParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -25,7 +25,7 @@ namespace node {
  * values become the predictions, so any tensor with at most one non-singleton dimension is accepted regardless of rank (for example (1, 1, 1, 3), (1, 1) or
  * (1,)) and an empty tensor yields a message with no predictions. A tensor with more than one non-singleton dimension after squeezing is rejected.
  */
-class RegressionParser : public DeviceNodeCRTP<DeviceNode, RegressionParser, RegressionParserProperties>, public HostRunnable {
+class RegressionParser : public DeviceNodeCRTP<BetaNode, RegressionParser, RegressionParserProperties> {
    public:
     constexpr static const char* NAME = "RegressionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

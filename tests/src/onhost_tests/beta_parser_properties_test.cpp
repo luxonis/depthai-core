@@ -7,6 +7,7 @@ namespace {
 template <typename Parser>
 void checkDeviceSerialization() {
     static_assert(std::is_base_of<dai::DeviceNode, Parser>::value, "Beta parsers must be device nodes");
+    static_assert(std::is_base_of<dai::beta::BetaNode, Parser>::value, "Beta parsers must inherit the shared beta-node behavior");
 
     dai::Pipeline pipeline(false);
     auto parser = pipeline.create<Parser>();

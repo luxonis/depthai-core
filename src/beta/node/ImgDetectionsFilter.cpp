@@ -148,7 +148,7 @@ std::shared_ptr<ImgDetections> applyConfig(const std::shared_ptr<ImgDetections>&
 ImgDetectionsFilter::~ImgDetectionsFilter() = default;
 
 ImgDetectionsFilter::ImgDetectionsFilter(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, ImgDetectionsFilter, ImgDetectionsFilterProperties>(std::move(props)),
+    : DeviceNodeCRTP<BetaNode, ImgDetectionsFilter, ImgDetectionsFilterProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 void ImgDetectionsFilter::setRunOnHost(bool runOnHost) {

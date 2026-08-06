@@ -8,12 +8,12 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/datatype/Clusters.hpp"
 #include "depthai/beta/properties/LaneDetectionParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -32,7 +32,7 @@ namespace node {
  * setInputSize() because a head carries no model input metadata.
  *
  */
-class LaneDetectionParser : public DeviceNodeCRTP<DeviceNode, LaneDetectionParser, LaneDetectionParserProperties>, public HostRunnable {
+class LaneDetectionParser : public DeviceNodeCRTP<BetaNode, LaneDetectionParser, LaneDetectionParserProperties> {
    public:
     constexpr static const char* NAME = "LaneDetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

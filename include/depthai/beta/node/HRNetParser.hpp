@@ -5,12 +5,12 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/datatype/Keypoints.hpp"
 #include "depthai/beta/properties/HRNetParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -28,7 +28,7 @@ namespace node {
  * value clipped to [0, 1]. Keypoints with a score below the score threshold are dropped and the skeleton edges are remapped to the kept keypoints.
  *
  */
-class HRNetParser : public DeviceNodeCRTP<DeviceNode, HRNetParser, HRNetParserProperties>, public HostRunnable {
+class HRNetParser : public DeviceNodeCRTP<BetaNode, HRNetParser, HRNetParserProperties> {
    public:
     constexpr static const char* NAME = "HRNetParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

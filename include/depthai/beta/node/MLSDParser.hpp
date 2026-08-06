@@ -6,12 +6,12 @@
 #include <utility>
 #include <variant>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/datatype/Lines.hpp"
 #include "depthai/beta/properties/MLSDParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -31,7 +31,7 @@ namespace node {
  * layout (NHWC or NCHW), and setInputSize() overrides it.
  *
  */
-class MLSDParser : public DeviceNodeCRTP<DeviceNode, MLSDParser, MLSDParserProperties>, public HostRunnable {
+class MLSDParser : public DeviceNodeCRTP<BetaNode, MLSDParser, MLSDParserProperties> {
    public:
     constexpr static const char* NAME = "MLSDParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

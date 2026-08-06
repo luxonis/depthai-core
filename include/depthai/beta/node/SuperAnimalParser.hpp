@@ -6,12 +6,12 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/datatype/Keypoints.hpp"
 #include "depthai/beta/properties/SuperAnimalParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -30,7 +30,7 @@ namespace node {
  * edges are remapped to the kept keypoints.
  *
  */
-class SuperAnimalParser : public DeviceNodeCRTP<DeviceNode, SuperAnimalParser, SuperAnimalParserProperties>, public HostRunnable {
+class SuperAnimalParser : public DeviceNodeCRTP<BetaNode, SuperAnimalParser, SuperAnimalParserProperties> {
    public:
     constexpr static const char* NAME = "SuperAnimalParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

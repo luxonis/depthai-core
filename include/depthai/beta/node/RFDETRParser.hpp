@@ -8,11 +8,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/RFDETRParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -36,7 +36,7 @@ namespace node {
  * interpolation; the pixels not claimed by an earlier (higher-scoring) detection receive the detection's index, with 255 marking background.
  *
  */
-class RFDETRParser : public DeviceNodeCRTP<DeviceNode, RFDETRParser, RFDETRParserProperties>, public HostRunnable {
+class RFDETRParser : public DeviceNodeCRTP<BetaNode, RFDETRParser, RFDETRParserProperties> {
    public:
     constexpr static const char* NAME = "RFDETRParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

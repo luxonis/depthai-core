@@ -4,11 +4,11 @@
 #include <string>
 #include <variant>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/ImageOutputParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -29,7 +29,7 @@ namespace node {
  * as already BGR.
  *
  */
-class ImageOutputParser : public DeviceNodeCRTP<DeviceNode, ImageOutputParser, ImageOutputParserProperties>, public HostRunnable {
+class ImageOutputParser : public DeviceNodeCRTP<BetaNode, ImageOutputParser, ImageOutputParserProperties> {
    public:
     constexpr static const char* NAME = "ImageOutputParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

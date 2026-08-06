@@ -8,11 +8,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/YuNetParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -33,7 +33,7 @@ namespace node {
  * detections as the top-k limit) and emitted in descending score order. Keypoint coordinates are truncated to whole pixels before normalization, mirroring the
  * source parser. The anchors are cached across messages and refreshed when the input size changes.
  */
-class YuNetParser : public DeviceNodeCRTP<DeviceNode, YuNetParser, YuNetParserProperties>, public HostRunnable {
+class YuNetParser : public DeviceNodeCRTP<BetaNode, YuNetParser, YuNetParserProperties> {
    public:
     constexpr static const char* NAME = "YuNetParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

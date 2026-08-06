@@ -4,11 +4,11 @@
 #include <string>
 #include <variant>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/EmbeddingsParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -22,7 +22,7 @@ namespace node {
  * exactly one tensor; otherwise the message is rejected. The message itself is forwarded without modification, so all tensors, sequence number, timestamps,
  * and image transformation metadata are preserved.
  */
-class EmbeddingsParser : public DeviceNodeCRTP<DeviceNode, EmbeddingsParser, EmbeddingsParserProperties>, public HostRunnable {
+class EmbeddingsParser : public DeviceNodeCRTP<BetaNode, EmbeddingsParser, EmbeddingsParserProperties> {
    public:
     constexpr static const char* NAME = "EmbeddingsParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

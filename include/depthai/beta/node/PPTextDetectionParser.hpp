@@ -4,11 +4,11 @@
 #include <string>
 #include <variant>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/PPTextDetectionParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -27,7 +27,7 @@ namespace node {
  * in both dimensions. The emitted bounding boxes are normalized to [0, 1] with angles in degrees rounded to whole numbers; the detections carry no labels.
  *
  */
-class PPTextDetectionParser : public DeviceNodeCRTP<DeviceNode, PPTextDetectionParser, PPTextDetectionParserProperties>, public HostRunnable {
+class PPTextDetectionParser : public DeviceNodeCRTP<BetaNode, PPTextDetectionParser, PPTextDetectionParserProperties> {
    public:
     constexpr static const char* NAME = "PPTextDetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

@@ -9,11 +9,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/FastSAMParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 
@@ -39,7 +39,7 @@ namespace node {
  * (added for point label 1, subtracted for 0). With no detections, a fully-background mask is emitted.
  *
  */
-class FastSAMParser : public DeviceNodeCRTP<DeviceNode, FastSAMParser, FastSAMParserProperties>, public HostRunnable {
+class FastSAMParser : public DeviceNodeCRTP<BetaNode, FastSAMParser, FastSAMParserProperties> {
    public:
     constexpr static const char* NAME = "FastSAMParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

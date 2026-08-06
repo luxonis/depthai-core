@@ -2,8 +2,8 @@
 
 #include <memory>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/ImgDetectionsFilterProperties.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 
 namespace dai {
@@ -13,7 +13,7 @@ namespace node {
 /**
  * @brief Experimental node for filtering image detections.
  */
-class ImgDetectionsFilter : public DeviceNodeCRTP<DeviceNode, ImgDetectionsFilter, ImgDetectionsFilterProperties>, public HostRunnable {
+class ImgDetectionsFilter : public DeviceNodeCRTP<BetaNode, ImgDetectionsFilter, ImgDetectionsFilterProperties> {
    protected:
     Properties& getProperties() override {
         properties.initialConfig = *initialConfig;

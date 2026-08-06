@@ -5,12 +5,12 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/datatype/Classifications.hpp"
 #include "depthai/beta/properties/ClassificationParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -25,7 +25,7 @@ namespace node {
  * name must be configured explicitly or through an NNArchive head. Raw scores are dequantized and flattened; when the model output is not already softmaxed,
  * the parser applies softmax to convert the scores to probabilities.
  */
-class ClassificationParser : public DeviceNodeCRTP<DeviceNode, ClassificationParser, ClassificationParserProperties>, public HostRunnable {
+class ClassificationParser : public DeviceNodeCRTP<BetaNode, ClassificationParser, ClassificationParserProperties> {
    public:
     constexpr static const char* NAME = "ClassificationParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

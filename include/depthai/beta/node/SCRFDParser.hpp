@@ -7,11 +7,11 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/properties/SCRFDParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -31,7 +31,7 @@ namespace node {
  * and refreshed when the input size, feature strides or number of anchors change.
  *
  */
-class SCRFDParser : public DeviceNodeCRTP<DeviceNode, SCRFDParser, SCRFDParserProperties>, public HostRunnable {
+class SCRFDParser : public DeviceNodeCRTP<BetaNode, SCRFDParser, SCRFDParserProperties> {
    public:
     constexpr static const char* NAME = "SCRFDParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;

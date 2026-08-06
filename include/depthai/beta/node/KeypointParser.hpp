@@ -7,12 +7,12 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
 #include "depthai/beta/datatype/Keypoints.hpp"
 #include "depthai/beta/properties/KeypointParserProperties.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
@@ -28,7 +28,7 @@ namespace node {
  * scale factor and clipped to [0, 1].
  *
  */
-class KeypointParser : public DeviceNodeCRTP<DeviceNode, KeypointParser, KeypointParserProperties>, public HostRunnable {
+class KeypointParser : public DeviceNodeCRTP<BetaNode, KeypointParser, KeypointParserProperties> {
    public:
     constexpr static const char* NAME = "KeypointParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
