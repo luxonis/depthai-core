@@ -418,15 +418,18 @@ class FPS:
 
 
 def overlay_frame_metadata(frame, pkt, measured_fps, sensor_modes, window_name):
-    sensor_fps = pkt.getFps()
+    get_fps = getattr(pkt, "getFps", None)
+    sensor_fps = get_fps() if callable(get_fps) else -1
     sensor_fps_text = f"{sensor_fps:.2f}" if sensor_fps >= 0 else "N/A"
-    sensor_mode = pkt.getSensorMode()
+    get_sensor_mode = getattr(pkt, "getSensorMode", None)
+    sensor_mode = get_sensor_mode() if callable(get_sensor_mode) else -1
     if 0 <= sensor_mode < len(sensor_modes):
         mode = sensor_modes[sensor_mode]
         sensor_size = f"{mode.width}x{mode.height}"
     else:
         sensor_size = "N/A"
-    text = f"FPS: {measured_fps:.2f} | Sensor FPS: {sensor_fps_text} | Sensor: {sensor_size} (mode {sensor_mode})"
+    sensor_mode_text = str(sensor_mode) if sensor_mode >= 0 else "N/A"
+    text = f"FPS: {measured_fps:.2f} | Sensor FPS: {sensor_fps_text} | Sensor: {sensor_size} (mode {sensor_mode_text})"
     display_width = frame.shape[1]
     try:
         _, _, window_width, _ = cv2.getWindowImageRect(window_name)
