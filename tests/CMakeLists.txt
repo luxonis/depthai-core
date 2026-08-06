@@ -266,6 +266,13 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FILE "img_transformations_test_data.tar.xz"
         LOCATION img_transformations_test_data
     )
+
+        private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/depthai-beta-parser-test-data.tar.xz"
+        SHA1 "a49bd64e4d2066f2a3d70b93e5b5d1c48ac9ceef"
+        FILE "depthai-beta-parser-test-data.tar.xz"
+        LOCATION beta_parser_test_nndata
+    )
 endif()
 
 set(test_env
@@ -690,6 +697,12 @@ dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 if(DEPTHAI_BUILD_BETA)
     dai_add_test(beta_parser_properties_test src/onhost_tests/beta_parser_properties_test.cpp)
     dai_set_test_labels(beta_parser_properties_test onhost ci)
+
+    dai_add_test(beta_parser_test src/onhost_tests/beta_parser_test.cpp)
+    dai_set_test_labels(beta_parser_test onhost ci)
+    target_compile_definitions(beta_parser_test PRIVATE
+        BETA_PARSER_TEST_DATA_PATH="${beta_parser_test_nndata}"
+    )
 endif()
 
 # GPU availability test
