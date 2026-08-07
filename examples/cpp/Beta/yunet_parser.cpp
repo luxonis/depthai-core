@@ -15,7 +15,7 @@
 int main() {
     dai::Pipeline pipeline;
 
-    const std::string modelSlug = "luxonis/yunet:320x240";
+    const std::string modelSlug = "luxonis/yunet:640x480";
     dai::NNModelDescription modelDescription{modelSlug};
     modelDescription.platform = pipeline.getDefaultDevice()->getPlatformAsString();
     dai::NNArchive modelArchive(dai::getModelFromZoo(modelDescription));
