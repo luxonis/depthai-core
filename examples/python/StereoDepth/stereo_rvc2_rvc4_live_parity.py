@@ -50,6 +50,8 @@ def parse_args():
     )
     parser.add_argument("--dump-dir", type=Path, help="save one comparison frame as NumPy arrays for offline analysis")
     parser.add_argument("--dump-sequence", type=int, help="RVC2 sequence number to save with --dump-dir")
+    parser.add_argument("--dump-all", action="store_true", help="save every comparison frame with --dump-dir")
+    parser.add_argument("--replay-dir", type=Path, help="replay sequence_*_left/right.npy inputs instead of capturing cameras")
     args = parser.parse_args()
     if args.fps <= 0:
         parser.error("--fps must be positive")
@@ -57,6 +59,8 @@ def parse_args():
         parser.error("--frames must be positive")
     if args.dump_sequence is not None and args.dump_dir is None:
         parser.error("--dump-sequence requires --dump-dir")
+    if args.dump_all and args.dump_dir is None:
+        parser.error("--dump-all requires --dump-dir")
     return args
 
 
@@ -177,7 +181,8 @@ def replay_frame(image, transformation, sequence, socket):
     message.setWidth(image.shape[1])
     message.setHeight(image.shape[0])
     message.setStride(image.shape[1])
-    message.setTransformation(transformation)
+    if transformation is not None:
+        message.setTransformation(transformation)
     return message
 
 
@@ -222,52 +227,68 @@ def main():
     print(f"RVC2: {rvc2_info.name} ({rvc2_info.deviceId})")
     print(f"RVC4: {rvc4_info.name} ({rvc4_info.deviceId})")
 
-    capture_pipeline, capture_left, capture_right, capture_disparity = create_capture_pipeline(
-        rvc2_info,
-        args.fps,
-        args.disparity_64,
-        args.lr_check,
-        args.raw,
-        args.alpha,
-        args.decimation,
-        args.speckle_range,
-        args.disable_filter,
-    )
     captured = []
-    print(f"Capturing {args.frames} synchronized rectified pairs on RVC2...")
-    with capture_pipeline:
-        capture_pipeline.start()
-        for index in range(args.frames):
-            disparity_message = capture_disparity.get()
-            left = capture_left.get()
-            right = capture_right.get()
-            sequence = disparity_message.getSequenceNum()
-            if sequence != left.getSequenceNum() or sequence != right.getSequenceNum():
-                raise RuntimeError("RVC2 rectified and disparity streams are out of sync")
-            captured.append(
-                (
-                    left.getFrame().copy(),
-                    right.getFrame().copy(),
-                    left.getTransformation(),
-                    right.getTransformation(),
+    if args.replay_dir is not None:
+        def sequence_number(path):
+            return int(path.stem.split("_")[1])
+
+        left_paths = sorted(args.replay_dir.glob("sequence_*_left.npy"), key=sequence_number)
+        if not left_paths:
+            raise RuntimeError(f"No sequence_*_left.npy inputs found in {args.replay_dir}")
+        for left_path in left_paths[: args.frames]:
+            sequence = sequence_number(left_path)
+            right_path = args.replay_dir / f"sequence_{sequence}_right.npy"
+            if not right_path.exists():
+                raise RuntimeError(f"Missing replay input: {right_path}")
+            captured.append((np.load(left_path), np.load(right_path), None, None))
+        print(f"Loaded {len(captured)} rectified pairs from {args.replay_dir}")
+    else:
+        capture_pipeline, capture_left, capture_right, capture_disparity = create_capture_pipeline(
+            rvc2_info,
+            args.fps,
+            args.disparity_64,
+            args.lr_check,
+            args.raw,
+            args.alpha,
+            args.decimation,
+            args.speckle_range,
+            args.disable_filter,
+        )
+        print(f"Capturing {args.frames} synchronized rectified pairs on RVC2...")
+        with capture_pipeline:
+            capture_pipeline.start()
+            for index in range(args.frames):
+                disparity_message = capture_disparity.get()
+                left = capture_left.get()
+                right = capture_right.get()
+                sequence = disparity_message.getSequenceNum()
+                if sequence != left.getSequenceNum() or sequence != right.getSequenceNum():
+                    raise RuntimeError("RVC2 rectified and disparity streams are out of sync")
+                captured.append(
+                    (
+                        left.getFrame().copy(),
+                        right.getFrame().copy(),
+                        left.getTransformation(),
+                        right.getTransformation(),
+                    )
                 )
-            )
-            print(f"captured sequence {sequence} ({index + 1}/{args.frames})")
+                print(f"captured sequence {sequence} ({index + 1}/{args.frames})")
 
     left_transformation = captured[0][2]
     right_transformation = captured[0][3]
-    intrinsics = np.asarray(left_transformation.getIntrinsicMatrix())
-    print(f"RVC2 rectified focal length: {intrinsics[0, 0]:.6f} px")
-    try:
-        extrinsics = np.asarray(
-            left_transformation.getExtrinsicsTransformationMatrixTo(
-                right_transformation, False, dai.LengthUnit.MILLIMETER
+    if left_transformation is not None and right_transformation is not None:
+        intrinsics = np.asarray(left_transformation.getIntrinsicMatrix())
+        print(f"RVC2 rectified focal length: {intrinsics[0, 0]:.6f} px")
+        try:
+            extrinsics = np.asarray(
+                left_transformation.getExtrinsicsTransformationMatrixTo(
+                    right_transformation, False, dai.LengthUnit.MILLIMETER
+                )
             )
-        )
-        baseline = float(np.linalg.norm(extrinsics[:3, 3]))
-        print(f"RVC2 stereo baseline: {baseline:.6f} mm")
-    except RuntimeError as error:
-        print(f"RVC2 stereo baseline unavailable from frame metadata: {error}")
+            baseline = float(np.linalg.norm(extrinsics[:3, 3]))
+            print(f"RVC2 stereo baseline: {baseline:.6f} mm")
+        except RuntimeError as error:
+            print(f"RVC2 stereo baseline unavailable from frame metadata: {error}")
 
     rvc2_pipeline, rvc2_left, rvc2_right, rvc2_disparity, rvc2_confidence = create_replay_pipeline(
         rvc2_info,
@@ -341,7 +362,9 @@ def main():
             print(f"sequence {sequence}: {exact_percent:.8f}% exact, {mismatches} mismatches")
 
             should_dump = args.dump_dir is not None and (
-                args.dump_sequence == sequence or (args.dump_sequence is None and mismatches and not any(args.dump_dir.iterdir()))
+                args.dump_all
+                or args.dump_sequence == sequence
+                or (args.dump_sequence is None and mismatches and not any(args.dump_dir.iterdir()))
             )
             if should_dump:
                 prefix = args.dump_dir / f"sequence_{sequence}"
