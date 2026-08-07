@@ -7,7 +7,7 @@ import numpy as np
 
 def main() -> None:
     with dai.Pipeline() as pipeline:
-        modelSlug = "luxonis/yunet:320x240"
+        modelSlug = "luxonis/yunet:640x480"
         modelDescription = dai.NNModelDescription(
             modelSlug,
             platform=pipeline.getDefaultDevice().getPlatformAsString(),
