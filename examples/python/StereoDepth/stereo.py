@@ -25,7 +25,7 @@ MEDIANS = {
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", default=os.environ.get("DEPTHAI_DEVICE_NAME_LIST"), help="device IP, name, or ID")
-parser.add_argument("--backend", choices=BACKENDS, default="dsp-gpu")
+parser.add_argument("--backend", choices=BACKENDS, default="dsp-rvc2-default-64")
 parser.add_argument("--fps", type=float, default=30)
 parser.add_argument("--extended", action="store_true")
 parser.add_argument("--raw", action="store_true")

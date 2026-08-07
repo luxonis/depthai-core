@@ -1,362 +1,190 @@
 #!/usr/bin/env python3
 
 import argparse
-import datetime
-import json
 import os
-import socket
-import struct
-import subprocess
-import sys
-import tempfile
-import time
-from pathlib import Path
-from types import SimpleNamespace
 
 import cv2
 import depthai as dai
 import numpy as np
 
-import stereo_rvc2_rvc4_parity as parity
 
-
-LENGTH = struct.Struct("!I")
+SIZE = (1280, 800)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Feed live synchronized RVC2 stereo frames through RVC4 and compare both disparity outputs")
-    parser.add_argument("--rvc2-device", help="RVC2 device name or MXID; auto-selected when exactly one is available")
-    parser.add_argument("--rvc2-firmware", type=Path, default=os.environ.get("DEPTHAI_RVC2_FIRMWARE"), help="RVC2 .mvcmd matched to the RVC2 Python binding")
-    parser.add_argument("--rvc2-python", default=sys.executable, help="Python executable for the isolated RVC2 worker")
-    parser.add_argument("--rvc2-pythonpath", default=os.environ.get("DEPTHAI_RVC2_PYTHONPATH"), help="PYTHONPATH containing a depthai binding matched to the RVC2 firmware")
-    parser.add_argument("--rvc4-device", default=os.environ.get("DEPTHAI_DEVICE_NAME_LIST"), help="RVC4 IP, name, or device ID")
-    parser.add_argument("--width", type=int, default=1280)
-    parser.add_argument("--height", type=int, default=800)
+    parser = argparse.ArgumentParser(description="Compare live RVC2 stereo disparity with the RVC2-compatible RVC4 backend")
+    parser.add_argument("--rvc2-device", help="RVC2 device name or ID; auto-selected when exactly one is available")
+    parser.add_argument(
+        "--rvc4-device",
+        default=os.environ.get("DEPTHAI_DEVICE_NAME_LIST"),
+        help="RVC4 IP, name, or ID; auto-selected when exactly one is available",
+    )
     parser.add_argument("--fps", type=float, default=5.0)
-    parser.add_argument("--frames", type=int, default=100, help="number of live frames included in the parity result")
-    parser.add_argument("--warmup-frames", type=int, default=10, help="number of startup frames processed but excluded from the parity result")
-    parser.add_argument("--disparities", type=int, choices=(64, 96), default=96)
-    parser.add_argument("--no-lr", action="store_true")
-    parser.add_argument("--raw", action="store_true")
-    parser.add_argument("--decimation", type=int, choices=(1, 2, 3, 4))
-    parser.add_argument("--max-mismatches", type=int, default=0)
-    parser.add_argument("--timeout", type=float, default=180.0)
-    parser.add_argument("--verify-rvc4-passthrough", action="store_true", help="read back and compare both full-resolution RVC4 inputs on every frame")
+    parser.add_argument("--frames", type=int, default=100, help="number of frames to compare; zero runs until q")
+    parser.add_argument("--disparity-64", action="store_true", help="compare the 64-disparity RVC2-compatible profiles")
+    lr_check = parser.add_mutually_exclusive_group()
+    lr_check.add_argument("--lr-check", dest="lr_check", action="store_true", help="enable left-right checking (default)")
+    lr_check.add_argument("--no-lr-check", dest="lr_check", action="store_false", help="disable left-right checking")
+    parser.add_argument("--decimation", type=int, choices=(1, 2, 3, 4), help="decimation factor for RVC2 stereo (default: 1)")
+    parser.set_defaults(lr_check=True)
     parser.add_argument("--no-display", action="store_true")
-    parser.add_argument("--save-frames", action="store_true", help="save every synchronized input and disparity frame for deterministic replay")
-    parser.add_argument("--output", type=Path, help="save metrics and the latest live comparison image")
-    parser.add_argument("--worker-config", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
-    if args.worker_config:
-        return args
-    if args.frames < 1:
-        parser.error("--frames must be positive")
-    if args.warmup_frames < 0:
-        parser.error("--warmup-frames cannot be negative")
     if args.fps <= 0:
         parser.error("--fps must be positive")
+    if args.frames < 0:
+        parser.error("--frames cannot be negative")
     return args
 
 
-def receive_exact(connection, size):
-    result = bytearray(size)
-    view = memoryview(result)
-    received = 0
-    while received < size:
-        count = connection.recv_into(view[received:])
-        if count == 0:
-            raise EOFError("RVC2 bridge closed")
-        received += count
-    return result
+def select_device(platform, requested, label, pick_first=False):
+    devices = [info for info in dai.Device.getAllAvailableDevices() if info.platform == platform]
+    if requested:
+        devices = [info for info in devices if requested in (info.name, info.deviceId, info.getDeviceId())]
+    elif pick_first:
+        devices.sort(key=lambda info: (info.state == dai.XLinkDeviceState.X_LINK_GATE_SETUP, info.name or "", info.deviceId))
+    if not devices or (len(devices) != 1 and not pick_first):
+        available = ", ".join(f"{info.name} ({info.deviceId})" for info in devices) or "none"
+        raise RuntimeError(f"Expected exactly one {label} device, found: {available}")
+    return devices[0]
 
 
-def send_packet(connection, sequence, left_timestamp, right_timestamp, left, right, disparity):
-    arrays = {"left": left, "right": right, "disparity": disparity}
-    metadata = {
-        "sequence": sequence,
-        "left_timestamp_us": round(left_timestamp.total_seconds() * 1_000_000),
-        "right_timestamp_us": round(right_timestamp.total_seconds() * 1_000_000),
-        "arrays": {name: {"shape": value.shape, "dtype": str(value.dtype), "bytes": value.nbytes} for name, value in arrays.items()},
-    }
-    encoded = json.dumps(metadata).encode()
-    connection.sendall(LENGTH.pack(len(encoded)))
-    connection.sendall(encoded)
-    for value in arrays.values():
-        connection.sendall(value.tobytes())
-
-
-def receive_packet(connection):
-    metadata_size = LENGTH.unpack(receive_exact(connection, LENGTH.size))[0]
-    metadata = json.loads(receive_exact(connection, metadata_size))
-    arrays = {}
-    for name, description in metadata["arrays"].items():
-        payload = receive_exact(connection, description["bytes"])
-        arrays[name] = np.frombuffer(payload, dtype=np.dtype(description["dtype"])).reshape(description["shape"]).copy()
-    return metadata, arrays
-
-
-def worker_args(config):
-    return SimpleNamespace(
-        rvc2_device=config["rvc2_device"],
-        rvc2_firmware=Path(config["rvc2_firmware"]) if config.get("rvc2_firmware") else None,
-        width=config["width"],
-        height=config["height"],
-        fps=config["fps"],
-        frames=config["frames"],
-        disparities=config["disparities"],
-        no_lr=config["no_lr"],
-        raw=config["raw"],
-        decimation=config["decimation"],
-        timeout=config["timeout"],
-        socket=Path(config["socket"]),
-    )
-
-
-def receive_sequence(queue, sequence, deadline, label):
-    while time.monotonic() < deadline:
-        message = queue.tryGet()
-        if message is None:
-            time.sleep(0.002)
-        elif message.getSequenceNum() == sequence:
-            return message
-        elif message.getSequenceNum() > sequence:
-            raise RuntimeError(f"{label} skipped sequence {sequence} and returned {message.getSequenceNum()}")
-    raise TimeoutError(f"Timed out waiting for {label} sequence {sequence}")
-
-
-def run_worker(config_path):
-    config = json.loads(config_path.read_text())
-    args = worker_args(config)
-    infos = dai.Device.getAllAvailableDevices()
-    info = parity.select_device(infos, dai.XLinkPlatform.X_LINK_MYRIAD_X, args.rvc2_device, "RVC2")
-    if args.rvc2_firmware:
-        device = dai.Device(info, args.rvc2_firmware)
-    else:
-        device = dai.Device(info)
-    pipeline = dai.Pipeline(device)
+def create_rvc2_pipeline(device_info, fps, disparity_64, lr_check, decimation=None):
+    pipeline = dai.Pipeline(dai.Device(device_info))
     pipeline.setAutoCalibrationMode(dai.Pipeline.AutoCalibrationMode.OFF)
-    left_camera = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=args.fps)
-    right_camera = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=args.fps)
+
+    left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+    right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     stereo = pipeline.create(dai.node.StereoDepth)
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
-    parity.configure_common(stereo, args)
-    left_camera.requestOutput((args.width, args.height), fps=args.fps).link(stereo.left)
-    right_camera.requestOutput((args.width, args.height), fps=args.fps).link(stereo.right)
-    left_queue = stereo.syncedLeft.createOutputQueue(maxSize=8, blocking=True)
-    right_queue = stereo.syncedRight.createOutputQueue(maxSize=8, blocking=True)
-    disparity_queue = stereo.disparity.createOutputQueue(maxSize=8, blocking=True)
+    if disparity_64:
+        stereo.initialConfig.costMatching.disparityWidth = dai.StereoDepthConfig.CostMatching.DisparityWidth.DISPARITY_64
+    stereo.setLeftRightCheck(lr_check)
+    if decimation is not None:
+        stereo.initialConfig.postProcessing.decimationFilter.decimationFactor = decimation
+    stereo.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT)
+    # Crop invalid rectification borders which only RVC2 knows to mask in disparity.
+    stereo.setAlphaScaling(-5)
+    left.requestOutput(SIZE, fps=fps).link(stereo.left)
+    right.requestOutput(SIZE, fps=fps).link(stereo.right)
 
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-        connection.connect(str(args.socket))
-        with pipeline:
-            pipeline.start()
-            for _ in range(args.frames):
-                disparity_message = disparity_queue.get()
-                sequence = disparity_message.getSequenceNum()
-                deadline = time.monotonic() + args.timeout
-                left_message = receive_sequence(left_queue, sequence, deadline, "RVC2 synced left")
-                right_message = receive_sequence(right_queue, sequence, deadline, "RVC2 synced right")
-                send_packet(
-                    connection,
-                    sequence,
-                    left_message.getTimestamp(),
-                    right_message.getTimestamp(),
-                    left_message.getFrame(),
-                    right_message.getFrame(),
-                    disparity_message.getFrame(),
-                )
-    print(f"RVC2 worker: {parity.describe(info)}")
-    print(f"RVC2 host: commit={getattr(dai, '__commit__', 'unknown')} embedded_device={getattr(dai, '__device_version__', 'unknown')}")
-
-
-def launch_worker(args, info, directory):
-    socket_path = directory / "live.sock"
-    config_path = directory / "worker.json"
-    log_path = directory / "rvc2.log"
-    config = {
-        "rvc2_device": info.deviceId,
-        "rvc2_firmware": str(args.rvc2_firmware) if args.rvc2_firmware else None,
-        "width": args.width,
-        "height": args.height,
-        "fps": args.fps,
-        "frames": args.frames + args.warmup_frames,
-        "disparities": args.disparities,
-        "no_lr": args.no_lr,
-        "raw": args.raw,
-        "decimation": args.decimation,
-        "timeout": args.timeout,
-        "socket": str(socket_path),
-    }
-    config_path.write_text(json.dumps(config))
-    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(str(socket_path))
-    server.listen(1)
-    server.settimeout(args.timeout)
-    environment = os.environ.copy()
-    if args.rvc2_pythonpath:
-        environment["PYTHONPATH"] = args.rvc2_pythonpath
-    log = log_path.open("w")
-    process = subprocess.Popen(
-        [args.rvc2_python, str(Path(__file__).resolve()), "--worker-config", str(config_path)],
-        env=environment,
-        stdout=log,
-        stderr=subprocess.STDOUT,
-        text=True,
+    return (
+        pipeline,
+        stereo.rectifiedLeft.createOutputQueue(maxSize=4, blocking=True),
+        stereo.rectifiedRight.createOutputQueue(maxSize=4, blocking=True),
+        stereo.disparity.createOutputQueue(maxSize=4, blocking=True),
     )
-    return process, server, log, log_path
 
 
-def input_frame(image, sequence, socket_name, timestamp_us):
-    message = parity.frame(image, sequence, socket_name)
-    message.setTimestamp(datetime.timedelta(microseconds=timestamp_us))
-    return message
+def create_rvc4_pipeline(device_info, disparity_64, lr_check, decimation=None):
+    pipeline = dai.Pipeline(dai.Device(device_info))
+    stereo = pipeline.create(dai.node.StereoDepth)
+    backend = (
+        dai.StereoDepthProperties.StereoBackend.DSP_RVC2_DEFAULT_64
+        if disparity_64
+        else dai.StereoDepthProperties.StereoBackend.DSP_RVC2_DEFAULT
+    )
+    stereo.setStereoBackend(backend)
+    stereo.setLeftRightCheck(lr_check)
+    stereo.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT)
+    stereo.setInputResolution(*SIZE)
+    stereo.setRectification(False)  # The RVC2 frames are already rectified.
+    if decimation is not None:
+        stereo.initialConfig.postProcessing.decimationFilter.decimationFactor = decimation
+
+
+    return (
+        pipeline,
+        stereo.left.createInputQueue(maxSize=4, blocking=True),
+        stereo.right.createInputQueue(maxSize=4, blocking=True),
+        stereo.disparity.createOutputQueue(maxSize=4, blocking=True),
+    )
 
 
 def colorize(disparity, maximum):
     normalized = np.clip(disparity.astype(np.float32) * (255.0 / maximum), 0, 255).astype(np.uint8)
-    colored = cv2.applyColorMap(normalized, cv2.COLORMAP_TURBO)
-    colored[disparity == 0] = 0
-    return colored
+    result = cv2.applyColorMap(normalized, cv2.COLORMAP_TURBO)
+    result[disparity == 0] = 0
+    return result
 
 
-def make_visualization(left, rvc2, rvc4, difference, metrics, bridge_fps, maximum):
-    output_size = (rvc2.shape[1], rvc2.shape[0])
-    left_view = cv2.cvtColor(cv2.resize(left, output_size, interpolation=cv2.INTER_AREA), cv2.COLOR_GRAY2BGR)
-    rvc2_view = colorize(rvc2, maximum)
-    rvc4_view = colorize(rvc4, maximum)
-    absolute = np.abs(difference)
-    difference_view = cv2.applyColorMap(np.clip(absolute, 0, 255).astype(np.uint8), cv2.COLORMAP_HOT)
-    difference_view[absolute == 0] = 0
-    views = ((left_view, "RVC2 live left"), (rvc2_view, "RVC2 DEFAULT"), (rvc4_view, "RVC4 DEFAULT"), (difference_view, "absolute difference"))
-    labeled = []
-    for view, title in views:
-        current = view.copy()
-        cv2.putText(current, title, (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
-        labeled.append(current)
-    mosaic = np.vstack((np.hstack(labeled[:2]), np.hstack(labeled[2:])))
-    text = f"exact {metrics['exact_percent']:.8f}% | mismatches {metrics['mismatches']} | bridge {bridge_fps:.2f} FPS"
-    cv2.putText(mosaic, text, (12, mosaic.shape[0] - 16), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
-    return mosaic
+def show_comparison(rvc2, rvc4, difference, exact_percent, disparity_64, lr_check):
+    maximum = max(int(rvc2.max()), int(rvc4.max()), 1)
+    absolute_difference = np.abs(difference)
+    profile = f"{'64' if disparity_64 else '96'} disparities, LR {'on' if lr_check else 'off'}"
+    panels = [
+        (colorize(rvc2, maximum), f"RVC2 DEFAULT ({profile})"),
+        (colorize(rvc4, maximum), f"RVC4 DSP_RVC2_DEFAULT ({profile})"),
+        (colorize(absolute_difference, max(int(absolute_difference.max()), 1)), "absolute difference"),
+    ]
+    for panel, title in panels:
+        cv2.putText(panel, title, (12, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+    comparison = np.hstack([cv2.resize(panel, (1280, 800), interpolation=cv2.INTER_AREA) for panel, _ in panels])
+    cv2.putText(
+        comparison,
+        f"exact match: {exact_percent:.8f}%",
+        (12, comparison.shape[0] - 15),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.7,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
+    cv2.imshow("RVC2 / RVC4 stereo parity", comparison)
 
 
 def main():
     args = parse_args()
-    if args.worker_config:
-        run_worker(args.worker_config)
-        return
+    rvc2_info = select_device(dai.XLinkPlatform.X_LINK_MYRIAD_X, args.rvc2_device, "RVC2")
+    rvc4_info = select_device(dai.XLinkPlatform.X_LINK_RVC4, args.rvc4_device, "RVC4", pick_first=True)
+    print(f"RVC2: {rvc2_info.name} ({rvc2_info.deviceId})")
+    print(f"RVC4: {rvc4_info.name} ({rvc4_info.deviceId})")
 
-    infos = dai.Device.getAllAvailableDevices()
-    rvc2_info = parity.select_device(infos, dai.XLinkPlatform.X_LINK_MYRIAD_X, args.rvc2_device, "RVC2")
-    rvc4_info = parity.select_device(infos, dai.XLinkPlatform.X_LINK_RVC4, args.rvc4_device, "RVC4")
-    print(f"RVC2: {parity.describe(rvc2_info)}")
-    print(f"RVC4: {parity.describe(rvc4_info)}")
-    print(f"RVC4 host: commit={getattr(dai, '__commit__', 'unknown')} embedded_device={getattr(dai, '__device_rvc4_version__', 'unknown')}")
-    if args.output:
-        args.output.mkdir(parents=True, exist_ok=True)
-        if args.save_frames:
-            (args.output / "frames").mkdir(exist_ok=True)
+    rvc2_pipeline, rvc2_left, rvc2_right, rvc2_disparity = create_rvc2_pipeline(rvc2_info, args.fps, args.disparity_64, args.lr_check, args.decimation)
+    rvc4_pipeline, rvc4_left, rvc4_right, rvc4_disparity = create_rvc4_pipeline(rvc4_info, args.disparity_64, args.lr_check, args.decimation)
+    with rvc2_pipeline, rvc4_pipeline:
+        rvc4_pipeline.start()
+        rvc2_pipeline.start()
 
-    results = []
-    total_pixels = 0
-    total_mismatches = 0
-    worker_log_text = ""
-    worker_returncode = None
-    latest_visualization = None
-    first_source_timestamp_us = None
-    with tempfile.TemporaryDirectory(prefix="rvc2-rvc4-live-") as temporary:
-        worker, server, worker_log, worker_log_path = launch_worker(args, rvc2_info, Path(temporary))
-        stopped_early = False
-        try:
-            endpoint = parity.build_endpoint(rvc4_info, dai.Platform.RVC4, args, passthrough=args.verify_rvc4_passthrough)
-            with endpoint.pipeline:
-                endpoint.pipeline.start()
-                connection, _ = server.accept()
-                bridge_started = time.monotonic()
-                with connection:
-                    for index in range(args.warmup_frames + args.frames):
-                        metadata, arrays = receive_packet(connection)
-                        source_sequence = metadata["sequence"]
-                        if first_source_timestamp_us is None:
-                            first_source_timestamp_us = metadata["left_timestamp_us"]
-                        left = arrays["left"]
-                        right = arrays["right"]
-                        rvc2_disparity = arrays["disparity"]
-                        endpoint.left.send(input_frame(left, source_sequence, dai.CameraBoardSocket.CAM_B, metadata["left_timestamp_us"]))
-                        endpoint.right.send(input_frame(right, source_sequence, dai.CameraBoardSocket.CAM_C, metadata["right_timestamp_us"]))
-                        deadline = time.monotonic() + args.timeout
-                        rvc4_disparity = parity.receive(endpoint.disparity, source_sequence, deadline, "RVC4 disparity")
-                        if args.verify_rvc4_passthrough:
-                            rvc4_left = parity.receive(endpoint.rectified_left, source_sequence, deadline, "RVC4 left passthrough")
-                            rvc4_right = parity.receive(endpoint.rectified_right, source_sequence, deadline, "RVC4 right passthrough")
-                            if not np.array_equal(left, rvc4_left) or not np.array_equal(right, rvc4_right):
-                                raise RuntimeError(f"RVC4 changed live input sequence {source_sequence}")
-                        metrics, difference = parity.compare(source_sequence, f"live_{source_sequence}", rvc2_disparity, rvc4_disparity)
-                        now = time.monotonic()
-                        bridge_fps = (index + 1) / max(now - bridge_started, 1e-9)
-                        metrics["bridge_fps"] = bridge_fps
-                        metrics["warmup"] = index < args.warmup_frames
-                        if not metrics["warmup"]:
-                            results.append(metrics)
-                            total_pixels += rvc2_disparity.size
-                            total_mismatches += metrics["mismatches"]
-                        if args.output and args.save_frames:
-                            prefix = args.output / "frames" / f"{index:03d}_{source_sequence}"
-                            np.save(f"{prefix}_left.npy", left)
-                            np.save(f"{prefix}_right.npy", right)
-                            np.save(f"{prefix}_rvc2.npy", rvc2_disparity)
-                            np.save(f"{prefix}_rvc4.npy", rvc4_disparity)
-                        print(json.dumps(metrics, sort_keys=True))
-                        make_view = not args.no_display or (args.output and index + 1 == args.warmup_frames + args.frames)
-                        if make_view:
-                            maximum = 7600 if args.disparities == 96 else 8064
-                            visualization = make_visualization(left, rvc2_disparity, rvc4_disparity, difference, metrics, bridge_fps, maximum)
-                            if not metrics["warmup"]:
-                                latest_visualization = visualization
-                            if not args.no_display:
-                                cv2.imshow("Live RVC2 to RVC4 parity", visualization)
-                                if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
-                                    stopped_early = True
-                                    break
-            if stopped_early:
-                worker.terminate()
-            worker.wait(timeout=args.timeout)
-            worker_returncode = worker.returncode
-        except BaseException:
-            if worker.poll() is None:
-                worker.terminate()
-                worker.wait()
-            raise
-        finally:
-            server.close()
-            worker_log.close()
-            if worker_log_path.exists():
-                worker_log_text = worker_log_path.read_text()
-            cv2.destroyAllWindows()
-    print(worker_log_text, end="")
-    if worker_returncode and not stopped_early:
-        raise RuntimeError(f"RVC2 worker exited with status {worker_returncode}")
+        frame_count = 0
+        total_pixels = 0
+        total_mismatches = 0
+        while rvc2_pipeline.isRunning() and rvc4_pipeline.isRunning():
+            rvc2_disparity_message = rvc2_disparity.get()
+            left = rvc2_left.get()
+            right = rvc2_right.get()
+            sequence = rvc2_disparity_message.getSequenceNum()
+            if sequence != left.getSequenceNum() or sequence != right.getSequenceNum():
+                raise RuntimeError("RVC2 rectified and disparity streams are out of sync")
+
+            # Forward the exact frames used by RVC2 stereo into the RVC4 pipeline.
+            rvc4_left.send(left)
+            rvc4_right.send(right)
+            rvc4_disparity_message = rvc4_disparity.get()
+            if rvc4_disparity_message.getSequenceNum() != sequence:
+                raise RuntimeError("RVC4 disparity stream is out of sync")
+
+            rvc2_frame = rvc2_disparity_message.getFrame()
+            rvc4_frame = rvc4_disparity_message.getFrame()
+            difference = rvc4_frame.astype(np.int32) - rvc2_frame.astype(np.int32)
+            mismatches = int(np.count_nonzero(difference))
+            total_mismatches += mismatches
+            total_pixels += difference.size
+            frame_count += 1
+            exact_percent = (difference.size - mismatches) * 100 / difference.size
+            print(f"sequence {sequence}: {exact_percent:.8f}% exact, {mismatches} mismatches")
+
+            if not args.no_display:
+                show_comparison(rvc2_frame, rvc4_frame, difference, exact_percent, args.disparity_64, args.lr_check)
+                if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
+                    break
+            if args.frames and frame_count >= args.frames:
+                break
+
+    cv2.destroyAllWindows()
     if total_pixels == 0:
-        raise RuntimeError("No post-warmup frames were compared")
-
+        raise RuntimeError("No frames were compared")
     exact_percent = (total_pixels - total_mismatches) * 100 / total_pixels
-    source_duration = (metadata["left_timestamp_us"] - first_source_timestamp_us) / 1_000_000
-    summary = {
-        "frames": len(results),
-        "pixels": total_pixels,
-        "mismatches": total_mismatches,
-        "exact_percent": exact_percent,
-        "source_fps": (args.warmup_frames + len(results) - 1) / source_duration if source_duration > 0 else None,
-        "bridge_fps": metrics["bridge_fps"],
-        "rvc4_passthrough_verified": args.verify_rvc4_passthrough,
-        "passed": total_mismatches <= args.max_mismatches,
-    }
-    print(json.dumps({"summary": summary}, sort_keys=True))
-    if args.output:
-        (args.output / "metrics.json").write_text(json.dumps({"frames": results, "summary": summary}, indent=2))
-        if latest_visualization is not None:
-            cv2.imwrite(str(args.output / "latest.png"), latest_visualization)
-    if not summary["passed"]:
-        raise RuntimeError(f"Live RVC2/RVC4 parity failed: {total_mismatches} mismatches exceed {args.max_mismatches}")
+    print(f"Compared {frame_count} frames: {exact_percent:.8f}% exact, {total_mismatches} mismatches")
 
 
 if __name__ == "__main__":
