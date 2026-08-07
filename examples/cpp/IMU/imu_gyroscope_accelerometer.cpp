@@ -53,11 +53,11 @@ int main() {
         if(imuData == nullptr || imuData->packets.empty()) continue;
 
         const auto now = std::chrono::steady_clock::now();
-        
+
         const auto& imuPacket = imuData->packets.back();
         auto acceleroValues = imuPacket.acceleroMeter;
         auto gyroValues = imuPacket.gyroscope;
-        
+
         auto acceleroTs = acceleroValues.getTimestamp();
         auto gyroTs = gyroValues.getTimestamp();
         if(now - lastPrintTime < std::chrono::seconds(1)) continue;

@@ -1,10 +1,9 @@
+#include <argparse/argparse.hpp>
 #include <chrono>
 #include <cmath>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>
-
-#include <argparse/argparse.hpp>
 
 #include "depthai/depthai.hpp"
 
@@ -32,8 +31,7 @@ cv::Mat colorizeDepth(const cv::Mat& frame, float minDepth, float maxDepth) {
         cv::max(logDepth, logMinDepth, logDepth);
 
         cv::Mat colored;
-        logDepth.convertTo(
-            colored, CV_8U, 255.0 / (logMaxDepth - logMinDepth), -logMinDepth * 255.0 / (logMaxDepth - logMinDepth));
+        logDepth.convertTo(colored, CV_8U, 255.0 / (logMaxDepth - logMinDepth), -logMinDepth * 255.0 / (logMaxDepth - logMinDepth));
         cv::applyColorMap(colored, colored, cv::COLORMAP_JET);
         colored.setTo(cv::Scalar::all(0), invalidMask);
         return colored;
