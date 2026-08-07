@@ -1,4 +1,5 @@
 #include <catch2/catch_all.hpp>
+#include <limits>
 
 // Include depthai library
 #include <depthai/depthai.hpp>
@@ -46,4 +47,35 @@ TEST_CASE("Roundtrip") {
         REQUIRE(des.outHeight.value() == (int)0x55555555);
         REQUIRE(des.numFramesPool == 42);
     }
+}
+
+TEST_CASE("AssetManager uses the current size of memory-backed assets") {
+    dai::AssetManager assetManager;
+    auto asset = assetManager.set("asset", std::vector<std::uint8_t>{1, 2});
+    asset->data.push_back(3);
+
+    REQUIRE(asset->getSize() == 3);
+    REQUIRE(assetManager.getSerializedSize() == 3);
+}
+
+TEST_CASE("AssetManager rejects storage beyond 4 GiB") {
+    dai::Asset asset("oversized");
+    asset.path = "placeholder";
+    asset.size = static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()) + 1;
+
+    dai::AssetManager assetManager;
+    assetManager.set(std::move(asset));
+
+    REQUIRE_THROWS_WITH(assetManager.getSerializedSize(), "Asset storage cannot exceed 4 GiB");
+}
+
+TEST_CASE("AssetManager preserves the size of path-backed assets when renaming them") {
+    dai::Asset asset("source");
+    asset.path = "placeholder";
+    asset.size = 42;
+
+    dai::AssetManager assetManager;
+    auto renamedAsset = assetManager.set("renamed", std::move(asset));
+
+    REQUIRE(renamedAsset->getSize() == 42);
 }

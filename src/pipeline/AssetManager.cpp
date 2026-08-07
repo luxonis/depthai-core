@@ -8,8 +8,31 @@
 // std
 #include <array>
 #include <fstream>
+#include <limits>
 
 namespace dai {
+
+namespace {
+
+constexpr std::size_t MAX_ASSET_STORAGE_SIZE = std::numeric_limits<std::uint32_t>::max();
+
+std::size_t getSerializedEndOffset(std::size_t offset, std::uint32_t alignment, std::size_t assetSize) {
+    if(offset > MAX_ASSET_STORAGE_SIZE || assetSize > MAX_ASSET_STORAGE_SIZE) {
+        throw std::runtime_error("Asset storage cannot exceed 4 GiB");
+    }
+
+    std::size_t padding = 0;
+    if(alignment > 1 && offset % alignment != 0) {
+        padding = alignment - (offset % alignment);
+    }
+
+    if(padding > MAX_ASSET_STORAGE_SIZE - offset || assetSize > MAX_ASSET_STORAGE_SIZE - offset - padding) {
+        throw std::runtime_error("Asset storage cannot exceed 4 GiB");
+    }
+    return offset + padding + assetSize;
+}
+
+}  // namespace
 
 std::string Asset::getRelativeUri() {
     return fmt::format("{}:{}", "asset", key);
@@ -27,7 +50,7 @@ std::vector<std::uint8_t>& Asset::getData() {
 }
 
 std::size_t Asset::getSize() const {
-    return size != 0 ? size : data.size();
+    return path.empty() ? data.size() : size;
 }
 
 AssetManager::AssetManager() {}
@@ -71,10 +94,9 @@ std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asset) {
     // Rename the asset with supplied key and store
     Asset a(key);
-    const auto assetSize = asset.size != 0 ? asset.size : asset.data.size();
     a.data = std::move(asset.data);
     a.path = std::move(asset.path);
-    a.size = assetSize;
+    a.size = a.path.empty() ? 0 : asset.size;
     a.alignment = asset.alignment;
     return set(std::move(a));
 }
@@ -101,8 +123,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.data = std::move(data);
-    binaryAsset.size = binaryAsset.data.size();
+    binaryAsset.data = data;
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -112,7 +133,6 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vecto
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
     binaryAsset.data = std::move(data);
-    binaryAsset.size = binaryAsset.data.size();
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -176,11 +196,15 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
     for(auto& kv : assetMap) {
         auto& a = *kv.second;
 
-        // calculate additional bytes needed to offset to alignment
-        int toAdd = 0;
+        const auto assetSize = a.getSize();
+
+        // Calculate additional bytes needed to offset to alignment.
+        std::size_t toAdd = 0;
         if(a.alignment > 1 && storage.size() % a.alignment != 0) {
             toAdd = a.alignment - (storage.size() % a.alignment);
         }
+
+        getSerializedEndOffset(storage.size(), a.alignment, assetSize);
 
         // calculate offset
         std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;
@@ -209,17 +233,14 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         }
 
         // Add to map the currently added asset
-        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.getSize()), a.alignment);
+        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(assetSize), a.alignment);
     }
 }
 
 std::size_t AssetManager::getSerializedSize(std::size_t offset) const {
     for(const auto& kv : assetMap) {
         const auto& a = *kv.second;
-        if(a.alignment > 1 && offset % a.alignment != 0) {
-            offset += a.alignment - (offset % a.alignment);
-        }
-        offset += a.getSize();
+        offset = getSerializedEndOffset(offset, a.alignment, a.getSize());
     }
     return offset;
 }

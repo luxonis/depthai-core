@@ -16,7 +16,7 @@ struct Asset {
     Asset() = default;
     explicit Asset(std::string k) : key(std::move(k)) {}
     const std::string key;
-    mutable std::vector<std::uint8_t> data;
+    std::vector<std::uint8_t> data;
     std::filesystem::path path;
     std::size_t size = 0;
     std::uint32_t alignment = 1;
