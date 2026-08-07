@@ -118,7 +118,7 @@ def show_comparison(rvc2, rvc4, difference, exact_percent, disparity_64, lr_chec
     ]
     for panel, title in panels:
         cv2.putText(panel, title, (12, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
-    comparison = np.hstack([cv2.resize(panel, (1280, 800), interpolation=cv2.INTER_AREA) for panel, _ in panels])
+    comparison = np.hstack([panel for panel, _ in panels])
     cv2.putText(
         comparison,
         f"exact match: {exact_percent:.8f}%",
