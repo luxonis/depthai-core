@@ -27,6 +27,8 @@ namespace PPTextUtils {
 
 namespace {
 
+constexpr double PI = 3.14159265358979323846;
+
 /// Formats a tensor shape as a Python tuple, e.g. "(1, 3, 320, 576)" or "(320,)".
 std::string formatShape(const std::vector<std::size_t>& dims) {
     std::string result = "(";
@@ -329,7 +331,7 @@ std::array<float, 5> cornersToRotatedBbox(const std::array<cv::Point2f, 4>& corn
     const float yDist = corners[1].y - corners[0].y;
 
     // np.degrees(np.arctan2(y_dist, x_dist)) in float32
-    const float angle = std::atan2(yDist, xDist) * static_cast<float>(180.0 / M_PI);
+    const float angle = std::atan2(yDist, xDist) * static_cast<float>(180.0 / PI);
 
     // np.mean(corners, axis=0): sequential float32 sums over the 4 corners
     float xSum = corners[0].x + corners[1].x;
