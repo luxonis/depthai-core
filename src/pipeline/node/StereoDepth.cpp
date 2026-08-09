@@ -196,7 +196,11 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setRvc2ProfilePreset(mode);
             break;
         case Platform::RVC4:
-            setRvc4ProfilePreset(mode);
+            if(properties.stereoBackend == Properties::StereoBackend::DSP_RVC2_DEFAULT) {
+                setRvc2ProfilePreset(mode);
+            } else {
+                setRvc4ProfilePreset(mode);
+            }
             break;
         case Platform::RVC3:
         default:
@@ -230,6 +234,11 @@ void StereoDepth::setStereoBackend(Properties::StereoBackend backend) {
 }
 
 void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
+    // Presets are complete configurations. Reset first so switching from a
+    // richer profile (for example DEFAULT) to DENSITY cannot retain filters or
+    // penalties that the requested RVC2 preset does not enable. Recursive
+    // profile composition below intentionally starts from the same clean base.
+    *initialConfig = StereoDepthConfig{};
     switch(mode) {
         case PresetMode::ACCURACY:
         case PresetMode::FAST_ACCURACY: {

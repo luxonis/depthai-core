@@ -336,6 +336,9 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * StereoBackend::DSP_RVC2_DEFAULT selects the complete RVC2 DEFAULT profile:
      * D96, mean Census, Q3 subpixel interpolation, left-right checking, 2x
      * decimation, 7x7 median, speckle, spatial, and temporal filtering.
+     * After selecting DSP_RVC2_DEFAULT, setDefaultProfilePreset() selects any
+     * RVC2 preset (including DENSITY, ACCURACY, FACE, HIGH_DETAIL, ROBOTICS,
+     * and the FAST aliases) instead of the native RVC4 preset with that name.
      * StereoBackend::DSP_RVC2_DEFAULT_64 selects the same complete profile with
      * D64; all other configuration settings are identical.
      */
