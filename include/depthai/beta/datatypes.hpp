@@ -2,8 +2,8 @@
 
 // IWYU pragma: begin_exports
 
-#include "datatype/Classifications.hpp"
 #include "datatype/ClassificationSequenceParserConfig.hpp"
+#include "datatype/Classifications.hpp"
 #include "datatype/Clusters.hpp"
 #include "datatype/FastSAMParserConfig.hpp"
 #include "datatype/HRNetParserConfig.hpp"
