@@ -76,6 +76,5 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
                  return *msg.transformation;
              })
         .def("setTransformation", [](Tracklets& msg, const ImgTransformation& transformation) { msg.transformation = transformation; })
-        .def("transformTo", &Tracklets::transformTo, py::arg("target"), DOC(dai, Tracklets, transformTo))
-        ;
+        .def("transformTo", &Tracklets::transformTo, py::arg("target"), DOC(dai, Tracklets, transformTo));
 }

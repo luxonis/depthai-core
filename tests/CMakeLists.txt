@@ -247,6 +247,13 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         LOCATION test_recording
     )
 
+        private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/neural_depth_recording.tar"
+        SHA1 "fa2248c56fc16f3ced3d4a4d39b3ce32a889a494"
+        FILE "neural_depth_recording.tar"
+        LOCATION neural_depth_recording
+    )
+
     private_data(
         URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/holistic_recording_transformations.tar"
         SHA1 "be6ef1f24a26d8e604283a6dac59ede035425feb"
@@ -265,6 +272,13 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         SHA1 "3b48c23684ef22a6a0cebd16594afa69ceaed2d5"
         FILE "img_transformations_test_data.tar.xz"
         LOCATION img_transformations_test_data
+    )
+
+        private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/depthai-beta-parser-test-data.tar.xz"
+        SHA1 "a49bd64e4d2066f2a3d70b93e5b5d1c48ac9ceef"
+        FILE "depthai-beta-parser-test-data.tar.xz"
+        LOCATION beta_parser_test_nndata
     )
 endif()
 
@@ -467,6 +481,10 @@ dai_set_test_labels(message_queue_test onhost ci)
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 dai_set_test_labels(stream_message_parser_test onhost ci)
 
+# Datatype hierarchy completeness
+dai_add_test(datatype_enum_test src/onhost_tests/pipeline/datatype/datatype_enum_test.cpp)
+dai_set_test_labels(datatype_enum_test onhost ci)
+
 # Bootloader version tests
 dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
 dai_set_test_labels(bootloader_version_test onhost ci)
@@ -489,6 +507,10 @@ dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
 dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
+
+# Telemetry fork safety test
+dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
+dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
 
 # Circular buffer test
 dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
@@ -682,6 +704,20 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
+
+if(DEPTHAI_BUILD_BETA)
+    dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
+    dai_set_test_labels(beta_parser_config_test onhost ci)
+
+    dai_add_test(beta_parser_properties_test src/onhost_tests/beta_parser_properties_test.cpp)
+    dai_set_test_labels(beta_parser_properties_test onhost ci)
+
+    dai_add_test(beta_parser_test src/onhost_tests/beta_parser_test.cpp)
+    dai_set_test_labels(beta_parser_test onhost ci)
+    target_compile_definitions(beta_parser_test PRIVATE
+        BETA_PARSER_TEST_DATA_PATH="${beta_parser_test_nndata}"
+    )
+endif()
 
 # GPU availability test
 dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)
@@ -885,7 +921,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_depth_node_test src/ondevice_tests/neural_depth_node_test.cpp)
     dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci noreplayci)
     target_compile_definitions(neural_depth_node_test PRIVATE
-        NEURAL_REPLAY_PATH="${test_recording}"
+        NEURAL_REPLAY_PATH="${neural_depth_recording}"
         NEURAL_CALIBRATION_PATH="${test_calib}"
     )
     # TODO(Morato) - shouldn't be needed, but AUTOCALIBRATION seems to impact the FPS a bit at the beginning
