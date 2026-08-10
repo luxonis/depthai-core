@@ -94,7 +94,7 @@ TEST_CASE("RVC4 NeuralNetwork model loading paths", "[rvc4]") {
         REQUIRE(pipeline.isRunning());
         pipeline.stop();
         pipeline.wait();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     };
 
     startPipeline("setModelPath(.dlc)", [&directModelPath](const auto& neuralNetwork) { neuralNetwork->setModelPath(directModelPath); });
