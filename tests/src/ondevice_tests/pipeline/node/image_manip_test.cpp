@@ -594,13 +594,8 @@ TEST_CASE("ImageManip crop and four point transform with stretch") {
     p.start();
 
     auto cfg = std::make_shared<dai::ImageManipConfig>();
-    cfg->addCropRotatedRect(
-        dai::RotatedRect(dai::Point2f(0.45f, 0.04f, true), dai::Size2f(0.12f, 0.12f, true), 0.0f),
-        true);
-    cfg->addTransformFourPoints({dai::Point2f(0.44f, 0.83f),
-                                 dai::Point2f(0.15f, 0.36f),
-                                 dai::Point2f(0.54f, 0.17f),
-                                 dai::Point2f(0.82f, 0.42f)},
+    cfg->addCropRotatedRect(dai::RotatedRect(dai::Point2f(0.45f, 0.04f, true), dai::Size2f(0.12f, 0.12f, true), 0.0f), true);
+    cfg->addTransformFourPoints({dai::Point2f(0.44f, 0.83f), dai::Point2f(0.15f, 0.36f), dai::Point2f(0.54f, 0.17f), dai::Point2f(0.82f, 0.42f)},
                                 {dai::Point2f(0.0f, 0.0f), dai::Point2f(1.0f, 0.0f), dai::Point2f(1.0f, 1.0f), dai::Point2f(0.0f, 1.0f)},
                                 true);
     cfg->setOutputSize(outputWidth, outputHeight, dai::ImageManipConfig::ResizeMode::STRETCH);

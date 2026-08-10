@@ -46,6 +46,5 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
     aprilTags.def(py::init<>())
         .def("__repr__", &AprilTags::str)
         .def_readwrite("aprilTags", &AprilTags::aprilTags)
-        .def("transformTo", &AprilTags::transformTo, py::arg("target"), DOC(dai, AprilTags, transformTo))
-        ;
+        .def("transformTo", &AprilTags::transformTo, py::arg("target"), DOC(dai, AprilTags, transformTo));
 }
