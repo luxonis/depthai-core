@@ -96,26 +96,29 @@ int main() {
 
         dai::Pipeline pipeline{device};
 
-        auto colorSockets = device->getConnectedCameras(dai::CameraSensorType::COLOR);
-        auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
         auto cameraNode = pipeline.create<dai::node::Camera>();
-        cameraNode->build(colorSocket);
+        cameraNode->build(dai::CameraBoardSocket::CAM_A);
 
         auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>()->build(cameraNode, modelName, cap);
         detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
 
-        auto depth = pipeline.create<dai::node::Depth>();
-        if(device->getPlatform() == dai::Platform::RVC2) {
-            // RVC2 has a limited number of shaves, use the FAST_DENSITY stereo preset
-            depth->build(dai::node::Depth::Algorithm::STEREO, dai::node::StereoDepth::PresetMode::FAST_DENSITY, fps);
-        } else {
-            depth->build(dai::node::Depth::Algorithm::AUTO, fps);
-        }
-        depth->setAlignTo(detectionNetwork->passthrough);
+        auto monoLeft = pipeline.create<dai::node::Camera>();
+        monoLeft->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
+        auto monoRight = pipeline.create<dai::node::Camera>();
+        monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
+
+        auto stereo = pipeline.create<dai::node::StereoDepth>();
+
+        monoLeft->requestFullResolutionOutput()->link(stereo->left);
+        monoRight->requestFullResolutionOutput()->link(stereo->right);
+
+        auto align = pipeline.create<dai::node::ImageAlign>();
+        stereo->depth.link(align->input);
+        detectionNetwork->passthrough.link(align->inputAlignTo);
 
         auto spatialCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
         spatialCalculator->initialConfig->setUseSegmentation(true);
-        depth->depth().link(spatialCalculator->inputDepth);
+        align->outputAligned.link(spatialCalculator->inputDepth);
         detectionNetwork->out.link(spatialCalculator->inputDetections);
 
         auto camQueue = detectionNetwork->passthrough.createOutputQueue();

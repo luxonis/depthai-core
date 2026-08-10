@@ -4,9 +4,8 @@ import cv2
 import numpy as np
 import depthai as dai
 
-SOURCE_WINDOW = "Source window (left)"
-DEPTH_WINDOW = "Depth window (remapped)"
-RGB_WINDOW = "RGB window (remapped)"
+SOURCE_WINDOW = "Source window CAM_B"
+RGB_WINDOW = "RGB window CAM_A"
 
 selectedPoint = None
 
@@ -16,9 +15,8 @@ def onLeftClick(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         selectedPoint = (x, y)
 
-
 def toColorFrame(frame):
-    if len(frame.shape) == 3 and frame.shape[2] == 3:
+    if(len(frame.shape) == 3 and frame.shape[2] == 3):
         return frame
     return cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
@@ -35,7 +33,7 @@ def drawPoint(frame, point, label, color):
 
 def sampleDepth(point, depthFrame, patchRadius=2):
     if point is None:
-        return None, "Left click a point on the source image"
+        return None, "Left click to select a point"
 
     x, y = point
     depthData = depthFrame.getFrame()
@@ -58,71 +56,71 @@ def sampleDepth(point, depthFrame, patchRadius=2):
 if __name__ == "__main__":
     pipeline = dai.Pipeline()
 
-    colorSockets = pipeline.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
-    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
-    rgb = pipeline.create(dai.node.Camera).build(colorSocket)
-
-    stereoPair = pipeline.getDefaultDevice().getStereoPairs()[0]
-    left = pipeline.create(dai.node.Camera).build(stereoPair.left)
-    pipeline.create(dai.node.Camera).build(stereoPair.right)
-    leftOut = left.requestFullResolutionOutput()
+    rgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    monoLeftOut = monoLeft.requestFullResolutionOutput()
+    monoRightOut = monoRight.requestFullResolutionOutput()
+    stereo = pipeline.create(dai.node.StereoDepth)
+    monoLeftOut.link(stereo.left)
+    monoRightOut.link(stereo.right)
+    stereo.initialConfig.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT)
 
     rgbOut = rgb.requestOutput((720, 480), enableUndistortion=False, resizeMode=dai.ImgResizeMode.CROP)
-    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.NEURAL)
-    # depth.setConfig(dai.node.StereoDepth.PresetMode.DENSITY)
-
     rgbQueue = rgbOut.createOutputQueue()
-    leftQueue = leftOut.createOutputQueue()
-    depthQueue = depth.depth.createOutputQueue()
+    depthQueue = stereo.depth.createOutputQueue()
+    rectifiedLeftQueue = stereo.rectifiedLeft.createOutputQueue()
 
     cv2.namedWindow(SOURCE_WINDOW)
-    cv2.namedWindow(DEPTH_WINDOW)
     cv2.namedWindow(RGB_WINDOW)
     cv2.setMouseCallback(SOURCE_WINDOW, onLeftClick)
 
     pipeline.start()
     while pipeline.isRunning():
         rgbFrame = rgbQueue.get()
-        leftFrame = leftQueue.get()
         depthFrame = depthQueue.get()
+        rectifiedLeft = rectifiedLeftQueue.get()
 
         assert isinstance(rgbFrame, dai.ImgFrame)
-        assert isinstance(leftFrame, dai.ImgFrame)
         assert isinstance(depthFrame, dai.ImgFrame)
+        assert isinstance(rectifiedLeft, dai.ImgFrame)
         assert rgbFrame.validateTransformations()
-        assert leftFrame.validateTransformations()
         assert depthFrame.validateTransformations()
+        assert rectifiedLeft.validateTransformations()
 
-        sourceTransformation = leftFrame.getTransformation()
-        depthTransformation = depthFrame.getTransformation()
+        sourceTransformation = rectifiedLeft.getTransformation()
         rgbTransformation = rgbFrame.getTransformation()
+        depthTransformation = depthFrame.getTransformation()
 
-        leftDisplay = toColorFrame(leftFrame.getCvFrame())
+        leftFrame = toColorFrame(rectifiedLeft.getCvFrame())
         rgbDisplay = rgbFrame.getCvFrame()
-        depthColor = cv2.applyColorMap(cv2.convertScaleAbs(depthFrame.getFrame(), alpha=0.05), cv2.COLORMAP_JET)
-        depthMm, depthStatus = sampleDepth(selectedPoint, depthFrame)
+        depthMm, sourceStatus = sampleDepth(selectedPoint, depthFrame)
 
         remappedRgbPoint, remappedDepthPoint = None, None
-        sourceStatus, rgbStatus, depthStatus = depthStatus, "", ""
+        rgbStatus, depthStatus = "", ""
 
-        sourcePoint = None
+        originalPoint = None
         if selectedPoint is not None and depthMm is not None:
             sourcePoint = dai.Point2f(float(selectedPoint[0]), float(selectedPoint[1]))
+            originalPoint = sourcePoint
             try:
                 remappedRgbPoint = sourceTransformation.projectPointTo(rgbTransformation, sourcePoint, depthMm)
                 remappedDepthPoint = sourceTransformation.projectPointTo(depthTransformation, sourcePoint, depthMm)
-                sourceStatus = f"Source=({sourcePoint.x:.1f}, {sourcePoint.y:.1f}) z={depthMm:.0f}mm"
                 rgbStatus = f"RGB=({remappedRgbPoint.x:.1f}, {remappedRgbPoint.y:.1f}) z={depthMm:.0f}mm"
+                sourceStatus = f"Source=({sourcePoint.x:.1f}, {sourcePoint.y:.1f}) z={depthMm:.0f}mm"
                 depthStatus = f"Depth=({remappedDepthPoint.x:.1f}, {remappedDepthPoint.y:.1f}) z={depthMm:.0f}mm"
+
             except RuntimeError as exc:
+                rightStatus = f"R projection failed: {exc}"
                 rgbStatus = f"RGB projection failed: {exc}"
 
-        drawPoint(leftDisplay, sourcePoint, sourceStatus, (0, 255, 0))
-        drawPoint(depthColor, remappedDepthPoint, depthStatus, (0, 0, 255))
+        depthColor = cv2.applyColorMap(cv2.convertScaleAbs(depthFrame.getFrame(), alpha=0.05), cv2.COLORMAP_JET)
+        drawPoint(leftFrame, originalPoint, f"{sourceStatus}", (0, 255, 0))
         drawPoint(rgbDisplay, remappedRgbPoint, f"{rgbStatus}", (255, 255, 0))
+        drawPoint(depthColor, remappedDepthPoint, f"{depthStatus}", (0, 0, 255))
 
-        cv2.imshow(SOURCE_WINDOW, leftDisplay)
-        cv2.imshow(DEPTH_WINDOW, depthColor)
+        cv2.imshow("Depth", depthColor)
+        cv2.imshow(SOURCE_WINDOW, leftFrame)
         cv2.imshow(RGB_WINDOW, rgbDisplay)
         key = cv2.waitKey(1)
         if key == ord('q'):
