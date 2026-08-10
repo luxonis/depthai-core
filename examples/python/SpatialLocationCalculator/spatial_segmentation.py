@@ -23,22 +23,25 @@ def addTopPanel(image: np.ndarray, useSegmentation: bool) -> np.ndarray:
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
-    colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
-    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
-    cameraNode = pipeline.create(dai.node.Camera).build(colorSocket)
+    cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
 
-    depth = pipeline.create(dai.node.Depth)
-    if device.getPlatform() == dai.Platform.RVC2:
-        # RVC2 has a limited number of shaves, use the FAST_DENSITY stereo preset
-        depth.build(dai.node.Depth.Algorithm.STEREO, dai.node.StereoDepth.PresetMode.FAST_DENSITY, fps)
-    else:
-        depth.build(dai.node.Depth.Algorithm.AUTO, fps)
-    depth.setAlignTo(detNN.passthrough)
+    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
+    stereo = pipeline.create(dai.node.StereoDepth)
+
+    monoLeftOut = monoLeft.requestFullResolutionOutput()
+    monoRightOut = monoRight.requestFullResolutionOutput()
+    monoLeftOut.link(stereo.left)
+    monoRightOut.link(stereo.right)
+
+    align = pipeline.create(dai.node.ImageAlign)
+    stereo.depth.link(align.input)
+    detNN.passthrough.link(align.inputAlignTo)
 
     spatialCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
     spatialCalculator.initialConfig.setUseSegmentation(True)
-    depth.depth.link(spatialCalculator.inputDepth)
+    align.outputAligned.link(spatialCalculator.inputDepth)
     detNN.out.link(spatialCalculator.inputDetections)
 
     cameraQueue = detNN.passthrough.createOutputQueue()

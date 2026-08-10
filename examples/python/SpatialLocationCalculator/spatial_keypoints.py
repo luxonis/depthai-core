@@ -2,6 +2,7 @@ import depthai as dai
 import sys
 import numpy as np
 import cv2
+import argparse
 
 try:
     import open3d as o3d
@@ -11,6 +12,12 @@ except ImportError:
             sys.executable
         )
     )
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
+)
+args = parser.parse_args()
 
 device = dai.Device()
 fps = 24
@@ -26,9 +33,11 @@ requiredCamCapabilities.enableUndistortion = True
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
-    colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
-    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
-    cameraNode = pipeline.create(dai.node.Camera).build(colorSocket)
+    cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
+    monoLeftOut = monoLeft.requestOutput((640, 400), fps=fps)
+    monoRightOut = monoRight.requestOutput((640, 400), fps=fps)
 
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
 
@@ -36,15 +45,23 @@ with dai.Pipeline(device) as pipeline:
     spatialCalculator.initialConfig.setCalculateSpatialKeypoints(True)
     detNN.out.link(spatialCalculator.inputDetections)
 
-    depth = pipeline.create(dai.node.Depth)
-    if device.getPlatform() == dai.Platform.RVC2:
-        # RVC2 has a limited number of shaves, use the FAST_DENSITY stereo preset
-        depth.build(dai.node.Depth.Algorithm.STEREO, dai.node.StereoDepth.PresetMode.FAST_DENSITY, fps, (640, 400))
-    else:
-        depth.build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
+    if args.depthSource == "stereo":
+        depth = pipeline.create(dai.node.StereoDepth).build(monoLeftOut, monoRightOut, presetMode=dai.node.StereoDepth.PresetMode.FAST_DENSITY)
+        if device.getPlatform() == dai.Platform.RVC2:
+            detNN.passthrough.link(depth.inputAlignTo)
+            depth.depth.link(spatialCalculator.inputDepth)
 
-    depth.setAlignTo(detNN.passthrough)
-    depth.depth.link(spatialCalculator.inputDepth)
+    elif args.depthSource == "neural":
+        depth = pipeline.create(dai.node.NeuralDepth).build(monoLeftOut, monoRightOut, dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM)
+
+    else:
+        raise ValueError(f"Invalid depth source: {args.depthSource}")
+
+    if device.getPlatform() == dai.Platform.RVC4:
+        align = pipeline.create(dai.node.ImageAlign)
+        depth.depth.link(align.input)
+        detNN.passthrough.link(align.inputAlignTo)
+        align.outputAligned.link(spatialCalculator.inputDepth)
 
     camQueue = detNN.passthrough.createOutputQueue()
     spatialOutputQueue = spatialCalculator.outputDetections.createOutputQueue()
@@ -52,6 +69,7 @@ with dai.Pipeline(device) as pipeline:
     pipeline.start()
     print("Pipeline created.")
 
+    # Prepare Open3D visualization for spatial keypoints (converted to centimeters)
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name="Spatial Keypoints 3D", width=1280, height=720)
     opt = vis.get_render_option()
