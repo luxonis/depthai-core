@@ -1,7 +1,11 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <magic_enum/magic_enum.hpp>
 #include <opencv2/videoio.hpp>
+#include <thread>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -48,6 +52,64 @@ TEST_CASE("NNArchive API") {
         REQUIRE(tensor != nullptr);
         REQUIRE_NOTHROW(tensor->getFirstTensor<float>());
     }
+}
+
+TEST_CASE("RVC4 NeuralNetwork model loading paths", "[rvc4]") {
+    std::vector<dai::DeviceModelZoo> supportedDeviceModels;
+    {
+        dai::Pipeline discoveryPipeline;
+        const auto device = discoveryPipeline.getDefaultDevice();
+        if(device->getPlatform() != dai::Platform::RVC4) {
+            SKIP("RVC4-only test");
+        }
+        supportedDeviceModels = device->getSupportedDeviceModels();
+    }
+    REQUIRE_FALSE(supportedDeviceModels.empty());
+
+    const dai::NNModelDescription description{"yolov6-nano", "RVC4"};
+    const auto archivePath = dai::getModelFromZoo(description);
+    const dai::NNArchive archive{archivePath};
+    const auto modelData = archive.getOtherModelFormat();
+    REQUIRE(modelData.has_value());
+
+    const std::filesystem::path directModelPath = std::filesystem::temp_directory_path() / "depthai-rvc4-model-loading-test.dlc";
+    {
+        std::ofstream modelFile(directModelPath, std::ios::binary | std::ios::trunc);
+        REQUIRE(modelFile.is_open());
+        modelFile.write(reinterpret_cast<const char*>(modelData->data()), static_cast<std::streamsize>(modelData->size()));
+        REQUIRE(modelFile.good());
+    }
+
+    const auto startPipeline = [](const std::string& path, const auto& configure) {
+        INFO(path);
+        dai::Pipeline pipeline;
+        auto neuralNetwork = pipeline.create<dai::node::NeuralNetwork>();
+        configure(neuralNetwork);
+
+        // The queue helpers provide the required single input connection while
+        // keeping this focused on model initialization rather than inference.
+        auto inputQueue = neuralNetwork->input.createInputQueue();
+        auto outputQueue = neuralNetwork->out.createOutputQueue();
+        pipeline.start();
+        REQUIRE(pipeline.isRunning());
+        pipeline.stop();
+        pipeline.wait();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    };
+
+    startPipeline("setModelPath(.dlc)", [&directModelPath](const auto& neuralNetwork) { neuralNetwork->setModelPath(directModelPath); });
+    startPipeline("setOtherModelFormat(.dlc)", [&directModelPath](const auto& neuralNetwork) { neuralNetwork->setOtherModelFormat(directModelPath); });
+    startPipeline("setOtherModelFormat(vector)", [&modelData](const auto& neuralNetwork) { neuralNetwork->setOtherModelFormat(*modelData); });
+    startPipeline("setModelPath(NNArchive)", [&archivePath](const auto& neuralNetwork) { neuralNetwork->setModelPath(archivePath); });
+    startPipeline("setNNArchive(NNArchive)", [&archive](const auto& neuralNetwork) { neuralNetwork->setNNArchive(archive); });
+    startPipeline("setFromModelZoo", [&description](const auto& neuralNetwork) { neuralNetwork->setFromModelZoo(description, true); });
+
+    for(const auto model : supportedDeviceModels) {
+        INFO(magic_enum::enum_name(model));
+        startPipeline("setModelFromDeviceZoo", [model](const auto& neuralNetwork) { neuralNetwork->setModelFromDeviceZoo(model); });
+    }
+
+    std::filesystem::remove(directModelPath);
 }
 
 TEST_CASE("Multi-Input NeuralNetwork API") {
