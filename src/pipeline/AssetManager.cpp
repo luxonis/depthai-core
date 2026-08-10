@@ -17,6 +17,10 @@ namespace {
 constexpr std::size_t MAX_ASSET_STORAGE_SIZE = std::numeric_limits<std::uint32_t>::max();
 
 std::size_t getSerializedEndOffset(std::size_t offset, std::uint32_t alignment, std::size_t assetSize) {
+    if(alignment == 0) {
+        throw std::runtime_error("Asset alignment cannot be zero");
+    }
+
     if(offset > MAX_ASSET_STORAGE_SIZE || assetSize > MAX_ASSET_STORAGE_SIZE) {
         throw std::runtime_error("Asset storage cannot exceed 4 GiB");
     }
@@ -39,12 +43,19 @@ std::string Asset::getRelativeUri() {
 }
 
 std::vector<std::uint8_t>& Asset::getData() {
-    if(data.empty() && !path.empty()) {
+    if(data.empty() && !dataLoaded && !path.empty()) {
         std::ifstream stream(path, std::ios::in | std::ios::binary);
         if(!stream.is_open()) {
             throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
         }
-        data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+
+        auto loadedData = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+        if(loadedData.size() != size) {
+            throw std::runtime_error(fmt::format("Cannot load asset, file at path {} has changed size.", path));
+        }
+
+        data = std::move(loadedData);
+        dataLoaded = true;
     }
     return data;
 }
@@ -97,6 +108,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asse
     a.data = std::move(asset.data);
     a.path = std::move(asset.path);
     a.size = a.path.empty() ? 0 : asset.size;
+    a.dataLoaded = asset.dataLoaded;
     a.alignment = asset.alignment;
     return set(std::move(a));
 }
@@ -217,7 +229,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
             if(!stream.is_open()) {
                 throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", a.path));
             }
-            std::array<std::uint8_t, 1024 * 1024> buffer{};
+            std::vector<std::uint8_t> buffer(1024 * 1024);
             std::size_t streamedSize = 0;
             while(stream) {
                 stream.read(reinterpret_cast<char*>(buffer.data()), buffer.size());

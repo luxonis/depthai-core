@@ -19,6 +19,7 @@ struct Asset {
     std::vector<std::uint8_t> data;
     std::filesystem::path path;
     std::size_t size = 0;
+    bool dataLoaded = false;
     std::uint32_t alignment = 1;
     std::vector<std::uint8_t>& getData();
     std::size_t getSize() const;

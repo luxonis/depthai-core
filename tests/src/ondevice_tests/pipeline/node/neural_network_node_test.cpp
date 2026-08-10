@@ -72,7 +72,9 @@ TEST_CASE("RVC4 NeuralNetwork model loading paths", "[rvc4]") {
     const auto modelData = archive.getOtherModelFormat();
     REQUIRE(modelData.has_value());
 
-    const std::filesystem::path directModelPath = std::filesystem::temp_directory_path() / "depthai-rvc4-model-loading-test.dlc";
+    const std::filesystem::path directModelPath =
+        std::filesystem::temp_directory_path()
+        / ("depthai-rvc4-model-loading-test_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".dlc");
     {
         std::ofstream modelFile(directModelPath, std::ios::binary | std::ios::trunc);
         REQUIRE(modelFile.is_open());
@@ -109,7 +111,8 @@ TEST_CASE("RVC4 NeuralNetwork model loading paths", "[rvc4]") {
         startPipeline("setModelFromDeviceZoo", [model](const auto& neuralNetwork) { neuralNetwork->setModelFromDeviceZoo(model); });
     }
 
-    std::filesystem::remove(directModelPath);
+    std::error_code ec;
+    std::filesystem::remove(directModelPath, ec);
 }
 
 TEST_CASE("Multi-Input NeuralNetwork API") {
