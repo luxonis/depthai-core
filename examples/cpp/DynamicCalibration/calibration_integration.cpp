@@ -45,7 +45,7 @@ int main() {
     // In-pipeline host queues
     auto leftSyncedQueue = stereo->syncedLeft.createOutputQueue();
     auto rightSyncedQueue = stereo->syncedRight.createOutputQueue();
-    auto disparityQueue = stereo->disparity.createOutputQueue();
+    auto depthQueue = stereo->depth.createOutputQueue();
 
     auto dynCoverageOutQ = dynCalib->coverageOutput.createOutputQueue();
     auto dynCalibOutQ = dynCalib->calibrationOutput.createOutputQueue();
@@ -53,8 +53,6 @@ int main() {
     auto dynCalibInputControl = dynCalib->inputControl.createInputQueue();
 
     device->setCalibration(device->getCalibration());
-
-    double maxDisparity = 1.0;
 
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle
@@ -65,28 +63,12 @@ int main() {
     while(pipeline.isRunning()) {
         auto leftSynced = leftSyncedQueue->get<dai::ImgFrame>();
         auto rightSynced = rightSyncedQueue->get<dai::ImgFrame>();
-        auto disparity = disparityQueue->get<dai::ImgFrame>();
+        auto depth = depthQueue->get<dai::ImgFrame>();
 
         cv::imshow("left", leftSynced->getCvFrame());
         cv::imshow("right", rightSynced->getCvFrame());
 
-        cv::Mat npDisparity = disparity->getFrame();
-
-        double minVal, curMax;
-        cv::minMaxLoc(npDisparity, &minVal, &curMax);
-        maxDisparity = std::max(maxDisparity, curMax);
-
-        // Normalize the disparity image to an 8-bit scale.
-        cv::Mat normalized;
-        npDisparity.convertTo(normalized, CV_8UC1, 255.0 / maxDisparity);
-
-        cv::Mat colorizedDisparity;
-        cv::applyColorMap(normalized, colorizedDisparity, cv::COLORMAP_JET);
-
-        // Set pixels with zero disparity to black.
-        colorizedDisparity.setTo(cv::Scalar(0, 0, 0), normalized == 0);
-
-        cv::imshow("disparity", colorizedDisparity);
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth).getCvFrame());
         // Wait for coverage info
         auto coverageMsg = dynCoverageOutQ->tryGet<dai::CoverageData>();
         if(coverageMsg) {

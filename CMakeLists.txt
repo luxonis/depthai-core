@@ -525,6 +525,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 set(TARGET_OPENCV_SOURCES
+    src/opencv/ColorizeDepthFrame.cpp
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/HostCamera.cpp
