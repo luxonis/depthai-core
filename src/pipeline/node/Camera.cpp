@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/Camera.hpp"
 
 // std
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -70,12 +71,84 @@ Camera::Camera(std::shared_ptr<Device>& defaultDevice)
 
 std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
                                       const std::optional<std::pair<uint32_t, uint32_t>>& sensorResolution,
-                                      std::optional<float> sensorFps) {
+                                      std::optional<float> sensorFps,
+                                      const std::vector<int32_t>& fullIfes,
+                                      std::optional<CameraIspInput> sharedIspInput,
+                                      const std::vector<CameraIspProcessor>& sharedIspProcessors) {
     if(isBuilt) {
         throw std::runtime_error("Camera node is already built");
     }
     if(!device) {
         throw std::runtime_error("Device pointer is not valid");
+    }
+
+    const bool hasFullIfeRoute = !fullIfes.empty();
+    const bool hasSharedIspRoute = sharedIspInput.has_value() || !sharedIspProcessors.empty();
+    if(hasFullIfeRoute && hasSharedIspRoute) {
+        throw std::invalid_argument("fullIfes and sharedIspInput/sharedIspProcessors are mutually exclusive");
+    }
+    if(sharedIspInput.has_value() != !sharedIspProcessors.empty()) {
+        throw std::invalid_argument("sharedIspInput and sharedIspProcessors must be specified together");
+    }
+
+    auto normalizedFullIfes = fullIfes;
+    if(normalizedFullIfes.size() > 2) {
+        throw std::invalid_argument("A camera can use at most two full IFEs");
+    }
+    std::sort(normalizedFullIfes.begin(), normalizedFullIfes.end());
+    if(std::adjacent_find(normalizedFullIfes.begin(), normalizedFullIfes.end()) != normalizedFullIfes.end()) {
+        throw std::invalid_argument("fullIfes must not contain duplicate indices");
+    }
+    for(const auto ife : normalizedFullIfes) {
+        if(ife < 0 || ife > 2) {
+            throw std::invalid_argument("Full IFE index must be 0, 1, or 2");
+        }
+    }
+
+    if(sharedIspInput.has_value()) {
+        switch(*sharedIspInput) {
+            case CameraIspInput::SFE_0:
+            case CameraIspInput::SFE_1:
+            case CameraIspInput::SFE_2:
+            case CameraIspInput::IFE_LITE_0:
+            case CameraIspInput::IFE_LITE_1:
+                break;
+            default:
+                throw std::invalid_argument("Invalid sharedIspInput");
+        }
+    }
+
+    auto normalizedSharedProcessors = sharedIspProcessors;
+    std::sort(normalizedSharedProcessors.begin(), normalizedSharedProcessors.end(), [](CameraIspProcessor lhs, CameraIspProcessor rhs) {
+        return static_cast<int32_t>(lhs) < static_cast<int32_t>(rhs);
+    });
+    if(std::adjacent_find(normalizedSharedProcessors.begin(), normalizedSharedProcessors.end()) != normalizedSharedProcessors.end()) {
+        throw std::invalid_argument("sharedIspProcessors must not contain duplicates");
+    }
+    bool usesBps = false;
+    for(const auto processor : normalizedSharedProcessors) {
+        switch(processor) {
+            case CameraIspProcessor::IFE_0:
+            case CameraIspProcessor::IFE_1:
+            case CameraIspProcessor::IFE_2:
+                break;
+            case CameraIspProcessor::BPS:
+                usesBps = true;
+                break;
+            default:
+                throw std::invalid_argument("Invalid sharedIspProcessor");
+        }
+    }
+    if(usesBps && normalizedSharedProcessors.size() != 1) {
+        throw std::invalid_argument("BPS cannot be combined with shared IFE processors");
+    }
+    if(!usesBps && normalizedSharedProcessors.size() > 2) {
+        throw std::invalid_argument("A camera can use at most two shared IFEs");
+    }
+    if(!usesBps && normalizedSharedProcessors.size() == 1 && sharedIspInput.has_value()
+       && *sharedIspInput >= CameraIspInput::SFE_0 && *sharedIspInput <= CameraIspInput::SFE_2
+       && static_cast<int32_t>(*sharedIspInput) != static_cast<int32_t>(normalizedSharedProcessors.front())) {
+        throw std::invalid_argument("A single shared IFE must match the SFE index; use an IFE-lite input for a cross-index shared IFE");
     }
 
     auto cameraFeaturesVector = device->getConnectedCameraFeatures();
@@ -143,6 +216,9 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
     }
 
     properties.boardSocket = boardSocket;
+    properties.fullIfes = std::move(normalizedFullIfes);
+    properties.sharedIspInput = sharedIspInput;
+    properties.sharedIspProcessors = std::move(normalizedSharedProcessors);
     isBuilt = true;
     return std::static_pointer_cast<Camera>(shared_from_this());
 }

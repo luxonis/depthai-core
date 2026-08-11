@@ -214,6 +214,75 @@ def fps_entry(arg):
     return None, fps_value
 
 
+def full_ife_entry(arg):
+    if ':' not in arg:
+        raise argparse.ArgumentTypeError("Full IFE route must be socket:index[,index], for example cama:0 or cama:0,1")
+    socket, indices = arg.split(':', 1)
+    socket_name = socket.strip().lower()
+    if socket_name not in ALL_SOCKETS:
+        raise argparse.ArgumentTypeError(
+            f"Invalid socket '{socket_name}'. Use one of: {', '.join(ALL_SOCKETS)}.")
+    try:
+        full_ifes = [int(value.strip()) for value in indices.split(',') if value.strip()]
+    except ValueError:
+        raise argparse.ArgumentTypeError("Full IFE indices must be 0, 1, or 2")
+    if not full_ifes or len(full_ifes) > 2 or any(index not in (0, 1, 2) for index in full_ifes):
+        raise argparse.ArgumentTypeError("Specify one or two full IFE indices from 0, 1, and 2")
+    if len(set(full_ifes)) != len(full_ifes):
+        raise argparse.ArgumentTypeError("Full IFE indices must not be repeated")
+    return socket_name, sorted(full_ifes)
+
+
+def shared_isp_entry(arg):
+    if ':' not in arg:
+        raise argparse.ArgumentTypeError(
+            "Shared ISP route must be socket:input+processor[+processor], for example came:sfe0+ife0")
+    socket, route = arg.split(':', 1)
+    socket_name = socket.strip().lower()
+    if socket_name not in ALL_SOCKETS:
+        raise argparse.ArgumentTypeError(
+            f"Invalid socket '{socket_name}'. Use one of: {', '.join(ALL_SOCKETS)}.")
+
+    parts = [part.strip().lower().replace('_', '').replace('-', '') for part in route.replace(',', '+').split('+') if part.strip()]
+    if len(parts) < 2:
+        raise argparse.ArgumentTypeError(
+            "Shared ISP route needs one input and at least one processor, for example ifelite0+ife1 or sfe0+bps")
+
+    input_aliases = {
+        'sfe0': 'SFE_0',
+        'sfe1': 'SFE_1',
+        'sfe2': 'SFE_2',
+        'ifelite0': 'IFE_LITE_0',
+        'ifelite1': 'IFE_LITE_1',
+    }
+    processor_aliases = {
+        'ife0': 'IFE_0',
+        'ife1': 'IFE_1',
+        'ife2': 'IFE_2',
+        'bps': 'BPS',
+        'bsp': 'BPS',
+    }
+    input_name = input_aliases.get(parts[0])
+    if input_name is None:
+        raise argparse.ArgumentTypeError("Shared input must be SFE0, SFE1, SFE2, IFE-lite0, or IFE-lite1")
+    try:
+        processor_names = [processor_aliases[part] for part in parts[1:]]
+    except KeyError as exc:
+        raise argparse.ArgumentTypeError(f"Shared processor '{exc.args[0]}' must be IFE0, IFE1, IFE2, or BPS")
+    if len(set(processor_names)) != len(processor_names):
+        raise argparse.ArgumentTypeError("Shared processors must not be repeated")
+    if 'BPS' in processor_names and len(processor_names) != 1:
+        raise argparse.ArgumentTypeError("BPS cannot be combined with shared IFE processors")
+    if 'BPS' not in processor_names and len(processor_names) > 2:
+        raise argparse.ArgumentTypeError("A camera can use at most two shared IFEs")
+    if (len(processor_names) == 1 and parts[0].startswith('sfe')
+            and processor_names[0].startswith('IFE_')
+            and parts[0][-1] != processor_names[0][-1]):
+        raise argparse.ArgumentTypeError(
+            "A single shared IFE must match the SFE index; use IFE-lite for a cross-index shared IFE")
+    return socket_name, input_name, sorted(processor_names)
+
+
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('-cams', '--cameras', type=socket_type_pair, nargs='+',
                     default=[],
@@ -236,6 +305,15 @@ parser.add_argument('-sensorfps', '--sensor-fps', type=fps_entry, action='append
                     help="Override sensorFps passed to Camera.build(). Use socket:FPS for per-socket overrides. "
                     "Output FPS is capped to this value when it is lower than --fps. "
                     "Example: -sensorfps rgb:18 -sensorfps left:15")
+parser.add_argument('-fullife', '--full-ife', type=full_ife_entry, action='append', default=[],
+                    metavar='socket:index[,index]',
+                    help="Pin a camera to one or two dedicated full IFEs (0, 1, 2). "
+                    "Example: --full-ife camd:2 or --full-ife cama:0,1")
+parser.add_argument('-sharedisp', '--shared-isp', '--shared-ife', type=shared_isp_entry, action='append', default=[],
+                    metavar='socket:input+processor[+processor]',
+                    help="Select one realtime input (SFE0..2 or IFE-lite0..1) and one or two shared processors "
+                    "(IFE0..2, or BPS by itself). Examples: --shared-isp came:sfe0+ife0 "
+                    "or --shared-isp cama:ife-lite0+ife0+ife1")
 parser.add_argument('-rot', '--rotate', const='all', choices={'all', 'rgb', 'mono'}, nargs="?",
                     help="Which cameras to rotate 180 degrees. All if not filtered")
 parser.add_argument('-fps', '--fps', type=float, default=30,
@@ -315,6 +393,21 @@ for socket, sensor_fps in args.sensor_fps:
         socket_sensor_fps_overrides[socket] = sensor_fps
     else:
         sensor_fps_default_override = sensor_fps
+
+socket_full_ife_overrides = {}
+for socket, full_ifes in args.full_ife:
+    if socket in socket_full_ife_overrides:
+        parser.error(f"--full-ife was specified more than once for {socket}")
+    socket_full_ife_overrides[socket] = full_ifes
+
+socket_shared_isp_overrides = {}
+for socket, input_name, processor_names in args.shared_isp:
+    if socket in socket_shared_isp_overrides:
+        parser.error(f"--shared-isp was specified more than once for {socket}")
+    socket_shared_isp_overrides[socket] = (input_name, processor_names)
+
+for socket in set(socket_full_ife_overrides) & set(socket_shared_isp_overrides):
+    parser.error(f"{socket} cannot use both --full-ife and --shared-isp")
 
 
 def get_sensor_fps(socket, output_fps):
@@ -580,12 +673,23 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                     f"{c}: capping requested output FPS from {requested_output_fps:g} "
                     f"to sensor FPS {sensor_fps:g}"
                 )
+            build_kwargs = {'sensorFps': sensor_fps}
             if c in socket_sensor_size_overrides:
                 sensor_size = socket_sensor_size_overrides[c]
                 print(f"{c}: forcing sensor mode {sensor_size[0]}x{sensor_size[1]}")
-                cam[c].build(cam_socket_opts[c], sensorResolution=sensor_size, sensorFps=sensor_fps)
-            else:
-                cam[c].build(cam_socket_opts[c], sensorFps=sensor_fps)
+                build_kwargs['sensorResolution'] = sensor_size
+            if c in socket_full_ife_overrides:
+                full_ifes = socket_full_ife_overrides[c]
+                print(f"{c}: dedicated full IFE route {full_ifes}")
+                build_kwargs['fullIfes'] = full_ifes
+            elif c in socket_shared_isp_overrides:
+                input_name, processor_names = socket_shared_isp_overrides[c]
+                shared_input = getattr(dai.CameraIspInput, input_name)
+                shared_processors = [getattr(dai.CameraIspProcessor, name) for name in processor_names]
+                print(f"{c}: shared ISP route {input_name} + {processor_names}")
+                build_kwargs['sharedIspInput'] = shared_input
+                build_kwargs['sharedIspProcessors'] = shared_processors
+            cam[c].build(cam_socket_opts[c], **build_kwargs)
             stream_name = c
             if use_cam_a_full_resolution:
                 print(f"CAM_A: requesting highest full resolution at {output_fps:g} FPS (sensor {sensor_fps:g} FPS)")

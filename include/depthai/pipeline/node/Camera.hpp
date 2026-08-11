@@ -55,10 +55,16 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * @param boardSocket Board socket to use
      * @param sensorResolution Sensor resolution to use - by default it's auto-detected from the requested outputs
      * @param sensorFps Sensor FPS to use - by default it's auto-detected from the requested outputs (maximum is used)
+     * @param fullIfes Dedicated full IFE indices. One index selects single IFE; two select a dual-IFE path.
+     * @param sharedIspInput Realtime SFE or IFE-lite ingress for a shared ISP path
+     * @param sharedIspProcessors One or two shared IFE processors, or BPS by itself
      */
     std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                   const std::optional<std::pair<uint32_t, uint32_t>>& sensorResolution = std::nullopt,
-                                  std::optional<float> sensorFps = std::nullopt);
+                                  std::optional<float> sensorFps = std::nullopt,
+                                  const std::vector<int32_t>& fullIfes = {},
+                                  std::optional<CameraIspInput> sharedIspInput = std::nullopt,
+                                  const std::vector<CameraIspProcessor>& sharedIspProcessors = {});
 
     /**
      * Set the sensor type to use

@@ -13,6 +13,19 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
     // Declare node upfront
     auto camera = ADD_NODE(Camera);
 
+    py::enum_<CameraIspInput>(m, "CameraIspInput")
+        .value("SFE_0", CameraIspInput::SFE_0)
+        .value("SFE_1", CameraIspInput::SFE_1)
+        .value("SFE_2", CameraIspInput::SFE_2)
+        .value("IFE_LITE_0", CameraIspInput::IFE_LITE_0)
+        .value("IFE_LITE_1", CameraIspInput::IFE_LITE_1);
+
+    py::enum_<CameraIspProcessor>(m, "CameraIspProcessor")
+        .value("IFE_0", CameraIspProcessor::IFE_0)
+        .value("IFE_1", CameraIspProcessor::IFE_1)
+        .value("IFE_2", CameraIspProcessor::IFE_2)
+        .value("BPS", CameraIspProcessor::BPS);
+
     // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
@@ -25,10 +38,18 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         .def_readonly("mockIsp", &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
         .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))
         .def("build",
-             py::overload_cast<dai::CameraBoardSocket, const std::optional<std::pair<uint32_t, uint32_t>>&, std::optional<float>>(&Camera::build),
+             py::overload_cast<dai::CameraBoardSocket,
+                               const std::optional<std::pair<uint32_t, uint32_t>>&,
+                               std::optional<float>,
+                               const std::vector<int32_t>&,
+                               std::optional<CameraIspInput>,
+                               const std::vector<CameraIspProcessor>&>(&Camera::build),
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "sensorResolution"_a = std::nullopt,
              "sensorFps"_a = std::nullopt,
+             "fullIfes"_a = std::vector<int32_t>{},
+             "sharedIspInput"_a = std::nullopt,
+             "sharedIspProcessors"_a = std::vector<CameraIspProcessor>{},
              DOC(dai, node, Camera, build))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("build",

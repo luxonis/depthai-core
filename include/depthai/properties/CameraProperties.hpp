@@ -11,6 +11,27 @@
 namespace dai {
 
 /**
+ * Realtime hardware ingress used before a shared ISP processor.
+ */
+enum class CameraIspInput : int32_t {
+    SFE_0 = 0,
+    SFE_1 = 1,
+    SFE_2 = 2,
+    IFE_LITE_0 = 3,
+    IFE_LITE_1 = 4,
+};
+
+/**
+ * ISP processor shared by one or more camera streams.
+ */
+enum class CameraIspProcessor : int32_t {
+    IFE_0 = 0,
+    IFE_1 = 1,
+    IFE_2 = 2,
+    BPS = 3,
+};
+
+/**
  *  Specify properties for Camera such as camera ID, ...
  */
 struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
@@ -73,6 +94,24 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     float fps = AUTO;
 
     /**
+     * Explicit full IFE indices used by a dedicated camera path.
+     * One index selects single IFE; two indices select/pin a dual-IFE path.
+     * Empty means automatic routing.
+     */
+    std::vector<int32_t> fullIfes;
+
+    /**
+     * Realtime ingress used by an explicitly configured shared ISP path.
+     */
+    std::optional<CameraIspInput> sharedIspInput;
+
+    /**
+     * Shared processors used after sharedIspInput. One or two IFE processors
+     * are supported, or BPS by itself. Empty means automatic routing.
+     */
+    std::vector<CameraIspProcessor> sharedIspProcessors;
+
+    /**
      * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).
      * Default (0) matches the camera FPS, meaning that 3A is running on each frame.
      * Reducing the rate of 3A reduces the CPU usage on CSS, but also increases the convergence rate of 3A.
@@ -122,6 +161,9 @@ DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       mockIspHeight,
                       mockIspFps,
                       fps,
+                      fullIfes,
+                      sharedIspInput,
+                      sharedIspProcessors,
                       isp3aFps,
                       numFramesPoolRaw,
                       maxSizePoolRaw,
