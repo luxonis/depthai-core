@@ -523,7 +523,14 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
         // Bootloader device ready, check for version
         logger::debug("Connected bootloader version {}", version.toString());
         if(getEmbeddedBootloaderVersion() > version) {
-            logger::info("New bootloader version available. Device has: {}, available: {}", version.toString(), getEmbeddedBootloaderVersion().toString());
+            const std::string bootloaderDocsUrl = "https://docs.luxonis.com/software-v3/depthai/depthai-components/bootloader";
+            logger::warn(
+                "New bootloader version available. Device has: {}, available: {}. You can update bootloader by running 'depthai --flash', 'using "
+                "examples/python/Misc/Bootloader/flash_network_bootloader.py' or by "
+                "following the guide at {}",
+                version.toString(),
+                getEmbeddedBootloaderVersion().toString(),
+                bootloaderDocsUrl);
         }
 
     } catch(...) {
@@ -979,6 +986,12 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
         }
 
     } while(true);
+
+    // Do not register a user bootloader that the device failed to write or
+    // verify. The factory bootloader remains selected as the safe fallback.
+    if(!result.success) {
+        return {false, result.errorMsg};
+    }
 
     // Calculate checksum and update config
     // Try reading existing config, or create a new one
