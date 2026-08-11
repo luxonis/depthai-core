@@ -525,7 +525,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
         if(getEmbeddedBootloaderVersion() > version) {
             const std::string bootloaderDocsUrl = "https://docs.luxonis.com/software-v3/depthai/depthai-components/bootloader";
             logger::warn(
-                "New bootloader version available. Device has: {}, available: {}. You can update the bootloader by running 'depthai --flash', by using "
+                "New bootloader version available. Device has: {}, available: {}. You can update the bootloader by running "
                 "'examples/python/Misc/Bootloader/flash_network_bootloader.py', or by "
                 "following the guide at {}",
                 version.toString(),
