@@ -234,11 +234,13 @@ parser.add_argument('-sensorsize', '--sensor-size', type=resolution_entry, actio
 parser.add_argument('-sensorfps', '--sensor-fps', type=fps_entry, action='append', default=[],
                     metavar='[socket:]FPS',
                     help="Override sensorFps passed to Camera.build(). Use socket:FPS for per-socket overrides. "
+                    "Output FPS is capped to this value when it is lower than --fps. "
                     "Example: -sensorfps rgb:18 -sensorfps left:15")
 parser.add_argument('-rot', '--rotate', const='all', choices={'all', 'rgb', 'mono'}, nargs="?",
                     help="Which cameras to rotate 180 degrees. All if not filtered")
 parser.add_argument('-fps', '--fps', type=float, default=30,
-                    help="FPS to set for all cameras (CAM_A is capped at 18 FPS only for its default highest full-resolution output)")
+                    help="Requested output FPS for all cameras (capped per camera to its sensor FPS; "
+                    "CAM_A is capped at 18 FPS for its default highest full-resolution output)")
 parser.add_argument('-isp3afps', '--isp3afps', type=int, default=0,
                     help="3A FPS to set for all cameras")
 parser.add_argument('-ds', '--isp-downscale', default=1, type=int,
@@ -570,8 +572,14 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             is_cam_a = cam_socket_opts[c] == dai.CameraBoardSocket.CAM_A
             has_resolution_override = c in socket_resolution_overrides or resolution_default_override is not None
             use_cam_a_full_resolution = is_cam_a and not has_resolution_override
-            camera_fps = min(args.fps, CAM_A_FULL_RESOLUTION_MAX_FPS) if use_cam_a_full_resolution else args.fps
-            sensor_fps = get_sensor_fps(c, camera_fps)
+            requested_output_fps = min(args.fps, CAM_A_FULL_RESOLUTION_MAX_FPS) if use_cam_a_full_resolution else args.fps
+            sensor_fps = get_sensor_fps(c, requested_output_fps)
+            output_fps = min(requested_output_fps, sensor_fps)
+            if output_fps < requested_output_fps:
+                print(
+                    f"{c}: capping requested output FPS from {requested_output_fps:g} "
+                    f"to sensor FPS {sensor_fps:g}"
+                )
             if c in socket_sensor_size_overrides:
                 sensor_size = socket_sensor_size_overrides[c]
                 print(f"{c}: forcing sensor mode {sensor_size[0]}x{sensor_size[1]}")
@@ -580,14 +588,14 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 cam[c].build(cam_socket_opts[c], sensorFps=sensor_fps)
             stream_name = c
             if use_cam_a_full_resolution:
-                print(f"CAM_A: requesting highest full resolution at {camera_fps:g} FPS (sensor {sensor_fps:g} FPS)")
-                xout[stream_name] = cam[c].requestFullResolutionOutput(fps=camera_fps, useHighestResolution=True)
+                print(f"CAM_A: requesting highest full resolution at {output_fps:g} FPS (sensor {sensor_fps:g} FPS)")
+                xout[stream_name] = cam[c].requestFullResolutionOutput(fps=output_fps, useHighestResolution=True)
             else:
                 requested_resolution = get_socket_resolution(c, socket_default_resolutions)
-                print(f"{c}: requesting {requested_resolution[0]}x{requested_resolution[1]} at {camera_fps:g} FPS (sensor {sensor_fps:g} FPS)")
+                print(f"{c}: requesting {requested_resolution[0]}x{requested_resolution[1]} at {output_fps:g} FPS (sensor {sensor_fps:g} FPS)")
                 cap = dai.ImgFrameCapability()
                 cap.size.fixed(requested_resolution)
-                cap.fps.fixed(camera_fps)
+                cap.fps.fixed(output_fps)
                 xout[stream_name] = cam[c].requestOutput(cap, True)
             control_queues.append(cam[c].inputControl.createInputQueue())
             streams.append(stream_name)
@@ -716,7 +724,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     # Manual exposure/focus set step
     EXP_STEP = 500  # us
     ISO_STEP = 50
-    LENS_STEP = 1 / 1024
+    LENS_STEP = 10 / 1024
     DOT_STEP = 0.05
     FLOOD_STEP = 0.05
     DOT_MAX = 1
