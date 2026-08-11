@@ -13,7 +13,6 @@
 // pybind
 #include <pybind11/cast.h>
 #include <pybind11/chrono.h>
-#include <pybind11/numpy.h>
 
 void bind_imgframe(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -327,25 +326,28 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
     // m.attr("ImgFrame").attr("Specs") = m.attr("RawImgFrame").attr("Specs");
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    m.def(
+    auto utility = m.def_submodule("utility", "Utility functions");
+    utility.def(
         "colorizeDepthFrame",
-        [](py::object frame, float minDepth, float maxDepth, int colormap, bool useLog) -> py::object {
-            if(py::isinstance<ImgFrame>(frame)) {
-                auto& img = frame.cast<ImgFrame&>();
-                return py::cast(dai::utility::colorizeDepthFrame(img, minDepth, maxDepth, static_cast<cv::ColormapTypes>(colormap), useLog));
-            }
-            if(py::isinstance<py::array>(frame)) {
-                auto mat = frame.cast<cv::Mat>();
-                return py::cast(dai::utility::colorizeDepthFrame(mat, minDepth, maxDepth, static_cast<cv::ColormapTypes>(colormap), useLog));
-            }
-            throw std::invalid_argument("colorizeDepthFrame expects an ImgFrame or a numpy array");
+        [](const ImgFrame& frame, float minDepth, float maxDepth, int colormap, bool useLog) {
+            return dai::utility::colorizeDepthFrame(frame, minDepth, maxDepth, static_cast<cv::ColormapTypes>(colormap), useLog);
         },
         py::arg("frame"),
-        py::arg("minDepth") = 500.0f,
+        py::arg("minDepth") = 300.0f,
         py::arg("maxDepth") = 12000.0f,
         py::arg("colormap") = static_cast<int>(cv::COLORMAP_JET),
-          py::arg("useLog") = true,
-        "Colorize a single-channel depth frame. Depth values (including minDepth and maxDepth) are usually in millimeters. "
-        "If maxDepth <= minDepth (e.g. 0,0) the 3rd/95th percentile range is auto-computed from finite positive pixels.");
+        py::arg("useLog") = true,
+        DOC(dai, utility, colorizeDepthFrame));
+    utility.def(
+        "colorizeDepthFrame",
+        [](const cv::Mat& frame, float minDepth, float maxDepth, int colormap, bool useLog) {
+            return dai::utility::colorizeDepthFrame(frame, minDepth, maxDepth, static_cast<cv::ColormapTypes>(colormap), useLog);
+        },
+        py::arg("frame"),
+        py::arg("minDepth") = 300.0f,
+        py::arg("maxDepth") = 12000.0f,
+        py::arg("colormap") = static_cast<int>(cv::COLORMAP_JET),
+        py::arg("useLog") = true,
+        DOC(dai, utility, colorizeDepthFrame, 2));
 #endif
 }

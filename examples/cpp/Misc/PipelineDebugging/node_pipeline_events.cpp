@@ -29,7 +29,7 @@ int main() {
     while(pipeline.isRunning()) {
         auto depth = depthQueue->get<dai::ImgFrame>();
         auto latestNodeEvent = monoLeftEventQueue->tryGet<dai::PipelineEvent>();
-        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame());
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth).getCvFrame());
 
         std::cout << "Latest event from MonoLeft camera node: " << (latestNodeEvent ? latestNodeEvent->str() : "No event");
 

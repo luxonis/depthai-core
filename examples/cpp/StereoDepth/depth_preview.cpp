@@ -49,7 +49,7 @@ int main() {
 
     while(pipeline.isRunning() && !quitEvent) {
         auto inDepth = q->get<dai::ImgFrame>();
-        auto frame = dai::utility::colorizeDepthFrame(*inDepth, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame();
+        auto frame = dai::utility::colorizeDepthFrame(*inDepth).getCvFrame();
         cv::imshow("depth", frame);
 
         int key = cv::waitKey(1);

@@ -21,7 +21,7 @@ with dai.Pipeline() as pipeline:
     while pipeline.isRunning():
         depthData = depthQueue.get()
         assert isinstance(depthData, dai.ImgFrame)
-        colorizedDepth = dai.colorizeDepthFrame(depthData, 500, 12000, cv2.COLORMAP_JET, useLog=True).getCvFrame()
+        colorizedDepth = dai.utility.colorizeDepthFrame(depthData).getCvFrame()
         cv2.imshow("depth", colorizedDepth)
 
         key = cv2.waitKey(1)

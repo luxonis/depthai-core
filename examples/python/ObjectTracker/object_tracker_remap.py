@@ -27,7 +27,7 @@ with dai.Pipeline() as pipeline:
         color = (0, 255, 0)
         assert tracklets.getTransformation() is not None
         if(frame.getType() == dai.ImgFrame.Type.RAW16):
-            cvFrame = dai.colorizeDepthFrame(frame, 500, 12000, useLog=True).getCvFrame()
+            cvFrame = dai.utility.colorizeDepthFrame(frame).getCvFrame()
         else:
             cvFrame = frame.getCvFrame()
         for tracklet in tracklets.tracklets:

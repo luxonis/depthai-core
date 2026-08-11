@@ -68,7 +68,7 @@ int main() {
         cv::imshow("left", leftSynced->getCvFrame());
         cv::imshow("right", rightSynced->getCvFrame());
 
-        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame());
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth).getCvFrame());
         // Wait for coverage info
         auto coverageMsg = dynCoverageOutQ->tryGet<dai::CoverageData>();
         if(coverageMsg) {

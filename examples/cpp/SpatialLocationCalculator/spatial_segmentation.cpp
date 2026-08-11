@@ -129,7 +129,7 @@ int main() {
             if(!inSpatialDet || !rgbFrame || !depthFrame) {
                 continue;
             }
-            cv::Mat colorizedDepth = dai::utility::colorizeDepthFrame(*depthFrame, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame();
+            cv::Mat colorizedDepth = dai::utility::colorizeDepthFrame(*depthFrame).getCvFrame();
 
             cv::Mat image = rgbFrame->getCvFrame();
 

@@ -105,7 +105,7 @@ with pipeline:
         if frameDepth is not None:
             cvFrame = frameRgb.getCvFrame()
             # Colorize the aligned depth
-            alignedDepthColorized = dai.colorizeDepthFrame(frameDepth, 500, 12000, useLog=True).getCvFrame()
+            alignedDepthColorized = dai.utility.colorizeDepthFrame(frameDepth).getCvFrame()
             # Resize depth to match the rgb frame
             cv2.imshow("Depth aligned", alignedDepthColorized)
 

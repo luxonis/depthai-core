@@ -33,7 +33,7 @@ def main():
         p.start()
         while p.isRunning():
             depth = depthOutputQueue.get()
-            cv2.imshow("depth", dai.colorizeDepthFrame(depth, minDepth, maxDepth, useLog=True).getCvFrame())
+            cv2.imshow("depth", dai.utility.colorizeDepthFrame(depth, minDepth, maxDepth, useLog=True).getCvFrame())
 
             if cv2.waitKey(1) == ord("q"):
                 break

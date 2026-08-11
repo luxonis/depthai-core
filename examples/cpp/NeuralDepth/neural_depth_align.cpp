@@ -111,7 +111,7 @@ int main() {
             cv::Mat cvFrame = frameRgb->getCvFrame();
 
             // Colorize the aligned depth frame for visualization
-            cv::Mat alignedDepthColorized = dai::utility::colorizeDepthFrame(*frameDepth, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame();
+            cv::Mat alignedDepthColorized = dai::utility::colorizeDepthFrame(*frameDepth).getCvFrame();
             cv::imshow("Depth aligned", alignedDepthColorized);
 
             // Blend the RGB and colorized depth frames

@@ -56,7 +56,7 @@ def main():
                     continue
 
                 if name in {"depth", "rawDepth"}:
-                    display = dai.colorizeDepthFrame(frame, minDepth, maxDepth, useLog=True).getCvFrame()
+                    display = dai.utility.colorizeDepthFrame(frame, minDepth, maxDepth, useLog=True).getCvFrame()
                 else:
                     display = normalizeFrame(frame.getCvFrame())
                 cv2.imshow(name, display)

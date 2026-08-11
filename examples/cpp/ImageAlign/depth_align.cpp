@@ -125,7 +125,7 @@ int main() {
             cv::Mat cvFrame = frameRgb->getCvFrame();
 
             // Colorize depth
-            cv::Mat alignedDepthColorized = dai::utility::colorizeDepthFrame(*frameDepth, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame();
+            cv::Mat alignedDepthColorized = dai::utility::colorizeDepthFrame(*frameDepth).getCvFrame();
             cv::imshow("Depth aligned", alignedDepthColorized);
 
             // Convert grayscale to BGR if needed

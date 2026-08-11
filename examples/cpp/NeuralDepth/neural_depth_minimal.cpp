@@ -46,7 +46,7 @@ int main() {
 
     while(!quitEvent && pipeline.isRunning()) {
         auto depthData = depthQueue->get<dai::ImgFrame>();
-        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depthData, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame());
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depthData).getCvFrame());
 
         // Check for keyboard input to quit
         int key = cv::waitKey(1);

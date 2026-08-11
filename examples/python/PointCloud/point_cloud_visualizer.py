@@ -100,7 +100,7 @@ def main() -> None:
                 # Show colorized depth in an OpenCV window
                 depthMsg = qDepth.tryGet()
                 if depthMsg is not None:
-                    cv2.imshow("Depth", dai.colorizeDepthFrame(depthMsg, 500, 12000, cv2.COLORMAP_HOT, useLog=True).getCvFrame())
+                    cv2.imshow("Depth", dai.utility.colorizeDepthFrame(depthMsg, 300, 12000, cv2.COLORMAP_HOT, useLog=True).getCvFrame())
 
                 if cv2.waitKey(1) == ord("q"):
                     break

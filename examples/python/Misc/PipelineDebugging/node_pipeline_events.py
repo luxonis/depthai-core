@@ -30,7 +30,7 @@ with dai.Pipeline() as pipeline:
         depth = depthQueue.get()
         latestEvent = monoLeftEventQueue.tryGet()
         assert isinstance(depth, dai.ImgFrame)
-        colorizedDepth = dai.colorizeDepthFrame(depth, 500, 12000, cv2.COLORMAP_JET, useLog=True).getCvFrame()
+        colorizedDepth = dai.utility.colorizeDepthFrame(depth).getCvFrame()
         cv2.imshow("depth", colorizedDepth)
         print(f"Latest event from MonoLeft camera node: {latestEvent if latestEvent is not None else 'No event'}")
         key = cv2.waitKey(1)

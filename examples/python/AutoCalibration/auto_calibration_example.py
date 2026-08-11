@@ -115,7 +115,7 @@ with dai.Pipeline() as pipeline:
                 print("Did not pass")
 
         depth = stereoOut.get()
-        cv.imshow("Depth", dai.colorizeDepthFrame(depth, 500, 12000, cv.COLORMAP_TURBO, useLog=True).getCvFrame())
+        cv.imshow("Depth", dai.utility.colorizeDepthFrame(depth, 300, 12000, cv.COLORMAP_TURBO, useLog=True).getCvFrame())
 
         if cv.waitKey(1) == ord("q"):
             break

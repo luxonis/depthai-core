@@ -63,7 +63,7 @@ with dai.Pipeline() as pipeline:
         cv2.imshow("left", leftSynced.getCvFrame())
         cv2.imshow("right", rightSynced.getCvFrame())
 
-        colorizedDepth = dai.colorizeDepthFrame(depth, 500, 12000, cv2.COLORMAP_JET, useLog=True).getCvFrame()
+        colorizedDepth = dai.utility.colorizeDepthFrame(depth).getCvFrame()
         cv2.imshow("depth", colorizedDepth)
 
         # --- Coverage (non-blocking) ---

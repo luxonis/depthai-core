@@ -22,7 +22,7 @@ with dai.Pipeline() as pipeline:
         color = (0, 255, 0)
         assert imgDetections.getTransformation() is not None
         if(frame.getType() == dai.ImgFrame.Type.RAW16):
-            cvFrame = dai.colorizeDepthFrame(frame, 500, 12000, useLog=True).getCvFrame()
+            cvFrame = dai.utility.colorizeDepthFrame(frame).getCvFrame()
         else:
             cvFrame = frame.getCvFrame()
         for detection in imgDetections.detections:

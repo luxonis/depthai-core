@@ -21,7 +21,7 @@ void displayFrame(const std::string& name,
     cv::Mat cvFrame;
 
     if(frame->getType() == dai::ImgFrame::Type::RAW16) {
-        cvFrame = dai::utility::colorizeDepthFrame(*frame, 500.0f, 12000.0f, cv::COLORMAP_JET, true).getCvFrame();
+        cvFrame = dai::utility::colorizeDepthFrame(*frame).getCvFrame();
     } else {
         cvFrame = frame->getCvFrame();
     }

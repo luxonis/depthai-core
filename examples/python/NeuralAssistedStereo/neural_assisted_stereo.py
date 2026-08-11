@@ -24,7 +24,7 @@ if __name__ == "__main__":
         pipeline.start()
         while pipeline.isRunning():
             depth = depthQueue.get()
-            cv.imshow("Depth", dai.colorizeDepthFrame(depth, 500, 12000, cv.COLORMAP_TURBO, useLog=True).getCvFrame())
+            cv.imshow("Depth", dai.utility.colorizeDepthFrame(depth, 500, 12000, cv.COLORMAP_TURBO, useLog=True).getCvFrame())
 
             key = cv.waitKey(1)
             if key == ord('q'):

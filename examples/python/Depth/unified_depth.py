@@ -180,7 +180,7 @@ def main() -> int:
         while pipeline.isRunning():
             depthFrame = depthQueue.get()
             assert isinstance(depthFrame, dai.ImgFrame)
-            cv2.imshow("depth", dai.colorizeDepthFrame(depthFrame, 500, 12000, useLog=True).getCvFrame())
+            cv2.imshow("depth", dai.utility.colorizeDepthFrame(depthFrame).getCvFrame())
 
             confidenceFrame = confidenceQueue.get()
             assert isinstance(confidenceFrame, dai.ImgFrame)

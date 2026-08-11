@@ -36,7 +36,7 @@ with pipeline:
         assert isinstance(depth, dai.ImgFrame)
         cv2.imshow("left", leftRectified.getCvFrame())
         cv2.imshow("right", rightRectified.getCvFrame())
-        colorizedDepth = dai.colorizeDepthFrame(depth, 500, 12000, cv2.COLORMAP_JET, useLog=True).getCvFrame()
+        colorizedDepth = dai.utility.colorizeDepthFrame(depth).getCvFrame()
         cv2.imshow("depth", colorizedDepth)
         key = cv2.waitKey(1)
         if key == ord('q'):
