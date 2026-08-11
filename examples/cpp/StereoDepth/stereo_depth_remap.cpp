@@ -123,6 +123,7 @@ int main() {
         // Validate transformations
         if(!colorFrame->validateTransformations() || !stereoFrame->validateTransformations()) {
             std::cerr << "Invalid transformations!" << std::endl;
+            throw std::runtime_error("Invalid transformations!");
             continue;
         }
 
