@@ -34,33 +34,21 @@ def colorizeDepth(frameDepth):
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    cameraNode = pipeline.create(dai.node.Camera).build()
+    colorSockets = pipeline.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
+    cameraNode = pipeline.create(dai.node.Camera).build(colorSocket)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
     objectTracker = pipeline.create(dai.node.ObjectTracker)
     labelMap = detectionNetwork.getClasses()
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    stereo = pipeline.create(dai.node.StereoDepth)
-
-    # Linking
-    monoLeftOut = monoLeft.requestOutput((1280, 720))
-    monoRightOut = monoRight.requestOutput((1280, 720))
-    monoLeftOut.link(stereo.left)
-    monoRightOut.link(stereo.right)
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO)
 
     detectionNetwork.out.link(objectTracker.inputDetections)
     detectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
     detectionNetwork.passthrough.link(objectTracker.inputTrackerFrame)
 
-    stereo.setRectification(True)
-    stereo.setExtendedDisparity(True)
-    stereo.setLeftRightCheck(True)
-    stereo.setSubpixel(True)
-
-
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qTrack = objectTracker.out.createOutputQueue()
-    qDepth = stereo.disparity.createOutputQueue()
+    qDepth = depth.depth.createOutputQueue()
 
     pipeline.start()
 
