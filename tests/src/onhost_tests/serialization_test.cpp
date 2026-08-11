@@ -103,3 +103,30 @@ TEST_CASE("AssetManager restores storage when a path-backed asset changes") {
 
     std::filesystem::remove(path);
 }
+
+TEST_CASE("AssetManager rolls back all assets when a later path-backed asset changes") {
+    const auto path = std::filesystem::temp_directory_path() / "depthai_asset_manager_transaction_test.bin";
+    {
+        std::ofstream stream(path, std::ios::binary);
+        stream.write("ab", 2);
+    }
+
+    dai::AssetManager assetManager;
+    assetManager.set("first", std::vector<std::uint8_t>{1, 2});
+    assetManager.set("second", path);
+    {
+        std::ofstream stream(path, std::ios::binary | std::ios::app);
+        stream.write("c", 1);
+    }
+
+    dai::AssetsMutable assets;
+    assets.set("existing", 0, 1, 1);
+    std::vector<std::uint8_t> storage{42};
+    REQUIRE_THROWS(assetManager.serialize(assets, storage));
+    REQUIRE(storage == std::vector<std::uint8_t>{42});
+    REQUIRE(assets.has("existing"));
+    REQUIRE_FALSE(assets.has("first"));
+    REQUIRE_FALSE(assets.has("second"));
+
+    std::filesystem::remove(path);
+}

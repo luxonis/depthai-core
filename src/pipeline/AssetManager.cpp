@@ -216,57 +216,66 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         prefix = rootPath;
     }
 
-    for(auto& kv : assetMap) {
-        auto& a = *kv.second;
+    const auto storageStart = storage.size();
+    const auto mutableAssetsStart = mutableAssets;
+    try {
+        for(auto& kv : assetMap) {
+            auto& a = *kv.second;
 
-        const auto assetSize = a.getSize();
-        const auto storageStart = storage.size();
+            const auto assetSize = a.getSize();
+            const auto assetStorageStart = storage.size();
 
-        // Calculate additional bytes needed to offset to alignment.
-        std::size_t toAdd = 0;
-        if(a.alignment > 1 && storage.size() % a.alignment != 0) {
-            toAdd = a.alignment - (storage.size() % a.alignment);
-        }
+            // Calculate additional bytes needed to offset to alignment.
+            std::size_t toAdd = 0;
+            if(a.alignment > 1 && storage.size() % a.alignment != 0) {
+                toAdd = a.alignment - (storage.size() % a.alignment);
+            }
 
-        getSerializedEndOffset(storage.size(), a.alignment, assetSize);
+            const auto storageEnd = getSerializedEndOffset(storage.size(), a.alignment, assetSize);
+            storage.reserve(storageEnd);
 
-        // calculate offset
-        std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;
+            // calculate offset
+            std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;
 
-        // Add alignment bytes
-        storage.resize(storage.size() + toAdd);
+            // Add alignment bytes
+            storage.resize(storage.size() + toAdd);
 
-        if(!a.path.empty()) {
-            try {
-                std::ifstream stream(a.path, std::ios::in | std::ios::binary);
-                if(!stream.is_open()) {
-                    throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", a.path));
-                }
-                std::vector<std::uint8_t> buffer(1024 * 1024);
-                std::size_t streamedSize = 0;
-                while(streamedSize < assetSize) {
-                    const auto bytesToRead = std::min(buffer.size(), assetSize - streamedSize);
-                    stream.read(reinterpret_cast<char*>(buffer.data()), bytesToRead);
-                    auto bytesRead = stream.gcount();
-                    if(bytesRead != static_cast<std::streamsize>(bytesToRead)) {
+            if(!a.path.empty()) {
+                try {
+                    std::ifstream stream(a.path, std::ios::in | std::ios::binary);
+                    if(!stream.is_open()) {
+                        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", a.path));
+                    }
+                    std::vector<std::uint8_t> buffer(1024 * 1024);
+                    std::size_t streamedSize = 0;
+                    while(streamedSize < assetSize) {
+                        const auto bytesToRead = std::min(buffer.size(), assetSize - streamedSize);
+                        stream.read(reinterpret_cast<char*>(buffer.data()), bytesToRead);
+                        auto bytesRead = stream.gcount();
+                        if(bytesRead != static_cast<std::streamsize>(bytesToRead)) {
+                            throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
+                        }
+                        storage.insert(storage.end(), buffer.data(), buffer.data() + bytesRead);
+                        streamedSize += static_cast<std::size_t>(bytesRead);
+                    }
+                    if(stream.peek() != std::char_traits<char>::eof()) {
                         throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
                     }
-                    storage.insert(storage.end(), buffer.data(), buffer.data() + bytesRead);
-                    streamedSize += static_cast<std::size_t>(bytesRead);
+                } catch(...) {
+                    storage.resize(assetStorageStart);
+                    throw;
                 }
-                if(stream.peek() != std::char_traits<char>::eof()) {
-                    throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
-                }
-            } catch(...) {
-                storage.resize(storageStart);
-                throw;
+            } else {
+                storage.insert(storage.end(), a.data.begin(), a.data.end());
             }
-        } else {
-            storage.insert(storage.end(), a.data.begin(), a.data.end());
-        }
 
-        // Add to map the currently added asset
-        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(assetSize), a.alignment);
+            // Add to map the currently added asset
+            mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(assetSize), a.alignment);
+        }
+    } catch(...) {
+        storage.resize(storageStart);
+        mutableAssets = mutableAssetsStart;
+        throw;
     }
 }
 
