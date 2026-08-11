@@ -273,6 +273,13 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FILE "img_transformations_test_data.tar.xz"
         LOCATION img_transformations_test_data
     )
+
+        private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/depthai-beta-parser-test-data.tar.xz"
+        SHA1 "a49bd64e4d2066f2a3d70b93e5b5d1c48ac9ceef"
+        FILE "depthai-beta-parser-test-data.tar.xz"
+        LOCATION beta_parser_test_nndata
+    )
 endif()
 
 set(test_env
@@ -473,6 +480,10 @@ dai_set_test_labels(message_queue_test onhost ci)
 # StreamMessageParser tests
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 dai_set_test_labels(stream_message_parser_test onhost ci)
+
+# Datatype hierarchy completeness
+dai_add_test(datatype_enum_test src/onhost_tests/pipeline/datatype/datatype_enum_test.cpp)
+dai_set_test_labels(datatype_enum_test onhost ci)
 
 # Bootloader version tests
 dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
@@ -694,6 +705,20 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
+if(DEPTHAI_BUILD_BETA)
+    dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
+    dai_set_test_labels(beta_parser_config_test onhost ci)
+
+    dai_add_test(beta_parser_properties_test src/onhost_tests/beta_parser_properties_test.cpp)
+    dai_set_test_labels(beta_parser_properties_test onhost ci)
+
+    dai_add_test(beta_parser_test src/onhost_tests/beta_parser_test.cpp)
+    dai_set_test_labels(beta_parser_test onhost ci)
+    target_compile_definitions(beta_parser_test PRIVATE
+        BETA_PARSER_TEST_DATA_PATH="${beta_parser_test_nndata}"
+    )
+endif()
+
 # GPU availability test
 dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)
 dai_set_test_labels(gpu_availability_test ondevice rvc4)
@@ -879,6 +904,9 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
     target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 endif()
+
+dai_add_test(video_encoder_latency_test src/ondevice_tests/video_encoder_latency_test.cpp)
+dai_set_test_labels(video_encoder_latency_test ondevice rvc4 rvc4rgb ci noreplayci)
 
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_test.cpp)

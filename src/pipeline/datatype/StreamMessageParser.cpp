@@ -9,6 +9,28 @@
 #include <spdlog/spdlog.h>
 
 // project
+#ifdef DEPTHAI_HAVE_BETA
+    #include "depthai/beta/datatype/ClassificationSequenceParserConfig.hpp"
+    #include "depthai/beta/datatype/Classifications.hpp"
+    #include "depthai/beta/datatype/Clusters.hpp"
+    #include "depthai/beta/datatype/FastSAMParserConfig.hpp"
+    #include "depthai/beta/datatype/HRNetParserConfig.hpp"
+    #include "depthai/beta/datatype/ImgDetectionsFilterConfig.hpp"
+    #include "depthai/beta/datatype/Keypoints.hpp"
+    #include "depthai/beta/datatype/Lines.hpp"
+    #include "depthai/beta/datatype/MLSDParserConfig.hpp"
+    #include "depthai/beta/datatype/MPPalmDetectionParserConfig.hpp"
+    #include "depthai/beta/datatype/Map2D.hpp"
+    #include "depthai/beta/datatype/MapOutputParserConfig.hpp"
+    #include "depthai/beta/datatype/PPTextDetectionParserConfig.hpp"
+    #include "depthai/beta/datatype/Predictions.hpp"
+    #include "depthai/beta/datatype/RFDETRParserConfig.hpp"
+    #include "depthai/beta/datatype/SCRFDParserConfig.hpp"
+    #include "depthai/beta/datatype/SuperAnimalParserConfig.hpp"
+    #include "depthai/beta/datatype/XFeatMonoParserConfig.hpp"
+    #include "depthai/beta/datatype/XFeatStereoParserConfig.hpp"
+    #include "depthai/beta/datatype/YuNetParserConfig.hpp"
+#endif
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
 #include "depthai/pipeline/datatype/AprilTags.hpp"
@@ -327,6 +349,70 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::PacketizedData: {
             return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data, fd);
         } break;
+#ifdef DEPTHAI_HAVE_BETA
+        case DatatypeEnum::ImgDetectionsFilterConfig:
+            return parseDatatype<beta::ImgDetectionsFilterConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::Classifications:
+            return parseDatatype<beta::Classifications>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::Keypoints:
+            return parseDatatype<beta::Keypoints>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::Clusters:
+            return parseDatatype<beta::Clusters>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::Map2D:
+            return parseDatatype<beta::Map2D>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::Lines:
+            return parseDatatype<beta::Lines>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::Predictions:
+            return parseDatatype<beta::Predictions>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::FastSAMParserConfig:
+            return parseDatatype<beta::FastSAMParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::HRNetParserConfig:
+            return parseDatatype<beta::HRNetParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::MLSDParserConfig:
+            return parseDatatype<beta::MLSDParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::MPPalmDetectionParserConfig:
+            return parseDatatype<beta::MPPalmDetectionParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::PPTextDetectionParserConfig:
+            return parseDatatype<beta::PPTextDetectionParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::RFDETRParserConfig:
+            return parseDatatype<beta::RFDETRParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::SCRFDParserConfig:
+            return parseDatatype<beta::SCRFDParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::SuperAnimalParserConfig:
+            return parseDatatype<beta::SuperAnimalParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::YuNetParserConfig:
+            return parseDatatype<beta::YuNetParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::ClassificationSequenceParserConfig:
+            return parseDatatype<beta::ClassificationSequenceParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::MapOutputParserConfig:
+            return parseDatatype<beta::MapOutputParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::XFeatMonoParserConfig:
+            return parseDatatype<beta::XFeatMonoParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::XFeatStereoParserConfig:
+            return parseDatatype<beta::XFeatStereoParserConfig>(metadataStart, serializedObjectSize, data, fd);
+#else
+        case DatatypeEnum::ImgDetectionsFilterConfig:
+        case DatatypeEnum::Classifications:
+        case DatatypeEnum::Keypoints:
+        case DatatypeEnum::Clusters:
+        case DatatypeEnum::Map2D:
+        case DatatypeEnum::Lines:
+        case DatatypeEnum::Predictions:
+        case DatatypeEnum::FastSAMParserConfig:
+        case DatatypeEnum::HRNetParserConfig:
+        case DatatypeEnum::MLSDParserConfig:
+        case DatatypeEnum::MPPalmDetectionParserConfig:
+        case DatatypeEnum::PPTextDetectionParserConfig:
+        case DatatypeEnum::RFDETRParserConfig:
+        case DatatypeEnum::SCRFDParserConfig:
+        case DatatypeEnum::SuperAnimalParserConfig:
+        case DatatypeEnum::YuNetParserConfig:
+        case DatatypeEnum::ClassificationSequenceParserConfig:
+        case DatatypeEnum::MapOutputParserConfig:
+        case DatatypeEnum::XFeatMonoParserConfig:
+        case DatatypeEnum::XFeatStereoParserConfig:
+            throw std::runtime_error("Cannot parse beta datatype: depthai-core was built without beta support");
+#endif  // DEPTHAI_HAVE_BETA
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);

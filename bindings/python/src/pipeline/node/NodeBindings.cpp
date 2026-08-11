@@ -65,6 +65,7 @@ bool isCreatingNodeFromPipelineCreate() {
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 py::handle daiNodeModule;
 py::handle daiNodeInternalModule;
+py::handle daiBetaNodeModule;
 
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
@@ -191,6 +192,28 @@ void bind_depth(pybind11::module& m, void* pCallstack);
 void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack);
 void bind_vpp(pybind11::module& m, void* pCallstack);
 void bind_gate(pybind11::module& m, void* pCallstack);
+#ifdef DEPTHAI_HAVE_BETA
+void bind_beta_classificationparser(pybind11::module& m, void* pCallstack);
+void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstack);
+void bind_beta_embeddingsparser(pybind11::module& m, void* pCallstack);
+void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack);
+void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack);
+void bind_beta_imageoutputparser(pybind11::module& m, void* pCallstack);
+void bind_beta_imgdetectionsfilter(pybind11::module& m, void* pCallstack);
+void bind_beta_keypointparser(pybind11::module& m, void* pCallstack);
+void bind_beta_lanedetectionparser(pybind11::module& m, void* pCallstack);
+void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack);
+void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack);
+void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack);
+void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack);
+void bind_beta_regressionparser(pybind11::module& m, void* pCallstack);
+void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack);
+void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack);
+void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack);
+void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack);
+void bind_beta_xfeatstereoparser(pybind11::module& m, void* pCallstack);
+void bind_beta_yunetparser(pybind11::module& m, void* pCallstack);
+#endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
 #endif
@@ -249,6 +272,28 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuralassistedstereo);
     callstack.push_front(bind_vpp);
     callstack.push_front(bind_gate);
+#ifdef DEPTHAI_HAVE_BETA
+    callstack.push_front(bind_beta_classificationparser);
+    callstack.push_front(bind_beta_classificationsequenceparser);
+    callstack.push_front(bind_beta_embeddingsparser);
+    callstack.push_front(bind_beta_fastsamparser);
+    callstack.push_front(bind_beta_hrnetparser);
+    callstack.push_front(bind_beta_imageoutputparser);
+    callstack.push_front(bind_beta_imgdetectionsfilter);
+    callstack.push_front(bind_beta_keypointparser);
+    callstack.push_front(bind_beta_lanedetectionparser);
+    callstack.push_front(bind_beta_mapoutputparser);
+    callstack.push_front(bind_beta_mlsdparser);
+    callstack.push_front(bind_beta_mppalmdetectionparser);
+    callstack.push_front(bind_beta_pptextdetectionparser);
+    callstack.push_front(bind_beta_regressionparser);
+    callstack.push_front(bind_beta_rfdetrparser);
+    callstack.push_front(bind_beta_scrfdparser);
+    callstack.push_front(bind_beta_superanimalparser);
+    callstack.push_front(bind_beta_xfeatmonoparser);
+    callstack.push_front(bind_beta_xfeatstereoparser);
+    callstack.push_front(bind_beta_yunetparser);
+#endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);
 #endif
@@ -270,6 +315,9 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     // Move properties into nodes and nodes under 'node' submodule
     daiNodeModule = m.def_submodule("node");
     daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
+#ifdef DEPTHAI_HAVE_BETA
+    daiBetaNodeModule = m.def_submodule("beta", "Experimental APIs").def_submodule("node", "Experimental nodes");
+#endif
 
     // XLink bridge structures
     py::class_<dai::node::internal::XLinkInBridge, std::shared_ptr<dai::node::internal::XLinkInBridge>> pyXLinkInBridge(
