@@ -84,7 +84,7 @@ def parseArgs() -> argparse.Namespace:
 
 
 def versionString(version: Any) -> str:
-    """Compare the full version, including snapshot build metadata."""
+    """Return the full version string, including snapshot build metadata."""
     return str(version)
 
 
@@ -220,10 +220,6 @@ def main() -> int:
 
         with connectBootloader(device, args.factory) as bootloader:
             installed = inspectDevice(bootloader, args.factory)
-
-            # if installed.version == targetVersion and installed.isUserBootloader:
-            #     print(f"NETWORK bootloader is already up to date ({targetVersion}).")
-            #     return 0
 
             if (args.factory or not args.yes) and not confirmFlash(
                 device, installed, targetVersion, args.factory
