@@ -14,19 +14,8 @@ topLeft = dai.Point2f(0.4, 0.4)
 bottomRight = dai.Point2f(0.6, 0.6)
 
 # Define sources and outputs
-monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-stereo = pipeline.create(dai.node.StereoDepth)
+depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
 spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
-
-# Linking
-monoLeftOut = monoLeft.requestOutput((640, 400))
-monoRightOut = monoRight.requestOutput((640, 400))
-monoLeftOut.link(stereo.left)
-monoRightOut.link(stereo.right)
-
-stereo.setRectification(True)
-stereo.setExtendedDisparity(True)
 
 stepSize = 0.05
 
@@ -43,7 +32,7 @@ spatialLocationCalculator.initialConfig.addROI(config)
 xoutSpatialQueue = spatialLocationCalculator.out.createOutputQueue()
 outputDepthQueue = spatialLocationCalculator.passthroughDepth.createOutputQueue()
 
-stereo.depth.link(spatialLocationCalculator.inputDepth)
+depth.depth.link(spatialLocationCalculator.inputDepth)
 
 
 inputConfigQueue = spatialLocationCalculator.inputConfig.createInputQueue()

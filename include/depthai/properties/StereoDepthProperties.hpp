@@ -188,6 +188,9 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * and 1 (when all the source image pixels are retained in the undistorted image).
      * On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0,
      * in these cases alpha < 0.0 helps removing invalid areas.
+     *
+     * @warning On RVC4 the DEFAULT, DENSITY, and FAST_DENSITY presets can produce inaccurate depth in black padded regions, as they prioritize coverage.
+     *
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
     std::optional<float> alphaScaling;

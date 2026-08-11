@@ -52,6 +52,5 @@ void bind_spatiallocationcalculatordata(pybind11::module& m, void* pCallstack) {
             "spatialLocations",
             [](SpatialLocationCalculatorData& loc) -> std::vector<SpatialLocations>& { return loc.spatialLocations; },
             [](SpatialLocationCalculatorData& loc, std::vector<SpatialLocations>& val) { loc.spatialLocations = val; },
-            DOC(dai, SpatialLocationCalculatorData, spatialLocations))
-        ;
+            DOC(dai, SpatialLocationCalculatorData, spatialLocations));
 }

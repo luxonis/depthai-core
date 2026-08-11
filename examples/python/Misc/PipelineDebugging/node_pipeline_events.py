@@ -1,3 +1,5 @@
+import time
+
 import depthai as dai
 import cv2
 

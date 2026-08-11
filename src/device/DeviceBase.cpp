@@ -66,6 +66,8 @@
 
 namespace {
 
+constexpr double PI = 3.14159265358979323846;
+
 struct ScopedRpcTimeout {
    public:
     static thread_local std::optional<std::chrono::milliseconds> tlRpcTimeout;
@@ -1580,6 +1582,16 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcCallChecked<std::vector<CameraBoardSocket>>("getConnectedCameras");
 }
 
+std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras(CameraSensorType type) {
+    std::vector<CameraBoardSocket> sockets;
+    for(const auto& features : getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), type) != features.supportedTypes.end()) {
+            sockets.push_back(features.socket);
+        }
+    }
+    return sockets;
+}
+
 std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
     return getStereoPairs();
 }
@@ -1647,10 +1659,10 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
                     continue;
                 }
 
-                float maximalAngle = std::min(fov1, fov2) * static_cast<float>(M_PI) / 180.0f * 0.5f;
+                float maximalAngle = std::min(fov1, fov2) * static_cast<float>(PI) / 180.0f * 0.5f;
                 if(maximalAngle == 0.0f) {
                     // Fall back if the field of view is unavailable and reported as 0.
-                    maximalAngle = static_cast<float>(M_PI) / 4.0f;
+                    maximalAngle = static_cast<float>(PI) / 4.0f;
                 }
                 // The cameras' z-axes must be similarly oriented.
                 if(calibrationHandler.getCameraZAxisAngle(socket1, socket2) > maximalAngle) continue;

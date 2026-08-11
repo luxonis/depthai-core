@@ -573,6 +573,45 @@ TEST_CASE("ImageManip four point transform normalized coordinates") {
     testManipFourPointTransform(true);
 }
 
+TEST_CASE("ImageManip crop and four point transform with stretch") {
+    constexpr int inputWidth = 400;
+    constexpr int inputHeight = 300;
+    constexpr int outputWidth = 45;
+    constexpr int outputHeight = 36;
+
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    inputFrame->setCvFrame(createFourPointTransformInputImage(inputWidth, inputHeight), dai::ImgFrame::Type::GRAY8);
+
+    dai::Pipeline p;
+    auto manip = p.create<dai::node::ImageManip>();
+    manip->inputConfig.setWaitForMessage(true);
+    manip->setMaxOutputFrameSize(inputWidth * inputHeight);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    p.start();
+
+    auto cfg = std::make_shared<dai::ImageManipConfig>();
+    cfg->addCropRotatedRect(dai::RotatedRect(dai::Point2f(0.45f, 0.04f, true), dai::Size2f(0.12f, 0.12f, true), 0.0f), true);
+    cfg->addTransformFourPoints({dai::Point2f(0.44f, 0.83f), dai::Point2f(0.15f, 0.36f), dai::Point2f(0.54f, 0.17f), dai::Point2f(0.82f, 0.42f)},
+                                {dai::Point2f(0.0f, 0.0f), dai::Point2f(1.0f, 0.0f), dai::Point2f(1.0f, 1.0f), dai::Point2f(0.0f, 1.0f)},
+                                true);
+    cfg->setOutputSize(outputWidth, outputHeight, dai::ImageManipConfig::ResizeMode::STRETCH);
+    cfg->setFrameType(dai::ImgFrame::Type::GRAY8);
+
+    configQueue->send(cfg);
+    inputQueue->send(inputFrame);
+
+    bool timedOut = false;
+    auto outFrame = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(outFrame != nullptr);
+    REQUIRE(outFrame->getWidth() == outputWidth);
+    REQUIRE(outFrame->getHeight() == outputHeight);
+}
+
 TEST_CASE("ImageManip GRAY8") {
     runManipTests(dai::ImgFrame::Type::GRAY8, false);
 }

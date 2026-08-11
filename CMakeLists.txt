@@ -434,6 +434,66 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+if(DEPTHAI_BUILD_BETA)
+    list(APPEND TARGET_CORE_SOURCES
+        src/beta/BetaNode.cpp
+        src/beta/datatype/Classifications.cpp
+        src/beta/datatype/Clusters.cpp
+        src/beta/datatype/ImgDetectionsFilterConfig.cpp
+        src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/Lines.cpp
+        src/beta/datatype/Map2D.cpp
+        src/beta/datatype/Predictions.cpp
+        src/beta/datatype/ClassificationSequenceParserConfig.cpp
+        src/beta/datatype/FastSAMParserConfig.cpp
+        src/beta/datatype/HRNetParserConfig.cpp
+        src/beta/datatype/MLSDParserConfig.cpp
+        src/beta/datatype/MPPalmDetectionParserConfig.cpp
+        src/beta/datatype/MapOutputParserConfig.cpp
+        src/beta/datatype/PPTextDetectionParserConfig.cpp
+        src/beta/datatype/RFDETRParserConfig.cpp
+        src/beta/datatype/SCRFDParserConfig.cpp
+        src/beta/datatype/SuperAnimalParserConfig.cpp
+        src/beta/datatype/XFeatMonoParserConfig.cpp
+        src/beta/datatype/XFeatStereoParserConfig.cpp
+        src/beta/datatype/YuNetParserConfig.cpp
+        src/beta/node/ClassificationParser.cpp
+        src/beta/node/ClassificationSequenceParser.cpp
+        src/beta/node/EmbeddingsParser.cpp
+        src/beta/node/FastSAMParser.cpp
+        src/beta/node/HRNetParser.cpp
+        src/beta/node/ImageOutputParser.cpp
+        src/beta/node/ImgDetectionsFilter.cpp
+        src/beta/node/KeypointParser.cpp
+        src/beta/node/LaneDetectionParser.cpp
+        src/beta/node/MapOutputParser.cpp
+        src/beta/node/MLSDParser.cpp
+        src/beta/node/MPPalmDetectionParser.cpp
+        src/beta/node/PPTextDetectionParser.cpp
+        src/beta/node/RegressionParser.cpp
+        src/beta/node/RFDETRParser.cpp
+        src/beta/node/SCRFDParser.cpp
+        src/beta/node/SuperAnimalParser.cpp
+        src/beta/node/XFeatMonoParser.cpp
+        src/beta/node/XFeatStereoParser.cpp
+        src/beta/node/YuNetParser.cpp
+        src/beta/properties/ImgDetectionsFilterProperties.cpp
+        src/beta/utilities/Classification/ClassificationUtils.cpp
+        src/beta/utilities/Detection/DetectionUtils.cpp
+        src/beta/utilities/Detection/MaskUtils.cpp
+        src/beta/utilities/FastSAM/FastSAMUtils.cpp
+        src/beta/utilities/Keypoints/KeypointsUtils.cpp
+        src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
+        src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
+        src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/PPText/PPTextUtils.cpp
+        src/beta/utilities/RFDETR/RFDETRUtils.cpp
+        src/beta/utilities/SCRFD/SCRFDUtils.cpp
+        src/beta/utilities/XFeat/XFeatUtils.cpp
+        src/beta/utilities/YuNet/YuNetUtils.cpp
+    )
+endif()
+
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
     list(APPEND TARGET_CORE_SOURCES
         src/utility/EventsManager.cpp
@@ -525,6 +585,9 @@ add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
+if(DEPTHAI_BUILD_BETA)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BETA)
+endif()
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install

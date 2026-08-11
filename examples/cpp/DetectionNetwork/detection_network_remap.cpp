@@ -72,8 +72,10 @@ int main() {
 
     dai::Pipeline pipeline;
 
+    auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
     auto cameraNode = pipeline.create<dai::node::Camera>();
-    cameraNode->build();
+    cameraNode->build(colorSocket);
 
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
     dai::NNModelDescription modelDescription;
@@ -81,26 +83,12 @@ int main() {
     detectionNetwork->build(cameraNode, modelDescription);
     auto labelMap = detectionNetwork->getClasses().value_or(std::vector<std::string>{});
 
-    auto monoLeft = pipeline.create<dai::node::Camera>();
-    monoLeft->build(dai::CameraBoardSocket::CAM_B);
-    auto monoRight = pipeline.create<dai::node::Camera>();
-    monoRight->build(dai::CameraBoardSocket::CAM_C);
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-
-    // Linking
-    auto monoLeftOut = monoLeft->requestOutput(std::make_pair(1280, 720));
-    auto monoRightOut = monoRight->requestOutput(std::make_pair(1280, 720));
-    monoLeftOut->link(stereo->left);
-    monoRightOut->link(stereo->right);
-
-    stereo->setRectification(true);
-    stereo->setExtendedDisparity(true);
-    stereo->setLeftRightCheck(true);
-    stereo->setSubpixel(true);
+    auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO);
 
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
     auto qDet = detectionNetwork->out.createOutputQueue();
-    auto qDepth = stereo->depth.createOutputQueue();
+    auto qDepth = depth->depth().createOutputQueue();
 
     pipeline.start();
 

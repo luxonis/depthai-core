@@ -37,7 +37,7 @@ namespace dai {
 namespace utilities {
 namespace DetectionParserUtils {
 
-// yolo v6 r1 - anchor free
+// YOLOv6 R1 predicts raw center/size values for each grid cell.
 void decodeR1AF(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
@@ -65,6 +65,7 @@ void decodeR1AF(const dai::NNData& nnData,
 
     for(int strideIdx = 0; strideIdx < static_cast<int>(layerNames.size()); ++strideIdx) {
         std::string layerName = layerNames[strideIdx];
+        int stride = strides[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
 
         DAI_CHECK_V(tensorInfo, "Tensor info for layer {} is null.", layerName);
@@ -95,14 +96,14 @@ void decodeR1AF(const dai::NNData& nnData,
                         bestC = c;
                     }
                 }
-                if(bestConf * objectnessScore < confidenceThr) {
+                if(bestConf < confidenceThr) {
                     continue;
                 }
 
-                float cx = outputData.get(0, row, col);
-                float cy = outputData.get(1, row, col);
-                float w = outputData.get(2, row, col);
-                float h = outputData.get(3, row, col);
+                float cx = (static_cast<float>(col) + outputData.get(0, row, col)) * static_cast<float>(stride);
+                float cy = (static_cast<float>(row) + outputData.get(1, row, col)) * static_cast<float>(stride);
+                float w = std::exp(outputData.get(2, row, col)) * static_cast<float>(stride);
+                float h = std::exp(outputData.get(3, row, col)) * static_cast<float>(stride);
 
                 float xmin = cx - w * 0.5f;
                 float ymin = cy - h * 0.5f;
@@ -130,7 +131,7 @@ void decodeR1AF(const dai::NNData& nnData,
                         ymax);
                     continue;
                 }
-                DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, bestConf * objectnessScore, bestC, strideIdx, row, col, std::nullopt};
+                DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, bestConf, bestC, strideIdx, row, col, std::nullopt};
 
                 detectionCandidates.emplace_back(std::move(candidate));
             }

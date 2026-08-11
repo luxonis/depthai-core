@@ -90,7 +90,7 @@ with dai.Pipeline() as pipeline:
 
     camLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     camRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    stereo = pipeline.create(dai.node.StereoDepth)
+    depthNode = pipeline.create(dai.node.Depth)
 
     dcWorker = pipeline.create(dai.node.AutoCalibration).build(camLeft, camRight)
     dcWorker.initialConfig.maxIterations = 2
@@ -101,13 +101,7 @@ with dai.Pipeline() as pipeline:
     dcWorker.initialConfig.dataConfidenceThreshold = 0.3
     workerOutputQueue = dcWorker.output.createOutputQueue()
 
-    videoQueueLeft = camLeft.requestOutput((1280, 800), fps=30)
-    videoQueueRight = camRight.requestOutput((1280, 800), fps=30)
-
-    videoQueueLeft.link(stereo.left)
-    videoQueueRight.link(stereo.right)
-
-    stereoOut = stereo.depth.createOutputQueue()
+    stereoOut = depthNode.depth.createOutputQueue()
     pipeline.start()
 
     while pipeline.isRunning():

@@ -28,34 +28,23 @@ def main() -> None:
     print(f"Device: {device.getDeviceName()}  (ID: {device.getDeviceId()})\n")
 
     with dai.Pipeline(device) as pipeline:
-        # ── Camera + StereoDepth ──────────────────────────────────────
-        left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-        color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-        stereo = pipeline.create(dai.node.StereoDepth)
-        left.requestOutput((640, 400)).link(stereo.left)
-        right.requestOutput((640, 400)).link(stereo.right)
-
-        # Align depth to color camera
-        platform = pipeline.getDefaultDevice().getPlatform()
+        # ── Camera + Depth ─────────────────────────────────────
+        colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
+        colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
+        color = pipeline.create(dai.node.Camera).build(colorSocket)
         colorOut = color.requestOutput(
             (640, 400), type=dai.ImgFrame.Type.RGB888i,
             resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=True,
         )
-        if platform == dai.Platform.RVC4:
-            align = pipeline.create(dai.node.ImageAlign)
-            stereo.depth.link(align.input)
-            colorOut.link(align.inputAlignTo)
-            alignedDepth = align.outputAligned
-        else:
-            colorOut.link(stereo.inputAlignTo)
-            alignedDepth = stereo.depth
+
+        depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
+        depth.setAlignTo(colorOut)
 
         # ── PointCloud node ───────────────────────────────────────────
         pc = pipeline.create(dai.node.PointCloud)
         pc.setRunOnHost(True)
         pc.initialConfig.setLengthUnit(dai.LengthUnit.METER)
-        alignedDepth.link(pc.inputDepth)
+        depth.depth.link(pc.inputDepth)
         colorOut.link(pc.inputColor)
 
         queue = pc.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)

@@ -92,7 +92,7 @@ int main() {
     // Nodes
     auto camLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto camRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto depth = pipeline.create<dai::node::Depth>();
 
     // AutoCalibration node
     auto dcWorker = pipeline.create<dai::node::AutoCalibration>();
@@ -106,13 +106,9 @@ int main() {
     config->validationSetSize = 5;
     config->dataConfidenceThreshold = 0.3;
 
-    // Links
-    camLeft->requestOutput({1280, 800})->link(stereo->left);
-    camRight->requestOutput({1280, 800})->link(stereo->right);
-
     // Queues
     auto workerOutputQueue = dcWorker->output.createOutputQueue();
-    auto stereoOut = stereo->depth.createOutputQueue();
+    auto stereoOut = depth->depth().createOutputQueue();
 
     pipeline.start();
 

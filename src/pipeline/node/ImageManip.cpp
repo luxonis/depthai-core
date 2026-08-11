@@ -30,6 +30,7 @@ void ImageManip::run() {
                                  flatten(frame.transformation.getIntrinsicMatrix()),
                                  flatten(newCameraMatrix),
                                  frame.transformation.getDistortionCoefficients(),
+                                 std::nullopt,
                                  frame.getType(),
                                  frame.getWidth(),
                                  frame.getHeight(),

@@ -35,40 +35,14 @@ class RerunNode(dai.node.ThreadedHostNode):
 with dai.Pipeline() as p:
     fps = 30
     # Define sources and outputs
-    left = p.create(dai.node.Camera)
-    right = p.create(dai.node.Camera)
-    color = p.create(dai.node.Camera)
-    stereo = p.create(dai.node.StereoDepth)
-    rgbd = p.create(dai.node.RGBD).build()
-    align = None
-    color.build()
+    colorSockets = p.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
+    color = p.create(dai.node.Camera).build(colorSocket)
+    depth = p.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
     rerunViewer = p.create(RerunNode)
-    left.build(dai.CameraBoardSocket.CAM_B)
-    right.build(dai.CameraBoardSocket.CAM_C)
-    out = None
 
-    stereo.setRectifyEdgeFillColor(0)
-    stereo.enableDistortionCorrection(True)
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
-    stereo.initialConfig.postProcessing.thresholdFilter.maxRange = 10000
+    rgbd = p.create(dai.node.RGBD).build(color, depth, (640, 400), fps)
     rgbd.setDepthUnits(dai.StereoDepthConfig.AlgorithmControl.DepthUnit.METER)
-
-    # Linking
-    left.requestOutput((640, 400)).link(stereo.left)
-    right.requestOutput((640, 400)).link(stereo.right)
-    platform = p.getDefaultDevice().getPlatform()
-
-    if platform == dai.Platform.RVC4:
-        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
-        align = p.create(dai.node.ImageAlign)
-        stereo.depth.link(align.input)
-        out.link(align.inputAlignTo)
-        align.outputAligned.link(rgbd.inDepth)
-    else:
-        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i, dai.ImgResizeMode.CROP, 30, True)
-        stereo.depth.link(rgbd.inDepth)
-        out.link(stereo.inputAlignTo)
-    out.link(rgbd.inColor)
 
     rgbd.pcl.link(rerunViewer.inputPCL)
 
