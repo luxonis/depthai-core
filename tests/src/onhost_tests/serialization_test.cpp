@@ -1,4 +1,6 @@
 #include <catch2/catch_all.hpp>
+#include <filesystem>
+#include <fstream>
 #include <limits>
 
 // Include depthai library
@@ -78,4 +80,26 @@ TEST_CASE("AssetManager preserves the size of path-backed assets when renaming t
     auto renamedAsset = assetManager.set("renamed", std::move(asset));
 
     REQUIRE(renamedAsset->getSize() == 42);
+}
+
+TEST_CASE("AssetManager restores storage when a path-backed asset changes") {
+    const auto path = std::filesystem::temp_directory_path() / "depthai_asset_manager_serialization_test.bin";
+    {
+        std::ofstream stream(path, std::ios::binary);
+        stream.write("ab", 2);
+    }
+
+    dai::AssetManager assetManager;
+    assetManager.set("asset", path);
+    {
+        std::ofstream stream(path, std::ios::binary | std::ios::app);
+        stream.write("c", 1);
+    }
+
+    dai::AssetsMutable assets;
+    std::vector<std::uint8_t> storage{42};
+    REQUIRE_THROWS(assetManager.serialize(assets, storage));
+    REQUIRE(storage == std::vector<std::uint8_t>{42});
+
+    std::filesystem::remove(path);
 }

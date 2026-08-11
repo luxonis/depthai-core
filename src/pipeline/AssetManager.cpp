@@ -6,6 +6,7 @@
 #include "utility/spdlog-fmt.hpp"
 
 // std
+#include <algorithm>
 #include <array>
 #include <fstream>
 #include <limits>
@@ -49,8 +50,18 @@ std::vector<std::uint8_t>& Asset::getData() {
             throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
         }
 
-        auto loadedData = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
-        if(loadedData.size() != size) {
+        auto loadedData = std::vector<std::uint8_t>(size);
+        std::size_t loadedSize = 0;
+        while(loadedSize < size) {
+            const auto bytesToRead = std::min<std::size_t>(size - loadedSize, 1024 * 1024);
+            stream.read(reinterpret_cast<char*>(loadedData.data() + loadedSize), bytesToRead);
+            const auto bytesRead = stream.gcount();
+            if(bytesRead != static_cast<std::streamsize>(bytesToRead)) {
+                throw std::runtime_error(fmt::format("Cannot load asset, file at path {} has changed size.", path));
+            }
+            loadedSize += static_cast<std::size_t>(bytesRead);
+        }
+        if(stream.peek() != std::char_traits<char>::eof()) {
             throw std::runtime_error(fmt::format("Cannot load asset, file at path {} has changed size.", path));
         }
 
@@ -209,6 +220,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         auto& a = *kv.second;
 
         const auto assetSize = a.getSize();
+        const auto storageStart = storage.size();
 
         // Calculate additional bytes needed to offset to alignment.
         std::size_t toAdd = 0;
@@ -225,20 +237,29 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         storage.resize(storage.size() + toAdd);
 
         if(!a.path.empty()) {
-            std::ifstream stream(a.path, std::ios::in | std::ios::binary);
-            if(!stream.is_open()) {
-                throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", a.path));
-            }
-            std::vector<std::uint8_t> buffer(1024 * 1024);
-            std::size_t streamedSize = 0;
-            while(stream) {
-                stream.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
-                auto bytesRead = stream.gcount();
-                storage.insert(storage.end(), buffer.data(), buffer.data() + bytesRead);
-                streamedSize += static_cast<std::size_t>(bytesRead);
-            }
-            if(streamedSize != a.getSize()) {
-                throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
+            try {
+                std::ifstream stream(a.path, std::ios::in | std::ios::binary);
+                if(!stream.is_open()) {
+                    throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", a.path));
+                }
+                std::vector<std::uint8_t> buffer(1024 * 1024);
+                std::size_t streamedSize = 0;
+                while(streamedSize < assetSize) {
+                    const auto bytesToRead = std::min(buffer.size(), assetSize - streamedSize);
+                    stream.read(reinterpret_cast<char*>(buffer.data()), bytesToRead);
+                    auto bytesRead = stream.gcount();
+                    if(bytesRead != static_cast<std::streamsize>(bytesToRead)) {
+                        throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
+                    }
+                    storage.insert(storage.end(), buffer.data(), buffer.data() + bytesRead);
+                    streamedSize += static_cast<std::size_t>(bytesRead);
+                }
+                if(stream.peek() != std::char_traits<char>::eof()) {
+                    throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
+                }
+            } catch(...) {
+                storage.resize(storageStart);
+                throw;
             }
         } else {
             storage.insert(storage.end(), a.data.begin(), a.data.end());
