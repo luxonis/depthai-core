@@ -44,7 +44,7 @@ std::string Asset::getRelativeUri() {
 }
 
 std::vector<std::uint8_t>& Asset::getData() {
-    if(data.empty() && !dataLoaded && !path.empty()) {
+    if(!dataLoaded && !path.empty()) {
         std::ifstream stream(path, std::ios::in | std::ios::binary);
         if(!stream.is_open()) {
             throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
@@ -78,6 +78,7 @@ std::size_t Asset::getSize() const {
 void Asset::setFile(std::filesystem::path path, std::size_t size) {
     this->path = std::move(path);
     this->size = size;
+    dataLoaded = false;
 }
 
 AssetManager::AssetManager() {}
