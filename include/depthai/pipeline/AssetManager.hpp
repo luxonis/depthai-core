@@ -17,16 +17,19 @@ struct Asset {
     explicit Asset(std::string k) : key(std::move(k)) {}
     const std::string key;
     std::vector<std::uint8_t> data;
-    std::filesystem::path path;
-    std::size_t size = 0;
     std::uint32_t alignment = 1;
     std::vector<std::uint8_t>& getData();
     std::size_t getSize() const;
     std::string getRelativeUri();
 
+    /// Set the backing file and its expected size.
+    void setFile(std::filesystem::path path, std::size_t size);
+
    private:
     friend class AssetManager;
 
+    std::filesystem::path path;
+    std::size_t size = 0;
     bool dataLoaded = false;
 };
 

@@ -75,6 +75,11 @@ std::size_t Asset::getSize() const {
     return path.empty() ? data.size() : size;
 }
 
+void Asset::setFile(std::filesystem::path path, std::size_t size) {
+    this->path = std::move(path);
+    this->size = size;
+}
+
 AssetManager::AssetManager() {}
 AssetManager::AssetManager(const std::string& rootPath) : rootPath{rootPath} {}
 
@@ -117,8 +122,8 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asse
     // Rename the asset with supplied key and store
     Asset a(key);
     a.data = std::move(asset.data);
-    a.path = std::move(asset.path);
-    a.size = a.path.empty() ? 0 : asset.size;
+    const auto assetSize = asset.path.empty() ? 0 : asset.size;
+    a.setFile(std::move(asset.path), assetSize);
     a.dataLoaded = asset.dataLoaded;
     a.alignment = asset.alignment;
     return set(std::move(a));
@@ -136,8 +141,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.path = path;
-    binaryAsset.size = static_cast<std::size_t>(std::filesystem::file_size(path));
+    binaryAsset.setFile(path, static_cast<std::size_t>(std::filesystem::file_size(path)));
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -219,6 +223,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
     const auto storageStart = storage.size();
     const auto mutableAssetsStart = mutableAssets;
     try {
+        storage.reserve(getSerializedSize(storageStart));
         for(auto& kv : assetMap) {
             auto& a = *kv.second;
 
@@ -231,8 +236,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
                 toAdd = a.alignment - (storage.size() % a.alignment);
             }
 
-            const auto storageEnd = getSerializedEndOffset(storage.size(), a.alignment, assetSize);
-            storage.reserve(storageEnd);
+            getSerializedEndOffset(storage.size(), a.alignment, assetSize);
 
             // calculate offset
             std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;

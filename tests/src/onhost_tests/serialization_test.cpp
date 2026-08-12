@@ -62,8 +62,7 @@ TEST_CASE("AssetManager uses the current size of memory-backed assets") {
 
 TEST_CASE("AssetManager rejects storage beyond 4 GiB") {
     dai::Asset asset("oversized");
-    asset.path = "placeholder";
-    asset.size = static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()) + 1;
+    asset.setFile("placeholder", static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()) + 1);
 
     dai::AssetManager assetManager;
     assetManager.set(std::move(asset));
@@ -73,8 +72,7 @@ TEST_CASE("AssetManager rejects storage beyond 4 GiB") {
 
 TEST_CASE("AssetManager preserves the size of path-backed assets when renaming them") {
     dai::Asset asset("source");
-    asset.path = "placeholder";
-    asset.size = 42;
+    asset.setFile("placeholder", 42);
 
     dai::AssetManager assetManager;
     auto renamedAsset = assetManager.set("renamed", std::move(asset));
