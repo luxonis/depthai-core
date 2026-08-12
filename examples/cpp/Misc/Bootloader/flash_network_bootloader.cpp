@@ -23,11 +23,6 @@ constexpr auto CONNECT_RETRY_DELAY = std::chrono::seconds(1);
 constexpr int VERIFY_ATTEMPTS = 30;
 constexpr auto VERIFY_RETRY_DELAY = std::chrono::seconds(2);
 
-class SafetyError : public std::runtime_error {
-   public:
-    using std::runtime_error::runtime_error;
-};
-
 struct BootloaderState {
     std::string version;
     bool isUserBootloader;
@@ -147,11 +142,11 @@ bool confirmFactoryAccess(const SelectedDevice& device) {
 
 BootloaderState inspectDevice(dai::DeviceBootloader& bootloader, bool factory = false) {
     if(bootloader.getType() != dai::DeviceBootloader::Type::NETWORK) {
-        throw SafetyError("Refusing to update: the connected device is not running a NETWORK bootloader.");
+        throw std::runtime_error("Refusing to update: the connected device is not running a NETWORK bootloader.");
     }
 
     if(!factory && !bootloader.isUserBootloaderSupported()) {
-        throw SafetyError(
+        throw std::runtime_error(
             "Refusing to update: the installed factory bootloader does not support the recoverable user bootloader slot. Use the M8/USB recovery "
             "programming board to update this device; do not flash its factory bootloader over Ethernet.");
     }
@@ -279,9 +274,6 @@ int main(int argc, char** argv) {
             std::cout << "Flash verification succeeded; waiting for the device to reboot and checking the running version...\n";
             verifyUpdate(selectedDevice->info, targetVersion);
         }
-    } catch(const SafetyError& error) {
-        std::cerr << error.what() << '\n';
-        return 2;
     } catch(const std::exception& error) {
         std::cerr << "Failed to update the NETWORK bootloader: " << error.what() << '\n';
         if(options.factory) {

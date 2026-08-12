@@ -29,10 +29,6 @@ VERIFY_ATTEMPTS = 30
 VERIFY_RETRY_DELAY_SECONDS = 2.0
 
 
-class SafetyError(RuntimeError):
-    """Raised when a bootloader update fails a safety check."""
-
-
 @dataclass(frozen=True)
 class BootloaderState:
     version: str
@@ -90,10 +86,10 @@ def versionString(version: Any) -> str:
 
 def inspectDevice(bootloader: Any, factory: bool = False) -> BootloaderState:
     if bootloader.getType() != dai.DeviceBootloader.Type.NETWORK:
-        raise SafetyError("Refusing to update: the connected device is not running a NETWORK bootloader.")
+        raise RuntimeError("Refusing to update: the connected device is not running a NETWORK bootloader.")
 
     if not factory and not bootloader.isUserBootloaderSupported():
-        raise SafetyError(
+        raise RuntimeError(
             "Refusing to update: the installed factory bootloader does not support the recoverable "
             "user bootloader slot. Use the M8/USB recovery programming board to update this device; "
             "do not flash its factory bootloader over Ethernet."
@@ -244,9 +240,6 @@ def main() -> int:
         else:
             print("Flash verification succeeded; waiting for the device to reboot and checking the running version...")
             verifyUpdate(device, targetVersion)
-    except SafetyError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
     except Exception as exc:
         print(f"Failed to update the NETWORK bootloader: {exc}", file=sys.stderr)
         if args.factory:
