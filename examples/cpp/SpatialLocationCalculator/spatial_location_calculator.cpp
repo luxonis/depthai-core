@@ -77,10 +77,7 @@ int main() {
             }
 
             // Process depth frame for visualization
-            cv::Mat depthFrameColor;
-            cv::normalize(frameDepth, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
-            cv::equalizeHist(depthFrameColor, depthFrameColor);
-            cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
+            cv::Mat depthFrameColor = dai::utility::colorizeDepthFrame(*outputDepthImage).getCvFrame();
 
             // Draw spatial data
             for(const auto& depthData : spatialData->spatialLocations) {

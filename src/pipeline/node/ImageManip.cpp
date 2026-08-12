@@ -82,6 +82,10 @@ void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
     properties.outputFrameSize = maxFrameSize;
 }
 
+void ImageManip::setMaxPoolSize(unsigned int maxPoolSize) {
+    properties.maxPoolSize = maxPoolSize;
+}
+
 ImageManip::Properties& ImageManip::getProperties() {
     properties.initialConfig = *initialConfig;
     return properties;
