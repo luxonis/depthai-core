@@ -19,19 +19,6 @@ except ImportError:
 import depthai as dai
 
 
-def colorizeDepth(frame: np.ndarray) -> np.ndarray:
-    """Normalize a uint16 depth frame and apply a colormap for display."""
-    downscaled = frame[::4, ::4]
-    nonZero = downscaled[downscaled != 0]
-    if nonZero.size == 0:
-        minD, maxD = 0, 1
-    else:
-        minD = np.percentile(nonZero, 1)
-        maxD = np.percentile(nonZero, 99)
-    colored = np.interp(frame, (minD, maxD), (0, 255)).astype(np.uint8)
-    return cv2.applyColorMap(colored, cv2.COLORMAP_HOT)
-
-
 def main() -> None:
     print("PointCloud Visualizer")
     print("=====================")
@@ -41,34 +28,23 @@ def main() -> None:
     print(f"Device: {device.getDeviceName()}  (ID: {device.getDeviceId()})\n")
 
     with dai.Pipeline(device) as pipeline:
-        # ── Camera + StereoDepth ──────────────────────────────────────
-        left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-        color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-        stereo = pipeline.create(dai.node.StereoDepth)
-        left.requestOutput((640, 400)).link(stereo.left)
-        right.requestOutput((640, 400)).link(stereo.right)
-
-        # Align depth to color camera
-        platform = pipeline.getDefaultDevice().getPlatform()
+        # ── Camera + Depth ─────────────────────────────────────
+        colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
+        colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
+        color = pipeline.create(dai.node.Camera).build(colorSocket)
         colorOut = color.requestOutput(
             (640, 400), type=dai.ImgFrame.Type.RGB888i,
             resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=True,
         )
-        if platform == dai.Platform.RVC4:
-            align = pipeline.create(dai.node.ImageAlign)
-            stereo.depth.link(align.input)
-            colorOut.link(align.inputAlignTo)
-            alignedDepth = align.outputAligned
-        else:
-            colorOut.link(stereo.inputAlignTo)
-            alignedDepth = stereo.depth
+
+        depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
+        depth.setAlignTo(colorOut)
 
         # ── PointCloud node ───────────────────────────────────────────
         pc = pipeline.create(dai.node.PointCloud)
         pc.setRunOnHost(True)
         pc.initialConfig.setLengthUnit(dai.LengthUnit.METER)
-        alignedDepth.link(pc.inputDepth)
+        depth.depth.link(pc.inputDepth)
         colorOut.link(pc.inputColor)
 
         queue = pc.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
@@ -124,7 +100,7 @@ def main() -> None:
                 # Show colorized depth in an OpenCV window
                 depthMsg = qDepth.tryGet()
                 if depthMsg is not None:
-                    cv2.imshow("Depth", colorizeDepth(depthMsg.getCvFrame()))
+                    cv2.imshow("Depth", dai.utility.colorizeDepthFrame(depthMsg, 300, 12000, cv2.COLORMAP_HOT, useLog=True).getCvFrame())
 
                 if cv2.waitKey(1) == ord("q"):
                     break

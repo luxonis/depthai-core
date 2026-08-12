@@ -1582,6 +1582,16 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcCallChecked<std::vector<CameraBoardSocket>>("getConnectedCameras");
 }
 
+std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras(CameraSensorType type) {
+    std::vector<CameraBoardSocket> sockets;
+    for(const auto& features : getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), type) != features.supportedTypes.end()) {
+            sockets.push_back(features.socket);
+        }
+    }
+    return sockets;
+}
+
 std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
     return getStereoPairs();
 }
