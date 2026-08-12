@@ -51,6 +51,5 @@ void bind_message_group(pybind11::module& m, void* pCallstack) {
         .def("isSynced", &MessageGroup::isSynced, py::arg("thresholdNs"), DOC(dai, MessageGroup, isSynced))
         .def("getIntervalNs", &MessageGroup::getIntervalNs, DOC(dai, MessageGroup, getIntervalNs))
         .def("getNumMessages", &MessageGroup::getNumMessages, DOC(dai, MessageGroup, getNumMessages))
-        .def("getMessageNames", &MessageGroup::getMessageNames, DOC(dai, MessageGroup, getMessageNames))
-        ;
+        .def("getMessageNames", &MessageGroup::getMessageNames, DOC(dai, MessageGroup, getMessageNames));
 }

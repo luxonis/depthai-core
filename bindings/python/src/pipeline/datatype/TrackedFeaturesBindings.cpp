@@ -54,6 +54,5 @@ void bind_trackedfeatures(pybind11::module& m, void* pCallstack) {
             "trackedFeatures",
             [](TrackedFeatures& feat) -> std::vector<TrackedFeature>& { return feat.trackedFeatures; },
             [](TrackedFeatures& feat, std::vector<TrackedFeature> val) { feat.trackedFeatures = std::move(val); },
-            DOC(dai, TrackedFeatures, trackedFeatures))
-        ;
+            DOC(dai, TrackedFeatures, trackedFeatures));
 }

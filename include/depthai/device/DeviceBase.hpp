@@ -598,6 +598,14 @@ class DeviceBase {
     std::vector<CameraBoardSocket> getConnectedCameras();
 
     /**
+     * Get cameras that are connected to the device and support a given sensor type
+     *
+     * @param type Sensor type to filter by (e.g. CameraSensorType::COLOR)
+     * @returns Vector of sockets of the connected cameras that support the given type
+     */
+    std::vector<CameraBoardSocket> getConnectedCameras(CameraSensorType type);
+
+    /**
      * Get connection interfaces for device
      *
      * @returns Vector of connection type

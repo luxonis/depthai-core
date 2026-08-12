@@ -1,4 +1,3 @@
-import numpy as np
 import cv2 as cv
 import depthai as dai
 
@@ -11,36 +10,6 @@ import depthai as dai
   | Right | ---> |               |                    | NeuralStereo |                 |     | -right-> └────────┘
   └───────┘      └───────────────┘ --right_low_res--> └──────────────┘ --confidence--> └─────┘
 """
-
-
-def showDepth(depthFrame, windowName="Depth", minDistance=500, maxDistance=5000,
-               colormap=cv.COLORMAP_TURBO, useLog=False):
-    """
-    Nicely visualize a depth map.
-
-    Args:
-        depthFrame (np.ndarray): Depth frame (in millimeters).
-        window_name (str): OpenCV window name.
-        minDistance (int): Minimum depth to display (in mm).
-        maxDistance (int): Maximum depth to display (in mm).
-        colormap (int): OpenCV colormap (e.g., cv.COLORMAP_JET, COLORMAP_TURBO, etc.).
-        use_log (bool): Apply logarithmic scaling for better visual contrast.
-    """
-    # Convert to float for processing
-    depthFrame = depthFrame.astype(np.float32)
-
-    # Optionally apply log scaling
-    if useLog:
-        depthFrame = np.log(depthFrame + 1)
-
-    # Clip to defined range (avoid far-out values)
-    depthFrame = np.uint8(np.clip(depthFrame, minDistance, maxDistance) / maxDistance * 255)
-
-    # Apply color map
-    depthColor = cv.applyColorMap(depthFrame, colormap)
-
-    # Show in a window
-    cv.imshow(windowName, depthColor)
 
 
 if __name__ == "__main__":
@@ -114,14 +83,7 @@ if __name__ == "__main__":
 
             cv.imshow("vpp_left", vpp_out_left.getCvFrame())
             cv.imshow("vpp_right", vpp_out_right.getCvFrame())
-            showDepth(
-                depth.getCvFrame(),
-                windowName="Depth",
-                minDistance=500,
-                maxDistance=5000,
-                colormap=cv.COLORMAP_TURBO,
-                useLog=False
-            )
+            cv.imshow("Depth", dai.utility.colorizeDepthFrame(depth, colormap=cv.COLORMAP_TURBO).getCvFrame())
 
             key = cv.waitKey(1)
             if key == ord('q'):

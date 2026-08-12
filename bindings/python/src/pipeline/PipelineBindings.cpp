@@ -271,9 +271,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 py::object nodeClass = py::module::import("depthai").attr("node").attr("ThreadedHostNode");
                 auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
 
-                // Check if the class is directly from bindings (__module__ == "depthai.node"). If so, the node comes from bindings,
+                // Check if the class is directly from stable or beta bindings. If so, the node comes from bindings,
                 // so we create in the same manner as device nodes.
-                auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
+                const auto nodeModule = class_.attr("__module__").cast<std::string>();
+                auto isFromBindings = nodeModule == "depthai.node" || nodeModule == "depthai.beta.node";
                 // Create a copy from kwargs and add autoAddToPipeline to false
 
                 // Check if the node is a ColorCamera or a MonoCamera node and issue a deprecation warning
