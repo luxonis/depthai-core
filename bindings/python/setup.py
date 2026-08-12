@@ -184,14 +184,23 @@ class CMakeBuild(build_ext):
 
     def build_extension(self, ext):
         if ext.name == DEPTHAI_CLI_MODULE_NAME:
-            # Copy cam_test.py and it's dependencies to depthai_cli/
+            # Copy CLI scripts and their dependencies to depthai_cli/
             cam_test_path      = os.path.join(str(repo_root), "utilities", "cam_test.py")
             cam_test_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "cam_test.py")
             cam_test_gui_path  = os.path.join(str(repo_root), "utilities", "cam_test_gui.py")
             cam_test_gui_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "cam_test_gui.py")
             stress_test_path   = os.path.join(str(repo_root), "utilities", "stress_test.py")
             stress_test_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "stress_test.py")
-            files_to_copy = [(cam_test_path, cam_test_dest), (cam_test_gui_path, cam_test_gui_dest), (stress_test_path, stress_test_dest)]
+            flash_network_bootloader_path = os.path.join(
+                str(repo_root), "examples", "python", "Misc", "Bootloader", "flash_network_bootloader.py"
+            )
+            flash_network_bootloader_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "flash_network_bootloader.py")
+            files_to_copy = [
+                (cam_test_path, cam_test_dest),
+                (cam_test_gui_path, cam_test_gui_dest),
+                (stress_test_path, stress_test_dest),
+                (flash_network_bootloader_path, flash_network_bootloader_dest),
+            ]
             for src, dst in files_to_copy:
                 with open(src, "r") as f:
                     with open(dst, "w") as f2:

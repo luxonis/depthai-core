@@ -522,11 +522,11 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
 
         // Bootloader device ready, check for version
         logger::debug("Connected bootloader version {}", version.toString());
-        if(getEmbeddedBootloaderVersion() > version) {
+        if(getType() == Type::NETWORK && getEmbeddedBootloaderVersion() > version) {
             const std::string bootloaderDocsUrl = "https://docs.luxonis.com/software-v3/depthai/depthai-components/bootloader";
-            logger::warn(
+            logger::info(
                 "New bootloader version available. Device has: {}, available: {}. You can update the bootloader by running "
-                "'examples/python/Misc/Bootloader/flash_network_bootloader.py', or by "
+                "'depthai --flash' or 'depthai-core/examples/python/Misc/Bootloader/flash_network_bootloader.py', or by "
                 "following the guide at {}",
                 version.toString(),
                 getEmbeddedBootloaderVersion().toString(),
@@ -1267,6 +1267,9 @@ nlohmann::json DeviceBootloader::readConfigData(Memory memory, Type type) {
         // Parse from BSON
         return nlohmann::json::from_bson(bsonConfig);
     } else {
+        if(std::string(resp.errorMsg) == "No config available") {
+            throw BootloaderConfigNotFound(resp.errorMsg);
+        }
         throw std::runtime_error(resp.errorMsg);
     }
 }
