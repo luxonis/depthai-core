@@ -251,5 +251,15 @@ CameraBoardSocket ToFBase::getBoardSocket() const {
     return properties.boardSocket;
 }
 
+std::shared_ptr<ToFBase> ToFBase::setOutputUndistortion(bool enable) {
+    properties.enableUndistortion = enable;
+    return std::static_pointer_cast<ToFBase>(shared_from_this());
+}
+
+std::shared_ptr<ToF> ToF::setOutputUndistortion(bool enable) {
+    tofBase->setOutputUndistortion(enable);
+    return std::static_pointer_cast<ToF>(shared_from_this());
+}
+
 }  // namespace node
 }  // namespace dai
