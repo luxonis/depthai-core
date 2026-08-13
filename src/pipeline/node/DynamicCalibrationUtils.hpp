@@ -1,11 +1,26 @@
 #pragma once
 
-#include <DynamicCalibration.hpp>
 #include <array>
-#include <depthai/pipeline/DeviceNode.hpp>
-#include <depthai/pipeline/Subnode.hpp>
-#include <depthai/pipeline/node/Sync.hpp>
-#include <depthai/properties/DynamicCalibrationProperties.hpp>
+#include <cstdint>
+#include <depthai/common/CameraBoardSocket.hpp>
+#include <depthai/common/CameraModel.hpp>
+#include <depthai/common/EepromData.hpp>
+#include <depthai/common/HousingCoordinateSystem.hpp>
+#include <depthai/device/CalibrationHandler.hpp>
+#include <depthai/pipeline/datatype/DynamicCalibrationControl.hpp>
+#include <memory>
+#include <variant>
+#include <vector>
+
+namespace cv {
+class Mat;
+}
+
+namespace dcl {
+class CameraCalibrationHandle;
+struct ImageData;
+enum class PerformanceMode : std::int32_t;
+}  // namespace dcl
 
 namespace dai {
 namespace node {
