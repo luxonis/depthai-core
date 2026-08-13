@@ -8,12 +8,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Restore vcpkg cache
-        uses: actions/cache/restore@v4
+      - name: Cache vcpkg folder
+        uses: actions/cache@v3
         with:
           path: /home/runner/.vcpkg
           key: vcpkg-manylinux-x86_64
-          fail-on-cache-miss: true
 
       - name: Inspect cache
         run: |
