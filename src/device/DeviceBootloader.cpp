@@ -525,10 +525,10 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
         // Bootloader device ready, check for version
         logger::debug("Connected bootloader version {}", version.toString());
         if(getType() == Type::NETWORK && getEmbeddedBootloaderVersion() > version) {
-            logger::info(
-                "New bootloader version available. Device has: {}, available: {}. You can update the bootloader by running "
-                "'depthai --flash' or '{}', or by "
-                "following the guide at {}",
+            logger::warn(
+                "An optional NETWORK bootloader update is available (installed: {}, available: {}). "
+                "Updating is recommended to improve device discoverability. Run 'depthai --flash' or '{}', "
+                "or see {} for more information.",
                 version.toString(),
                 getEmbeddedBootloaderVersion().toString(),
                 NETWORK_BOOTLOADER_FLASH_EXAMPLE_PATH,
