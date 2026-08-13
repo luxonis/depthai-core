@@ -108,6 +108,9 @@ void ToF::postBuildStage() {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     auto& logger = pimpl->logger;
     if(device->getPlatform() == Platform::RVC2) {
+        if(tofBase->properties.enableUndistortion) {
+            if(logger) logger->warn("ToF output undistortion is not supported on RVC2.");
+        }
         if(!confidence.getConnections().empty()) {
             if(logger) logger->warn("Confidence is not supported on this platform and will stream aplitude instead.");
         }
