@@ -747,9 +747,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
             pimplDCL->telemetryAggregateState->totalCommands += 1;
             pimplDCL->telemetryAggregateState->resetDataCommands += 1;
         }
-        for(size_t i = 0; i < connectedSensors.size(); ++i) {
-            for(size_t j = i + 1; j < connectedSensors.size(); ++j) {
-                pimplDCL->dynCalibImpl.removeAllData(connectedSensors[i].sensorDcl, connectedSensors[j].sensorDcl);
+        std::vector<std::shared_ptr<const dcl::CameraSensorHandle>> sensors;
+        sensors.reserve(connectedSensors.size());
+        for(const auto& sensor : connectedSensors) sensors.push_back(sensor.sensorDcl);
+        for(size_t i = 0; i < sensors.size(); ++i) {
+            for(size_t j = i + 1; j < sensors.size(); ++j) {
+                pimplDCL->dynCalibImpl.removeAllData(sensors[i], sensors[j]);
             }
         }
         return ErrorCode::OK;

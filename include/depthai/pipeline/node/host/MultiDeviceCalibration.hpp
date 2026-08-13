@@ -50,12 +50,9 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
          */
         DYNAMIC_CALIBRATION,
         /**
-         * A target-free structure-from-motion estimate that needs no initial guess and no known distance. SIFT
-         * four-view tracks are matched within each device's stereo pair and across the devices, an essential matrix
-         * between the two reference cameras gives the rotation and the translation direction, and the metric
-         * translation scale is recovered by triangulating the same tracks in each device's own metric stereo pair and
-         * robustly fitting the scalar that aligns the two point clouds. Requires exactly a stereo pair (two cameras)
-         * per device.
+         * A target-free metric estimate that needs no initial guess and no known distance. It reuses DCL's stored,
+         * normalized measurements across the stereo pairs, triangulates them using each factory baseline, and robustly
+         * aligns the resulting point clouds. Requires exactly a stereo pair (two cameras) per device.
          */
         FEATURE_TRACKS,
     };
@@ -172,8 +169,8 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
 
     /**
      * Method used to estimate the inter-device transformations. Defaults to `DYNAMIC_CALIBRATION`. Select
-     * `FEATURE_TRACKS` for a target-free estimate that needs neither an initial guess nor a known distance, at the
-     * cost of requiring a stereo pair per device.
+     * `FEATURE_TRACKS` for DCL's target-free metric estimate, which needs neither an initial guess nor a known
+     * distance, at the cost of requiring a stereo pair per device.
      */
     void setMethod(Method method);
 
@@ -182,11 +179,11 @@ class MultiDeviceCalibration : public NodeCRTP<ThreadedHostNode, MultiDeviceCali
    private:
     void run() override;
 
-    /// Estimate the rig with the dynamic calibration library and emit the result.
-    void estimate();
+    /// Estimate the rig from DCL's calibration graph and emit the result.
+    void estimateFromCalibrationGraph();
 
-    /// Estimate the rig from SIFT four-view tracks (no DCL) and emit the result.
-    void estimateFromTracks();
+    /// Estimate the rig from DCL's stereo graph and emit the result.
+    void estimateFromStereoGraph();
 
     /// Scale correction of one inter-device edge, derived from the known distances.
     float resolveScale(const std::vector<std::vector<float>>& transform,

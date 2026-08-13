@@ -465,7 +465,6 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/node/AutoCalibration.cpp
         src/pipeline/datatype/AutoCalibrationResult.cpp
         src/pipeline/node/host/MultiDeviceCalibration.cpp
-        src/pipeline/node/MultiDeviceScaleEstimation.cpp
         src/pipeline/datatype/AutoCalibrationConfig.cpp
     )
 endif()
