@@ -6,7 +6,12 @@ on:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-
+    env:
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
       - name: Cache vcpkg folder
         uses: actions/cache@v3
