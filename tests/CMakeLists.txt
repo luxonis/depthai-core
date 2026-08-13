@@ -234,6 +234,20 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     )
 
     private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/images/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_data.bin"
+        SHA1 "298b0b69a22cc1fbd89ec95e9de5f2865a6c3f77"
+        FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_data.bin"
+        LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_data
+    )
+
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/images/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_metadata.bin"
+        SHA1 "ebb04c34eaae80e5009c8fb2f4b78d09d64314d5"
+        FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_metadata.bin"
+        LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_metadata
+    )
+
+    private_data(
         URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
         SHA1 "cf947acf1c210efba34c363fe6d8fd8d02293601"
         FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
@@ -762,6 +776,8 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FIRE_VIDEO="${fire_video}"
         KITCHEN_IMAGE_PATH="${kitchen_image}"
         YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2}"
+        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_data}"
+        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_METADATA="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_metadata}"
     )
     dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
 endif()
