@@ -16,8 +16,8 @@ FPS = 30.0
 def main():
     pipeline = dai.Pipeline()
 
-    minDepth = 100
-    maxDepth = 7000
+    minDepth = 100.0
+    maxDepth = 7000.0
 
     profile = dai.ToFConfig.Profile.MID_RANGE
 
