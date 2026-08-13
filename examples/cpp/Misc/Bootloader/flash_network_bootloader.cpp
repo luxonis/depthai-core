@@ -244,12 +244,17 @@ int main(int argc, char** argv) {
         }
 
         {
-            auto bootloader = connectBootloader(selectedDevice->info, options.factory);
+            auto bootloader = connectBootloader(selectedDevice->info, false);
             const auto installed = inspectDevice(*bootloader, options.factory);
 
             if((options.factory || !options.skipConfirmation) && !confirmFlash(*selectedDevice, installed, targetVersion, options.factory)) {
                 std::cout << "Cancelled.\n";
                 return EXIT_SUCCESS;
+            }
+
+            if(options.factory) {
+                bootloader.reset();
+                bootloader = connectBootloader(selectedDevice->info, true);
             }
 
             const auto progressCallback = [&options](float progress) { printProgress(progress, options.factory); };

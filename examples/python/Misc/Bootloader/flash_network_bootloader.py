@@ -214,7 +214,7 @@ def main() -> int:
             print("Cancelled.")
             return 0
 
-        with connectBootloader(device, args.factory) as bootloader:
+        with connectBootloader(device) as bootloader:
             installed = inspectDevice(bootloader, args.factory)
 
             if (args.factory or not args.yes) and not confirmFlash(
@@ -223,6 +223,7 @@ def main() -> int:
                 print("Cancelled.")
                 return 0
 
+        with connectBootloader(device, args.factory) as bootloader:
             def progressCallback(progress: float) -> None:
                 printProgress(progress, args.factory)
 
