@@ -13,11 +13,12 @@ jobs:
       DEPTHAI_BUILD_KOMPUTE: ON
       VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
-      - name: Cache vcpkg folder
+      - name: Restore vcpkg cache
         uses: actions/cache@v3
         with:
           path: /home/runner/.vcpkg
           key: vcpkg-manylinux-x86_64
+          fail-on-cache-miss: true
 
       - name: Inspect cache
         run: |
