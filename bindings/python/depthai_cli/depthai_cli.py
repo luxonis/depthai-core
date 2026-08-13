@@ -43,10 +43,8 @@ def cli(argv=None) -> int:
     parser = argparse.ArgumentParser(description="DepthAI CLI", add_help=True)
     parser.add_argument("-v", "--version", action="store_true", help="Print version and exit.")
     parser.add_argument("-l", "--list-devices", action="store_true", help="List connected devices.")
-    parser.add_argument(
-        "--flash",
-        action="store_true",
-        help="Safely update an RVC2 NETWORK bootloader; remaining arguments are passed to the flashing command.",
+    parser.add_argument("-f", "--flash", action="store_true", 
+                        help="Safely update an RVC2 NETWORK bootloader; remaining arguments are passed to the flashing command.",
     )
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
     # Define the parser for the "cam_test" command
@@ -57,7 +55,7 @@ def cli(argv=None) -> int:
 
     # Dispatch before parsing so `depthai --flash --help` displays the flashing
     # command's help and all following options pass through unchanged.
-    if cli_args and cli_args[0] == "--flash":
+    if cli_args and cli_args[0] in ("-f", "--flash"):
         return _run_flash(cli_args[1:])
 
     # subparser REMINDER args would get parsed too if we used parse_args, so we have to handle unknown args manually
