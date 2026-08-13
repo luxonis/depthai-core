@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Safely update an RVC2 device's NETWORK bootloader.
 
+This utility is also used by the ``depthai --flash`` command.
+
 By default, this script flashes the NETWORK bootloader bundled with DepthAI to
 the recoverable user bootloader slot, leaving the factory bootloader unchanged.
 It checks that the connected device is running a compatible NETWORK bootloader,

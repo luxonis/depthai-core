@@ -191,9 +191,7 @@ class CMakeBuild(build_ext):
             cam_test_gui_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "cam_test_gui.py")
             stress_test_path   = os.path.join(str(repo_root), "utilities", "stress_test.py")
             stress_test_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "stress_test.py")
-            flash_network_bootloader_path = os.path.join(
-                str(repo_root), "examples", "python", "Misc", "Bootloader", "flash_network_bootloader.py"
-            )
+            flash_network_bootloader_path = os.path.join(str(repo_root), "utilities", "flash_network_bootloader.py")
             flash_network_bootloader_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "flash_network_bootloader.py")
             files_to_copy = [
                 (cam_test_path, cam_test_dest),

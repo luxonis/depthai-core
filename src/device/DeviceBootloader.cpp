@@ -34,7 +34,7 @@ namespace Response = bootloader::response;
 
 // constants
 constexpr const DeviceBootloader::Type DeviceBootloader::DEFAULT_TYPE;
-constexpr const char* NETWORK_BOOTLOADER_FLASH_EXAMPLE_PATH = "depthai-core/examples/python/Misc/Bootloader/flash_network_bootloader.py";
+constexpr const char* NETWORK_BOOTLOADER_FLASH_UTILITY_PATH = "depthai-core/utilities/flash_network_bootloader.py";
 constexpr const char* NETWORK_BOOTLOADER_DOCS_URL = "https://docs.luxonis.com/software-v3/depthai/depthai-components/bootloader";
 
 // static api
@@ -531,7 +531,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
                 "or see {} for more information.",
                 version.toString(),
                 getEmbeddedBootloaderVersion().toString(),
-                NETWORK_BOOTLOADER_FLASH_EXAMPLE_PATH,
+                NETWORK_BOOTLOADER_FLASH_UTILITY_PATH,
                 NETWORK_BOOTLOADER_DOCS_URL);
         }
 

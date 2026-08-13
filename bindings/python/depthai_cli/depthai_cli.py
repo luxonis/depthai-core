@@ -20,30 +20,19 @@ else:
         / ".."
         / ".."
         / ".."
-        / "examples"
-        / "python"
-        / "Misc"
-        / "Bootloader"
+        / "utilities"
         / "flash_network_bootloader.py"
     )  # Execution from source
-
-
-def _run_flash(arguments) -> int:
-    import sys
-
-    return subprocess.run(
-        [sys.executable, str(FLASH_NETWORK_BOOTLOADER_PATH)] + list(arguments)
-    ).returncode
 
 
 def cli(argv=None) -> int:
     import argparse
     import sys
-
+    import depthai as dai
     parser = argparse.ArgumentParser(description="DepthAI CLI", add_help=True)
     parser.add_argument("-v", "--version", action="store_true", help="Print version and exit.")
     parser.add_argument("-l", "--list-devices", action="store_true", help="List connected devices.")
-    parser.add_argument("-f", "--flash", action="store_true", 
+    parser.add_argument("-f", "--flash", action="store_true",
                         help="Safely update an RVC2 NETWORK bootloader; remaining arguments are passed to the flashing command.",
     )
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
@@ -56,12 +45,16 @@ def cli(argv=None) -> int:
     # Dispatch before parsing so `depthai --flash --help` displays the flashing
     # command's help and all following options pass through unchanged.
     if cli_args and cli_args[0] in ("-f", "--flash"):
-        return _run_flash(cli_args[1:])
+        return subprocess.run(
+            [sys.executable, str(FLASH_NETWORK_BOOTLOADER_PATH)] + cli_args[1:]
+        ).returncode
 
     # subparser REMINDER args would get parsed too if we used parse_args, so we have to handle unknown args manually
     args, unknown_args = parser.parse_known_args(cli_args)
     if args.flash:
-        return _run_flash(unknown_args)
+        return subprocess.run(
+            [sys.executable, str(FLASH_NETWORK_BOOTLOADER_PATH)] + unknown_args
+        ).returncode
     elif args.command == "cam_test":
         cam_test_path = CAM_TEST_PATH
         return subprocess.run([sys.executable, cam_test_path] + cam_test_parser.parse_args().args[1:]).returncode
@@ -69,13 +62,9 @@ def cli(argv=None) -> int:
     elif unknown_args:
         parser.error(f"Unrecognized arguments: {unknown_args}") # handles exit internally
     elif args.version:
-        import depthai as dai
-
         print(dai.__version__)
         return 0
     elif args.list_devices:
-        import depthai as dai
-
         print(dai.Device.getAllConnectedDevices())
         return 0
     else:
