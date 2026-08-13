@@ -234,14 +234,14 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     )
 
     private_data(
-        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/images/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_data.bin"
+        URL "https://artifacts.luxonis.com/api/v1/repositories/luxonis-depthai-data-local/download/misc/parser_testing/images/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f/nnData.bin"
         SHA1 "298b0b69a22cc1fbd89ec95e9de5f2865a6c3f77"
         FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_data.bin"
         LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_data
     )
 
     private_data(
-        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/images/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_metadata.bin"
+        URL "https://artifacts.luxonis.com/api/v1/repositories/luxonis-depthai-data-local/download/misc/parser_testing/images/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f/metadata.bin"
         SHA1 "ebb04c34eaae80e5009c8fb2f4b78d09d64314d5"
         FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_metadata.bin"
         LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_metadata
