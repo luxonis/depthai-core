@@ -181,9 +181,11 @@ def build_pipeline(
             feature.socket,
             sensorFps=CAMERA_FPS,
         )
-        # camera_output = camera.requestOutput(CAMERA_SIZE, fps=CAMERA_FPS)
         camera_output = camera.requestOutput(CAMERA_SIZE, fps=CAMERA_FPS)
-        print(f"RES: ${feature.configs} ${feature.socket}")
+        # print(f"RES: ${feature.configs} ${feature.socket}")
+        if sensor_type not in (dai.CameraSensorType.COLOR, dai.CameraSensorType.MONO):
+            print(f"Skipping {feature.socket}: {CAMERA_SIZE} output size likely unsupported.")
+            continue
         socket_name = feature.socket.name
         streams.append(Stream(f"preview_{socket_name}", camera_output.createOutputQueue(maxSize=2, blocking=False), "image"))
         control_queues.append(camera.inputControl.createInputQueue(maxSize=4, blocking=False))
@@ -264,7 +266,6 @@ def build_pipeline(
         context.labels = list(labels) if labels else []
         streams.append(Stream("detections", network.out.createOutputQueue(maxSize=4, blocking=False), "detections"))
         passthrough_name = f"preview_{color_camera.getBoardSocket().name}"
-        # this is pretty pointless and emits frames less often (i think anyway) which makes detection ugly. Will just display detection on CAM_A
         # streams.append(Stream(passthrough_name+"_passthrough", network.passthrough.createOutputQueue(maxSize=2, blocking=False), "image"))
         context.detection_frame_name = passthrough_name
     elif color_camera is None:
@@ -300,6 +301,8 @@ def stress_test(mxid: str = "") -> None:
     iso = 800
     exposure = 20000
 
+    pipeline.start()
+
     if args.slow_rampup:
         device.setIrLaserDotProjectorIntensity(0.0)
         device.setIrFloodLightIntensity(0.0)
@@ -307,7 +310,6 @@ def stress_test(mxid: str = "") -> None:
         device.setIrLaserDotProjectorIntensity(dot_intensity)
         device.setIrFloodLightIntensity(flood_intensity)
 
-    pipeline.start()
     start_time = time.monotonic()
     ramp_start = start_time if args.slow_rampup else None
     last_ramp_update = 0.0
