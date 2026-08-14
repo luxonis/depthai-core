@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <argparse/argparse.hpp>
 #include <csignal>
 #include <depthai/remote_connection/RemoteConnection.hpp>
@@ -62,32 +63,19 @@ int main(int argc, char** argv) {
         const std::pair<int, int> size = std::make_pair(640, 400);
 
         // Create color camera
+        auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+        auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
         auto color = pipeline.create<dai::node::Camera>();
-        color->build(dai::CameraBoardSocket::AUTO, std::nullopt, fps);
+        color->build(colorSocket, std::nullopt, fps);
 
         // Create depth source based on argument
         dai::node::DepthSource depthSource;
 
         if(depthSourceArg == "stereo") {
-            auto left = pipeline.create<dai::node::Camera>();
-            auto right = pipeline.create<dai::node::Camera>();
-            auto stereo = pipeline.create<dai::node::StereoDepth>();
+            auto depth = pipeline.create<dai::node::Depth>();
+            depth->build(dai::node::Depth::Algorithm::AUTO, fps, std::make_pair(640u, 400u));
 
-            left->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
-            right->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
-
-            stereo->setSubpixel(true);
-            stereo->setExtendedDisparity(false);
-            stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
-            stereo->setLeftRightCheck(true);
-            stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
-            stereo->enableDistortionCorrection(true);
-            stereo->initialConfig->setLeftRightCheckThreshold(10);
-
-            left->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->left);
-            right->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->right);
-
-            depthSource = stereo;
+            depthSource = depth;
         } else if(depthSourceArg == "neural") {
             auto left = pipeline.create<dai::node::Camera>();
             auto right = pipeline.create<dai::node::Camera>();

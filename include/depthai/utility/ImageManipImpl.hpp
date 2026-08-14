@@ -121,7 +121,7 @@ void loop(N& node,
         if(outputSize == 0) {
             node.out.send(inImage);
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
-            auto outImage = getFrame(node.properties.outputFrameSize);
+            auto outImage = getFrame(outputSize);
 
             bool success = true;
             {
@@ -347,6 +347,7 @@ class Warp {
     uint32_t backgroundColor[3] = {0, 0, 0};
     bool enableUndistort = false;
     bool undistortOneShot = false;
+    std::optional<float> alphaScaling;
 
     ImgFrame::Type type;
     FrameSpecs srcSpecs;
@@ -371,6 +372,7 @@ class Warp {
                                 const std::array<float, 9>& cameraMatrix,
                                 const std::array<float, 9>& newCameraMatrix,
                                 const std::vector<float>& distCoeffs,
+                                const std::optional<float> alpha,
                                 const ImgFrame::Type type,
                                 const uint32_t srcWidth,
                                 const uint32_t srcHeight,
@@ -419,6 +421,7 @@ class WarpH : public Warp {
                         const std::array<float, 9>& cameraMatrix,
                         const std::array<float, 9>& newCameraMatrix,
                         const std::vector<float>& distCoeffs,
+                        const std::optional<float> alpha,
                         const ImgFrame::Type type,
                         const uint32_t srcWidth,
                         const uint32_t srcHeight,
@@ -515,6 +518,7 @@ class ImageManipOperations {
                                          const std::array<float, 9>& cameraMatrix,
                                          const std::array<float, 9>& newCameraMatrix,
                                          const std::vector<float>& distCoeffs,
+                                         const std::optional<float> alpha,
                                          const ImgFrame::Type type,
                                          const uint32_t srcWidth,
                                          const uint32_t srcHeight,
@@ -536,6 +540,9 @@ class ImageManipOperations {
     std::array<std::array<float, 3>, 3> getMatrix() const;
     bool undistortEnabled() const {
         return warpEngine.enableUndistort;
+    }
+    std::optional<float> getUndistortAlpha() const {
+        return warpEngine.alphaScaling;
     }
 
     std::string toString() const;
@@ -694,7 +701,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
         auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
         imageCorners = {
-            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[3])}}};
         matrix = matmul(mat, matrix);
         outputOps.emplace_back(res);
     }
@@ -844,12 +851,13 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     const std::array<float, 9>& cameraMatrix,
     const std::array<float, 9>& newCameraMatrix,
     const std::vector<float>& distCoeffs,
+    const std::optional<float> alpha,
     const ImgFrame::Type type,
     const uint32_t srcWidth,
     const uint32_t srcHeight,
     const uint32_t dstWidth,
     const uint32_t dstHeight) {
-    warpEngine.buildUndistort(enable, cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
+    warpEngine.buildUndistort(enable, cameraMatrix, newCameraMatrix, distCoeffs, alpha, type, srcWidth, srcHeight, dstWidth, dstHeight);
     return *this;
 }
 

@@ -123,10 +123,6 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
         .def("isOrganized", &PointCloudData::isOrganized, DOC(dai, PointCloudData, isOrganized))
         .def("isColor", &PointCloudData::isColor, DOC(dai, PointCloudData, isColor))
         .def("setInstanceNum", &PointCloudData::setInstanceNum, py::arg("instanceNum"), DOC(dai, PointCloudData, setInstanceNum))
-        .def("getTimestamp", &PointCloudData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &PointCloudData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getTimestampSystem", &PointCloudData::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
-        .def("getSequenceNum", &PointCloudData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("setPoints",
              [](py::object& obj, py::array_t<float>& arr) {
                  if(arr.ndim() != 2 || arr.shape(1) != 3) {

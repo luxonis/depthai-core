@@ -8,42 +8,27 @@ Press 'q' to quit.
 """
 
 import cv2
-import numpy as np
 import depthai as dai
 
-
-def colorizeDepth(frame: np.ndarray, minDepth: float, maxDepth: float) -> np.ndarray:
-    invalidMask = frame == 0
-    try:
-        logDepth = np.log(frame.astype(np.float32) + 1e-6)
-        logDepth[invalidMask] = 0.0
-        logDepth = np.clip(logDepth, np.log(minDepth + 1e-6), np.log(maxDepth + 1e-6))
-        colored = np.interp(logDepth, (logDepth[~invalidMask].min(), logDepth[~invalidMask].max()), (0, 255))
-        colored = colored.astype(np.uint8)
-        colored = cv2.applyColorMap(colored, cv2.COLORMAP_JET)
-        colored[invalidMask] = 0
-    except (IndexError, ValueError):
-        colored = np.zeros((*frame.shape, 3), dtype=np.uint8)
-    return colored
+FPS = 30.0
 
 
-def normalizeFrame(frame: np.ndarray) -> np.ndarray:
+def normalizeFrame(frame):
     return cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
 
 
 def main():
     pipeline = dai.Pipeline()
 
-    # show depth in range 0.1m - 7m
-    minDepth = 100
-    maxDepth = 7000
+    minDepth = 100.0
+    maxDepth = 7000.0
 
-    # choose one of profiles LOW_RANGE / MID_RANGE / HIGH_RANGE
     profile = dai.ToFConfig.Profile.MID_RANGE
 
     tof = pipeline.create(dai.node.ToF).build(
         boardSocket=dai.CameraBoardSocket.AUTO,
-        profile=profile
+        profile=profile,
+        fps=FPS,
     )
 
     with pipeline as p:
@@ -56,10 +41,8 @@ def main():
             "intensity": tof.intensity.createOutputQueue(maxSize=1, blocking=False),
         }
         if isRVC2:
-            # rawDepth are only supported on RVC2
             outputQueues["rawDepth"] = tof.rawDepth.createOutputQueue(maxSize=1, blocking=False)
         else:
-            # confidence is only supported on RVC4
             outputQueues["confidence"] = tof.confidence.createOutputQueue(maxSize=1, blocking=False)
 
         platformName = "RVC2" if isRVC2 else "RVC4"
@@ -73,7 +56,7 @@ def main():
                     continue
 
                 if name in {"depth", "rawDepth"}:
-                    display = colorizeDepth(frame.getCvFrame(), minDepth, maxDepth)
+                    display = dai.utility.colorizeDepthFrame(frame, minDepth, maxDepth, useLog=True).getCvFrame()
                 else:
                     display = normalizeFrame(frame.getCvFrame())
                 cv2.imshow(name, display)

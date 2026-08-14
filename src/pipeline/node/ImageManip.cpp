@@ -30,6 +30,7 @@ void ImageManip::run() {
                                  flatten(frame.transformation.getIntrinsicMatrix()),
                                  flatten(newCameraMatrix),
                                  frame.transformation.getDistortionCoefficients(),
+                                 std::nullopt,
                                  frame.getType(),
                                  frame.getWidth(),
                                  frame.getHeight(),
@@ -79,6 +80,10 @@ void ImageManip::setNumFramesPool(int numFramesPool) {
 
 void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
     properties.outputFrameSize = maxFrameSize;
+}
+
+void ImageManip::setMaxPoolSize(unsigned int maxPoolSize) {
+    properties.maxPoolSize = maxPoolSize;
 }
 
 ImageManip::Properties& ImageManip::getProperties() {

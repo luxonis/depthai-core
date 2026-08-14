@@ -114,7 +114,7 @@ if __name__ == "__main__":
                 rightStatus = f"R projection failed: {exc}"
                 rgbStatus = f"RGB projection failed: {exc}"
 
-        depthColor = cv2.applyColorMap(cv2.convertScaleAbs(depthFrame.getFrame(), alpha=0.05), cv2.COLORMAP_JET)
+        depthColor = dai.utility.colorizeDepthFrame(depthFrame).getCvFrame()
         drawPoint(leftFrame, originalPoint, f"{sourceStatus}", (0, 255, 0))
         drawPoint(rgbDisplay, remappedRgbPoint, f"{rgbStatus}", (255, 255, 0))
         drawPoint(depthColor, remappedDepthPoint, f"{depthStatus}", (0, 0, 255))
