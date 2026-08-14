@@ -54,6 +54,14 @@ def transform_distance_cm(transform):
     return math.sqrt(sum(transform[row][3] * transform[row][3] for row in range(3)))
 
 
+def has_extrinsics(handler, source, target):
+    try:
+        handler.getExtrinsics(source.deviceId, source.socket, target.deviceId, target.socket)
+        return True
+    except RuntimeError:
+        return False
+
+
 def print_camera_center_distances(handler, frames):
     if len(frames) < 2:
         return
@@ -61,7 +69,9 @@ def print_camera_center_distances(handler, frames):
     print("CAM_B center distances:", flush=True)
     for index, frame_a in enumerate(frames):
         for frame_b in frames[index + 1 :]:
-            transform = handler.getTransform(frame_a, frame_b, dai.LengthUnit.CENTIMETER)
+            transform = handler.getExtrinsics(
+                frame_a.deviceId, frame_a.socket, frame_b.deviceId, frame_b.socket, dai.LengthUnit.CENTIMETER
+            ).getTransformationMatrix()
             print(f"  {frame_a} <-> {frame_b}: {transform_distance_cm(transform):.1f} cm", flush=True)
 
 
@@ -69,7 +79,11 @@ def missing_connected_frames(handler, frames):
     if not frames:
         return []
     base = frames[0]
-    return [frame for frame in frames[1:] if not handler.canTransform(frame, base)]
+    return [
+        frame
+        for frame in frames[1:]
+        if not has_extrinsics(handler, frame, base)
+    ]
 
 
 def print_result(result, rig_path, expected_frames):
@@ -77,12 +91,15 @@ def print_result(result, rig_path, expected_frames):
     if not result.passed:
         return False
 
-    handler = dai.MultiDeviceCalibrationHandler(result.calibration)
-    for edge in result.calibration.edges:
-        transform = handler.getTransform(edge.from_, edge.to, dai.LengthUnit.CENTIMETER)
-        print(f"{edge.from_} -> {edge.to} (cm):", flush=True)
-        for row in transform:
-            print("  " + " ".join(f"{value:9.3f}" for value in row), flush=True)
+    handler = result.getCalibrationHandler()
+    for device_id, sockets in result.calibration.devicesData.items():
+        for socket, extrinsics in sockets.items():
+            transform = handler.getExtrinsics(
+                device_id, socket, extrinsics.toDeviceId, extrinsics.toCameraSocket, dai.LengthUnit.CENTIMETER
+            ).getTransformationMatrix()
+            print(f"{device_id}:{socket} -> {extrinsics.getReferenceFrame()} (cm):", flush=True)
+            for row in transform:
+                print("  " + " ".join(f"{value:9.3f}" for value in row), flush=True)
 
     missing = missing_connected_frames(handler, expected_frames)
     if missing:
@@ -96,7 +113,7 @@ def print_result(result, rig_path, expected_frames):
     print_camera_center_distances(handler, expected_frames)
 
     rig_path.parent.mkdir(parents=True, exist_ok=True)
-    handler.toJsonFile(str(rig_path))
+    handler.eepromToJsonFile(str(rig_path))
     print(f"Rig written to {rig_path}", flush=True)
     return True
 

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -8,6 +10,7 @@
 #include "depthai/common/CoordinateFrame.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
@@ -53,7 +56,7 @@ struct Extrinsics {
      * The field is not part of the host-device protocol; messages coming from a device are qualified by the host with
      * the device they arrived from.
      */
-    std::string toDeviceId;
+    std::optional<std::string> toDeviceId;
 
     /**
      * The distance unit for the translation vector.
@@ -64,14 +67,14 @@ struct Extrinsics {
      * The reference frame these extrinsics are expressed with respect to, i.e. `{toDeviceId, toCameraSocket}`.
      */
     CoordinateFrame getReferenceFrame() const {
-        return {toDeviceId, toCameraSocket};
+        return {toDeviceId.value_or(""), toCameraSocket};
     }
 
     /**
      * Set the reference frame these extrinsics are expressed with respect to.
      */
     void setReferenceFrame(const CoordinateFrame& frame) {
-        toDeviceId = frame.deviceId;
+        toDeviceId = frame.deviceId.empty() ? std::nullopt : std::make_optional(frame.deviceId);
         toCameraSocket = frame.socket;
     }
 

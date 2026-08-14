@@ -133,7 +133,7 @@ std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(co
     if(this->getReferenceFrame() != to.getReferenceFrame()) {
         throw std::runtime_error(
             fmt::format("Cannot get extrinsics between transformations expressed in different reference frames ({} and {}). Use a CoordinateFrameTransform "
-                        "node (or MultiDeviceCalibrationHandler::reexpress) to bring both into a common reference frame first.",
+                        "node (or CalibrationHandler::reexpress) to bring both into a common reference frame first.",
                         toString(this->getReferenceFrame()),
                         toString(to.getReferenceFrame())));
     }

@@ -290,7 +290,7 @@ def deviceCalibration(cameras, deviceId):
 def rigOf(cameras, reference, perturbation=None, random=None):
     """The inter-device part of the geometry: every device's anchor camera expressed in the reference camera."""
     referenceCamera = next(camera for camera in cameras if (camera.deviceId, camera.socket) == reference)
-    rig = dai.MultiDeviceCalibrationHandler()
+    rig = dai.CalibrationHandler()
     for camera in cameras:
         if camera.socket != reference[1] or camera.deviceId == reference[0]:
             continue
@@ -301,14 +301,15 @@ def rigOf(cameras, reference, perturbation=None, random=None):
             transform[:3, :3] = rotationOf(axis, math.radians(rotationError)) @ transform[:3, :3]
             transform[:3, 3] += translationError * normalize(random.normal(size=3))
 
-        edge = dai.RigEdge()
-        edge.from_ = dai.CoordinateFrame(camera.deviceId, dai.CameraBoardSocket.__members__[camera.socket])
-        edge.to = dai.CoordinateFrame(reference[0], dai.CameraBoardSocket.__members__[reference[1]])
-        edge.transform = dai.Extrinsics()
-        edge.transform.setTransformationMatrix(asList(transform))
-        edge.transform.setReferenceFrame(edge.to)
-        edge.source = "synthetic-ground-truth" if perturbation is None else "synthetic-initial-guess"
-        rig.setEdge(edge)
+        extrinsics = dai.Extrinsics()
+        extrinsics.setTransformationMatrix(asList(transform))
+        rig.setExtrinsics(
+            camera.deviceId,
+            dai.CameraBoardSocket.__members__[camera.socket],
+            reference[0],
+            dai.CameraBoardSocket.__members__[reference[1]],
+            extrinsics,
+        )
     return rig
 
 
@@ -349,8 +350,8 @@ def main():
     calibrations = {deviceId: deviceCalibration(cameras, deviceId) for deviceId in deviceIds}
     for deviceId, calibration in calibrations.items():
         calibration.eepromToJsonFile(str(args.output / f"{deviceId}_calibration.json"))
-    rigOf(cameras, reference).toJsonFile(str(args.output / "rig.json"))
-    rigOf(cameras, reference, args.guess_error, random).toJsonFile(str(args.output / "rig_guess.json"))
+    rigOf(cameras, reference).eepromToJsonFile(str(args.output / "rig.json"))
+    rigOf(cameras, reference, args.guess_error, random).eepromToJsonFile(str(args.output / "rig_guess.json"))
 
     # The floor, expressed the way the stitching node wants it: in the reference camera frame
     planePoint = roomToReference[:3, 3]

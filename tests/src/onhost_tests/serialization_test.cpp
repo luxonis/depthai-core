@@ -42,7 +42,7 @@ TEST_CASE("Extrinsics keep the wire format of devices that do not know the devic
     SECTION("the device id is kept in json") {
         const nlohmann::json json = extrinsics;
         REQUIRE(json["toDeviceId"] == "14442C10D1");
-        REQUIRE(json.get<dai::Extrinsics>().toDeviceId == "14442C10D1");
+        REQUIRE(json.get<dai::Extrinsics>().toDeviceId == std::make_optional<std::string>("14442C10D1"));
     }
 }
 

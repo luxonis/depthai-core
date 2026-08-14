@@ -13,7 +13,7 @@ import cv2
 import depthai as dai
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-c", "--calibration", type=Path, required=True, help="Rig calibration json, as written by MultiDeviceCalibrationHandler.toJsonFile()")
+parser.add_argument("-c", "--calibration", type=Path, required=True, help="Calibration json, as written by CalibrationHandler.eepromToJsonFile()")
 parser.add_argument("-d", "--device", action="append", help="Device to use, by IP or MX id. The first one holds the reference camera")
 parser.add_argument("-n", "--num-devices", type=int, default=2, help="Number of devices to discover when none are given explicitly")
 parser.add_argument("-s", "--socket", default="CAM_A", help="Camera socket used on every device")
@@ -32,7 +32,7 @@ reference = dai.CoordinateFrame(devices[0].getDeviceId(), socket)
 
 with dai.Pipeline(createImplicitDevice=False) as pipeline:
     # Poses between the devices, so that the streams can be brought into a single frame
-    pipeline.setMultiDeviceCalibration(dai.MultiDeviceCalibrationHandler(args.calibration))
+    pipeline.setMultiDeviceCalibration(dai.CalibrationHandler(args.calibration))
 
     outputs = []
     for device in devices:

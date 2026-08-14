@@ -9,4 +9,8 @@ void MultiDeviceCalibrationResult::serialize(std::vector<std::uint8_t>& metadata
 
 MultiDeviceCalibrationResult::~MultiDeviceCalibrationResult() = default;
 
+CalibrationHandler MultiDeviceCalibrationResult::getCalibrationHandler() const {
+    return CalibrationHandler(calibration);
+}
+
 }  // namespace dai

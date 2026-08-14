@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "depthai/common/CoordinateFrame.hpp"
-#include "depthai/device/MultiDeviceCalibrationHandler.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 
 namespace dai {
@@ -75,7 +75,7 @@ class CoordinateFrameTransform : public NodeCRTP<ThreadedHostNode, CoordinateFra
     /**
      * Use a specific rig calibration instead of the one set on the pipeline.
      */
-    void setCalibration(const MultiDeviceCalibrationHandler& calibration);
+    void setCalibration(const CalibrationHandler& calibration);
 
     void buildInternal() override;
 
@@ -83,10 +83,9 @@ class CoordinateFrameTransform : public NodeCRTP<ThreadedHostNode, CoordinateFra
     void run() override;
 
     /// Rig calibration to use: the explicitly set one, else the pipeline's.
-    std::shared_ptr<const MultiDeviceCalibrationHandler> resolveCalibration() const;
+    std::shared_ptr<const CalibrationHandler> resolveCalibration() const;
 
     /// The rig completed with the intra-device transformations of the devices assigned to the pipeline.
-    std::shared_ptr<const MultiDeviceCalibrationHandler> withDeviceCalibrations(const MultiDeviceCalibrationHandler& rig) const;
 
     static std::string inputName(size_t index);
     static std::string outputName(size_t index);
@@ -94,7 +93,7 @@ class CoordinateFrameTransform : public NodeCRTP<ThreadedHostNode, CoordinateFra
     size_t numInputs = 0;
     CoordinateFrame target;
     std::map<size_t, CoordinateFrame> sourceFrames;
-    std::shared_ptr<const MultiDeviceCalibrationHandler> calibration;
+    std::shared_ptr<const CalibrationHandler> calibration;
 };
 
 }  // namespace node

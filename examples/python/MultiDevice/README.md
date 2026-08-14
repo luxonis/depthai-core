@@ -58,10 +58,10 @@ unless a `dai.LengthUnit` says otherwise.
 * **Per-device calibration** — intrinsics, distortion and the poses between the cameras of one device. Factory
   calibrated, stored in the device, read automatically.
 * **Rig calibration** — the poses *between* devices. Depends on how you mounted them, so it has to be measured on
-  site. It is held by `dai.MultiDeviceCalibrationHandler` as a forest of `RigEdge`s and given to the pipeline:
+  site. It is held by `dai.CalibrationHandler` in `EepromData.devicesData` and given to the pipeline:
 
 ```python
-pipeline.setMultiDeviceCalibration(dai.MultiDeviceCalibrationHandler(Path("rig_calibration.json")))
+pipeline.setMultiDeviceCalibration(dai.CalibrationHandler(Path("rig_calibration.json")))
 ```
 
 Only inter-device edges belong in the rig; anything inside a device always comes from the live device. The graph must

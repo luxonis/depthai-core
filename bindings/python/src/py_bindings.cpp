@@ -20,7 +20,6 @@
 #include "DeviceBindings.hpp"
 #include "DeviceBootloaderBindings.hpp"
 #include "MessageQueueBindings.hpp"
-#include "MultiDeviceCalibrationHandlerBindings.hpp"
 #include "PlatformBindings.hpp"
 #include "VersionBindings.hpp"
 #include "XLinkBindings.hpp"
@@ -93,7 +92,6 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&DeviceBindings::bind);
     callstack.push_front(&DeviceBootloaderBindings::bind);
     callstack.push_front(&CalibrationHandlerBindings::bind);
-    callstack.push_front(&MultiDeviceCalibrationHandlerBindings::bind);
     callstack.push_front(&ZooBindings::bind);
     callstack.push_front(&EventsManagerBindings::bind);
     callstack.push_front(&RemoteConnectionBindings::bind);

@@ -11,7 +11,6 @@
 #include "device/CalibrationHandler.hpp"
 #include "device/Device.hpp"
 #include "device/DeviceBootloader.hpp"
-#include "device/MultiDeviceCalibrationHandler.hpp"
 #include "pipeline/InputQueue.hpp"
 // Include Pipeline
 #include "pipeline/Pipeline.hpp"

@@ -20,10 +20,21 @@ parser.add_argument("estimate", type=Path, help="Rig to compare against it")
 parser.add_argument("--frame", help="Frame everything is expressed in, as deviceId:SOCKET. Defaults to the first frame of the reference rig")
 args = parser.parse_args()
 
-truth = dai.MultiDeviceCalibrationHandler(str(args.reference))
-estimate = dai.MultiDeviceCalibrationHandler(str(args.estimate))
+truth = dai.CalibrationHandler(str(args.reference))
+estimate = dai.CalibrationHandler(str(args.estimate))
 
-frames = truth.getFrames()
+frames = sorted(
+    {
+        dai.CoordinateFrame(deviceId, socket)
+        for deviceId, sockets in truth.getEepromData().devicesData.items()
+        for socket, extrinsics in sockets.items()
+    }
+    | {
+        extrinsics.getReferenceFrame()
+        for sockets in truth.getEepromData().devicesData.values()
+        for extrinsics in sockets.values()
+    }
+)
 if args.frame:
     deviceId, socket = args.frame.split(":")
     anchor = dai.CoordinateFrame(deviceId, dai.CameraBoardSocket.__members__[socket])
@@ -34,12 +45,12 @@ print(f"expressed in {anchor}")
 for frame in frames:
     if frame == anchor:
         continue
-    if not truth.canTransform(frame, anchor) or not estimate.canTransform(frame, anchor):
+    try:
+        expected = np.array(truth.getExtrinsics(frame.deviceId, frame.socket, anchor.deviceId, anchor.socket).getTransformationMatrix())
+        actual = np.array(estimate.getExtrinsics(frame.deviceId, frame.socket, anchor.deviceId, anchor.socket).getTransformationMatrix())
+    except RuntimeError:
         print(f"{frame}: no path to {anchor} in both rigs")
         continue
-
-    expected = np.array(truth.getTransform(frame, anchor))
-    actual = np.array(estimate.getTransform(frame, anchor))
     difference = expected[:3, :3].T @ actual[:3, :3]
     angle = math.degrees(math.acos(max(-1.0, min(1.0, 0.5 * (np.trace(difference) - 1.0)))))
     expectedTranslation, actualTranslation = expected[:3, 3], actual[:3, 3]

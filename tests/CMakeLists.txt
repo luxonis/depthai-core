@@ -448,8 +448,8 @@ dai_add_test(image_transformations_test src/onhost_tests/image_transformations_t
 dai_set_test_labels(image_transformations_test onhost ci)
 
 # Multi-device (rig) calibration tests
-dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
-dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
+dai_add_test(calibration_handler_multi_device_test src/onhost_tests/calibration_handler_multi_device_test.cpp)
+dai_set_test_labels(calibration_handler_multi_device_test onhost ci)
 
 # Matrix operations tests
 dai_add_test(matrix_ops_tests src/onhost_tests/matrix_ops_tests.cpp)

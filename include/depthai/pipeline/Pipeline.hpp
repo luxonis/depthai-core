@@ -17,7 +17,6 @@
 #include "PipelineStateApi.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Device.hpp"
-#include "depthai/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/utility/AtomicBool.hpp"
@@ -134,8 +133,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setCalibrationData(const CalibrationHandler& calibrationDataHandler);
     bool isCalibrationDataAvailable() const;
     CalibrationHandler getCalibrationData() const;
-    void setMultiDeviceCalibration(const MultiDeviceCalibrationHandler& multiDeviceCalibrationHandler);
-    std::shared_ptr<const MultiDeviceCalibrationHandler> getMultiDeviceCalibration() const;
+    void setMultiDeviceCalibration(const CalibrationHandler& multiDeviceCalibrationHandler);
+    std::shared_ptr<const CalibrationHandler> getMultiDeviceCalibration() const;
     void setEepromData(const std::optional<EepromData>& eepromData);
     std::optional<EepromData> getEepromData() const;
     uint32_t getEepromId() const;
@@ -192,7 +191,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     mutable std::mutex calibMtx;
 
     // Rig calibration of a multi-device setup, if set by the user
-    std::shared_ptr<MultiDeviceCalibrationHandler> multiDeviceCalibration;
+    std::shared_ptr<CalibrationHandler> multiDeviceCalibration;
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
@@ -544,14 +543,14 @@ class Pipeline {
      *
      * @param multiDeviceCalibrationHandler Rig calibration
      */
-    void setMultiDeviceCalibration(const MultiDeviceCalibrationHandler& multiDeviceCalibrationHandler) {
+    void setMultiDeviceCalibration(const CalibrationHandler& multiDeviceCalibrationHandler) {
         impl()->setMultiDeviceCalibration(multiDeviceCalibrationHandler);
     }
 
     /**
      * Get the rig calibration set on the pipeline, or nullptr if none was set.
      */
-    std::shared_ptr<const MultiDeviceCalibrationHandler> getMultiDeviceCalibration() const {
+    std::shared_ptr<const CalibrationHandler> getMultiDeviceCalibration() const {
         return impl()->getMultiDeviceCalibration();
     }
 

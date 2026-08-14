@@ -100,11 +100,15 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         if result is not None:
             print(f"{result.info} (data confidence {result.dataConfidence:.3f})")
             if result.passed:
-                handler = dai.MultiDeviceCalibrationHandler(result.calibration)
-                for edge in result.calibration.edges:
-                    translation = [round(value[3], 1) for value in handler.getTransform(edge.from_, edge.to)[:3]]
-                    print(f"  {edge.from_} -> {edge.to}: {translation} cm")
-                handler.toJsonFile(args.output)
+                handler = result.getCalibrationHandler()
+                for device_id, sockets in result.calibration.devicesData.items():
+                    for socket, extrinsics in sockets.items():
+                        matrix = handler.getExtrinsics(
+                            device_id, socket, extrinsics.toDeviceId, extrinsics.toCameraSocket
+                        ).getTransformationMatrix()
+                        translation = [round(value[3], 1) for value in matrix[:3]]
+                        print(f"  {device_id}:{socket} -> {extrinsics.getReferenceFrame()}: {translation} cm")
+                handler.eepromToJsonFile(args.output)
                 print(f"Rig written to {args.output}")
             break
 

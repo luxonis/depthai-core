@@ -9,6 +9,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
+#include "depthai/utility/matrixOps.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/ErrorMacros.hpp"
 
@@ -27,15 +28,6 @@ CoordinateFrame completeFrame(const CoordinateFrame& current, const CoordinateFr
         completed.socket = declared.socket;
     }
     return completed;
-}
-
-/// Frame of a device the rig already knows, i.e. the one the other cameras of that device are attached to.
-std::optional<CoordinateFrame> rigFrameOf(const MultiDeviceCalibrationHandler& rig, const std::string& deviceId, const CoordinateFrame& target) {
-    if(target.deviceId == deviceId) return target;
-    for(const auto& frame : rig.getFrames()) {
-        if(frame.deviceId == deviceId) return frame;
-    }
-    return std::nullopt;
 }
 
 }  // namespace
@@ -95,46 +87,13 @@ void CoordinateFrameTransform::setSourceFrame(size_t inputIndex, const Coordinat
     sourceFrames[inputIndex] = frame;
 }
 
-void CoordinateFrameTransform::setCalibration(const MultiDeviceCalibrationHandler& calibration) {
-    this->calibration = std::make_shared<MultiDeviceCalibrationHandler>(calibration);
+void CoordinateFrameTransform::setCalibration(const CalibrationHandler& calibration) {
+    this->calibration = std::make_shared<CalibrationHandler>(calibration);
 }
 
-std::shared_ptr<const MultiDeviceCalibrationHandler> CoordinateFrameTransform::resolveCalibration() const {
+std::shared_ptr<const CalibrationHandler> CoordinateFrameTransform::resolveCalibration() const {
     if(calibration) return calibration;
     return getParentPipeline().getMultiDeviceCalibration();
-}
-
-std::shared_ptr<const MultiDeviceCalibrationHandler> CoordinateFrameTransform::withDeviceCalibrations(const MultiDeviceCalibrationHandler& rig) const {
-    // A rig only holds the transformations *between* devices; how the cameras of one device see each other is factory
-    // calibrated and read from the device itself, so that a rig file stays valid whatever the devices are recalibrated to.
-    auto augmented = std::make_shared<MultiDeviceCalibrationHandler>(rig);
-    for(const auto& device : getParentPipeline().getAllAssignedDevices()) {
-        const auto deviceId = device->getDeviceId();
-        const auto anchor = rigFrameOf(*augmented, deviceId, target);
-        if(!anchor.has_value()) continue;
-
-        const auto deviceCalibration = device->getCalibration();
-        for(const auto& camera : deviceCalibration.getEepromData().cameraData) {
-            const CoordinateFrame frame{deviceId, camera.first};
-            if(frame == *anchor || augmented->canTransform(frame, *anchor)) continue;
-
-            RigEdge edge;
-            edge.from = frame;
-            edge.to = *anchor;
-            edge.source = "device-calibration";
-            try {
-                edge.transform.setTransformationMatrix(deviceCalibration.getCameraExtrinsics(frame.socket, anchor->socket));
-            } catch(const std::exception& e) {
-                // Cameras the device is not calibrated against simply stay out of the rig
-                pimpl->logger->debug("No calibration between {} and {}: {}", toString(frame), toString(*anchor), e.what());
-                continue;
-            }
-            edge.transform.setReferenceFrame(*anchor);
-            augmented->setEdge(edge);
-            pimpl->logger->trace("Added {} -> {} from the calibration of the device", toString(frame), toString(*anchor));
-        }
-    }
-    return augmented;
 }
 
 void CoordinateFrameTransform::run() {
@@ -145,9 +104,7 @@ void CoordinateFrameTransform::run() {
     DAI_CHECK_V(configured != nullptr,
                 "CoordinateFrameTransform requires a multi-device calibration. Set it with Pipeline::setMultiDeviceCalibration() or "
                 "CoordinateFrameTransform::setCalibration().");
-    const auto rig = withDeviceCalibrations(*configured);
-
-    const auto reexpress = [this, &rig, &logger](size_t index, const std::shared_ptr<ADatatype>& message) {
+    const auto reexpress = [this, &configured, &logger](size_t index, const std::shared_ptr<ADatatype>& message) {
         const auto declared = sourceFrames.find(index);
 
         if(auto frame = std::dynamic_pointer_cast<ImgFrame>(message)) {
@@ -155,7 +112,15 @@ void CoordinateFrameTransform::run() {
             if(declared != sourceFrames.end()) {
                 transformation.setReferenceFrame(completeFrame(transformation.getReferenceFrame(), declared->second));
             }
-            rig->reexpress(transformation, target);
+            const auto reference = transformation.getReferenceFrame();
+            const auto rigExtrinsics =
+                configured->getExtrinsics(reference.deviceId, reference.socket, target.deviceId, target.socket, transformation.getExtrinsics().lengthUnit);
+            auto extrinsics = transformation.getExtrinsics();
+            extrinsics.setTransformationMatrix(matrix::matMul(rigExtrinsics.getTransformationMatrix(false, extrinsics.lengthUnit),
+                                                              extrinsics.getTransformationMatrix(false, extrinsics.lengthUnit)),
+                                               extrinsics.lengthUnit);
+            extrinsics.setReferenceFrame(target);
+            transformation.setExtrinsics(extrinsics);
             return;
         }
 
@@ -168,7 +133,15 @@ void CoordinateFrameTransform::run() {
             if(declared != sourceFrames.end()) {
                 transformation->setReferenceFrame(completeFrame(transformation->getReferenceFrame(), declared->second));
             }
-            rig->reexpress(*transformation, target);
+            const auto reference = transformation->getReferenceFrame();
+            const auto rigExtrinsics =
+                configured->getExtrinsics(reference.deviceId, reference.socket, target.deviceId, target.socket, transformation->getExtrinsics().lengthUnit);
+            auto extrinsics = transformation->getExtrinsics();
+            extrinsics.setTransformationMatrix(matrix::matMul(rigExtrinsics.getTransformationMatrix(false, extrinsics.lengthUnit),
+                                                              extrinsics.getTransformationMatrix(false, extrinsics.lengthUnit)),
+                                               extrinsics.lengthUnit);
+            extrinsics.setReferenceFrame(target);
+            transformation->setExtrinsics(extrinsics);
             transformable->setTransformation(*transformation);
             return;
         }

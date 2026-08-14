@@ -660,6 +660,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("batchTime", &EepromData::batchTime)
         .def_readwrite("boardOptions", &EepromData::boardOptions)
         .def_readwrite("cameraData", &EepromData::cameraData)
+        .def_readwrite("devicesData", &EepromData::devicesData)
         .def_readwrite("stereoRectificationData", &EepromData::stereoRectificationData)
         .def_readwrite("imuExtrinsics", &EepromData::imuExtrinsics)
         .def_readwrite("miscellaneousData", &EepromData::miscellaneousData)

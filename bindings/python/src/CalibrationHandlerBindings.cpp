@@ -1,5 +1,7 @@
 #include "CalibrationHandlerBindings.hpp"
 
+#include <pybind11/stl.h>
+
 #include <optional>
 #include <vector>
 
@@ -40,12 +42,28 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("eepromData"),
              py::arg("validateExtrinsics") = std::nullopt,
              DOC(dai, CalibrationHandler, CalibrationHandler, 4))
-
         .def_static("fromJson",
                     &CalibrationHandler::fromJson,
                     py::arg("eepromDataJson"),
                     py::arg("validateExtrinsics") = std::nullopt,
                     DOC(dai, CalibrationHandler, fromJson))
+
+        .def("getExtrinsics",
+             py::overload_cast<const std::optional<std::string>&, CameraBoardSocket, const std::optional<std::string>&, CameraBoardSocket, LengthUnit>(
+                 &CalibrationHandler::getExtrinsics, py::const_),
+             py::arg("fromDevice"),
+             py::arg("fromSocket"),
+             py::arg("toDevice"),
+             py::arg("toSocket"),
+             py::arg("unit") = LengthUnit::CENTIMETER)
+        .def("setExtrinsics",
+             &CalibrationHandler::setExtrinsics,
+             py::arg("fromDevice"),
+             py::arg("fromSocket"),
+             py::arg("toDevice"),
+             py::arg("toSocket"),
+             py::arg("extrinsics"),
+             py::arg("unit") = LengthUnit::CENTIMETER)
 
         .def("getEepromData", &CalibrationHandler::getEepromData, DOC(dai, CalibrationHandler, getEepromData))
         .def("hasCalibrationData", &CalibrationHandler::hasCalibrationData, DOC(dai, CalibrationHandler, hasCalibrationData))

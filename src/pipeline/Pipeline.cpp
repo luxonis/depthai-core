@@ -732,12 +732,12 @@ bool PipelineImpl::isCalibrationDataAvailable() const {
     return false;
 }
 
-void PipelineImpl::setMultiDeviceCalibration(const MultiDeviceCalibrationHandler& multiDeviceCalibrationHandler) {
+void PipelineImpl::setMultiDeviceCalibration(const CalibrationHandler& multiDeviceCalibrationHandler) {
     std::lock_guard<std::mutex> lock(calibMtx);
-    multiDeviceCalibration = std::make_shared<MultiDeviceCalibrationHandler>(multiDeviceCalibrationHandler);
+    multiDeviceCalibration = std::make_shared<CalibrationHandler>(multiDeviceCalibrationHandler);
 }
 
-std::shared_ptr<const MultiDeviceCalibrationHandler> PipelineImpl::getMultiDeviceCalibration() const {
+std::shared_ptr<const CalibrationHandler> PipelineImpl::getMultiDeviceCalibration() const {
     std::lock_guard<std::mutex> lock(calibMtx);
     return multiDeviceCalibration;
 }
@@ -1058,17 +1058,6 @@ void PipelineImpl::build() {
     #endif
 #endif
     // end of ---Add AutoCalibration block---
-
-    // Resolve device aliases used in the rig calibration against the devices actually assigned to this pipeline.
-    // A single assigned device also resolves the alias "default", so a rig file can be written device-agnostically.
-    if(multiDeviceCalibration) {
-        std::map<std::string, std::string> aliases;
-        const auto assignedDevices = getAllAssignedDevices();
-        if(assignedDevices.size() == 1) {
-            aliases["default"] = assignedDevices.front()->getDeviceId();
-        }
-        multiDeviceCalibration->resolveAliases(aliases);
-    }
 
     // Run first build stage for all nodes
     for(const auto& node : getAllNodes()) {

@@ -2,7 +2,8 @@
 
 #include <string>
 
-#include "depthai/common/MultiDeviceCalibrationData.hpp"
+#include "depthai/common/EepromData.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/Serialization.hpp"
 
@@ -10,14 +11,14 @@ namespace dai {
 
 /**
  * MultiDeviceCalibrationResult message.
- * Carries the rig calibration estimated by the MultiDeviceCalibration node, i.e. the transformations between frames of
- * different devices. Per-device calibration is not part of it - it always comes from the live device.
+ * Carries the EEPROM calibration data estimated by the MultiDeviceCalibration node. Its `devicesData` contains the
+ * direct transformations between frames of different devices.
  */
 class MultiDeviceCalibrationResult : public Buffer {
    public:
     MultiDeviceCalibrationResult() = default;
     explicit MultiDeviceCalibrationResult(std::string info) : info(std::move(info)) {}
-    MultiDeviceCalibrationResult(MultiDeviceCalibrationData calibration, double dataConfidence, std::string info = {})
+    MultiDeviceCalibrationResult(EepromData calibration, double dataConfidence, std::string info = {})
         : calibration(std::move(calibration)), dataConfidence(dataConfidence), passed(true), info(std::move(info)) {}
 
     virtual ~MultiDeviceCalibrationResult();
@@ -28,10 +29,13 @@ class MultiDeviceCalibrationResult : public Buffer {
         return DatatypeEnum::MultiDeviceCalibrationResult;
     }
 
+    /** Return the estimated calibration as a CalibrationHandler. */
+    CalibrationHandler getCalibrationHandler() const;
+
     /**
-     * @brief Estimated rig calibration. Empty if the estimation did not succeed.
+     * @brief Estimated calibration. `devicesData` is empty if the estimation did not succeed.
      */
-    MultiDeviceCalibrationData calibration;
+    EepromData calibration;
 
     /**
      * @brief Quality of the input data the estimation was run on (0.0 to 1.0).

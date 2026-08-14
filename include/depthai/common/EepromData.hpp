@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
+
 /**
  * EepromData structure
  *
@@ -24,6 +26,8 @@ struct EepromData {
     uint64_t batchTime{0};
     uint32_t boardOptions{0};
     std::unordered_map<CameraBoardSocket, CameraInfo> cameraData;
+    /// Direct inter-device poses, indexed by source device ID then source camera socket.
+    std::map<std::string, std::map<CameraBoardSocket, Extrinsics>> devicesData;
     StereoRectification stereoRectificationData;
     Extrinsics imuExtrinsics;
     Extrinsics housingExtrinsics;
@@ -49,6 +53,7 @@ DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
                                batchTime,
                                boardOptions,
                                cameraData,
+                               devicesData,
                                stereoRectificationData,
                                imuExtrinsics,
                                housingExtrinsics,

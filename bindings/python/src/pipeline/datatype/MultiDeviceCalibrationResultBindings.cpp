@@ -6,7 +6,7 @@
 #include "pipeline/CommonBindings.hpp"
 
 // depthai
-#include "depthai/common/MultiDeviceCalibrationData.hpp"
+#include "depthai/common/EepromData.hpp"
 #include "depthai/pipeline/datatype/MultiDeviceCalibrationResult.hpp"
 
 void bind_multi_device_calibration_result(pybind11::module& m, void* pCallstack) {
@@ -16,8 +16,9 @@ void bind_multi_device_calibration_result(pybind11::module& m, void* pCallstack)
 
     py::class_<MultiDeviceCalibrationResult, Buffer, std::shared_ptr<MultiDeviceCalibrationResult>>(m, "MultiDeviceCalibrationResult")
         .def(py::init<>())
-        .def(py::init<MultiDeviceCalibrationData, double, std::string>(), "calibration"_a, "dataConfidence"_a, "info"_a = "")
+        .def(py::init<EepromData, double, std::string>(), "calibration"_a, "dataConfidence"_a, "info"_a = "")
         .def_readwrite("calibration", &MultiDeviceCalibrationResult::calibration)
+        .def("getCalibrationHandler", &MultiDeviceCalibrationResult::getCalibrationHandler)
         .def_readwrite("dataConfidence", &MultiDeviceCalibrationResult::dataConfidence)
         .def_readwrite("passed", &MultiDeviceCalibrationResult::passed)
         .def_readwrite("info", &MultiDeviceCalibrationResult::info);

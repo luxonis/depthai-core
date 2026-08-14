@@ -94,13 +94,16 @@ int main(int argc, char** argv) {
 
         std::cout << result->info << " (data confidence " << result->dataConfidence << ")" << std::endl;
         if(result->passed) {
-            dai::MultiDeviceCalibrationHandler handler(result->calibration);
+            dai::CalibrationHandler handler;
             for(const auto& edge : result->calibration.edges) {
-                const auto transform = handler.getTransform(edge.from, edge.to, dai::LengthUnit::CENTIMETER);
+                handler.setExtrinsics(edge.from.deviceId, edge.from.socket, edge.to.deviceId, edge.to.socket, edge.transform, edge.transform.lengthUnit);
+                const auto transform =
+                    handler.getExtrinsics(edge.from.deviceId, edge.from.socket, edge.to.deviceId, edge.to.socket, dai::LengthUnit::CENTIMETER)
+                        .getTransformationMatrix();
                 std::cout << "  " << dai::toString(edge.from) << " -> " << dai::toString(edge.to) << ": [" << transform[0][3] << ", " << transform[1][3] << ", "
                           << transform[2][3] << "] cm" << std::endl;
             }
-            handler.toJsonFile(output);
+            handler.eepromToJsonFile(output);
             std::cout << "Rig written to " << output << std::endl;
         }
         break;

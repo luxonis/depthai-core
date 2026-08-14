@@ -24,9 +24,9 @@ namespace node {
  * of cameras attached to *different* devices, from images of a shared scene.
  *
  * The node is a plain host node: it synchronizes the camera streams it is given, feeds them to the dynamic calibration
- * library and emits the resulting rig edges as a `MultiDeviceCalibrationResult`. Only inter-device edges are emitted -
- * the intra-device calibration stays with the device and is read from it, so the result is a forest that can be handed
- * to `MultiDeviceCalibrationHandler` / `Pipeline::setMultiDeviceCalibration()` directly.
+ * library and emits the resulting direct inter-device poses in `MultiDeviceCalibrationResult::calibration.devicesData`.
+ * Intra-device calibration stays with the device and is read from it; construct a `CalibrationHandler` from the result
+ * to hand it to `Pipeline::setMultiDeviceCalibration()`.
  *
  * Two things have to be supplied by the user, because they cannot be observed from images alone:
  *  - a rough initial guess of the pose of every device w.r.t. the first one (`setInitialGuess()`), used to initialize

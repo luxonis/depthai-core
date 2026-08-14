@@ -27,7 +27,7 @@ namespace {
 void qualifyReferenceFrame(ImgTransformation& transformation, const std::string& deviceId) {
     if(!transformation.isValid()) return;
     auto extrinsics = transformation.getExtrinsics();
-    if(!extrinsics.toDeviceId.empty()) return;
+    if(extrinsics.toDeviceId.has_value()) return;
     extrinsics.toDeviceId = deviceId;
     transformation.setExtrinsics(extrinsics);
 }

@@ -217,7 +217,7 @@ TEST_CASE("XLinkInHost - readData") {
         cv::Mat mat(2, 2, CV_8UC1, cv::Scalar(1));
         frame->setCvFrame(mat, dai::ImgFrame::Type::GRAY8);
         frame->setTransformation(transformation);
-        REQUIRE(frame->getTransformation().getExtrinsics().toDeviceId.empty());
+        REQUIRE_FALSE(frame->getTransformation().getExtrinsics().toDeviceId.has_value());
 
         dai::StreamPacketDesc packet = getRawBuffer(frame);
         REQUIRE_CALL(xlinkIn, readStreamMessage()).LR_RETURN(std::move(packet));

@@ -56,7 +56,6 @@ set(SOURCE_LIST
     src/XLinkBindings.cpp
     src/DeviceBindings.cpp
     src/CalibrationHandlerBindings.cpp
-    src/MultiDeviceCalibrationHandlerBindings.cpp
     src/DeviceBootloaderBindings.cpp
     src/DatatypeBindings.cpp
     src/MessageQueueBindings.cpp

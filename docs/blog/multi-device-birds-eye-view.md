@@ -22,7 +22,7 @@ the calibration of the rig.*
 one camera on one device, and every message carries the frame its extrinsics live in. `CAM_B` of one OAK is no longer
 confused with `CAM_B` of another.
 
-**A rig calibration.** `dai.MultiDeviceCalibrationHandler` holds the poses *between* devices as a small json file, and
+**A rig calibration.** `dai.CalibrationHandler` holds the poses *between* devices as a small json file, and
 `pipeline.setMultiDeviceCalibration()` hands it to the pipeline. Per-device calibration keeps coming from the device
 itself — the rig only adds what the factory cannot know: how *you* mounted the cameras.
 
@@ -89,7 +89,7 @@ off the CAD. The node refines them from the images and writes a rig json.
 reference = dai.CoordinateFrame(devices[0].getDeviceId(), dai.CameraBoardSocket.CAM_B)
 
 with dai.Pipeline(createImplicitDevice=False) as pipeline:
-    pipeline.setMultiDeviceCalibration(dai.MultiDeviceCalibrationHandler(Path("rig_calibration.json")))
+    pipeline.setMultiDeviceCalibration(dai.CalibrationHandler(Path("rig_calibration.json")))
 
     outputs = []
     for device in devices:

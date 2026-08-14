@@ -81,7 +81,7 @@ class MultiDeviceCalibration::Impl {
     std::map<std::string, std::shared_ptr<dcl::Device>> dclDevices;
 
     std::vector<CameraStream> cameras;
-    std::vector<RigEdge> initialGuesses;
+    CalibrationHandler initialGuesses;
     /// Known distances between camera centers, in meters, keyed by the frame pair.
     std::map<std::pair<CoordinateFrame, CoordinateFrame>, float> knownDistances;
     /// Metric distances recovered from the scene, in meters, keyed by the device reference frame pair. Recomputed each
@@ -125,29 +125,35 @@ class MultiDeviceCalibration::Impl {
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /// Initial guesses with an extra yaw rotation (about the reference vertical axis) applied to `deviceId`'s edge.
-    MultiDeviceCalibrationHandler guessesWithYaw(const std::string& deviceId, float yawDegrees) const {
-        auto edges = initialGuesses;
+    CalibrationHandler guessesWithYaw(const std::string& deviceId, float yawDegrees) const {
+        CalibrationHandler guesses = initialGuesses;
         if(yawDegrees != 0.0f) {
             const float yaw = yawDegrees * 0.017453292519943295f;  // pi / 180
             const Transform rotate = {
                 {std::cos(yaw), 0.0f, std::sin(yaw), 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {-std::sin(yaw), 0.0f, std::cos(yaw), 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
-            for(auto& edge : edges) {
-                if(edge.from.deviceId != deviceId) continue;
-                const auto current = matrix::toVecMatrix4x4(edge.transform.getTransformationMatrix(false, LengthUnit::CENTIMETER));
-                const auto rotated = matrix::matMul(rotate, current);
-                edge.transform.setTransformationMatrix(rotated, LengthUnit::CENTIMETER);
-                edge.transform.setReferenceFrame(edge.to);
+            for(const auto& [fromDevice, sockets] : guesses.getEepromData().devicesData) {
+                if(fromDevice != deviceId) continue;
+                for(const auto& [fromSocket, extrinsics] : sockets) {
+                    const auto current = matrix::toVecMatrix4x4(extrinsics.getTransformationMatrix(false, LengthUnit::CENTIMETER));
+                    const auto rotated = matrix::matMul(rotate, current);
+                    Extrinsics updated = extrinsics;
+                    updated.setTransformationMatrix(rotated, LengthUnit::CENTIMETER);
+                    const auto to = updated.getReferenceFrame();
+                    guesses.setExtrinsics(fromDevice, fromSocket, to.deviceId, to.socket, updated, LengthUnit::CENTIMETER);
+                }
             }
         }
-        return MultiDeviceCalibrationHandler(MultiDeviceCalibrationData{1, 0, edges, {}});
+        return guesses;
     }
 
     /// Pose of camera `frame` w.r.t. the rig base, composed from the (possibly perturbed) guesses, in meters.
-    Transform seedToRigBase(const CoordinateFrame& frame, const MultiDeviceCalibrationHandler& guesses) const {
+    Transform seedToRigBase(const CoordinateFrame& frame, const CalibrationHandler& guesses) const {
         const auto& reference = deviceReference.at(frame.deviceId);
         Transform referenceToRigBase = identityTransform();
         if(reference != baseFrame) {
-            referenceToRigBase = matrix::toVecMatrix4x4(guesses.getTransform(reference, baseFrame, LengthUnit::METER));
+            referenceToRigBase =
+                matrix::toVecMatrix4x4(guesses.getExtrinsics(reference.deviceId, reference.socket, baseFrame.deviceId, baseFrame.socket, LengthUnit::METER)
+                                           .getTransformationMatrix(false, LengthUnit::METER));
         }
         return matrix::matMul(referenceToCamera(frame), inverted(referenceToRigBase));
     }
@@ -206,13 +212,7 @@ std::shared_ptr<MultiDeviceCalibration> MultiDeviceCalibration::build(const std:
 }
 
 void MultiDeviceCalibration::setInitialGuess(const CoordinateFrame& from, const CoordinateFrame& to, const Extrinsics& guess) {
-    RigEdge edge;
-    edge.from = from;
-    edge.to = to;
-    edge.transform = guess;
-    edge.transform.setReferenceFrame(to);
-    edge.source = "initial-guess";
-    pimpl->initialGuesses.push_back(edge);
+    pimpl->initialGuesses.setExtrinsics(from.deviceId, from.socket, to.deviceId, to.socket, guess, guess.lengthUnit);
 }
 
 void MultiDeviceCalibration::setDeviceCalibration(const std::string& deviceId, const CalibrationHandler& calibration) {
@@ -302,16 +302,21 @@ void MultiDeviceCalibration::run() {
     // The feature-tracks method estimates the geometry from scratch, so it needs neither an initial guess nor the
     // dynamic calibration library seeding below.
     if(pimpl->method == Method::DYNAMIC_CALIBRATION) {
-        const MultiDeviceCalibrationHandler guesses(MultiDeviceCalibrationData{1, 0, pimpl->initialGuesses, {}});
+        const auto& guesses = pimpl->initialGuesses;
         for(auto& camera : cameras) {
             const auto& reference = pimpl->deviceReference.at(camera.frame.deviceId);
             Transform referenceToRigBase = identityTransform();
             if(reference != baseFrame) {
-                DAI_CHECK_V(guesses.canTransform(reference, baseFrame),
-                            "MultiDeviceCalibration has no initial guess connecting {} to {}. Supply a rough one with setInitialGuess().",
-                            toString(reference),
-                            toString(baseFrame));
-                referenceToRigBase = matrix::toVecMatrix4x4(guesses.getTransform(reference, baseFrame, LengthUnit::METER));
+                try {
+                    referenceToRigBase = matrix::toVecMatrix4x4(
+                        guesses.getExtrinsics(reference.deviceId, reference.socket, baseFrame.deviceId, baseFrame.socket, LengthUnit::METER)
+                            .getTransformationMatrix(false, LengthUnit::METER));
+                } catch(const std::exception&) {
+                    DAI_CHECK_V(false,
+                                "MultiDeviceCalibration has no initial guess directly from {} to {}. Supply it with setInitialGuess().",
+                                toString(reference),
+                                toString(baseFrame));
+                }
             }
             // T_camera<-rigBase == T_camera<-deviceReference * T_deviceReference<-rigBase
             camera.toRigBase = matrix::matMul(pimpl->referenceToCamera(camera.frame), inverted(referenceToRigBase));
@@ -459,8 +464,7 @@ void MultiDeviceCalibration::estimateFromCalibrationGraph() {
         }
     };
 
-    MultiDeviceCalibrationData rig;
-    rig.timestamp = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    CalibrationHandler rig;
     std::vector<std::string> notes;
     double dataConfidence = 0.0;
 
@@ -607,15 +611,8 @@ void MultiDeviceCalibration::estimateFromCalibrationGraph() {
                 value *= getDistanceUnitScale(LengthUnit::CENTIMETER, LengthUnit::METER);
             }
 
-            RigEdge edge;
-            edge.from = deviceReferenceFrame;
-            edge.to = baseReference;
-            edge.transform =
-                Extrinsics(matrix::extractRotationMatrix(transform), Point3f(translation[0], translation[1], translation[2]), baseReference.socket);
-            edge.transform.setReferenceFrame(baseReference);
-            edge.timestamp = rig.timestamp;
-            edge.source = "multi-device-calibration";
-            rig.edges.push_back(edge);
+            Extrinsics extrinsics(matrix::extractRotationMatrix(transform), Point3f(translation[0], translation[1], translation[2]), baseReference.socket);
+            rig.setExtrinsics(deviceReferenceFrame.deviceId, deviceReferenceFrame.socket, baseReference.deviceId, baseReference.socket, extrinsics);
             notes.push_back(fmt::format("device {}: {} (confidence {:.3f}, Sampson {:.4f})",
                                         deviceId,
                                         selectedMetadata.description,
@@ -630,13 +627,13 @@ void MultiDeviceCalibration::estimateFromCalibrationGraph() {
     }
 
     const auto info = fmt::format("{}", fmt::join(notes, "; "));
-    if(rig.edges.empty()) {
+    if(rig.getEepromData().devicesData.empty()) {
         logger->warn("No inter-device transformation could be estimated: {}", info);
         rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(info));
         return;
     }
-    logger->info("Estimated {} inter-device transformation(s){}{}", rig.edges.size(), info.empty() ? "" : ", ", info);
-    rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(rig, dataConfidence, info));
+    logger->info("Estimated {} inter-device transformation(s){}{}", rig.getEepromData().devicesData.size(), info.empty() ? "" : ", ", info);
+    rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(rig.getEepromData(), dataConfidence, info));
 }
 
 void MultiDeviceCalibration::estimateFromStereoGraph() {
@@ -683,8 +680,7 @@ void MultiDeviceCalibration::estimateFromStereoGraph() {
     const auto calibration = pimpl->dcl.estimateInterDeviceCalibration(stereoDevices, baseDeviceIndex);
     std::vector<std::string> notes;
 
-    MultiDeviceCalibrationData rig;
-    rig.timestamp = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    CalibrationHandler rig;
     const auto& baseReference = pimpl->deviceReference.at(baseDeviceId);
     if(calibration.passed()) {
         for(const auto& pose : calibration.value.poses) {
@@ -694,14 +690,13 @@ void MultiDeviceCalibration::estimateFromStereoGraph() {
 
             const auto& device = devices[pose.deviceIndex];
             const auto& reference = devices[pose.referenceIndex];
-            RigEdge edge;
-            edge.from = pimpl->deviceReference.at(device.deviceId);
-            edge.to = baseReference;
-            edge.transform = Extrinsics(transform, baseReference.socket, LengthUnit::METER);
-            edge.transform.setReferenceFrame(baseReference);
-            edge.timestamp = rig.timestamp;
-            edge.source = "dcl-feature-tracks";
-            rig.edges.push_back(edge);
+            const auto from = pimpl->deviceReference.at(device.deviceId);
+            rig.setExtrinsics(from.deviceId,
+                              from.socket,
+                              baseReference.deviceId,
+                              baseReference.socket,
+                              Extrinsics(transform, baseReference.socket, LengthUnit::METER),
+                              LengthUnit::METER);
 
             notes.push_back(fmt::format("device {} <- {}: {} correspondences, {} inliers, rigid-fit RMSE {:.3f} m, |t| {:.3f} m",
                                         reference.deviceId,
@@ -719,13 +714,14 @@ void MultiDeviceCalibration::estimateFromStereoGraph() {
     }
 
     const auto info = fmt::format("{}", fmt::join(notes, "; "));
-    if(rig.edges.empty()) {
+    if(rig.getEepromData().devicesData.empty()) {
         logger->warn("No inter-device transformation could be estimated: {}", info);
         rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(info));
         return;
     }
-    logger->info("Estimated {} inter-device transformation(s) from DCL feature tracks{}{}", rig.edges.size(), info.empty() ? "" : ", ", info);
-    rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(rig, 1.0, info));
+    logger->info(
+        "Estimated {} inter-device transformation(s) from DCL feature tracks{}{}", rig.getEepromData().devicesData.size(), info.empty() ? "" : ", ", info);
+    rigCalibration.send(std::make_shared<MultiDeviceCalibrationResult>(rig.getEepromData(), 1.0, info));
 }
 
 float MultiDeviceCalibration::resolveScale(const std::vector<std::vector<float>>& transform,

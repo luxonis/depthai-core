@@ -59,28 +59,22 @@ def makeReplay(pipeline, stream):
 
 
 def augmentedRig():
-    """The stored rig holds only inter-device edges; add each device's intra-device edges so a device-less pipeline
-    can transform any camera to the reference (the same completion CoordinateFrameTransform does from live devices)."""
-    rig = dai.MultiDeviceCalibrationHandler(str(args.input / args.rig))
+    """Add explicit camera-to-reference extrinsics needed by the replay pipeline."""
+    rig = dai.CalibrationHandler(str(args.input / args.rig))
     candidates = (dai.CameraBoardSocket.CAM_A, dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C, dai.CameraBoardSocket.CAM_D)
     for deviceId, calibration in calibrations.items():
         anchor = dai.CoordinateFrame(deviceId, anchorSocket)
         for socket in candidates:
             frame = dai.CoordinateFrame(deviceId, socket)
-            if frame == anchor or rig.canTransform(frame, anchor):
+            if frame == anchor:
                 continue
             try:
                 matrix = calibration.getCameraExtrinsics(socket, anchorSocket)
             except Exception:
                 continue
-            edge = dai.RigEdge()
-            edge.from_ = frame
-            edge.to = anchor
-            edge.transform = dai.Extrinsics()
-            edge.transform.setTransformationMatrix(matrix)
-            edge.transform.setReferenceFrame(anchor)
-            edge.source = "device-calibration"
-            rig.setEdge(edge)
+            extrinsics = dai.Extrinsics()
+            extrinsics.setTransformationMatrix(matrix)
+            rig.setExtrinsics(deviceId, socket, deviceId, anchorSocket, extrinsics)
     return rig
 
 
@@ -125,13 +119,15 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
         # Seed the optimization with the stored rig, if any
         if manifest.get("hasRig"):
-            rig = dai.MultiDeviceCalibrationHandler(str(args.input / args.rig))
+            rig = dai.CalibrationHandler(str(args.input / args.rig))
             for deviceId in manifest["devices"][1:]:
                 source = dai.CoordinateFrame(deviceId, anchorSocket)
-                if not rig.canTransform(source, reference):
+                try:
+                    matrix = rig.getExtrinsics(source.deviceId, source.socket, reference.deviceId, reference.socket).getTransformationMatrix()
+                except RuntimeError:
                     continue
                 guess = dai.Extrinsics()
-                guess.setTransformationMatrix(rig.getTransform(source, reference))
+                guess.setTransformationMatrix(matrix)
                 calibration.setInitialGuess(source, reference, guess)
 
         rigQueue = calibration.rigCalibration.createOutputQueue()
@@ -140,5 +136,5 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         result = rigQueue.get()
         print(f"passed={result.passed} confidence={result.dataConfidence:.3f} info={result.info!r}", flush=True)
         if result.passed and args.output is not None:
-            dai.MultiDeviceCalibrationHandler(result.calibration).toJsonFile(str(args.output))
+            result.getCalibrationHandler().eepromToJsonFile(str(args.output))
             print(f"rig written to {args.output}", flush=True)

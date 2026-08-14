@@ -335,7 +335,7 @@ def run_stitching(device_names, args, rig_path, plane):
         require_cam_bc(devices)
 
         with dai.Pipeline(createImplicitDevice=False) as pipeline:
-            pipeline.setMultiDeviceCalibration(dai.MultiDeviceCalibrationHandler(str(rig_path)))
+            pipeline.setMultiDeviceCalibration(dai.CalibrationHandler(str(rig_path)))
             reference = dai.CoordinateFrame(devices[0].getDeviceId(), dai.CameraBoardSocket.CAM_B)
             outputs, gates = build_camera_outputs(pipeline, devices, stitch_sockets, args.resolution, args.fps, gated=True)
 

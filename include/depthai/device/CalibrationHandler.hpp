@@ -2,11 +2,13 @@
 #pragma once
 #include <array>
 #include <filesystem>
+#include <map>
 #include <optional>
 #include <string>
 #include <tuple>
 
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CoordinateFrame.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
@@ -72,6 +74,23 @@ class CalibrationHandler {
      * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
     static CalibrationHandler fromJson(const nlohmann::json& eepromDataJson, std::optional<bool> validateCalibration = std::nullopt);
+
+    /**
+     * Return the explicitly stored pose of `(fromDevice, fromSocket)` expressed in `(toDevice, toSocket)`.
+     * A missing device identifies a legacy, unqualified frame.
+     */
+    Extrinsics getExtrinsics(const std::optional<std::string>& fromDevice,
+                             CameraBoardSocket fromSocket,
+                             const std::optional<std::string>& toDevice,
+                             CameraBoardSocket toSocket,
+                             LengthUnit unit = LengthUnit::CENTIMETER) const;
+
+    void setExtrinsics(const std::optional<std::string>& fromDevice,
+                       CameraBoardSocket fromSocket,
+                       const std::optional<std::string>& toDevice,
+                       CameraBoardSocket toSocket,
+                       const Extrinsics& extrinsics,
+                       LengthUnit unit = LengthUnit::CENTIMETER);
 
     /**
      * Get the Eeprom Data object
@@ -750,14 +769,6 @@ class CalibrationHandler {
     dai::CameraBoardSocket getCameraWithLowestId() const;
 
    private:
-    /** when the user is writing extrinsics do we validate if
-     * the connection between all the cameras exists ?
-     * Some users might not need that connection so they might ignore adding
-     * that in that case if the user calls the extrinsics betwwn those cameras it
-     * fails We can provide an appropriate error that connection doesn't exist between the requested camera id's..
-     * And other option is making sure the connection exists all the time by validating the links.
-     */
-    // bool isCameraArrayConnected;
     dai::EepromData eepromData;
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
