@@ -22,7 +22,6 @@
     <depend>spdlog</depend>
     <depend>fmt</depend>
     <depend>zip</depend>
-    <depend>tar</depend>
     <depend>unzip</depend>
 
     <buildtool_depend>ament_cmake</buildtool_depend>

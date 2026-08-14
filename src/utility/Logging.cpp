@@ -2,6 +2,8 @@
 
 #include "Environment.hpp"
 
+#include <algorithm>
+
 namespace dai {
 
 LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue) {
