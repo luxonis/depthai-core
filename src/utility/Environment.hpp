@@ -5,6 +5,7 @@
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <mutex>
