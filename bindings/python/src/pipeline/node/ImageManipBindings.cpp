@@ -39,6 +39,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
     imageManipProperties.def_readwrite("initialConfig", &ImageManipProperties::initialConfig)
         .def_readwrite("outputFrameSize", &ImageManipProperties::outputFrameSize)
         .def_readwrite("numFramesPool", &ImageManipProperties::numFramesPool)
+        .def_readwrite("maxPoolSize", &ImageManipProperties::maxPoolSize)
         .def_readwrite("backend", &ImageManipProperties::backend)
         .def_readwrite("performanceMode", &ImageManipProperties::performanceMode);
 
@@ -54,7 +55,8 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setBackend", &ImageManip::setBackend, DOC(dai, node, ImageManip, setBackend))
         .def("setPerformanceMode", &ImageManip::setPerformanceMode, DOC(dai, node, ImageManip, setPerformanceMode))
         .def("setNumFramesPool", &ImageManip::setNumFramesPool, DOC(dai, node, ImageManip, setNumFramesPool))
-        .def("setMaxOutputFrameSize", &ImageManip::setMaxOutputFrameSize, DOC(dai, node, ImageManip, setMaxOutputFrameSize));
+        .def("setMaxOutputFrameSize", &ImageManip::setMaxOutputFrameSize, DOC(dai, node, ImageManip, setMaxOutputFrameSize))
+        .def("setMaxPoolSize", &ImageManip::setMaxPoolSize, DOC(dai, node, ImageManip, setMaxPoolSize));
 
     // Properties alias
     daiNodeModule.attr("ImageManip").attr("Properties") = imageManipProperties;

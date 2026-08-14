@@ -40,6 +40,9 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     /// Num frames in output pool
     int numFramesPool = 4;
 
+    /// Maximum pool size for automatic calculation of pool size. Currently only used on RVC4
+    unsigned int maxPoolSize = 400000000;
+
     /// Backend preference for ImageManip. Only applied on RVC4.
     Backend backend = Backend::AUTO;
 
@@ -49,6 +52,6 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     ~ImageManipProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, backend, performanceMode);
+DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, maxPoolSize, backend, performanceMode);
 
 }  // namespace dai

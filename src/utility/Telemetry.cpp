@@ -610,6 +610,7 @@ void TelemetrySharedState::init() {
                   {"host_os_version", getTelemetryHostOSVersion()},
                   {"is_oak_app", !readEnv("OAKAGENT_PRIVATE_HTTP_PWD").empty()},
                   {"uses_python", telemetryUsesPython.load()},
+                  {"correlation_id", readEnv("LUXONIS_TELEMETRY_CORRELATION_ID")},
               });
     }
 }
