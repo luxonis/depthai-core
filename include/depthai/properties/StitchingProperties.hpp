@@ -57,25 +57,6 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
         std::uint32_t width = 0;
         /// Height of the rendered image in pixels.
         std::uint32_t height = 0;
-
-        /**
-         * Build a camera placed at `position` and looking at `target`.
-         *
-         * @param position Camera center, in the reference frame
-         * @param target Point the optical axis passes through, in the reference frame
-         * @param up Direction that ends up pointing up in the rendered image
-         * @param hFovDegrees Horizontal field of view of the camera
-         * @param width Width of the rendered image in pixels
-         * @param height Height of the rendered image in pixels
-         * @param unit Length unit of `position` and `target`
-         */
-        static VirtualCamera lookAt(const Point3f& position,
-                                    const Point3f& target,
-                                    const Point3f& up,
-                                    float hFovDegrees,
-                                    std::uint32_t width,
-                                    std::uint32_t height,
-                                    LengthUnit unit = LengthUnit::CENTIMETER);
     };
 
     Mode mode = Mode::PANORAMA;

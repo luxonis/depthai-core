@@ -1,6 +1,5 @@
 #include "depthai/pipeline/node/host/Stitching.hpp"
 
-#include <cmath>
 #include <stdexcept>
 #include <utility>
 
@@ -8,57 +7,6 @@
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
-
-namespace {
-
-struct Vector3d {
-    double x;
-    double y;
-    double z;
-};
-
-Vector3d cross(const Vector3d& lhs, const Vector3d& rhs) {
-    return {lhs.y * rhs.z - lhs.z * rhs.y, lhs.z * rhs.x - lhs.x * rhs.z, lhs.x * rhs.y - lhs.y * rhs.x};
-}
-
-double norm(const Vector3d& vector) {
-    return std::sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
-}
-
-Vector3d normalized(const Vector3d& vector) {
-    const auto length = norm(vector);
-    return {vector.x / length, vector.y / length, vector.z / length};
-}
-
-}  // namespace
-
-StitchingProperties::VirtualCamera StitchingProperties::VirtualCamera::lookAt(
-    const Point3f& position, const Point3f& target, const Point3f& up, float hFovDegrees, uint32_t width, uint32_t height, LengthUnit unit) {
-    DAI_CHECK_V(width > 0 && height > 0, "The view must not be empty, got {}x{} pixels", width, height);
-    DAI_CHECK_V(hFovDegrees > 0.0f && hFovDegrees < 180.0f, "The horizontal field of view must be within (0, 180) degrees, got {}", hFovDegrees);
-
-    const Vector3d towardsTarget{target.x - position.x, target.y - position.y, target.z - position.z};
-    DAI_CHECK_V(norm(towardsTarget) > 1e-6, "The camera cannot look at its own position");
-    const auto forward = normalized(towardsTarget);
-    const Vector3d upVector{up.x, up.y, up.z};
-    const auto unnormalizedRight = cross(forward, upVector);
-    DAI_CHECK_V(norm(unnormalizedRight) > 1e-6, "The up direction must not be parallel to the optical axis");
-    const auto right = normalized(unnormalizedRight);
-    const auto down = cross(forward, right);
-
-    VirtualCamera camera;
-    camera.width = width;
-    camera.height = height;
-    camera.unit = unit;
-    constexpr double PI = 3.14159265358979323846;
-    const auto focal = static_cast<float>(0.5 * width / std::tan(0.5 * static_cast<double>(hFovDegrees) * PI / 180.0));
-    camera.intrinsics = {{{focal, 0.0f, 0.5f * (width - 1)}, {0.0f, focal, 0.5f * (height - 1)}, {0.0f, 0.0f, 1.0f}}};
-    camera.pose = {{{static_cast<float>(right.x), static_cast<float>(down.x), static_cast<float>(forward.x), position.x},
-                    {static_cast<float>(right.y), static_cast<float>(down.y), static_cast<float>(forward.y), position.y},
-                    {static_cast<float>(right.z), static_cast<float>(down.z), static_cast<float>(forward.z), position.z},
-                    {0.0f, 0.0f, 0.0f, 1.0f}}};
-    return camera;
-}
 
 namespace node {
 

@@ -269,8 +269,10 @@ TEST_CASE("Stitching validates the planar projection settings", "[Stitching]") {
     stitching->setMaxRange(5.0f, dai::LengthUnit::METER);
     REQUIRE(stitching->getMaxRange(dai::LengthUnit::CENTIMETER) == 500.0f);
 
-    auto view = dai::node::Stitching::VirtualCamera::lookAt({0, 0, 0}, {0, 0, 100}, {0, -1, 0}, 90.0f, 640, 480);
-    REQUIRE(view.intrinsics[0][0] == 320.0f);
+    dai::node::Stitching::VirtualCamera view;
+    view.width = 640;
+    view.height = 480;
+    view.intrinsics = {{{320.0f, 0.0f, 319.5f}, {0.0f, 320.0f, 239.5f}, {0.0f, 0.0f, 1.0f}}};
     REQUIRE_NOTHROW(stitching->setView(view));
     REQUIRE(stitching->getView()->width == 640);
     stitching->setViewAuto();
@@ -375,15 +377,18 @@ TEST_CASE("Stitching renders the plane from a given virtual camera", "[Stitching
     // A camera hanging three meters above the ground, looking straight down, with the world y axis pointing up in the
     // image - the classic bird's eye view of the rig
     const cv::Vec3d position = dataset.toReference({0.0, 100.0, 300.0});
-    const cv::Vec3d target = dataset.toReference({0.0, 100.0, 0.0});
-    const cv::Vec3d up = dataset.toReference({0.0, 1.0, 0.0}) - dataset.toReference({0.0, 0.0, 0.0});
-    const auto view =
-        dai::node::Stitching::VirtualCamera::lookAt({static_cast<float>(position[0]), static_cast<float>(position[1]), static_cast<float>(position[2])},
-                                                    {static_cast<float>(target[0]), static_cast<float>(target[1]), static_cast<float>(target[2])},
-                                                    {static_cast<float>(up[0]), static_cast<float>(up[1]), static_cast<float>(up[2])},
-                                                    90.0f,
-                                                    800,
-                                                    600);
+    const cv::Vec3d right = dataset.worldToReferenceRotation * cv::Vec3d(1.0, 0.0, 0.0);
+    const cv::Vec3d down = dataset.worldToReferenceRotation * cv::Vec3d(0.0, -1.0, 0.0);
+    const cv::Vec3d forward = dataset.worldToReferenceRotation * cv::Vec3d(0.0, 0.0, -1.0);
+
+    dai::node::Stitching::VirtualCamera view;
+    view.width = 800;
+    view.height = 600;
+    view.intrinsics = {{{400.0f, 0.0f, 399.5f}, {0.0f, 400.0f, 299.5f}, {0.0f, 0.0f, 1.0f}}};
+    view.pose = {{{static_cast<float>(right[0]), static_cast<float>(down[0]), static_cast<float>(forward[0]), static_cast<float>(position[0])},
+                  {static_cast<float>(right[1]), static_cast<float>(down[1]), static_cast<float>(forward[1]), static_cast<float>(position[1])},
+                  {static_cast<float>(right[2]), static_cast<float>(down[2]), static_cast<float>(forward[2]), static_cast<float>(position[2])},
+                  {0.0f, 0.0f, 0.0f, 1.0f}}};
 
     dai::Pipeline pipeline(false);
     auto stitching = makePlanarNode(pipeline, dataset);

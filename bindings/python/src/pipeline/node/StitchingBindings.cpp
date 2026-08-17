@@ -57,16 +57,6 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
         .def_readwrite("unit", &Stitching::Plane::unit, DOC(dai, StitchingProperties, Plane, unit));
 
     stitchingVirtualCamera.def(py::init<>())
-        .def_static("lookAt",
-                    &Stitching::VirtualCamera::lookAt,
-                    py::arg("position"),
-                    py::arg("target"),
-                    py::arg("up"),
-                    py::arg("hFovDegrees"),
-                    py::arg("width"),
-                    py::arg("height"),
-                    py::arg("unit") = LengthUnit::CENTIMETER,
-                    DOC(dai, StitchingProperties, VirtualCamera, lookAt))
         .def_readwrite("pose", &Stitching::VirtualCamera::pose, DOC(dai, StitchingProperties, VirtualCamera, pose))
         .def_readwrite("unit", &Stitching::VirtualCamera::unit, DOC(dai, StitchingProperties, VirtualCamera, unit))
         .def_readwrite("intrinsics", &Stitching::VirtualCamera::intrinsics, DOC(dai, StitchingProperties, VirtualCamera, intrinsics))
