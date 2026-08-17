@@ -731,6 +731,15 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     # Link the dynamic calibration target
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+
+    if(UNIX)
+        # Give consumers an explicit -rpath-link to our libdynamic_calibration.so so ld's link-time symbol
+        # resolution doesn't pick up a like-named/incompatible copy earlier on LD_LIBRARY_PATH (e.g. from a ROS system install).
+        target_link_options(${TARGET_CORE_NAME} INTERFACE
+            "$<BUILD_INTERFACE:-Wl,-rpath-link,${DYNAMIC_CALIBRATION_DIR}/lib>"
+            "$<INSTALL_INTERFACE:-Wl,-rpath-link,${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}>"
+        )
+    endif()
 endif()
 
 # Set constant
@@ -1412,6 +1421,9 @@ if(APPLE)
   set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/;@loader_path/${PROJECT_NAME}")
 elseif(UNIX)
   set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/:$ORIGIN/${PROJECT_NAME}")
+  # Force the usage of RPATH instead of the new RUNPATH.
+  # LD_LIBRARY_PATH is searched after the RPATH, so our namespaced runtime dependencies are always preferred.
+  target_link_options(${TARGET_CORE_NAME} PRIVATE "-Wl,--disable-new-dtags")
 endif()
 
 # Export to CMake registry if specified
