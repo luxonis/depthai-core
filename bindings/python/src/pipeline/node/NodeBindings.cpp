@@ -185,6 +185,7 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
 void bind_imagealign(pybind11::module& m, void* pCallstack);
 void bind_rgbd(pybind11::module& m, void* pCallstack);
+void bind_stitching(pybind11::module& m, void* pCallstack);
 void bind_rectification(pybind11::module& m, void* pCallstack);
 void bind_neuraldepth(pybind11::module& m, void* pCallstack);
 void bind_gpustereo(pybind11::module& m, void* pCallstack);
@@ -265,6 +266,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_replay);
     callstack.push_front(bind_imagealign);
     callstack.push_front(bind_rgbd);
+    callstack.push_front(bind_stitching);
     callstack.push_front(bind_rectification);
     callstack.push_front(bind_neuraldepth);
     callstack.push_front(bind_gpustereo);

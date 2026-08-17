@@ -48,6 +48,7 @@
     #include "node/host/HostNode.hpp"
     #include "node/host/Record.hpp"
     #include "node/host/Replay.hpp"
+    #include "node/host/Stitching.hpp"
 #endif
 #include "ThreadedHostNode.hpp"
 #include "node/ImageAlign.hpp"
