@@ -35,7 +35,8 @@ void SegmentationParser::buildInternal() {
         auto platform = device->getPlatform();
         if(platform == Platform::RVC2) {
             setRunOnHost(true);
-            std::cout << "SegmentationParser: For RVC2 platform, running on host." << std::endl;
+            auto& logger = ThreadedNode::pimpl->logger;
+            if (logger) logger->info("SegmentationParser: For RVC2 platform, running on host.");
         }
     }
 }

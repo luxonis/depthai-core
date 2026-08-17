@@ -140,7 +140,7 @@ void ObjectTracker::run() {
                     inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
                 }
             } else {
-                logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
+                logger->error("Input detection must be either ImgDetection or SpatialImgDetection type! Skipping.");
             }
             if(inputConfig.getWaitForMessage()) {
                 inputCfg = inputConfig.get<ObjectTrackerConfig>();

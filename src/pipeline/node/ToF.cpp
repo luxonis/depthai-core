@@ -109,7 +109,7 @@ void ToF::postBuildStage() {
     auto& logger = pimpl->logger;
     if(device->getPlatform() == Platform::RVC2) {
         if(!confidence.getConnections().empty()) {
-            if(logger) logger->warn("Confidence is not supported on this platform and will stream aplitude instead.");
+            if(logger) logger->warn("Confidence is not supported on this platform and will stream amplitude instead.");
         }
     }
     if(device->getPlatform() == Platform::RVC4) {

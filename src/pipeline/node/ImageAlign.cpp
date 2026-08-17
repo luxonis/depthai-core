@@ -541,7 +541,7 @@ void ImageAlign::run() {
             auto stopProcessing = high_resolution_clock::now();
 
             auto durationProcessing = duration_cast<microseconds>(stopProcessing - startProcessing);
-            logger->debug("Processing time: {} ms", durationProcessing.count() / 1000.0f);
+            logger->debug("ImageAlign depth shift took {} ms.", durationProcessing.count() / 1000.0f);
 
             warp2Input = shiftedOutput;
         }
@@ -602,7 +602,7 @@ void ImageAlign::run() {
         tStop = steady_clock::now();
         auto runtime = duration_cast<milliseconds>(tStop - tStart).count();
 
-        logger->trace("ImageAlign took {} ms", runtime);
+        logger->trace("ImageAlign took {} ms.", runtime);
 
         {
             auto blockEvent = this->outputBlockEvent();

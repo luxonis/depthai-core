@@ -131,6 +131,7 @@ void loop(N& node,
 
                 setFrame(*inImage, *outImage);
 
+                logger->trace("ImageManip took '{}' ms.", duration_cast<microseconds>(t4 - t3).count() / 1000.0);
                 logger->trace("Build time: {}us, Process time: {}us, Total time: {}us, image manip id: {}",
                               duration_cast<microseconds>(t2 - t1).count(),
                               duration_cast<microseconds>(t4 - t3).count(),
