@@ -2,6 +2,75 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+## Features
+
+* **Beta features namespace**
+  * Staging area for experimental DepthAI nodes and features
+  * Enables faster support for features whose public API may change without prior notice
+  * All nodes run natively on RVC4 and on the host for RVC2
+  * All parsers and unique messages from `depthai_nodes` are ported over and have native support
+  * Parsers have exposed runtime configuration changes via config messages
+  * [Python](https://github.com/luxonis/depthai-core/tree/main/examples/python/Beta) and [C++ examples](https://github.com/luxonis/depthai-core/tree/main/examples/cpp/Beta) are available
+* **[_RVC2_] PoE Bootloader update**
+  * Embedded Bootloader version updated to v0.0.29
+  * Greatly improves **RVC2 PoE** device discoverability by fixing stale connection information that could result in `X_LINK_DEVICE_NOT_FOUND` errors
+  * The bootloader is backward- and forward-compatible and independent of the DepthAI version
+  * Updating the recoverable _user_ bootloader is **recommended** for devices with frequent discovery failures. For full integration, we recommend flashing the _factory_ bootloader.
+  * The following three flashing paths are available:
+    * For a GUI experience, use [device_manager.py](https://github.com/luxonis/depthai-core/blob/main/utilities/device_manager.py). The update function is accessible within the "danger zone" section
+    * Using the provided [flash_network_bootloader.py](https://github.com/luxonis/depthai-core/blob/main/utilities/flash_network_bootloader.py) script. By default, the script flashes the _user_ bootloader; use the `-f` flag to enable factory flashing
+    * Using the CLI command `depthai --flash <device_ip>`. By default, the command flashes the _user_ bootloader; use the `-f` flag to enable factory flashing
+  * For more information, follow the [tutorial](https://docs.luxonis.com/software-v3/depthai/depthai-components/bootloader) in our docs
+* **[_RVC4_] Alpha parameter for image undistortion**
+  * StereoDepth node now properly handles alpha scaling of undistortion on RVC4
+  * Camera output requests now accept an optional `alphaScaling` value for controlling the balance between cropping and retaining the full field of view
+* **Depth colorization utility**
+  * Added `dai::utility::colorizeDepthFrame` in C++ and `dai.utility.colorizeDepthFrame` in Python
+  * Supports `ImgFrame`, OpenCV matrices, configurable depth ranges and color maps, and logarithmic or linear scaling
+  * Can automatically derive visualization bounds from valid depth pixels and render invalid pixels as black
+* **[*RVC4*] VideoEncoder improvements**
+  * Improved latency for 4000 x 3000 H.264, H.265, and MJPEG encoding
+  * Fixed an issue where `setKeyframeFrequency` had no effect on RVC4
+
+## Bug fixes
+
+* **[*RVC4*] 480 FPS mode**
+  * Fixed a regression from 3.7.1 where the ImageManip pool size was too small to properly support 480 FPS HFR mode
+  * ImageManip can now grow its output pool when it is running low on frames
+  * Added `setMaxPoolSize` to cap the maximum output-pool size
+* [_RVC2_] Added a total power limit for DOT and FLOOD projectors to avoid power resets on the RVC2 ToF 63D sensor
+* [*RVC2*] SpatialLocationCalculator now remaps regions of interest correctly when the depth input is not aligned
+* Fixed YOLOv6 and YOLOv6-R1 decoding, including stride-based box reconstruction and confidence handling
+* Rectification now uses the transformations carried by its input frames and reinitializes when those transformations change
+* Fixed ImageManip four-point transform did not account for normalized coordinates
+* Fixed colorization flicker and inconsistent frame rates in the ToF examples
+* ReplayVideo now reports a runtime error when FFmpeg cannot open a video instead of relying on an assertion
+
+## Misc
+
+* Added a `getConnectedCameras(CameraSensorType)` overload for filtering connected cameras by sensor type
+* Reworked stereo-pair discovery to consider only connected and calibrated cameras with compatible sensors, valid extrinsics, and suitable orientation
+  * Stereo pairs are now ordered by descending baseline length
+* `cam_test.py` now selects supported resolutions from the connected camera features instead of assuming 1280 x 800
+* Added `background_class` and `strides` to NN Archive head metadata
+* Python bindings for NeuralNetwork, DetectionNetwork, and SpatialDetectionNetwork now use a common variant-based `model` argument
+* DetectionParser uses metadata-defined YOLO strides, and SegmentationParser uses the dedicated background-class field
+* Python message types now inherit common `Buffer` timestamp and sequence-number methods instead of declaring duplicate bindings
+* **Examples**:
+  * Depth examples now use the unified Depth node where possible
+  * The multi-device frame-sync example can encode synchronized streams as H.265
+  * A [Python example](https://github.com/luxonis/depthai-core/blob/main/examples/python/Misc/Bootloader/bootloader_dump.py) and a [C++ example](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/Misc/Bootloader/bootloader_dump.cpp) for printing bootloader versions have been added
+* Fixed MSVC builds that treated a DeviceNodeCRTP deprecation warning as an error
+* Updated the vcpkg baseline and explicitly use OpenCV 4 for macOS Homebrew builds
+* Embedded visualizer updated to 3.7.6:
+  * Improved performance and stability
+
+## [*RVC4*] Luxonis OS compatibility
+
+Integration tested with Luxonis OS 1.27.1, 1.30.1, and 1.33.0.
+
 3.7.1 (2026-06-08)
 ------------------
 ## Features
