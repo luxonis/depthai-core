@@ -28,7 +28,7 @@ inline json get_untyped(const json& j, const char* property) {
     return json();
 }
 
-inline json get_untyped(const json& j, std::string property) {
+inline json get_untyped(const json& j, const std::string& property) {
     return get_untyped(j, property.data());
 }
 #endif

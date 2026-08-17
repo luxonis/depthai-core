@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.7.1" LANGUAGES CXX C)
+project(depthai VERSION "3.9.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -276,6 +276,7 @@ set(TARGET_CORE_SOURCES
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
+    src/device/HealthCheck.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
     src/device/Platform.cpp
@@ -340,6 +341,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
+    src/pipeline/node/Depth.cpp
     src/pipeline/node/GPUStereo.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp
@@ -432,6 +434,66 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+if(DEPTHAI_BUILD_BETA)
+    list(APPEND TARGET_CORE_SOURCES
+        src/beta/BetaNode.cpp
+        src/beta/datatype/Classifications.cpp
+        src/beta/datatype/Clusters.cpp
+        src/beta/datatype/ImgDetectionsFilterConfig.cpp
+        src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/Lines.cpp
+        src/beta/datatype/Map2D.cpp
+        src/beta/datatype/Predictions.cpp
+        src/beta/datatype/ClassificationSequenceParserConfig.cpp
+        src/beta/datatype/FastSAMParserConfig.cpp
+        src/beta/datatype/HRNetParserConfig.cpp
+        src/beta/datatype/MLSDParserConfig.cpp
+        src/beta/datatype/MPPalmDetectionParserConfig.cpp
+        src/beta/datatype/MapOutputParserConfig.cpp
+        src/beta/datatype/PPTextDetectionParserConfig.cpp
+        src/beta/datatype/RFDETRParserConfig.cpp
+        src/beta/datatype/SCRFDParserConfig.cpp
+        src/beta/datatype/SuperAnimalParserConfig.cpp
+        src/beta/datatype/XFeatMonoParserConfig.cpp
+        src/beta/datatype/XFeatStereoParserConfig.cpp
+        src/beta/datatype/YuNetParserConfig.cpp
+        src/beta/node/ClassificationParser.cpp
+        src/beta/node/ClassificationSequenceParser.cpp
+        src/beta/node/EmbeddingsParser.cpp
+        src/beta/node/FastSAMParser.cpp
+        src/beta/node/HRNetParser.cpp
+        src/beta/node/ImageOutputParser.cpp
+        src/beta/node/ImgDetectionsFilter.cpp
+        src/beta/node/KeypointParser.cpp
+        src/beta/node/LaneDetectionParser.cpp
+        src/beta/node/MapOutputParser.cpp
+        src/beta/node/MLSDParser.cpp
+        src/beta/node/MPPalmDetectionParser.cpp
+        src/beta/node/PPTextDetectionParser.cpp
+        src/beta/node/RegressionParser.cpp
+        src/beta/node/RFDETRParser.cpp
+        src/beta/node/SCRFDParser.cpp
+        src/beta/node/SuperAnimalParser.cpp
+        src/beta/node/XFeatMonoParser.cpp
+        src/beta/node/XFeatStereoParser.cpp
+        src/beta/node/YuNetParser.cpp
+        src/beta/properties/ImgDetectionsFilterProperties.cpp
+        src/beta/utilities/Classification/ClassificationUtils.cpp
+        src/beta/utilities/Detection/DetectionUtils.cpp
+        src/beta/utilities/Detection/MaskUtils.cpp
+        src/beta/utilities/FastSAM/FastSAMUtils.cpp
+        src/beta/utilities/Keypoints/KeypointsUtils.cpp
+        src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
+        src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
+        src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/PPText/PPTextUtils.cpp
+        src/beta/utilities/RFDETR/RFDETRUtils.cpp
+        src/beta/utilities/SCRFD/SCRFDUtils.cpp
+        src/beta/utilities/XFeat/XFeatUtils.cpp
+        src/beta/utilities/YuNet/YuNetUtils.cpp
+    )
+endif()
+
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
     list(APPEND TARGET_CORE_SOURCES
         src/utility/EventsManager.cpp
@@ -463,6 +525,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 set(TARGET_OPENCV_SOURCES
+    src/opencv/ColorizeDepthFrame.cpp
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/HostCamera.cpp
@@ -522,6 +585,9 @@ add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
+if(DEPTHAI_BUILD_BETA)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BETA)
+endif()
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install
@@ -981,8 +1047,10 @@ macro(add_runtime_dependencies depending_target dependency)
         message(STATUS "Required dlls for core are: ${required_dll_files}")
     endif()
 endmacro()
-# Add libusb dll in build time
-add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add libusb dll in build time when libusb is provided by vcpkg.
+if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
+    add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+endif()
 # Add dynamic calibration dll in build time
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
@@ -1341,6 +1409,9 @@ if(DEPTHAI_INSTALL)
     # Install depthai public headers
     install(DIRECTORY include/depthai DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     install(FILES "${DEPTHAI_VERSION_HEADER}" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai/build")
+    # Install license and notices
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/notices/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/notices")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install resources if not RC'd

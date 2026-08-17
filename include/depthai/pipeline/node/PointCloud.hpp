@@ -40,7 +40,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
        public:
         Impl() = default;
 
-        void setLogger(std::shared_ptr<::spdlog::logger> log);
+        void setLogger(const std::shared_ptr<::spdlog::logger>& log);
 
         // Compute DENSE point cloud (width * height points, includes invalid z=0 or negative)
         void computePointCloudDense(const uint8_t* depthData, std::vector<Point3f>& points);
@@ -118,6 +118,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
    public:
     PointCloud();
+    PointCloud(std::unique_ptr<Properties> props);
     ~PointCloud();
 
     /**
@@ -203,17 +204,25 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /**
      * Set target coordinate system to transform point cloud
      * @param targetCamera Target camera socket
-     * @param useSpecTranslation Use spec translation instead of calibration (default: false)
      */
-    void setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation = false);
+    void setTargetCoordinateSystem(CameraBoardSocket targetCamera);
 
     /**
      * Set target coordinate system to housing coordinate system
      * Point cloud will be transformed to this housing coordinate system
      * @param housingCS Target housing coordinate system
-     * @param useSpecTranslation Whether to use spec translation (default: true)
      */
-    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation = true);
+    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS);
+
+    /**
+     * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
+     */
+    void setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation);
+
+    /**
+     * Deprecated: use setTargetCoordinateSystem(housingCS) instead.
+     */
+    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation);
 
     bool runOnHost() const override;
 
@@ -236,8 +245,11 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     void setCoordinateTransformation(const ImgFrame& depthFrame, const PointCloudConfig& config);
 
     // Processing methods for the two code paths
-    void processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc, bool organized);
-    void processColorized(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<ImgFrame> colorFrame, std::shared_ptr<PointCloudData> pc, bool organized);
+    void processDepthOnly(const std::shared_ptr<ImgFrame>& depthFrame, const std::shared_ptr<PointCloudData>& pc, bool organized);
+    void processColorized(const std::shared_ptr<ImgFrame>& depthFrame,
+                          const std::shared_ptr<ImgFrame>& colorFrame,
+                          const std::shared_ptr<PointCloudData>& pc,
+                          bool organized);
 
     bool runOnHostVar = true;
     bool initialized = false;

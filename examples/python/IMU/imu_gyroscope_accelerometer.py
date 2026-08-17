@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import time
+
 import depthai as dai
 
 
@@ -27,6 +29,7 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
     baseTs = None
+    lastPrintTime = 0.0
     while pipeline.isRunning():
         try:
             imuData = imuQueue.get()
@@ -34,19 +37,26 @@ with dai.Pipeline() as pipeline:
             break
         assert isinstance(imuData, dai.IMUData)
         imuPackets = imuData.packets
-        for imuPacket in imuPackets:
-            acceleroValues = imuPacket.acceleroMeter
-            gyroValues = imuPacket.gyroscope
+        if not imuPackets:
+            continue
 
-            acceleroTs = acceleroValues.getTimestamp()
-            gyroTs = gyroValues.getTimestamp()
+        now = time.monotonic()
+        if now - lastPrintTime < 1.0:
+            continue
+        lastPrintTime = now
 
-            imuF = "{:.06f}"
-            tsF  = "{:.03f}"
+        imuPacket = imuPackets[-1]
+        acceleroValues = imuPacket.acceleroMeter
+        gyroValues = imuPacket.gyroscope
 
-            print(f"Accelerometer timestamp: {acceleroTs}")
-            print(f"Latency [ms]: {dai.Clock.now() - acceleroValues.getTimestamp()}")
-            print(f"Accelerometer [m/s^2]: x: {imuF.format(acceleroValues.x)} y: {imuF.format(acceleroValues.y)} z: {imuF.format(acceleroValues.z)}")
-            print(f"Gyroscope timestamp: {gyroTs}")
-            print(f"Gyroscope [rad/s]: x: {imuF.format(gyroValues.x)} y: {imuF.format(gyroValues.y)} z: {imuF.format(gyroValues.z)} ")
-            print()
+        acceleroTs = acceleroValues.getTimestamp()
+        gyroTs = gyroValues.getTimestamp()
+
+        imuF = "{:.06f}"
+
+        print(f"Accelerometer timestamp: {acceleroTs}")
+        print(f"Latency [ms]: {dai.Clock.now() - acceleroValues.getTimestamp()}")
+        print(f"Accelerometer [m/s^2]: x: {imuF.format(acceleroValues.x)} y: {imuF.format(acceleroValues.y)} z: {imuF.format(acceleroValues.z)}")
+        print(f"Gyroscope timestamp: {gyroTs}")
+        print(f"Gyroscope [rad/s]: x: {imuF.format(gyroValues.x)} y: {imuF.format(gyroValues.y)} z: {imuF.format(gyroValues.z)} ")
+        print()

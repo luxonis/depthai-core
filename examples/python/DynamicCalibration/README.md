@@ -1,6 +1,6 @@
 # Dynamic Calibration (Python) — DepthAI
 
-This folder contains three minimal, end-to-end examples that use **`dai.node.DynamicCalibration`** to (a) **calibrate** a stereo device real-time and (b) **evaluate** calibration quality on demand (c) combination of both — while streaming synchronized stereo frames and disparity for visual feedback.
+This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCalibration`** to (a) **calibrate** a stereo device in real time, (b) **evaluate** calibration quality on demand, (c) combine both flows, and (d) run a **3-sensor** calibration flow that uses the newer socket-keyed outputs.
 
 > Press **`q`** in the preview window to quit either example.
 
@@ -19,19 +19,24 @@ This folder contains three minimal, end-to-end examples that use **`dai.node.Dyn
 - **CoverageData** (`coverageOutput`)
   - `meanCoverage: float` — overall spatial coverage [0–1].
   - `dataAcquired: float` — amount of calibration-relevant data gathered [0–1].
-  - `coveragePerCellA/B: list[list[float]]` - matrix of spatial coverage of imager A or B [0-1].
+  - `coveragePerCell: dict[CameraBoardSocket, list[list[float]]]` - per-sensor coverage matrices keyed by socket [0-1].
+  - `coveragePerCellA/B: list[list[float]]` - deprecated aliases for the first two connected sensors.
 
 - **DynamicCalibrationResult** (`calibrationOutput`)
-  - `newCalibration: dai.CalibrationHanlder` — `CalibrationHandler` with updated parameters.
-  - `calibrationDifference` — quality deltas between current and new:
-    - `rotationChange[3]: list[float]` — extrinsic angle deltas (deg).
+  - `calibrationData.newCalibration: dai.CalibrationHandler` — `CalibrationHandler` with updated parameters.
+  - `calibrationData.calibrationDifference` — quality deltas between current and new:
+    - `pairwiseRotationDifference: dict[tuple[CameraBoardSocket, CameraBoardSocket], list[float]]` — per-sensor-pair rotation deltas keyed by camera socket pairs.
     - `sampsonErrorCurrent: float`, `sampsonErrorNew: float` — reprojection proxy (px).
-    - `depthErrorDifference[4]: list[float]` — theoretical depth error change at 1/2/5/10 m (%).
   - `info` — human-readable status (e.g., "success").
 
-- **CalibrationQuality** (`qualityOutput`)
+- **CalibrationQuality** (`qualityOutput`, legacy)
   - `qualityData` (optional) — same fields as `calibrationDifference`.
   - `info` — human-readable status.
+
+> `CalibrationQuality` is a legacy command: the node still accepts it for compatibility, but current runtime implementations return an empty result and log a deprecation warning.
+> The same metric fields are available on `DynamicCalibrationResult.calibrationData.calibrationDifference`, returned on `calibrationOutput` after `calibrate()` or `startCalibration()`.
+> Prefer `pairwiseRotationDifference` in new code. If older code used `rotationChange`, migrate to `pairwiseRotationDifference` by reading the per-sensor-pair deltas directly instead of relying on a single aggregate vector. `rotationChange` is a deprecated compatibility field and should be treated as a candidate for future removal.
+> `depthErrorDifference[4]: list[float]` should also be treated as deprecated here and should not be relied on in new code.
 
 ---
 
@@ -42,7 +47,7 @@ This folder contains three minimal, end-to-end examples that use **`dai.node.Dyn
 **Flow:**
 1. Create mono cameras → request **full-res NV12** (unrectified) → link to:
    - `DynamicCalibration.left/right`
-   - `StereoDepth.left/right` (for live disparity view)
+   - `StereoDepth.left/right` (for live depth view)
 2. Start the pipeline, give AE a moment to settle.
 3. **Start calibration** with:
    ```python
@@ -51,15 +56,15 @@ This folder contains three minimal, end-to-end examples that use **`dai.node.Dyn
    )
    ```
 4. In the loop:
-   - Show `left`, `right`, and `disparity`.
+   - Show `left`, `right`, and `depth`.
    - Poll `coverageOutput` for progress (`meanCoverage`, `dataAcquired`).
    - Poll `calibrationOutput` for a result.
 5. When a result arrives:
    - **Apply** it:
      ```python
-     dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ApplyCalibration(calibrationData.newCalibration)))
+     dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ApplyCalibration(result.calibrationData.newCalibration)))
      ```
-   - Print quality deltas: rotation magnitude, Sampson errors, depth-error deltas.
+   - Print pairwise rotation deltas and Sampson errors.
 
 **Example console output:**
 ```
@@ -67,24 +72,45 @@ This folder contains three minimal, end-to-end examples that use **`dai.node.Dyn
 Data Acquired = 0.65% / 100 [%]
 Dynamic calibration status: success
 Successfully calibrated
-Rotation difference: || r_current - r_new || = 0.43 deg
+Pairwise rotation difference (<CAM_B>, <CAM_C>) = [0.12, -0.08, 0.40] deg
 Mean Sampson error achievable = 0.21 px
 Mean Sampson error current    = 0.38 px
-Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
 ```
 
 > Applying the calibration updates downstream nodes (e.g., `StereoDepth`) immediately for subsequent frames.
 
 ---
 
-## 2) Calibration **quality check**
+## 1b) Real-time dynamic calibration with 3 sensors
+
+**Script:** `calibration_dynamic_3_sensors.py`
+
+**What it does:**
+- Links `CAM_A -> dynCalib.rgb`, `CAM_B -> dynCalib.left`, and `CAM_C -> dynCalib.right`
+- Locks the RGB camera to the fixed lens position stored in `CalibrationHandler`
+- Starts periodic calibration
+- Prints `coveragePerCell` keyed by `CameraBoardSocket`
+- Prints `pairwiseRotationDifference` for the calibrated sensor pairs
+
+**Use this when:**
+- You want a concrete example of the newer 3-input DynamicCalibration API
+- You want to inspect socket-keyed coverage instead of the deprecated `coveragePerCellA/B` aliases
+
+**Important for RGB cameras:**
+- Keep the RGB lens position fixed during dynamic calibration.
+- Read the RGB lens position from `CalibrationHandler` and apply it with manual focus before starting the pipeline.
+- Do not leave RGB autofocus running during calibration, or the RGB camera intrinsics can drift with focus changes.
+
+---
+
+## 2) Calibration **quality check** (legacy)
 
 **Script:** `calibration_quality_dynamic.py`
 
 **Flow:**
 1. Same camera / StereoDepth / DynamicCalibration setup as above.
 2. In the loop:
-   - Show `left`, `right`, and `disparity`.
+   - Show `left`, `right`, and `depth`.
    - Ask for **coverage** on demand:
      ```python
      dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.LoadImage()))
@@ -92,18 +118,24 @@ Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
      ```
    - Ask for **quality** on demand:
      ```python
-     dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.dai.CalibrationQuality()))
+     dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.CalibrationQuality()))
      dynQualityResult = dynCalibQualityQueue.get()
      ```
-3. If `qualityData` is present, print rotation/Sampson/depth-error metrics.
+3. If `qualityData` is present, print pairwise rotation and Sampson metrics.
 4. Optionally reset the internal sample store:
    ```python
    dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ResetData()))
    ```
 
-**Use this when:**
-- You want to **assess** a potential calibration before committing it.
-- You’re tuning capture/coverage practices and need fast feedback.
+> This flow is kept only as a legacy reference. New code should prefer the calibration output / load-image flow and avoid relying on `CalibrationQuality`.
+
+**Replace this API with:**
+- Old: `dai.DynamicCalibrationControl.calibrationQuality()` or `dai.DynamicCalibrationControl.Commands.CalibrationQuality()`
+- New for one-shot metrics: `dai.DynamicCalibrationControl.calibrate()`
+- New for continuous operation: `dai.DynamicCalibrationControl.startCalibration()`
+- Read metrics from: `DynamicCalibrationResult.calibrationData.calibrationDifference` on `calibrationOutput`
+
+Use this only if you need a legacy reference while migrating old code.
 
 ---
 
@@ -112,22 +144,22 @@ Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
 **Script:** `calibration_integration.py`
 
 **What it does:**  
-Runs one loop that periodically checks calibration quality and, if drift is detected, starts calibration and applies the new calibration automatically — while showing `left`, `right`, and colorized `disparity` previews.
+Runs one loop that periodically refreshes coverage, executes calibration, and applies a new calibration automatically when the returned metrics indicate drift — while showing `left`, `right`, and colorized `depth` previews.
 
 **Flow:**
-1. Create mono cameras → request **full-res NV12** → link to `DynamicCalibration` and `StereoDepth` for live disparity. Read the device’s current calibration as baseline.
+1. Create mono cameras → request **full-res NV12** → link to `DynamicCalibration` and `StereoDepth` for live depth. Read the device’s current calibration as baseline.
 2. On a fixed interval (for example, every ~3 seconds), send:
    - `LoadImage()` to compute coverage on the current frames, and
-   - `CalibrationQuality(True)` (or equivalent) to request a quality estimate.
-3. When a quality result arrives:
-   - Log status; if quality data is present, **reset** the internal data store.
-   - If the quality indicates drift (e.g., a Sampson error delta above a small threshold like 0.05 px), **start calibration** (`StartCalibration()`).
-4. When a calibration result arrives:
-   - **Apply** the new `CalibrationHandler` to the device and **reset** data again.
+   - `dai.DynamicCalibrationControl.calibrate(True)` (or equivalent) to compute a new candidate calibration and return metrics on `calibrationOutput`.
+3. When a calibration result arrives:
+   - If `result.calibrationData` is present, inspect `result.calibrationData.calibrationDifference` for the same rotation and Sampson metrics that older code previously read from `CalibrationQuality.qualityData`.
+   - If those metrics indicate drift (e.g., a Sampson error delta above a small threshold like 0.05 px), **apply** the new `CalibrationHandler` to the device.
+   - Reset the internal data store before the next monitoring cycle.
+4. Treat `result.calibrationData.calibrationDifference` as the replacement source for legacy quality metrics, even if you choose not to apply `result.calibrationData.newCalibration`.
 5. Press **`q`** to exit.
 
 **Notes & defaults:**
-- Disparity preview is auto-scaled to the observed maximum; **zero disparity appears black** for clarity.
+- Depth preview uses the shared colorization helper with a 500–12000 mm range and logarithmic scaling.
 - The 0.05 px Sampson threshold is a simple heuristic — adjust per your tolerance.
 
 **Example console output:**
@@ -145,11 +177,11 @@ Successfully calibrated
 ```
 Mono CAM_B ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibration.left
                   │                             └─────▶ coverageOutput
-                  └───────────▶ StereoDepth.left        calibrationOutput / qualityOutput
+                  └───────────▶ StereoDepth.left        calibrationOutput
 
 Mono CAM_C ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibration.right
                   │
-                  └───────────▶ StereoDepth.right ──▶ disparity
+                  └───────────▶ StereoDepth.right ──▶ depth
 ```
 
 ---
@@ -172,10 +204,13 @@ pip install depthai opencv-python numpy
 # Live calibration (applies new calibration when ready)
 python calibration_dynamic.py
 
-# Quality evaluation (reports metrics of when recalibration is required)
+# Live calibration with CAM_A + CAM_B + CAM_C
+python calibration_dynamic_3_sensors.py
+
+# Legacy quality evaluation flow
 python calibration_quality_dynamic.py
 
-# Integration example (starts new calibration when the quality reports major changes)
+# Integration example (runs calibration, inspects metrics, and applies when needed)
 python calibration_integration.py
 ```
 
@@ -185,35 +220,40 @@ python calibration_integration.py
 
 ## Commands overview
 
-- `StartCalibration()`  
+- `calibrate()`  
+  Runs a full calibration immediately and returns metrics on `calibrationOutput`.
+
+- `startCalibration()`  
   Begins dynamic calibration collection/solve.
 
-- `ApplyCalibration(calibration)`  
+- `applyCalibration(calibration)`  
   Applies the provided `CalibrationHandler` to the device (affects downstream nodes in this session).
 
-- `LoadImage()`  
+- `loadImage()`  
   Triggers coverage computation for the current frame(s).
 
-- `CalibrationQuality()`  
-  Produces a `CalibrationQuality` message with `qualityData` if estimation is possible.
+- `calibrationQuality()`  
+  Legacy command. Produces an empty `CalibrationQuality` result in current runtimes.
 
-- `ResetData()`  
+If you previously read fields from `CalibrationQuality.qualityData`, read the same fields from `DynamicCalibrationResult.calibrationData.calibrationDifference` after `calibrate()` or `startCalibration()`.
+
+- `resetData()`  
   Clears accumulated samples/coverage state to start fresh.
 
 ---
 
 ## Metrics glossary
 
-- **Rotation change (deg)**  
-  Magnitude of the delta between current and new stereo extrinsics (roll/pitch/yaw).
+- **Pairwise rotation difference (deg)**  
+  Per-sensor-pair rotation deltas keyed by camera socket pairs. This is the preferred current API field for rotation deltas.
 
 - **Sampson error (px)**  
   Proxy for geometric reprojection error. Lower is better.
   - `current` — with the active calibration.
   - `new` — achievable with the proposed calibration.
 
-- **Depth error difference (%) at 1/2/5/10 m**  
-  Theoretical change in relative depth error. **Negative values** indicate improvement.
+- **Rotation change (deg, legacy)**  
+  Deprecated aggregate rotation delta kept for compatibility. Prefer `pairwiseRotationDifference`.
 
 ---
 
@@ -222,7 +262,7 @@ python calibration_integration.py
 - **No quality data returned**  
   Ensure the pattern is visible, not motion-blurred, and covers diverse regions of the image. Increase lighting, adjust exposure, or hold the rig steady.
 
-- **Disparity looks worse after apply**  
+- **Depth preview looks worse after apply**
   Re-run to collect more diverse views (tilt/translate the target).
 
 - **Typos in prints**  

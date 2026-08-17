@@ -87,3 +87,32 @@ TEST_CASE("rgbd autocreate") {
         REQUIRE(std::get<std::shared_ptr<dai::ImgFrame>>(depthFrame.value())->getData().size() == 640UL * 400UL * 2UL);
     }
 }
+
+TEST_CASE("rgbd build with Depth source") {
+    dai::Pipeline pipeline;
+
+    auto color = pipeline.create<dai::node::Camera>()->build();
+    auto depth = pipeline.create<dai::node::Depth>()->build(dai::node::Depth::Algorithm::AUTO, 30.0f, std::pair<uint32_t, uint32_t>{640, 400});
+    auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth, {640, 400}, 30.0f);
+
+    auto outQ = rgbd->pcl.createOutputQueue();
+    auto rgbdQ = rgbd->rgbd.createOutputQueue();
+    pipeline.start();
+
+    for(int i = 0; i < 10; ++i) {
+        auto pcl = outQ->get<dai::PointCloudData>();
+        REQUIRE(pcl != nullptr);
+        REQUIRE(pcl->getWidth() == 640);
+        REQUIRE(pcl->getHeight() == 400);
+        REQUIRE(pcl->getPoints().size() == 640UL * 400UL);
+
+        auto rgbdData = rgbdQ->get<dai::RGBDData>();
+        REQUIRE(rgbdData != nullptr);
+        auto rgbFrame = rgbdData->getRGBFrame();
+        REQUIRE(rgbFrame.has_value());
+        REQUIRE(std::get<std::shared_ptr<dai::ImgFrame>>(rgbFrame.value())->getData().size() == 640UL * 400UL * 3UL);
+        auto depthFrame = rgbdData->getDepthFrame();
+        REQUIRE(depthFrame.has_value());
+        REQUIRE(std::get<std::shared_ptr<dai::ImgFrame>>(depthFrame.value())->getData().size() == 640UL * 400UL * 2UL);
+    }
+}

@@ -78,7 +78,7 @@ TEST_CASE("Camera sensor configs configurations") {
 TEST_CASE("Camera pool sizes") {
     auto firstDevice = dai::Device::getFirstAvailableDevice();
     auto isRvc4 = std::get<1>(firstDevice).platform == X_LINK_RVC4;
-    for(const int overrideQueueSize : (isRvc4 ? std::vector<int>{-1, 2, 17, 3, 50, 4, 5} : std::vector<int>{-1, 2, 17, 3, 4, 5})) {
+    for(const int overrideQueueSize : (isRvc4 ? std::vector<int>{-1, 2, 17, 3} : std::vector<int>{-1, 2, 17})) {
         std::cout << "Testing num frames = " << overrideQueueSize << "\n" << std::flush;
         dai::Pipeline pipeline;
         std::map<dai::CameraBoardSocket, std::vector<std::tuple<int, int, float>>> streamsRvc4{

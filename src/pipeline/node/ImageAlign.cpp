@@ -120,10 +120,10 @@ std::string matToString(const cv::Mat& mat) {
     return oss.str();
 }
 
-int shiftDepthImg(std::shared_ptr<dai::ImgFrame> inVec,
-                  std::shared_ptr<dai::ImgFrame> outVec,
-                  std::array<std::array<float, 3>, 3> depthSourceIntrinsics,
-                  std::array<std::array<float, 4>, 4> depthToAlignExtrinsics) {
+int shiftDepthImg(const std::shared_ptr<dai::ImgFrame>& inVec,
+                  const std::shared_ptr<dai::ImgFrame>& outVec,
+                  const std::array<std::array<float, 3>, 3>& depthSourceIntrinsics,
+                  const std::array<std::array<float, 4>, 4>& depthToAlignExtrinsics) {
     int depthLut[65536];
 
     auto& depthIntrinsics = depthSourceIntrinsics;
@@ -593,9 +593,7 @@ void ImageAlign::run() {
 
         alignedImg->setInstanceNum((uint32_t)alignTo);
 
-        alignedImg->setTimestamp(inputImg->getTimestamp());
-        alignedImg->setTimestampDevice(inputImg->getTimestampDevice());
-        alignedImg->setSequenceNum(inputImg->getSequenceNum());
+        alignedImg->setBufferMetadataFrom(inputImg);
 
         alignedImg->transformation = inputAlignToTransform;
         const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();

@@ -1,0 +1,62 @@
+name: DepthAI Core HIL Testing PR
+
+# Trigger on submitted reviews or when manually marked as testable
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+# Cancel older runs for the same PR and trigger.
+concurrency:
+  group: depthai-core-pr-testing-${{ github.event.pull_request.number }}-${{ github.event.review.state || github.event.label.name }}
+  cancel-in-progress: true
+
+jobs:
+  run_pr_tests:
+    name: Run Linux PR HIL tests
+    if: >
+      (
+        github.event.review.state == 'approved' ||
+        (github.event_name == 'pull_request' && github.event.label.name == 'testable')
+      ) &&
+      (
+        github.event.pull_request.base.ref == 'main' ||
+        github.event.pull_request.base.ref == 'develop'
+      )
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "vanilla"
+      job_prefix: "pr-approved"
+      luxonis_os_versions_to_test: "['1.33.0']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
+
+  required_hil_test_report:
+    name: Required HIL test report
+    needs: [run_pr_tests]
+    if: >
+      always() &&
+      (
+        github.event.review.state == 'approved' ||
+        (github.event_name == 'pull_request' && github.event.label.name == 'testable')
+      ) &&
+      (
+        github.event.pull_request.base.ref == 'main' ||
+        github.event.pull_request.base.ref == 'develop'
+      )
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check required test results
+      run: |
+        if [[ "${{ needs.run_pr_tests.result }}" != "success" ]]; then
+          echo "Required HIL tests failed or did not complete."
+          echo "run_pr_tests: ${{ needs.run_pr_tests.result }}"
+          exit 1
+        fi

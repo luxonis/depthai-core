@@ -30,7 +30,7 @@ void ObjectTracker::setMaxObjectsToTrack(std::int32_t maxObjectsToTrack) {
     properties.maxObjectsToTrack = maxObjectsToTrack;
 }
 
-void ObjectTracker::setDetectionLabelsToTrack(std::vector<std::uint32_t> labels) {
+void ObjectTracker::setDetectionLabelsToTrack(const std::vector<std::uint32_t>& labels) {
     properties.detectionLabelsToTrack = labels;
 }
 
@@ -77,7 +77,7 @@ bool ObjectTracker::runOnHost() const {
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-cv::Rect toCvRect(Rect r) {
+cv::Rect toCvRect(const Rect& r) {
     if(r.isNormalized()) throw std::runtime_error("dai::Rect must not be normalized in conversion to cv::Rect");
     return {(int)r.x, (int)r.y, (int)r.width, (int)r.height};
 }
@@ -207,9 +207,7 @@ void ObjectTracker::run() {
             tracker.track(*inputTrackerImg);
         }
         auto trackletsMsg = std::make_shared<Tracklets>();
-        trackletsMsg->ts = inputTrackerImg->ts;
-        trackletsMsg->tsDevice = inputTrackerImg->tsDevice;
-        trackletsMsg->sequenceNum = inputTrackerImg->sequenceNum;
+        trackletsMsg->setBufferMetadataFrom(inputTrackerImg);
         trackletsMsg->tracklets = tracker.isInitialized() ? tracker.getTracklets() : std::vector<Tracklet>();
         // Normalize the tracklets
         for(auto& tracklet : trackletsMsg->tracklets) {

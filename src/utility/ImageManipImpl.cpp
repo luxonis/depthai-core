@@ -42,6 +42,39 @@ inline bool isSingleChannel(const dai::ImgFrame::Type type) {
            || type == dai::ImgFrame::Type::RAW32;
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
+    if(bpp == 1) {
+        switch(channels) {
+            case 1:
+                return CV_8UC1;
+            case 2:
+                return CV_8UC2;
+            case 3:
+                return CV_8UC3;
+            default:
+                break;
+        }
+    } else if(bpp == 2) {
+        switch(channels) {
+            case 1:
+                return CV_16UC1;
+            case 2:
+                return CV_16UC2;
+            case 3:
+                return CV_16UC3;
+            default:
+                break;
+        }
+    }
+    throw std::invalid_argument(fmt::format("Unsupported combination of bpp {} and channels {}", bpp, channels));
+}
+#else
+static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
+    throw std::runtime_error("Function getCvMatTypeFrom requires OpenCV support");
+}
+#endif
+
 void transformOpenCV(const uint8_t* src,
                      uint8_t* dst,
                      const size_t srcWidth,
@@ -52,7 +85,7 @@ void transformOpenCV(const uint8_t* src,
                      const size_t dstStride,
                      const uint16_t numChannels,
                      const uint16_t bpp,
-                     const std::array<std::array<float, 3>, 3> matrix,
+                     const std::array<std::array<float, 3>, 3>& matrix,
                      const std::vector<uint32_t>& background,
                      const dai::impl::FrameSpecs& srcImgSpecs,
                      const size_t sourceMinX,
@@ -60,31 +93,7 @@ void transformOpenCV(const uint8_t* src,
                      const size_t sourceMaxX,
                      const size_t sourceMaxY) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
-    auto type = CV_8UC1;
-    switch(numChannels) {
-        case 1:
-            switch(bpp) {
-                case 1:
-                    type = CV_8UC1;
-                    break;
-                case 2:
-                    type = CV_16UC1;
-                    break;
-                default:
-                    assert(false);
-            }
-            break;
-        case 2:
-            assert(bpp == 1);
-            type = CV_8UC2;
-            break;
-        case 3:
-            assert(bpp == 1);
-            type = CV_8UC3;
-            break;
-        default:
-            assert(false);
-    }
+    auto type = getCvMatTypeFrom(bpp, numChannels);
     auto bg = numChannels == 1 ? cv::Scalar(background[0])
                                : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
     const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
@@ -161,7 +170,7 @@ bool transformFastCV(const uint8_t* src,
                      const size_t dstStride,
                      const uint16_t numChannels,
                      const uint16_t bpp,
-                     const std::array<std::array<float, 3>, 3> matrix,
+                     const std::array<std::array<float, 3>, 3>& matrix,
                      const std::vector<uint32_t>& background,
                      const dai::impl::FrameSpecs& srcImgSpecs,
                      const size_t sourceMinX,
@@ -392,7 +401,7 @@ dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, d
     return specs;
 }
 
-dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to) {
+dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(const FrameSpecs& srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to) {
     if(from == to)
         return srcSpecs;
     else
@@ -480,7 +489,7 @@ bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPl
     return true;
 }
 
-std::tuple<float, float, float, float> dai::impl::getOuterRect(const std::vector<std::array<float, 2>> points) {
+std::tuple<float, float, float, float> dai::impl::getOuterRect(const std::vector<std::array<float, 2>>& points) {
     float minx = points[0][0];
     float maxx = points[0][0];
     float miny = points[0][1];
@@ -539,7 +548,7 @@ std::array<std::array<float, 3>, 3> dai::impl::getResizeMat(Resize o, float widt
 
 void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
                                          const bool center,
-                                         const std::array<std::array<float, 3>, 3> transformInv,
+                                         const std::array<std::array<float, 3>, 3>& transformInv,
                                          const uint32_t srcWidth,
                                          const uint32_t srcHeight,
                                          uint32_t& outputWidth,
@@ -604,6 +613,7 @@ void dai::impl::getTransformImpl(const ManipOp& op,
     float maxy = _maxy;
     float width = maxx - minx;
     float height = maxy - miny;
+    bool imageCornersSet = false;
 
     std::visit(
         overloaded{[](auto _) {},
@@ -631,8 +641,8 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                            mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
                        }
                    },
-                   [&](Resize o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
-                   [&](Flip o) {
+                   [&](const Resize& o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
+                   [&](const Flip& o) {
                        float moveX = centerX;
                        float moveY = centerY;
                        switch(o.direction) {
@@ -660,11 +670,14 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                    },
                    [&](FourPoints o) {
                        if(o.normalized) {
+                           if(outputWidth == 0 || outputHeight == 0) {
+                               throw std::runtime_error("Output size must be set for normalized FourPoints transform");
+                           }
                            for(auto i = 0; i < 4; ++i) {
                                o.src[i].x *= width;
                                o.src[i].y *= height;
-                               o.dst[i].x *= width;
-                               o.dst[i].y *= height;
+                               o.dst[i].x *= (float)outputWidth;
+                               o.dst[i].y *= (float)outputHeight;
                            }
                        }
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
@@ -689,9 +702,17 @@ void dai::impl::getTransformImpl(const ManipOp& op,
 #else
                        mat = matrix::getHomographyMatrix(o.src, o.dst);
 #endif
+
+                       imageCorners = {{{o.dst[0].x, o.dst[0].y}, {o.dst[1].x, o.dst[1].y}, {o.dst[2].x, o.dst[2].y}, {o.dst[3].x, o.dst[3].y}}};
+                       const auto transformInv = matrix::getMatrixInverse(transform);
+                       srcCorners.push_back({matvecmul(transformInv, {o.src[0].x, o.src[0].y}),
+                                             matvecmul(transformInv, {o.src[1].x, o.src[1].y}),
+                                             matvecmul(transformInv, {o.src[2].x, o.src[2].y}),
+                                             matvecmul(transformInv, {o.src[3].x, o.src[3].y})});
+                       imageCornersSet = true;
                    },
-                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
-                   [&](Perspective o) {
+                   [&](const Affine& o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                   [&](const Perspective& o) {
                        mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                    },
                    [&](Crop o) {
@@ -725,14 +746,17 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                                              matvecmul(transformInv, imageCorners[1]),
                                              matvecmul(transformInv, imageCorners[2]),
                                              matvecmul(transformInv, imageCorners[3])});
+                       imageCornersSet = true;
                    }},
         op.op);
-    auto outerRectPoints =
-        getOuterRotatedRect(
-            {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])})
-            .getPoints();
-    for(auto i = 0; i < 4; ++i) {
-        imageCorners[i] = {outerRectPoints[i].x, outerRectPoints[i].y};
+    if(!imageCornersSet) {
+        auto outerRectPoints =
+            getOuterRotatedRect(
+                {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])})
+                .getPoints();
+        for(auto i = 0; i < 4; ++i) {
+            imageCorners[i] = {outerRectPoints[i].x, outerRectPoints[i].y};
+        }
     }
     transform = matmul(mat, transform);
 }
@@ -845,7 +869,7 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-bool dai::impl::UndistortOpenCvImpl::validMatrix(std::array<float, 9> matrix) const {
+bool dai::impl::UndistortOpenCvImpl::validMatrix(const std::array<float, 9>& matrix) const {
     return !floatEq(matrix[0], 0) && floatEq(matrix[1], 0) && floatEq(matrix[3], 0) && !floatEq(matrix[4], 0) && floatEq(matrix[6], 0) && floatEq(matrix[7], 0)
            && floatEq(matrix[8], 1);
 }
@@ -919,23 +943,26 @@ dai::impl::UndistortOpenCvImpl::BuildStatus dai::impl::UndistortOpenCvImpl::buil
         }
         if(!validMatrix(newCameraMatrix)) {
             if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || distCoeffs != this->distCoeffs
-               || cameraMatrix != this->cameraMatrix) {
+               || cameraMatrix != this->cameraMatrix || this->dstWidth != srcWidth || this->dstHeight != srcHeight || this->newCameraMatrix != cameraMatrix) {
                 initMaps(cameraMatrix, cameraMatrix, std::move(distCoeffs), type, srcWidth, srcHeight, srcWidth, srcHeight);
                 return BuildStatus::TWO_SHOT;
             }
             return BuildStatus::NOT_BUILT;
-        } else {
-            if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || dstWidth != this->dstWidth || dstHeight != this->dstHeight
-               || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix || newCameraMatrix != this->newCameraMatrix) {
-                initMaps(std::move(cameraMatrix), std::move(newCameraMatrix), std::move(distCoeffs), type, srcWidth, srcHeight, dstWidth, dstHeight);
-                return BuildStatus::ONE_SHOT;
-            }
-            return BuildStatus::NOT_BUILT;
         }
+
+        if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || dstWidth != this->dstWidth || dstHeight != this->dstHeight
+           || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix || newCameraMatrix != this->newCameraMatrix) {
+            initMaps(cameraMatrix, newCameraMatrix, std::move(distCoeffs), type, srcWidth, srcHeight, dstWidth, dstHeight);
+            return BuildStatus::ONE_SHOT;
+        }
+        return BuildStatus::NOT_BUILT;
     }
     return BuildStatus::NOT_USED;
 }
-void dai::impl::UndistortOpenCvImpl::undistort(cv::Mat& src, cv::Mat& dst) {
+
+void dai::impl::UndistortOpenCvImpl::undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t) {
+    cv::Mat src(srcI.height, srcI.width, getCvMatTypeFrom(srcI.bpp, srcI.channels), srcI.data->getOffsetData().data(), srcI.stride);
+    cv::Mat dst(dstI.height, dstI.width, getCvMatTypeFrom(dstI.bpp, dstI.channels), dstI.data->getOffsetData().data(), dstI.stride);
     if(dst.size().width == (int)dstWidth && dst.size().height == (int)dstHeight) {
         cv::remap(src, dst, undistortMap1, undistortMap2, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
     } else if(dst.size().width == (int)dstWidth / 2 && dst.size().height == (int)dstHeight / 2) {
@@ -2995,6 +3022,7 @@ void WarpH::buildUndistort(bool enable,
                            const std::array<float, 9>& cameraMatrix,
                            const std::array<float, 9>& newCameraMatrix,
                            const std::vector<float>& distCoeffs,
+                           const std::optional<float> alpha,
                            const ImgFrame::Type type,
                            const uint32_t srcWidth,
                            const uint32_t srcHeight,
@@ -3002,6 +3030,7 @@ void WarpH::buildUndistort(bool enable,
                            const uint32_t dstHeight) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(enable) {
+        this->alphaScaling = alpha;  // unused
         if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
         auto undistortStatus = undistortImpl->build(cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
         switch(undistortStatus) {
@@ -3013,14 +3042,12 @@ void WarpH::buildUndistort(bool enable,
                 this->enableUndistort = true;
                 this->undistortOneShot = false;
                 break;
-            case UndistortOpenCvImpl::BuildStatus::NOT_USED:
-                this->enableUndistort = false;
-                this->undistortOneShot = false;
-                break;
             case UndistortOpenCvImpl::BuildStatus::NOT_BUILT:
                 break;
+            case UndistortOpenCvImpl::BuildStatus::NOT_USED:
             case UndistortOpenCvImpl::BuildStatus::ERROR:
                 this->enableUndistort = false;
+                this->undistortOneShot = false;
                 break;
         }
 
@@ -3034,6 +3061,7 @@ void WarpH::buildUndistort(bool enable,
     } else {
         undistortImpl = nullptr;
         this->enableUndistort = false;
+        this->undistortOneShot = false;
     }
 #else
     (void)enable;
@@ -3050,7 +3078,7 @@ void WarpH::buildUndistort(bool enable,
 }
 
 void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
-                      std::shared_ptr<OffsetMemory> dst,
+                      const std::shared_ptr<OffsetMemory>& dst,
                       const size_t srcWidth,
                       const size_t srcHeight,
                       const size_t srcStride,
@@ -3059,7 +3087,7 @@ void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
                       const size_t dstStride,
                       const uint16_t numChannels,
                       const uint16_t bpp,
-                      const std::array<std::array<float, 3>, 3> matrix,
+                      const std::array<std::array<float, 3>, 3>& matrix,
                       const std::vector<uint32_t>& background) {
 #ifdef DEPTHAI_IMAGEMANIPV2_OPENCV
     transformOpenCV(src->getOffsetData().data(),
@@ -3112,17 +3140,10 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
-                cv::Mat srcCv(this->srcSpecs.height,
-                              this->srcSpecs.width,
-                              CV_8UC3,
-                              src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(),
-                              this->srcSpecs.p1Stride);
-                cv::Mat dstCv(undistortSpecs.height,
-                              undistortSpecs.width,
-                              CV_8UC3,
-                              undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
-                              undistortSpecs.p1Stride);
-                this->undistortImpl->undistort(srcCv, dstCv);
+                this->undistortImpl->undistort(
+                    {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 3, src->offset(this->srcSpecs.p1Offset)},
+                    {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 3, undistortDst->offset(undistortSpecs.p1Offset)},
+                    0);
             }
     #endif
             if(!this->undistortOneShot && !this->isIdentityWarp()) {
@@ -3151,43 +3172,22 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height,
-                                  this->srcSpecs.width,
-                                  CV_8UC1,
-                                  src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(undistortSpecs.height,
-                                  undistortSpecs.width,
-                                  CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
-                                  undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
                 }
                 {
-                    cv::Mat srcCv(this->srcSpecs.height,
-                                  this->srcSpecs.width,
-                                  CV_8UC1,
-                                  src->offset(this->srcSpecs.p2Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p2Stride);
-                    cv::Mat dstCv(undistortSpecs.height,
-                                  undistortSpecs.width,
-                                  CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(),
-                                  undistortSpecs.p2Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p2Stride, 1, 1, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p2Stride, 1, 1, undistortDst->offset(undistortSpecs.p2Offset)},
+                        1);
                 }
                 {
-                    cv::Mat srcCv(this->srcSpecs.height,
-                                  this->srcSpecs.width,
-                                  CV_8UC1,
-                                  src->offset(this->srcSpecs.p3Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p3Stride);
-                    cv::Mat dstCv(undistortSpecs.height,
-                                  undistortSpecs.width,
-                                  CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p3Offset)->getOffsetData().data(),
-                                  undistortSpecs.p3Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p3Stride, 1, 1, src->offset(this->srcSpecs.p3Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p3Stride, 1, 1, undistortDst->offset(undistortSpecs.p3Offset)},
+                        2);
                 }
             }
     #endif
@@ -3240,43 +3240,22 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height,
-                                  this->srcSpecs.width,
-                                  CV_8UC1,
-                                  src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(undistortSpecs.height,
-                                  undistortSpecs.width,
-                                  CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
-                                  undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
                 }
                 {
-                    cv::Mat srcCv(this->srcSpecs.height / 2,
-                                  this->srcSpecs.width / 2,
-                                  CV_8UC1,
-                                  src->offset(this->srcSpecs.p2Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p2Stride);
-                    cv::Mat dstCv(undistortSpecs.height / 2,
-                                  undistortSpecs.width / 2,
-                                  CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(),
-                                  undistortSpecs.p2Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width / 2, this->srcSpecs.height / 2, this->srcSpecs.p2Stride, 1, 1, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.width / 2, undistortSpecs.height / 2, undistortSpecs.p2Stride, 1, 1, undistortDst->offset(undistortSpecs.p2Offset)},
+                        1);
                 }
                 {
-                    cv::Mat srcCv(this->srcSpecs.height / 2,
-                                  this->srcSpecs.width / 2,
-                                  CV_8UC1,
-                                  src->offset(this->srcSpecs.p3Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p3Stride);
-                    cv::Mat dstCv(undistortSpecs.height / 2,
-                                  undistortSpecs.width / 2,
-                                  CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p3Offset)->getOffsetData().data(),
-                                  undistortSpecs.p3Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width / 2, this->srcSpecs.height / 2, this->srcSpecs.p3Stride, 1, 1, src->offset(this->srcSpecs.p3Offset)},
+                        {undistortSpecs.width / 2, undistortSpecs.height / 2, undistortSpecs.p3Stride, 1, 1, undistortDst->offset(undistortSpecs.p3Offset)},
+                        2);
                 }
             }
     #endif
@@ -3329,30 +3308,16 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height,
-                                  this->srcSpecs.width,
-                                  CV_8UC1,
-                                  src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(undistortSpecs.height,
-                                  undistortSpecs.width,
-                                  CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
-                                  undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
                 }
                 {
-                    cv::Mat srcCv(this->srcSpecs.height / 2,
-                                  this->srcSpecs.width / 2,
-                                  CV_8UC2,
-                                  src->offset(this->srcSpecs.p2Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p2Stride);
-                    cv::Mat dstCv(undistortSpecs.height / 2,
-                                  undistortSpecs.width / 2,
-                                  CV_8UC2,
-                                  undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(),
-                                  undistortSpecs.p2Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width / 2, this->srcSpecs.height / 2, this->srcSpecs.p2Stride, 1, 2, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.width / 2, undistortSpecs.height / 2, undistortSpecs.p2Stride, 1, 2, undistortDst->offset(undistortSpecs.p2Offset)},
+                        1);
                 }
             }
     #endif
@@ -3394,17 +3359,10 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height,
-                                  this->srcSpecs.width,
-                                  CV_8UC1,
-                                  src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(undistortSpecs.height,
-                                  undistortSpecs.width,
-                                  CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
-                                  undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
                 }
             }
     #endif
@@ -3433,17 +3391,10 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height,
-                                  this->srcSpecs.width,
-                                  CV_16UC1,
-                                  src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(),
-                                  this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(undistortSpecs.height,
-                                  undistortSpecs.width,
-                                  CV_16UC1,
-                                  undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
-                                  undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 2, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 2, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
                 }
             }
     #endif

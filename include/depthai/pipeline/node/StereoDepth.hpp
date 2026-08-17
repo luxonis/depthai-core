@@ -56,7 +56,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     std::shared_ptr<StereoDepth> build(bool autoCreateCameras,
                                        PresetMode presetMode = PresetMode::DEFAULT,
-                                       std::pair<int, int> size = {640, 400},
+                                       const std::pair<int, int>& size = {640, 400},
                                        std::optional<float> fps = std::nullopt);
 
    protected:
@@ -219,7 +219,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      *
      * Optional if MonoCamera exists, otherwise necessary
      */
-    void setInputResolution(std::tuple<int, int> resolution);
+    void setInputResolution(const std::tuple<int, int>& resolution);
 
     /**
      * Specify disparity/depth output resolution size, implemented by scaling.
@@ -309,6 +309,9 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Sets a default preset based on specified option.
      * @param mode Stereo depth preset mode
+     *
+     * @warning If using alpha scaling on RVC4 the DEFAULT, DENSITY, and FAST_DENSITY presets can produce inaccurate depth in black padded regions, as they
+     * prioritize coverage.
      */
     void setDefaultProfilePreset(PresetMode mode);
 

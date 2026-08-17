@@ -22,6 +22,9 @@ enum class CameraBoardSocket : int32_t {
     CAM_H,
     CAM_I,
     CAM_J,
+    /**
+     * @warning Experimental feature. This API might change or be removed in a future release.
+     */
     CBA,
     // Deprecated naming
     RGB [[deprecated]] = CAM_A,

@@ -307,6 +307,9 @@ void validateRequests(const std::vector<ReceivedRequest>& requests) {
     REQUIRE_FALSE(depthaiLoadProperties.value("host_os_version", std::string{}).empty());
     REQUIRE(depthaiLoadProperties.value("is_oak_app", false));
     REQUIRE_FALSE(depthaiLoadProperties.value("uses_python", true));
+    // correlation_id is always attached to depthai_load, empty when LUXONIS_TELEMETRY_CORRELATION_ID is not set
+    REQUIRE(depthaiLoadProperties.contains("correlation_id"));
+    REQUIRE(depthaiLoadProperties["correlation_id"].is_string());
 
     const auto deviceConstructorRequests = getEventRequests(requests, "depthai_device_constructor");
     CAPTURE(deviceConstructorRequests.size());

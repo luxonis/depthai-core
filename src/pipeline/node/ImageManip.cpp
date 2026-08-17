@@ -7,7 +7,7 @@ namespace dai {
 
 namespace node {
 
-inline std::array<float, 9> flatten(std::array<std::array<float, 3>, 3> mat) {
+inline std::array<float, 9> flatten(const std::array<std::array<float, 3>, 3>& mat) {
     return {mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]};
 }
 
@@ -30,6 +30,7 @@ void ImageManip::run() {
                                  flatten(frame.transformation.getIntrinsicMatrix()),
                                  flatten(newCameraMatrix),
                                  frame.transformation.getDistortionCoefficients(),
+                                 std::nullopt,
                                  frame.getType(),
                                  frame.getWidth(),
                                  frame.getHeight(),
@@ -50,9 +51,7 @@ void ImageManip::run() {
             dstFrame.sourceFb = srcFrame.sourceFb;
             dstFrame.cam = srcFrame.cam;
             dstFrame.instanceNum = srcFrame.instanceNum;
-            dstFrame.sequenceNum = srcFrame.sequenceNum;
-            dstFrame.tsDevice = srcFrame.tsDevice;
-            dstFrame.ts = srcFrame.ts;
+            dstFrame.setBufferMetadataFrom(&srcFrame);
             dstFrame.category = srcFrame.category;
             dstFrame.event = srcFrame.event;
             dstFrame.fb.height = dstSpecs.height;
@@ -81,6 +80,10 @@ void ImageManip::setNumFramesPool(int numFramesPool) {
 
 void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
     properties.outputFrameSize = maxFrameSize;
+}
+
+void ImageManip::setMaxPoolSize(unsigned int maxPoolSize) {
+    properties.maxPoolSize = maxPoolSize;
 }
 
 ImageManip::Properties& ImageManip::getProperties() {

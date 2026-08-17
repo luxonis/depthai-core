@@ -1,5 +1,4 @@
 // examples/cpp/DynamicCalibration/calibrate.cpp
-#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <iomanip>
@@ -33,14 +32,14 @@ int main() {
     // In-pipeline host queues
     auto leftSyncedQueue = stereo->syncedLeft.createOutputQueue();
     auto rightSyncedQueue = stereo->syncedRight.createOutputQueue();
-    auto disparityQueue = stereo->disparity.createOutputQueue();
+    auto depthQueue = stereo->depth.createOutputQueue();
 
     auto dynCalibOutQ = dynCalib->calibrationOutput.createOutputQueue();
     auto dynCoverageOutQ = dynCalib->coverageOutput.createOutputQueue();
 
     auto dynCalibInputControl = dynCalib->inputControl.createInputQueue();
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle
@@ -52,32 +51,15 @@ int main() {
     // Start calibration (optimize performance)
     dynCalibInputControl->send(DCC::startCalibration());
 
-    double maxDisparity = 1.0;
     while(pipeline.isRunning()) {
         auto leftSynced = leftSyncedQueue->get<dai::ImgFrame>();
         auto rightSynced = rightSyncedQueue->get<dai::ImgFrame>();
-        auto disparity = disparityQueue->get<dai::ImgFrame>();
+        auto depth = depthQueue->get<dai::ImgFrame>();
 
         cv::imshow("left", leftSynced->getCvFrame());
         cv::imshow("right", rightSynced->getCvFrame());
 
-        cv::Mat npDisparity = disparity->getFrame();
-
-        double minVal = 0.0, curMax = 0.0;
-        cv::minMaxLoc(npDisparity, &minVal, &curMax);
-        maxDisparity = std::max(maxDisparity, curMax);
-
-        // Normalize the disparity image to an 8-bit scale.
-        cv::Mat normalized;
-        npDisparity.convertTo(normalized, CV_8UC1, 255.0 / (maxDisparity > 0 ? maxDisparity : 1.0));
-
-        cv::Mat colorizedDisparity;
-        cv::applyColorMap(normalized, colorizedDisparity, cv::COLORMAP_JET);
-
-        // Set pixels with zero disparity to black.
-        colorizedDisparity.setTo(cv::Scalar(0, 0, 0), normalized == 0);
-
-        cv::imshow("disparity", colorizedDisparity);
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth).getCvFrame());
 
         // Coverage (non-blocking)
         if(auto coverageMsg = dynCoverageOutQ->tryGet<dai::CoverageData>()) {
@@ -99,14 +81,15 @@ int main() {
                 // Print quality deltas
                 const auto& q = dynCalibrationResult->calibrationData->calibrationDifference;
 
-                float rotDiff = std::sqrt(q.rotationChange[0] * q.rotationChange[0] + q.rotationChange[1] * q.rotationChange[1]
-                                          + q.rotationChange[2] * q.rotationChange[2]);
-                std::cout << "Rotation difference: " << rotDiff << " deg\n";
+                if(!q.pairwiseRotationDifference.empty()) {
+                    const auto& pairwiseRotation = q.pairwiseRotationDifference.begin()->second;
+                    float rotDiff = 0.0f;
+                    for(const auto axis : pairwiseRotation) rotDiff += axis * axis;
+                    rotDiff = std::sqrt(rotDiff);
+                    std::cout << "Rotation difference: " << rotDiff << " deg\n";
+                }
                 std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
                 std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
-                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                          << "%\n";
 
                 // Reset and start a new round if desired
                 dynCalibInputControl->send(DCC::startCalibration());
