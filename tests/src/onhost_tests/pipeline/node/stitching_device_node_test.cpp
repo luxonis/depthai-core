@@ -9,6 +9,17 @@ TEST_CASE("Stitching device execution is RVC4-only", "[Stitching]") {
     REQUIRE(dai::node::stitching::isDevicePlatformSupported(dai::Platform::RVC4));
 }
 
+TEST_CASE("Stitching accepts deserialized properties", "[Stitching]") {
+    auto properties = std::make_unique<dai::StitchingProperties>();
+    properties->mode = dai::StitchingProperties::Mode::PLANAR_PROJECTION;
+    properties->maxViewWidth = 1280;
+
+    auto stitching = std::make_shared<dai::node::Stitching>(std::move(properties));
+
+    REQUIRE(stitching->properties.mode == dai::StitchingProperties::Mode::PLANAR_PROJECTION);
+    REQUIRE(stitching->properties.maxViewWidth == 1280);
+}
+
 TEST_CASE("Stitching serializes as a device node", "[Stitching]") {
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::node::Stitching>()->build(2);

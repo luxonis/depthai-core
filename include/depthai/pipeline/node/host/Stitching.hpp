@@ -66,6 +66,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
 
    public:
     Stitching();
+    Stitching(std::unique_ptr<Properties> props);
     ~Stitching();
 
     /**

@@ -64,6 +64,8 @@ namespace node {
 
 Stitching::Stitching() = default;
 
+Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>(std::move(props)) {}
+
 Stitching::~Stitching() = default;
 
 Stitching::Properties& Stitching::getProperties() {
