@@ -93,6 +93,31 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     find_package(magic_enum ${_QUIET} CONFIG REQUIRED)
 endif()
 
+# Vendored third-party dependencies below (xtensor, xtl, nlohmann_json when not
+# external, libnop, XLink) install their headers using the plain
+# CMAKE_INSTALL_INCLUDEDIR variable in their own CMakeLists. CMakeLists.txt
+# already points CMAKE_INSTALL_INCLUDEDIR at an ament-style, package-namespaced
+# path (include/${PROJECT_NAME}) before including this file, so their physical
+# install location is already namespaced.
+#
+# However, these vendored targets hardcode the literal "include" inside the
+# $<INSTALL_INTERFACE:...> generator expression of their INTERFACE_INCLUDE_DIRECTORIES
+# property (rather than referencing ${CMAKE_INSTALL_INCLUDEDIR}), so their exported
+# target still advertises the wrong (unnamespaced) path to consumers. Patch the
+# INTERFACE_INCLUDE_DIRECTORIES property here, rewriting that genex, so downstream
+# consumers (via depthai_v3::<target> or the vendored package's own exported config)
+# still find their headers.
+macro(_depthai_namespace_install_interface_includedir target)
+    if(TARGET ${target})
+        get_target_property(_depthai_iid ${target} INTERFACE_INCLUDE_DIRECTORIES)
+        if(_depthai_iid)
+            string(REPLACE "$<INSTALL_INTERFACE:include>" "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>" _depthai_iid "${_depthai_iid}")
+            set_target_properties(${target} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_depthai_iid}")
+        endif()
+        unset(_depthai_iid)
+    endif()
+endmacro()
+
 # Xtensor
 if(DEPTHAI_XTENSOR_SUPPORT)
     if(NOT DEPTHAI_XTENSOR_EXTERNAL)
@@ -110,6 +135,8 @@ if(DEPTHAI_XTENSOR_SUPPORT)
             GIT_SHALLOW    TRUE
         )
         FetchContent_MakeAvailable(xtl xtensor)
+        _depthai_namespace_install_interface_includedir(xtl)
+        _depthai_namespace_install_interface_includedir(xtensor)
         get_target_property(_xtensor_inc xtensor INTERFACE_INCLUDE_DIRECTORIES)
         set_target_properties(xtensor PROPERTIES
             INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_xtensor_inc}"
@@ -150,6 +177,7 @@ if(NOT DEPTHAI_LIBNOP_EXTERNAL)
     )
 
     FetchContent_MakeAvailable(libnop)
+    _depthai_namespace_install_interface_includedir(libnop)
 
     # Thread libnop in all cases as a system include, to avoid many warnings from it
     get_target_property(_nop_inc libnop INTERFACE_INCLUDE_DIRECTORIES)
@@ -200,6 +228,7 @@ else()
 endif()
 set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
 unset(_BUILD_SHARED_LIBS_SAVED)
+_depthai_namespace_install_interface_includedir(XLinkPublic)
 list(APPEND targets_to_export XLinkPublic)
 
 # OpenCV 4 - (optional)

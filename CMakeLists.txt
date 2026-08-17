@@ -171,6 +171,10 @@ endif()
 
 ### Get and find dependencies
 
+include(GNUInstallDirs)
+# Install public headers under an ament-style, package-namespaced path
+# (include/${PROJECT_NAME}) instead of the flat "include" default.
+set(CMAKE_INSTALL_INCLUDEDIR "include/${PROJECT_NAME}" CACHE PATH "" FORCE)
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
@@ -878,8 +882,8 @@ endif()
 target_include_directories(${TARGET_CORE_NAME}
     PUBLIC
         # Relative path to include directories after installed
-        "$<INSTALL_INTERFACE:include>"
-        "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
 
         # Build time path to include directories
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
