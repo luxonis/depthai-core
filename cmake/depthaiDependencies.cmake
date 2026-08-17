@@ -181,9 +181,9 @@ set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
 set(BUILD_SHARED_LIBS OFF)
 set(XLINK_ENABLE_LIBUSB ${DEPTHAI_ENABLE_LIBUSB} CACHE BOOL "Enable libusb" FORCE)
 set(XLINK_INSTALL_PUBLIC_ONLY ON CACHE BOOL "Install only public headers" FORCE)
-if(DEPTHAI_ENABLE_LIBUSB)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(libusb REQUIRED libusb-1.0)
+set(XLINK_LIBUSB_SYSTEM ON)
+if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
+    find_package(usb-1.0 ${_QUIET} CONFIG REQUIRED)
 endif()
 set(XLINK_LIBUSB_SYSTEM ON)
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
@@ -242,6 +242,30 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         FetchContent_Declare(
             dynamic_calibration
             URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_${DEPTHAI_HOST_PLATFORM_ARCH}.zip"
+        )
+
+        include(DownloadAndChecksum)
+        include(VerifyLicense)
+        set(DOWNLOADER_TIMEOUT_S 300)
+        set(DOWNLOADER_INACTIVE_TIMEOUT_S 60)
+        set(DOWNLOADER_RETRY_NUM 5)
+        set(dynamic_calibration_license_url "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_LICENSE")
+        set(dynamic_calibration_license_path "${FETCHCONTENT_BASE_DIR}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_LICENSE")
+        message(STATUS "Downloading and checking dynamic_calibration-LICENSE")
+        message(STATUS "Download URL: ${dynamic_calibration_license_url}")
+        DownloadAndChecksum(
+            "${dynamic_calibration_license_url}"
+            "${dynamic_calibration_license_url}.sha256"
+            "${dynamic_calibration_license_path}"
+            status
+        )
+        if(${status})
+            message(STATUS "\nCouldn't download dynamic_calibration-LICENSE\n")
+            message(FATAL_ERROR "Download failed with status ${status}. Aborting.\n")
+        endif()
+        DepthaiVerifyDownloadedLicense(
+            "${dynamic_calibration_license_path}"
+            "${CMAKE_CURRENT_LIST_DIR}/../notices/dynamic_calibration-LICENSE"
         )
     endif()
 

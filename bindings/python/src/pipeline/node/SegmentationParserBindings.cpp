@@ -42,11 +42,23 @@ void bind_segmentationparser(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             DOC(dai, node, SegmentationParser, build))
+        // Backwards-compatible NNArchive build method forwarding to the consolidated Model path
+        .def(
+            "build",
+            [](SegmentationParser& self, Node::Output& input, const NNArchive& nnArchive) { return self.build(input, SegmentationParser::Model{nnArchive}); },
+            py::arg("input"),
+            py::arg("nnArchive"),
+            DOC(dai, node, SegmentationParser, build))
         .def("build",
              py::overload_cast<Node::Output&, const dai::nn_archive::v1::Head&>(&SegmentationParser::build),
              py::arg("input"),
              py::arg("head"),
              DOC(dai, node, SegmentationParser, build, 2))
+        .def("setNNArchive",
+             py::overload_cast<const NNArchive&>(&SegmentationParser::setNNArchive),
+             py::arg("nnArchive"),
+             DOC(dai, node, SegmentationParser, setNNArchive))
+        .def("setNNArchiveHead", &SegmentationParser::setNNArchiveHead, py::arg("head"), DOC(dai, node, SegmentationParser, setNNArchiveHead))
         .def("setLabels", &SegmentationParser::setLabels, py::arg("labels"), DOC(dai, node, SegmentationParser, setLabels))
         .def("getLabels", &SegmentationParser::getLabels, DOC(dai, node, SegmentationParser, getLabels))
         .def("setBackgroundClass", &SegmentationParser::setBackgroundClass, py::arg("backgroundClass"), DOC(dai, node, SegmentationParser, setBackgroundClass))

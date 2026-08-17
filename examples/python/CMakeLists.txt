@@ -149,6 +149,24 @@ function(dai_example_test_relax_fail_regex example_name)
     endif()
 endfunction()
 
+if(DEPTHAI_BUILD_BETA)
+    add_python_example(beta_classification_parser Beta/classification_parser.py)
+    add_python_example(beta_classification_sequence_parser Beta/classification_sequence_parser.py)
+    add_python_example(beta_embeddings_parser Beta/embeddings_parser.py)
+    add_python_example(beta_fastsam_parser Beta/fastsam_parser.py)
+    add_python_example(beta_hrnet_parser Beta/hrnet_parser.py)
+    add_python_example(beta_image_output_parser Beta/image_output_parser.py)
+    add_python_example(beta_keypoint_parser Beta/keypoint_parser.py)
+    add_python_example(beta_lane_detection_parser Beta/lane_detection_parser.py)
+    add_python_example(beta_map_output_parser Beta/map_output_parser.py)
+    add_python_example(beta_mlsd_parser Beta/mlsd_parser.py)
+    add_python_example(beta_mp_palm_detection_parser Beta/mp_palm_detection_parser.py)
+    add_python_example(beta_pp_text_detection_parser Beta/pp_text_detection_parser.py)
+    add_python_example(beta_scrfd_parser Beta/scrfd_parser.py)
+    add_python_example(beta_superanimal_parser Beta/superanimal_parser.py)
+    add_python_example(beta_yunet_parser Beta/yunet_parser.py)
+endif()
+
 
 ## Camera output
 add_python_example(camera_output Camera/camera_output.py)
@@ -228,6 +246,9 @@ dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 rvc4rgb ci)
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
 dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 rvc4rgb ci)
 
+add_python_example(health_check Misc/HealthCheck/health_check.py)
+dai_set_example_test_labels(health_check ondevice rvc2_all rvc4 rvc4rgb ci)
+
 add_python_example(get_pipeline_state Misc/PipelineDebugging/get_pipeline_state.py)
 dai_set_example_test_labels(get_pipeline_state ondevice rvc2_all rvc4 ci)
 
@@ -285,6 +306,13 @@ dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
 add_python_example(stereo_depth_from_host StereoDepth/stereo_depth_from_host.py)
 dai_set_example_test_labels(stereo_depth_from_host ondevice rvc2_all rvc4 ci)
+
+## Depth (dai.node.Depth composite)
+add_python_example(unified_depth Depth/unified_depth.py)
+dai_set_example_test_labels(unified_depth ondevice rvc2_all rvc4 ci)
+
+add_python_example(depth_rgb_align Depth/depth_rgb_align.py)
+dai_set_example_test_labels(depth_rgb_align ondevice rvc2_all rvc4 ci)
 
 ## VideoEncoder
 add_python_example(video_encoder VideoEncoder/video_encode.py)

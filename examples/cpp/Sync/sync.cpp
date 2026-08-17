@@ -1,4 +1,5 @@
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <iostream>
 
@@ -37,6 +38,7 @@ int main() {
 
     pipeline.start();
 
+    auto lastPrintTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     while(pipeline.isRunning() && !quitEvent) {
         auto messageGroup = outQueue->get<dai::MessageGroup>();
         if(messageGroup == nullptr) continue;
@@ -44,9 +46,13 @@ int main() {
         auto leftMsg = messageGroup->get<dai::ImgFrame>("left");
         auto rightMsg = messageGroup->get<dai::ImgFrame>("right");
 
-        std::cout << "Timestamps, message group " << messageGroup->getTimestamp().time_since_epoch().count() << std::endl;
-        std::cout << "left " << leftMsg->getTimestamp().time_since_epoch().count() << std::endl;
-        std::cout << "right " << rightMsg->getTimestamp().time_since_epoch().count() << std::endl;
+        const auto now = std::chrono::steady_clock::now();
+        if(now - lastPrintTime >= std::chrono::seconds(1)) {
+            std::cout << "Timestamps, message group " << messageGroup->getTimestamp().time_since_epoch().count() << std::endl;
+            std::cout << "left " << leftMsg->getTimestamp().time_since_epoch().count() << std::endl;
+            std::cout << "right " << rightMsg->getTimestamp().time_since_epoch().count() << std::endl;
+            lastPrintTime = now;
+        }
 
         if(cv::waitKey(1) == 'q') {
             break;

@@ -51,18 +51,22 @@ def main() -> None:
     # nodes configured differently.
     # ------------------------------------------------------------------
     with dai.Pipeline(device) as pipeline:
-        left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-        color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-        stereo = pipeline.create(dai.node.StereoDepth)
-        left.requestFullResolutionOutput().link(stereo.left)
-        right.requestFullResolutionOutput().link(stereo.right)
+        colorSockets = device.getConnectedCameras(dai.CameraSensorType.COLOR)
+        colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
+        color = pipeline.create(dai.node.Camera).build(colorSocket)
+        colorOut = color.requestOutput(
+            (640, 400), type=dai.ImgFrame.Type.RGB888i,
+            resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=True,
+        )
+
+        depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
+        depth.setAlignTo(colorOut)
 
         # ── 1. Filtered point cloud  (METER) ────
         pcSparse = pipeline.create(dai.node.PointCloud)
         pcSparse.setRunOnHost(True)
         pcSparse.initialConfig.setLengthUnit(dai.LengthUnit.METER)
-        stereo.depth.link(pcSparse.inputDepth)
+        depth.depth.link(pcSparse.inputDepth)
         qSparse = pcSparse.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
 
         # ── 2. Organized point cloud  (MILLIMETER) ───────
@@ -70,7 +74,7 @@ def main() -> None:
         pcOrganized.setRunOnHost(True)
         pcOrganized.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
         pcOrganized.initialConfig.setOrganized(True)
-        stereo.depth.link(pcOrganized.inputDepth)
+        depth.depth.link(pcOrganized.inputDepth)
         qOrganized = pcOrganized.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
 
         # ── 3. Transform pointcloud into another device's coordinate system ───
@@ -80,7 +84,7 @@ def main() -> None:
         pcCam.initialConfig.setTargetCoordinateSystem(dai.CameraBoardSocket.CAM_A)
         # Or transform to a housing coordinate system instead, e.g.:
         # pcCam.initialConfig.setTargetCoordinateSystem(dai.HousingCoordinateSystem.VESA_A)
-        stereo.depth.link(pcCam.inputDepth)
+        depth.depth.link(pcCam.inputDepth)
         qCam = pcCam.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
 
         # ── 4. Custom 4×4 transform  (90° Z rotation) + passthrough ──────
@@ -95,7 +99,7 @@ def main() -> None:
             [0.0,  0.0, 0.0, 1.0],
         ]
         pcCustom.initialConfig.setTransformationMatrix(transform)
-        stereo.depth.link(pcCustom.inputDepth)
+        depth.depth.link(pcCustom.inputDepth)
         qCustom = pcCustom.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
         qDepth = pcCustom.passthroughDepth.createOutputQueue(maxSize=4, blocking=False)
 
@@ -103,19 +107,7 @@ def main() -> None:
         pcColorized = pipeline.create(dai.node.PointCloud)
         pcColorized.setRunOnHost(True)
         pcColorized.initialConfig.setLengthUnit(dai.LengthUnit.METER)
-        colorOut = color.requestOutput(
-            (640, 400), type=dai.ImgFrame.Type.RGB888i,
-            resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=True,
-        )
-        platform = pipeline.getDefaultDevice().getPlatform()
-        if platform == dai.Platform.RVC4:
-            imageAlign = pipeline.create(dai.node.ImageAlign)
-            stereo.depth.link(imageAlign.input)
-            colorOut.link(imageAlign.inputAlignTo)
-            imageAlign.outputAligned.link(pcColorized.inputDepth)
-        else:
-            colorOut.link(stereo.inputAlignTo)
-            stereo.depth.link(pcColorized.inputDepth)
+        depth.depth.link(pcColorized.inputDepth)
         colorOut.link(pcColorized.inputColor)
         qColorized = pcColorized.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
 

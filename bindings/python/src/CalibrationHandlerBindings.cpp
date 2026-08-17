@@ -69,7 +69,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("keepAspectRatio") = true,
              DOC(dai, CalibrationHandler, getCameraIntrinsics, 2))
         .def("getCameraIntrinsics",
-             py::overload_cast<CameraBoardSocket, std::tuple<int, int>, Point2f, Point2f, bool>(&CalibrationHandler::getCameraIntrinsics, py::const_),
+             py::overload_cast<CameraBoardSocket, const std::tuple<int, int>&, Point2f, Point2f, bool>(&CalibrationHandler::getCameraIntrinsics, py::const_),
              py::arg("cameraId"),
              py::arg("destShape"),
              py::arg("topLeftPixelId") = Point2f(),
@@ -155,13 +155,20 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("eepromToJson", &CalibrationHandler::eepromToJson, DOC(dai, CalibrationHandler, eepromToJson))
 
         .def("setBoardInfo",
-             py::overload_cast<std::string, std::string>(&CalibrationHandler::setBoardInfo),
+             py::overload_cast<const std::string&, const std::string&>(&CalibrationHandler::setBoardInfo),
              py::arg("boardName"),
              py::arg("boardRev"),
              DOC(dai, CalibrationHandler, setBoardInfo))
         .def("setBoardInfo",
-             py::overload_cast<std::string, std::string, std::string, std::string, std::string, std::string, uint64_t, uint32_t, std::string>(
-                 &CalibrationHandler::setBoardInfo),
+             py::overload_cast<const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               uint64_t,
+                               uint32_t,
+                               const std::string&>(&CalibrationHandler::setBoardInfo),
              py::arg("productName"),
              py::arg("boardName"),
              py::arg("boardRev"),
@@ -173,8 +180,16 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("boardCustom") = "",
              DOC(dai, CalibrationHandler, setBoardInfo, 2))
         .def("setBoardInfo",
-             py::overload_cast<std::string, std::string, std::string, std::string, std::string, std::string, std::string, uint64_t, uint32_t, std::string>(
-                 &CalibrationHandler::setBoardInfo),
+             py::overload_cast<const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               uint64_t,
+                               uint32_t,
+                               const std::string&>(&CalibrationHandler::setBoardInfo),
              py::arg("deviceName"),
              py::arg("productName"),
              py::arg("boardName"),
@@ -191,24 +206,25 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setProductName", &CalibrationHandler::setProductName, py::arg("productName"), DOC(dai, CalibrationHandler, setProductName))
 
         .def("setCameraIntrinsics",
-             py::overload_cast<CameraBoardSocket, std::vector<std::vector<float>>, Size2f>(&CalibrationHandler::setCameraIntrinsics),
+             py::overload_cast<CameraBoardSocket, const std::vector<std::vector<float>>&, Size2f>(&CalibrationHandler::setCameraIntrinsics),
              py::arg("cameraId"),
              py::arg("intrinsics"),
              py::arg("frameSize"),
              DOC(dai, CalibrationHandler, setCameraIntrinsics))
         .def("setCameraIntrinsics",
-             py::overload_cast<CameraBoardSocket, std::vector<std::vector<float>>, int, int>(&CalibrationHandler::setCameraIntrinsics),
+             py::overload_cast<CameraBoardSocket, const std::vector<std::vector<float>>&, int, int>(&CalibrationHandler::setCameraIntrinsics),
              py::arg("cameraId"),
              py::arg("intrinsics"),
              py::arg("width"),
              py::arg("height"),
              DOC(dai, CalibrationHandler, setCameraIntrinsics, 2))
-        .def("setCameraIntrinsics",
-             py::overload_cast<CameraBoardSocket, std::vector<std::vector<float>>, std::tuple<int, int>>(&CalibrationHandler::setCameraIntrinsics),
-             py::arg("cameraId"),
-             py::arg("intrinsics"),
-             py::arg("frameSize"),
-             DOC(dai, CalibrationHandler, setCameraIntrinsics, 3))
+        .def(
+            "setCameraIntrinsics",
+            py::overload_cast<CameraBoardSocket, const std::vector<std::vector<float>>&, const std::tuple<int, int>&>(&CalibrationHandler::setCameraIntrinsics),
+            py::arg("cameraId"),
+            py::arg("intrinsics"),
+            py::arg("frameSize"),
+            DOC(dai, CalibrationHandler, setCameraIntrinsics, 3))
 
         .def("setDistortionCoefficients",
              &CalibrationHandler::setDistortionCoefficients,
@@ -307,7 +323,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("keepAspectRatio") = true,
              DOC(dai, CBACalibrationHandler, getCameraIntrinsics, 2))
         .def("getCameraIntrinsics",
-             py::overload_cast<std::tuple<int, int>, Point2f, Point2f, bool>(&CBACalibrationHandler::getCameraIntrinsics, py::const_),
+             py::overload_cast<const std::tuple<int, int>&, Point2f, Point2f, bool>(&CBACalibrationHandler::getCameraIntrinsics, py::const_),
              py::arg("destShape"),
              py::arg("topLeftPixelId") = Point2f(),
              py::arg("bottomRightPixelId") = Point2f(),
@@ -328,23 +344,23 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, CBACalibrationHandler, getDistortionModel))
 
         .def("setCameraIntrinsics",
-             py::overload_cast<std::vector<std::vector<float>>, Size2f>(&CBACalibrationHandler::setCameraIntrinsics),
+             py::overload_cast<const std::vector<std::vector<float>>&, Size2f>(&CBACalibrationHandler::setCameraIntrinsics),
              py::arg("intrinsics"),
              py::arg("frameSize"),
              DOC(dai, CBACalibrationHandler, setCameraIntrinsics))
         .def("setCameraIntrinsics",
-             py::overload_cast<std::vector<std::vector<float>>, int, int>(&CBACalibrationHandler::setCameraIntrinsics),
+             py::overload_cast<const std::vector<std::vector<float>>&, int, int>(&CBACalibrationHandler::setCameraIntrinsics),
              py::arg("intrinsics"),
              py::arg("width"),
              py::arg("height"),
              DOC(dai, CBACalibrationHandler, setCameraIntrinsics, 2))
         .def("setCameraIntrinsics",
-             py::overload_cast<std::vector<std::vector<float>>, std::tuple<int, int>>(&CBACalibrationHandler::setCameraIntrinsics),
+             py::overload_cast<const std::vector<std::vector<float>>&, const std::tuple<int, int>&>(&CBACalibrationHandler::setCameraIntrinsics),
              py::arg("intrinsics"),
              py::arg("frameSize"),
              DOC(dai, CBACalibrationHandler, setCameraIntrinsics, 3))
         .def("setDistortionCoefficients",
-             py::overload_cast<std::vector<float>>(&CBACalibrationHandler::setDistortionCoefficients),
+             py::overload_cast<const std::vector<float>&>(&CBACalibrationHandler::setDistortionCoefficients),
              py::arg("distortionCoefficients"),
              DOC(dai, CBACalibrationHandler, setDistortionCoefficients))
         .def("setFov", py::overload_cast<float>(&CBACalibrationHandler::setFov), py::arg("hfov"), DOC(dai, CBACalibrationHandler, setFov))

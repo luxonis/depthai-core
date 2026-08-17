@@ -232,7 +232,7 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
     return globalProperties;
 }
 
-void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
+void PipelineImpl::setGlobalProperties(const GlobalProperties& globalProperties) {
     this->globalProperties = globalProperties;
 }
 
@@ -633,7 +633,7 @@ void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
     }
 }
 
-void PipelineImpl::setBoardConfig(BoardConfig boardCfg) {
+void PipelineImpl::setBoardConfig(const BoardConfig& boardCfg) {
     board = boardCfg;
 }
 
@@ -652,7 +652,7 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 }
 
 // Remove node capability
-void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
+void PipelineImpl::remove(const std::shared_ptr<Node>& toRemove) {
     DAI_CHECK_V(!isBuilt(), "Cannot remove node from pipeline once it is built.");
     DAI_CHECK_V(toRemove->parent.lock() != nullptr, "Cannot remove a node that is not a part of any pipeline");
     DAI_CHECK_V(toRemove->parent.lock() == shared_from_this(), "Cannot remove a node that is not a part of this pipeline");
@@ -706,7 +706,7 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     return false;
 }
 
-void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
+void PipelineImpl::setCalibrationData(const CalibrationHandler& calibrationDataHandler) {
     setEepromData(calibrationDataHandler.getEepromData());
 }
 
@@ -734,7 +734,7 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
     throw std::runtime_error("No default device properties set in pipeline");
 }
 
-void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
+void PipelineImpl::setEepromData(const std::optional<EepromData>& eepromData) {
     if(defaultDevice) {
         defaultDevice->setCalibration(eepromData);
     } else if(defaultDeviceProperties != nullptr) {
@@ -805,24 +805,16 @@ PipelineStateApi PipelineImpl::getPipelineState() {
     return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
 }
 
-void PipelineImpl::add(std::shared_ptr<Node> node) {
-    if(node == nullptr) {
-        throw std::invalid_argument(fmt::format("Given node pointer is null"));
-    }
-
-    // First check if node has already been added
-    auto localNodes = getAllNodes();
-    for(auto& n : localNodes) {
-        if(node.get() == n.get()) {
-            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
-        }
+// Adopt children added after the parent node is already in the pipeline.
+void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
+    if(root == nullptr) {
+        return;
     }
 
     // Go through and modify nodes and its children
     // that they are now part of this pipeline
-    std::weak_ptr<PipelineImpl> curParent;
     std::queue<std::shared_ptr<Node>> search;
-    search.push(node);
+    search.push(root);
     while(!search.empty()) {
         auto curNode = search.front();
         search.pop();
@@ -848,6 +840,22 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
             search.push(n);
         }
     }
+}
+
+void PipelineImpl::add(const std::shared_ptr<Node>& node) {
+    if(node == nullptr) {
+        throw std::invalid_argument(fmt::format("Given node pointer is null"));
+    }
+
+    // First check if node has already been added
+    auto localNodes = getAllNodes();
+    for(auto& n : localNodes) {
+        if(node.get() == n.get()) {
+            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
+        }
+    }
+
+    adoptSubtree(node);  // BFS: ids, parent weak_ptr, default device for DeviceNodes
 
     // Add to the map (node holds its children itself)
     nodes.push_back(node);
@@ -1348,7 +1356,7 @@ void PipelineImpl::run() {
     wait();
 }
 
-std::vector<uint8_t> PipelineImpl::loadResource(fs::path uri) {
+std::vector<uint8_t> PipelineImpl::loadResource(const fs::path& uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
 

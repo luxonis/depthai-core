@@ -4,15 +4,19 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
+#include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
@@ -144,6 +148,23 @@ std::vector<uint8_t> computeExpectedMask(int width, int height, int channels, fl
                 }
             }
             mask[static_cast<size_t>(outY) * static_cast<size_t>(outWidth) + static_cast<size_t>(outX)] = bestClass;
+        }
+    }
+
+    return mask;
+}
+
+template <typename ValueFn>
+std::vector<uint8_t> computeExpectedMaskSingleChScore(int width, int height, float scoreFloor, ValueFn valueFn, int stepSize = 1) {
+    const int outWidth = width / stepSize;
+    const int outHeight = height / stepSize;
+    std::vector<uint8_t> mask(static_cast<size_t>(outWidth) * static_cast<size_t>(outHeight), 255);
+
+    int outY = 0;
+    for(int h = 0; h < height; h += stepSize, ++outY) {
+        int outX = 0;
+        for(int w = 0; w < width; w += stepSize, ++outX) {
+            mask[static_cast<size_t>(outY) * static_cast<size_t>(outWidth) + static_cast<size_t>(outX)] = valueFn(h, w) > scoreFloor ? 0 : 255;
         }
     }
 
@@ -329,6 +350,47 @@ TEST_CASE("SegmentationParser background class ignores channel 0") {
     checkMaskMatches(*outputs.front(), expected, maskWidth, maskHeight);
 }
 
+TEST_CASE("SegmentationParser single-channel foreground scores use an implicit 0.0f background") {
+    constexpr int kWidth = 3;
+    constexpr int kHeight = 2;
+
+    const std::vector<float> values = {
+        -0.4f,
+        0.0f,
+        0.2f,  // (0,0) - (0,2)
+        0.6f,
+        -1.2f,
+        0.5f  // (1,0) - (1,2)
+    };
+    auto valueFn = [&](int, int h, int w) { return values[static_cast<size_t>(h * kWidth + w)]; };
+
+    auto info = makeNCHWTensorInfo("seg", dai::TensorInfo::DataType::FP32, 1, kHeight, kWidth);
+    auto nnData = createSyntheticNNData<float>(info, valueFn);
+    const size_t maskWidth = kWidth;
+    const size_t maskHeight = kHeight;
+
+    SECTION("default config uses an implicit 0.0f background boundary") {
+        dai::SegmentationParserConfig config;
+        config.setStepSize(1);
+
+        const auto expected =
+            computeExpectedMaskSingleChScore(kWidth, kHeight, 0.0f, [&](int h, int w) { return values[static_cast<size_t>(h * kWidth + w)]; });
+        auto outputs = processSegmentationFrames(config, {nnData}, false, false);
+        checkMaskMatches(*outputs.front(), expected, maskWidth, maskHeight);
+    }
+
+    SECTION("explicit threshold overrides the implicit 0.0f boundary") {
+        dai::SegmentationParserConfig config;
+        config.setConfidenceThreshold(0.5f);
+        config.setStepSize(1);
+
+        const auto expected = computeExpectedMaskSingleChScore(
+            kWidth, kHeight, config.getConfidenceThreshold(), [&](int h, int w) { return values[static_cast<size_t>(h * kWidth + w)]; });
+        auto outputs = processSegmentationFrames(config, {nnData}, false, false);
+        checkMaskMatches(*outputs.front(), expected, maskWidth, maskHeight);
+    }
+}
+
 TEST_CASE("SegmentationParser classes-in-one-layer passes through mask") {
     constexpr int kWidth = 3;
     constexpr int kHeight = 2;
@@ -378,4 +440,80 @@ TEST_CASE("SegmentationParser runtime config update changes thresholding") {
     REQUIRE(outputs.size() == 2);
     checkMaskMatches(*outputs[0], expectedInitial, initialWidth, initialHeight);
     checkMaskMatches(*outputs[1], expectedUpdated, updatedWidth, updatedHeight);
+}
+
+TEST_CASE("SegmentationParser can set a specific head") {
+    auto description = dai::NNModelDescription{"yolo-p", "RVC4"};
+    auto archivePath = dai::getModelFromZoo(description);
+    dai::NNArchive nnArchive{archivePath};
+
+    const auto& archiveConfig = nnArchive.getConfig<dai::nn_archive::v1::Config>();
+    const auto headCount = archiveConfig.model.heads ? archiveConfig.model.heads->size() : 0;
+    REQUIRE(headCount == 3);
+
+    for(int index = 0; index < headCount; ++index) {
+        auto head = nnArchive.getHeadConfig(static_cast<uint32_t>(index));
+        dai::node::SegmentationParser parser;
+
+        // Should work only for segmentation heads
+        const bool isSegmentationHead = head.parser == "SegmentationParser";
+        if(!isSegmentationHead) {
+            REQUIRE_THROWS(parser.setNNArchiveHead(head));
+            continue;
+        }
+        REQUIRE_NOTHROW(parser.setNNArchiveHead(head));
+
+        if(head.outputs) {
+            REQUIRE(head.outputs->size() <= 1);
+            if(head.outputs->empty()) {
+                REQUIRE(parser.properties.networkOutputName.empty());
+            } else {
+                REQUIRE(parser.properties.networkOutputName == head.outputs->front());
+            }
+        }
+        if(head.metadata.classes) {
+            REQUIRE(parser.getLabels() == *head.metadata.classes);
+        }
+        if(head.metadata.extraParams.contains("classes_in_one_layer")) {
+            REQUIRE(parser.properties.classesInOneLayer == head.metadata.extraParams.at("classes_in_one_layer").get<bool>());
+        }
+        if(head.metadata.backgroundClass.has_value()) {
+            REQUIRE(parser.getBackgroundClass() == *head.metadata.backgroundClass);
+        }
+        if(head.metadata.confThreshold) {
+            REQUIRE(parser.initialConfig->getConfidenceThreshold() == Catch::Approx(static_cast<float>(*head.metadata.confThreshold)));
+        }
+    }
+}
+
+TEST_CASE("SegmentationParser can set a specific nn archive") {
+    dai::node::SegmentationParser parser;
+
+    auto description = dai::NNModelDescription{"luxonis/deeplab-v3-plus:512x512", "RVC4"};
+    auto archivePath = dai::getModelFromZoo(description);
+    dai::NNArchive nnArchive{archivePath};
+
+    const auto& archiveConfig = nnArchive.getConfig<dai::nn_archive::v1::Config>();
+    REQUIRE(archiveConfig.model.heads.has_value());
+    const auto& heads = *archiveConfig.model.heads;
+    REQUIRE(std::count_if(heads.begin(), heads.end(), [](const auto& head) { return head.parser == "SegmentationParser"; }) == 1);
+    const auto segmentationHead = std::find_if(heads.begin(), heads.end(), [](const auto& head) { return head.parser == "SegmentationParser"; });
+    REQUIRE(segmentationHead != heads.end());
+    REQUIRE(segmentationHead->outputs.has_value());
+    REQUIRE_FALSE(segmentationHead->outputs->empty());
+    REQUIRE(segmentationHead->metadata.classes.has_value());
+
+    REQUIRE_NOTHROW(parser.setNNArchive(nnArchive));
+
+    REQUIRE(parser.properties.networkOutputName == segmentationHead->outputs->front());
+    REQUIRE(parser.getLabels() == *segmentationHead->metadata.classes);
+    if(segmentationHead->metadata.extraParams.contains("classes_in_one_layer")) {
+        REQUIRE(parser.properties.classesInOneLayer == segmentationHead->metadata.extraParams.at("classes_in_one_layer").get<bool>());
+    }
+    if(segmentationHead->metadata.backgroundClass.has_value()) {
+        REQUIRE(parser.getBackgroundClass() == *segmentationHead->metadata.backgroundClass);
+    }
+    if(segmentationHead->metadata.confThreshold) {
+        REQUIRE(parser.initialConfig->getConfidenceThreshold() == Catch::Approx(static_cast<float>(*segmentationHead->metadata.confThreshold)));
+    }
 }

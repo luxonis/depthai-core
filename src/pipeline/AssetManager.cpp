@@ -15,7 +15,7 @@ std::string Asset::getRelativeUri() {
 }
 
 AssetManager::AssetManager() {}
-AssetManager::AssetManager(std::string rootPath) : rootPath{rootPath} {}
+AssetManager::AssetManager(const std::string& rootPath) : rootPath{rootPath} {}
 
 std::string AssetManager::getRootPath() {
     return rootPath;
@@ -25,7 +25,7 @@ void AssetManager::setRootPath(const std::string& rootPath) {
     this->rootPath = rootPath;
 }
 
-std::string AssetManager::getRelativeKey(std::string key) const {
+std::string AssetManager::getRelativeKey(const std::string& key) const {
     // Check if asset key is absolute or relative
     std::string relativeKey = "";
     if(key.size() == 0) {
@@ -111,7 +111,7 @@ std::shared_ptr<Asset> AssetManager::get(const std::string& key) {
     return assetMap.at(relativeKey);
 }
 
-void AssetManager::addExisting(std::vector<std::shared_ptr<Asset>> assets) {
+void AssetManager::addExisting(const std::vector<std::shared_ptr<Asset>>& assets) {
     // make sure that key doesn't exist already
     for(const auto& asset : assets) {
         if(assetMap.count(asset->key) > 0) throw std::logic_error("An Asset with the key: " + asset->key + " already exists.");
@@ -174,7 +174,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
     }
 }
 
-void AssetsMutable::set(std::string key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment) {
+void AssetsMutable::set(const std::string& key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment) {
     AssetInternal internal = {};
     internal.offset = offset;
     internal.size = size;

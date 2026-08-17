@@ -6,4 +6,5 @@ cmake_minimum_required(VERSION 3.10)
 
 dai_add_example(calibration_quality_dynamic calibration_quality_dynamic.cpp ON OFF)
 dai_add_example(calibration_dynamic calibration_dynamic.cpp ON OFF)
+dai_add_example(calibration_dynamic_3_sensors calibration_dynamic_3_sensors.cpp ON OFF)
 dai_add_example(calibration_integration calibration_integration.cpp ON OFF)

@@ -3,4 +3,4 @@
 set(DEPTHAI_DEVICE_RVC4_MATURITY "snapshot")
 
 # "version if applicable"
-set(DEPTHAI_DEVICE_RVC4_VERSION "0.0.1+656f19d8caeedccb34cd4ba2fe4b2711affab61b")
+set(DEPTHAI_DEVICE_RVC4_VERSION "0.0.1+58d182b6fce698d1c84c07cac440535774defbde")

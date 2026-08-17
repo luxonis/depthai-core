@@ -36,7 +36,11 @@ with dai.Pipeline() as p:
     remoteConnector = dai.RemoteConnection(
         webSocketPort=args.webSocketPort, httpPort=args.httpPort
     )
-    rgbd = p.create(dai.node.RGBD).build(True, dai.node.StereoDepth.PresetMode.DEFAULT)
+    colorSockets = p.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
+    color = p.create(dai.node.Camera).build(colorSocket)
+    depth = p.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, None, (640, 400))
+    rgbd = p.create(dai.node.RGBD).build(color, depth)
     customNode = p.create(CustomPCLProcessingNode)
 
     # Link rgbd.pcl to the input of CustomPCLProcessingNode

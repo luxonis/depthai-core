@@ -4,6 +4,7 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/fmt/ostr.h>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <chrono>
@@ -17,6 +18,7 @@
 #include <stdexcept>
 #include <system_error>
 #include <thread>
+#include <utility>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -63,6 +65,8 @@
 #include "utility/Telemetry.hpp"
 
 namespace {
+
+constexpr double PI = 3.14159265358979323846;
 
 struct ScopedRpcTimeout {
    public:
@@ -210,7 +214,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     return getAnyAvailableDevice(timeout, nullptr);
 }
 
-std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout, std::function<void()> cb) {
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout, const std::function<void()>& cb) {
     using namespace std::chrono;
     constexpr auto POOL_SLEEP_TIME = milliseconds(100);
 
@@ -315,8 +319,7 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
 }
 
 // First tries to find UNBOOTED device with deviceId, then BOOTLOADER device with deviceId
-std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
-    std::vector<DeviceInfo> availableDevices;
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(const std::string& deviceId) {
     auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
     bool found;
     DeviceInfo dev;
@@ -327,16 +330,51 @@ std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
     return {false, DeviceInfo()};
 }
 
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByIdOrName(const std::string& deviceIdOrName) {
+    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
+    DeviceInfo dev(deviceIdOrName);
+    for(const auto& state : states) {
+        dev.state = state;
+        deviceDesc_t desc = {};
+        auto ret = XLinkFindFirstSuitableDevice(dev.getXLinkDeviceDesc(), &desc);
+        if(ret == X_LINK_SUCCESS) {
+            if(desc.status == X_LINK_SUCCESS) {
+                return {true, DeviceInfo(desc)};
+            } else {
+                logger::warn("skipping {} device having name \"{}\" (status: {})", XLinkDeviceStateToStr(desc.state), desc.name, XLinkErrorToStr(desc.status));
+            }
+        }
+    }
+    return {false, DeviceInfo()};
+}
+
+std::optional<bool> DeviceBase::isInSetupMode(const std::string& deviceIdOrName) {
+    bool found = false;
+    DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = getDeviceByIdOrName(deviceIdOrName);
+    if(!found) {
+        return std::nullopt;
+    }
+
+    logger::debug("isInSetupMode() resolved device info: {}", deviceInfo.toString());
+
+    return deviceInfo.state == X_LINK_GATE_SETUP;
+}
+
 std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
     return Resources::getInstance().getDeviceFirmware(usb2Mode, version);
 }
 
-std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(Config config) {
+std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(const Config& config) {
     return Resources::getInstance().getDeviceFirmware(config);
 }
 
 ProfilingData DeviceBase::getGlobalProfilingData() {
     return XLinkConnection::getGlobalProfilingData();
+}
+
+HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config) {
+    return DeviceHealthCheck::run(devInfo, config);
 }
 
 /*
@@ -485,20 +523,20 @@ DeviceBase::DeviceBase(UsbSpeed maxUsbSpeed) {
     init(maxUsbSpeed);
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
     init(config, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly)
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly)
     : deviceInfo(devInfo), dumpOnly(dumpOnly) {
     init2(config, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase(Config config, const std::filesystem::path& pathToCmd) {
+DeviceBase::DeviceBase(const Config& config, const std::filesystem::path& pathToCmd) {
     init(config, pathToCmd);
 }
 
-DeviceBase::DeviceBase(Config config, UsbSpeed maxUsbSpeed) {
+DeviceBase::DeviceBase(const Config& config, UsbSpeed maxUsbSpeed) {
     init(config, maxUsbSpeed);
 }
 
@@ -521,32 +559,32 @@ void DeviceBase::init(UsbSpeed maxUsbSpeed) {
     init(maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
+void DeviceBase::init(const Config& config, UsbSpeed maxUsbSpeed) {
     tryGetDevice();
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const std::filesystem::path& pathToCmd) {
+void DeviceBase::init(const Config& config, const std::filesystem::path& pathToCmd) {
     tryGetDevice();
     init2(config, pathToCmd, false);
 }
 
-void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
+void DeviceBase::init(const Config& config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
     deviceInfo = devInfo;
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) {
+void DeviceBase::init(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) {
     deviceInfo = devInfo;
     init2(config, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase(Config config) {
+DeviceBase::DeviceBase(const Config& config) {
     tryGetDevice();
     init2(config, {}, false);
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
     init2(config, {}, false);
 }
 
@@ -558,8 +596,6 @@ void DeviceBase::close() {
             // request stop now, but only join after closeImpl() closes the
             // connection and unblocks any blocking XLink reads.
             telemetryEventRunning = false;
-            telemetryPingRunning = false;
-            telemetryPingCondVar.notify_all();
         }
         closeImpl();
         stopTelemetryLifecycle();
@@ -630,22 +666,6 @@ void DeviceBase::telemetryEventLoop() {
     }
 }
 
-void DeviceBase::telemetryPingLoop() {
-    using namespace std::chrono_literals;
-    constexpr auto TELEMETRY_PING_INTERVAL = 5min;
-
-    std::unique_lock<std::mutex> lock(telemetryPingMtx);
-    while(telemetryPingRunning) {
-        if(telemetryPingCondVar.wait_for(lock, TELEMETRY_PING_INTERVAL, [this]() { return !telemetryPingRunning.load(); })) {
-            break;
-        }
-
-        lock.unlock();
-        dai::utility::Telemetry::getInstance().event(*this, "depthai_ping", nlohmann::json::object());
-        lock.lock();
-    }
-}
-
 void DeviceBase::startTelemetryLifecycle(bool reconnect) {
     if(reconnect || dumpOnly || telemetryLifecycleStarted || !dai::utility::Telemetry::isTelemetryEnabled()) {
         return;
@@ -677,8 +697,6 @@ void DeviceBase::startTelemetryLifecycle(bool reconnect) {
 
     telemetryEventRunning = true;
     telemetryEventThread = std::thread(&DeviceBase::telemetryEventLoop, this);
-    telemetryPingRunning = true;
-    telemetryPingThread = std::thread(&DeviceBase::telemetryPingLoop, this);
 }
 
 void DeviceBase::stopTelemetryLifecycle() {
@@ -689,11 +707,6 @@ void DeviceBase::stopTelemetryLifecycle() {
     telemetryEventRunning = false;
     if(telemetryEventThread.joinable()) {
         telemetryEventThread.join();
-    }
-    telemetryPingRunning = false;
-    telemetryPingCondVar.notify_all();
-    if(telemetryPingThread.joinable()) {
-        telemetryPingThread.join();
     }
 
     const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - telemetryCreatedAt).count();
@@ -986,7 +999,7 @@ void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std:
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, true);
 }
-void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
+void DeviceBase::init(const Config& config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg = config;
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
@@ -1414,7 +1427,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     }
 }
 
-void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev) {
+void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, const PrevInfo& prev) {
     try {
         while(true) {
             while(watchdogRunning) {
@@ -1526,7 +1539,11 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
             pimpl->logger.warn("Reconnection successful\n");
             if(isCrashDumpCollectionEnabled()) {
-                crashed = hasCrashDump();
+                const bool hasPendingCrashDump = hasCrashDump();
+                crashed = hasPendingCrashDump;
+                if(!hasPendingCrashDump) {
+                    crashDumpHandled.store(false);
+                }
             }
         }
     } catch(const std::exception& ex) {
@@ -1565,69 +1582,18 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcCallChecked<std::vector<CameraBoardSocket>>("getConnectedCameras");
 }
 
-std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
-    std::vector<dai::StereoPair> stereoPairs;
-    dai::CalibrationHandler calibHandler;
-    try {
-        calibHandler = readCalibration2();
-        if(calibHandler.getEepromData().cameraData.empty()) {
-            throw std::runtime_error("No camera data found.");
-        }
-    } catch(const std::exception&) {
-        try {
-            calibHandler = readFactoryCalibration();
-        } catch(const std::exception&) {
-            pimpl->logger.info("No calibration found.");
-            return stereoPairs;
+std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras(CameraSensorType type) {
+    std::vector<CameraBoardSocket> sockets;
+    for(const auto& features : getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), type) != features.supportedTypes.end()) {
+            sockets.push_back(features.socket);
         }
     }
-    // Find links between cameras.
-    for(auto const& camIdAndInfo1 : calibHandler.getEepromData().cameraData) {
-        auto camId1 = camIdAndInfo1.first;
-        for(auto const& camIdAndInfo2 : calibHandler.getEepromData().cameraData) {
-            auto camId2 = camIdAndInfo2.first;
-            try {
-                auto translationVector = calibHandler.getCameraTranslationVector(camId1, camId2, false);
-                auto baseline = std::abs(translationVector[0]) > std::abs(translationVector[1]) ? translationVector[0] : translationVector[1];  // X or Y
-                auto leftSocket = baseline < 0 ? camId1 : camId2;
-                auto rightSocket = leftSocket == camId1 ? camId2 : camId1;
-                int baselineDiff = std::abs(static_cast<int>(translationVector[0]) - static_cast<int>(translationVector[1]));
-                if(baselineDiff == static_cast<int>(std::abs(baseline))) {
-                    if(std::find_if(stereoPairs.begin(),
-                                    stereoPairs.end(),
-                                    [&leftSocket, &rightSocket](const dai::StereoPair& pair) { return pair.left == leftSocket && pair.right == rightSocket; })
-                       == stereoPairs.end()) {
-                        stereoPairs.push_back(dai::StereoPair{leftSocket, rightSocket, std::abs(baseline), static_cast<int>(translationVector[0]) == 0});
-                    }
-                } else {
-                    pimpl->logger.debug("Skipping diagonal pair, left: {}, right: {}.", leftSocket, rightSocket);
-                }
-            } catch(const std::exception&) {
-                continue;
-            }
-        }
-    }
-    // Filter out undetected cameras and socket pairs which are not present in getStereoPairs
-    auto deviceStereoPairs = getStereoPairs();
-    auto connectedCameras = getConnectedCameras();
-    std::vector<dai::StereoPair> filteredStereoPairs;
-    std::copy_if(
-        stereoPairs.begin(), stereoPairs.end(), std::back_inserter(filteredStereoPairs), [this, connectedCameras, deviceStereoPairs](dai::StereoPair pair) {
-            if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.left) == connectedCameras.end()) {
-                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.left);
-                return false;
-            } else if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.right) == connectedCameras.end()) {
-                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.right);
-                return false;
-            }
-            return std::find_if(deviceStereoPairs.begin(),
-                                deviceStereoPairs.end(),
-                                [pair](dai::StereoPair devicePair) { return devicePair.left == pair.left && devicePair.right == pair.right; })
-                   != deviceStereoPairs.end();
-        });
+    return sockets;
+}
 
-    std::sort(filteredStereoPairs.begin(), filteredStereoPairs.end(), [](dai::StereoPair a, dai::StereoPair b) { return a.baseline < b.baseline; });
-    return filteredStereoPairs;
+std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
+    return getStereoPairs();
 }
 
 std::vector<ConnectionInterface> DeviceBase::getConnectionInterfaces() {
@@ -1639,7 +1605,100 @@ std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
 }
 
 std::vector<StereoPair> DeviceBase::getStereoPairs() {
-    return pimpl->rpcCallChecked<std::vector<StereoPair>>("getStereoPairs");
+    std::vector<StereoPair> stereoPairs;
+    dai::CalibrationHandler calibrationHandler;
+
+    try {
+        calibrationHandler = getCalibration();
+        if(calibrationHandler.getEepromData().cameraData.empty()) {
+            throw std::runtime_error("No camera data found.");
+        }
+    } catch(const std::exception&) {
+        try {
+            calibrationHandler = readFactoryCalibration();
+        } catch(const std::exception&) {
+            pimpl->logger.info("No calibration found.");
+            return stereoPairs;
+        }
+    }
+
+    try {  // if there are no intrinsics / extrinsics stored this can failed
+        const auto connectedFeatures = getConnectedCameraFeatures();
+
+        std::unordered_map<CameraBoardSocket, CameraFeatures> featureBySocket;
+        std::vector<CameraBoardSocket> sockets;
+        sockets.reserve(connectedFeatures.size());
+
+        auto isStereoCapable = [](const CameraFeatures& feature) {
+            return std::find(feature.supportedTypes.begin(), feature.supportedTypes.end(), CameraSensorType::COLOR) != feature.supportedTypes.end()
+                   || std::find(feature.supportedTypes.begin(), feature.supportedTypes.end(), CameraSensorType::MONO) != feature.supportedTypes.end();
+        };
+
+        for(const auto& feature : connectedFeatures) {
+            if(!isStereoCapable(feature)) continue;
+
+            featureBySocket.emplace(feature.socket, feature);
+            sockets.push_back(feature.socket);
+        }
+
+        for(size_t i = 0; i < sockets.size(); ++i) {
+            const auto socket1 = sockets[i];
+            const auto& feature1 = featureBySocket.at(socket1);
+            if(!calibrationHandler.hasCameraCalibration(socket1)) continue;
+
+            const float fov1 = calibrationHandler.getFov(socket1, false);
+
+            for(size_t j = i + 1; j < sockets.size(); ++j) {
+                const auto socket2 = sockets[j];
+                const auto& feature2 = featureBySocket.at(socket2);
+                if(!calibrationHandler.hasCameraCalibration(socket2)) continue;
+                if(!calibrationHandler.checkExtrinsicsLink(socket1, socket2) && !calibrationHandler.checkExtrinsicsLink(socket2, socket1)) continue;
+
+                const float fov2 = calibrationHandler.getFov(socket2, false);
+                if(feature1.sensorName != feature2.sensorName) {
+                    continue;
+                }
+
+                float maximalAngle = std::min(fov1, fov2) * static_cast<float>(PI) / 180.0f * 0.5f;
+                if(maximalAngle == 0.0f) {
+                    // Fall back if the field of view is unavailable and reported as 0.
+                    maximalAngle = static_cast<float>(PI) / 4.0f;
+                }
+                // The cameras' z-axes must be similarly oriented.
+                if(calibrationHandler.getCameraZAxisAngle(socket1, socket2) > maximalAngle) continue;
+                const auto translationVector = calibrationHandler.getCameraTranslationVector(socket1, socket2, false);
+
+                const auto ax = std::abs(translationVector[0]);
+                const auto ay = std::abs(translationVector[1]);
+                const auto az = std::abs(translationVector[2]);
+
+                const bool isVertical = ax < ay;
+
+                if(std::max(ax, ay) < az) {
+                    continue;
+                }
+                const float baseline = isVertical ? translationVector[1] : translationVector[0];
+
+                StereoPair pair;
+                if(baseline < 0.0f) {
+                    pair.left = socket1;
+                    pair.right = socket2;
+                } else {
+                    pair.left = socket2;
+                    pair.right = socket1;
+                }
+                pair.baseline = std::abs(baseline);
+                pair.isVertical = isVertical;
+                stereoPairs.push_back(pair);
+            }
+        }
+    } catch(const std::exception&) {
+        pimpl->logger.warn("No stereo pairs found: check calibration.");
+    }
+
+    std::sort(stereoPairs.begin(), stereoPairs.end(), [](const StereoPair& a, const StereoPair& b) { return a.baseline > b.baseline; });
+
+    return stereoPairs;
 }
 
 std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
@@ -1917,7 +1976,7 @@ ProfilingData DeviceBase::getProfilingData() {
     return connection->getProfilingData();
 }
 
-int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
+int DeviceBase::addLogCallback(const std::function<void(LogMessage)>& callback) {
     // Lock first
     std::unique_lock<std::mutex> l(logCallbackMapMtx);
 
@@ -1996,7 +2055,7 @@ bool DeviceBase::isCalibrationAvailable() {
     return pimpl->rpcCallChecked<bool>("isCalibrationAvailable");
 }
 
-bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
+bool DeviceBase::tryFlashCalibration(const CalibrationHandler& calibrationDataHandler) {
     try {
         flashCalibration(calibrationDataHandler);
     } catch(const EepromError& e) {
@@ -2006,7 +2065,7 @@ bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) 
     return true;
 }
 
-bool DeviceBase::tryFlashCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
+bool DeviceBase::tryFlashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
     if(!validateCBACalibrationData(calibrationDataHandler)) {
         return false;
     }
@@ -2020,7 +2079,7 @@ bool DeviceBase::tryFlashCBACalibration(CBACalibrationHandler calibrationDataHan
     return true;
 }
 
-void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::flashCalibration(const CalibrationHandler& calibrationDataHandler) {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -2036,7 +2095,7 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     }
 }
 
-void DeviceBase::flashCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
+void DeviceBase::flashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
     camSocket = validatePhysicalCBASocket(camSocket);
     if(!validateCBACalibrationData(calibrationDataHandler)) {
         throw std::runtime_error("CBA calibration data must contain exactly one CameraBoardSocket::CBA cameraData entry.");
@@ -2070,7 +2129,7 @@ void DeviceBase::setCalibration(const std::optional<EepromData>& eepromData) {
     }
 }
 
-void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::setCalibration(const CalibrationHandler& calibrationDataHandler) {
     setCalibration(calibrationDataHandler.getEepromData());
 }
 
@@ -2150,7 +2209,7 @@ CBACalibrationHandler DeviceBase::readCBACalibrationOrDefault(CameraBoardSocket 
     return readCBACalibration(camSocket);
 }
 
-void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::flashFactoryCalibration(const CalibrationHandler& calibrationDataHandler) {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -2169,7 +2228,7 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
     }
 }
 
-void DeviceBase::flashFactoryCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
+void DeviceBase::flashFactoryCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
     camSocket = validatePhysicalCBASocket(camSocket);
     if(!validateCBACalibrationData(calibrationDataHandler)) {
         throw std::runtime_error("CBA calibration data must contain exactly one CameraBoardSocket::CBA cameraData entry.");

@@ -11,13 +11,14 @@ on:
     branches:
       - main
       - develop
+      - 'release*'
     tags:
       - 'v*'
   pull_request:
     branches:
       - main
       - develop
-    types: [opened, reopened, labeled]
+    types: [labeled]
 
 ###################################
 ###################################
@@ -33,11 +34,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
+      wheel_python_versions: ${{ steps.check.outputs.wheel_python_versions }}
+      wheel_python_sets: ${{ steps.check.outputs.wheel_python_sets }}
+      wheel_macos_runners: ${{ steps.check.outputs.wheel_macos_runners }}
     steps:
     - name: Evaluate trigger condition
       id: check
+      env:
+        CHECK_EVENT_NAME: ${{ github.event_name }}
+        CHECK_GITHUB_REF: ${{ github.ref }}
       run: |
-        EVENT_NAME="${{ github.event_name }}"
+        EVENT_NAME="$CHECK_EVENT_NAME"
+        GITHUB_REF="$CHECK_GITHUB_REF"
 
         RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
         if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
@@ -47,13 +55,26 @@ jobs:
         fi
 
         SHOULD_RUN="true"
+        WHEEL_PYTHON_VERSIONS='["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]'
+        WHEEL_PYTHON_SETS='["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314"]'
+        WHEEL_MACOS_RUNNERS='["macos-14"]'
+
+        if [[ "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == "refs/heads/develop" || "$GITHUB_REF" == refs/heads/release* || "$GITHUB_REF" == refs/tags/v* ]]; then
+          WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
+        fi
+
         if [[ "$EVENT_NAME" == "pull_request" ]]; then
+          WHEEL_PYTHON_VERSIONS='["3.14"]'
+          WHEEL_PYTHON_SETS='["cp314-cp314"]'
           if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
             SHOULD_RUN="false"
           fi
         fi
 
         echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+        echo "wheel_python_versions=$WHEEL_PYTHON_VERSIONS" >> "$GITHUB_OUTPUT"
+        echo "wheel_python_sets=$WHEEL_PYTHON_SETS" >> "$GITHUB_OUTPUT"
+        echo "wheel_macos_runners=$WHEEL_MACOS_RUNNERS" >> "$GITHUB_OUTPUT"
 
   # Job which builds docstrings for the rest of the wheel builds
   build-docstrings:
@@ -126,7 +147,7 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     strategy:
       matrix:
-        # os: [ubuntu-latest, windows-latest, macos-latest]
+        # os: [ubuntu-latest, windows-2022, macos-latest]
         os: [ubuntu-latest] # TODO(Morato) - re-enable windows & macos
     runs-on: ${{ matrix.os }}
     steps:
@@ -138,13 +159,13 @@ jobs:
         run: echo Home directory inside container $HOME
 
       - name: Cache vcpkg folder
-        if: matrix.os != 'windows-latest'
+        if: matrix.os != 'windows-2022'
         uses: actions/cache@v3
         with:
           path: /home/runner/.vcpkg/
           key: vcpkg-${{ matrix.os }}
       - name: Cache vcpkg folder
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-2022'
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg/
@@ -215,11 +236,11 @@ jobs:
 
   # This job builds wheels for Windows x86_64 arch
   build-windows-x86_64:
-    needs: build-docstrings
-    runs-on: windows-latest
+    needs: [precheck, build-docstrings]
+    runs-on: windows-2022
     strategy:
       matrix:
-        python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ${{ fromJson(needs.precheck.outputs.wheel_python_versions) }}
         python-architecture: [x64] # TODO(Morato) - re-enable x86
       fail-fast: false
     env:
@@ -237,7 +258,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg
-          key: vcpkg-windows-latest
+          key: vcpkg-windows-2022
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -275,6 +296,9 @@ jobs:
           python -m pip install --upgrade pip
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
+      - name: Verify wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -291,6 +315,9 @@ jobs:
           for wheel in ./wheelhouse/*.whl; do
             delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" --include vcruntime140.dll --include vcruntime140_1.dll --include ucrtbase.dll -w wheelhouse/audited
           done
+      - name: Verify repaired wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -299,11 +326,11 @@ jobs:
 
   # This job builds wheels for macOS arch
   build-macos:
-    needs: build-docstrings
+    needs: [precheck, build-docstrings]
     strategy:
       matrix:
-        python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
-        os: [macos-15-intel, macos-14]
+        python-version: ${{ fromJson(needs.precheck.outputs.wheel_python_versions) }}
+        os: ${{ fromJson(needs.precheck.outputs.wheel_macos_runners) }}
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
@@ -359,11 +386,17 @@ jobs:
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
+      - name: Verify wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Auditing wheels
         run: cd bindings/python && ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
+      - name: Verify repaired wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -371,14 +404,17 @@ jobs:
           path: bindings/python/wheelhouse/audited/*
 
   combine-macos-wheels:
-    needs: build-macos
+    needs: [precheck, build-macos]
     strategy:
       matrix:
-        os: [macos-15-intel, macos-14]
+        os: ${{ fromJson(needs.precheck.outputs.wheel_macos_runners) }}
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
       - name: Download audited wheels
         uses: actions/download-artifact@v4
         with:
@@ -418,7 +454,7 @@ jobs:
 
   # This job builds wheels for x86_64 arch
   build-linux-x86_64:
-    needs: build-docstrings
+    needs: [precheck, build-docstrings]
     runs-on: ubuntu-latest
     container:
       image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
@@ -426,7 +462,7 @@ jobs:
         PLAT: manylinux_2_28_x86_64
     strategy:
       matrix:
-        python-set: ["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314"]
+        python-set: ${{ fromJson(needs.precheck.outputs.wheel_python_sets) }}
     env:
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
@@ -473,12 +509,16 @@ jobs:
       - name: Build wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
+      - name: Verify wheel license files
+        run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
+      - name: Verify repaired wheel license files
+        run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -521,7 +561,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          PYBIN="/opt/python/cp310-cp310/bin/python"
+          PYBIN="/opt/python/cp314-cp314/bin/python"
 
           # Resolve the exact dev version (includes commit hash)
           ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
@@ -539,7 +579,7 @@ jobs:
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
-    needs: build-docstrings
+    needs: [precheck, build-docstrings]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
@@ -548,7 +588,7 @@ jobs:
         PLAT: manylinux_2_28_aarch64
     strategy:
       matrix:
-        python-set: ["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314"]
+        python-set: ${{ fromJson(needs.precheck.outputs.wheel_python_sets) }}
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
@@ -597,12 +637,16 @@ jobs:
       - name: Building wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
+      - name: Verify wheel license files
+        run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
+      - name: Verify repaired wheel license files
+        run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -646,7 +690,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          PYBIN="/opt/python/cp310-cp310/bin/python"
+          PYBIN="/opt/python/cp314-cp314/bin/python"
 
           # Resolve the exact dev version (includes commit hash)
           ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
@@ -664,7 +708,7 @@ jobs:
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v3
       - name: Download audited wheels
@@ -676,7 +720,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
+          python-version: "3.14"
       - name: Combine wheels
         run: |
           python -m pip install "delvewheel==1.12.1" # Install delvewheel for patching wheels

@@ -2,6 +2,7 @@
 
 #include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
+#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -9,6 +10,8 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
+
+using RotationChangePerAxis = std::vector<float>;
 
 /**
  * @defgroup dcl_results Dynamic Calibration Messages
@@ -40,11 +43,14 @@ struct CoverageData : public Buffer {
     /** @name Spatial coverage matrices */
     ///@{
 
-    /** 2D coverage matrix for input A (e.g. left image). Values are ∈ [0, 1]. */
+    /** @deprecated Use coveragePerCell keyed by CameraBoardSocket instead. */
     std::vector<std::vector<float>> coveragePerCellA;
 
-    /** 2D coverage matrix for input B (e.g. right image). Values are ∈ [0, 1]. */
+    /** @deprecated Use coveragePerCell keyed by CameraBoardSocket instead. */
     std::vector<std::vector<float>> coveragePerCellB;
+
+    /** 2D coverage matrix for each connected input, keyed by camera socket. Values are ∈ [0, 1]. */
+    std::unordered_map<CameraBoardSocket, std::vector<std::vector<float>>> coveragePerCell;
 
     ///@}
 
@@ -62,7 +68,7 @@ struct CoverageData : public Buffer {
 
     ///@}
 
-    DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage, dataAcquired, coverageAcquired);
+    DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, coveragePerCell, meanCoverage, dataAcquired, coverageAcquired);
 };
 
 /**
@@ -81,10 +87,11 @@ struct CalibrationQuality : public Buffer {
      * @ingroup dcl_results
      */
     struct Data {
-        /** Rotation difference between old and new extrinsics (degrees). */
+        /** @deprecated Rotation difference between old and new extrinsics (degrees). */
         std::array<float, 3> rotationChange;
 
         /**
+         * @deprecated
          * Predicted relative depth error difference between current and new calibration.
          * Reported at reference distances [1m, 2m, 5m, 10m].
          * Units: percent [%].
@@ -97,7 +104,10 @@ struct CalibrationQuality : public Buffer {
         /** Estimated new Sampson error if the new calibration is applied. */
         float sampsonErrorNew = 0.0f;
 
-        DEPTHAI_SERIALIZE(Data, rotationChange, sampsonErrorCurrent, sampsonErrorNew, depthErrorDifference);
+        /** Pairwise per-axis rotation deltas keyed by camera socket pairs. */
+        std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, RotationChangePerAxis> pairwiseRotationDifference;
+
+        DEPTHAI_SERIALIZE(Data, rotationChange, sampsonErrorCurrent, sampsonErrorNew, depthErrorDifference, pairwiseRotationDifference);
     };
 
     CalibrationQuality() = default;
