@@ -1,6 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/depthai.hpp>
 
+#include "pipeline/node/StitchingPlatform.hpp"
+
+TEST_CASE("Stitching device execution is RVC4-only", "[Stitching]") {
+    REQUIRE_FALSE(dai::node::stitching::isDevicePlatformSupported(dai::Platform::RVC2));
+    REQUIRE_FALSE(dai::node::stitching::isDevicePlatformSupported(dai::Platform::RVC3));
+    REQUIRE(dai::node::stitching::isDevicePlatformSupported(dai::Platform::RVC4));
+}
+
 TEST_CASE("Stitching serializes as a device node", "[Stitching]") {
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::node::Stitching>()->build(2);

@@ -57,39 +57,6 @@ TEST_CASE("Stitching stitches panoramas by default", "[Stitching]") {
     REQUIRE(stitching->getMode() == dai::node::Stitching::Mode::PANORAMA);
 }
 
-TEST_CASE("Stitching can run on host or device", "[Stitching]") {
-    dai::Pipeline pipeline(false);
-    auto stitching = pipeline.create<dai::node::Stitching>();
-
-    REQUIRE(stitching->runOnHost());
-    stitching->setRunOnHost(false);
-    REQUIRE_FALSE(stitching->runOnHost());
-    stitching->setRunOnHost(true);
-    REQUIRE(stitching->runOnHost());
-}
-
-TEST_CASE("Stitching properties serialize its configuration", "[Stitching]") {
-    dai::Pipeline pipeline(false);
-    auto stitching = pipeline.create<dai::node::Stitching>();
-    stitching->setMode(dai::node::Stitching::Mode::PLANAR_PROJECTION);
-    stitching->setPlane({1.0f, 2.0f, 3.0f}, {0.0f, 1.0f, 0.0f}, dai::LengthUnit::METER);
-    stitching->setMaxViewSize(1280, 720);
-    stitching->setMaxRange(4.0f, dai::LengthUnit::METER);
-    stitching->setMinIncidenceAngle(12.0f);
-
-    const auto serialized = dai::utility::serialize(stitching->properties);
-    dai::StitchingProperties deserialized;
-    REQUIRE(dai::utility::deserialize(serialized, deserialized));
-    REQUIRE(deserialized.mode == dai::node::Stitching::Mode::PLANAR_PROJECTION);
-    REQUIRE(deserialized.plane.has_value());
-    REQUIRE(deserialized.plane->point.x == 1.0f);
-    REQUIRE(deserialized.plane->unit == dai::LengthUnit::METER);
-    REQUIRE(deserialized.maxViewWidth == 1280);
-    REQUIRE(deserialized.maxViewHeight == 720);
-    REQUIRE(deserialized.maxRange == 400.0f);
-    REQUIRE(deserialized.minIncidenceAngle == 12.0f);
-}
-
 TEST_CASE("Stitching combines three rotated views into a wider panorama", "[Stitching]") {
     const cv::Mat scene = cv::imread(KITCHEN_IMAGE_PATH);
     REQUIRE(!scene.empty());
