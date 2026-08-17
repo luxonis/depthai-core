@@ -64,7 +64,9 @@ namespace node {
 
 Stitching::Stitching() = default;
 
-Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>(std::move(props)) {}
+Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>(std::move(props)) {
+    initializeInputNames(properties.numInputs);
+}
 
 Stitching::~Stitching() = default;
 
@@ -84,12 +86,12 @@ std::shared_ptr<Stitching> Stitching::build(size_t numInputs) {
     DAI_CHECK_V(inputNames.empty(), "Stitching node was already built");
     DAI_CHECK_V(numInputs >= 2, "Stitching node needs at least two inputs, got {}", numInputs);
 
-    for(size_t i = 0; i < numInputs; ++i) {
-        auto name = fmt::format("input{}", i);
+    initializeInputNames(numInputs);
+    properties.numInputs = static_cast<std::uint32_t>(numInputs);
+    for(const auto& name : inputNames) {
         auto& input = inputs[name];
         input.setBlocking(false);
         input.setMaxSize(4);
-        inputNames.push_back(std::move(name));
     }
 
     return std::static_pointer_cast<Stitching>(shared_from_this());
@@ -108,6 +110,13 @@ std::shared_ptr<Stitching> Stitching::build(const std::vector<Node::Output*>& so
 
 size_t Stitching::getNumInputs() const {
     return inputNames.size();
+}
+
+void Stitching::initializeInputNames(size_t numInputs) {
+    inputNames.reserve(numInputs);
+    for(size_t i = 0; i < numInputs; ++i) {
+        inputNames.push_back(fmt::format("input{}", i));
+    }
 }
 
 void Stitching::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {

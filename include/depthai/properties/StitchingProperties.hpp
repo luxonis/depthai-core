@@ -80,6 +80,8 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
 
     Mode mode = Mode::PANORAMA;
     CameraModel cameraModel = CameraModel::SPHERICAL;
+    /// Number of image inputs configured by Stitching::build().
+    std::uint32_t numInputs = 0;
     bool continuous = false;
     std::uint32_t estimationFrames = 10;
     std::uint32_t maxPanoramaWidth = std::numeric_limits<std::uint32_t>::max();
@@ -114,6 +116,7 @@ DEPTHAI_SERIALIZE_EXT(StitchingProperties,
                       maxViewWidth,
                       maxViewHeight,
                       maxRange,
-                      minIncidenceAngle);
+                      minIncidenceAngle,
+                      numInputs);
 
 }  // namespace dai

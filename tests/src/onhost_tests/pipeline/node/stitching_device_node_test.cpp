@@ -13,11 +13,13 @@ TEST_CASE("Stitching accepts deserialized properties", "[Stitching]") {
     auto properties = std::make_unique<dai::StitchingProperties>();
     properties->mode = dai::StitchingProperties::Mode::PLANAR_PROJECTION;
     properties->maxViewWidth = 1280;
+    properties->numInputs = 2;
 
     auto stitching = std::make_shared<dai::node::Stitching>(std::move(properties));
 
     REQUIRE(stitching->properties.mode == dai::StitchingProperties::Mode::PLANAR_PROJECTION);
     REQUIRE(stitching->properties.maxViewWidth == 1280);
+    REQUIRE(stitching->getNumInputs() == 2);
 }
 
 TEST_CASE("Stitching serializes as a device node", "[Stitching]") {
@@ -36,6 +38,7 @@ TEST_CASE("Stitching serializes as a device node", "[Stitching]") {
     dai::StitchingProperties properties;
     REQUIRE(dai::utility::deserialize(serialized, properties));
     REQUIRE(properties.mode == dai::node::Stitching::Mode::PLANAR_PROJECTION);
+    REQUIRE(properties.numInputs == 2);
     REQUIRE(properties.plane.has_value());
     REQUIRE(properties.plane->point.x == 1.0f);
     REQUIRE(properties.plane->unit == dai::LengthUnit::METER);

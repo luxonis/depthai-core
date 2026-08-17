@@ -216,6 +216,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
    private:
     void run() override;
     void invalidateHostState();
+    void initializeInputNames(size_t numInputs);
 
     class Impl;
     std::shared_ptr<Impl> impl;
