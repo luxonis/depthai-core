@@ -19,6 +19,33 @@
 #include "utility/PimplImpl.hpp"
 
 namespace dai {
+
+StitchingProperties::VirtualCamera StitchingProperties::VirtualCamera::lookAt(
+    const Point3f& position, const Point3f& target, const Point3f& up, float hFovDegrees, uint32_t width, uint32_t height, LengthUnit unit) {
+    DAI_CHECK_V(width > 0 && height > 0, "The view must not be empty, got {}x{} pixels", width, height);
+    DAI_CHECK_V(hFovDegrees > 0.0f && hFovDegrees < 180.0f, "The horizontal field of view must be within (0, 180) degrees, got {}", hFovDegrees);
+
+    const cv::Vec3d towardsTarget(target.x - position.x, target.y - position.y, target.z - position.z);
+    DAI_CHECK_V(cv::norm(towardsTarget) > 1e-6, "The camera cannot look at its own position");
+    const cv::Vec3d forward = cv::normalize(towardsTarget);
+    cv::Vec3d right = forward.cross(cv::Vec3d(up.x, up.y, up.z));
+    DAI_CHECK_V(cv::norm(right) > 1e-6, "The up direction must not be parallel to the optical axis");
+    right = cv::normalize(right);
+    const cv::Vec3d down = forward.cross(right);
+
+    VirtualCamera camera;
+    camera.width = width;
+    camera.height = height;
+    camera.unit = unit;
+    const auto focal = static_cast<float>(0.5 * width / std::tan(0.5 * static_cast<double>(hFovDegrees) * CV_PI / 180.0));
+    camera.intrinsics = {{{focal, 0.0f, 0.5f * (width - 1)}, {0.0f, focal, 0.5f * (height - 1)}, {0.0f, 0.0f, 1.0f}}};
+    camera.pose = {{{static_cast<float>(right[0]), static_cast<float>(down[0]), static_cast<float>(forward[0]), position.x},
+                    {static_cast<float>(right[1]), static_cast<float>(down[1]), static_cast<float>(forward[1]), position.y},
+                    {static_cast<float>(right[2]), static_cast<float>(down[2]), static_cast<float>(forward[2]), position.z},
+                    {0.0f, 0.0f, 0.0f, 1.0f}}};
+    return camera;
+}
+
 namespace node {
 
 namespace {
@@ -101,23 +128,6 @@ struct RegistrationCandidate {
 
 class Stitching::Impl {
    public:
-    Mode mode = Mode::PANORAMA;
-    CameraModel cameraModel = CameraModel::SPHERICAL;
-    bool continuous = false;
-    uint32_t estimationFrames = 10;
-    uint32_t maxPanoramaWidth = std::numeric_limits<uint32_t>::max();
-    uint32_t maxPanoramaHeight = std::numeric_limits<uint32_t>::max();
-
-    double panoConfidenceThreshold = 1.0;
-    SeamFinder seamFinder = SeamFinder::GRAPHCUT_COLOR;
-
-    std::optional<Plane> plane;
-    std::optional<VirtualCamera> view;
-    uint32_t maxViewWidth = 1920;
-    uint32_t maxViewHeight = 1920;
-    float maxRange = 1000.0f;
-    float minIncidenceAngle = 5.0f;
-
     cv::Ptr<cv::Stitcher> stitcher;
     cv::Ptr<ScoringFeaturesMatcher> scoringMatcher;
     std::optional<RegistrationCandidate> bestCandidate;
@@ -135,15 +145,15 @@ class Stitching::Impl {
     }
 
     /// Push the planar projection settings into the implementation, dropping what was built from the old ones.
-    void configurePlanar() {
+    void configurePlanar(const StitchingProperties& properties) {
         PlanarStitcher::Config config;
-        config.plane = plane;
-        config.view = view;
-        config.maxViewWidth = maxViewWidth;
-        config.maxViewHeight = maxViewHeight;
-        config.maxRange = maxRange;
-        config.minIncidenceAngle = minIncidenceAngle;
-        config.seamFinder = seamFinder;
+        config.plane = properties.plane;
+        config.view = properties.view;
+        config.maxViewWidth = properties.maxViewWidth;
+        config.maxViewHeight = properties.maxViewHeight;
+        config.maxRange = properties.maxRange;
+        config.minIncidenceAngle = properties.minIncidenceAngle;
+        config.seamFinder = properties.seamFinder;
         planar.setConfig(config);
     }
 
@@ -160,13 +170,13 @@ class Stitching::Impl {
      * (Re)create the stitcher. panoSizeHint is used to scale the blending width the way
      * OpenCV's stitching_detailed sample does.
      */
-    void createPanoramaStitcher(const cv::Size& panoSizeHint) {
+    void createPanoramaStitcher(const cv::Size& panoSizeHint, const StitchingProperties& properties) {
         stitcher = cv::Stitcher::create(cv::Stitcher::PANORAMA);
 
         stitcher->setRegistrationResol(stitching::REGISTRATION_RESOLUTION);
         stitcher->setSeamEstimationResol(stitching::SEAM_ESTIMATION_RESOLUTION);
         stitcher->setCompositingResol(stitching::COMPOSITING_RESOLUTION);
-        stitcher->setPanoConfidenceThresh(panoConfidenceThreshold);
+        stitcher->setPanoConfidenceThresh(properties.panoConfidenceThreshold);
         stitcher->setWaveCorrection(true);
         stitcher->setWaveCorrectKind(cv::detail::WAVE_CORRECT_HORIZ);
         stitcher->setInterpolationFlags(cv::INTER_LINEAR);
@@ -175,9 +185,9 @@ class Stitching::Impl {
         stitcher->setFeaturesMatcher(scoringMatcher);
         stitcher->setEstimator(stitching::createEstimator());
         stitcher->setBundleAdjuster(stitching::createBundleAdjuster());
-        stitcher->setWarper(stitching::createWarper(cameraModel));
+        stitcher->setWarper(stitching::createWarper(properties.cameraModel));
         stitcher->setExposureCompensator(cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS));
-        stitcher->setSeamFinder(stitching::createSeamFinder(seamFinder));
+        stitcher->setSeamFinder(stitching::createSeamFinder(properties.seamFinder));
         stitcher->setBlender(stitching::createBlender(panoSizeHint));
     }
 
@@ -214,11 +224,12 @@ class Stitching::Impl {
         return canvas.size();
     }
 
-    bool panoramaFits(const std::vector<cv::Mat>& images, cv::Size& size) const {
-        if(maxPanoramaWidth == std::numeric_limits<uint32_t>::max() && maxPanoramaHeight == std::numeric_limits<uint32_t>::max()) return true;
+    bool panoramaFits(const std::vector<cv::Mat>& images, cv::Size& size, const StitchingProperties& properties) const {
+        if(properties.maxPanoramaWidth == std::numeric_limits<uint32_t>::max() && properties.maxPanoramaHeight == std::numeric_limits<uint32_t>::max())
+            return true;
         size = panoramaSize(images);
-        return size.width > 0 && size.height > 0 && static_cast<uint32_t>(size.width) <= maxPanoramaWidth
-               && static_cast<uint32_t>(size.height) <= maxPanoramaHeight;
+        return size.width > 0 && size.height > 0 && static_cast<uint32_t>(size.width) <= properties.maxPanoramaWidth
+               && static_cast<uint32_t>(size.height) <= properties.maxPanoramaHeight;
     }
 };
 
@@ -265,44 +276,26 @@ void Stitching::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
     sync->setSyncThreshold(syncThreshold);
 }
 
+void Stitching::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool Stitching::runOnHost() const {
+    return runOnHostVar;
+}
+
 void Stitching::setMode(Mode mode) {
-    impl->mode = mode;
+    properties.mode = mode;
     impl->invalidate();
 }
 
 Stitching::Mode Stitching::getMode() const {
-    return impl->mode;
-}
-
-Stitching::VirtualCamera Stitching::VirtualCamera::lookAt(
-    const Point3f& position, const Point3f& target, const Point3f& up, float hFovDegrees, uint32_t width, uint32_t height, LengthUnit unit) {
-    DAI_CHECK_V(width > 0 && height > 0, "The view must not be empty, got {}x{} pixels", width, height);
-    DAI_CHECK_V(hFovDegrees > 0.0f && hFovDegrees < 180.0f, "The horizontal field of view must be within (0, 180) degrees, got {}", hFovDegrees);
-
-    const cv::Vec3d towardsTarget(target.x - position.x, target.y - position.y, target.z - position.z);
-    DAI_CHECK_V(cv::norm(towardsTarget) > 1e-6, "The camera cannot look at its own position");
-    const cv::Vec3d forward = cv::normalize(towardsTarget);
-    cv::Vec3d right = forward.cross(cv::Vec3d(up.x, up.y, up.z));
-    DAI_CHECK_V(cv::norm(right) > 1e-6, "The up direction must not be parallel to the optical axis");
-    right = cv::normalize(right);
-    const cv::Vec3d down = forward.cross(right);
-
-    VirtualCamera camera;
-    camera.width = width;
-    camera.height = height;
-    camera.unit = unit;
-    const auto focal = static_cast<float>(0.5 * width / std::tan(0.5 * static_cast<double>(hFovDegrees) * CV_PI / 180.0));
-    camera.intrinsics = {{{focal, 0.0f, 0.5f * (width - 1)}, {0.0f, focal, 0.5f * (height - 1)}, {0.0f, 0.0f, 1.0f}}};
-    camera.pose = {{{static_cast<float>(right[0]), static_cast<float>(down[0]), static_cast<float>(forward[0]), position.x},
-                    {static_cast<float>(right[1]), static_cast<float>(down[1]), static_cast<float>(forward[1]), position.y},
-                    {static_cast<float>(right[2]), static_cast<float>(down[2]), static_cast<float>(forward[2]), position.z},
-                    {0.0f, 0.0f, 0.0f, 1.0f}}};
-    return camera;
+    return properties.mode;
 }
 
 void Stitching::setPlane(const Plane& plane) {
     DAI_CHECK_V(plane.normal.x != 0.0f || plane.normal.y != 0.0f || plane.normal.z != 0.0f, "The plane normal must not be a zero vector");
-    impl->plane = plane;
+    properties.plane = plane;
     impl->invalidate();
 }
 
@@ -311,84 +304,84 @@ void Stitching::setPlane(const Point3f& point, const Point3f& normal, LengthUnit
 }
 
 std::optional<Stitching::Plane> Stitching::getPlane() const {
-    return impl->plane;
+    return properties.plane;
 }
 
 void Stitching::setView(const VirtualCamera& view) {
     DAI_CHECK_V(view.width > 0 && view.height > 0, "The view must not be empty, got {}x{} pixels", view.width, view.height);
     DAI_CHECK_V(view.intrinsics[0][0] > 0.0f && view.intrinsics[1][1] > 0.0f, "The view needs a positive focal length");
-    impl->view = view;
+    properties.view = view;
     impl->invalidate();
 }
 
 void Stitching::setViewAuto() {
-    impl->view.reset();
+    properties.view.reset();
     impl->invalidate();
 }
 
 std::optional<Stitching::VirtualCamera> Stitching::getView() const {
-    return impl->view;
+    return properties.view;
 }
 
 void Stitching::setMaxViewSize(uint32_t width, uint32_t height) {
     DAI_CHECK_V(width > 0 && height > 0, "The maximum view size must not be empty, got {}x{} pixels", width, height);
-    impl->maxViewWidth = width;
-    impl->maxViewHeight = height;
+    properties.maxViewWidth = width;
+    properties.maxViewHeight = height;
     impl->invalidate();
 }
 
 void Stitching::setMaxRange(float range, LengthUnit unit) {
     DAI_CHECK_V(range > 0.0f, "The maximum range must be positive, got {}", range);
-    impl->maxRange = range * getDistanceUnitScale(LengthUnit::CENTIMETER, unit);
+    properties.maxRange = range * getDistanceUnitScale(LengthUnit::CENTIMETER, unit);
     impl->invalidate();
 }
 
 float Stitching::getMaxRange(LengthUnit unit) const {
-    return impl->maxRange * getDistanceUnitScale(unit, LengthUnit::CENTIMETER);
+    return properties.maxRange * getDistanceUnitScale(unit, LengthUnit::CENTIMETER);
 }
 
 void Stitching::setMinIncidenceAngle(float degrees) {
     DAI_CHECK_V(degrees >= 0.0f && degrees < 90.0f, "The minimum incidence angle must be within [0, 90) degrees, got {}", degrees);
-    impl->minIncidenceAngle = degrees;
+    properties.minIncidenceAngle = degrees;
     impl->invalidate();
 }
 
 float Stitching::getMinIncidenceAngle() const {
-    return impl->minIncidenceAngle;
+    return properties.minIncidenceAngle;
 }
 
 void Stitching::setCameraModel(CameraModel model) {
-    impl->cameraModel = model;
+    properties.cameraModel = model;
     impl->invalidate();
 }
 
 Stitching::CameraModel Stitching::getCameraModel() const {
-    return impl->cameraModel;
+    return properties.cameraModel;
 }
 
 void Stitching::setContinuous(bool continuous) {
-    impl->continuous = continuous;
+    properties.continuous = continuous;
     impl->invalidate();
 }
 
 bool Stitching::getContinuous() const {
-    return impl->continuous;
+    return properties.continuous;
 }
 
 void Stitching::setEstimationFrames(uint32_t frames) {
     DAI_CHECK_V(frames >= 1, "Stitching needs at least one estimation frame");
-    impl->estimationFrames = frames;
+    properties.estimationFrames = frames;
     impl->invalidate();
 }
 
 uint32_t Stitching::getEstimationFrames() const {
-    return impl->estimationFrames;
+    return properties.estimationFrames;
 }
 
 void Stitching::setMaxPanoramaSize(uint32_t width, uint32_t height) {
     DAI_CHECK_V(width > 0 && height > 0, "The maximum panorama size must not be empty, got {}x{} pixels", width, height);
-    impl->maxPanoramaWidth = width;
-    impl->maxPanoramaHeight = height;
+    properties.maxPanoramaWidth = width;
+    properties.maxPanoramaHeight = height;
 }
 
 void Stitching::resetTransform() {
@@ -396,33 +389,33 @@ void Stitching::resetTransform() {
 }
 
 void Stitching::setPanoConfidenceThreshold(double threshold) {
-    impl->panoConfidenceThreshold = threshold;
+    properties.panoConfidenceThreshold = threshold;
     impl->invalidate();
 }
 
 double Stitching::getPanoConfidenceThreshold() const {
-    return impl->panoConfidenceThreshold;
+    return properties.panoConfidenceThreshold;
 }
 
 void Stitching::setSeamFinder(SeamFinder finder) {
-    impl->seamFinder = finder;
+    properties.seamFinder = finder;
     impl->invalidate();
 }
 
 Stitching::SeamFinder Stitching::getSeamFinder() const {
-    return impl->seamFinder;
+    return properties.seamFinder;
 }
 
 void Stitching::run() {
     DAI_CHECK_V(!inputNames.empty(), "Stitching node was not built, call build() with the sources to stitch");
     auto& logger = pimpl->logger;
-    if(logger && impl->mode == Mode::PANORAMA) {
-        if(impl->continuous) {
+    if(logger && properties.mode == Mode::PANORAMA) {
+        if(properties.continuous) {
             logger->info("Panorama stitching running in continuous estimation mode");
         } else {
             logger->info("Panorama stitching running in best-of-{} mode; waiting for {} valid candidates before emitting panoramas",
-                         impl->estimationFrames,
-                         impl->estimationFrames);
+                         properties.estimationFrames,
+                         properties.estimationFrames);
         }
     }
 
@@ -452,11 +445,11 @@ void Stitching::run() {
             transformations.push_back(frame->getTransformation());
         }
 
-        if(impl->mode == Mode::PLANAR_PROJECTION) {
+        if(properties.mode == Mode::PLANAR_PROJECTION) {
             cv::Mat projected;
             try {
                 if(!impl->planar.isPrepared()) {
-                    impl->configurePlanar();
+                    impl->configurePlanar(properties);
                     impl->planar.prepare(transformations);
                     const auto& resolved = impl->planar.getResolvedView();
                     if(logger) {
@@ -484,20 +477,20 @@ void Stitching::run() {
         }
 
         if(!impl->stitcher) {
-            impl->createPanoramaStitcher(cv::Size(images.front().cols * static_cast<int>(images.size()), images.front().rows));
+            impl->createPanoramaStitcher(cv::Size(images.front().cols * static_cast<int>(images.size()), images.front().rows), properties);
         }
 
         cv::Mat pano;
         cv::Stitcher::Status status = cv::Stitcher::OK;
         const auto composePanorama = [&](const std::vector<cv::Mat>& contributing) -> std::optional<cv::Stitcher::Status> {
             cv::Size panoramaSize;
-            if(!impl->panoramaFits(contributing, panoramaSize)) {
+            if(!impl->panoramaFits(contributing, panoramaSize, properties)) {
                 if(logger) {
                     logger->debug("Stitching rejected a {}x{} panorama exceeding the configured {}x{} maximum",
                                   panoramaSize.width,
                                   panoramaSize.height,
-                                  impl->maxPanoramaWidth,
-                                  impl->maxPanoramaHeight);
+                                  properties.maxPanoramaWidth,
+                                  properties.maxPanoramaHeight);
                 }
                 return std::nullopt;
             }
@@ -519,7 +512,7 @@ void Stitching::run() {
             }
         };
         try {
-            if(impl->continuous) {
+            if(properties.continuous) {
                 impl->scoringMatcher->resetScore();
                 const auto stitchingStatus = estimateAndComposePanorama(images);
                 if(!stitchingStatus.has_value()) continue;
@@ -541,13 +534,13 @@ void Stitching::run() {
                     }
 
                     cv::Size candidateSize;
-                    if(!impl->panoramaFits(images, candidateSize)) {
+                    if(!impl->panoramaFits(images, candidateSize, properties)) {
                         if(logger) {
                             logger->debug("Stitching rejected a {}x{} panorama exceeding the configured {}x{} maximum",
                                           candidateSize.width,
                                           candidateSize.height,
-                                          impl->maxPanoramaWidth,
-                                          impl->maxPanoramaHeight);
+                                          properties.maxPanoramaWidth,
+                                          properties.maxPanoramaHeight);
                         }
                         continue;
                     }
@@ -557,7 +550,7 @@ void Stitching::run() {
                         impl->bestCandidate = std::move(candidate);
                     }
                     ++impl->candidatesEvaluated;
-                    if(impl->candidatesEvaluated < impl->estimationFrames) continue;
+                    if(impl->candidatesEvaluated < properties.estimationFrames) continue;
 
                     status = impl->stitcher->setTransform(images, impl->bestCandidate->cameras);
                     if(status == cv::Stitcher::OK) {
@@ -590,4 +583,7 @@ void Stitching::run() {
 }
 
 }  // namespace node
+
+template class Pimpl<node::Stitching::Impl>;
+
 }  // namespace dai

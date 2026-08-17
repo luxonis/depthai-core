@@ -3,7 +3,7 @@
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "depthai/pipeline/node/host/Stitching.hpp"
@@ -17,12 +17,13 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     // declare upfront
-    auto stitchingNode = ADD_NODE_DERIVED(Stitching, ThreadedHostNode);
-    py::enum_<Stitching::Mode> stitchingMode(stitchingNode, "Mode", DOC(dai, node, Stitching, Mode));
-    py::enum_<Stitching::CameraModel> stitchingCameraModel(stitchingNode, "CameraModel", DOC(dai, node, Stitching, CameraModel));
-    py::enum_<Stitching::SeamFinder> stitchingSeamFinder(stitchingNode, "SeamFinder", DOC(dai, node, Stitching, SeamFinder));
-    py::class_<Stitching::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, node, Stitching, Plane));
-    py::class_<Stitching::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, node, Stitching, VirtualCamera));
+    py::class_<StitchingProperties> stitchingProperties(m, "StitchingProperties", DOC(dai, StitchingProperties));
+    auto stitchingNode = ADD_NODE(Stitching);
+    py::enum_<Stitching::Mode> stitchingMode(stitchingNode, "Mode", DOC(dai, StitchingProperties, Mode));
+    py::enum_<Stitching::CameraModel> stitchingCameraModel(stitchingNode, "CameraModel", DOC(dai, StitchingProperties, CameraModel));
+    py::enum_<Stitching::SeamFinder> stitchingSeamFinder(stitchingNode, "SeamFinder", DOC(dai, StitchingProperties, SeamFinder));
+    py::class_<Stitching::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, StitchingProperties, Plane));
+    py::class_<Stitching::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, StitchingProperties, VirtualCamera));
 #endif
 
     ///////////////////////////////////////////////////////////////////////
@@ -57,9 +58,9 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
              py::arg("point"),
              py::arg("normal"),
              py::arg("unit") = LengthUnit::CENTIMETER)
-        .def_readwrite("point", &Stitching::Plane::point, DOC(dai, node, Stitching, Plane, point))
-        .def_readwrite("normal", &Stitching::Plane::normal, DOC(dai, node, Stitching, Plane, normal))
-        .def_readwrite("unit", &Stitching::Plane::unit, DOC(dai, node, Stitching, Plane, unit));
+        .def_readwrite("point", &Stitching::Plane::point, DOC(dai, StitchingProperties, Plane, point))
+        .def_readwrite("normal", &Stitching::Plane::normal, DOC(dai, StitchingProperties, Plane, normal))
+        .def_readwrite("unit", &Stitching::Plane::unit, DOC(dai, StitchingProperties, Plane, unit));
 
     stitchingVirtualCamera.def(py::init<>())
         .def_static("lookAt",
@@ -71,12 +72,27 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
                     py::arg("width"),
                     py::arg("height"),
                     py::arg("unit") = LengthUnit::CENTIMETER,
-                    DOC(dai, node, Stitching, VirtualCamera, lookAt))
-        .def_readwrite("pose", &Stitching::VirtualCamera::pose, DOC(dai, node, Stitching, VirtualCamera, pose))
-        .def_readwrite("unit", &Stitching::VirtualCamera::unit, DOC(dai, node, Stitching, VirtualCamera, unit))
-        .def_readwrite("intrinsics", &Stitching::VirtualCamera::intrinsics, DOC(dai, node, Stitching, VirtualCamera, intrinsics))
-        .def_readwrite("width", &Stitching::VirtualCamera::width, DOC(dai, node, Stitching, VirtualCamera, width))
-        .def_readwrite("height", &Stitching::VirtualCamera::height, DOC(dai, node, Stitching, VirtualCamera, height));
+                    DOC(dai, StitchingProperties, VirtualCamera, lookAt))
+        .def_readwrite("pose", &Stitching::VirtualCamera::pose, DOC(dai, StitchingProperties, VirtualCamera, pose))
+        .def_readwrite("unit", &Stitching::VirtualCamera::unit, DOC(dai, StitchingProperties, VirtualCamera, unit))
+        .def_readwrite("intrinsics", &Stitching::VirtualCamera::intrinsics, DOC(dai, StitchingProperties, VirtualCamera, intrinsics))
+        .def_readwrite("width", &Stitching::VirtualCamera::width, DOC(dai, StitchingProperties, VirtualCamera, width))
+        .def_readwrite("height", &Stitching::VirtualCamera::height, DOC(dai, StitchingProperties, VirtualCamera, height));
+
+    stitchingProperties.def_readwrite("mode", &StitchingProperties::mode)
+        .def_readwrite("cameraModel", &StitchingProperties::cameraModel)
+        .def_readwrite("continuous", &StitchingProperties::continuous)
+        .def_readwrite("estimationFrames", &StitchingProperties::estimationFrames)
+        .def_readwrite("maxPanoramaWidth", &StitchingProperties::maxPanoramaWidth)
+        .def_readwrite("maxPanoramaHeight", &StitchingProperties::maxPanoramaHeight)
+        .def_readwrite("panoConfidenceThreshold", &StitchingProperties::panoConfidenceThreshold)
+        .def_readwrite("seamFinder", &StitchingProperties::seamFinder)
+        .def_readwrite("plane", &StitchingProperties::plane)
+        .def_readwrite("view", &StitchingProperties::view)
+        .def_readwrite("maxViewWidth", &StitchingProperties::maxViewWidth)
+        .def_readwrite("maxViewHeight", &StitchingProperties::maxViewHeight)
+        .def_readwrite("maxRange", &StitchingProperties::maxRange)
+        .def_readwrite("minIncidenceAngle", &StitchingProperties::minIncidenceAngle);
 
     stitchingNode.def_readonly("sync", &Stitching::sync, DOC(dai, node, Stitching, sync))
         .def_property_readonly(
@@ -92,6 +108,8 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, Stitching, build, 2))
         .def("getNumInputs", &Stitching::getNumInputs, DOC(dai, node, Stitching, getNumInputs))
         .def("setSyncThreshold", &Stitching::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, Stitching, setSyncThreshold))
+        .def("setRunOnHost", &Stitching::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Stitching, setRunOnHost))
+        .def("runOnHost", &Stitching::runOnHost, DOC(dai, node, Stitching, runOnHost))
         .def("setMode", &Stitching::setMode, py::arg("mode"), DOC(dai, node, Stitching, setMode))
         .def("getMode", &Stitching::getMode, DOC(dai, node, Stitching, getMode))
         .def("setPlane", static_cast<void (Stitching::*)(const Stitching::Plane&)>(&Stitching::setPlane), py::arg("plane"), DOC(dai, node, Stitching, setPlane))
@@ -122,6 +140,7 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
         .def("getPanoConfidenceThreshold", &Stitching::getPanoConfidenceThreshold, DOC(dai, node, Stitching, getPanoConfidenceThreshold))
         .def("setSeamFinder", &Stitching::setSeamFinder, py::arg("finder"), DOC(dai, node, Stitching, setSeamFinder))
         .def("getSeamFinder", &Stitching::getSeamFinder, DOC(dai, node, Stitching, getSeamFinder));
+    daiNodeModule.attr("Stitching").attr("Properties") = stitchingProperties;
 #else
     (void)m;
 #endif

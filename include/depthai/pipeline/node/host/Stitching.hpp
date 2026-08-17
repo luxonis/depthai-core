@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -9,9 +8,10 @@
 
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/Subnode.hpp"
-#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/properties/StitchingProperties.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
@@ -20,8 +20,9 @@ namespace node {
 /**
  * @brief Stitching node. Combines N time-synced image streams into a single stitched image.
  *
- * The node is host only. Inputs are fixed at build() time and synced by an internal Sync subnode, so the sources may
- * come from different devices. Two independent stitching modes are available:
+ * The node runs on the host by default and can run on a device when selected with `setRunOnHost(false)`. Inputs are
+ * fixed at build() time and synced by an internal host Sync subnode, so the sources may come from different devices.
+ * Two independent stitching modes are available:
  *
  *  - `Mode::PANORAMA` wraps OpenCV's cv::Stitcher and registers the images from their content, so no calibration is
  *    needed, but the cameras have to overlap.
@@ -29,86 +30,40 @@ namespace node {
  *    (bird's-eye view), driven purely by the calibration carried in the messages, so it also works without overlap.
  *    All input transformations must have the same origin camera socket.
  */
-class Stitching : public NodeCRTP<ThreadedHostNode, Stitching> {
+class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "Stitching";
 
     /**
      * Stitching mode.
      */
-    enum class Mode {
-        /// Photo panorama, images related by a perspective (rotation only) transform, registered from image content
-        PANORAMA,
-        /// Projection of all views onto a plane, rendered by a virtual camera. Driven by the calibration of the inputs
-        PLANAR_PROJECTION,
-    };
+    using Mode = StitchingProperties::Mode;
 
     /**
      * A plane the images are projected onto in `Mode::PLANAR_PROJECTION`, expressed in the common origin frame of the
      * input transformations.
      */
-    struct Plane {
-        /// A point lying on the plane.
-        Point3f point;
-        /// Normal of the plane, does not have to be of unit length.
-        Point3f normal;
-        /// Length unit of `point`.
-        LengthUnit unit = LengthUnit::CENTIMETER;
-    };
+    using Plane = StitchingProperties::Plane;
 
     /**
      * The pinhole camera `Mode::PLANAR_PROJECTION` renders the plane from.
      */
-    struct VirtualCamera {
-        /// Pose of the camera w.r.t. the reference frame, i.e. the matrix mapping camera points into that frame.
-        std::array<std::array<float, 4>, 4> pose = {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
-        /// Length unit of the translation part of `pose`.
-        LengthUnit unit = LengthUnit::CENTIMETER;
-        /// Intrinsic matrix of the camera.
-        std::array<std::array<float, 3>, 3> intrinsics = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-        /// Width of the rendered image in pixels.
-        uint32_t width = 0;
-        /// Height of the rendered image in pixels.
-        uint32_t height = 0;
-
-        /**
-         * Build a camera placed at `position` and looking at `target`.
-         *
-         * @param position Camera center, in the reference frame
-         * @param target Point the optical axis passes through, in the reference frame
-         * @param up Direction that ends up pointing up in the rendered image, does not have to be perpendicular to the
-         * optical axis
-         * @param hFovDegrees Horizontal field of view of the camera
-         * @param width Width of the rendered image in pixels
-         * @param height Height of the rendered image in pixels
-         * @param unit Length unit of `position` and `target`
-         */
-        static VirtualCamera lookAt(const Point3f& position,
-                                    const Point3f& target,
-                                    const Point3f& up,
-                                    float hFovDegrees,
-                                    uint32_t width,
-                                    uint32_t height,
-                                    LengthUnit unit = LengthUnit::CENTIMETER);
-    };
+    using VirtualCamera = StitchingProperties::VirtualCamera;
 
     /**
      * Camera projection model the images are warped onto.
      */
-    enum class CameraModel {
-        /// Spherical surface, the OpenCV default
-        SPHERICAL,
-        /// Plane, appropriate for a pinhole camera and small fields of view
-        PINHOLE,
-        /// Cylindrical surface
-        CYLINDRICAL,
-    };
+    using CameraModel = StitchingProperties::CameraModel;
 
     /**
      * Seam estimation method.
      */
-    enum class SeamFinder { NONE, VORONOI, DP_COLOR, DP_COLOR_GRAD, GRAPHCUT_COLOR, GRAPHCUT_COLOR_GRAD };
+    using SeamFinder = StitchingProperties::SeamFinder;
 
+   protected:
+    using DeviceNodeCRTP::DeviceNodeCRTP;
+
+   public:
     Stitching();
     ~Stitching();
 
@@ -149,6 +104,16 @@ class Stitching : public NodeCRTP<ThreadedHostNode, Stitching> {
      * @param syncThreshold Maximal interval between messages in the group
      */
     void setSyncThreshold(std::chrono::nanoseconds syncThreshold);
+
+    /**
+     * Specify whether to run on host or device. By default, the node runs on host.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check whether the node is configured to run on host.
+     */
+    bool runOnHost() const override;
 
     /**
      * Set the stitching mode. `Mode::PLANAR_PROJECTION` additionally needs a plane, see `setPlane()`.
@@ -254,6 +219,7 @@ class Stitching : public NodeCRTP<ThreadedHostNode, Stitching> {
 
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 4, {{DatatypeEnum::MessageGroup, true}}}};
     std::vector<std::string> inputNames;
+    bool runOnHostVar = true;
 };
 
 }  // namespace node
