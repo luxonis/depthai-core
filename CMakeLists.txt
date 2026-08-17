@@ -1337,10 +1337,13 @@ configure_file(cmake/depthaiConfig.cmake.in _install/${PROJECT_NAME}Config.cmake
 
 # Modify RPath to point to the cmake/depthai/dependencies/lib
 # note: macOS is APPLE and also UNIX!
+# Also add the namespaced runtime dependencies subdir (see DLL_INSTALLATION_DIR
+# below) so runtime .so files like dynamic_calibration can still be found
+# after install without polluting the shared lib/ directory with a generic name.
 if(APPLE)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/;@loader_path/${PROJECT_NAME}")
 elseif(UNIX)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/:$ORIGIN/${PROJECT_NAME}")
 endif()
 
 # Export to CMake registry if specified
@@ -1370,7 +1373,7 @@ if(DEPTHAI_INSTALL)
     endif()
     # Install any required dll files
     if(DEFINED required_dll_files)
-        set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_LIBDIR}")
+        set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}")
         if(WIN32)
             set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_BINDIR}")
         endif()
