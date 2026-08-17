@@ -2,8 +2,8 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.9.0 (2026-08-17)
+------------------
 ## Features
 
 * **Beta features namespace**
