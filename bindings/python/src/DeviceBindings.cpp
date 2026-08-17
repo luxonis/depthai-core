@@ -1098,6 +1098,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("enable"),
             DOC(dai, DeviceBase, setExternalStrobeEnable))
         .def(
+            "setExternalStrobeEnable",
+            [](DeviceBase& d, dai::CameraBoardSocket exposureMasterSocket) {
+                py::gil_scoped_release release;
+                d.setExternalStrobeEnable(exposureMasterSocket);
+            },
+            py::arg("exposureMasterSocket"),
+            DOC(dai, DeviceBase, setExternalStrobeEnable, 2))
+        .def(
             "getDeviceName",
             [](DeviceBase& d) {
                 std::string name;
