@@ -16,8 +16,8 @@ import depthai as dai
 FPS = 30.0
 CAMERA_SIZE = (640, 400)
 
-MIN_DEPTH = 100
-MAX_DEPTH = 7000
+MIN_DEPTH = 100.0
+MAX_DEPTH = 7000.0
 
 rgbWeight = 0.5
 depthWeight = 0.5
