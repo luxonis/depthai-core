@@ -40,6 +40,7 @@
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
 #include "node/host/RGBD.hpp"
+#include "node/host/Stitching.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "node/NeuralAssistedStereo.hpp"
     #include "node/Vpp.hpp"
@@ -48,7 +49,6 @@
     #include "node/host/HostNode.hpp"
     #include "node/host/Record.hpp"
     #include "node/host/Replay.hpp"
-    #include "node/host/Stitching.hpp"
 #endif
 #include "ThreadedHostNode.hpp"
 #include "node/ImageAlign.hpp"

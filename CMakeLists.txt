@@ -340,6 +340,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/node/Stitching.cpp
     src/pipeline/node/NeuralDepth.cpp
     src/pipeline/node/Depth.cpp
     src/pipeline/node/GPUStereo.cpp
@@ -537,6 +538,10 @@ set(TARGET_OPENCV_SOURCES
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
+
+if(NOT DEPTHAI_HAVE_OPENCV_SUPPORT)
+    list(APPEND TARGET_CORE_SOURCES src/pipeline/node/StitchingNoOpenCV.cpp)
+endif()
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 

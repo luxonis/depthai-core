@@ -16,36 +16,8 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/ErrorMacros.hpp"
-#include "utility/PimplImpl.hpp"
 
 namespace dai {
-
-StitchingProperties::VirtualCamera StitchingProperties::VirtualCamera::lookAt(
-    const Point3f& position, const Point3f& target, const Point3f& up, float hFovDegrees, uint32_t width, uint32_t height, LengthUnit unit) {
-    DAI_CHECK_V(width > 0 && height > 0, "The view must not be empty, got {}x{} pixels", width, height);
-    DAI_CHECK_V(hFovDegrees > 0.0f && hFovDegrees < 180.0f, "The horizontal field of view must be within (0, 180) degrees, got {}", hFovDegrees);
-
-    const cv::Vec3d towardsTarget(target.x - position.x, target.y - position.y, target.z - position.z);
-    DAI_CHECK_V(cv::norm(towardsTarget) > 1e-6, "The camera cannot look at its own position");
-    const cv::Vec3d forward = cv::normalize(towardsTarget);
-    cv::Vec3d right = forward.cross(cv::Vec3d(up.x, up.y, up.z));
-    DAI_CHECK_V(cv::norm(right) > 1e-6, "The up direction must not be parallel to the optical axis");
-    right = cv::normalize(right);
-    const cv::Vec3d down = forward.cross(right);
-
-    VirtualCamera camera;
-    camera.width = width;
-    camera.height = height;
-    camera.unit = unit;
-    const auto focal = static_cast<float>(0.5 * width / std::tan(0.5 * static_cast<double>(hFovDegrees) * CV_PI / 180.0));
-    camera.intrinsics = {{{focal, 0.0f, 0.5f * (width - 1)}, {0.0f, focal, 0.5f * (height - 1)}, {0.0f, 0.0f, 1.0f}}};
-    camera.pose = {{{static_cast<float>(right[0]), static_cast<float>(down[0]), static_cast<float>(forward[0]), position.x},
-                    {static_cast<float>(right[1]), static_cast<float>(down[1]), static_cast<float>(forward[1]), position.y},
-                    {static_cast<float>(right[2]), static_cast<float>(down[2]), static_cast<float>(forward[2]), position.z},
-                    {0.0f, 0.0f, 0.0f, 1.0f}}};
-    return camera;
-}
-
 namespace node {
 
 namespace {
@@ -233,180 +205,12 @@ class Stitching::Impl {
     }
 };
 
-Stitching::Stitching() = default;
-
-Stitching::~Stitching() = default;
-
-void Stitching::buildInternal() {
-    sync->out.link(inSync);
-    sync->setRunOnHost(true);
-}
-
-std::shared_ptr<Stitching> Stitching::build(size_t numInputs) {
-    DAI_CHECK_V(inputNames.empty(), "Stitching node was already built");
-    DAI_CHECK_V(numInputs >= 2, "Stitching node needs at least two inputs, got {}", numInputs);
-
-    for(size_t i = 0; i < numInputs; ++i) {
-        auto name = fmt::format("input{}", i);
-        auto& input = inputs[name];
-        input.setBlocking(false);
-        input.setMaxSize(4);
-        inputNames.push_back(std::move(name));
-    }
-
-    return std::static_pointer_cast<Stitching>(shared_from_this());
-}
-
-std::shared_ptr<Stitching> Stitching::build(const std::vector<Node::Output*>& sources) {
-    build(sources.size());
-
-    for(size_t i = 0; i < sources.size(); ++i) {
-        DAI_CHECK_V(sources[i] != nullptr, "Stitching source {} is null", i);
-        sources[i]->link(inputs[inputNames[i]]);
-    }
-
-    return std::static_pointer_cast<Stitching>(shared_from_this());
-}
-
-size_t Stitching::getNumInputs() const {
-    return inputNames.size();
-}
-
-void Stitching::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
-    sync->setSyncThreshold(syncThreshold);
-}
-
-void Stitching::setRunOnHost(bool runOnHost) {
-    runOnHostVar = runOnHost;
-}
-
-bool Stitching::runOnHost() const {
-    return runOnHostVar;
-}
-
-void Stitching::setMode(Mode mode) {
-    properties.mode = mode;
-    impl->invalidate();
-}
-
-Stitching::Mode Stitching::getMode() const {
-    return properties.mode;
-}
-
-void Stitching::setPlane(const Plane& plane) {
-    DAI_CHECK_V(plane.normal.x != 0.0f || plane.normal.y != 0.0f || plane.normal.z != 0.0f, "The plane normal must not be a zero vector");
-    properties.plane = plane;
-    impl->invalidate();
-}
-
-void Stitching::setPlane(const Point3f& point, const Point3f& normal, LengthUnit unit) {
-    setPlane(Plane{point, normal, unit});
-}
-
-std::optional<Stitching::Plane> Stitching::getPlane() const {
-    return properties.plane;
-}
-
-void Stitching::setView(const VirtualCamera& view) {
-    DAI_CHECK_V(view.width > 0 && view.height > 0, "The view must not be empty, got {}x{} pixels", view.width, view.height);
-    DAI_CHECK_V(view.intrinsics[0][0] > 0.0f && view.intrinsics[1][1] > 0.0f, "The view needs a positive focal length");
-    properties.view = view;
-    impl->invalidate();
-}
-
-void Stitching::setViewAuto() {
-    properties.view.reset();
-    impl->invalidate();
-}
-
-std::optional<Stitching::VirtualCamera> Stitching::getView() const {
-    return properties.view;
-}
-
-void Stitching::setMaxViewSize(uint32_t width, uint32_t height) {
-    DAI_CHECK_V(width > 0 && height > 0, "The maximum view size must not be empty, got {}x{} pixels", width, height);
-    properties.maxViewWidth = width;
-    properties.maxViewHeight = height;
-    impl->invalidate();
-}
-
-void Stitching::setMaxRange(float range, LengthUnit unit) {
-    DAI_CHECK_V(range > 0.0f, "The maximum range must be positive, got {}", range);
-    properties.maxRange = range * getDistanceUnitScale(LengthUnit::CENTIMETER, unit);
-    impl->invalidate();
-}
-
-float Stitching::getMaxRange(LengthUnit unit) const {
-    return properties.maxRange * getDistanceUnitScale(unit, LengthUnit::CENTIMETER);
-}
-
-void Stitching::setMinIncidenceAngle(float degrees) {
-    DAI_CHECK_V(degrees >= 0.0f && degrees < 90.0f, "The minimum incidence angle must be within [0, 90) degrees, got {}", degrees);
-    properties.minIncidenceAngle = degrees;
-    impl->invalidate();
-}
-
-float Stitching::getMinIncidenceAngle() const {
-    return properties.minIncidenceAngle;
-}
-
-void Stitching::setCameraModel(CameraModel model) {
-    properties.cameraModel = model;
-    impl->invalidate();
-}
-
-Stitching::CameraModel Stitching::getCameraModel() const {
-    return properties.cameraModel;
-}
-
-void Stitching::setContinuous(bool continuous) {
-    properties.continuous = continuous;
-    impl->invalidate();
-}
-
-bool Stitching::getContinuous() const {
-    return properties.continuous;
-}
-
-void Stitching::setEstimationFrames(uint32_t frames) {
-    DAI_CHECK_V(frames >= 1, "Stitching needs at least one estimation frame");
-    properties.estimationFrames = frames;
-    impl->invalidate();
-}
-
-uint32_t Stitching::getEstimationFrames() const {
-    return properties.estimationFrames;
-}
-
-void Stitching::setMaxPanoramaSize(uint32_t width, uint32_t height) {
-    DAI_CHECK_V(width > 0 && height > 0, "The maximum panorama size must not be empty, got {}x{} pixels", width, height);
-    properties.maxPanoramaWidth = width;
-    properties.maxPanoramaHeight = height;
-}
-
-void Stitching::resetTransform() {
-    impl->invalidate();
-}
-
-void Stitching::setPanoConfidenceThreshold(double threshold) {
-    properties.panoConfidenceThreshold = threshold;
-    impl->invalidate();
-}
-
-double Stitching::getPanoConfidenceThreshold() const {
-    return properties.panoConfidenceThreshold;
-}
-
-void Stitching::setSeamFinder(SeamFinder finder) {
-    properties.seamFinder = finder;
-    impl->invalidate();
-}
-
-Stitching::SeamFinder Stitching::getSeamFinder() const {
-    return properties.seamFinder;
+void Stitching::invalidateHostState() {
+    if(impl) impl->invalidate();
 }
 
 void Stitching::run() {
+    if(!impl) impl = std::make_shared<Impl>();
     DAI_CHECK_V(!inputNames.empty(), "Stitching node was not built, call build() with the sources to stitch");
     auto& logger = pimpl->logger;
     if(logger && properties.mode == Mode::PANORAMA) {
@@ -583,7 +387,4 @@ void Stitching::run() {
 }
 
 }  // namespace node
-
-template class Pimpl<node::Stitching::Impl>;
-
 }  // namespace dai

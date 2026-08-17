@@ -346,7 +346,7 @@ function(dai_add_test test_name test_src)
 
     # Link to core and Catch2 testing framework
     set(DEPTHAI_TARGET depthai::core)
-    if(NOT DEPTHAI_MERGED_TARGET)
+    if(NOT DEPTHAI_MERGED_TARGET AND TARGET depthai::opencv)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
     target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
@@ -568,6 +568,10 @@ dai_set_test_labels(model_slug_test onhost ci)
 # GPUStereo node tests
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
+
+# Stitching device-node configuration tests (must not require host OpenCV support)
+dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+dai_set_test_labels(stitching_device_node_test onhost ci)
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)

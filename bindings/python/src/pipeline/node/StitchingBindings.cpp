@@ -4,10 +4,7 @@
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
-
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include "depthai/pipeline/node/host/Stitching.hpp"
-#endif
+#include "depthai/pipeline/node/host/Stitching.hpp"
 
 extern py::handle daiNodeModule;
 
@@ -15,7 +12,6 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     // declare upfront
     py::class_<StitchingProperties> stitchingProperties(m, "StitchingProperties", DOC(dai, StitchingProperties));
     auto stitchingNode = ADD_NODE(Stitching);
@@ -24,7 +20,6 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     py::enum_<Stitching::SeamFinder> stitchingSeamFinder(stitchingNode, "SeamFinder", DOC(dai, StitchingProperties, SeamFinder));
     py::class_<Stitching::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, StitchingProperties, Plane));
     py::class_<Stitching::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, StitchingProperties, VirtualCamera));
-#endif
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -39,7 +34,6 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     stitchingMode.value("PANORAMA", Stitching::Mode::PANORAMA).value("PLANAR_PROJECTION", Stitching::Mode::PLANAR_PROJECTION);
 
     stitchingCameraModel.value("SPHERICAL", Stitching::CameraModel::SPHERICAL)
@@ -141,7 +135,4 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
         .def("setSeamFinder", &Stitching::setSeamFinder, py::arg("finder"), DOC(dai, node, Stitching, setSeamFinder))
         .def("getSeamFinder", &Stitching::getSeamFinder, DOC(dai, node, Stitching, getSeamFinder));
     daiNodeModule.attr("Stitching").attr("Properties") = stitchingProperties;
-#else
-    (void)m;
-#endif
 }

@@ -91,6 +91,7 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
     std::optional<VirtualCamera> view;
     std::uint32_t maxViewWidth = 1920;
     std::uint32_t maxViewHeight = 1920;
+    /// Maximum planar projection range, stored in centimeters.
     float maxRange = 1000.0f;
     float minIncidenceAngle = 5.0f;
 

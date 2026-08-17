@@ -12,7 +12,6 @@
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/properties/StitchingProperties.hpp"
-#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -20,8 +19,9 @@ namespace node {
 /**
  * @brief Stitching node. Combines N time-synced image streams into a single stitched image.
  *
- * The node runs on the host by default and can run on a device when selected with `setRunOnHost(false)`. Inputs are
- * fixed at build() time and synced by an internal host Sync subnode, so the sources may come from different devices.
+ * The node runs on the host by default and can run on an RVC4 device when selected with `setRunOnHost(false)`. Host
+ * execution requires depthai-core OpenCV support. Inputs are fixed at build() time and synced by an internal host Sync
+ * subnode, so the sources may come from different devices.
  * Two independent stitching modes are available:
  *
  *  - `Mode::PANORAMA` wraps OpenCV's cv::Stitcher and registers the images from their content, so no calibration is
@@ -61,6 +61,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     using SeamFinder = StitchingProperties::SeamFinder;
 
    protected:
+    Properties& getProperties() override;
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    public:
@@ -106,7 +107,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     void setSyncThreshold(std::chrono::nanoseconds syncThreshold);
 
     /**
-     * Specify whether to run on host or device. By default, the node runs on host.
+     * Specify whether to run on host or an RVC4 device. By default, the node runs on host.
      */
     void setRunOnHost(bool runOnHost);
 
@@ -213,9 +214,10 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
 
    private:
     void run() override;
+    void invalidateHostState();
 
     class Impl;
-    Pimpl<Impl> impl;
+    std::shared_ptr<Impl> impl;
 
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 4, {{DatatypeEnum::MessageGroup, true}}}};
     std::vector<std::string> inputNames;
