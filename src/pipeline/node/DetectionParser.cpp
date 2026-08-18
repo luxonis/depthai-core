@@ -149,7 +149,12 @@ void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser,
         parser.strides = {1};
     }
     if(metadata.strides) {
-        const size_t numYoloOutputs = metadata.yoloOutputs ? metadata.yoloOutputs->size() : (head.outputs ? head.outputs->size() : 0);
+        size_t numYoloOutputs = 0;
+        if(metadata.yoloOutputs) numYoloOutputs = metadata.yoloOutputs->size();
+        else if(head.outputs.has_value()) {
+            for (const auto& name : *head.outputs)
+                if(name.find("_yolo") != std::string::npos) numYoloOutputs++;
+        }
         DAI_CHECK_V(!metadata.strides->empty(), "`strides` must not be empty.");
         DAI_CHECK_V(numYoloOutputs > 0, "YOLO outputs must be defined when `strides` is provided.");
         DAI_CHECK_V(metadata.strides->size() == numYoloOutputs,
