@@ -23,11 +23,11 @@ namespace stitching {
 constexpr double REGISTRATION_RESOLUTION = 0.6;
 constexpr double SEAM_ESTIMATION_RESOLUTION = 0.1;
 constexpr double COMPOSITING_RESOLUTION = -1.0;
-constexpr float MATCH_CONFIDENCE = 0.65f;
+constexpr float MATCH_CONFIDENCE = 0.3f;
 constexpr float BLEND_STRENGTH = 5.0f;
 
 inline cv::Ptr<cv::Feature2D> createFeaturesFinder() {
-    return cv::SIFT::create();
+    return cv::ORB::create();
 }
 
 inline cv::Ptr<cv::detail::FeaturesMatcher> createFeaturesMatcher() {
