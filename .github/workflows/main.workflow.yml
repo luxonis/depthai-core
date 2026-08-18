@@ -271,7 +271,7 @@ jobs:
 
     - name: Build and test find_package (installed)
       run: |
-        cmake -S tests/integration/ -B tests/integration/build_find_package -D TEST_FIND_PACKAGE=ON -D CMAKE_PREFIX_PATH="${{ github.workspace }}/depthai_install" ${{ env.CMAKE_ARGS }}
+        cmake -S tests/integration/ -B tests/integration/build_find_package ${{ runner.os == 'Windows' && format('-G Ninja -D CMAKE_BUILD_TYPE={0}', matrix.build-type) || '' }} -D TEST_FIND_PACKAGE=ON -D CMAKE_PREFIX_PATH="${{ github.workspace }}/depthai_install" ${{ env.CMAKE_ARGS }}
         cmake --build tests/integration/build_find_package --config ${{ matrix.build-type }} --parallel 4
         cd tests/integration/build_find_package
         ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error

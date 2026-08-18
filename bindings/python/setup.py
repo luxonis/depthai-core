@@ -4,7 +4,6 @@ import sys
 import platform
 import shutil
 import subprocess
-import shlex
 import find_version
 
 from setuptools import setup, Extension
@@ -286,7 +285,7 @@ class CMakeBuild(build_ext):
 
         # Add additional cmake build args from environment
         if 'CMAKE_BUILD_ARGS' in os.environ:
-            build_args += shlex.split(os.environ['CMAKE_BUILD_ARGS'])
+            build_args += [os.environ['CMAKE_BUILD_ARGS']]
 
         # Windows
         if platform.system() == "Windows":
@@ -294,15 +293,15 @@ class CMakeBuild(build_ext):
             # cmake_args += ['-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE={}'.format(os.path.dirname(os.path.abspath(__file__)) + '/cmake/toolchain/msvc.cmake')]
             # cmake_args += ['-DVCPKG_TARGET_TRIPLET=x64-windows-static-crt'] # Keep the default triplet to avoid dual CRT issues
 
+            if not os.environ.get('CMAKE_GENERATOR', '').startswith('Ninja'):
+                # Detect whether 32 / 64 bit Python is used and compile accordingly
+                if sys.maxsize > 2**32:
+                    cmake_args += ['-A', 'x64']
+                else:
+                    cmake_args += ['-A', 'Win32']
 
-            # Detect whether 32 / 64 bit Python is used and compile accordingly
-            if sys.maxsize > 2**32:
-                cmake_args += ['-A', 'x64']
-            else:
-                cmake_args += ['-A', 'Win32']
-
-            # Add flag to build with maximum available threads
-            build_args += ['--', '/m']
+                # Add flag to build with maximum available threads
+                build_args += ['--', '/m']
         # Unix
         else:
             # if macos add some additional env vars
@@ -334,7 +333,7 @@ class CMakeBuild(build_ext):
 
         # Add additional cmake args from environment
         if 'CMAKE_ARGS' in os.environ:
-            cmake_args += shlex.split(os.environ['CMAKE_ARGS'])
+            cmake_args += [os.environ['CMAKE_ARGS']]
 
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
