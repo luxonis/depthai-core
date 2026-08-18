@@ -533,6 +533,7 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
     src/pipeline/node/host/Stitching.cpp
+    src/pipeline/node/host/FixedPanoramaCompositor.cpp
     src/pipeline/node/host/PlanarStitcher.cpp
     src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp

@@ -10,6 +10,7 @@
 #include <optional>
 #include <utility>
 
+#include "FixedPanoramaCompositor.hpp"
 #include "PlanarStitcher.hpp"
 #include "StitchingCompositing.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -105,6 +106,7 @@ class Stitching::Impl {
     std::optional<RegistrationCandidate> bestCandidate;
     uint32_t candidatesEvaluated = 0;
     bool transformFixed = false;
+    FixedPanoramaCompositor fixedPanorama;
     PlanarStitcher planar;
 
     void invalidate() {
@@ -113,6 +115,7 @@ class Stitching::Impl {
         bestCandidate.reset();
         candidatesEvaluated = 0;
         transformFixed = false;
+        fixedPanorama.reset();
         planar.reset();
     }
 
@@ -161,6 +164,16 @@ class Stitching::Impl {
         stitcher->setExposureCompensator(cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS));
         stitcher->setSeamFinder(stitching::createSeamFinder(properties.seamFinder));
         stitcher->setBlender(stitching::createBlender(panoSizeHint));
+    }
+
+    void prepareFixedPanorama(const std::vector<cv::Mat>& images, const StitchingProperties& properties) {
+        FixedPanoramaCompositor::Config config;
+        config.cameraModel = properties.cameraModel;
+        config.seamFinder = properties.seamFinder;
+        config.compositingResolution = stitching::COMPOSITING_RESOLUTION;
+        config.seamEstimationResolution = stitching::SEAM_ESTIMATION_RESOLUTION;
+        fixedPanorama.setConfig(config);
+        fixedPanorama.prepare(images, stitcher->cameras(), stitcher->workScale());
     }
 
     cv::Size panoramaSize(const std::vector<cv::Mat>& images) const {
@@ -322,9 +335,7 @@ void Stitching::run() {
                 if(!stitchingStatus.has_value()) continue;
                 status = *stitchingStatus;
             } else if(impl->transformFixed) {
-                const auto compositionStatus = composePanorama(images);
-                if(!compositionStatus.has_value()) continue;
-                status = *compositionStatus;
+                pano = impl->fixedPanorama.compose(images);
             } else {
                 impl->scoringMatcher->resetScore();
                 status = impl->stitcher->estimateTransform(images);
@@ -358,10 +369,13 @@ void Stitching::run() {
 
                     status = impl->stitcher->setTransform(images, impl->bestCandidate->cameras);
                     if(status == cv::Stitcher::OK) {
-                        const auto compositionStatus = composePanorama(images);
-                        if(!compositionStatus.has_value()) continue;
-                        status = *compositionStatus;
-                        impl->transformFixed = status == cv::Stitcher::OK;
+                        impl->prepareFixedPanorama(images, properties);
+                        pano = impl->fixedPanorama.compose(images);
+                        impl->transformFixed = true;
+                        if(logger) {
+                            const auto size = impl->fixedPanorama.getCanvasSize();
+                            logger->info("Panorama composition fixed at {}x{}; reusing warp maps, seams and exposure parameters", size.width, size.height);
+                        }
                     }
                 }
             }

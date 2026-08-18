@@ -208,6 +208,49 @@ TEST_CASE("Stitching reuses the selected transform once the estimation frames ar
     pipeline.stop();
 }
 
+TEST_CASE("Stitching rebuilds fixed panorama composition on request", "[Stitching]") {
+    const cv::Mat scene = cv::imread(KITCHEN_IMAGE_PATH);
+    REQUIRE(!scene.empty());
+
+    const std::vector<cv::Mat> views = {renderView(scene, -6.0), renderView(scene, 6.0)};
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::node::Stitching>()->build(views.size());
+    stitching->setContinuous(false);
+    stitching->setEstimationFrames(1);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+
+    std::vector<std::shared_ptr<dai::InputQueue>> inputQueues;
+    for(size_t i = 0; i < views.size(); ++i) {
+        inputQueues.push_back(stitching->inputs["input" + std::to_string(i)].createInputQueue());
+    }
+    auto output = stitching->out.createOutputQueue();
+
+    pipeline.start();
+    cv::Size fixedSize;
+    for(int64_t group = 0; group < 3; ++group) {
+        if(group == 2) stitching->resetTransform();
+        for(size_t i = 0; i < views.size(); ++i) {
+            inputQueues[i]->send(toFrame(views[i], group));
+        }
+
+        const auto panorama = output->get<dai::ImgFrame>();
+        REQUIRE(panorama != nullptr);
+        REQUIRE(panorama->getSequenceNum() == group);
+        const cv::Size size(panorama->getWidth(), panorama->getHeight());
+        if(group == 0) {
+            fixedSize = size;
+        } else if(group == 1) {
+            REQUIRE(size == fixedSize);
+        } else {
+            // A fresh ORB registration can differ by a rounding pixel even for the same images.
+            REQUIRE(std::abs(size.width - fixedSize.width) <= 1);
+            REQUIRE(std::abs(size.height - fixedSize.height) <= 1);
+        }
+    }
+    pipeline.stop();
+}
+
 TEST_CASE("Stitching freezes the strongest of multiple estimation candidates", "[Stitching]") {
     const cv::Mat scene = cv::imread(KITCHEN_IMAGE_PATH);
     REQUIRE(!scene.empty());

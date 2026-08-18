@@ -178,7 +178,8 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
      * When true, registration runs for every synced group, which is slow but tolerates cameras that
      * move relative to each other. When false, registration evaluates getEstimationFrames() complete
      * candidates without composing them, selects the one with the strongest geometrically consistent feature-match score,
-     * and then starts emitting panoramas using that transform.
+     * and then starts emitting panoramas using that transform. Projection maps, output regions, seam masks and exposure
+     * parameters are prepared with the first emitted panorama and reused for subsequent groups.
      */
     void setContinuous(bool continuous);
     bool getContinuous() const;
@@ -199,8 +200,9 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     void setMaxPanoramaSize(uint32_t width, uint32_t height);
 
     /**
-     * Discard the fixed transform and re-run the estimation. In `Mode::PLANAR_PROJECTION` the projection maps, the
-     * seams and the exposure gains are rebuilt from the next synced group.
+     * Discard the fixed transform and composition state and re-run the estimation. In `Mode::PLANAR_PROJECTION` the
+     * projection maps, seams and exposure gains are rebuilt from the next synced group. In non-continuous
+     * `Mode::PANORAMA`, registration is repeated and the fixed maps, regions, seams and exposure parameters are rebuilt.
      */
     void resetTransform();
 
