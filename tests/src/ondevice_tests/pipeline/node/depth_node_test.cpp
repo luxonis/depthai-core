@@ -225,7 +225,9 @@ void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
     }
 }
 
-std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline, const StereoPair& pair, float requestedOutputFps) {
+std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline,
+                                                                                                     const StereoPair& pair,
+                                                                                                     float requestedOutputFps) {
     try {
         auto leftCam = pipeline.create<node::Camera>()->build(pair.left, kUserStereoSensorResolution, requestedOutputFps);
         auto rightCam = pipeline.create<node::Camera>()->build(pair.right, kUserStereoSensorResolution, requestedOutputFps);
@@ -391,7 +393,7 @@ void runUserCameraDepthTest(Pipeline& pipeline,
             // Host queue rates are only meaningful for the user mono stream; depth queues can burst after start.
             float requestedOutputFps = kUserStereoFps;
             if(depthRequestedFps.has_value()) requestedOutputFps = *depthRequestedFps;
-            
+
             requireReceiveFpsInRange(setup.userFrameQueue, requestedOutputFps * 0.5f, requestedOutputFps * 1.5f);
             if(depthRequestedFps.has_value()) {
                 (void)requireStreamFrame(setup.depthFrameQueue, kDepthFrameTimeout);
