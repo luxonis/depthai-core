@@ -76,7 +76,7 @@ void FixedPanoramaCompositor::prepare(const std::vector<cv::Mat>& images, const 
 
         const cv::Mat inputMask(source.composeInputSize, CV_8U, cv::Scalar::all(255));
         cv::remap(inputMask, source.mask, source.map1, source.map2, cv::INTER_NEAREST, cv::BORDER_CONSTANT);
-        source.seamMask = source.mask;
+        source.seamMask = source.mask.clone();
 
         canvas = sources.empty() ? source.roi : canvas | source.roi;
         sources.push_back(std::move(source));
