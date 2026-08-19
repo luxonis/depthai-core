@@ -25,7 +25,8 @@ void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstac
         .def_readwrite("nClasses", &beta::ClassificationSequenceParserProperties::nClasses)
         .def_readwrite("isSoftmax", &beta::ClassificationSequenceParserProperties::isSoftmax);
 
-    classificationSequenceParser.def_readonly("inputConfig", &ClassificationSequenceParser::inputConfig, DOC(dai, beta, node, ClassificationSequenceParser, inputConfig))
+    classificationSequenceParser
+        .def_readonly("inputConfig", &ClassificationSequenceParser::inputConfig, DOC(dai, beta, node, ClassificationSequenceParser, inputConfig))
         .def_readonly("initialConfig", &ClassificationSequenceParser::initialConfig, DOC(dai, beta, node, ClassificationSequenceParser, initialConfig))
         .def_readonly("input", &ClassificationSequenceParser::input, DOC(dai, beta, node, ClassificationSequenceParser, input))
         .def_readonly("out", &ClassificationSequenceParser::out, DOC(dai, beta, node, ClassificationSequenceParser, out))
