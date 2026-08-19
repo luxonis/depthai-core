@@ -225,6 +225,10 @@ void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
     }
 }
 
+// The cameras must be built with the same fps as the depth node.
+// This is because if the cameras were prebuilt with an fps above 15 when switching down to 15fps there is high chance for them to have different phase.
+// This phase shift in turn causes the sync node to try and sync them and fail, leading to a frame never being sent and the test failing due to a timeout.
+// The issue lies in how cameras are synced when switching fps and not in the sync node.
 std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline,
                                                                                                      const StereoPair& pair,
                                                                                                      float requestedOutputFps) {
@@ -682,10 +686,6 @@ TEST_CASE("Depth: pre-built user stereo cameras with depth build(fps) at 15 FPS"
     skipUnlessUserStereoDepthScenario(device);
     const auto pair = requireFirstStereoPairForTest(device);
 
-    // Despite the test being described as having "pre-built user stereo cameras" the cameras are built with the same fps as the depth node.
-    // This is because if the cameras were prebuilt with an fps above 15 when switching down to 15fps there is high chance for them to have different phase.
-    // This phase shift in turn causes the sync node to try and sync them and fail, leading to a frame never being sent and the test failing due to a timeout.
-    // The issue lies in how cameras are synced when switching fps and not in the sync node.
     REQUIRE_NOTHROW(runUserCameraDepthTest(pipeline, device, pair, kDepthStereoFps, false, false));
 }
 
