@@ -179,6 +179,26 @@ TEST_CASE("Zero depth pixels produce zero-valued points", "[PointCloud][Impl]") 
     }
 }
 
+TEST_CASE("Distorted depth is undistorted before deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {10.f});
+
+    auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
+
+    // The right pixel's distorted normalized x is 0.01. Positive radial
+    // distortion maps it to a smaller undistorted ray before deprojection.
+    REQUIRE(points[2].x < 10.f);
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+
+    // Updating intrinsics must rebuild the cached rays.
+    impl.setIntrinsics(200.f, 100.f, 1.f, 0.f, W, H);
+    points = computeDense(impl, makeConstantDepth(W, H, 1000));
+    REQUIRE(points[2].x < 5.f);
+}
+
 // ============================================================================
 // Depth with holes → filterValidPoints keeps only z > 0
 // ============================================================================

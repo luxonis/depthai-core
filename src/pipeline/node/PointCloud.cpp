@@ -23,6 +23,7 @@
 #include "device/CalibrationHandler.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
 
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     #include "depthai/shaders/depth2pointcloud.hpp"
@@ -53,7 +54,12 @@ void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, std::vec
             computePointCloudDenseCPUMT(depthData, points);
             break;
         case ComputeMethod::GPU:
-            computePointCloudDenseGPU(depthData, points);
+            if(hasDistortion) {
+                if(logger) logger->warn("GPU compute does not support depth undistortion yet, falling back to CPU");
+                computePointCloudDenseCPU(depthData, points);
+            } else {
+                computePointCloudDenseGPU(depthData, points);
+            }
             break;
     }
 }
@@ -147,8 +153,9 @@ void PointCloud::Impl::calcPointsChunkDense(const uint8_t* depthData, std::vecto
             float yCoord = 0.0f;
 
             if(z > 0.0f) {
-                xCoord = (col - cx) * z / fx;
-                yCoord = (row - cy) * z / fy;
+                const auto& ray = undistortedRays[i];
+                xCoord = ray.x * z;
+                yCoord = ray.y * z;
             }
 
             points[i] = Point3f{xCoord, yCoord, z};
@@ -199,8 +206,9 @@ void PointCloud::Impl::calcPointsChunkDenseColored(
             float yCoord = 0.0f;
 
             if(z > 0.0f) {
-                xCoord = (col - cx) * z / fx;
-                yCoord = (row - cy) * z / fy;
+                const auto& ray = undistortedRays[i];
+                xCoord = ray.x * z;
+                yCoord = ray.y * z;
             }
 
             uint8_t r = colorData[i * 3 + 0];
@@ -387,6 +395,7 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
     this->height = height;
     size = this->width * this->height;
     intrinsicsSet = true;
+    cacheUndistortedRays();
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     if(resolutionChanged) {
         tensorsInitialized = false;
@@ -394,6 +403,27 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
         tensors.clear();
     }
 #endif
+}
+
+void PointCloud::Impl::setDistortion(CameraModel model, std::vector<float> coefficients) {
+    distortionModel = model;
+    distortionCoefficients = std::move(coefficients);
+    hasDistortion = hasNonZeroDistortion(distortionCoefficients);
+    cacheUndistortedRays();
+}
+
+void PointCloud::Impl::cacheUndistortedRays() {
+    undistortedRays.clear();
+    if(!intrinsicsSet) return;
+
+    undistortedRays.resize(size);
+    for(unsigned int row = 0; row < height; ++row) {
+        for(unsigned int col = 0; col < width; ++col) {
+            const size_t i = static_cast<size_t>(row) * width + col;
+            const auto ray = undistortPoint({(col - cx) / fx, (row - cy) / fy, 1.0f}, distortionModel, distortionCoefficients);
+            undistortedRays[i] = {ray[0] / ray[2], ray[1] / ray[2]};
+        }
+    }
 }
 
 void PointCloud::Impl::clearExtrinsics() {
@@ -618,6 +648,7 @@ void PointCloud::initialize(const ImgFrame& depthFrame, const PointCloudConfig& 
 
     // Set camera intrinsics from the depth frame
     setIntrinsicsFromFrame(depthFrame);
+    pimplPointCloud->setDistortion(depthFrame.transformation.getDistortionModel(), depthFrame.transformation.getDistortionCoefficients());
 
     // Compute and apply coordinate transformation (frame extrinsics + target transform)
     setCoordinateTransformation(depthFrame, config);
