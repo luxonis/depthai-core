@@ -671,7 +671,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         # resolution doesn't pick up a like-named/incompatible copy earlier on LD_LIBRARY_PATH (e.g. from a ROS system install).
         target_link_options(${TARGET_CORE_NAME} INTERFACE
             "$<BUILD_INTERFACE:-Wl,-rpath-link,${DYNAMIC_CALIBRATION_DIR}/lib>"
-            "$<INSTALL_INTERFACE:-Wl,-rpath-link,${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}>"
+            "$<INSTALL_INTERFACE:-Wl,-rpath-link,$<TARGET_FILE_DIR:${PROJECT_NAME}::${TARGET_CORE_ALIAS}>/${PROJECT_NAME}>"
         )
     endif()
 endif()
