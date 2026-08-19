@@ -284,15 +284,20 @@ jobs:
     #     ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
   required_core_ci_report:
-    name: Required Core CI report
+    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Core CI report (not applicable)' }}
     needs: [precheck, consistency, style, tidy, minimal-build, build, integration]
-    if: always() && needs.precheck.outputs.should_run == 'true'
+    if: always()
     runs-on: ubuntu-latest
     steps:
     - name: Check required CI results
       env:
+        SHOULD_RUN: ${{ needs.precheck.outputs.should_run }}
         RESULTS: ${{ join(needs.*.result, ' ') }}
       run: |
+        if [[ "$SHOULD_RUN" != "true" && "$RESULTS" != *failure* && "$RESULTS" != *cancelled* ]]; then
+          echo "Core CI is not required for this event."
+          exit 0
+        fi
         if [[ "$RESULTS" == *failure* || "$RESULTS" == *cancelled* || "$RESULTS" == *skipped* ]]; then
           echo "Required Core CI jobs failed or did not complete: $RESULTS"
           exit 1

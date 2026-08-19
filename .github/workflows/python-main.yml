@@ -767,15 +767,20 @@ jobs:
           python bindings/python/ci/smoke_depthai.py
 
   required_python_ci_report:
-    name: Required Python CI report
+    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Python CI report' || 'Python CI report (not applicable)' }}
     needs: [precheck, pytest, combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
-    if: always() && needs.precheck.outputs.should_run == 'true'
+    if: always()
     runs-on: ubuntu-latest
     steps:
     - name: Check required CI results
       env:
+        SHOULD_RUN: ${{ needs.precheck.outputs.should_run }}
         RESULTS: ${{ join(needs.*.result, ' ') }}
       run: |
+        if [[ "$SHOULD_RUN" != "true" && "$RESULTS" != *failure* && "$RESULTS" != *cancelled* ]]; then
+          echo "Python CI is not required for this event."
+          exit 0
+        fi
         if [[ "$RESULTS" == *failure* || "$RESULTS" == *cancelled* || "$RESULTS" == *skipped* ]]; then
           echo "Required Python CI jobs failed or did not complete: $RESULTS"
           exit 1
