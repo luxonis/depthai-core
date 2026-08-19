@@ -616,7 +616,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         device = std::make_shared<Device>(devInfo);
     } catch(const std::exception& ex) {
         const std::string errorMessage = ex.what();
-        metrics.deviceInUse = errorMessage.find("X_LINK_DEVICE_ALREADY_IN_USE") != std::string::npos || devInfo.state == X_LINK_GATE_BOOTED;
+        metrics.deviceInUse = errorMessage.find("X_LINK_DEVICE_ALREADY_IN_USE") != std::string::npos || errorMessage.find("Device is already used") != std::string::npos || devInfo.state == X_LINK_GATE_BOOTED;
         metrics.missingUdevRules = errorMessage.find("X_LINK_INSUFFICIENT_PERMISSIONS") != std::string::npos;
         metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Connection, errorMessage);
         setRequestedChecksFailed(metrics, config);
