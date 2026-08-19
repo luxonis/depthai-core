@@ -150,9 +150,10 @@ void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser,
     }
     if(metadata.strides) {
         size_t numYoloOutputs = 0;
-        if(metadata.yoloOutputs) numYoloOutputs = metadata.yoloOutputs->size();
+        if(metadata.yoloOutputs)
+            numYoloOutputs = metadata.yoloOutputs->size();
         else if(head.outputs.has_value()) {
-            for (const auto& name : *head.outputs)
+            for(const auto& name : *head.outputs)
                 if(name.find("_yolo") != std::string::npos) numYoloOutputs++;
         }
         DAI_CHECK_V(!metadata.strides->empty(), "`strides` must not be empty.");
