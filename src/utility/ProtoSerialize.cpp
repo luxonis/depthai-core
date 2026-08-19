@@ -335,6 +335,26 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::ImgDetectionsFilterConfig:
+        case DatatypeEnum::Classifications:
+        case DatatypeEnum::Keypoints:
+        case DatatypeEnum::Clusters:
+        case DatatypeEnum::Map2D:
+        case DatatypeEnum::Lines:
+        case DatatypeEnum::Predictions:
+        case DatatypeEnum::FastSAMParserConfig:
+        case DatatypeEnum::HRNetParserConfig:
+        case DatatypeEnum::MLSDParserConfig:
+        case DatatypeEnum::MPPalmDetectionParserConfig:
+        case DatatypeEnum::PPTextDetectionParserConfig:
+        case DatatypeEnum::RFDETRParserConfig:
+        case DatatypeEnum::SCRFDParserConfig:
+        case DatatypeEnum::SuperAnimalParserConfig:
+        case DatatypeEnum::YuNetParserConfig:
+        case DatatypeEnum::ClassificationSequenceParserConfig:
+        case DatatypeEnum::MapOutputParserConfig:
+        case DatatypeEnum::XFeatMonoParserConfig:
+        case DatatypeEnum::XFeatStereoParserConfig:
         case DatatypeEnum::COUNT:
             return false;
     }

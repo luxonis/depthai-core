@@ -128,10 +128,6 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
             [](SpatialImgDetections& det, std::vector<SpatialImgDetection>& val) { det.detections = val; },
             DOC(dai, ImgDetectionsT, detections),
             py::return_value_policy::reference_internal)
-        .def("getTimestamp", &SpatialImgDetections::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &SpatialImgDetections::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getTimestampSystem", &SpatialImgDetections::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
-        .def("getSequenceNum", &SpatialImgDetections::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](SpatialImgDetections& msg) { return msg.transformation; })
         .def("setTransformation",
              [](SpatialImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
@@ -162,8 +158,5 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
             py::arg("semantic_class"),
             DOC(dai, ImgDetectionsT, getCvSegmentationMaskByClass))
 #endif
-        // .def("setTimestamp", &SpatialImgDetections::setTimestamp, DOC(dai, SpatialImgDetections, setTimestamp))
-        // .def("setTimestampDevice", &SpatialImgDetections::setTimestampDevice, DOC(dai, SpatialImgDetections, setTimestampDevice))
-        // .def("setSequenceNum", &SpatialImgDetections::setSequenceNum, DOC(dai, SpatialImgDetections, setSequenceNum))
         ;
 }

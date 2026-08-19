@@ -511,6 +511,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, getConnectedCameras))
         .def(
+            "getConnectedCameras",
+            [](DeviceBase& d, CameraSensorType type) {
+                py::gil_scoped_release release;
+                return d.getConnectedCameras(type);
+            },
+            py::arg("type"),
+            DOC(dai, DeviceBase, getConnectedCameras, 2))
+        .def(
             "getConnectionInterfaces",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
@@ -1089,6 +1097,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             py::arg("enable"),
             DOC(dai, DeviceBase, setExternalStrobeEnable))
+        .def(
+            "setExternalStrobeEnable",
+            [](DeviceBase& d, dai::CameraBoardSocket exposureMasterSocket) {
+                py::gil_scoped_release release;
+                d.setExternalStrobeEnable(exposureMasterSocket);
+            },
+            py::arg("exposureMasterSocket"),
+            DOC(dai, DeviceBase, setExternalStrobeEnable, 2))
         .def(
             "getDeviceName",
             [](DeviceBase& d) {

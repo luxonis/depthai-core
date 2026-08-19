@@ -474,7 +474,32 @@ TEST_CASE("DetectionParser can set a specific head") {
         if(head.metadata.yoloOutputs) {
             REQUIRE(parser.properties.parser.outputNamesToUse == *head.metadata.yoloOutputs);
         }
+        if(head.metadata.strides) {
+            REQUIRE(parser.properties.parser.strides == std::vector<int>(head.metadata.strides->begin(), head.metadata.strides->end()));
+        }
     }
+}
+
+TEST_CASE("DetectionParser uses metadata strides") {
+    dai::nn_archive::v1::Head head;
+    head.parser = "YOLO";
+    head.outputs = std::vector<std::string>{"output_0", "output_1"};
+    head.metadata.yoloOutputs = std::vector<std::string>{"output_0", "output_1"};
+    head.metadata.strides = std::vector<int64_t>{4, 8};
+
+    dai::node::DetectionParser parser;
+    const std::vector<int> expectedStrides{4, 8};
+    REQUIRE_NOTHROW(parser.setNNArchiveHead(head));
+    REQUIRE(parser.properties.parser.strides == expectedStrides);
+
+    head.metadata.strides = std::vector<int64_t>{4};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
+
+    head.metadata.strides = std::vector<int64_t>{4, 0};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
+
+    head.metadata.strides = std::vector<int64_t>{};
+    REQUIRE_THROWS(parser.setNNArchiveHead(head));
 }
 
 TEST_CASE("DetectionParser can be build using a specific head") {
@@ -541,15 +566,10 @@ TEST_CASE("DetectionParser YOLO26 smoke test") {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 TEST_CASE("DetectionParser segmentation mask test") {
     const std::string modelName = "yolov8-instance-segmentation-large:coco-640x352:701031f";
-
-    const std::filesystem::path kitchenImagePath{KITCHEN_IMAGE_PATH};
     const std::string segmentationGroundTruth = YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH;
 
     cv::Mat kitchenGtSegmentation = cv::imread(segmentationGroundTruth, cv::IMREAD_GRAYSCALE);
     REQUIRE_FALSE(kitchenGtSegmentation.empty());
-
-    cv::Mat kitchenImage = cv::imread(kitchenImagePath.string(), cv::IMREAD_COLOR);
-    REQUIRE_FALSE(kitchenImage.empty());
 
     dai::Pipeline p;
     auto device = p.getDefaultDevice();
@@ -561,28 +581,30 @@ TEST_CASE("DetectionParser segmentation mask test") {
     const auto inputSize = nnArchive.getInputSize();
     REQUIRE(inputSize.has_value());
 
-    const cv::Size networkSize{static_cast<int>(inputSize->first), static_cast<int>(inputSize->second)};
-    cv::resize(kitchenImage, kitchenImage, networkSize, 0.0, 0.0, cv::INTER_AREA);
+    auto detectionParser = p.create<dai::node::DetectionParser>();
+    detectionParser->setNNArchive(nnArchive);
 
-    auto nn = p.create<dai::node::NeuralNetwork>();
-    nn->setModelPath(archivePath);
-
-    auto detectionParser = p.create<dai::node::DetectionParser>()->build(nn->out, nnArchive);
-
-    auto nnInput = nn->input.createInputQueue();
+    auto inputQueue = detectionParser->input.createInputQueue();
     auto outputQueue = detectionParser->out.createOutputQueue();
-
-    auto inputFrame = std::make_shared<dai::ImgFrame>();
-    auto transformation = dai::ImgTransformation{inputSize->first, inputSize->second};
-    inputFrame->setCvFrame(kitchenImage, dai::ImgFrame::Type::BGR888i);
-    inputFrame->setTimestamp(std::chrono::steady_clock::now());
-    inputFrame->setSequenceNum(0);
-    inputFrame->transformation = transformation;
 
     p.start();
     REQUIRE(p.isRunning());
 
-    nnInput->send(inputFrame);
+    auto nnData = std::make_shared<dai::NNData>();
+    std::ifstream nnMetadataFile(YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_METADATA, std::ios::binary);
+    const auto nnMetadata = std::vector<uint8_t>(
+        std::istreambuf_iterator<char>(nnMetadataFile),
+        std::istreambuf_iterator<char>());
+    REQUIRE(dai::utility::deserialize(nnMetadata, *nnData));
+    std::ifstream nnPayloadFile(YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA, std::ios::binary);
+    const auto nnDataPayload = std::vector<uint8_t>(
+        std::istreambuf_iterator<char>(nnPayloadFile),
+        std::istreambuf_iterator<char>());
+    REQUIRE(nnMetadata.size());
+    REQUIRE(nnDataPayload.size());
+    nnData->setData(nnDataPayload);
+
+    inputQueue->send(nnData);
 
     auto detections = outputQueue->get<dai::ImgDetections>();
     REQUIRE(detections != nullptr);

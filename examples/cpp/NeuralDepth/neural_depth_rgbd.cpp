@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
         // Color camera
         auto color = pipeline.create<dai::node::Camera>();
-        color->build(dai::CameraBoardSocket::CAM_A, std::nullopt, FPS);
+        color->build(dai::CameraBoardSocket::AUTO, std::nullopt, FPS);
 
         // Left and right mono cameras for the stereo pair
         auto left = pipeline.create<dai::node::Camera>();
