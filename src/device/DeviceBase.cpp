@@ -1740,6 +1740,10 @@ void DeviceBase::setExternalStrobeEnable(bool enable) {
     pimpl->rpcCallCheckedVoid("setExternalStrobeEnable", enable);
 }
 
+void DeviceBase::setExternalStrobeEnable(dai::CameraBoardSocket exposureMasterSocket) {
+    pimpl->rpcCallCheckedVoid("setExternalStrobeEnableExposureMaster", exposureMasterSocket);
+}
+
 dai::Version DeviceBase::getIMUFirmwareVersion() {
     isClosed();
     std::string versionStr = pimpl->rpcCallChecked<std::string>("getIMUFirmwareVersion");

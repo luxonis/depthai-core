@@ -47,11 +47,11 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 **Flow:**
 1. Create mono cameras → request **full-res NV12** (unrectified) → link to:
    - `DynamicCalibration.left/right`
-   - `StereoDepth.left/right` (for live disparity view)
+   - `StereoDepth.left/right` (for live depth view)
 2. Start the pipeline, give AE a moment to settle.
 3. **Start calibration** by sending `DynamicCalibrationControl::Commands::StartCalibration{}`.
 4. In the loop:
-   - Show `left`, `right`, and `disparity`.
+   - Show `left`, `right`, and `depth`.
    - Poll `coverageOutput` for progress.
    - Poll `calibrationOutput` for a result.
 5. When a result arrives:
@@ -110,10 +110,10 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 **File:** `calibration_integration.cpp`
 
 **What it does:**  
-Runs one loop that periodically refreshes coverage, executes calibration, and applies a new calibration automatically when the returned metrics indicate drift — while showing `left`, `right`, and a colorized `disparity` preview.
+Runs one loop that periodically refreshes coverage, executes calibration, and applies a new calibration automatically when the returned metrics indicate drift — while showing `left`, `right`, and a colorized `depth` preview.
 
 **Flow:**
-1. Create mono cameras → request **full-res NV12** (unrectified) → link to `dai::node::DynamicCalibration` and `dai::node::StereoDepth` for live disparity. Read the device’s current calibration as the baseline.
+1. Create mono cameras → request **full-res NV12** (unrectified) → link to `dai::node::DynamicCalibration` and `dai::node::StereoDepth` for live depth. Read the device’s current calibration as the baseline.
 2. On a fixed interval (e.g., ~3 seconds), send on the control queue:
    - `DynamicCalibrationControl::Commands::LoadImage{}` to compute coverage on the current frames, and
    - `DynamicCalibrationControl::Commands::Calibrate{true}` to compute a new candidate calibration and return metrics on `calibrationOutput`.
@@ -125,7 +125,7 @@ Runs one loop that periodically refreshes coverage, executes calibration, and ap
 5. Exit on `q` keypress or window close.
 
 **Notes & defaults:**
-- Disparity preview can be auto-scaled to the observed maximum; zero disparity can be rendered black for clarity.
+- Depth preview uses the shared colorization helper with a 500–12000 mm range and logarithmic scaling.
 - The 0.05 px Sampson threshold is a simple heuristic — tune to your tolerance and noise profile.
 
 **Example console output:**
@@ -146,7 +146,7 @@ Mono CAM_B ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibratio
 
 Mono CAM_C ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibration.right
                   │
-                  └───────────▶ StereoDepth.right ──▶ disparity
+                  └───────────▶ StereoDepth.right ──▶ depth
 ```
 
 ---
@@ -230,7 +230,7 @@ If you previously read fields from `CalibrationQuality::qualityData`, read the s
 - **No quality data returned**  
   Ensure the target is sharp, well-lit, and covers diverse parts of the image. Increase lighting or steady the rig.
 
-- **Disparity looks worse after apply**  
+- **Depth preview looks worse after apply**
   Collect more diverse samples (tilt/translate the target), or try a performance mode tuned for robustness. Clean lenses; verify focus.
 
 - **Nothing happens after StartCalibration**  

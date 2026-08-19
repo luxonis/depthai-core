@@ -2,6 +2,7 @@ project(misc_examples)
 cmake_minimum_required(VERSION 3.10)
 
 add_subdirectory(AutoReconnect)
+add_subdirectory(Bootloader)
 add_subdirectory(CrashDump)
 add_subdirectory(HealthCheck)
 add_subdirectory(Projectors)

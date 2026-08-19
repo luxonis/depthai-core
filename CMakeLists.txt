@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.8.0" LANGUAGES CXX C)
+project(depthai VERSION "3.9.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -525,6 +525,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 set(TARGET_OPENCV_SOURCES
+    src/opencv/ColorizeDepthFrame.cpp
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/HostCamera.cpp

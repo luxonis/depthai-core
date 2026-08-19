@@ -27,6 +27,11 @@
 // Include common datatypes
 #include "pipeline/datatypes.hpp"
 
+// OpenCV-specific utilities
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "utility/ColorizeDepthFrame.hpp"
+#endif
+
 // Model zoo
 #include "modelzoo/Zoo.hpp"
 
