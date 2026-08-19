@@ -50,6 +50,9 @@ inline bool RRinRR(const dai::RotatedRect& in, const dai::RotatedRect& out) {
 }
 
 dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransformation& from, const ImgTransformation& to) {
+    if(!from.getExtrinsics().hasCompatibleCoordinateSystem(to.getExtrinsics())) {
+        throw std::runtime_error("Cannot remap ImgTransformations expressed relative to different target coordinate systems.");
+    }
     if(from.isEqualTransformation(to)) {
         return sourcePt;
     }
@@ -119,7 +122,6 @@ bool ImgTransformation::isEqualTransformation(const ImgTransformation& other) co
     auto thisExtrinsics = getExtrinsics();
     auto otherExtrinsics = other.getExtrinsics();
     if(!thisExtrinsics.isEqualExtrinsics(otherExtrinsics)) return false;
-
     if(getSize() != other.getSize()) return false;
     if(getSourceSize() != other.getSourceSize()) return false;
     return true;
@@ -532,6 +534,7 @@ std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformati
 }
 
 bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
+    if(!extrinsics.hasCompatibleCoordinateSystem(to.extrinsics)) return false;
     if(width != to.width || height != to.height) return false;
     if(this->distortionModel != to.distortionModel) return false;
     auto approxEqual = [](float a, float b, float absTol = ROUND_UP_EPS, float relTol = 2 * ROUND_UP_EPS) {

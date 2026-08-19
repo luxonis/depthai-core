@@ -399,6 +399,7 @@ const std::filesystem::path& getTransformationTestDataFolder() {
 // -----------------------------------------------------------------------------
 TEST_CASE("ImgTransformation in ImgFrame") {
     dai::Pipeline pipeline;
+    const auto expectedDeviceId = pipeline.getDefaultDevice()->getDeviceId();
     auto cam = pipeline.create<dai::node::Camera>()->build();
     auto camOut = cam->requestOutput({600, 400}, dai::ImgFrame::Type::NV12);
     auto q = camOut->createOutputQueue();
@@ -411,6 +412,8 @@ TEST_CASE("ImgTransformation in ImgFrame") {
     REQUIRE(!isIdentity(frame->transformation.getMatrixInv()));
     REQUIRE(!isIdentity(frame->transformation.getSourceIntrinsicMatrix()));
     REQUIRE(!isIdentity(frame->transformation.getSourceIntrinsicMatrixInv()));
+    REQUIRE_FALSE(expectedDeviceId.empty());
+    REQUIRE(frame->transformation.getExtrinsics().toDeviceId == expectedDeviceId);
 }
 
 // -----------------------------------------------------------------------------
