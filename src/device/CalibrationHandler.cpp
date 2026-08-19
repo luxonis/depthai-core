@@ -32,19 +32,8 @@ namespace {
 constexpr size_t kImuCalibrationRowCount = 3;
 constexpr size_t kImuCalibrationColumnCount = 4;
 
-bool isValidIntrinsicsMatrix(const std::vector<std::vector<float>>& intrinsics) {
-    if(intrinsics.size() != 3 || intrinsics[0].size() != 3 || intrinsics[1].size() != 3 || intrinsics[2].size() != 3) {
-        return false;
-    }
-
-    for(const auto& row : intrinsics) {
-        if(!std::all_of(row.begin(), row.end(), [](float value) { return std::isfinite(value); })) {
-            return false;
-        }
-    }
-
-    return intrinsics[0][0] > 0.0f && intrinsics[1][1] > 0.0f && intrinsics[1][0] == 0.0f && intrinsics[2][0] == 0.0f && intrinsics[2][1] == 0.0f
-           && intrinsics[2][2] == 1.0f;
+bool isValidCalibrationDimension(float dimension) {
+    return std::isfinite(dimension) && dimension > 0.0f && dimension <= std::numeric_limits<uint16_t>::max() && std::trunc(dimension) == dimension;
 }
 
 std::optional<std::array<float, 3>> lookupHousingEntry(const std::string& productName, HousingCoordinateSystem housingCs) {
@@ -1053,7 +1042,7 @@ void CalibrationHandler::setProductName(const std::string& productName) {
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& intrinsics, int width, int height) {
     if(!isValidIntrinsicsMatrix(intrinsics)) {
-        throw std::runtime_error("Invalid Intrinsic Matrix entered!!");
+        throw std::runtime_error("Invalid Intrinsic Matrix entered: " + nlohmann::json(intrinsics).dump());
     }
     if(width <= 0 || height <= 0 || width > std::numeric_limits<uint16_t>::max() || height > std::numeric_limits<uint16_t>::max()) {
         throw std::runtime_error("Invalid calibration resolution entered!!");
@@ -1074,6 +1063,9 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const s
 }
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& intrinsics, Size2f frameSize) {
+    if(!isValidCalibrationDimension(frameSize.width) || !isValidCalibrationDimension(frameSize.height)) {
+        throw std::runtime_error("Invalid calibration resolution entered!!");
+    }
     setCameraIntrinsics(cameraId, intrinsics, static_cast<int>(frameSize.width), static_cast<int>(frameSize.height));
     return;
 }
