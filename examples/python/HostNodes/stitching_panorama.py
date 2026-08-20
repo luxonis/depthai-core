@@ -20,11 +20,11 @@ with dai.Pipeline(device) as pipeline:
         camera = pipeline.create(dai.node.Camera).build(socket, sensorFps=FPS)
         outputs.append(camera.requestOutput((640, 400), fps=FPS))
 
-    stitching = pipeline.create(dai.node.Stitching).build(outputs)
-    stitching.setMode(dai.node.Stitching.Mode.PANORAMA)
-    stitching.setCameraModel(dai.node.Stitching.CameraModel.PINHOLE)
+    stitching = pipeline.create(dai.beta.node.Stitching).build(outputs)
+    stitching.setMode(dai.beta.node.Stitching.Mode.PANORAMA)
+    stitching.setCameraModel(dai.beta.node.Stitching.CameraModel.PINHOLE)
     # Uncomment to trade seam quality for throughput.
-    # stitching.setSeamFinder(dai.node.Stitching.SeamFinder.NONE)
+    # stitching.setSeamFinder(dai.beta.node.Stitching.SeamFinder.NONE)
     stitching.setPanoConfidenceThreshold(0.3)
     stitching.setContinuous(False)
     stitching.setEstimationFrames(10)

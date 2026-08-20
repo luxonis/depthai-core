@@ -11,9 +11,10 @@
 #include <opencv2/stitching/detail/seam_finders.hpp>
 #include <opencv2/stitching/warpers.hpp>
 
-#include "depthai/pipeline/node/host/Stitching.hpp"
+#include "depthai/beta/node/Stitching.hpp"
 
 namespace dai {
+namespace beta {
 namespace node {
 
 /**
@@ -89,4 +90,5 @@ inline cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) 
 
 }  // namespace stitching
 }  // namespace node
+}  // namespace beta
 }  // namespace dai

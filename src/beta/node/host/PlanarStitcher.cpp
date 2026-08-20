@@ -11,6 +11,7 @@
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
+namespace beta {
 namespace node {
 
 namespace {
@@ -452,4 +453,5 @@ cv::Mat PlanarStitcher::compose(const std::vector<cv::Mat>& images) {
 }
 
 }  // namespace node
+}  // namespace beta
 }  // namespace dai

@@ -30,7 +30,6 @@
 #include "depthai/properties/SpatialDetectionNetworkProperties.hpp"
 #include "depthai/properties/SpatialLocationCalculatorProperties.hpp"
 #include "depthai/properties/StereoDepthProperties.hpp"
-#include "depthai/properties/StitchingProperties.hpp"
 #include "depthai/properties/SyncProperties.hpp"
 #include "depthai/properties/SystemLoggerProperties.hpp"
 #include "depthai/properties/ThermalProperties.hpp"
@@ -89,7 +88,6 @@ SPIOutProperties::~SPIOutProperties() = default;
 ScriptProperties::~ScriptProperties() = default;
 SpatialDetectionNetworkProperties::~SpatialDetectionNetworkProperties() = default;
 SpatialLocationCalculatorProperties::~SpatialLocationCalculatorProperties() = default;
-StitchingProperties::~StitchingProperties() = default;
 SegmentationParserProperties::~SegmentationParserProperties() = default;
 StereoDepthProperties::~StereoDepthProperties() = default;
 SyncProperties::~SyncProperties() = default;

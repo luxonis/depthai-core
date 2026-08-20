@@ -1,4 +1,4 @@
-#include "depthai/pipeline/node/host/Stitching.hpp"
+#include "depthai/beta/node/Stitching.hpp"
 
 #include <stdexcept>
 #include <utility>
@@ -7,12 +7,15 @@
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
+namespace beta {
+
+StitchingProperties::~StitchingProperties() = default;
 
 namespace node {
 
 Stitching::Stitching() = default;
 
-Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>(std::move(props)) {
+Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties>(std::move(props)) {
     initializeInputNames(properties.numInputs);
 }
 
@@ -231,4 +234,5 @@ Stitching::SeamFinder Stitching::getSeamFinder() const {
 }
 
 }  // namespace node
+}  // namespace beta
 }  // namespace dai

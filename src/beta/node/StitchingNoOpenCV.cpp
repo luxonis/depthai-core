@@ -1,8 +1,9 @@
 #include <stdexcept>
 
-#include "depthai/pipeline/node/host/Stitching.hpp"
+#include "depthai/beta/node/Stitching.hpp"
 
 namespace dai {
+namespace beta {
 namespace node {
 
 void Stitching::initializeHostState() {}
@@ -12,4 +13,5 @@ void Stitching::run() {
 }
 
 }  // namespace node
+}  // namespace beta
 }  // namespace dai

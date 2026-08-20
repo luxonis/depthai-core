@@ -19,6 +19,7 @@
 #include "node/RegressionParser.hpp"
 #include "node/SCRFDParser.hpp"
 #include "node/SuperAnimalParser.hpp"
+#include "node/Stitching.hpp"
 #include "node/XFeatMonoParser.hpp"
 #include "node/XFeatStereoParser.hpp"
 #include "node/YuNetParser.hpp"

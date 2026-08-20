@@ -8,14 +8,15 @@
 #include <optional>
 #include <vector>
 
+#include "depthai/beta/BetaNode.hpp"
+#include "depthai/beta/properties/StitchingProperties.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3f.hpp"
-#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
-#include "depthai/properties/StitchingProperties.hpp"
 
 namespace dai {
+namespace beta {
 namespace node {
 
 /**
@@ -32,7 +33,7 @@ namespace node {
  *    (bird's-eye view), driven purely by the calibration carried in the messages, so it also works without overlap.
  *    All input transformations must have the same origin camera socket.
  */
-class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>, public HostRunnable {
+class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties> {
    public:
     constexpr static const char* NAME = "Stitching";
 
@@ -69,12 +70,12 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
    public:
     Stitching();
     Stitching(std::unique_ptr<Properties> props);
-    ~Stitching();
+    ~Stitching() override;
 
     /**
      * Internal Sync node time-aligning the inputs.
      */
-    Subnode<node::Sync> sync{*this, "sync"};
+    Subnode<dai::node::Sync> sync{*this, "sync"};
 
    private:
     // Configure-mode nodes do not instantiate subnodes, so retain their deserialized dynamic input interface locally.
@@ -120,7 +121,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     /**
      * Specify whether to run on host or an RVC4 device. By default, the node runs on host.
      */
-    void setRunOnHost(bool runOnHost);
+    void setRunOnHost(bool runOnHost) override;
 
     /**
      * Check whether the node is configured to run on host.
@@ -242,4 +243,5 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
 };
 
 }  // namespace node
+}  // namespace beta
 }  // namespace dai

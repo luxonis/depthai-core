@@ -3,6 +3,7 @@
 #include "depthai/device/Platform.hpp"
 
 namespace dai {
+namespace beta {
 namespace node {
 namespace stitching {
 
@@ -12,4 +13,5 @@ constexpr bool isDevicePlatformSupported(Platform platform) {
 
 }  // namespace stitching
 }  // namespace node
+}  // namespace beta
 }  // namespace dai

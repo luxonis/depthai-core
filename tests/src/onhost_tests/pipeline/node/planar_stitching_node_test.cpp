@@ -3,9 +3,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cmath>
+#include <depthai/beta/node/Stitching.hpp>
 #include <depthai/pipeline/Pipeline.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
-#include <depthai/pipeline/node/host/Stitching.hpp>
 #include <opencv2/imgproc.hpp>
 #include <optional>
 #include <utility>
@@ -220,18 +220,18 @@ std::optional<cv::Point2d> findMarker(const cv::Mat& image, const cv::Vec3b& col
 }
 
 /// A node fed by the synthetic dataset, with the blending kept out of the way of the color checks.
-std::shared_ptr<dai::node::Stitching> makePlanarNode(dai::Pipeline& pipeline, const Dataset& dataset) {
-    auto stitching = pipeline.create<dai::node::Stitching>()->build(dataset.images.size());
-    stitching->setMode(dai::node::Stitching::Mode::PLANAR_PROJECTION);
+std::shared_ptr<dai::beta::node::Stitching> makePlanarNode(dai::Pipeline& pipeline, const Dataset& dataset) {
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(dataset.images.size());
+    stitching->setMode(dai::beta::node::Stitching::Mode::PLANAR_PROJECTION);
     stitching->setPlane(dataset.planePoint(), dataset.planeNormal());
     stitching->setMaxRange(4.0f, dai::LengthUnit::METER);
     stitching->setMaxViewSize(MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
     stitching->setSyncThreshold(std::chrono::seconds(1));
-    stitching->setSeamFinder(dai::node::Stitching::SeamFinder::VORONOI);
+    stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::VORONOI);
     return stitching;
 }
 
-std::shared_ptr<dai::ImgFrame> runOnce(dai::Pipeline& pipeline, const std::shared_ptr<dai::node::Stitching>& stitching, const Dataset& dataset) {
+std::shared_ptr<dai::ImgFrame> runOnce(dai::Pipeline& pipeline, const std::shared_ptr<dai::beta::node::Stitching>& stitching, const Dataset& dataset) {
     std::vector<std::shared_ptr<dai::InputQueue>> inputQueues;
     for(size_t i = 0; i < dataset.images.size(); ++i) {
         inputQueues.push_back(stitching->inputs["input" + std::to_string(i)].createInputQueue());
@@ -255,10 +255,10 @@ const std::vector<SyntheticCamera> RIG = {makeCamera(0.0, -60.0, 0.0), makeCamer
 
 TEST_CASE("Stitching validates the planar projection settings", "[Stitching]") {
     dai::Pipeline pipeline(false);
-    auto stitching = pipeline.create<dai::node::Stitching>();
+    auto stitching = pipeline.create<dai::beta::node::Stitching>();
 
-    REQUIRE_NOTHROW(stitching->setMode(dai::node::Stitching::Mode::PLANAR_PROJECTION));
-    REQUIRE(stitching->getMode() == dai::node::Stitching::Mode::PLANAR_PROJECTION);
+    REQUIRE_NOTHROW(stitching->setMode(dai::beta::node::Stitching::Mode::PLANAR_PROJECTION));
+    REQUIRE(stitching->getMode() == dai::beta::node::Stitching::Mode::PLANAR_PROJECTION);
     REQUIRE_FALSE(stitching->getPlane().has_value());
     REQUIRE_FALSE(stitching->getView().has_value());
 
@@ -273,7 +273,7 @@ TEST_CASE("Stitching validates the planar projection settings", "[Stitching]") {
     stitching->setMaxRange(5.0f, dai::LengthUnit::METER);
     REQUIRE(stitching->getMaxRange(dai::LengthUnit::CENTIMETER) == 500.0f);
 
-    dai::node::Stitching::VirtualCamera view;
+    dai::beta::node::Stitching::VirtualCamera view;
     view.width = 640;
     view.height = 480;
     view.intrinsics = {{{320.0f, 0.0f, 319.5f}, {0.0f, 320.0f, 239.5f}, {0.0f, 0.0f, 1.0f}}};
@@ -413,7 +413,7 @@ TEST_CASE("Stitching renders the plane from a given virtual camera", "[Stitching
     const cv::Vec3d down = dataset.worldToReferenceRotation * cv::Vec3d(0.0, -1.0, 0.0);
     const cv::Vec3d forward = dataset.worldToReferenceRotation * cv::Vec3d(0.0, 0.0, -1.0);
 
-    dai::node::Stitching::VirtualCamera view;
+    dai::beta::node::Stitching::VirtualCamera view;
     view.width = 800;
     view.height = 600;
     view.intrinsics = {{{400.0f, 0.0f, 399.5f}, {0.0f, 400.0f, 299.5f}, {0.0f, 0.0f, 1.0f}}};
@@ -446,7 +446,7 @@ TEST_CASE("Stitching keeps the planar geometry across frames and rebuilds it on 
 
     dai::Pipeline pipeline(false);
     auto stitching = makePlanarNode(pipeline, dataset);
-    stitching->setSeamFinder(dai::node::Stitching::SeamFinder::GRAPHCUT_COLOR);
+    stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::GRAPHCUT_COLOR);
 
     std::vector<std::shared_ptr<dai::InputQueue>> inputQueues;
     for(size_t i = 0; i < dataset.images.size(); ++i) {

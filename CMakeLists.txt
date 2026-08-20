@@ -344,7 +344,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
-    src/pipeline/node/Stitching.cpp
     src/pipeline/node/NeuralDepth.cpp
     src/pipeline/node/Depth.cpp
     src/pipeline/node/GPUStereo.cpp
@@ -479,6 +478,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/RFDETRParser.cpp
         src/beta/node/SCRFDParser.cpp
         src/beta/node/SuperAnimalParser.cpp
+        src/beta/node/Stitching.cpp
         src/beta/node/XFeatMonoParser.cpp
         src/beta/node/XFeatStereoParser.cpp
         src/beta/node/YuNetParser.cpp
@@ -541,15 +541,15 @@ set(TARGET_OPENCV_SOURCES
     src/opencv/HolisticRecordReplay.cpp
 )
 
-if(DEPTHAI_HAVE_OPENCV_STITCHING)
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
     list(APPEND TARGET_OPENCV_SOURCES
-        src/pipeline/node/host/Stitching.cpp
-        src/pipeline/node/host/FixedPanoramaCompositor.cpp
-        src/pipeline/node/host/PlanarStitcher.cpp
+        src/beta/node/host/Stitching.cpp
+        src/beta/node/host/FixedPanoramaCompositor.cpp
+        src/beta/node/host/PlanarStitcher.cpp
     )
     list(APPEND DEPTHAI_OPENCV_LIBRARIES "opencv_stitching")
-else()
-    list(APPEND TARGET_CORE_SOURCES src/pipeline/node/StitchingNoOpenCV.cpp)
+elseif(DEPTHAI_BUILD_BETA)
+    list(APPEND TARGET_CORE_SOURCES src/beta/node/StitchingNoOpenCV.cpp)
 endif()
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)

@@ -19,8 +19,8 @@ with dai.Pipeline(device) as pipeline:
         camera = pipeline.create(dai.node.Camera).build(socket, sensorFps=FPS)
         outputs.append(camera.requestOutput((640, 400), fps=FPS))
 
-    stitching = pipeline.create(dai.node.Stitching).build(outputs)
-    stitching.setMode(dai.node.Stitching.Mode.PLANAR_PROJECTION)
+    stitching = pipeline.create(dai.beta.node.Stitching).build(outputs)
+    stitching.setMode(dai.beta.node.Stitching.Mode.PLANAR_PROJECTION)
     stitching.setPlane(
         dai.Point3f(0, 0, 130),   # A point on the plane, in centimetres
         dai.Point3f(0, 1, 1),    # Plane normal
