@@ -5,6 +5,10 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "depthai/utility/Serialization.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/ImgFrame.pb.h"
+    #include "utility/ProtoSerialize.hpp"
+#endif
 #define CATCH_CONFIG_MAIN
 
 #include <catch2/catch_all.hpp>
@@ -286,6 +290,20 @@ TEST_CASE("ImgTransformation target coordinate system metadata") {
     dai::utility::deserialize(serialized, deserialized);
     REQUIRE(deserialized.getExtrinsics().toDeviceId == "mxid-a");
     REQUIRE(deserialized.isEqualTransformation(source));
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    dai::ImgFrame frame;
+    frame.transformation = source;
+    const auto serializedProto = frame.serializeProto();
+    dai::proto::img_frame::ImgFrame protoFrame;
+    REQUIRE(protoFrame.ParseFromArray(serializedProto.data(), static_cast<int>(serializedProto.size())));
+
+    dai::ImgFrame deserializedProtoFrame;
+    dai::utility::setProtoMessage(deserializedProtoFrame, &protoFrame, false);
+    const auto& deserializedProtoTransformation = deserializedProtoFrame.transformation;
+    REQUIRE(deserializedProtoTransformation.getExtrinsics().toDeviceId == "mxid-a");
+    REQUIRE(deserializedProtoTransformation.isEqualTransformation(source));
+#endif
 }
 
 // -----------------------------------------------------------------------------
