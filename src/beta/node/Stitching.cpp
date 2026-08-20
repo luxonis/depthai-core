@@ -205,6 +205,7 @@ void Stitching::setMaxPanoramaSize(uint32_t width, uint32_t height) {
     std::lock_guard<std::mutex> lock(hostPropertiesMutex);
     properties.maxPanoramaWidth = width;
     properties.maxPanoramaHeight = height;
+    invalidateHostState();
 }
 
 void Stitching::resetTransform() {
