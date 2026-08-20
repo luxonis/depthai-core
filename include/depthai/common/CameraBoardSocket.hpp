@@ -22,6 +22,10 @@ enum class CameraBoardSocket : int32_t {
     CAM_H,
     CAM_I,
     CAM_J,
+    /**
+     * @warning Experimental feature. This API might change or be removed in a future release.
+     */
+    CBA,
     // Deprecated naming
     RGB [[deprecated]] = CAM_A,
     CENTER [[deprecated]] = CAM_A,
@@ -53,6 +57,8 @@ inline std::string toString(CameraBoardSocket socket) {
             return "CAM_I";
         case CameraBoardSocket::CAM_J:
             return "CAM_J";
+        case CameraBoardSocket::CBA:
+            return "CBA";
         default:
             return "UNKNOWN";
     }

@@ -18,6 +18,7 @@ extern std::vector<
     pyNodeCreateMap;
 extern py::handle daiNodeModule;
 extern py::handle daiNodeInternalModule;
+extern py::handle daiBetaNodeModule;
 
 template <typename T, typename DERIVED = dai::DeviceNode>
 py::class_<T, DERIVED, std::shared_ptr<T>> addNode(const char* name, const char* docstring = nullptr) {
@@ -44,6 +45,13 @@ py::class_<T, DERIVED, std::shared_ptr<T>> addNodeInternal(const char* name, con
 }
 
 template <typename T, typename DERIVED = dai::DeviceNode>
+py::class_<T, DERIVED, std::shared_ptr<T>> addBetaNode(const char* name, const char* docstring = nullptr) {
+    auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiBetaNodeModule, name, docstring);
+    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_) { return p.create<T>(); }));
+    return node;
+}
+
+template <typename T, typename DERIVED = dai::DeviceNode>
 py::class_<T, DERIVED, std::shared_ptr<T>> addNodeAbstract(const char* name, const char* docstring = nullptr) {
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
     pyNodeCreateMap.push_back(
@@ -64,3 +72,4 @@ py::class_<T, DERIVED, std::shared_ptr<T>> addNodeAbstract(const char* name, con
 #define ADD_NODE_DERIVED_ABSTRACT(NodeName, Derived) addNodeAbstract<NodeName, Derived>(#NodeName, DOC(dai, node, NodeName))
 #define ADD_NODE_DOC(NodeName, docstring) addNode<NodeName>(#NodeName, docstring)
 #define ADD_NODE_DERIVED_DOC(NodeName, Derived, docstring) addNode<NodeName, Derived>(#NodeName, docstring)
+#define ADD_BETA_NODE_DERIVED(NodeName, Derived) addBetaNode<NodeName, Derived>(#NodeName, DOC(dai, beta, node, NodeName))

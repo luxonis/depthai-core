@@ -78,7 +78,7 @@ class XLinkConnection {
      * @param skipInvalidDevices Whether or not to skip devices that cannot be fully detected
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getDeviceById(std::string deviceId, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
+    static std::tuple<bool, DeviceInfo> getDeviceById(const std::string& deviceId, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
 
     /**
      * Tries booting the given device into bootloader state

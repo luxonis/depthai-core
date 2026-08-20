@@ -81,9 +81,7 @@ void SpatialLocationCalculator::run() {
 
         auto start = high_resolution_clock::now();
         auto outputSpatial = std::make_shared<SpatialLocationCalculatorData>();
-        outputSpatial->setSequenceNum(imgFrame->getSequenceNum());
-        outputSpatial->setTimestampDevice(imgFrame->getTimestampDevice());
-        outputSpatial->setTimestamp(imgFrame->getTimestamp());
+        outputSpatial->setBufferMetadataFrom(imgFrame);
         if(calculationConfig->getConfigData().size() > 0) {
             utilities::SpatialUtils::computeSpatialData(imgFrame, calculationConfig->getConfigData(), spatialLocations, logger);
             auto stop = high_resolution_clock::now();
@@ -100,9 +98,14 @@ void SpatialLocationCalculator::run() {
             auto stop = high_resolution_clock::now();
             auto timeToComputeSpatialDetections = duration_cast<microseconds>(stop - start);
             logger->trace("Time to compute spatial detections: {} us", timeToComputeSpatialDetections.count());
-            outputSpatialImgDetections->setSequenceNum(imgDetections->getSequenceNum());
-            outputSpatialImgDetections->setTimestampDevice(imgDetections->getTimestampDevice());
-            outputSpatialImgDetections->setTimestamp(imgDetections->getTimestamp());
+
+            if(calculationConfig->segmentationPassthrough && !imgDetections->getData().empty()) {
+                outputSpatialImgDetections->data = imgDetections->data;
+                outputSpatialImgDetections->segmentationMaskWidth = imgDetections->getSegmentationMaskWidth();
+                outputSpatialImgDetections->segmentationMaskHeight = imgDetections->getSegmentationMaskHeight();
+            }
+
+            outputSpatialImgDetections->setBufferMetadataFrom(imgDetections);
             outputSpatialImgDetections->transformation = imgDetections->transformation;
         }
 

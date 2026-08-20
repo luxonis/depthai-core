@@ -20,6 +20,9 @@
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
 #include "utility/Serialization.hpp"
+#include "utility/Telemetry.hpp"
+#include "utility/Uuid.hpp"
+#include "utility/depthai_nodes_names.hpp"
 
 // shared
 #include "depthai/pipeline/NodeConnectionSchema.hpp"
@@ -71,6 +74,15 @@ std::shared_ptr<Device> getAssignedDevice(const std::shared_ptr<Node>& node) {
     return deviceNode->getDevice();
 }
 
+std::string pathToUtf8String(const fs::path& path) {
+#ifdef _WIN32
+    const auto utf8 = path.u8string();
+    return {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
+#else
+    return path.string();
+#endif
+}
+
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 const char* autoCalibrationModeToString(PipelineAutoCalibrationMode mode) {
     switch(mode) {
@@ -99,6 +111,71 @@ std::optional<PipelineAutoCalibrationMode> parseAutoCalibrationMode(std::string_
     return std::nullopt;
 }
 #endif
+
+PipelineSchema anonymizeCustomNodesForTelemetry(PipelineSchema schema) {
+    for(auto& node : schema.nodes) {
+        const auto isDepthaiNodesNode =
+            std::find(utility::depthaiNodesNames.begin(), utility::depthaiNodesNames.end(), node.second.name) != utility::depthaiNodesNames.end();
+        if(!node.second.builtInNode && !isDepthaiNodesNode) {
+            node.second.name = "CUSTOM";
+        }
+    }
+    return schema;
+}
+
+bool redactTelemetryNodeProperties(const std::string& nodeName) {
+    return nodeName == "CUSTOM" || nodeName == "DetectionParser" || nodeName == "SegmentationParser";
+}
+
+nlohmann::json makeTelemetrySchemaJson(PipelineSchema schema) {
+    auto telemetrySchema = nlohmann::json(anonymizeCustomNodesForTelemetry(std::move(schema)));
+    for(auto& node : telemetrySchema["nodes"]) {
+        auto& nodeInfo = node.at(1);
+        const auto nodeName = nodeInfo.value("name", std::string{});
+        if(redactTelemetryNodeProperties(nodeName)) {
+            nodeInfo["properties"] = "REDACTED";
+        }
+    }
+    return telemetrySchema;
+}
+
+nlohmann::json makeTelemetryNodePropertiesJson(const nlohmann::json& properties) {
+    if(properties.is_string() && properties.get<std::string>() == "REDACTED") {
+        return nlohmann::json{{"redacted", true}};
+    }
+    if(properties.is_object()) {
+        return properties;
+    }
+    if(!properties.is_array() || properties.empty()) {
+        return nlohmann::json::object();
+    }
+
+    try {
+        const auto propertyBytes = properties.get<std::vector<std::uint8_t>>();
+        if(propertyBytes.empty()) {
+            return nlohmann::json::object();
+        }
+        auto parsedProperties = nlohmann::json::parse(propertyBytes.begin(), propertyBytes.end());
+        if(parsedProperties.is_object()) {
+            return parsedProperties;
+        }
+    } catch(const std::exception& ex) {
+        logger::debug("Failed to parse node telemetry properties as JSON: {}", ex.what());
+    }
+    return nlohmann::json::object();
+}
+
+void emitTelemetryNodeCreatedEvents(const Pipeline& pipeline, const nlohmann::json& telemetrySchema) {
+    for(const auto& node : telemetrySchema.at("nodes")) {
+        const auto& nodeInfo = node.at(1);
+        dai::utility::Telemetry::getInstance().event(pipeline,
+                                                     "depthai_node_created",
+                                                     nlohmann::json{
+                                                         {"name", nodeInfo.value("name", std::string{})},
+                                                         {"properties", makeTelemetryNodePropertiesJson(nodeInfo.value("properties", nlohmann::json{}))},
+                                                     });
+    }
+}
 
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHandler& rhs, CameraBoardSocket socket) {
@@ -137,6 +214,10 @@ namespace fs = std::filesystem;
 
 std::mutex pipelineBuildMutex;
 
+std::string PipelineImpl::createTelemetryPipelineId() {
+    return utility::generateUuidV7();
+}
+
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
@@ -159,7 +240,7 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
     return globalProperties;
 }
 
-void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
+void PipelineImpl::setGlobalProperties(const GlobalProperties& globalProperties) {
     this->globalProperties = globalProperties;
 }
 
@@ -334,6 +415,8 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         info.alias = node->getAlias();
         info.parentId = node->parentId;
         info.deviceNode = !node->runOnHost();
+        info.builtInNode = node->isBuiltInNode();
+        if(!node->runOnHost()) info.deviceId = defaultDeviceId;
 
         const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
         if(!node->runOnHost() && !deviceNode) {
@@ -562,7 +645,7 @@ void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
     }
 }
 
-void PipelineImpl::setBoardConfig(BoardConfig boardCfg) {
+void PipelineImpl::setBoardConfig(const BoardConfig& boardCfg) {
     board = boardCfg;
 }
 
@@ -581,7 +664,7 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 }
 
 // Remove node capability
-void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
+void PipelineImpl::remove(const std::shared_ptr<Node>& toRemove) {
     DAI_CHECK_V(!isBuilt(), "Cannot remove node from pipeline once it is built.");
     DAI_CHECK_V(toRemove->parent.lock() != nullptr, "Cannot remove a node that is not a part of any pipeline");
     DAI_CHECK_V(toRemove->parent.lock() == shared_from_this(), "Cannot remove a node that is not a part of this pipeline");
@@ -635,7 +718,7 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     return false;
 }
 
-void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
+void PipelineImpl::setCalibrationData(const CalibrationHandler& calibrationDataHandler) {
     setEepromData(calibrationDataHandler.getEepromData());
 }
 
@@ -663,7 +746,7 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
     throw std::runtime_error("No default device properties set in pipeline");
 }
 
-void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
+void PipelineImpl::setEepromData(const std::optional<EepromData>& eepromData) {
     if(defaultDevice) {
         defaultDevice->setCalibration(eepromData);
     } else if(defaultDeviceProperties != nullptr) {
@@ -746,24 +829,16 @@ PipelineStateApi PipelineImpl::getPipelineState() {
     return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
 }
 
-void PipelineImpl::add(std::shared_ptr<Node> node) {
-    if(node == nullptr) {
-        throw std::invalid_argument(fmt::format("Given node pointer is null"));
-    }
-
-    // First check if node has already been added
-    auto localNodes = getAllNodes();
-    for(auto& n : localNodes) {
-        if(node.get() == n.get()) {
-            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
-        }
+// Adopt children added after the parent node is already in the pipeline.
+void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
+    if(root == nullptr) {
+        return;
     }
 
     // Go through and modify nodes and its children
     // that they are now part of this pipeline
-    std::weak_ptr<PipelineImpl> curParent;
     std::queue<std::shared_ptr<Node>> search;
-    search.push(node);
+    search.push(root);
     while(!search.empty()) {
         auto curNode = search.front();
         search.pop();
@@ -789,6 +864,22 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
             search.push(n);
         }
     }
+}
+
+void PipelineImpl::add(const std::shared_ptr<Node>& node) {
+    if(node == nullptr) {
+        throw std::invalid_argument(fmt::format("Given node pointer is null"));
+    }
+
+    // First check if node has already been added
+    auto localNodes = getAllNodes();
+    for(auto& n : localNodes) {
+        if(node.get() == n.get()) {
+            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
+        }
+    }
+
+    adoptSubtree(node);  // BFS: ids, parent weak_ptr, default device for DeviceNodes
 
     // Add to the map (node holds its children itself)
     nodes.push_back(node);
@@ -1172,6 +1263,12 @@ void PipelineImpl::start() {
     running = true;
 
     const auto devices = getAllAssignedDevices();
+    // Add pointer to the pipeline to the device before device-side startup can emit telemetry.
+    if(defaultDevice) {
+        std::shared_ptr<PipelineImpl> shared = shared_from_this();
+        const auto weak = std::weak_ptr<PipelineImpl>(shared);
+        defaultDevice->pipelinePtr = weak;
+    }
 
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
@@ -1196,6 +1293,18 @@ void PipelineImpl::start() {
             device->pipelinePtr = weak;
         }
     }
+
+    telemetryPipelineStartedAt = std::chrono::steady_clock::now();
+
+    const auto pipeline = Pipeline(shared_from_this());
+    const auto telemetrySchema = makeTelemetrySchemaJson(getPipelineSchema(SerializationType::JSON, false));
+    emitTelemetryNodeCreatedEvents(pipeline, telemetrySchema);
+    dai::utility::Telemetry::getInstance().event(pipeline,
+                                                 "depthai_pipeline_start",
+                                                 nlohmann::json{
+                                                     {"host_only", isHostOnly()},
+                                                     {"pipeline_schema", telemetrySchema},
+                                                 });
 
     // Setup pipeline state trace logging if enabled
     if(buildingOnHost && utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
@@ -1268,6 +1377,28 @@ void PipelineImpl::stop() {
     if(!running) {
         return;
     }
+
+    if(telemetryPipelineStartedAt.has_value()) {
+        const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - *telemetryPipelineStartedAt).count();
+        nlohmann::json properties{
+            {"host_only", isHostOnly()},
+            {"pipeline_id", telemetryPipelineId},
+            {"duration_ms", durationMs},
+        };
+        try {
+            if(auto self = weak_from_this().lock()) {
+                dai::utility::Telemetry::getInstance().event(Pipeline(std::move(self)), "depthai_pipeline_stop", std::move(properties));
+            } else if(defaultDevice) {
+                dai::utility::Telemetry::getInstance().event(*defaultDevice, "depthai_pipeline_stop", std::move(properties));
+            } else {
+                dai::utility::Telemetry::getInstance().event("depthai_pipeline_stop", std::move(properties));
+            }
+        } catch(const std::exception& ex) {
+            Logging::getInstance().logger.debug("Failed to emit pipeline stop telemetry: {}", ex.what());
+        }
+        telemetryPipelineStartedAt.reset();
+    }
+
     // Stops the pipeline execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
@@ -1314,18 +1445,20 @@ void PipelineImpl::run() {
     wait();
 }
 
-std::vector<uint8_t> PipelineImpl::loadResource(fs::path uri) {
+std::vector<uint8_t> PipelineImpl::loadResource(const fs::path& uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
 
 static fs::path getAbsUri(fs::path& uri, fs::path& cwd) {
-    int colonLocation = uri.string().find(":");
-    std::string resourceType = uri.string().substr(0, colonLocation + 1);
+    const auto uriString = pathToUtf8String(uri);
+    const auto cwdString = pathToUtf8String(cwd);
+    int colonLocation = uriString.find(":");
+    std::string resourceType = uriString.substr(0, colonLocation + 1);
     fs::path absAssetUri;
-    if(uri.string()[colonLocation + 1] == '/') {  // Absolute path
+    if(uriString[colonLocation + 1] == '/') {  // Absolute path
         absAssetUri = uri;
     } else {  // Relative path
-        absAssetUri = fs::path{resourceType + cwd.string() + uri.string().substr(colonLocation + 1)};
+        absAssetUri = fs::path{resourceType + cwdString + uriString.substr(colonLocation + 1)};
     }
     return absAssetUri;
 }
@@ -1340,20 +1473,21 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
         {"asset",
          [moveAsset](PipelineImpl& p, const fs::path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
-             auto asset = p.assetManager.get(uri.u8string());
+             const auto uriString = pathToUtf8String(uri);
+             auto asset = p.assetManager.get(uriString);
              if(asset != nullptr) {
                  if(moveAsset) {
-                     p.assetManager.remove(uri.u8string());
+                     p.assetManager.remove(uriString);
                      return std::move(asset->data);
                  }
                  return asset->data;
              }
              for(auto& node : p.nodes) {
                  auto& assetManager = node->getAssetManager();
-                 auto asset = assetManager.get(uri.u8string());
+                 auto asset = assetManager.get(uriString);
                  if(asset != nullptr) {
                      if(moveAsset) {
-                         assetManager.remove(uri.u8string());
+                         assetManager.remove(uriString);
                          return std::move(asset->data);
                      }
                      return asset->data;
@@ -1367,7 +1501,8 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
     for(const auto& handler : protocolHandlers) {
         std::string protocolPrefix = std::string(handler.protocol) + ":";
 
-        if(uri.u8string().find(protocolPrefix) == 0) {
+        const auto uriString = pathToUtf8String(uri);
+        if(uriString.find(protocolPrefix) == 0) {
             // // protocol matches, resolve URI and call handler
             // std::filesystem::path path(uri.substr(protocolPrefix.size()));
             // // Create full path, and normalize
@@ -1380,9 +1515,9 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
             fs::path path;
             if(protocolPrefix == "asset:") {
                 auto absUri = getAbsUri(uri, cwd);
-                path = static_cast<fs::path>(absUri.u8string().substr(protocolPrefix.size()));
+                path = fs::path(pathToUtf8String(absUri).substr(protocolPrefix.size()));
             } else {
-                path = static_cast<fs::path>(uri.u8string().substr(protocolPrefix.size()));
+                path = fs::path(uriString.substr(protocolPrefix.size()));
             }
             return handler.handle(*this, path);
         }

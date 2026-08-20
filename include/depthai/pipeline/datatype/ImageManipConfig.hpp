@@ -456,13 +456,13 @@ class ImageManipConfig : public Buffer {
      * @param rect Rect to crop
      * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
      */
-    ImageManipConfig& addCrop(dai::Rect rect, bool normalizedCoords = false);
+    ImageManipConfig& addCrop(const dai::Rect& rect, bool normalizedCoords = false);
     /**
      * Crops the image to the specified (rotated) rectangle
      * @param rect RotatedRect to crop
      * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
      */
-    ImageManipConfig& addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords = false);
+    ImageManipConfig& addCropRotatedRect(const dai::RotatedRect& rotatedRect, bool normalizedCoords = false);
     /**
      * Rescales the image using the specified factors
      * @param scaleX Scale factor for the X axis
@@ -497,14 +497,14 @@ class ImageManipConfig : public Buffer {
      * Applies a perspective transformation to the image
      * @param matrix an array containing a 3x3 matrix representing the perspective transformation
      */
-    ImageManipConfig& addTransformPerspective(std::array<float, 9> matrix);
+    ImageManipConfig& addTransformPerspective(const std::array<float, 9>& matrix);
     /**
      * Applies a perspective transformation to the image
      * @param src Source points
      * @param dst Destination points
      * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
      */
-    ImageManipConfig& addTransformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords = false);
+    ImageManipConfig& addTransformFourPoints(const std::array<dai::Point2f, 4>& src, const std::array<dai::Point2f, 4>& dst, bool normalizedCoords = false);
     /**
      * Sets the output size of the image
      * @param w Width of the output image

@@ -1,5 +1,6 @@
 #include "depthai/utility/ImageManipImpl.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
@@ -17,51 +18,82 @@
 #endif
 
 constexpr size_t MAX_AUTO_WIDTH = 4000;
+
 constexpr size_t MAX_AUTO_HEIGHT = 3000;
 
-void dai::impl::transformOpenCV(const uint8_t* src,
-                                uint8_t* dst,
-                                const size_t srcWidth,
-                                const size_t srcHeight,
-                                const size_t srcStride,
-                                const size_t dstWidth,
-                                const size_t dstHeight,
-                                const size_t dstStride,
-                                const uint16_t numChannels,
-                                const uint16_t bpp,
-                                const std::array<std::array<float, 3>, 3> matrix,
-                                const std::vector<uint32_t>& background,
-                                const FrameSpecs& srcImgSpecs,
-                                const size_t sourceMinX,
-                                const size_t sourceMinY,
-                                const size_t sourceMaxX,
-                                const size_t sourceMaxY) {
-#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
-    auto type = CV_8UC1;
-    switch(numChannels) {
-        case 1:
-            switch(bpp) {
-                case 1:
-                    type = CV_8UC1;
-                    break;
-                case 2:
-                    type = CV_16UC1;
-                    break;
-                default:
-                    assert(false);
-            }
-            break;
-        case 2:
-            assert(bpp == 1);
-            type = CV_8UC2;
-            break;
-        case 3:
-            assert(bpp == 1);
-            type = CV_8UC3;
-            break;
-        default:
-            assert(false);
+// helper type for the visitor #4
+template <class... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template <class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
+static inline int clampi(int val, int minv, int maxv) {
+    // return val < minv ? minv : (val > maxv ? maxv : val);
+    return std::clamp(val, minv, maxv);
+}
+inline bool floatEq(float a, float b) {
+    return fabsf(a - b) <= 1e-6f;
+}
+inline bool isSingleChannel(const dai::ImgFrame::Type type) {
+    return type == dai::ImgFrame::Type::GRAY8 || type == dai::ImgFrame::Type::RAW8 || type == dai::ImgFrame::Type::RAW16 || type == dai::ImgFrame::Type::GRAYF16
+           || type == dai::ImgFrame::Type::RAW32;
+}
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
+    if(bpp == 1) {
+        switch(channels) {
+            case 1:
+                return CV_8UC1;
+            case 2:
+                return CV_8UC2;
+            case 3:
+                return CV_8UC3;
+            default:
+                break;
+        }
+    } else if(bpp == 2) {
+        switch(channels) {
+            case 1:
+                return CV_16UC1;
+            case 2:
+                return CV_16UC2;
+            case 3:
+                return CV_16UC3;
+            default:
+                break;
+        }
     }
+    throw std::invalid_argument(fmt::format("Unsupported combination of bpp {} and channels {}", bpp, channels));
+}
+#else
+static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
+    throw std::runtime_error("Function getCvMatTypeFrom requires OpenCV support");
+}
+#endif
+
+void transformOpenCV(const uint8_t* src,
+                     uint8_t* dst,
+                     const size_t srcWidth,
+                     const size_t srcHeight,
+                     const size_t srcStride,
+                     const size_t dstWidth,
+                     const size_t dstHeight,
+                     const size_t dstStride,
+                     const uint16_t numChannels,
+                     const uint16_t bpp,
+                     const std::array<std::array<float, 3>, 3>& matrix,
+                     const std::vector<uint32_t>& background,
+                     const dai::impl::FrameSpecs& srcImgSpecs,
+                     const size_t sourceMinX,
+                     const size_t sourceMinY,
+                     const size_t sourceMaxX,
+                     const size_t sourceMaxY) {
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
+    auto type = getCvMatTypeFrom(bpp, numChannels);
     auto bg = numChannels == 1 ? cv::Scalar(background[0])
                                : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
     const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
@@ -128,32 +160,32 @@ void dai::impl::transformOpenCV(const uint8_t* src,
     (void)(sourceMaxY);
 #endif
 }
-void dai::impl::transformFastCV(const uint8_t* src,
-                                uint8_t* dst,
-                                const size_t srcWidth,
-                                const size_t srcHeight,
-                                const size_t srcStride,
-                                const size_t dstWidth,
-                                const size_t dstHeight,
-                                const size_t dstStride,
-                                const uint16_t numChannels,
-                                const uint16_t bpp,
-                                const std::array<std::array<float, 3>, 3> matrix,
-                                const std::vector<uint32_t>& background,
-                                const FrameSpecs& srcImgSpecs,
-                                const size_t sourceMinX,
-                                const size_t sourceMinY,
-                                const size_t sourceMaxX,
-                                const size_t sourceMaxY,
-                                uint32_t* fastCvBorder) {
+bool transformFastCV(const uint8_t* src,
+                     uint8_t* dst,
+                     const size_t srcWidth,
+                     const size_t srcHeight,
+                     const size_t srcStride,
+                     const size_t dstWidth,
+                     const size_t dstHeight,
+                     const size_t dstStride,
+                     const uint16_t numChannels,
+                     const uint16_t bpp,
+                     const std::array<std::array<float, 3>, 3>& matrix,
+                     const std::vector<uint32_t>& background,
+                     const dai::impl::FrameSpecs& srcImgSpecs,
+                     const size_t sourceMinX,
+                     const size_t sourceMinY,
+                     const size_t sourceMaxX,
+                     const size_t sourceMaxY,
+                     uint32_t* fastCvBorder) {
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
     if(numChannels != 3 && numChannels != 1) throw std::runtime_error("Only 1 or 3 channels supported with FastCV");
     if(bpp != 1) throw std::runtime_error("Only 8bpp supported with FastCV");
     if(!((ptrdiff_t)src % 128 == 0 && (ptrdiff_t)dst % 128 == 0 && (ptrdiff_t)fastCvBorder % 128 == 0 && srcStride % 8 == 0 && srcStride > 0)) {
         throw std::runtime_error("Assumptions not taken into account");
     }
-    int ssF = srcSpecs.width / srcWidth;
-    assert(ssF == (int)(srcSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
+    int ssF = srcImgSpecs.width / srcWidth;
+    assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
     if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
         // Affine transform
         float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
@@ -195,7 +227,6 @@ void dai::impl::transformFastCV(const uint8_t* src,
         else
             fcv3ChannelWarpPerspectiveu8_v2(src, srcWidth, srcHeight, srcStride, dst, dstWidth, dstHeight, dstStride, projection);
         if(status != fcvStatus::FASTCV_SUCCESS) {
-            if(logger) logger->error("FastCV operation failed with error code {}", status);
             return false;
         }
     }
@@ -218,6 +249,7 @@ void dai::impl::transformFastCV(const uint8_t* src,
     (void)(sourceMaxX);
     (void)(sourceMaxY);
     (void)(fastCvBorder);
+    return false;
 #endif
 }
 
@@ -369,7 +401,7 @@ dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, d
     return specs;
 }
 
-dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to) {
+dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(const FrameSpecs& srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to) {
     if(from == to)
         return srcSpecs;
     else
@@ -390,6 +422,8 @@ bool dai::impl::isTypeSupported(dai::ImgFrame::Type type) {
 }
 
 bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp) {
+    using ImgFrame = dai::ImgFrame;
+
     // Set output Bpp and planes by PixelFormat and interleaved options
     outNumPlanes = 3;
 
@@ -455,7 +489,7 @@ bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPl
     return true;
 }
 
-std::tuple<float, float, float, float> dai::impl::getOuterRect(const std::vector<std::array<float, 2>> points) {
+std::tuple<float, float, float, float> dai::impl::getOuterRect(const std::vector<std::array<float, 2>>& points) {
     float minx = points[0][0];
     float maxx = points[0][0];
     float miny = points[0][1];
@@ -468,35 +502,6 @@ std::tuple<float, float, float, float> dai::impl::getOuterRect(const std::vector
         maxy = std::max(points[i][1], maxy);
     }
     return {minx, maxx, miny, maxy};
-}
-
-std::vector<std::array<float, 2>> dai::impl::getHull(const std::vector<std::array<float, 2>> points) {
-    std::vector<std::array<float, 2>> remaining(points.rbegin(), points.rend() - 1);
-    std::vector<std::array<float, 2>> hull{points.front()};
-    hull.reserve(points.size());
-    while(remaining.size() > 0) {
-        auto pt = remaining.back();
-        remaining.pop_back();
-        while(hull.size() >= 2) {
-            auto last1 = hull.size() - 1;
-            auto last2 = hull.size() - 2;
-            std::array<float, 2> v1 = {hull[last1][0] - hull[last2][0], hull[last1][1] - hull[last2][1]};
-            std::array<float, 2> v2 = {pt[0] - hull[last1][0], pt[1] - hull[last1][1]};
-            std::array<float, 2> v3 = {hull[0][0] - pt[0], hull[0][1] - pt[1]};
-            auto cross1 = v1[0] * v2[1] - v1[1] * v2[0];
-            auto cross2 = v2[0] * v3[1] - v2[1] * v3[0];
-            if(cross1 < 0 || cross2 < 0) {
-                remaining.push_back(hull.back());
-                hull.pop_back();
-            } else if(cross1 == 0 || cross2 == 0) {
-                throw std::runtime_error("Colinear points");
-            } else {
-                break;
-            }
-        }
-        hull.push_back(pt);
-    }
-    return hull;
 }
 
 dai::RotatedRect dai::impl::getOuterRotatedRect(const std::vector<std::array<float, 2>>& points) {
@@ -543,7 +548,7 @@ std::array<std::array<float, 3>, 3> dai::impl::getResizeMat(Resize o, float widt
 
 void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
                                          const bool center,
-                                         const std::array<std::array<float, 3>, 3> transformInv,
+                                         const std::array<std::array<float, 3>, 3>& transformInv,
                                          const uint32_t srcWidth,
                                          const uint32_t srcHeight,
                                          uint32_t& outputWidth,
@@ -608,6 +613,7 @@ void dai::impl::getTransformImpl(const ManipOp& op,
     float maxy = _maxy;
     float width = maxx - minx;
     float height = maxy - miny;
+    bool imageCornersSet = false;
 
     std::visit(
         overloaded{[](auto _) {},
@@ -635,8 +641,8 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                            mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
                        }
                    },
-                   [&](Resize o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
-                   [&](Flip o) {
+                   [&](const Resize& o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
+                   [&](const Flip& o) {
                        float moveX = centerX;
                        float moveY = centerY;
                        switch(o.direction) {
@@ -664,11 +670,14 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                    },
                    [&](FourPoints o) {
                        if(o.normalized) {
+                           if(outputWidth == 0 || outputHeight == 0) {
+                               throw std::runtime_error("Output size must be set for normalized FourPoints transform");
+                           }
                            for(auto i = 0; i < 4; ++i) {
                                o.src[i].x *= width;
                                o.src[i].y *= height;
-                               o.dst[i].x *= width;
-                               o.dst[i].y *= height;
+                               o.dst[i].x *= (float)outputWidth;
+                               o.dst[i].y *= (float)outputHeight;
                            }
                        }
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
@@ -693,9 +702,17 @@ void dai::impl::getTransformImpl(const ManipOp& op,
 #else
                        mat = matrix::getHomographyMatrix(o.src, o.dst);
 #endif
+
+                       imageCorners = {{{o.dst[0].x, o.dst[0].y}, {o.dst[1].x, o.dst[1].y}, {o.dst[2].x, o.dst[2].y}, {o.dst[3].x, o.dst[3].y}}};
+                       const auto transformInv = matrix::getMatrixInverse(transform);
+                       srcCorners.push_back({matvecmul(transformInv, {o.src[0].x, o.src[0].y}),
+                                             matvecmul(transformInv, {o.src[1].x, o.src[1].y}),
+                                             matvecmul(transformInv, {o.src[2].x, o.src[2].y}),
+                                             matvecmul(transformInv, {o.src[3].x, o.src[3].y})});
+                       imageCornersSet = true;
                    },
-                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
-                   [&](Perspective o) {
+                   [&](const Affine& o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                   [&](const Perspective& o) {
                        mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                    },
                    [&](Crop o) {
@@ -729,14 +746,17 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                                              matvecmul(transformInv, imageCorners[1]),
                                              matvecmul(transformInv, imageCorners[2]),
                                              matvecmul(transformInv, imageCorners[3])});
+                       imageCornersSet = true;
                    }},
         op.op);
-    auto outerRectPoints =
-        getOuterRotatedRect(
-            {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])})
-            .getPoints();
-    for(auto i = 0; i < 4; ++i) {
-        imageCorners[i] = {outerRectPoints[i].x, outerRectPoints[i].y};
+    if(!imageCornersSet) {
+        auto outerRectPoints =
+            getOuterRotatedRect(
+                {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])})
+                .getPoints();
+        for(auto i = 0; i < 4; ++i) {
+            imageCorners[i] = {outerRectPoints[i].x, outerRectPoints[i].y};
+        }
     }
     transform = matmul(mat, transform);
 }
@@ -849,7 +869,7 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-bool dai::impl::UndistortOpenCvImpl::validMatrix(std::array<float, 9> matrix) const {
+bool dai::impl::UndistortOpenCvImpl::validMatrix(const std::array<float, 9>& matrix) const {
     return !floatEq(matrix[0], 0) && floatEq(matrix[1], 0) && floatEq(matrix[3], 0) && !floatEq(matrix[4], 0) && floatEq(matrix[6], 0) && floatEq(matrix[7], 0)
            && floatEq(matrix[8], 1);
 }
@@ -923,23 +943,26 @@ dai::impl::UndistortOpenCvImpl::BuildStatus dai::impl::UndistortOpenCvImpl::buil
         }
         if(!validMatrix(newCameraMatrix)) {
             if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || distCoeffs != this->distCoeffs
-               || cameraMatrix != this->cameraMatrix) {
+               || cameraMatrix != this->cameraMatrix || this->dstWidth != srcWidth || this->dstHeight != srcHeight || this->newCameraMatrix != cameraMatrix) {
                 initMaps(cameraMatrix, cameraMatrix, std::move(distCoeffs), type, srcWidth, srcHeight, srcWidth, srcHeight);
                 return BuildStatus::TWO_SHOT;
             }
             return BuildStatus::NOT_BUILT;
-        } else {
-            if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || dstWidth != this->dstWidth || dstHeight != this->dstHeight
-               || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix || newCameraMatrix != this->newCameraMatrix) {
-                initMaps(std::move(cameraMatrix), std::move(newCameraMatrix), std::move(distCoeffs), type, srcWidth, srcHeight, dstWidth, dstHeight);
-                return BuildStatus::ONE_SHOT;
-            }
-            return BuildStatus::NOT_BUILT;
         }
+
+        if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || dstWidth != this->dstWidth || dstHeight != this->dstHeight
+           || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix || newCameraMatrix != this->newCameraMatrix) {
+            initMaps(cameraMatrix, newCameraMatrix, std::move(distCoeffs), type, srcWidth, srcHeight, dstWidth, dstHeight);
+            return BuildStatus::ONE_SHOT;
+        }
+        return BuildStatus::NOT_BUILT;
     }
     return BuildStatus::NOT_USED;
 }
-void dai::impl::UndistortOpenCvImpl::undistort(cv::Mat& src, cv::Mat& dst) {
+
+void dai::impl::UndistortOpenCvImpl::undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t) {
+    cv::Mat src(srcI.height, srcI.width, getCvMatTypeFrom(srcI.bpp, srcI.channels), srcI.data->getOffsetData().data(), srcI.stride);
+    cv::Mat dst(dstI.height, dstI.width, getCvMatTypeFrom(dstI.bpp, dstI.channels), dstI.data->getOffsetData().data(), dstI.stride);
     if(dst.size().width == (int)dstWidth && dst.size().height == (int)dstHeight) {
         cv::remap(src, dst, undistortMap1, undistortMap2, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
     } else if(dst.size().width == (int)dstWidth / 2 && dst.size().height == (int)dstHeight / 2) {
@@ -959,3 +982,2474 @@ void dai::impl::UndistortOpenCvImpl::undistort(cv::Mat& src, cv::Mat& dst) {
     }
 }
 #endif
+
+namespace dai::impl {
+
+//--------------------------------------------------
+//------------------ Color Conversion --------------
+//--------------------------------------------------
+
+static inline void YUVfromRGB(float& Y, float& U, float& V, const float R, const float G, const float B) {
+    Y = 0.257f * R + 0.504f * G + 0.098f * B + 16;
+    U = -0.148f * R - 0.291f * G + 0.439f * B + 128;
+    V = 0.439f * R - 0.368f * G - 0.071f * B + 128;
+}
+static inline void RGBfromYUV(float& R, float& G, float& B, float Y, float U, float V) {
+    Y -= 16;
+    U -= 128;
+    V -= 128;
+    R = 1.164f * Y + 1.596f * V;
+    G = 1.164f * Y - 0.392f * U - 0.813f * V;
+    B = 1.164f * Y + 2.017f * U;
+}
+
+bool colorConvertToRGB888p(const ColorChangeArgs& args) {
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888p;
+    const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
+    std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
+    FrameSpecs srcSpecs = args.srcSpecs;
+    FrameSpecs dstSpecs = args.dstSpecs;
+    ImgFrame::Type from = args.from;
+    std::shared_ptr<OffsetMemory> ccAuxFrame = args.auxFrame;
+
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+
+    bool done = false;
+    switch(from) {
+        case dai::ImgFrame::Type::RGB888p:
+            std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
+            done = true;
+            break;
+        case dai::ImgFrame::Type::BGR888p:
+            std::copy(src + srcSpecs.p1Offset, src + srcSpecs.p2Offset, outputFrame->getOffsetData().data() + dstSpecs.p3Offset);
+            std::copy(src + srcSpecs.p2Offset, src + srcSpecs.p3Offset, outputFrame->getOffsetData().data() + dstSpecs.p2Offset);
+            std::copy(src + srcSpecs.p3Offset, src + inputSize, outputFrame->getOffsetData().data() + dstSpecs.p1Offset);
+            done = true;
+            break;
+        case dai::ImgFrame::Type::RGB888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_1,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_2,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat img(srcSpecs.height, srcSpecs.width, CV_8UC3, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p2Offset, dstSpecs.p2Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p3Offset, dstSpecs.p3Stride);
+            cv::split(img, channels);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStart = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t srcPos = lineStart + j * 3;
+                    uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
+                    uint32_t p3Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
+                    outputFrame->getOffsetData()[p1Pos] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[p2Pos] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[p3Pos] = src[srcPos + 2];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_2,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_1,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat img(srcSpecs.height, srcSpecs.width, CV_8UC3, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p3Offset, dstSpecs.p3Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p2Offset, dstSpecs.p2Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::split(img, channels);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStart = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t srcPos = lineStart + j * 3;
+                    uint32_t p1Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
+                    uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
+                    uint32_t p3Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    outputFrame->getOffsetData()[p1Pos] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[p2Pos] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[p3Pos] = src[srcPos + 2];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::NV12: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PseudoPlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                                   src + srcSpecs.p2Offset,
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   srcSpecs.p1Stride,
+                                                   srcSpecs.p2Stride,
+                                                   ccAuxFrame->getOffsetData().data(),
+                                                   auxStride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_1,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_2,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat frameY(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat frameUV(srcSpecs.height / 2, srcSpecs.width / 2, CV_8UC2, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            cv::Mat auxBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->getOffsetData().data(), auxStride);
+            cv::cvtColorTwoPlane(frameY, frameUV, auxBGR, cv::COLOR_YUV2BGR_NV12);
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p3Offset, dstSpecs.p3Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p2Offset, dstSpecs.p2Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::split(auxBGR, channels);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::YUV420p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                             src + srcSpecs.p2Offset,
+                                             src + srcSpecs.p3Offset,
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             srcSpecs.p1Stride,
+                                             srcSpecs.p2Stride,
+                                             srcSpecs.p3Stride,
+                                             ccAuxFrame->getOffsetData().data(),
+                                             auxStride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_1,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_2,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartY = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartU = srcSpecs.p2Offset + (i / 2) * srcSpecs.p2Stride;
+                const uint32_t lineStartV = srcSpecs.p3Offset + (i / 2) * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
+                    const uint32_t p3Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
+                    float Y = src[lineStartY + j];
+                    float U = src[lineStartU + (uint32_t)(j / 2)];
+                    float V = src[lineStartV + (uint32_t)(j / 2)];
+                    float R, G, B;
+                    RGBfromYUV(R, G, B, Y, U, V);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(clampi(roundf(R), 0, 255));
+                    outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(clampi(roundf(G), 0, 255));
+                    outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(clampi(roundf(B), 0, 255));
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAY8:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+
+    return done;
+}
+
+bool colorConvertToBGR888p(const ColorChangeArgs& args) {
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888p;
+    const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
+    std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
+    FrameSpecs srcSpecs = args.srcSpecs;
+    FrameSpecs dstSpecs = args.dstSpecs;
+    ImgFrame::Type from = args.from;
+    std::shared_ptr<OffsetMemory> ccAuxFrame = args.auxFrame;
+
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+
+    bool done = false;
+    switch(from) {
+        case dai::ImgFrame::Type::RGB888p:
+            std::copy(src + srcSpecs.p1Offset, src + srcSpecs.p2Offset, outputFrame->getOffsetData().data() + dstSpecs.p3Offset);
+            std::copy(src + srcSpecs.p2Offset, src + srcSpecs.p3Offset, outputFrame->getOffsetData().data() + dstSpecs.p2Offset);
+            std::copy(src + srcSpecs.p3Offset, src + inputSize, outputFrame->getOffsetData().data() + dstSpecs.p1Offset);
+            done = true;
+            break;
+        case dai::ImgFrame::Type::BGR888p:
+            std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
+            done = true;
+            break;
+        case dai::ImgFrame::Type::RGB888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_2,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_1,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat img(srcSpecs.height, srcSpecs.width, CV_8UC3, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p3Offset, dstSpecs.p3Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p2Offset, dstSpecs.p2Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::split(img, channels);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStart = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t srcPos = lineStart + j * 3;
+                    uint32_t p1Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
+                    uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
+                    uint32_t p3Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    outputFrame->getOffsetData()[p1Pos] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[p2Pos] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[p3Pos] = src[srcPos + 2];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_1,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_2,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat img(srcSpecs.height, srcSpecs.width, CV_8UC3, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p2Offset, dstSpecs.p2Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p3Offset, dstSpecs.p3Stride);
+            cv::split(img, channels);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStart = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t srcPos = lineStart + j * 3;
+                    uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
+                    uint32_t p3Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
+                    outputFrame->getOffsetData()[p1Pos] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[p2Pos] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[p3Pos] = src[srcPos + 2];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::NV12: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PseudoPlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                                   src + srcSpecs.p2Offset,
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   srcSpecs.p1Stride,
+                                                   srcSpecs.p2Stride,
+                                                   ccAuxFrame->getOffsetData().data(),
+                                                   auxStride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_2,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_1,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat frameY(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat frameUV(srcSpecs.height / 2, srcSpecs.width / 2, CV_8UC2, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            cv::Mat auxBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->getOffsetData().data(), auxStride);
+            cv::cvtColorTwoPlane(frameY, frameUV, auxBGR, cv::COLOR_YUV2BGR_NV12);
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p2Offset, dstSpecs.p2Stride);
+            channels.emplace_back(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p3Offset, dstSpecs.p3Stride);
+            cv::split(auxBGR, channels);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::YUV420p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                             src + srcSpecs.p2Offset,
+                                             src + srcSpecs.p3Offset,
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             srcSpecs.p1Stride,
+                                             srcSpecs.p2Stride,
+                                             srcSpecs.p3Stride,
+                                             ccAuxFrame->getOffsetData().data(),
+                                             auxStride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_2,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_1,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(ccAuxFrame->getOffsetData().data(),
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                auxStride,
+                                0,
+                                0,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_RGB,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartY = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartU = srcSpecs.p2Offset + (i / 2) * srcSpecs.p2Stride;
+                const uint32_t lineStartV = srcSpecs.p3Offset + (i / 2) * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
+                    const uint32_t p3Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
+                    float Y = src[lineStartY + j];
+                    float U = src[lineStartU + (uint32_t)(j / 2)];
+                    float V = src[lineStartV + (uint32_t)(j / 2)];
+                    float R, G, B;
+                    RGBfromYUV(R, G, B, Y, U, V);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(clampi(roundf(B), 0, 255));
+                    outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(clampi(roundf(G), 0, 255));
+                    outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(clampi(roundf(R), 0, 255));
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAY8:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+
+    return done;
+}
+
+bool colorConvertToRGB888i(const ColorChangeArgs& args) {
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888i;
+    const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
+    std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
+    FrameSpecs srcSpecs = args.srcSpecs;
+    FrameSpecs dstSpecs = args.dstSpecs;
+    ImgFrame::Type from = args.from;
+    std::shared_ptr<OffsetMemory> ccAuxFrame = args.auxFrame;
+
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+
+    bool done = false;
+    switch(from) {
+        case dai::ImgFrame::Type::RGB888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p1Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p1Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p3Offset,
+                                       srcSpecs.p3Stride,
+                                       outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                       dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p3Offset), srcSpecs.p3Stride);
+            cv::Mat img(dstSpecs.height, dstSpecs.width, CV_8UC3, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::merge(channels, img);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStart = dstSpecs.p1Offset + i * dstSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t dstPos = lineStart + j * 3;
+                    uint32_t p1Pos = srcSpecs.p1Offset + i * srcSpecs.p1Stride + j;
+                    uint32_t p2Pos = srcSpecs.p2Offset + i * srcSpecs.p2Stride + j;
+                    uint32_t p3Pos = srcSpecs.p3Offset + i * srcSpecs.p3Stride + j;
+                    outputFrame->getOffsetData()[dstPos + 0] = src[p1Pos];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[p2Pos];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[p3Pos];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p3Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p3Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p1Offset,
+                                       srcSpecs.p1Stride,
+                                       outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                       dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p3Offset), srcSpecs.p3Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat img(dstSpecs.height, dstSpecs.width, CV_8UC3, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::merge(channels, img);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStart = dstSpecs.p1Offset + i * dstSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t dstPos = lineStart + j * 3;
+                    uint32_t p1Pos = srcSpecs.p3Offset + i * srcSpecs.p3Stride + j;
+                    uint32_t p2Pos = srcSpecs.p2Offset + i * srcSpecs.p2Stride + j;
+                    uint32_t p3Pos = srcSpecs.p1Offset + i * srcSpecs.p1Stride + j;
+                    outputFrame->getOffsetData()[dstPos + 0] = src[p1Pos];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[p2Pos];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[p3Pos];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::RGB888i:
+            std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
+            done = true;
+            break;
+        case dai::ImgFrame::Type::BGR888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorRGB888ToBGR888u8(src + srcSpecs.p1Offset,
+                                     srcSpecs.width,
+                                     srcSpecs.height,
+                                     srcSpecs.p1Stride,
+                                     outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                     dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat img(srcSpecs.height, srcSpecs.width, CV_8UC3, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat imgBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(img, imgBGR, cv::COLOR_RGB2BGR);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStartSrc = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                uint32_t lineStartDst = dstSpecs.p1Offset + i * dstSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t dstPos = lineStartDst + j * 3;
+                    uint32_t srcPos = lineStartSrc + j * 3;
+                    outputFrame->getOffsetData()[dstPos + 0] = src[srcPos + 2];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[srcPos + 0];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::NV12: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PseudoPlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                                   src + srcSpecs.p2Offset,
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   srcSpecs.p1Stride,
+                                                   srcSpecs.p2Stride,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                                   dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat frameY(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat frameUV(srcSpecs.height / 2, srcSpecs.width / 2, CV_8UC2, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            cv::Mat auxBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->getOffsetData().data(), auxStride);
+            cv::cvtColorTwoPlane(frameY, frameUV, auxBGR, cv::COLOR_YUV2BGR_NV12);
+            cv::Mat img(dstSpecs.height, dstSpecs.width, CV_8UC3, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(auxBGR, img, cv::COLOR_RGB2BGR);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::YUV420p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                             src + srcSpecs.p2Offset,
+                                             src + srcSpecs.p3Offset,
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             srcSpecs.p1Stride,
+                                             srcSpecs.p2Stride,
+                                             srcSpecs.p3Stride,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                             dstSpecs.p1Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartY = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartU = srcSpecs.p2Offset + (i / 2) * srcSpecs.p2Stride;
+                const uint32_t lineStartV = srcSpecs.p3Offset + (i / 2) * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + 3 * j;
+                    float Y = src[lineStartY + j];
+                    float U = src[lineStartU + (uint32_t)(j / 2)];
+                    float V = src[lineStartV + (uint32_t)(j / 2)];
+                    float R, G, B;
+                    RGBfromYUV(R, G, B, Y, U, V);
+                    outputFrame->getOffsetData()[pos + 0] = static_cast<uint8_t>(clampi(roundf(R), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 1] = static_cast<uint8_t>(clampi(roundf(G), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 2] = static_cast<uint8_t>(clampi(roundf(B), 0, 255.0f));
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAY8:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+
+    return done;
+}
+
+bool colorConvertToBGR888i(const ColorChangeArgs& args) {
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888i;
+    const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
+    std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
+    FrameSpecs srcSpecs = args.srcSpecs;
+    FrameSpecs dstSpecs = args.dstSpecs;
+    ImgFrame::Type from = args.from;
+    std::shared_ptr<OffsetMemory> ccAuxFrame = args.auxFrame;
+
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+#endif
+
+    bool done = false;
+    switch(from) {
+        case dai::ImgFrame::Type::RGB888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p3Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p3Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p1Offset,
+                                       srcSpecs.p1Stride,
+                                       outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                       dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p3Offset), srcSpecs.p3Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat img(dstSpecs.height, dstSpecs.width, CV_8UC3, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::merge(channels, img);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStart = dstSpecs.p1Offset + i * dstSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t dstPos = lineStart + j * 3;
+                    uint32_t p1Pos = srcSpecs.p3Offset + i * srcSpecs.p3Stride + j;
+                    uint32_t p2Pos = srcSpecs.p2Offset + i * srcSpecs.p2Stride + j;
+                    uint32_t p3Pos = srcSpecs.p1Offset + i * srcSpecs.p1Stride + j;
+                    outputFrame->getOffsetData()[dstPos + 0] = src[p1Pos];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[p2Pos];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[p3Pos];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p1Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p1Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p3Offset,
+                                       srcSpecs.p3Stride,
+                                       outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                       dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p3Offset), srcSpecs.p3Stride);
+            cv::Mat img(dstSpecs.height, dstSpecs.width, CV_8UC3, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::merge(channels, img);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStart = dstSpecs.p1Offset + i * dstSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t dstPos = lineStart + j * 3;
+                    uint32_t p1Pos = srcSpecs.p1Offset + i * srcSpecs.p1Stride + j;
+                    uint32_t p2Pos = srcSpecs.p2Offset + i * srcSpecs.p2Stride + j;
+                    uint32_t p3Pos = srcSpecs.p3Offset + i * srcSpecs.p3Stride + j;
+                    outputFrame->getOffsetData()[dstPos + 0] = src[p1Pos];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[p2Pos];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[p3Pos];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::RGB888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorRGB888ToBGR888u8(src + srcSpecs.p1Offset,
+                                     srcSpecs.width,
+                                     srcSpecs.height,
+                                     srcSpecs.p1Stride,
+                                     outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                     dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat img(srcSpecs.height, srcSpecs.width, CV_8UC3, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat imgBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(img, imgBGR, cv::COLOR_RGB2BGR);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                uint32_t lineStartSrc = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                uint32_t lineStartDst = dstSpecs.p1Offset + i * dstSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    uint32_t dstPos = lineStartDst + j * 3;
+                    uint32_t srcPos = lineStartSrc + j * 3;
+                    outputFrame->getOffsetData()[dstPos + 0] = src[srcPos + 2];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[srcPos + 0];
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888i:
+            std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
+            done = true;
+            break;
+        case dai::ImgFrame::Type::NV12: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PseudoPlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                                   src + srcSpecs.p2Offset,
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   srcSpecs.p1Stride,
+                                                   srcSpecs.p2Stride,
+                                                   ccAuxFrame->getOffsetData().data(),
+                                                   auxStride);
+            fcvColorRGB888ToBGR888u8(ccAuxFrame->getOffsetData().data(),
+                                     srcSpecs.width,
+                                     srcSpecs.height,
+                                     auxStride,
+                                     outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                     dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat frameY(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat frameUV(srcSpecs.height / 2, srcSpecs.width / 2, CV_8UC2, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            cv::Mat img(dstSpecs.height, dstSpecs.width, CV_8UC3, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColorTwoPlane(frameY, frameUV, img, cv::COLOR_YUV2BGR_NV12);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::YUV420p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                             src + srcSpecs.p2Offset,
+                                             src + srcSpecs.p3Offset,
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             srcSpecs.p1Stride,
+                                             srcSpecs.p2Stride,
+                                             srcSpecs.p3Stride,
+                                             ccAuxFrame->getOffsetData().data(),
+                                             auxStride);
+            fcvColorRGB888ToBGR888u8(ccAuxFrame->getOffsetData().data(),
+                                     srcSpecs.width,
+                                     srcSpecs.height,
+                                     auxStride,
+                                     outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                     dstSpecs.p1Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartY = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartU = srcSpecs.p2Offset + (i / 2) * srcSpecs.p2Stride;
+                const uint32_t lineStartV = srcSpecs.p3Offset + (i / 2) * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + 3 * j;
+                    float Y = src[lineStartY + j];
+                    float U = src[lineStartU + (uint32_t)(j / 2)];
+                    float V = src[lineStartV + (uint32_t)(j / 2)];
+                    float R, G, B;
+                    RGBfromYUV(R, G, B, Y, U, V);
+                    outputFrame->getOffsetData()[pos + 0] = static_cast<uint8_t>(clampi(roundf(B), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 1] = static_cast<uint8_t>(clampi(roundf(G), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 2] = static_cast<uint8_t>(clampi(roundf(R), 0, 255.0f));
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAY8:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+
+    return done;
+}
+
+bool colorConvertToNV12(const ColorChangeArgs& args) {
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::NV12;
+    const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
+    std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
+    FrameSpecs srcSpecs = args.srcSpecs;
+    FrameSpecs dstSpecs = args.dstSpecs;
+    ImgFrame::Type from = args.from;
+    std::shared_ptr<OffsetMemory> ccAuxFrame = args.auxFrame;
+
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+#endif
+
+    bool done = false;
+    switch(from) {
+        case dai::ImgFrame::Type::RGB888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p3Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p3Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p1Offset,
+                                       srcSpecs.p1Stride,
+                                       ccAuxFrame->getOffsetData().data(),
+                                       auxStride);
+            fcvColorRGB888ToYCbCr420PseudoPlanaru8(ccAuxFrame->getOffsetData().data(),
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   auxStride,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                                   dstSpecs.p1Stride,
+                                                   dstSpecs.p2Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartR = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartG = srcSpecs.p2Offset + i * srcSpecs.p2Stride;
+                const uint32_t lineStartB = srcSpecs.p3Offset + i * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2) * 2;
+                    const uint32_t p3Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2) * 2 + 1;
+                    float R = src[lineStartR + j];
+                    float G = src[lineStartG + j];
+                    float B = src[lineStartB + j];
+                    float Y, U, V;
+                    YUVfromRGB(Y, U, V, R, G, B);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
+                    if(i % 2 == 0 && j % 2 == 0) {
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
+                    }
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p1Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p1Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p3Offset,
+                                       srcSpecs.p3Stride,
+                                       ccAuxFrame->getOffsetData().data(),
+                                       auxStride);
+            fcvColorRGB888ToYCbCr420PseudoPlanaru8(ccAuxFrame->getOffsetData().data(),
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   auxStride,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                                   dstSpecs.p1Stride,
+                                                   dstSpecs.p2Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartB = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartG = srcSpecs.p2Offset + i * srcSpecs.p2Stride;
+                const uint32_t lineStartR = srcSpecs.p3Offset + i * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2) * 2;
+                    const uint32_t p3Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2) * 2 + 1;
+                    float R = src[lineStartR + j];
+                    float G = src[lineStartG + j];
+                    float B = src[lineStartB + j];
+                    float Y, U, V;
+                    YUVfromRGB(Y, U, V, R, G, B);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
+                    if(i % 2 == 0 && j % 2 == 0) {
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
+                    }
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::RGB888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorRGB888ToBGR888u8(
+                src + srcSpecs.p1Offset, srcSpecs.width, srcSpecs.height, srcSpecs.p1Stride, ccAuxFrame->getOffsetData().data(), auxStride);
+            fcvColorRGB888ToYCbCr420PseudoPlanaru8(ccAuxFrame->getOffsetData().data(),
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   auxStride,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                                   dstSpecs.p1Stride,
+                                                   dstSpecs.p2Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStart = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t pos = lineStart + j * 3;
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2) * 2;
+                    const uint32_t p3Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2) * 2 + 1;
+                    float R = src[pos + 0];
+                    float G = src[pos + 1];
+                    float B = src[pos + 2];
+                    float Y, U, V;
+                    YUVfromRGB(Y, U, V, R, G, B);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
+                    if(i % 2 == 0 && j % 2 == 0) {
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
+                    }
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888i:
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorRGB888ToYCbCr420PseudoPlanaru8(src + srcSpecs.p1Offset,
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   srcSpecs.p1Stride,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                                   outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                                   dstSpecs.p1Stride,
+                                                   dstSpecs.p2Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStart = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t pos = lineStart + j * 3;
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2) * 2;
+                    const uint32_t p3Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2) * 2 + 1;
+                    float B = src[pos + 0];
+                    float G = src[pos + 1];
+                    float R = src[pos + 2];
+                    float Y, U, V;
+                    YUVfromRGB(Y, U, V, R, G, B);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
+                    if(i % 2 == 0 && j % 2 == 0) {
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
+                    }
+                }
+            }
+#endif
+            done = true;
+            break;
+        case dai::ImgFrame::Type::NV12:
+            std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
+            done = true;
+            break;
+        case dai::ImgFrame::Type::YUV420p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                src + srcSpecs.p2Offset,
+                                srcSpecs.p2Stride,
+                                src + srcSpecs.p3Offset,
+                                srcSpecs.p3Stride,
+                                FASTCV_CHANNEL_0,
+                                FASTCV_IYUV,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelCombine2Planesu8(src + srcSpecs.p2Offset,
+                                       srcSpecs.width / 2,
+                                       srcSpecs.height / 2,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p3Offset,
+                                       srcSpecs.p3Stride,
+                                       outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                       dstSpecs.p2Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            std::vector<cv::Mat> channels;
+            channels.reserve(2);
+            channels.emplace_back(srcSpecs.height / 2, srcSpecs.width / 2, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            channels.emplace_back(srcSpecs.height / 2, srcSpecs.width / 2, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p3Offset), srcSpecs.p3Stride);
+            cv::Mat frameUV(dstSpecs.height / 2, dstSpecs.width / 2, CV_8UC2, outputFrame->getOffsetData().data() + dstSpecs.p2Offset, dstSpecs.p2Stride);
+            cv::merge(channels, frameUV);
+            cv::Mat srcY(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat dstY(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            srcY.copyTo(dstY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+            std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
+            memset(outputFrame->getOffsetData().data() + dstSpecs.p2Offset, 128, dstSpecs.p2Stride * dstSpecs.height / 2);
+            done = true;
+            break;
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+
+    return done;
+}
+
+bool colorConvertToYUV420p(const ColorChangeArgs& args) {
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::YUV420p;
+    const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
+    std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
+    FrameSpecs srcSpecs = args.srcSpecs;
+    FrameSpecs dstSpecs = args.dstSpecs;
+    ImgFrame::Type from = args.from;
+    std::shared_ptr<OffsetMemory> ccAuxFrame = args.auxFrame;
+
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+#endif
+
+    bool done = false;
+    switch(from) {
+        case dai::ImgFrame::Type::RGB888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p3Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p3Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p1Offset,
+                                       srcSpecs.p1Stride,
+                                       ccAuxFrame->getOffsetData().data(),
+                                       auxStride);
+            fcvColorRGB888ToYCbCr420Planaru8(ccAuxFrame->getOffsetData().data(),
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             auxStride,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                             dstSpecs.p1Stride,
+                                             dstSpecs.p2Stride,
+                                             dstSpecs.p3Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartR = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartG = srcSpecs.p2Offset + i * srcSpecs.p2Stride;
+                const uint32_t lineStartB = srcSpecs.p3Offset + i * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2);
+                    const uint32_t p3Pos = dstSpecs.p3Offset + (i / 2) * dstSpecs.p3Stride + (j / 2);
+                    float R = src[lineStartR + j];
+                    float G = src[lineStartG + j];
+                    float B = src[lineStartB + j];
+                    float Y, U, V;
+                    YUVfromRGB(Y, U, V, R, G, B);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
+                    if(i % 2 == 0 && j % 2 == 0) {
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
+                    }
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p1Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p1Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p3Offset,
+                                       srcSpecs.p3Stride,
+                                       ccAuxFrame->getOffsetData().data(),
+                                       auxStride);
+            fcvColorRGB888ToYCbCr420Planaru8(ccAuxFrame->getOffsetData().data(),
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             auxStride,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                             dstSpecs.p1Stride,
+                                             dstSpecs.p2Stride,
+                                             dstSpecs.p3Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartR = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartG = srcSpecs.p2Offset + i * srcSpecs.p2Stride;
+                const uint32_t lineStartB = srcSpecs.p3Offset + i * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2);
+                    const uint32_t p3Pos = dstSpecs.p3Offset + (i / 2) * dstSpecs.p3Stride + (j / 2);
+                    float B = src[lineStartR + j];
+                    float G = src[lineStartG + j];
+                    float R = src[lineStartB + j];
+                    float Y, U, V;
+                    YUVfromRGB(Y, U, V, R, G, B);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
+                    if(i % 2 == 0 && j % 2 == 0) {
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
+                    }
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::RGB888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorRGB888ToBGR888u8(
+                src + srcSpecs.p1Offset, srcSpecs.width, srcSpecs.height, srcSpecs.p1Stride, ccAuxFrame->getOffsetData().data(), auxStride);
+            fcvColorRGB888ToYCbCr420Planaru8(ccAuxFrame->getOffsetData().data(),
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             auxStride,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                             dstSpecs.p1Stride,
+                                             dstSpecs.p2Stride,
+                                             dstSpecs.p3Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStart = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t pos = lineStart + j * 3;
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2);
+                    const uint32_t p3Pos = dstSpecs.p3Offset + (i / 2) * dstSpecs.p3Stride + (j / 2);
+                    float R = src[pos + 0];
+                    float G = src[pos + 1];
+                    float B = src[pos + 2];
+                    float Y, U, V;
+                    YUVfromRGB(Y, U, V, R, G, B);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
+                    if(i % 2 == 0 && j % 2 == 0) {
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
+                    }
+                }
+            }
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888i:
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorRGB888ToYCbCr420Planaru8(src + srcSpecs.p1Offset,
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             srcSpecs.p1Stride,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                             outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                             dstSpecs.p1Stride,
+                                             dstSpecs.p2Stride,
+                                             dstSpecs.p3Stride);
+#else
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStart = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t pos = lineStart + j * 3;
+                    const uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
+                    const uint32_t p2Pos = dstSpecs.p2Offset + (i / 2) * dstSpecs.p2Stride + (j / 2);
+                    const uint32_t p3Pos = dstSpecs.p3Offset + (i / 2) * dstSpecs.p3Stride + (j / 2);
+                    float B = src[pos + 0];
+                    float G = src[pos + 1];
+                    float R = src[pos + 2];
+                    float Y, U, V;
+                    YUVfromRGB(Y, U, V, R, G, B);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
+                    if(i % 2 == 0 && j % 2 == 0) {
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
+                    }
+                }
+            }
+#endif
+            done = true;
+            break;
+        case dai::ImgFrame::Type::NV12: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                src + srcSpecs.p2Offset,
+                                srcSpecs.p2Stride,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_Y,
+                                FASTCV_NV12,
+                                outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                dstSpecs.p1Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                src + srcSpecs.p2Offset,
+                                srcSpecs.p2Stride,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_U,
+                                FASTCV_NV12,
+                                outputFrame->getOffsetData().data() + dstSpecs.p2Offset,
+                                dstSpecs.p2Stride);
+            fcvChannelExtractu8(src + srcSpecs.p1Offset,
+                                srcSpecs.width,
+                                srcSpecs.height,
+                                srcSpecs.p1Stride,
+                                src + srcSpecs.p2Offset,
+                                srcSpecs.p2Stride,
+                                0,
+                                0,
+                                FASTCV_CHANNEL_V,
+                                FASTCV_NV12,
+                                outputFrame->getOffsetData().data() + dstSpecs.p3Offset,
+                                dstSpecs.p3Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat frameUV(srcSpecs.height / 2, srcSpecs.width / 2, CV_8UC2, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            std::vector<cv::Mat> channels;
+            channels.reserve(2);
+            channels.emplace_back(dstSpecs.height / 2, dstSpecs.width / 2, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p2Offset, dstSpecs.p2Stride);
+            channels.emplace_back(dstSpecs.height / 2, dstSpecs.width / 2, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p3Offset, dstSpecs.p3Stride);
+            cv::split(frameUV, channels);
+            cv::Mat srcY(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat dstY(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            srcY.copyTo(dstY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::YUV420p:
+            std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
+            done = true;
+            break;
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAY8:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+
+    return done;
+}
+
+bool colorConvertToGRAY8(const ColorChangeArgs& args) {
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::GRAY8;
+    const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
+    std::shared_ptr<OffsetMemory> outputFrame = args.outputFrame;
+    FrameSpecs srcSpecs = args.srcSpecs;
+    FrameSpecs dstSpecs = args.dstSpecs;
+    ImgFrame::Type from = args.from;
+    std::shared_ptr<OffsetMemory> ccAuxFrame = args.auxFrame;
+
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+
+    bool done = false;
+    switch(from) {
+        case dai::ImgFrame::Type::RGB888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p1Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p1Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p3Offset,
+                                       srcSpecs.p3Stride,
+                                       ccAuxFrame->getOffsetData().data(),
+                                       auxStride);
+            fcvColorRGB888ToGrayu8(ccAuxFrame->getOffsetData().data(),
+                                   srcSpecs.width,
+                                   srcSpecs.height,
+                                   auxStride,
+                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                   dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p3Offset), srcSpecs.p3Stride);
+            cv::Mat auxRGB(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->getOffsetData().data(), auxStride);
+            cv::merge(channels, auxRGB);
+            // Convert to grayscale
+            cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(auxRGB, gray, cv::COLOR_RGB2GRAY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvChannelCombine3Planesu8(src + srcSpecs.p3Offset,
+                                       srcSpecs.width,
+                                       srcSpecs.height,
+                                       srcSpecs.p3Stride,
+                                       src + srcSpecs.p2Offset,
+                                       srcSpecs.p2Stride,
+                                       src + srcSpecs.p1Offset,
+                                       srcSpecs.p1Stride,
+                                       ccAuxFrame->getOffsetData().data(),
+                                       auxStride);
+            fcvColorRGB888ToGrayu8(ccAuxFrame->getOffsetData().data(),
+                                   srcSpecs.width,
+                                   srcSpecs.height,
+                                   auxStride,
+                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                   dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            std::vector<cv::Mat> channels;
+            channels.reserve(3);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            channels.emplace_back(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p3Offset), srcSpecs.p3Stride);
+            cv::Mat auxRGB(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->getOffsetData().data(), auxStride);
+            cv::merge(channels, auxRGB);
+            cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(auxRGB, gray, cv::COLOR_BGR2GRAY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::RGB888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorRGB888ToGrayu8(src + srcSpecs.p1Offset,
+                                   srcSpecs.width,
+                                   srcSpecs.height,
+                                   srcSpecs.p1Stride,
+                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                   dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat frameRGB(srcSpecs.height, srcSpecs.width, CV_8UC3, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(frameRGB, gray, cv::COLOR_RGB2GRAY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::BGR888i: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorRGB888ToBGR888u8(
+                src + srcSpecs.p1Offset, srcSpecs.width, srcSpecs.height, srcSpecs.p1Stride, ccAuxFrame->getOffsetData().data(), auxStride);
+            fcvColorRGB888ToGrayu8(ccAuxFrame->getOffsetData().data(),
+                                   srcSpecs.width,
+                                   srcSpecs.height,
+                                   auxStride,
+                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                   dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat frameBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(frameBGR, gray, cv::COLOR_BGR2GRAY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::NV12: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PseudoPlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                                   src + srcSpecs.p2Offset,
+                                                   srcSpecs.width,
+                                                   srcSpecs.height,
+                                                   srcSpecs.p1Stride,
+                                                   srcSpecs.p2Stride,
+                                                   ccAuxFrame->getOffsetData().data(),
+                                                   auxStride);
+            fcvColorRGB888ToGrayu8(ccAuxFrame->getOffsetData().data(),
+                                   srcSpecs.width,
+                                   srcSpecs.height,
+                                   auxStride,
+                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                   dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            cv::Mat frameY(srcSpecs.height, srcSpecs.width, CV_8UC1, const_cast<uint8_t*>(src + srcSpecs.p1Offset), srcSpecs.p1Stride);
+            cv::Mat frameUV(srcSpecs.height / 2, srcSpecs.width / 2, CV_8UC2, const_cast<uint8_t*>(src + srcSpecs.p2Offset), srcSpecs.p2Stride);
+            cv::Mat auxBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->getOffsetData().data(), auxStride);
+            cv::cvtColorTwoPlane(frameY, frameUV, auxBGR, cv::COLOR_YUV2BGR_NV12);
+            cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(auxBGR, gray, cv::COLOR_BGR2GRAY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::YUV420p: {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            fcvColorYCbCr420PlanarToRGB888u8(src + srcSpecs.p1Offset,
+                                             src + srcSpecs.p2Offset,
+                                             src + srcSpecs.p3Offset,
+                                             srcSpecs.width,
+                                             srcSpecs.height,
+                                             srcSpecs.p1Stride,
+                                             srcSpecs.p2Stride,
+                                             srcSpecs.p3Stride,
+                                             ccAuxFrame->getOffsetData().data(),
+                                             auxStride);
+            fcvColorRGB888ToGrayu8(ccAuxFrame->getOffsetData().data(),
+                                   srcSpecs.width,
+                                   srcSpecs.height,
+                                   auxStride,
+                                   outputFrame->getOffsetData().data() + dstSpecs.p1Offset,
+                                   dstSpecs.p1Stride);
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+            for(uint32_t i = 0; i < srcSpecs.height; ++i) {
+                const uint32_t lineStartY = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
+                const uint32_t lineStartU = srcSpecs.p2Offset + (i / 2) * srcSpecs.p2Stride;
+                const uint32_t lineStartV = srcSpecs.p3Offset + (i / 2) * srcSpecs.p3Stride;
+                for(uint32_t j = 0; j < srcSpecs.width; ++j) {
+                    const uint32_t pos = srcSpecs.p1Offset + i * auxStride + 3 * j;
+                    float Y = src[lineStartY + j];
+                    float U = src[lineStartU + (uint32_t)(j / 2)];
+                    float V = src[lineStartV + (uint32_t)(j / 2)];
+                    float R, G, B;
+                    RGBfromYUV(R, G, B, Y, U, V);
+                    ccAuxFrame->getOffsetData().data()[pos + 0] = static_cast<uint8_t>(clampi(roundf(B), 0, 255.0f));
+                    ccAuxFrame->getOffsetData().data()[pos + 1] = static_cast<uint8_t>(clampi(roundf(G), 0, 255.0f));
+                    ccAuxFrame->getOffsetData().data()[pos + 2] = static_cast<uint8_t>(clampi(roundf(R), 0, 255.0f));
+                }
+            }
+            cv::Mat auxBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->getOffsetData().data(), auxStride);
+            cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame->getOffsetData().data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
+            cv::cvtColor(auxBGR, gray, cv::COLOR_BGR2GRAY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
+#endif
+            done = true;
+            break;
+        }
+        case dai::ImgFrame::Type::RAW8:
+        case dai::ImgFrame::Type::GRAY8:
+            std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
+            done = true;
+            break;
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+
+    return done;
+}
+
+void ColorChangeH::build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo) {
+    from = typeFrom;
+    to = typeTo;
+    srcSpecs = srcFrameSpecs;
+    dstSpecs = dstFrameSpecs;
+    size_t newAuxFrameSize = ALIGN_UP(srcSpecs.height, DEPTHAI_HEIGHT_ALIGNMENT) * ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+    if(!ccAuxFrame || ccAuxFrame->getOffsetSize() < newAuxFrameSize) ccAuxFrame = std::make_shared<_ImageManipMemory>(newAuxFrameSize);
+}
+
+void ColorChangeH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
+    float bpp;
+    int numPlanes;
+    getFrameTypeInfo(to, numPlanes, bpp);
+
+    bool done = false;
+    auto start = std::chrono::steady_clock::now();
+    switch(to) {
+        case dai::ImgFrame::Type::RGB888p:
+            done = colorConvertToRGB888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::BGR888p:
+            done = colorConvertToBGR888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::RGB888i:
+            done = colorConvertToRGB888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::BGR888i:
+            done = colorConvertToBGR888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::NV12:
+            done = colorConvertToNV12({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::YUV420p:
+            done = colorConvertToYUV420p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case dai::ImgFrame::Type::GRAY8:
+        case dai::ImgFrame::Type::RAW8:
+            done = colorConvertToGRAY8({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+            break;
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+    auto diff = std::chrono::steady_clock::now() - start;
+    if(logger) logger->trace("ImageManip | colorConvert took {}ns", std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count());
+
+    if(!done) {
+        if(logger) logger->error("Convert color from {} to {} not supported or failed.", (int)from, (int)to);
+        std::copy(src->getOffsetData().data(),
+                  src->getOffsetData().data() + (src->getOffsetSize() <= dst->getOffsetSize() ? src->getOffsetSize() : dst->getOffsetSize()),
+                  dst->getOffsetData().data());
+    }
+}
+
+//--------------------------------------------------
+//----------------------- Warp ---------------------
+//--------------------------------------------------
+
+bool Warp::isIdentityWarp() const {
+    return (matrix[0][0] == 1.0f && matrix[0][1] == 0.0f && matrix[0][2] == 0.0f && matrix[1][0] == 0.0f && matrix[1][1] == 1.0f && matrix[1][2] == 0.0f
+            && matrix[2][0] == 0.0f && matrix[2][1] == 0.0f && matrix[2][2] == 1.0f)
+           && (srcSpecs.width == dstSpecs.width && srcSpecs.height == dstSpecs.height);
+}
+
+Warp& Warp::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_t b) {
+    background = ImageManipOpsBase<Container>::Background::COLOR;
+    switch(type) {
+        case ImgFrame::Type::YUV420p:
+        case ImgFrame::Type::NV12: {
+            float y, u, v;
+            YUVfromRGB(y, u, v, r, g, b);
+            backgroundColor[0] = std::round(y);
+            backgroundColor[1] = std::round(u);
+            backgroundColor[2] = std::round(v);
+            break;
+        }
+        case ImgFrame::Type::RGB888p:
+        case ImgFrame::Type::RGB888i:
+            backgroundColor[0] = r;
+            backgroundColor[1] = g;
+            backgroundColor[2] = b;
+            break;
+        case ImgFrame::Type::BGR888p:
+        case ImgFrame::Type::BGR888i:
+            backgroundColor[0] = b;
+            backgroundColor[1] = g;
+            backgroundColor[2] = r;
+            break;
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+            // backgroundColor[0] = 0.299f * r + 0.587f * g + 0.114f * b;
+            backgroundColor[0] = b;
+            break;
+        case ImgFrame::Type::RAW16:
+            backgroundColor[0] = r;
+            break;
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            break;
+    }
+    return *this;
+}
+
+void WarpH::build(const FrameSpecs srcFrameSpecs,
+                  const FrameSpecs dstFrameSpecs,
+                  const ImgFrame::Type type,
+                  const std::array<std::array<float, 3>, 3> matrix,
+                  std::vector<std::array<std::array<float, 2>, 4>> srcCorners) {
+    this->matrix = matrix;
+    this->type = type;
+    this->srcSpecs = srcFrameSpecs;
+    this->dstSpecs = dstFrameSpecs;
+
+    if(!fastCvBorder || fastCvBorder->size() < this->dstSpecs.height * 2)
+        fastCvBorder = std::make_shared<_ImageManipBuffer<uint32_t>>(this->dstSpecs.height * 2);
+
+    const uint32_t inWidth = srcFrameSpecs.width;
+    const uint32_t inHeight = srcFrameSpecs.height;
+    this->sourceMinX = 0;
+    this->sourceMaxX = inWidth;
+    this->sourceMinY = 0;
+    this->sourceMaxY = inHeight;
+    for(const auto& corners : srcCorners) {
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector<std::array<float, 2>>(corners.begin(), corners.end()));
+        this->sourceMinX = std::max(this->sourceMinX, (size_t)std::floor(std::max(minx, 0.f)));
+        this->sourceMinY = std::max(this->sourceMinY, (size_t)std::floor(std::max(miny, 0.f)));
+        this->sourceMaxX = std::min(this->sourceMaxX, (size_t)std::ceil(maxx));
+        this->sourceMaxY = std::min(this->sourceMaxY, (size_t)std::ceil(maxy));
+    }
+    if(this->sourceMinX >= this->sourceMaxX || this->sourceMinY >= this->sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
+}
+
+void WarpH::buildUndistort(bool enable,
+                           const std::array<float, 9>& cameraMatrix,
+                           const std::array<float, 9>& newCameraMatrix,
+                           const std::vector<float>& distCoeffs,
+                           const std::optional<float> alpha,
+                           const ImgFrame::Type type,
+                           const uint32_t srcWidth,
+                           const uint32_t srcHeight,
+                           const uint32_t dstWidth,
+                           const uint32_t dstHeight) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(enable) {
+        this->alphaScaling = alpha;  // unused
+        if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
+        auto undistortStatus = undistortImpl->build(cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
+        switch(undistortStatus) {
+            case UndistortOpenCvImpl::BuildStatus::ONE_SHOT:
+                this->enableUndistort = true;
+                this->undistortOneShot = true;
+                break;
+            case UndistortOpenCvImpl::BuildStatus::TWO_SHOT:
+                this->enableUndistort = true;
+                this->undistortOneShot = false;
+                break;
+            case UndistortOpenCvImpl::BuildStatus::NOT_BUILT:
+                break;
+            case UndistortOpenCvImpl::BuildStatus::NOT_USED:
+            case UndistortOpenCvImpl::BuildStatus::ERROR:
+                this->enableUndistort = false;
+                this->undistortOneShot = false;
+                break;
+        }
+
+        if(this->enableUndistort && !this->undistortOneShot) {
+            auto frameSize = getAlignedOutputFrameSize(type, srcWidth, srcHeight);
+            if(!auxFrame || auxFrame->getOffsetSize() < frameSize) {
+                // When undistort is needed but cannot one shot - undistorted frame must be written to an aux buffer
+                auxFrame = std::make_shared<_ImageManipMemory>(frameSize);
+            }
+        }
+    } else {
+        undistortImpl = nullptr;
+        this->enableUndistort = false;
+        this->undistortOneShot = false;
+    }
+#else
+    (void)enable;
+    (void)cameraMatrix;
+    (void)newCameraMatrix;
+    (void)distCoeffs;
+    (void)type;
+    (void)srcWidth;
+    (void)srcHeight;
+    (void)dstWidth;
+    (void)dstHeight;
+    throw std::runtime_error("Undistort requires OpenCV support");
+#endif
+}
+
+void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
+                      const std::shared_ptr<OffsetMemory>& dst,
+                      const size_t srcWidth,
+                      const size_t srcHeight,
+                      const size_t srcStride,
+                      const size_t dstWidth,
+                      const size_t dstHeight,
+                      const size_t dstStride,
+                      const uint16_t numChannels,
+                      const uint16_t bpp,
+                      const std::array<std::array<float, 3>, 3>& matrix,
+                      const std::vector<uint32_t>& background) {
+#ifdef DEPTHAI_IMAGEMANIPV2_OPENCV
+    transformOpenCV(src->getOffsetData().data(),
+                    dst->getOffsetData().data(),
+                    srcWidth,
+                    srcHeight,
+                    srcStride,
+                    dstWidth,
+                    dstHeight,
+                    dstStride,
+                    numChannels,
+                    bpp,
+                    matrix,
+                    background,
+                    this->srcSpecs,
+                    this->sourceMinX,
+                    this->sourceMinY,
+                    this->sourceMaxX,
+                    this->sourceMaxY);
+#else
+    throw std::runtime_error("OpenCV backend not available");
+#endif
+
+#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    (void)src;
+    (void)dst;
+    (void)srcWidth;
+    (void)srcHeight;
+    (void)srcStride;
+    (void)dstWidth;
+    (void)dstHeight;
+    (void)dstStride;
+    (void)numChannels;
+    (void)bpp;
+    (void)matrix;
+    (void)background;
+#endif
+}
+
+void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
+    auto undistortDst = this->isIdentityWarp() || this->undistortOneShot ? dst : auxFrame;
+    auto undistortSpecs =
+        this->isIdentityWarp() || this->undistortOneShot ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
+    auto warpSrc = this->enableUndistort ? auxFrame : src;
+    auto warpSrcSpecs = this->enableUndistort ? undistortSpecs : this->srcSpecs;
+    // Apply transformation multiple times depending on the image format
+    switch(this->type) {
+        case ImgFrame::Type::RGB888i:
+        case ImgFrame::Type::BGR888i:
+#if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                this->undistortImpl->undistort(
+                    {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 3, src->offset(this->srcSpecs.p1Offset)},
+                    {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 3, undistortDst->offset(undistortSpecs.p1Offset)},
+                    0);
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          3,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0], this->backgroundColor[1], this->backgroundColor[2]});
+            }
+#else
+            (void)src;
+            (void)dst;
+            throw std::runtime_error("OpenCV or FastCV backend not available");
+#endif
+            break;
+        case ImgFrame::Type::BGR888p:
+        case ImgFrame::Type::RGB888p:
+#if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
+                }
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p2Stride, 1, 1, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p2Stride, 1, 1, undistortDst->offset(undistortSpecs.p2Offset)},
+                        1);
+                }
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p3Stride, 1, 1, src->offset(this->srcSpecs.p3Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p3Stride, 1, 1, undistortDst->offset(undistortSpecs.p3Offset)},
+                        2);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p2Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1]});
+                transform(warpSrc->offset(warpSrcSpecs.p3Offset),
+                          dst->offset(this->dstSpecs.p3Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p3Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p3Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[2]});
+            }
+#else
+            (void)src;
+            (void)dst;
+            throw std::runtime_error("OpenCV or FastCV backend not available");
+#endif
+            break;
+        case ImgFrame::Type::YUV420p:
+#if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
+                }
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width / 2, this->srcSpecs.height / 2, this->srcSpecs.p2Stride, 1, 1, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.width / 2, undistortSpecs.height / 2, undistortSpecs.p2Stride, 1, 1, undistortDst->offset(undistortSpecs.p2Offset)},
+                        1);
+                }
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width / 2, this->srcSpecs.height / 2, this->srcSpecs.p3Stride, 1, 1, src->offset(this->srcSpecs.p3Offset)},
+                        {undistortSpecs.width / 2, undistortSpecs.height / 2, undistortSpecs.p3Stride, 1, 1, undistortDst->offset(undistortSpecs.p3Offset)},
+                        2);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p2Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1]});
+                transform(warpSrc->offset(warpSrcSpecs.p3Offset),
+                          dst->offset(this->dstSpecs.p3Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p3Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p3Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[2]});
+            }
+#else
+            (void)src;
+            (void)dst;
+            throw std::runtime_error("OpenCV or FastCV backend not available");
+#endif
+            break;
+        case ImgFrame::Type::NV12:
+#if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
+                }
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width / 2, this->srcSpecs.height / 2, this->srcSpecs.p2Stride, 1, 2, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.width / 2, undistortSpecs.height / 2, undistortSpecs.p2Stride, 1, 2, undistortDst->offset(undistortSpecs.p2Offset)},
+                        1);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p2Stride,
+                          2,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1], this->backgroundColor[2]});
+            }
+#else
+            (void)src;
+            (void)dst;
+            throw std::runtime_error("OpenCV or FastCV backend not available");
+#endif
+            break;
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+#if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+            }
+#else
+            (void)src;
+            (void)dst;
+            throw std::runtime_error("OpenCV or FastCV backend not available");
+#endif
+            break;
+        case ImgFrame::Type::RAW16:
+#if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 2, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 2, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        0);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          2,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+            }
+#else
+            (void)src;
+            (void)dst;
+            throw std::runtime_error("OpenCV or FastCV backend not available");
+#endif
+            break;
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            throw std::runtime_error("Unsupported image format. Only YUV420p, RGB888p, BGR888p, RGB888i, BGR888i, RAW8, NV12, GRAY8 are supported");
+            break;
+    }
+
+#ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
+    (void)warpSrcSpecs;
+#endif
+}
+
+}  // namespace dai::impl

@@ -177,14 +177,6 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         //     PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'getTensor()'
         //     instead", 1); return obj.getFirstLayerInt32();
         // }, DOC(dai, NNData, getFirstLayerInt32))
-        // TODO(Morato) - is this needed - doesn't get inherited from Buffer?
-        .def("getTimestamp", &NNData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &NNData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getSequenceNum", &NNData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &NNData::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &NNData::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
-        .def("setSequenceNum", &NNData::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum))
-
         .def("addTensor",
              static_cast<NNData& (NNData::*)(const std::string&, const std::vector<int>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
              py::arg("name"),

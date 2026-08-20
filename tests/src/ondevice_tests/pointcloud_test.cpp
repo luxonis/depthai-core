@@ -66,15 +66,19 @@ TEST_CASE("sparse pointcloud") {
 }
 
 // ============================================================================
-// Colorization proceeds with mismatched extrinsics (warn only, no skip)
+// Colorization proceeds with mismatched extrinsics (warning logged, no skip)
 // ============================================================================
 TEST_CASE("Colorization proceeds despite mismatched frame extrinsics") {
     // This test verifies that when depth and color frames have different
     // toCameraSocket extrinsics, the PointCloud node still produces a
-    // colorized point cloud (with a warning) rather than falling back to
+    // colorized point cloud (with a warning log) rather than falling back to
     // depth-only output.
 
     dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) {
+        WARN("Skipping mismatched extrinsics test: PointCloud node is not supported on RVC2.");
+        return;
+    }
 
     auto pc = pipeline.create<dai::node::PointCloud>();
     pc->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
@@ -139,6 +143,241 @@ TEST_CASE("Colorization proceeds despite mismatched frame extrinsics") {
             REQUIRE(p.r == 100);
             REQUIRE(p.g == 150);
             REQUIRE(p.b == 200);
+        }
+    }
+
+    pipeline.stop();
+}
+
+// ============================================================================
+// Colorization proceeds with mismatched intrinsics (warning logged, no skip)
+// ============================================================================
+TEST_CASE("Colorization proceeds despite mismatched frame intrinsics") {
+    // This test verifies that when depth and color frames have different
+    // intrinsic matrices, the PointCloud node still produces a colorized
+    // point cloud (with a warning log) rather than falling back to depth-only.
+
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) {
+        WARN("Skipping mismatched intrinsics test: PointCloud node is not supported on RVC2.");
+        return;
+    }
+
+    auto pc = pipeline.create<dai::node::PointCloud>();
+    pc->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+
+    auto depthInQ = pc->inputDepth.createInputQueue();
+    auto colorInQ = pc->getColorInput().createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+
+    pipeline.start();
+
+    constexpr unsigned W = 4, H = 4;
+
+    // Different intrinsics for depth and color
+    std::array<std::array<float, 3>, 3> depthIntrinsics = {{{100.f, 0.f, 2.f}, {0.f, 100.f, 2.f}, {0.f, 0.f, 1.f}}};
+    std::array<std::array<float, 3>, 3> colorIntrinsics = {{{200.f, 0.f, 3.f}, {0.f, 200.f, 3.f}, {0.f, 0.f, 1.f}}};
+
+    dai::Extrinsics ext({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_B);
+    dai::ImgTransformation depthTransform(W, H, depthIntrinsics, dai::CameraModel::Perspective, {}, ext);
+    dai::ImgTransformation colorTransform(W, H, colorIntrinsics, dai::CameraModel::Perspective, {}, ext);
+
+    // Create synthetic depth frame (RAW16)
+    auto depthFrame = std::make_shared<dai::ImgFrame>();
+    depthFrame->setWidth(W);
+    depthFrame->setHeight(H);
+    depthFrame->setType(dai::ImgFrame::Type::RAW16);
+    std::vector<uint16_t> depthData(W * H, 1000);
+    std::vector<uint8_t> depthBytes(depthData.size() * sizeof(uint16_t));
+    std::memcpy(depthBytes.data(), depthData.data(), depthBytes.size());
+    depthFrame->setData(std::move(depthBytes));
+    depthFrame->setTransformation(depthTransform);
+
+    // Create synthetic color frame (RGB888i)
+    auto colorFrame = std::make_shared<dai::ImgFrame>();
+    colorFrame->setWidth(W);
+    colorFrame->setHeight(H);
+    colorFrame->setType(dai::ImgFrame::Type::RGB888i);
+    std::vector<uint8_t> colorData(W * H * 3, 0);
+    for(unsigned i = 0; i < W * H; ++i) {
+        colorData[i * 3 + 0] = 50;
+        colorData[i * 3 + 1] = 100;
+        colorData[i * 3 + 2] = 200;
+    }
+    colorFrame->setData(std::move(colorData));
+    colorFrame->setTransformation(colorTransform);
+
+    depthInQ->send(depthFrame);
+    colorInQ->send(colorFrame);
+
+    auto pcd = outQ->get<dai::PointCloudData>();
+    REQUIRE(pcd != nullptr);
+    REQUIRE(pcd->isColor());
+    REQUIRE(pcd->getWidth() > 0);
+
+    auto points = pcd->getPointsRGB();
+    REQUIRE(!points.empty());
+    for(const auto& p : points) {
+        if(p.z > 0.f) {
+            REQUIRE(p.r == 50);
+            REQUIRE(p.g == 100);
+            REQUIRE(p.b == 200);
+        }
+    }
+
+    pipeline.stop();
+}
+
+// ============================================================================
+// Colorization proceeds with mismatched distortion (warning logged, no skip)
+// ============================================================================
+TEST_CASE("Colorization proceeds despite mismatched frame distortion") {
+    // This test verifies that when depth and color frames have different
+    // distortion models or coefficients, the PointCloud node still produces
+    // a colorized point cloud (with a warning log) rather than falling back
+    // to depth-only.
+
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) {
+        WARN("Skipping mismatched distortion test: PointCloud node is not supported on RVC2.");
+        return;
+    }
+
+    auto pc = pipeline.create<dai::node::PointCloud>();
+    pc->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+
+    auto depthInQ = pc->inputDepth.createInputQueue();
+    auto colorInQ = pc->getColorInput().createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+
+    pipeline.start();
+
+    constexpr unsigned W = 4, H = 4;
+    std::array<std::array<float, 3>, 3> intrinsics = {{{100.f, 0.f, 2.f}, {0.f, 100.f, 2.f}, {0.f, 0.f, 1.f}}};
+
+    dai::Extrinsics ext({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_B);
+
+    // Different distortion: depth has no distortion, color has some coefficients
+    dai::ImgTransformation depthTransform(W, H, intrinsics, dai::CameraModel::Perspective, {}, ext);
+    dai::ImgTransformation colorTransform(W, H, intrinsics, dai::CameraModel::Fisheye, {0.1f, -0.2f, 0.0f, 0.0f, 0.05f}, ext);
+
+    // Create synthetic depth frame (RAW16)
+    auto depthFrame = std::make_shared<dai::ImgFrame>();
+    depthFrame->setWidth(W);
+    depthFrame->setHeight(H);
+    depthFrame->setType(dai::ImgFrame::Type::RAW16);
+    std::vector<uint16_t> depthData(W * H, 1000);
+    std::vector<uint8_t> depthBytes(depthData.size() * sizeof(uint16_t));
+    std::memcpy(depthBytes.data(), depthData.data(), depthBytes.size());
+    depthFrame->setData(std::move(depthBytes));
+    depthFrame->setTransformation(depthTransform);
+
+    // Create synthetic color frame (RGB888i)
+    auto colorFrame = std::make_shared<dai::ImgFrame>();
+    colorFrame->setWidth(W);
+    colorFrame->setHeight(H);
+    colorFrame->setType(dai::ImgFrame::Type::RGB888i);
+    std::vector<uint8_t> colorData(W * H * 3, 0);
+    for(unsigned i = 0; i < W * H; ++i) {
+        colorData[i * 3 + 0] = 80;
+        colorData[i * 3 + 1] = 160;
+        colorData[i * 3 + 2] = 240;
+    }
+    colorFrame->setData(std::move(colorData));
+    colorFrame->setTransformation(colorTransform);
+
+    depthInQ->send(depthFrame);
+    colorInQ->send(colorFrame);
+
+    auto pcd = outQ->get<dai::PointCloudData>();
+    REQUIRE(pcd != nullptr);
+    REQUIRE(pcd->isColor());
+    REQUIRE(pcd->getWidth() > 0);
+
+    auto points = pcd->getPointsRGB();
+    REQUIRE(!points.empty());
+    for(const auto& p : points) {
+        if(p.z > 0.f) {
+            REQUIRE(p.r == 80);
+            REQUIRE(p.g == 160);
+            REQUIRE(p.b == 240);
+        }
+    }
+
+    pipeline.stop();
+}
+
+// ============================================================================
+// Colorization proceeds with mismatched distortion coefficients (same model)
+// ============================================================================
+TEST_CASE("Colorization proceeds despite mismatched distortion coefficients") {
+    // This test exercises the coefficient-comparison branch: same distortion
+    // model on both frames but different coefficient values.
+
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) {
+        WARN("Skipping mismatched distortion coefficients test: PointCloud node is not supported on RVC2.");
+        return;
+    }
+
+    auto pc = pipeline.create<dai::node::PointCloud>();
+    pc->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+
+    auto depthInQ = pc->inputDepth.createInputQueue();
+    auto colorInQ = pc->getColorInput().createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+
+    pipeline.start();
+
+    constexpr unsigned W = 4, H = 4;
+    std::array<std::array<float, 3>, 3> intrinsics = {{{100.f, 0.f, 2.f}, {0.f, 100.f, 2.f}, {0.f, 0.f, 1.f}}};
+
+    dai::Extrinsics ext({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_B);
+
+    // Same model (Fisheye) but different coefficients
+    dai::ImgTransformation depthTransform(W, H, intrinsics, dai::CameraModel::Fisheye, {0.1f, -0.2f, 0.0f, 0.0f, 0.05f}, ext);
+    dai::ImgTransformation colorTransform(W, H, intrinsics, dai::CameraModel::Fisheye, {0.3f, -0.1f, 0.01f, 0.0f, 0.02f}, ext);
+
+    // Create synthetic depth frame (RAW16)
+    auto depthFrame = std::make_shared<dai::ImgFrame>();
+    depthFrame->setWidth(W);
+    depthFrame->setHeight(H);
+    depthFrame->setType(dai::ImgFrame::Type::RAW16);
+    std::vector<uint16_t> depthData(W * H, 1000);
+    std::vector<uint8_t> depthBytes(depthData.size() * sizeof(uint16_t));
+    std::memcpy(depthBytes.data(), depthData.data(), depthBytes.size());
+    depthFrame->setData(std::move(depthBytes));
+    depthFrame->setTransformation(depthTransform);
+
+    // Create synthetic color frame (RGB888i)
+    auto colorFrame = std::make_shared<dai::ImgFrame>();
+    colorFrame->setWidth(W);
+    colorFrame->setHeight(H);
+    colorFrame->setType(dai::ImgFrame::Type::RGB888i);
+    std::vector<uint8_t> colorData(W * H * 3, 0);
+    for(unsigned i = 0; i < W * H; ++i) {
+        colorData[i * 3 + 0] = 70;
+        colorData[i * 3 + 1] = 140;
+        colorData[i * 3 + 2] = 210;
+    }
+    colorFrame->setData(std::move(colorData));
+    colorFrame->setTransformation(colorTransform);
+
+    depthInQ->send(depthFrame);
+    colorInQ->send(colorFrame);
+
+    auto pcd = outQ->get<dai::PointCloudData>();
+    REQUIRE(pcd != nullptr);
+    REQUIRE(pcd->isColor());
+    REQUIRE(pcd->getWidth() > 0);
+
+    auto points = pcd->getPointsRGB();
+    REQUIRE(!points.empty());
+    for(const auto& p : points) {
+        if(p.z > 0.f) {
+            REQUIRE(p.r == 70);
+            REQUIRE(p.g == 140);
+            REQUIRE(p.b == 210);
         }
     }
 

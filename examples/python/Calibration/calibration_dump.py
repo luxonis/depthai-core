@@ -8,7 +8,7 @@ print(f'Is EEPROM available: {device.isEepromAvailable()}')
 
 # User calibration
 try:
-    print(f'User calibration: {json.dumps(device.readCalibration2().eepromToJson(), indent=2)}')
+    print(f'User calibration: {json.dumps(device.getCalibration().eepromToJson(), indent=2)}')
 except Exception as ex:
     print(f'No user calibration: {ex}')
 

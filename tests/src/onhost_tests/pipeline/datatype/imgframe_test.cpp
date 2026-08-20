@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <numeric>
@@ -103,12 +104,15 @@ TEST_CASE("ImgFrame constructors initialize buffers", "[ImgFrame][Constructors]"
 
 TEST_CASE("ImgFrame timestamps and camera settings", "[ImgFrame][Timestamps]") {
     dai::ImgFrame frame;
+    REQUIRE_FALSE(frame.getSensorTemperature().has_value());
+
     auto now = std::chrono::steady_clock::now();
     frame.cam.exposureTimeUs = 2000;
     frame.cam.sensitivityIso = 400;
     frame.cam.wbColorTemp = 5500;
     frame.cam.lensPosition = 120;
     frame.cam.lensPositionRaw = 0.42F;
+    frame.cam.sensorTemperatureC = 42.5F;
 
     frame.setTimestamp(now);
     frame.setTimestampDevice(now + 5ms);
@@ -118,6 +122,8 @@ TEST_CASE("ImgFrame timestamps and camera settings", "[ImgFrame][Timestamps]") {
     REQUIRE(frame.getColorTemperature() == 5500);
     REQUIRE(frame.getLensPosition() == 120);
     REQUIRE(frame.getLensPositionRaw() == Catch::Approx(0.42F));
+    REQUIRE(frame.getSensorTemperature().has_value());
+    REQUIRE(frame.getSensorTemperature().value() == Catch::Approx(42.5F));
 
     REQUIRE(frame.getTimestamp(dai::CameraExposureOffset::END) == frame.getTimestamp());
     REQUIRE(frame.getTimestamp(dai::CameraExposureOffset::START) + frame.getExposureTime() == frame.getTimestamp());
@@ -180,6 +186,7 @@ TEST_CASE("ImgFrame metadata copy, clone, and data handling", "[ImgFrame][Copy]"
     source.cam.wbColorTemp = 4500;
     source.cam.lensPosition = 33;
     source.cam.lensPositionRaw = 0.25F;
+    source.cam.sensorTemperatureC = 31.25F;
     source.fb.stride = 12;
     auto srcData = makeSequential(8, 5);
     source.setData(srcData);
@@ -192,6 +199,9 @@ TEST_CASE("ImgFrame metadata copy, clone, and data handling", "[ImgFrame][Copy]"
     REQUIRE(target.getCategory() == source.getCategory());
     REQUIRE(target.getWidth() == source.getWidth());
     REQUIRE(target.cam.exposureTimeUs == source.cam.exposureTimeUs);
+    REQUIRE(target.cam.sensorTemperatureC.has_value());
+    REQUIRE(source.cam.sensorTemperatureC.has_value());
+    REQUIRE(target.cam.sensorTemperatureC.value() == Catch::Approx(source.cam.sensorTemperatureC.value()));
 
     REQUIRE_NOTHROW(target.setMetadata(std::make_shared<ImgFrame>(source)));
     REQUIRE_THROWS_AS(target.setMetadata(std::shared_ptr<ImgFrame>{}), std::invalid_argument);

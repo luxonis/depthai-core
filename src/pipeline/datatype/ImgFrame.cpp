@@ -1,8 +1,8 @@
+#include <chrono>
 #define _USE_MATH_DEFINES
-#include "depthai/pipeline/datatype/ImgFrame.hpp"
-
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/RotatedRect.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/ImgFrame.pb.h"
@@ -59,6 +59,25 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
             return ts - expTime;
         case CameraExposureOffset::MIDDLE:
             return ts - expTime / 2;
+        case CameraExposureOffset::END:
+        default:
+            return ts;
+    }
+}
+std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> ImgFrame::getTimestampSystem(
+    CameraExposureOffset offset) const {
+    auto ts = getTimestampSystem();
+
+    if(!ts.has_value()) {
+        return std::nullopt;
+    }
+
+    auto expTime = getExposureTime();
+    switch(offset) {
+        case CameraExposureOffset::START:
+            return *ts - expTime;
+        case CameraExposureOffset::MIDDLE:
+            return *ts - expTime / 2;
         case CameraExposureOffset::END:
         default:
             return ts;
@@ -137,6 +156,10 @@ int ImgFrame::getSensorMode() const {
 
 float ImgFrame::getFps() const {
     return cam.fps;
+}
+
+std::optional<float> ImgFrame::getSensorTemperature() const {
+    return cam.sensorTemperatureC;
 }
 
 unsigned int ImgFrame::getSourceHeight() const {

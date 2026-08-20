@@ -6,6 +6,7 @@
 
 // project
 #include "depthai/common/CameraExposureOffset.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/config/config.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
@@ -30,6 +31,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
+    using Buffer::getTimestampSystem;
+
     enum class Fsync : int32_t { NONE = 0, INPUT, OUTPUT, PTP };
     enum class Type {
         YUV422i,    // interleaved 8 bit
@@ -111,6 +114,13 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * not synchronized to host time. Used when monotonicity is required.
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice(CameraExposureOffset offset) const;
+
+    /**
+     * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's system clock,
+     * that can be synchronized using PTP
+     */
+    std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> getTimestampSystem(
+        CameraExposureOffset offset) const;
 
     /**
      * Retrieves instance number
@@ -208,6 +218,11 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * Retrieves sensor FPS for this frame.
      */
     float getFps() const;
+
+    /**
+     * Retrieves sensor temperature in degrees Celsius. Returns an empty optional if not available.
+     */
+    std::optional<float> getSensorTemperature() const;
 
     /**
      * Retrieves image transformation data
@@ -739,8 +754,10 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         Fsync fsync = Fsync::NONE;
         int32_t sensorMode = -1;
         float fps = -1.0f;
+        std::optional<float> sensorTemperatureC = std::nullopt;
 
-        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw, fsync, sensorMode, fps);
+        DEPTHAI_SERIALIZE(
+            CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw, fsync, sensorMode, fps, sensorTemperatureC);
     };
 
     Specs fb = {};
@@ -752,7 +769,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ImgTransformation transformation;
 
    public:
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 
 }  // namespace dai

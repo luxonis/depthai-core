@@ -48,6 +48,7 @@ class SegmentationMask : public Buffer, public ProtoSerializable, public Transfo
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
+    using Buffer::tsSystem;
     using Transformable::transformation;
 
     friend class TransformableCRTP<SegmentationMask>;
@@ -227,7 +228,7 @@ class SegmentationMask : public Buffer, public ProtoSerializable, public Transfo
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(SegmentationMask, ts, tsDevice, sequenceNum, transformation, width, height, labels);
+    DEPTHAI_SERIALIZE(SegmentationMask, ts, tsDevice, tsSystem, sequenceNum, transformation, width, height, labels);
 };
 
 }  // namespace dai

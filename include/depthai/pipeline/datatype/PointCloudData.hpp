@@ -44,9 +44,11 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
+    using Buffer::getTimestampSystem;
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
+    using Buffer::tsSystem;
     using Transformable::getTransformation;
     using Transformable::setTransformation;
     using Transformable::transformation;
@@ -54,7 +56,7 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     /**
      * Construct PointCloudData message.
      */
-    PointCloudData() = default;
+    PointCloudData();
     virtual ~PointCloudData();
 
     std::vector<Point3f> getPoints() const;
@@ -295,7 +297,8 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
         return DatatypeEnum::PointCloudData;
     }
 
-    DEPTHAI_SERIALIZE(PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation, ts, tsDevice, sequenceNum);
+    DEPTHAI_SERIALIZE(
+        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation, ts, tsDevice, tsSystem, sequenceNum);
 };
 
 }  // namespace dai

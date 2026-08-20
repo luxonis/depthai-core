@@ -96,3 +96,21 @@ TEST_CASE("SpatialDetectionNetwork NNArchive API") {
         REQUIRE(tensor != nullptr);
     }
 }
+
+TEST_CASE("SpatialDetectionNetwork model description API with Depth source") {
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    auto depth = p.create<dai::node::Depth>()->build(dai::node::Depth::Algorithm::AUTO, 30.0f, std::pair<uint32_t, uint32_t>{640, 400});
+
+    dai::NNModelDescription modelDesc{"yolov6-nano"};
+    auto nn = p.create<dai::node::SpatialDetectionNetwork>();
+    REQUIRE_NOTHROW(nn->build(camera, depth, modelDesc));
+
+    auto detectionsQueue = nn->out.createOutputQueue();
+    p.start();
+
+    for(int i = 0; i < 10; i++) {
+        auto tensor = detectionsQueue->get<dai::SpatialImgDetections>();
+        REQUIRE(tensor != nullptr);
+    }
+}

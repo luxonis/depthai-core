@@ -248,12 +248,17 @@ void VideoPlayer::init(const std::string& filePath) {
     if(initialized) {
         throw std::runtime_error("VideoPlayer already initialized");
     }
+    // Check if file exists
     if(filePath.empty()) {
         throw std::runtime_error("VideoPlayer file path is empty");
     }
+    if(!std::filesystem::is_regular_file(filePath)) {
+        throw std::runtime_error("VideoPlayer file does not exist: " + filePath);
+    }
     cvReader = std::make_unique<cv::VideoCapture>();
-    cvReader->open(filePath, cv::CAP_FFMPEG);
-    assert(cvReader->isOpened());
+    if(!cvReader->open(filePath, cv::CAP_FFMPEG) || !cvReader->isOpened()) {
+        throw std::runtime_error("Failed to open video with FFMPEG: " + filePath);
+    }
     initialized = true;
 }
 
@@ -304,7 +309,7 @@ void VideoPlayer::close() {
 
 std::tuple<size_t, size_t, double> getVideoSize(const std::string& filePath) {
     cv::VideoCapture cvReader;
-    cvReader.open(filePath);
+    cvReader.open(filePath, cv::CAP_FFMPEG);
     if(!cvReader.isOpened()) {
         throw std::runtime_error("Failed to open video file");
     }

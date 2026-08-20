@@ -6,6 +6,21 @@
 
 #include "depthai/depthai.hpp"
 
+namespace {
+void printMetrics(const dai::CalibrationQuality::Data& q) {
+    for(const auto& [socketPair, rotation] : q.pairwiseRotationDifference) {
+        std::cout << "Pairwise rotation difference " << static_cast<int>(socketPair.first) << " -> " << static_cast<int>(socketPair.second) << " = [";
+        for(std::size_t i = 0; i < rotation.size(); ++i) {
+            if(i > 0) std::cout << ", ";
+            std::cout << rotation[i];
+        }
+        std::cout << "] deg" << std::endl;
+    }
+    std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px" << std::endl;
+    std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px" << std::endl;
+}
+}  // namespace
+
 int main() {
     auto device = std::make_shared<dai::Device>();
 
@@ -30,17 +45,14 @@ int main() {
     // In-pipeline host queues
     auto leftSyncedQueue = stereo->syncedLeft.createOutputQueue();
     auto rightSyncedQueue = stereo->syncedRight.createOutputQueue();
-    auto disparityQueue = stereo->disparity.createOutputQueue();
+    auto depthQueue = stereo->depth.createOutputQueue();
 
-    auto dynQualityOutQ = dynCalib->qualityOutput.createOutputQueue();
     auto dynCoverageOutQ = dynCalib->coverageOutput.createOutputQueue();
     auto dynCalibOutQ = dynCalib->calibrationOutput.createOutputQueue();
 
     auto dynCalibInputControl = dynCalib->inputControl.createInputQueue();
 
-    device->setCalibration(device->readCalibration());
-
-    double maxDisparity = 1.0;
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle
@@ -51,28 +63,12 @@ int main() {
     while(pipeline.isRunning()) {
         auto leftSynced = leftSyncedQueue->get<dai::ImgFrame>();
         auto rightSynced = rightSyncedQueue->get<dai::ImgFrame>();
-        auto disparity = disparityQueue->get<dai::ImgFrame>();
+        auto depth = depthQueue->get<dai::ImgFrame>();
 
         cv::imshow("left", leftSynced->getCvFrame());
         cv::imshow("right", rightSynced->getCvFrame());
 
-        cv::Mat npDisparity = disparity->getFrame();
-
-        double minVal, curMax;
-        cv::minMaxLoc(npDisparity, &minVal, &curMax);
-        maxDisparity = std::max(maxDisparity, curMax);
-
-        // Normalize the disparity image to an 8-bit scale.
-        cv::Mat normalized;
-        npDisparity.convertTo(normalized, CV_8UC1, 255.0 / maxDisparity);
-
-        cv::Mat colorizedDisparity;
-        cv::applyColorMap(normalized, colorizedDisparity, cv::COLORMAP_JET);
-
-        // Set pixels with zero disparity to black.
-        colorizedDisparity.setTo(cv::Scalar(0, 0, 0), normalized == 0);
-
-        cv::imshow("disparity", colorizedDisparity);
+        cv::imshow("depth", dai::utility::colorizeDepthFrame(*depth).getCvFrame());
         // Wait for coverage info
         auto coverageMsg = dynCoverageOutQ->tryGet<dai::CoverageData>();
         if(coverageMsg) {
@@ -84,44 +80,8 @@ int main() {
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastSent);
         if(elapsed.count() >= 3) {
             dynCalibInputControl->send(DCC::loadImage());
-            dynCalibInputControl->send(DCC::calibrationQuality());
+            dynCalibInputControl->send(DCC::calibrate(false));
             lastSent = now;
-        }
-
-        auto dynQualityResult = dynQualityOutQ->tryGet<dai::CalibrationQuality>();
-        if(dynQualityResult) {
-            std::cout << "Dynamic calibration status: " << dynQualityResult->info << std::endl;
-        }
-
-        // If calibration succeeded, apply it to the device
-        if(dynQualityResult && dynQualityResult->qualityData) {
-            std::cout << "Successfully evaluated Quality." << std::endl;
-
-            // Calibration quality metrics
-            auto quality = dynQualityResult;
-
-            const auto& q = *quality->qualityData;
-            // --- Rotation difference ---
-            // Compute magnitude of the rotation delta vector (in degrees)
-            float rotDiff =
-                std::sqrt(q.rotationChange[0] * q.rotationChange[0] + q.rotationChange[1] * q.rotationChange[1] + q.rotationChange[2] * q.rotationChange[2]);
-            std::cout << "Rotation difference: || r_current - r_new || = " << rotDiff << " deg" << std::endl;
-
-            // --- Sampson error ---
-            // Represents geometric reprojection error before/after calibration
-            std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px" << std::endl;
-            std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px" << std::endl;
-
-            // --- Depth error difference ---
-            // Theoretical improvement in depth accuracy at various ranges
-            std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                      << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                      << "%" << std::endl;
-            dynCalibInputControl->send(DCC::resetData());
-            if(std::abs(q.sampsonErrorNew - q.sampsonErrorCurrent) > 0.05f) {
-                std::cout << "Start recalibration process" << std::endl;
-                dynCalibInputControl->send(DCC::startCalibration());
-            }
         }
 
         auto dynCalibrationResult = dynCalibOutQ->tryGet<dai::DynamicCalibrationResult>();
@@ -130,21 +90,13 @@ int main() {
             std::cout << "Dynamic calibration status: " << dynCalibrationResult->info << std::endl;
 
             if(dynCalibrationResult->calibrationData) {
-                std::cout << "Successfully calibrated." << std::endl;
-                dynCalibInputControl->send(DCC::applyCalibration(dynCalibrationResult->calibrationData->newCalibration));
-
                 const auto& q = dynCalibrationResult->calibrationData->calibrationDifference;
-
-                float rotDiff = std::sqrt(q.rotationChange[0] * q.rotationChange[0] + q.rotationChange[1] * q.rotationChange[1]
-                                          + q.rotationChange[2] * q.rotationChange[2]);
-                std::cout << "Rotation difference: " << rotDiff << " deg\n";
-
-                std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
-                std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
-
-                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                          << "%\n";
+                std::cout << "Successfully evaluated metrics from calibration output." << std::endl;
+                printMetrics(q);
+                if(std::abs(q.sampsonErrorNew - q.sampsonErrorCurrent) > 0.05f) {
+                    std::cout << "Applying new calibration" << std::endl;
+                    dynCalibInputControl->send(DCC::applyCalibration(dynCalibrationResult->calibrationData->newCalibration));
+                }
                 dynCalibInputControl->send(DCC::resetData());
             }
         }

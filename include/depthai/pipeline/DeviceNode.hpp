@@ -5,6 +5,7 @@
 #include "depthai/device/Device.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 namespace dai {
 
@@ -52,20 +53,27 @@ class DeviceNode : public ThreadedNode {
      *
      * @param device: shared pointer to device
      */
-    void setDevice(std::shared_ptr<Device> device);
+    void setDevice(const std::shared_ptr<Device>& device);
 };
 
 // Node CRTP class
-template <typename Base, typename Derived, typename Props>
+template <typename Base, typename Derived, typename Props, bool BuiltInNode = true>
 class DeviceNodeCRTP : public Base {
    public:
     using Properties = Props;
     virtual ~DeviceNodeCRTP() = default;
     /// Underlying properties
     Properties& properties;
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     const char* getName() const override {
         return Derived::NAME;
     };
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+
+    bool isBuiltInNode() const override {
+        return BuiltInNode;
+    }
+
     // std::unique_ptr<Node> clone() const override {
     //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
     // };

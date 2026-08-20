@@ -201,7 +201,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  d.wait();
              })
         //.def(py::init<const Pipeline&>())
-        .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
+        .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         .def("setDefaultDeviceProperties",
              &Pipeline::setDefaultDeviceProperties,
@@ -253,7 +253,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
         .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
         .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
-        .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
+        .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
         // 'Template' create function
         .def(
             "add",
@@ -271,9 +271,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 py::object nodeClass = py::module::import("depthai").attr("node").attr("ThreadedHostNode");
                 auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
 
-                // Check if the class is directly from bindings (__module__ == "depthai.node"). If so, the node comes from bindings,
+                // Check if the class is directly from stable or beta bindings. If so, the node comes from bindings,
                 // so we create in the same manner as device nodes.
-                auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
+                const auto nodeModule = class_.attr("__module__").cast<std::string>();
+                auto isFromBindings = nodeModule == "depthai.node" || nodeModule == "depthai.beta.node";
                 // Create a copy from kwargs and add autoAddToPipeline to false
 
                 // Check if the node is a ColorCamera or a MonoCamera node and issue a deprecation warning
@@ -291,7 +292,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     setCreatingNodeFromPipelineCreate();
                     std::shared_ptr<Node> hostNode;
                     try {
-                        hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                        auto nodeObject = class_(*args, **kwargs);
+                        nodeObject.attr("_setPythonNodeName")(class_.attr("__name__").cast<std::string>());
+                        hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(nodeObject);
                     } catch(...) {
                         delCreatingNodeFromPipelineCreate();
                         delImplicitPipeline();

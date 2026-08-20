@@ -7,6 +7,8 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -21,6 +23,7 @@
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "depthai/device/HealthCheck.hpp"
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
@@ -115,7 +118,7 @@ class DeviceBase {
      * @param cb callback function called between pooling intervals
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::milliseconds timeout, std::function<void()> cb);
+    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::milliseconds timeout, const std::function<void()>& cb);
 
     /**
      * Gets first available device. Device can be either in XLINK_UNBOOTED or XLINK_BOOTLOADER state
@@ -128,7 +131,23 @@ class DeviceBase {
      * @param deviceId Device ID which uniquely specifies a device
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getDeviceById(std::string deviceId);
+    static std::tuple<bool, DeviceInfo> getDeviceById(const std::string& deviceId);
+
+    /**
+     * Resolves a device from an IP address, name, or device ID without connecting to it.
+     * @param deviceIdOrName IP address, name, or device ID of the target device
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
+    static std::tuple<bool, DeviceInfo> getDeviceByIdOrName(const std::string& deviceIdOrName);
+
+    /**
+     * Resolves a device from an IP address, name, or device ID without connecting to it
+     * and returns whether the resolved device is in setup mode.
+     * @param deviceIdOrName IP address, name, or device ID of the target device
+     * @returns std::nullopt if the device could not be resolved, otherwise true if the resolved
+     * device is in X_LINK_GATE_SETUP state and false otherwise
+     */
+    static std::optional<bool> isInSetupMode(const std::string& deviceIdOrName);
 
     /**
      * Returns all available devices
@@ -157,7 +176,7 @@ class DeviceBase {
      * @param config FW with applied configuration
      * @returns Firmware binary
      */
-    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(Config config);
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(const Config& config);
 
     /**
      * Get current global accumulated profiling data
@@ -165,6 +184,19 @@ class DeviceBase {
      * @returns ProfilingData from all devices
      */
     static ProfilingData getGlobalProfilingData();
+
+    /**
+     * Performs a device health check.
+     *
+     * The function connects to the supplied device, gathers device
+     * properties, and runs a short diagnostic pipeline for the checks enabled
+     * in the config.
+     *
+     * @param devInfo DeviceInfo which specifies which device to check
+     * @param config Health-check steps to execute
+     * @returns HealthCheckMetrics with per-check pass/fail status and measured values
+     */
+    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -196,14 +228,14 @@ class DeviceBase {
      * Connects to any available device with custom config.
      * @param config Device custom configuration to boot with
      */
-    explicit DeviceBase(Config config);
+    explicit DeviceBase(const Config& config);
 
     /**
      * Connects to device 'devInfo' with custom config.
      * @param config Device custom configuration to boot with
      * @param devInfo DeviceInfo which specifies which device to connect to
      */
-    DeviceBase(Config config, const DeviceInfo& devInfo);
+    DeviceBase(const Config& config, const DeviceInfo& devInfo);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -235,14 +267,14 @@ class DeviceBase {
      * @param config Config with which the device will be booted with
      * @param maxUsbSpeed Maximum allowed USB speed
      */
-    DeviceBase(Config config, UsbSpeed maxUsbSpeed);
+    DeviceBase(const Config& config, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param config Config with which the device will be booted with
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(Config config, const std::filesystem::path& pathToCmd);
+    DeviceBase(const Config& config, const std::filesystem::path& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -250,7 +282,7 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
-    DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+    DeviceBase(const Config& config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to device specified by devInfo.
@@ -259,7 +291,7 @@ class DeviceBase {
      * @param pathToCmd Path to custom device firmware
      * @param dumpOnly If true only the minimal connection is established to retrieve the crash dump
      */
-    DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly = false);
+    DeviceBase(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly = false);
 
     /**
      * Device destructor
@@ -285,6 +317,13 @@ class DeviceBase {
      * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
      */
     std::optional<Version> getBootloaderVersion();
+
+    /**
+     * Gets device OS version if supported by the connected device.
+     *
+     * @returns OS version string, for example "1.32.0"
+     */
+    std::string getOSVersion();
 
     /**
      * Checks if devices pipeline is already running
@@ -443,6 +482,9 @@ class DeviceBase {
      */
     std::string getDeviceId();
 
+    std::string getTemporaryTelemetryDeviceId() const;
+    std::optional<std::string> getActiveTelemetryPipelineId() const;
+
     /**
      * Sets logging level which decides printing level to standard output.
      * If lower than setLogLevel, no messages will be printed
@@ -523,7 +565,7 @@ class DeviceBase {
      * @param callback Callback to call whenever a log message arrives
      * @returns Id which can be used to later remove the callback
      */
-    int addLogCallback(std::function<void(LogMessage)> callback);
+    int addLogCallback(const std::function<void(LogMessage)>& callback);
 
     /**
      * Removes a callback
@@ -554,6 +596,14 @@ class DeviceBase {
      * @returns Vector of connected cameras
      */
     std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
+     * Get cameras that are connected to the device and support a given sensor type
+     *
+     * @param type Sensor type to filter by (e.g. CameraSensorType::COLOR)
+     * @returns Vector of sockets of the connected cameras that support the given type
+     */
+    std::vector<CameraBoardSocket> getConnectedCameras(CameraSensorType type);
 
     /**
      * Get connection interfaces for device
@@ -701,9 +751,10 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @returns True if EEPROM is present on board, false otherwise
      */
-    bool isEepromAvailable(CameraBoardSocket camSocket);
+    bool isCBAEepromAvailable(CameraBoardSocket camSocket);
 
     /**
      * Check if Calibration is available on the device
@@ -719,17 +770,18 @@ class DeviceBase {
      *
      * @return true on successful flash, false on failure
      */
-    bool tryFlashCalibration(CalibrationHandler calibrationDataHandler);
+    bool tryFlashCalibration(const CalibrationHandler& calibrationDataHandler);
 
     /**
      * Stores the Calibration and Device information to the CBA EEPROM
      *
-     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     * @param calibrationObj CBACalibrationHandler object which is loaded with calibration information.
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return true on successful flash, false on failure
      */
-    bool tryFlashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket);
+    bool tryFlashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket);
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
@@ -737,16 +789,17 @@ class DeviceBase {
      * @throws std::runtime_error if failed to flash the calibration
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      */
-    void flashCalibration(CalibrationHandler calibrationDataHandler);
+    void flashCalibration(const CalibrationHandler& calibrationDataHandler);
 
     /**
      * Stores the Calibration and Device information to the CBA EEPROM
      *
      * @throws std::runtime_error if failed to flash the calibration
-     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     * @param calibrationObj CBACalibrationHandler object which is loaded with calibration information.
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
+     * @warning Experimental feature. This API might change or be removed in a future release.
      */
-    void flashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket);
+    void flashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket);
 
     /**
      * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
@@ -755,7 +808,7 @@ class DeviceBase {
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      *
      */
-    void setCalibration(CalibrationHandler calibrationDataHandler);
+    void setCalibration(const CalibrationHandler& calibrationDataHandler);
 
     /**
      * Sets the Calibration at runtime using EepromData. This is not persistent and will be lost after device reset.
@@ -784,6 +837,7 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
@@ -792,15 +846,18 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the CBA and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     * @warning Experimental feature. This API might change or be removed in a future release.
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
-    CalibrationHandler readCalibration(CameraBoardSocket camSocket);
+    CBACalibrationHandler readCBACalibration(CameraBoardSocket camSocket);
 
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @throws std::runtime_error if no calibration is flashed
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
@@ -809,17 +866,20 @@ class DeviceBase {
 
     /**
      * Fetches the EEPROM data from the CBA and loads it into CalibrationHandler object
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if no calibration is flashed
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     * @warning Experimental feature. This API might change or be removed in a future release.
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
-    CalibrationHandler readCalibration2(CameraBoardSocket camSocket);
+    CBACalibrationHandler readCBACalibration2(CameraBoardSocket camSocket);
 
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
@@ -828,12 +888,14 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the CBA and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     * @warning Experimental feature. This API might change or be removed in a future release.
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
-    CalibrationHandler readCalibrationOrDefault(CameraBoardSocket camSocket);
+    CBACalibrationHandler readCBACalibrationOrDefault(CameraBoardSocket camSocket);
 
     /**
      * Factory reset EEPROM data if factory backup is available.
@@ -848,8 +910,9 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error If factory reset was unsuccessful
+     * @warning Experimental feature. This API might change or be removed in a future release.
      */
-    void factoryResetCalibration(CameraBoardSocket camSocket);
+    void factoryResetCBACalibration(CameraBoardSocket camSocket);
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM in Factory area
@@ -858,19 +921,20 @@ class DeviceBase {
      * @throws std::runtime_error if failed to flash the calibration
      * @return True on successful flash, false on failure
      */
-    void flashFactoryCalibration(CalibrationHandler calibrationHandler);
+    void flashFactoryCalibration(const CalibrationHandler& calibrationHandler);
 
     /**
      * Stores the Calibration and Device information to the CBA EEPROM in Factory area
      * To perform this action, correct env variable must be set
      *
-     * @param calibrationHandler CalibrationHandler
+     * @param calibrationHandler CBACalibrationHandler
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if failed to flash the calibration
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return True on successful flash, false on failure
      */
-    void flashFactoryCalibration(CalibrationHandler calibrationHandler, CameraBoardSocket camSocket);
+    void flashFactoryCBACalibration(const CBACalibrationHandler& calibrationHandler, CameraBoardSocket camSocket);
 
     /**
      * Destructive action, deletes User area EEPROM contents
@@ -888,9 +952,10 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if failed to flash the calibration
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return True on successful flash, false on failure
      */
-    void flashEepromClear(CameraBoardSocket camSocket);
+    void flashCBAEepromClear(CameraBoardSocket camSocket);
 
     /**
      * Destructive action, deletes Factory area EEPROM contents
@@ -908,9 +973,10 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if failed to flash the calibration
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return True on successful flash, false on failure
      */
-    void flashFactoryEepromClear(CameraBoardSocket camSocket);
+    void flashFactoryCBAEepromClear(CameraBoardSocket camSocket);
 
     /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
@@ -926,9 +992,10 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if no calibration is flashed
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     * @warning Experimental feature. This API might change or be removed in a future release.
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM in Factory Area
      */
-    CalibrationHandler readFactoryCalibration(CameraBoardSocket camSocket);
+    CBACalibrationHandler readFactoryCBACalibration(CameraBoardSocket camSocket);
 
     /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
@@ -944,9 +1011,10 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     * @warning Experimental feature. This API might change or be removed in a future release.
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM in Factory Area
      */
-    CalibrationHandler readFactoryCalibrationOrDefault(CameraBoardSocket camSocket);
+    CBACalibrationHandler readFactoryCBACalibrationOrDefault(CameraBoardSocket camSocket);
 
     /**
      * Fetches the raw EEPROM data from User area
@@ -1149,6 +1217,13 @@ class DeviceBase {
     void setExternalStrobeEnable(bool enable);
 
     /**
+     * Set which camera will control the external strobe exposure. Automaticaly enables external strobe.
+     * External strobe signal is low for the duration of exposure, and high for the rest of the frame.
+     * @param exposureMasterSocket CameraBoardSocket of the camera which will control the external strobe exposure
+     */
+    void setExternalStrobeEnable(dai::CameraBoardSocket exposureMasterSocket);
+
+    /**
      * Mock camera features from a recording. Used for holistic record and replay.
      */
     void mockCameraFeatures(const std::filesystem::path& replayPath);
@@ -1193,23 +1268,26 @@ class DeviceBase {
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd);
-    void init(Config config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd);
-    void init(Config config, UsbSpeed maxUsbSpeed);
-    void init(Config config, const std::filesystem::path& pathToCmd);
-    void init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
-    void init(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
+    void init(const Config& config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd);
+    void init(const Config& config, UsbSpeed maxUsbSpeed);
+    void init(const Config& config, const std::filesystem::path& pathToCmd);
+    void init(const Config& config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+    void init(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
 
    private:
     // private functions
     void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();
+    void startTelemetryLifecycle(bool reconnect);
+    void stopTelemetryLifecycle();
+    void telemetryEventLoop();
     struct PrevInfo {
         DeviceInfo deviceInfo;
         Config cfg;
         std::filesystem::path pathToMvcmd;
         bool hasPipeline;
     };
-    void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
+    void monitorCallback(std::chrono::milliseconds watchdogTimeout, const PrevInfo& prev);
     void collectAndLogCrashDump(DeviceBase* device = nullptr);
     void waitForRebootAndCollectCrashDump();
     void waitForGateAndCollectCrashDump();
@@ -1269,6 +1347,15 @@ class DeviceBase {
 
     std::filesystem::path firmwarePath;
     bool dumpOnly = false;
+
+    // Telemetry
+    std::thread telemetryEventThread;
+    std::atomic<bool> telemetryEventRunning{false};
+    std::mutex telemetryEventStreamMtx;
+    std::shared_ptr<XLinkStream> telemetryEventStream;
+    std::string tmpDeviceId;
+    std::chrono::steady_clock::time_point telemetryCreatedAt;
+    bool telemetryLifecycleStarted = false;
 
     // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;

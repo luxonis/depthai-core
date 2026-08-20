@@ -8,11 +8,11 @@
 // depthai
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/ColorizeDepthFrame.hpp"
 #include "ndarray_converter.h"
 // pybind
 #include <pybind11/cast.h>
 #include <pybind11/chrono.h>
-#include <pybind11/numpy.h>
 
 void bind_imgframe(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -229,12 +229,16 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         // getters
         .def("getTimestamp", py::overload_cast<>(&ImgFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", py::overload_cast<>(&ImgFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", py::overload_cast<>(&ImgFrame::Buffer::getTimestampSystem, py::const_), DOC(dai, Buffer, getTimestampSystem))
         .def("getTimestamp", py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestamp, py::const_), py::arg("offset"), DOC(dai, ImgFrame, getTimestamp))
         .def("getTimestampDevice",
              py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampDevice, py::const_),
              py::arg("offset"),
              DOC(dai, ImgFrame, getTimestampDevice))
-        .def("getSequenceNum", &ImgFrame::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
+        .def("getTimestampSystem",
+             py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampSystem, py::const_),
+             py::arg("offset"),
+             DOC(dai, ImgFrame, getTimestampSystem))
         .def("getInstanceNum", &ImgFrame::getInstanceNum, DOC(dai, ImgFrame, getInstanceNum))
         .def("getCategory", &ImgFrame::getCategory, DOC(dai, ImgFrame, getCategory))
         .def("getWidth", &ImgFrame::getWidth, DOC(dai, ImgFrame, getWidth))
@@ -252,6 +256,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getFsync", &ImgFrame::getFsync, DOC(dai, ImgFrame, getFsync))
         .def("getSensorMode", &ImgFrame::getSensorMode, DOC(dai, ImgFrame, getSensorMode))
         .def("getFps", &ImgFrame::getFps, DOC(dai, ImgFrame, getFps))
+        .def("getSensorTemperature", &ImgFrame::getSensorTemperature, DOC(dai, ImgFrame, getSensorTemperature))
         .def("getSourceHFov", &ImgFrame::getSourceHFov, DOC(dai, ImgFrame, getSourceHFov))
         .def("getSourceVFov", &ImgFrame::getSourceVFov, DOC(dai, ImgFrame, getSourceVFov))
         .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))
@@ -298,11 +303,8 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
             DOC(dai, ImgFrame, setCvFrame))
 #endif
         // setters
-        .def("setTimestamp", &ImgFrame::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &ImgFrame::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
         .def("setInstanceNum", &ImgFrame::setInstanceNum, py::arg("instance"), DOC(dai, ImgFrame, setInstanceNum))
         .def("setCategory", &ImgFrame::setCategory, py::arg("category"), DOC(dai, ImgFrame, setCategory))
-        // .def("setSequenceNum", &ImgFrame::setSequenceNum, py::arg("seq"), DOC(dai, ImgFrame, setSequenceNum))
         .def("setWidth", &ImgFrame::setWidth, py::arg("width"), DOC(dai, ImgFrame, setWidth))
         .def("setStride", &ImgFrame::setStride, py::arg("stride"), DOC(dai, ImgFrame, setStride))
         .def("setHeight", &ImgFrame::setHeight, py::arg("height"), DOC(dai, ImgFrame, setHeight))
@@ -322,4 +324,30 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
     // m.attr("ImgFrame").attr("Type") = m.attr("RawImgFrame").attr("Type");
     // m.attr("ImgFrame").attr("Specs") = m.attr("RawImgFrame").attr("Specs");
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    auto utility = m.def_submodule("utility", "Utility functions");
+    utility.def(
+        "colorizeDepthFrame",
+        [](const ImgFrame& frame, float minDepth, float maxDepth, int colormap, bool useLog) {
+            return dai::utility::colorizeDepthFrame(frame, minDepth, maxDepth, static_cast<cv::ColormapTypes>(colormap), useLog);
+        },
+        py::arg("frame"),
+        py::arg("minDepth") = 300.0f,
+        py::arg("maxDepth") = 12000.0f,
+        py::arg("colormap") = static_cast<int>(cv::COLORMAP_JET),
+        py::arg("useLog") = true,
+        DOC(dai, utility, colorizeDepthFrame));
+    utility.def(
+        "colorizeDepthFrame",
+        [](const cv::Mat& frame, float minDepth, float maxDepth, int colormap, bool useLog) {
+            return dai::utility::colorizeDepthFrame(frame, minDepth, maxDepth, static_cast<cv::ColormapTypes>(colormap), useLog);
+        },
+        py::arg("frame"),
+        py::arg("minDepth") = 300.0f,
+        py::arg("maxDepth") = 12000.0f,
+        py::arg("colormap") = static_cast<int>(cv::COLORMAP_JET),
+        py::arg("useLog") = true,
+        DOC(dai, utility, colorizeDepthFrame, 2));
+#endif
 }
