@@ -114,20 +114,7 @@ std::vector<cv::Mat> FixedPanoramaCompositor::warp(const std::vector<cv::Mat>& i
 }
 
 void FixedPanoramaCompositor::prepareCompositing(const std::vector<cv::Mat>& warped) {
-    std::vector<cv::Point> corners;
-    std::vector<cv::UMat> images;
-    std::vector<cv::UMat> masks;
-    corners.reserve(sources.size());
-    images.reserve(sources.size());
-    masks.reserve(sources.size());
-    for(size_t i = 0; i < sources.size(); ++i) {
-        corners.push_back(sources[i].roi.tl());
-        images.push_back(warped[i].getUMat(cv::ACCESS_READ));
-        masks.push_back(sources[i].mask.getUMat(cv::ACCESS_READ));
-    }
-
     compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS);
-    compensator->feed(corners, images, masks);
 
     const double scale = config.seamEstimationResolution > 0.0
                              ? std::min(1.0, std::sqrt(config.seamEstimationResolution * 1e6 / static_cast<double>(canvas.size().area())))
@@ -143,13 +130,18 @@ void FixedPanoramaCompositor::prepareCompositing(const std::vector<cv::Mat>& war
         cv::Mat mask;
         cv::resize(warped[i], image, cv::Size(), scale, scale, cv::INTER_LINEAR_EXACT);
         cv::resize(sources[i].mask, mask, image.size(), 0, 0, cv::INTER_NEAREST);
-        image.convertTo(image, CV_32F);
 
         seamCorners.emplace_back(static_cast<int>(std::lround(sources[i].roi.x * scale)), static_cast<int>(std::lround(sources[i].roi.y * scale)));
         seamImages.push_back(image.getUMat(cv::ACCESS_READ));
         seamMasks.push_back(mask.getUMat(cv::ACCESS_RW));
     }
 
+    compensator->feed(seamCorners, seamImages, seamMasks);
+    for(auto& image : seamImages) {
+        cv::UMat converted;
+        image.convertTo(converted, CV_32F);
+        image = std::move(converted);
+    }
     stitching::createSeamFinder(config.seamFinder)->find(seamImages, seamCorners, seamMasks);
     for(size_t i = 0; i < sources.size(); ++i) {
         cv::Mat seamMask;

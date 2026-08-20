@@ -409,6 +409,13 @@ void Stitching::run() {
             }
         } catch(const cv::Exception& e) {
             if(logger) logger->warn("Stitching failed: {}", e.what());
+            impl->transformFixed = false;
+            impl->fixedPanorama.reset();
+            continue;
+        } catch(const std::exception& e) {
+            if(logger) logger->warn("Stitching failed: {}", e.what());
+            impl->transformFixed = false;
+            impl->fixedPanorama.reset();
             continue;
         }
 

@@ -27,9 +27,10 @@ constexpr double SEAM_ESTIMATION_RESOLUTION = 0.1;
 constexpr double COMPOSITING_RESOLUTION = -1.0;
 constexpr float MATCH_CONFIDENCE = 0.3f;
 constexpr float BLEND_STRENGTH = 5.0f;
+constexpr int ORB_FEATURE_BUDGET = 1500;
 
 inline cv::Ptr<cv::Feature2D> createFeaturesFinder() {
-    return cv::ORB::create();
+    return cv::ORB::create(ORB_FEATURE_BUDGET);
 }
 
 inline cv::Ptr<cv::detail::FeaturesMatcher> createFeaturesMatcher() {
