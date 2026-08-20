@@ -118,6 +118,7 @@ class PlanarStitcher {
     bool compositingPrepared = false;
     /// Number of inputs `prepare()` was called with, including the ones that do not see the plane.
     size_t numInputs = 0;
+    std::vector<ImgTransformation> preparedTransformations;
     CameraBoardSocket origin = CameraBoardSocket::AUTO;
     Stitching::VirtualCamera view;
     /// Plane point and unit normal in the reference frame, in centimeters.

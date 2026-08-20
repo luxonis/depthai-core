@@ -85,6 +85,11 @@ void PlanarStitcher::setConfig(const Config& config) {
                 "The maximum view size must not be empty, got {}x{} pixels",
                 config.maxViewWidth,
                 config.maxViewHeight);
+    DAI_CHECK_V(config.maxViewWidth <= static_cast<uint32_t>(std::numeric_limits<int>::max())
+                    && config.maxViewHeight <= static_cast<uint32_t>(std::numeric_limits<int>::max()),
+                "The maximum view size must fit in a signed integer, got {}x{} pixels",
+                config.maxViewWidth,
+                config.maxViewHeight);
     DAI_CHECK_V(config.maxRange > 0.0f, "The maximum range must be positive, got {}", config.maxRange);
     DAI_CHECK_V(config.minIncidenceAngle >= 0.0f && config.minIncidenceAngle < 90.0f,
                 "The minimum incidence angle must be within [0, 90) degrees, got {}",
@@ -92,6 +97,11 @@ void PlanarStitcher::setConfig(const Config& config) {
     if(config.view.has_value()) {
         DAI_CHECK_V(config.view->width >= MIN_VIEW_SIZE && config.view->height >= MIN_VIEW_SIZE,
                     "The view is {}x{} pixels, which is too small",
+                    config.view->width,
+                    config.view->height);
+        DAI_CHECK_V(config.view->width <= static_cast<size_t>(std::numeric_limits<int>::max())
+                        && config.view->height <= static_cast<size_t>(std::numeric_limits<int>::max()),
+                    "The view must fit in a signed integer, got {}x{} pixels",
                     config.view->width,
                     config.view->height);
         DAI_CHECK_V(config.view->intrinsics[0][0] > 0.0f && config.view->intrinsics[1][1] > 0.0f, "The view needs a positive focal length");
@@ -108,6 +118,7 @@ void PlanarStitcher::reset() {
     prepared = false;
     compositingPrepared = false;
     numInputs = 0;
+    preparedTransformations.clear();
     sources.clear();
     compensator.release();
 }
@@ -238,6 +249,7 @@ void PlanarStitcher::prepare(const std::vector<ImgTransformation>& transformatio
                 "None of the {} inputs sees the plane, check the plane definition, the extrinsics of the inputs and the range and incidence limits",
                 transformations.size());
 
+    preparedTransformations = transformations;
     prepared = true;
 }
 
@@ -252,6 +264,11 @@ void PlanarStitcher::validateTransformations(const std::vector<ImgTransformation
                 "The planar projection was prepared relative to origin {}, but the current group uses {}",
                 toString(origin),
                 toString(currentOrigin));
+    for(size_t i = 0; i < transformations.size(); ++i) {
+        DAI_CHECK_V(transformations[i].isEqualTransformation(preparedTransformations[i]),
+                    "Input {} transformation changed after the planar projection was prepared",
+                    i);
+    }
 }
 
 Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransformation>& transformations, const std::vector<SourcePose>& poses) const {
@@ -270,6 +287,7 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
     double minV = std::numeric_limits<double>::max();
     double maxV = std::numeric_limits<double>::lowest();
     uint32_t longestSide = 0;
+    const double minIncidenceSine = std::sin(static_cast<double>(config.minIncidenceAngle) * CV_PI / 180.0);
 
     for(size_t i = 0; i < transformations.size(); ++i) {
         const auto [width, height] = transformations[i].getSize();
@@ -297,10 +315,13 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
             if(std::abs(denominator) < PARALLEL_EPS) continue;
             const double distance = planeNormal.dot(planePoint - poses[i].center) / denominator;
             if(distance <= 0.0) continue;
-            hasForwardIntersection = true;
 
             // Forward intersections past the configured range are clamped before being projected onto the plane.
             const cv::Vec3d point = poses[i].center + std::min(distance, static_cast<double>(config.maxRange)) * direction;
+            const cv::Vec3d toPoint = point - poses[i].center;
+            const double rangeSquared = toPoint.dot(toPoint);
+            if(std::abs(planeNormal.dot(toPoint)) < minIncidenceSine * std::sqrt(rangeSquared)) continue;
+            hasForwardIntersection = true;
             const cv::Vec3d onPlane = point - planeNormal.dot(point - planePoint) * planeNormal - planePoint;
 
             minU = std::min(minU, onPlane.dot(axisU));
