@@ -8,7 +8,6 @@
 #include <depthai/pipeline/node/host/Stitching.hpp>
 #include <opencv2/imgproc.hpp>
 #include <optional>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -27,6 +26,8 @@ constexpr double TEXTURE_SCALE = 0.5;  // cm per texture pixel
 constexpr double MARKER_SIZE = 24.0;   // cm
 constexpr int MARKER_TOLERANCE = 8;    // pixels between the expected and the rendered marker center
 constexpr int COLOR_TOLERANCE = 40;    // per channel
+constexpr uint32_t MAX_VIEW_WIDTH = 1920;
+constexpr uint32_t MAX_VIEW_HEIGHT = 1920;
 
 constexpr dai::CameraBoardSocket ORIGIN = dai::CameraBoardSocket::CAM_A;
 
@@ -224,6 +225,7 @@ std::shared_ptr<dai::node::Stitching> makePlanarNode(dai::Pipeline& pipeline, co
     stitching->setMode(dai::node::Stitching::Mode::PLANAR_PROJECTION);
     stitching->setPlane(dataset.planePoint(), dataset.planeNormal());
     stitching->setMaxRange(4.0f, dai::LengthUnit::METER);
+    stitching->setMaxViewSize(MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
     stitching->setSyncThreshold(std::chrono::seconds(1));
     stitching->setSeamFinder(dai::node::Stitching::SeamFinder::VORONOI);
     return stitching;
@@ -240,7 +242,9 @@ std::shared_ptr<dai::ImgFrame> runOnce(dai::Pipeline& pipeline, const std::share
     for(size_t i = 0; i < dataset.images.size(); ++i) {
         inputQueues[i]->send(toFrame(dataset.images[i], dataset.transformations[i], 3));
     }
-    auto projected = output->get<dai::ImgFrame>();
+    bool timedOut = false;
+    auto projected = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE_FALSE(timedOut);
     pipeline.stop();
     return projected;
 }
@@ -301,9 +305,9 @@ TEST_CASE("Stitching projects a virtual rig onto the ground plane", "[Stitching]
 
     // The automatic view is a sensibly sized image bounded by the configured maximum
     REQUIRE(projected->getWidth() >= 128);
-    REQUIRE(projected->getWidth() <= 1920);
+    REQUIRE(projected->getWidth() <= MAX_VIEW_WIDTH);
     REQUIRE(projected->getHeight() >= 128);
-    REQUIRE(projected->getHeight() <= 1920);
+    REQUIRE(projected->getHeight() <= MAX_VIEW_HEIGHT);
 
     // Every marker painted on the ground ends up where the geometry says it should
     const cv::Mat image = projected->getCvFrame();
@@ -317,7 +321,8 @@ TEST_CASE("Stitching projects a virtual rig onto the ground plane", "[Stitching]
 
 TEST_CASE("Stitching rejects planar inputs with different origins", "[Stitching]") {
     auto dataset = renderDataset(RIG);
-    auto differentOrigin = dataset.transformations.back().getExtrinsics();
+    const auto originalOrigin = dataset.transformations.back().getExtrinsics();
+    auto differentOrigin = originalOrigin;
     differentOrigin.toCameraSocket = dai::CameraBoardSocket::CAM_C;
     dataset.transformations.back().setExtrinsics(differentOrigin);
 
@@ -327,16 +332,28 @@ TEST_CASE("Stitching rejects planar inputs with different origins", "[Stitching]
     for(size_t i = 0; i < dataset.images.size(); ++i) {
         inputQueues.push_back(stitching->inputs["input" + std::to_string(i)].createInputQueue());
     }
+    auto output = stitching->out.createOutputQueue();
 
     pipeline.start();
     for(size_t i = 0; i < dataset.images.size(); ++i) {
         inputQueues[i]->send(toFrame(dataset.images[i], dataset.transformations[i], 0));
     }
 
-    for(int attempt = 0; attempt < 100 && stitching->isRunning(); ++attempt) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    bool timedOut = false;
+    auto projected = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE(timedOut);
+    REQUIRE(projected == nullptr);
+    REQUIRE(stitching->isRunning());
+
+    dataset.transformations.back().setExtrinsics(originalOrigin);
+    for(size_t i = 0; i < dataset.images.size(); ++i) {
+        inputQueues[i]->send(toFrame(dataset.images[i], dataset.transformations[i], 1));
     }
-    REQUIRE_FALSE(stitching->isRunning());
+    timedOut = false;
+    projected = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(projected != nullptr);
+    REQUIRE(projected->getSequenceNum() == 1);
     pipeline.stop();
 }
 
@@ -355,19 +372,34 @@ TEST_CASE("Stitching rejects a changed planar origin after preparing the project
     for(size_t i = 0; i < dataset.images.size(); ++i) {
         inputQueues[i]->send(toFrame(dataset.images[i], dataset.transformations[i], 0));
     }
-    REQUIRE(output->get<dai::ImgFrame>() != nullptr);
+    bool timedOut = false;
+    auto projected = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(projected != nullptr);
 
-    auto changedOrigin = dataset.transformations.back().getExtrinsics();
+    const auto originalOrigin = dataset.transformations.back().getExtrinsics();
+    auto changedOrigin = originalOrigin;
     changedOrigin.toCameraSocket = dai::CameraBoardSocket::CAM_C;
     dataset.transformations.back().setExtrinsics(changedOrigin);
     for(size_t i = 0; i < dataset.images.size(); ++i) {
         inputQueues[i]->send(toFrame(dataset.images[i], dataset.transformations[i], 1));
     }
 
-    for(int attempt = 0; attempt < 100 && stitching->isRunning(); ++attempt) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    timedOut = false;
+    projected = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE(timedOut);
+    REQUIRE(projected == nullptr);
+    REQUIRE(stitching->isRunning());
+
+    dataset.transformations.back().setExtrinsics(originalOrigin);
+    for(size_t i = 0; i < dataset.images.size(); ++i) {
+        inputQueues[i]->send(toFrame(dataset.images[i], dataset.transformations[i], 2));
     }
-    REQUIRE_FALSE(stitching->isRunning());
+    timedOut = false;
+    projected = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(projected != nullptr);
+    REQUIRE(projected->getSequenceNum() == 2);
     pipeline.stop();
 }
 
@@ -434,7 +466,9 @@ TEST_CASE("Stitching keeps the planar geometry across frames and rebuilds it on 
             inputQueues[i]->send(toFrame(dataset.images[i], dataset.transformations[i], group));
         }
 
-        auto projected = output->get<dai::ImgFrame>();
+        bool timedOut = false;
+        auto projected = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+        REQUIRE_FALSE(timedOut);
         REQUIRE(projected != nullptr);
         REQUIRE(projected->getSequenceNum() == group);
         if(group == 0) {

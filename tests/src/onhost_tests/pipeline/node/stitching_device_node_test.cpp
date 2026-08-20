@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/depthai.hpp>
+#include <vector>
 
 #include "pipeline/node/StitchingPlatform.hpp"
 
@@ -20,6 +21,18 @@ TEST_CASE("Stitching accepts deserialized properties", "[Stitching]") {
     REQUIRE(stitching->properties.mode == dai::StitchingProperties::Mode::PLANAR_PROJECTION);
     REQUIRE(stitching->properties.maxViewWidth == 1280);
     REQUIRE(stitching->getNumInputs() == 2);
+    REQUIRE(stitching->inputs.has("input0"));
+    REQUIRE(stitching->inputs.has("input1"));
+}
+
+TEST_CASE("Stitching validates every source before building", "[Stitching]") {
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::node::Stitching>();
+    const std::vector<dai::Node::Output*> sources = {nullptr, nullptr};
+
+    REQUIRE_THROWS(stitching->build(sources));
+    REQUIRE(stitching->getNumInputs() == 0);
+    REQUIRE_NOTHROW(stitching->build(2));
 }
 
 TEST_CASE("Stitching serializes as a device node", "[Stitching]") {

@@ -1,8 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <vector>
 
@@ -74,10 +76,18 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
      */
     Subnode<node::Sync> sync{*this, "sync"};
 
+   private:
+    // Configure-mode nodes do not instantiate subnodes, so retain their deserialized dynamic input interface locally.
+    std::unique_ptr<InputMap> configuredInputs =
+        configureMode ? std::make_unique<InputMap>(
+                            *this, "inputs", InputDescription{"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE})
+                      : nullptr;
+
+   public:
     /**
      * A map of inputs, one per stitched source. Populated by build().
      */
-    InputMap& inputs = sync->inputs;
+    InputMap& inputs = configuredInputs ? *configuredInputs : sync->inputs;
 
     /**
      * Stitched image, ImgFrame of type BGR888i.
@@ -217,11 +227,14 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
 
    private:
     void run() override;
+    void initializeHostState();
     void invalidateHostState();
     void initializeInputNames(size_t numInputs);
 
     class Impl;
     std::shared_ptr<Impl> impl;
+    std::atomic_bool hostStateInvalidated{false};
+    mutable std::mutex hostPropertiesMutex;
 
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 4, {{DatatypeEnum::MessageGroup, true}}}};
     std::vector<std::string> inputNames;

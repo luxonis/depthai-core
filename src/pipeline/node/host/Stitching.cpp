@@ -8,6 +8,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/stitching.hpp>
 #include <optional>
+#include <stdexcept>
 #include <utility>
 
 #include "FixedPanoramaCompositor.hpp"
@@ -152,8 +153,12 @@ class Stitching::Impl {
         stitcher->setSeamEstimationResol(stitching::SEAM_ESTIMATION_RESOLUTION);
         stitcher->setCompositingResol(stitching::COMPOSITING_RESOLUTION);
         stitcher->setPanoConfidenceThresh(properties.panoConfidenceThreshold);
-        stitcher->setWaveCorrection(true);
-        stitcher->setWaveCorrectKind(cv::detail::WAVE_CORRECT_HORIZ);
+        const bool waveCorrection =
+            properties.cameraModel == Stitching::CameraModel::SPHERICAL || properties.cameraModel == Stitching::CameraModel::CYLINDRICAL;
+        stitcher->setWaveCorrection(waveCorrection);
+        if(waveCorrection) {
+            stitcher->setWaveCorrectKind(cv::detail::WAVE_CORRECT_HORIZ);
+        }
         stitcher->setInterpolationFlags(cv::INTER_LINEAR);
         stitcher->setFeaturesFinder(stitching::createFeaturesFinder());
         scoringMatcher = cv::makePtr<ScoringFeaturesMatcher>(stitching::createFeaturesMatcher());
@@ -218,23 +223,15 @@ class Stitching::Impl {
     }
 };
 
-void Stitching::invalidateHostState() {
-    if(impl) impl->invalidate();
+void Stitching::initializeHostState() {
+    impl = std::make_shared<Impl>();
 }
 
 void Stitching::run() {
-    if(!impl) impl = std::make_shared<Impl>();
+    DAI_CHECK_V(impl != nullptr, "Stitching host state was not initialized");
     DAI_CHECK_V(!inputNames.empty(), "Stitching node was not built, call build() with the sources to stitch");
     auto& logger = pimpl->logger;
-    if(logger && properties.mode == Mode::PANORAMA) {
-        if(properties.continuous) {
-            logger->info("Panorama stitching running in continuous estimation mode");
-        } else {
-            logger->info("Panorama stitching running in best-of-{} mode; waiting for {} valid candidates before emitting panoramas",
-                         properties.estimationFrames,
-                         properties.estimationFrames);
-        }
-    }
+    bool modeLogged = false;
 
     while(mainLoop()) {
         std::shared_ptr<MessageGroup> group = nullptr;
@@ -244,13 +241,36 @@ void Stitching::run() {
         }
         if(group == nullptr) continue;
 
+        bool invalidateState = false;
+        StitchingProperties currentProperties;
+        {
+            std::lock_guard<std::mutex> lock(hostPropertiesMutex);
+            invalidateState = hostStateInvalidated.exchange(false, std::memory_order_acq_rel);
+            currentProperties = properties;
+        }
+        if(invalidateState) {
+            impl->invalidate();
+        }
+        if(!modeLogged && logger && currentProperties.mode == Mode::PANORAMA) {
+            if(currentProperties.continuous) {
+                logger->info("Panorama stitching running in continuous estimation mode");
+            } else {
+                logger->info("Panorama stitching running in best-of-{} mode; waiting for {} valid candidates before emitting panoramas",
+                             currentProperties.estimationFrames,
+                             currentProperties.estimationFrames);
+            }
+            modeLogged = true;
+        }
+
         std::vector<cv::Mat> images;
         std::vector<ImgTransformation> transformations;
         std::shared_ptr<ImgFrame> first;
         images.reserve(inputNames.size());
         transformations.reserve(inputNames.size());
         for(const auto& name : inputNames) {
-            auto frame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(name));
+            const auto entry = group->group.find(name);
+            DAI_CHECK_V(entry != group->group.end(), "Stitching input {} is missing from the synchronized group", name);
+            auto frame = std::dynamic_pointer_cast<ImgFrame>(entry->second);
             DAI_CHECK_V(frame != nullptr, "Stitching input {} did not receive an ImgFrame", name);
             if(first == nullptr) first = frame;
 
@@ -262,11 +282,14 @@ void Stitching::run() {
             transformations.push_back(frame->getTransformation());
         }
 
-        if(properties.mode == Mode::PLANAR_PROJECTION) {
+        if(currentProperties.mode == Mode::PLANAR_PROJECTION) {
             cv::Mat projected;
+            if(!impl->planar.isPrepared()) {
+                // Configuration failures are fatal; only failures caused by the current input group are recoverable.
+                impl->configurePlanar(currentProperties);
+            }
             try {
                 if(!impl->planar.isPrepared()) {
-                    impl->configurePlanar(properties);
                     impl->planar.prepare(transformations);
                     const auto& resolved = impl->planar.getResolvedView();
                     if(logger) {
@@ -283,6 +306,10 @@ void Stitching::run() {
                 if(logger) logger->warn("Planar projection failed: {}", e.what());
                 impl->planar.reset();
                 continue;
+            } catch(const std::runtime_error& e) {
+                if(logger) logger->warn("Planar projection rejected the current input group: {}", e.what());
+                impl->planar.reset();
+                continue;
             }
 
             auto stitched = std::make_shared<ImgFrame>();
@@ -294,20 +321,20 @@ void Stitching::run() {
         }
 
         if(!impl->stitcher) {
-            impl->createPanoramaStitcher(cv::Size(images.front().cols * static_cast<int>(images.size()), images.front().rows), properties);
+            impl->createPanoramaStitcher(cv::Size(images.front().cols * static_cast<int>(images.size()), images.front().rows), currentProperties);
         }
 
         cv::Mat pano;
         cv::Stitcher::Status status = cv::Stitcher::OK;
         const auto composePanorama = [&](const std::vector<cv::Mat>& contributing) -> std::optional<cv::Stitcher::Status> {
             cv::Size panoramaSize;
-            if(!impl->panoramaFits(contributing, panoramaSize, properties)) {
+            if(!impl->panoramaFits(contributing, panoramaSize, currentProperties)) {
                 if(logger) {
                     logger->debug("Stitching rejected a {}x{} panorama exceeding the configured {}x{} maximum",
                                   panoramaSize.width,
                                   panoramaSize.height,
-                                  properties.maxPanoramaWidth,
-                                  properties.maxPanoramaHeight);
+                                  currentProperties.maxPanoramaWidth,
+                                  currentProperties.maxPanoramaHeight);
                 }
                 return std::nullopt;
             }
@@ -329,7 +356,7 @@ void Stitching::run() {
             }
         };
         try {
-            if(properties.continuous) {
+            if(currentProperties.continuous) {
                 impl->scoringMatcher->resetScore();
                 const auto stitchingStatus = estimateAndComposePanorama(images);
                 if(!stitchingStatus.has_value()) continue;
@@ -349,13 +376,13 @@ void Stitching::run() {
                     }
 
                     cv::Size candidateSize;
-                    if(!impl->panoramaFits(images, candidateSize, properties)) {
+                    if(!impl->panoramaFits(images, candidateSize, currentProperties)) {
                         if(logger) {
                             logger->debug("Stitching rejected a {}x{} panorama exceeding the configured {}x{} maximum",
                                           candidateSize.width,
                                           candidateSize.height,
-                                          properties.maxPanoramaWidth,
-                                          properties.maxPanoramaHeight);
+                                          currentProperties.maxPanoramaWidth,
+                                          currentProperties.maxPanoramaHeight);
                         }
                         continue;
                     }
@@ -365,11 +392,11 @@ void Stitching::run() {
                         impl->bestCandidate = std::move(candidate);
                     }
                     ++impl->candidatesEvaluated;
-                    if(impl->candidatesEvaluated < properties.estimationFrames) continue;
+                    if(impl->candidatesEvaluated < currentProperties.estimationFrames) continue;
 
                     status = impl->stitcher->setTransform(images, impl->bestCandidate->cameras);
                     if(status == cv::Stitcher::OK) {
-                        impl->prepareFixedPanorama(images, properties);
+                        impl->prepareFixedPanorama(images, currentProperties);
                         pano = impl->fixedPanorama.compose(images);
                         impl->transformFixed = true;
                         if(logger) {

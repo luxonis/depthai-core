@@ -78,6 +78,23 @@ CameraBoardSocket getCommonOrigin(const std::vector<ImgTransformation>& transfor
 }  // namespace
 
 void PlanarStitcher::setConfig(const Config& config) {
+    DAI_CHECK_V(config.plane.has_value(), "Stitching in PLANAR_PROJECTION mode needs a plane, set it with setPlane()");
+    DAI_CHECK_V(cv::norm(toVec(config.plane->normal)) > PARALLEL_EPS, "The plane normal must not be a zero vector");
+    DAI_CHECK_V(config.maxViewWidth > 0 && config.maxViewHeight > 0,
+                "The maximum view size must not be empty, got {}x{} pixels",
+                config.maxViewWidth,
+                config.maxViewHeight);
+    DAI_CHECK_V(config.maxRange > 0.0f, "The maximum range must be positive, got {}", config.maxRange);
+    DAI_CHECK_V(config.minIncidenceAngle >= 0.0f && config.minIncidenceAngle < 90.0f,
+                "The minimum incidence angle must be within [0, 90) degrees, got {}",
+                config.minIncidenceAngle);
+    if(config.view.has_value()) {
+        DAI_CHECK_V(config.view->width >= MIN_VIEW_SIZE && config.view->height >= MIN_VIEW_SIZE,
+                    "The view is {}x{} pixels, which is too small",
+                    config.view->width,
+                    config.view->height);
+        DAI_CHECK_V(config.view->intrinsics[0][0] > 0.0f && config.view->intrinsics[1][1] > 0.0f, "The view needs a positive focal length");
+    }
     this->config = config;
     reset();
 }
@@ -127,12 +144,17 @@ void PlanarStitcher::prepare(const std::vector<ImgTransformation>& transformatio
     DAI_CHECK_V(cv::norm(planeNormal) > 0.5, "The plane normal must not be a zero vector");
 
     // Orient the normal towards the cameras, so that "in front of the plane" is well defined
-    double signedDistance = 0.0;
-    for(const auto& pose : poses) {
-        signedDistance += planeNormal.dot(pose.center - planePoint);
+    double cameraSide = 0.0;
+    for(size_t i = 0; i < poses.size(); ++i) {
+        const double signedDistance = planeNormal.dot(poses[i].center - planePoint);
+        DAI_CHECK_V(std::abs(signedDistance) > PARALLEL_EPS, "Input {} camera center lies on the plane, so the plane cannot be projected onto", i);
+        if(i == 0) {
+            cameraSide = signedDistance;
+        } else {
+            DAI_CHECK_V(cameraSide * signedDistance > 0.0, "The input camera centers lie on opposite sides of the plane (inputs 0 and {})", i);
+        }
     }
-    DAI_CHECK_V(std::abs(signedDistance) > PARALLEL_EPS, "The cameras lie on the plane, so the plane cannot be projected onto");
-    if(signedDistance < 0.0) {
+    if(cameraSide < 0.0) {
         planeNormal = -planeNormal;
     }
 
@@ -149,64 +171,65 @@ void PlanarStitcher::prepare(const std::vector<ImgTransformation>& transformatio
     const double maxRangeSquared = static_cast<double>(config.maxRange) * static_cast<double>(config.maxRange);
     const double minIncidenceSine = std::sin(static_cast<double>(config.minIncidenceAngle) * CV_PI / 180.0);
 
-    // Mutable copies, the mask lookup fills a cache of the transformation
-    std::vector<ImgTransformation> masks(transformations.begin(), transformations.end());
-    std::vector<cv::Mat> maps(transformations.size());
-    std::vector<cv::Mat> validity(transformations.size());
+    const double area = static_cast<double>(view.width) * view.height;
+    const double seamScale = std::min(1.0, std::sqrt(stitching::SEAM_ESTIMATION_RESOLUTION * 1e6 / area));
+
     for(size_t i = 0; i < transformations.size(); ++i) {
-        maps[i] = cv::Mat(height, width, CV_32FC2, cv::Scalar(-1, -1));
-        validity[i] = cv::Mat::zeros(height, width, CV_8U);
-    }
+        cv::Mat map(height, width, CV_32FC2, cv::Scalar(-1, -1));
+        cv::Mat validity = cv::Mat::zeros(height, width, CV_8U);
+        const auto sourceSize = transformations[i].getSize();
+        const auto sourceWidth = sourceSize.first;
+        const auto sourceHeight = sourceSize.second;
 
-    for(int y = 0; y < height; ++y) {
-        for(int x = 0; x < width; ++x) {
-            // Ray of the virtual camera, in the reference frame
-            const cv::Vec3d direction = viewRotation * (viewIntrinsicsInv * cv::Vec3d(x, y, 1.0));
-            const double denominator = planeNormal.dot(direction);
-            if(std::abs(denominator) < PARALLEL_EPS) continue;
-            const double distance = planeNormal.dot(planePoint - viewCenter) / denominator;
-            if(distance <= 0.0) continue;
+        // Mutable copy: prime the crop cache before the parallel read-only lookups below.
+        ImgTransformation cachedTransformation = transformations[i];
+        cachedTransformation.getDstMaskPt(0, 0);
+        cv::parallel_for_(cv::Range(0, height), [&](const cv::Range& rows) {
+            for(int y = rows.start; y < rows.end; ++y) {
+                for(int x = 0; x < width; ++x) {
+                    // Ray of the virtual camera, in the reference frame
+                    const cv::Vec3d direction = viewRotation * (viewIntrinsicsInv * cv::Vec3d(x, y, 1.0));
+                    const double denominator = planeNormal.dot(direction);
+                    if(std::abs(denominator) < PARALLEL_EPS) continue;
+                    const double distance = planeNormal.dot(planePoint - viewCenter) / denominator;
+                    if(distance <= 0.0) continue;
 
-            const cv::Vec3d point = viewCenter + distance * direction;
+                    const cv::Vec3d point = viewCenter + distance * direction;
+                    const cv::Vec3d toPoint = point - poses[i].center;
+                    const double rangeSquared = toPoint.dot(toPoint);
+                    if(rangeSquared > maxRangeSquared) continue;
+                    // Rays grazing the plane stretch a couple of pixels over a large part of it
+                    if(std::abs(planeNormal.dot(toPoint)) < minIncidenceSine * std::sqrt(rangeSquared)) continue;
 
-            for(size_t i = 0; i < transformations.size(); ++i) {
-                const cv::Vec3d toPoint = point - poses[i].center;
-                const double rangeSquared = toPoint.dot(toPoint);
-                if(rangeSquared > maxRangeSquared) continue;
-                // Rays grazing the plane stretch a couple of pixels over a large part of it
-                if(std::abs(planeNormal.dot(toPoint)) < minIncidenceSine * std::sqrt(rangeSquared)) continue;
+                    const cv::Vec3d inCamera = poses[i].rotation.t() * toPoint;
+                    if(inCamera[2] <= DEPTH_EPS) continue;
 
-                const cv::Vec3d inCamera = poses[i].rotation.t() * toPoint;
-                if(inCamera[2] <= DEPTH_EPS) continue;
+                    const auto projected =
+                        transformations[i].project3DPoint({static_cast<float>(inCamera[0]), static_cast<float>(inCamera[1]), static_cast<float>(inCamera[2])});
+                    if(projected.x < 0.0f || projected.y < 0.0f || projected.x > static_cast<float>(sourceWidth) - 1.0f
+                       || projected.y > static_cast<float>(sourceHeight) - 1.0f) {
+                        continue;
+                    }
+                    // Regions the input image does not cover, e.g. the padding of a letterboxed frame
+                    if(!cachedTransformation.getDstMaskPt(static_cast<size_t>(projected.x), static_cast<size_t>(projected.y))) continue;
 
-                const auto projected =
-                    transformations[i].project3DPoint({static_cast<float>(inCamera[0]), static_cast<float>(inCamera[1]), static_cast<float>(inCamera[2])});
-                const auto [sourceWidth, sourceHeight] = transformations[i].getSize();
-                if(projected.x < 0.0f || projected.y < 0.0f || projected.x > static_cast<float>(sourceWidth) - 1.0f
-                   || projected.y > static_cast<float>(sourceHeight) - 1.0f) {
-                    continue;
+                    map.at<cv::Vec2f>(y, x) = cv::Vec2f(projected.x, projected.y);
+                    validity.at<uint8_t>(y, x) = 255;
                 }
-                // Regions the input image does not cover, e.g. the padding of a letterboxed frame
-                if(!masks[i].getDstMaskPt(static_cast<size_t>(projected.x), static_cast<size_t>(projected.y))) continue;
-
-                maps[i].at<cv::Vec2f>(y, x) = cv::Vec2f(projected.x, projected.y);
-                validity[i].at<uint8_t>(y, x) = 255;
             }
-        }
-    }
+        });
 
-    for(size_t i = 0; i < transformations.size(); ++i) {
-        const cv::Rect roi = cv::boundingRect(validity[i]);
+        const cv::Rect roi = cv::boundingRect(validity);
         if(roi.empty()) continue;
+        if(std::lround(roi.width * seamScale) <= 0 || std::lround(roi.height * seamScale) <= 0) continue;
 
         Source source;
         source.index = i;
         source.roi = roi;
-        source.mask = validity[i](roi).clone();
+        source.mask = validity(roi).clone();
         source.seamMask = source.mask;
-        const auto [sourceWidth, sourceHeight] = transformations[i].getSize();
         source.imageSize = cv::Size(static_cast<int>(sourceWidth), static_cast<int>(sourceHeight));
-        cv::convertMaps(maps[i](roi), cv::noArray(), source.map1, source.map2, CV_16SC2);
+        cv::convertMaps(map(roi), cv::noArray(), source.map1, source.map2, CV_16SC2);
         sources.push_back(std::move(source));
     }
 
@@ -247,8 +270,6 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
     double maxV = std::numeric_limits<double>::lowest();
     uint32_t longestSide = 0;
 
-    const double minIncidenceSine = std::sin(static_cast<double>(config.minIncidenceAngle) * CV_PI / 180.0);
-
     for(size_t i = 0; i < transformations.size(); ++i) {
         const auto [width, height] = transformations[i].getSize();
         longestSide = std::max(longestSide, static_cast<uint32_t>(std::max(width, height)));
@@ -266,20 +287,19 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
             border.emplace_back(0.0f, static_cast<float>(height - 1) - y);
         }
 
+        bool hasForwardIntersection = false;
         for(const auto& pixel : border) {
             const auto ray = pixelToRay(transformations[i].invTransformPoint(pixel), transformations[i]);
             const cv::Vec3d direction = normalized(poses[i].rotation * cv::Vec3d(ray[0], ray[1], ray[2]));
             const double denominator = planeNormal.dot(direction);
 
-            // A ray that misses the plane, hits it too far away or too flat is cut off at the maximum range and
-            // projected onto the plane, which keeps the view bounded by what the cameras can actually paint
-            cv::Vec3d point = poses[i].center + static_cast<double>(config.maxRange) * direction;
-            if(std::abs(denominator) >= PARALLEL_EPS && std::abs(denominator) >= minIncidenceSine) {
-                const double distance = planeNormal.dot(planePoint - poses[i].center) / denominator;
-                if(distance > 0.0 && distance <= static_cast<double>(config.maxRange)) {
-                    point = poses[i].center + distance * direction;
-                }
-            }
+            if(std::abs(denominator) < PARALLEL_EPS) continue;
+            const double distance = planeNormal.dot(planePoint - poses[i].center) / denominator;
+            if(distance <= 0.0) continue;
+            hasForwardIntersection = true;
+
+            // Forward intersections past the configured range are clamped before being projected onto the plane.
+            const cv::Vec3d point = poses[i].center + std::min(distance, static_cast<double>(config.maxRange)) * direction;
             const cv::Vec3d onPlane = point - planeNormal.dot(point - planePoint) * planeNormal - planePoint;
 
             minU = std::min(minU, onPlane.dot(axisU));
@@ -287,6 +307,7 @@ Stitching::VirtualCamera PlanarStitcher::computeView(const std::vector<ImgTransf
             minV = std::min(minV, onPlane.dot(axisV));
             maxV = std::max(maxV, onPlane.dot(axisV));
         }
+        DAI_CHECK_V(hasForwardIntersection, "Input {} has no forward-facing border rays that intersect the plane; check that the camera faces the plane", i);
     }
 
     const double extentU = std::max(maxU - minU, 1.0);
@@ -358,7 +379,9 @@ void PlanarStitcher::prepareCompositing(const std::vector<cv::Mat>& warped) {
     for(size_t i = 0; i < sources.size(); ++i) {
         cv::Mat image;
         cv::Mat mask;
-        cv::resize(warped[i], image, cv::Size(), scale, scale, cv::INTER_LINEAR_EXACT);
+        const cv::Size seamSize(std::max(1, static_cast<int>(std::lround(warped[i].cols * scale))),
+                                std::max(1, static_cast<int>(std::lround(warped[i].rows * scale))));
+        cv::resize(warped[i], image, seamSize, 0, 0, cv::INTER_LINEAR_EXACT);
         cv::resize(sources[i].mask, mask, image.size(), 0, 0, cv::INTER_NEAREST);
         image.convertTo(image, CV_32F);
 

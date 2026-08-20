@@ -80,7 +80,9 @@ TEST_CASE("Stitching combines three rotated views into a wider panorama", "[Stit
         inputQueues[i]->send(toFrame(views[i], 0));
     }
 
-    auto panorama = output->get<dai::ImgFrame>();
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE_FALSE(timedOut);
     pipeline.stop();
 
     REQUIRE(panorama != nullptr);
@@ -150,7 +152,9 @@ TEST_CASE("Stitching re-estimates every frame when continuous", "[Stitching]") {
         inputQueues[i]->send(toFrame(views[i], 7));
     }
 
-    auto panorama = output->get<dai::ImgFrame>();
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE_FALSE(timedOut);
     pipeline.stop();
 
     REQUIRE(panorama != nullptr);
@@ -194,7 +198,9 @@ TEST_CASE("Stitching reuses the selected transform once the estimation frames ar
         }
 
         if(!panoramaExpected) continue;
-        auto panorama = output->get<dai::ImgFrame>();
+        bool timedOut = false;
+        auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+        REQUIRE_FALSE(timedOut);
         REQUIRE(panorama != nullptr);
         REQUIRE(panorama->getSequenceNum() == group);
 
@@ -234,7 +240,9 @@ TEST_CASE("Stitching rebuilds fixed panorama composition on request", "[Stitchin
             inputQueues[i]->send(toFrame(views[i], group));
         }
 
-        const auto panorama = output->get<dai::ImgFrame>();
+        bool timedOut = false;
+        const auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+        REQUIRE_FALSE(timedOut);
         REQUIRE(panorama != nullptr);
         REQUIRE(panorama->getSequenceNum() == group);
         const cv::Size size(panorama->getWidth(), panorama->getHeight());
@@ -288,9 +296,13 @@ TEST_CASE("Stitching freezes the strongest of multiple estimation candidates", "
 
         sendGroup(*candidates[0], 0);
         sendGroup(*candidates[1], 1);
-        const auto selectedPanorama = output->get<dai::ImgFrame>();
+        bool timedOut = false;
+        const auto selectedPanorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+        REQUIRE_FALSE(timedOut);
         sendGroup(strongViews, 2);
-        const auto fixedPanorama = output->get<dai::ImgFrame>();
+        timedOut = false;
+        const auto fixedPanorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+        REQUIRE_FALSE(timedOut);
         pipeline.stop();
 
         REQUIRE(selectedPanorama != nullptr);
@@ -302,8 +314,10 @@ TEST_CASE("Stitching freezes the strongest of multiple estimation candidates", "
 
         const cv::Size currentSize(selectedPanorama->getWidth(), selectedPanorama->getHeight());
         if(selectedSize.has_value()) {
-            REQUIRE(std::abs(currentSize.width - selectedSize->width) <= 1);
-            REQUIRE(std::abs(currentSize.height - selectedSize->height) <= 1);
+            // Pinhole composition leaves wave correction disabled, so equivalent registrations can differ by a couple
+            // of rounding pixels at the canvas boundary.
+            REQUIRE(std::abs(currentSize.width - selectedSize->width) <= 2);
+            REQUIRE(std::abs(currentSize.height - selectedSize->height) <= 2);
         } else {
             selectedSize = currentSize;
         }

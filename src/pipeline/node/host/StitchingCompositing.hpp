@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
@@ -81,7 +82,8 @@ inline cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) 
         return cv::detail::Blender::createDefault(cv::detail::Blender::NO, false);
     }
     auto multiBand = cv::makePtr<cv::detail::MultiBandBlender>();
-    multiBand->setNumBands(static_cast<int>(std::ceil(std::log(static_cast<double>(blendWidth)) / std::log(2.0)) - 1.0));
+    const int numBands = static_cast<int>(std::ceil(std::log(static_cast<double>(blendWidth)) / std::log(2.0)) - 1.0);
+    multiBand->setNumBands(std::max(1, numBands));
     return multiBand;
 }
 

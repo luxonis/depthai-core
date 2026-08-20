@@ -201,7 +201,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d" "opencv_stitching")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -212,6 +212,10 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+        set(DEPTHAI_OPENCV_LIBRARIES ${REQUIRED_OPENCV_LIBRARIES})
+        if("opencv_stitching" IN_LIST OpenCV_LIBS)
+            set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
+        endif()
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
     else()
@@ -532,15 +536,19 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/HostCamera.cpp
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
-    src/pipeline/node/host/Stitching.cpp
-    src/pipeline/node/host/FixedPanoramaCompositor.cpp
-    src/pipeline/node/host/PlanarStitcher.cpp
     src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
 
-if(NOT DEPTHAI_HAVE_OPENCV_SUPPORT)
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    list(APPEND TARGET_OPENCV_SOURCES
+        src/pipeline/node/host/Stitching.cpp
+        src/pipeline/node/host/FixedPanoramaCompositor.cpp
+        src/pipeline/node/host/PlanarStitcher.cpp
+    )
+    list(APPEND DEPTHAI_OPENCV_LIBRARIES "opencv_stitching")
+else()
     list(APPEND TARGET_CORE_SOURCES src/pipeline/node/StitchingNoOpenCV.cpp)
 endif()
 
@@ -676,7 +684,7 @@ endif()
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DEPTHAI_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
@@ -1080,7 +1088,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_OPENCV_NAME})
 
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${DEPTHAI_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
