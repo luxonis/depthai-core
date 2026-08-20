@@ -2,7 +2,11 @@
 #define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <limits>
+
+#include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
 
@@ -72,6 +76,41 @@ ImageManipConfig& ImageManipConfig::addTransformPerspective(const std::array<flo
 ImageManipConfig& ImageManipConfig::addTransformFourPoints(const std::array<dai::Point2f, 4>& src,
                                                            const std::array<dai::Point2f, 4>& dst,
                                                            bool normalizedCoords) {
+    const auto validatePoints = [](const std::array<dai::Point2f, 4>& points, const char* name) {
+        for(const auto& point : points) {
+            if(!std::isfinite(point.x) || !std::isfinite(point.y)) {
+                throw std::invalid_argument(std::string(name) + " points must have finite coordinates.");
+            }
+        }
+
+        for(std::size_t first = 0; first < points.size() - 2; ++first) {
+            for(std::size_t second = first + 1; second < points.size() - 1; ++second) {
+                for(std::size_t third = second + 1; third < points.size(); ++third) {
+                    const auto& a = points[first];
+                    const auto& b = points[second];
+                    const auto& c = points[third];
+                    const double abX = static_cast<double>(b.x) - static_cast<double>(a.x);
+                    const double abY = static_cast<double>(b.y) - static_cast<double>(a.y);
+                    const double acX = static_cast<double>(c.x) - static_cast<double>(a.x);
+                    const double acY = static_cast<double>(c.y) - static_cast<double>(a.y);
+                    const double twiceArea = abX * acY - abY * acX;
+                    const double scale = std::max({1.0, std::abs(abX), std::abs(abY), std::abs(acX), std::abs(acY)});
+                    const double epsilon = static_cast<double>(std::numeric_limits<float>::epsilon());
+                    if(std::abs(twiceArea) <= epsilon * scale * scale) {
+                        throw std::invalid_argument(std::string("No three ") + name + " points may be collinear.");
+                    }
+                }
+            }
+        }
+    };
+
+    validatePoints(src, "Source");
+    validatePoints(dst, "Destination");
+    try {
+        matrix::getHomographyMatrix(src, dst);
+    } catch(const std::runtime_error&) {
+        throw std::invalid_argument("Source and destination points do not define a valid perspective transform.");
+    }
     base.transformFourPoints(src, dst, normalizedCoords);
     return *this;
 }

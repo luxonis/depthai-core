@@ -9,6 +9,7 @@
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <iostream>
+#include <limits>
 #include <thread>
 
 #include "depthai/depthai.hpp"
@@ -519,6 +520,32 @@ TEST_CASE("Get outer rect opencv comparison") {
         REQUIRE_THAT(rrImpl.size.height, Catch::Matchers::WithinAbs(rrCv.size.height, 0.01));
         REQUIRE_THAT(rrImpl.angle, Catch::Matchers::WithinAbs(rrCv.angle, 0.01));
     }
+}
+
+TEST_CASE("ImageManip four point transform validates points") {
+    const std::array<dai::Point2f, 4> points = {dai::Point2f{0.0F, 0.0F}, dai::Point2f{1.0F, 0.0F}, dai::Point2f{1.0F, 1.0F}, dai::Point2f{0.0F, 1.0F}};
+
+    dai::ImageManipConfig config;
+    REQUIRE_NOTHROW(config.addTransformFourPoints(points, points, true));
+
+    auto nonFinite = points;
+    nonFinite[1].x = std::numeric_limits<float>::infinity();
+    REQUIRE_THROWS_AS(config.addTransformFourPoints(nonFinite, points, false), std::invalid_argument);
+
+    auto collinearSource = points;
+    collinearSource[1] = {0.5F, 0.5F};
+    collinearSource[2] = {1.0F, 1.0F};
+    REQUIRE_THROWS_AS(config.addTransformFourPoints(collinearSource, points, true), std::invalid_argument);
+
+    auto nearlyCollinearSource = points;
+    nearlyCollinearSource[1] = {0.5F, 0.5F + std::numeric_limits<float>::epsilon() / 4.0F};
+    nearlyCollinearSource[2] = {1.0F, 1.0F};
+    REQUIRE_THROWS_AS(config.addTransformFourPoints(nearlyCollinearSource, points, true), std::invalid_argument);
+
+    auto collinearDestination = points;
+    collinearDestination[1] = {0.5F, 0.5F};
+    collinearDestination[2] = {1.0F, 1.0F};
+    REQUIRE_THROWS_AS(config.addTransformFourPoints(points, collinearDestination, true), std::invalid_argument);
 }
 
 TEST_CASE("ImageManip CropRotated maps the requested rectangle to the output") {
