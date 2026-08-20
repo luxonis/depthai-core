@@ -15,6 +15,7 @@ Affine::~Affine() = default;
 Perspective::~Perspective() = default;
 FourPoints::~FourPoints() = default;
 Crop::~Crop() = default;
+CropRotated::~CropRotated() = default;
 
 ImageManipConfig::~ImageManipConfig() = default;
 
@@ -37,12 +38,7 @@ ImageManipConfig& ImageManipConfig::addCrop(const dai::Rect& rect, bool normaliz
     return *this;
 }
 ImageManipConfig& ImageManipConfig::addCropRotatedRect(const dai::RotatedRect& rotatedRect, bool normalizedCoords) {
-    base.rotateDegrees(-rotatedRect.angle);
-    base.crop(rotatedRect.center.x - rotatedRect.size.width / 2,
-              rotatedRect.center.y - rotatedRect.size.height / 2,
-              rotatedRect.size.width,
-              rotatedRect.size.height,
-              normalizedCoords);
+    base.cropRotated(rotatedRect.center.x, rotatedRect.center.y, rotatedRect.size.width, rotatedRect.size.height, rotatedRect.angle, normalizedCoords);
     return *this;
 }
 ImageManipConfig& ImageManipConfig::addScale(float scaleX, float scaleY) {

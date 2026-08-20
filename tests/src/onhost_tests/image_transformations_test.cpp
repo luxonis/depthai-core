@@ -520,3 +520,37 @@ TEST_CASE("Get outer rect opencv comparison") {
         REQUIRE_THAT(rrImpl.angle, Catch::Matchers::WithinAbs(rrCv.angle, 0.01));
     }
 }
+
+TEST_CASE("ImageManip CropRotated maps the requested rectangle to the output") {
+    constexpr float inputWidth = 1000.0f;
+    constexpr float inputHeight = 800.0f;
+    const dai::RotatedRect crop{{400.0f, 300.0f}, {240.0f, 120.0f}, 30.0f};
+
+    dai::ImageManipConfig config;
+    config.addCropRotatedRect(crop);
+
+    REQUIRE(config.base.getOperations().size() == 2);
+    REQUIRE(std::holds_alternative<dai::CropRotated>(config.base.getOperations()[1].op));
+
+    dai::ImageManipConfig configCopy;
+    dai::utility::deserialize(dai::utility::serialize(config), configCopy);
+    REQUIRE(configCopy.base.getOperations().size() == 2);
+    const auto& serializedCrop = std::get<dai::CropRotated>(configCopy.base.getOperations()[1].op);
+    REQUIRE(serializedCrop.width == crop.size.width);
+    REQUIRE(serializedCrop.height == crop.size.height);
+    REQUIRE(serializedCrop.angle == crop.angle);
+    REQUIRE_FALSE(serializedCrop.normalized);
+
+    auto [matrix, imageCorners, srcCorners] = dai::impl::getTransform(config.base.getOperations(), inputWidth, inputHeight, 0, 0);
+    const auto cropCorners = crop.getPoints();
+    const std::array<std::array<float, 2>, 4> expected = {
+        {{0.0f, 0.0f}, {crop.size.width, 0.0f}, {crop.size.width, crop.size.height}, {0.0f, crop.size.height}}};
+
+    for(size_t i = 0; i < cropCorners.size(); ++i) {
+        const auto transformed = dai::impl::matvecmul(matrix, {cropCorners[i].x, cropCorners[i].y});
+        REQUIRE_THAT(transformed[0], Catch::Matchers::WithinAbs(expected[i][0], 1e-3f));
+        REQUIRE_THAT(transformed[1], Catch::Matchers::WithinAbs(expected[i][1], 1e-3f));
+    }
+    REQUIRE(imageCorners == expected);
+    REQUIRE(srcCorners.size() == 1);
+}
