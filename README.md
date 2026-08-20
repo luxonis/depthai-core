@@ -295,7 +295,7 @@ sudo apt install clang-format-18
 ```
 or using pip
 ```
-python -m pip install clang-format~=18.0
+python -m pip install clang-format==18.1.0
 ```
 
 And to apply formatting
