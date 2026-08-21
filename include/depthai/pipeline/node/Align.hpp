@@ -65,11 +65,6 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, ImageAlignProperties>, pu
     Align& setOutputSize(int alignWidth, int alignHeight);
 
     /**
-     * Specify whether to keep aspect ratio when resizing
-     */
-    Align& setOutKeepAspectRatio(bool keep);
-
-    /**
      * Specify interpolation method to use when resizing
      */
     Align& setInterpolation(Interpolation interp);

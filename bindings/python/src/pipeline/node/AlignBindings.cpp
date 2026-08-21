@@ -31,7 +31,6 @@ void bind_align(pybind11::module& m, void* pCallstack) {
         .def_readonly("passthroughInput", &Align::passthroughInput, "Passthrough input message")
         .def_readonly("outputAligned", &Align::outputAligned, "Aligned output message")
         .def("setOutputSize", &Align::setOutputSize, py::arg("alignWidth"), py::arg("alignHeight"))
-        .def("setOutKeepAspectRatio", &Align::setOutKeepAspectRatio, py::arg("keep"))
         .def("setInterpolation", &Align::setInterpolation, py::arg("interp"))
         .def("setNumShaves", &Align::setNumShaves, py::arg("numShaves"))
         .def("setNumFramesPool", &Align::setNumFramesPool, py::arg("numFramesPool"))

@@ -45,10 +45,6 @@ Align& Align::setOutputSize(int alignWidth, int alignHeight) {
     properties.alignHeight = alignHeight;
     return *this;
 }
-Align& Align::setOutKeepAspectRatio(bool keep) {
-    properties.outKeepAspectRatio = keep;
-    return *this;
-}
 
 Align& Align::setInterpolation(Interpolation interp) {
     properties.interpolation = interp;
@@ -117,8 +113,8 @@ cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig)
     return cvMat;
 }
 
-cv::Mat arrayToCvMat(int rows, int cols, int type, const std::array<std::array<float, 3>, 3>& orig) {
-    cv::Mat cvMat = cv::Mat(rows, cols, type);
+cv::Mat arrayToCvMat(const std::array<std::array<float, 3>, 3>& orig) {
+    cv::Mat cvMat = cv::Mat(3, 3, CV_32FC1);
     memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
     return cvMat;
 }
@@ -155,7 +151,7 @@ int shiftDepthImg(const std::shared_ptr<dai::ImgFrame>& inVec,
 
     int width = inVec->getWidth();
     int height = inVec->getHeight();
-    int bpp = 2;  // todo
+    int bpp = inVec->getBytesPerPixel();
 
     const uint16_t* plane = reinterpret_cast<const uint16_t*>(inVec->getData().data());
     uint16_t* alignedPlane = reinterpret_cast<uint16_t*>(outVec->getData().data());
@@ -224,10 +220,10 @@ struct Align::ImgFrameRunState {
     int alignWidth = 0;
     int alignHeight = 0;
 
-    cv::Mat map_x_1;
-    cv::Mat map_y_1;
-    cv::Mat map_x_2;
-    cv::Mat map_y_2;
+    cv::Mat mapX1;
+    cv::Mat mapY1;
+    cv::Mat mapX2;
+    cv::Mat mapY2;
 };
 
 DatatypeEnum classifyInputDatatype(const std::shared_ptr<Buffer>& buffer) {
@@ -421,12 +417,12 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(ImgFrame inputImg, const Align::I
     int alignWidth = state.alignWidth;
     int alignHeight = state.alignHeight;
 
-    auto remapNv12 = [&](cv::Mat& inputNV12, cv::Mat& outputNV12, cv::Mat& map_x, cv::Mat& map_y) {
+    auto remapNv12 = [&](cv::Mat& inputNv12, cv::Mat& outputNv12, cv::Mat& mapX, cv::Mat& mapY) {
         cv::Mat bgrFrame;
-        cv::cvtColor(inputNV12, bgrFrame, cv::COLOR_YUV2BGR_NV12);
+        cv::cvtColor(inputNv12, bgrFrame, cv::COLOR_YUV2BGR_NV12);
 
         cv::Mat remappedBGR;
-        cv::remap(bgrFrame, remappedBGR, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, bgColor);
+        cv::remap(bgrFrame, remappedBGR, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, bgColor);
 
         CV_Assert((remappedBGR.cols % 2) == 0 && (remappedBGR.rows % 2) == 0);
 
@@ -443,8 +439,8 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(ImgFrame inputImg, const Align::I
         const int cw = w / 2;
         const int ch = h / 2;
 
-        cv::Mat yDst(h, w, CV_8UC1, outputNV12.data, outputNV12.step[0]);
-        cv::Mat uvDst(ch, cw, CV_8UC2, outputNV12.data + outputNV12.step[0] * h, outputNV12.step[0]);
+        cv::Mat yDst(h, w, CV_8UC1, outputNv12.data, outputNv12.step[0]);
+        cv::Mat uvDst(ch, cw, CV_8UC2, outputNv12.data + outputNv12.step[0] * h, outputNv12.step[0]);
 
         const uint8_t* srcY = yuv420.ptr<uint8_t>();
         const uint8_t* srcU = srcY + static_cast<size_t>(w) * h;
@@ -458,14 +454,14 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(ImgFrame inputImg, const Align::I
         cv::merge(std::vector<cv::Mat>{uSrc, vSrc}, uvDst);
     };
 
-    auto remapYuv420 = [&](cv::Mat& inputYUV420, cv::Mat& outputYUV420, cv::Mat& map_x, cv::Mat& map_y) {
+    auto remapYuv420 = [&](cv::Mat& inputYuv420, cv::Mat& outputYuv420, cv::Mat& mapX, cv::Mat& mapY) {
         cv::Mat bgrFrame;
-        cv::cvtColor(inputYUV420, bgrFrame, cv::COLOR_YUV2BGR_IYUV);
+        cv::cvtColor(inputYuv420, bgrFrame, cv::COLOR_YUV2BGR_IYUV);
 
         cv::Mat remappedBGR;
-        cv::remap(bgrFrame, remappedBGR, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, bgColor);
+        cv::remap(bgrFrame, remappedBGR, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, bgColor);
 
-        cv::cvtColor(remappedBGR, outputYUV420, cv::COLOR_BGR2YUV_I420);
+        cv::cvtColor(remappedBGR, outputYuv420, cv::COLOR_BGR2YUV_I420);
     };
 
     bool inputIsDepth = inputImg.getType() == ImgFrame::Type::RAW16;
@@ -504,28 +500,28 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(ImgFrame inputImg, const Align::I
     auto inputFrame = inputImg.getFrame();
     auto depthImgRectifiedFrame = depthImgRectified->getFrame();
 
-    cv::Mat map_x_1 = state.map_x_1;
-    cv::Mat map_y_1 = state.map_y_1;
+    cv::Mat mapX1 = state.mapX1;
+    cv::Mat mapY1 = state.mapY1;
 
-    cv::Mat map_x_2 = state.map_x_2;
-    cv::Mat map_y_2 = state.map_y_2;
+    cv::Mat mapX2 = state.mapX2;
+    cv::Mat mapY2 = state.mapY2;
 
     if(inputFrameBpp == 1.5f) {
         auto inputFrameCopy = inputFrame.clone();
         if(depthImgRectified->getType() == ImgFrame::Type::NV12) {
-            remapNv12(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+            remapNv12(inputFrameCopy, depthImgRectifiedFrame, mapX1, mapY1);
         } else if(depthImgRectified->getType() == ImgFrame::Type::YUV420p) {
-            remapYuv420(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+            remapYuv420(inputFrameCopy, depthImgRectifiedFrame, mapX1, mapY1);
         } else {
             logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)depthImgRectified->getType());
         }
     } else if(depthImgRectified->getType() == ImgFrame::Type::RGB888p || depthImgRectified->getType() == ImgFrame::Type::BGR888p) {
         cv::Mat inputCvFrame = inputImg.getCvFrame();
         cv::Mat remappedCvFrame;
-        cv::remap(inputCvFrame, remappedCvFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
+        cv::remap(inputCvFrame, remappedCvFrame, mapX1, mapY1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
         depthImgRectified->setCvFrame(remappedCvFrame, depthImgRectified->getType());
     } else {
-        cv::remap(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
+        cv::remap(inputFrame, depthImgRectifiedFrame, mapX1, mapY1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
     }
 
     if(PRINT_DEBUG) {
@@ -597,19 +593,19 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(ImgFrame inputImg, const Align::I
     auto alignedImgFrame = alignedImg->getFrame();
     if(inputFrameBpp == 1.5f) {
         if(alignedImg->getType() == ImgFrame::Type::NV12) {
-            remapNv12(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2);
+            remapNv12(warp2InputFrame, alignedImgFrame, mapX2, mapY2);
         } else if(alignedImg->getType() == ImgFrame::Type::YUV420p) {
-            remapYuv420(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2);
+            remapYuv420(warp2InputFrame, alignedImgFrame, mapX2, mapY2);
         } else {
             logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)alignedImg->getType());
         }
     } else if(alignedImg->getType() == ImgFrame::Type::RGB888p || alignedImg->getType() == ImgFrame::Type::BGR888p) {
         cv::Mat warp2InputCvFrame = warp2Input->getCvFrame();
         cv::Mat remappedCvFrame;
-        cv::remap(warp2InputCvFrame, remappedCvFrame, map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
+        cv::remap(warp2InputCvFrame, remappedCvFrame, mapX2, mapY2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
         alignedImg->setCvFrame(remappedCvFrame, alignedImg->getType());
     } else {
-        cv::remap(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
+        cv::remap(warp2InputFrame, alignedImgFrame, mapX2, mapY2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
     }
     if(PRINT_DEBUG) {
         t2 = steady_clock::now();
@@ -646,8 +642,8 @@ Align::ImgFrameRunState Align::prepareRectificationMatrices(const ImgTransformat
         int depthWidth = static_cast<int>(inputTransform.getSize().first);
         int depthHeight = static_cast<int>(inputTransform.getSize().second);
 
-        auto cv_M1 = arrayToCvMat(3, 3, CV_32FC1, state.depthSourceIntrinsics);
-        auto cv_M2 = arrayToCvMat(3, 3, CV_32FC1, alignSourceIntrinsics);
+        auto cv_M1 = arrayToCvMat(state.depthSourceIntrinsics);
+        auto cv_M2 = arrayToCvMat(alignSourceIntrinsics);
 
         auto cv_d1 = vecToCvMat(1, depthDistortionCoefficients.size(), CV_32FC1, depthDistortionCoefficients);
         auto cv_dNone = cv::Mat::zeros(1, static_cast<int>(alignDistortionCoefficients.size()), CV_32FC1);  // No distortion for aligned frame
@@ -678,7 +674,7 @@ Align::ImgFrameRunState Align::prepareRectificationMatrices(const ImgTransformat
         auto cv_targetCamMatrix = cv_M1.clone();
         auto cv_meshSize = cv::Size(depthWidth, depthHeight);
 
-        cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, state.map_x_1, state.map_y_1);
+        cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, state.mapX1, state.mapY1);
 
         cv::Mat cv_newR;
         cv::Mat cv_newT = cv::Mat::zeros(3, 1, CV_32FC1);
@@ -710,7 +706,7 @@ Align::ImgFrameRunState Align::prepareRectificationMatrices(const ImgTransformat
 
         cv_meshSize = cv::Size(alignWidth, alignHeight);
 
-        cv::initUndistortRectifyMap(cv_targetCamMatrix, cv_dNone, cv_R_back, cv_M2, cv_meshSize, CV_32FC1, state.map_x_2, state.map_y_2);
+        cv::initUndistortRectifyMap(cv_targetCamMatrix, cv_dNone, cv_R_back, cv_M2, cv_meshSize, CV_32FC1, state.mapX2, state.mapY2);
 
         state.alignWidth = alignWidth;
         state.alignHeight = alignHeight;
@@ -730,7 +726,7 @@ void Align::updateShiftFactor(ImgFrameRunState& state, uint16_t staticDepthPlane
 
     const int shiftDelta = nextShiftFactor - state.shiftFactor;
     if(shiftDelta != 0) {
-        state.map_x_1 = state.map_x_1 + cv::Scalar(-shiftDelta);
+        state.mapX1 = state.mapX1 + cv::Scalar(-shiftDelta);
     }
 
     state.staticDepthPlane = staticDepthPlane;
@@ -766,6 +762,8 @@ std::shared_ptr<Buffer> Align::buildAlignedOutputMessage(const std::shared_ptr<B
         warnAboutDistortion();
 
         auto alignedImg = alignImgFrame(*imgFrameInput, runState, {0, 0, 0});
+        const auto [sourceWidth, sourceHeight] = outputTransform.getSourceSize();
+        alignedImg->setSourceSize(static_cast<unsigned int>(sourceWidth), static_cast<unsigned int>(sourceHeight));
         alignedImg->setTransformation(outputTransform);
         return alignedImg;
     }
