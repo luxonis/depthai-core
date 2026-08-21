@@ -149,7 +149,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-2022, ubuntu-latest]
+        os: [macos-latest, windows-2025, ubuntu-latest]
         cmake: ['3.22.x', '4.0.x']
 
     steps:
@@ -174,14 +174,21 @@ jobs:
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: |
         choco install opencv --version=4.13.0 --yes
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+    - name: Configure MSVC environment
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+        toolset: '14.44'
+
     - name: Build
       run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
+        cmake -S . -B build ${{ runner.os == 'Windows' && '-G Ninja' || '' }} -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
         cmake --build build --parallel 4 --config Release
 
   integration:
@@ -190,7 +197,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-2022, ubuntu-latest]
+        os: [macos-latest, windows-2025, ubuntu-latest]
         build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
@@ -198,11 +205,11 @@ jobs:
         # TODO(Morato) - add back Win32 and shared builds to CI
         # include:
         #   - platform: Win32
-        #     os: windows-latest
+        #     os: windows-2025
         #     shared: true
         #     build-type: Debug
         #   - platform: Win32
-        #     os: windows-latest
+        #     os: windows-2025
         #     shared: true
         #     build-type: Release
     steps:
@@ -222,12 +229,17 @@ jobs:
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: |
         choco install opencv --version=4.13.0 --yes
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "CMAKE_GENERATOR=Visual Studio 17 2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "CMAKE_GENERATOR_PLATFORM=${{ matrix.platform }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Configure MSVC environment
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+        toolset: '14.44'
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.13
@@ -235,10 +247,10 @@ jobs:
         cmake-version: '3.29.x'
 
     - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
-      run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX="${{ github.workspace }}/depthai_install" ${{ env.CMAKE_ARGS }}
+      run: cmake -S . -B build ${{ runner.os == 'Windows' && '-G Ninja' || '' }} -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX="${{ github.workspace }}/depthai_install" ${{ env.CMAKE_ARGS }}
 
     - name: Set path to shared library dll (Windows)
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: echo "${{ github.workspace }}/depthai_install/bin/" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Build and install
@@ -249,14 +261,14 @@ jobs:
       run: python scripts/verify_license_artifact.py install-tree "${{ github.workspace }}/depthai_install"
 
     - name: Upload Win64 shared library
-      if: matrix.os == 'windows-2022' && matrix.shared && matrix.platform == 'x64'
+      if: runner.os == 'Windows' && matrix.shared && matrix.platform == 'x64'
       uses: actions/upload-artifact@v4
       with:
         name: windows-prebuilt-win64-${{ matrix.build-type }}
         path: ${{ github.workspace }}/depthai_install/
     # TODO(Morato) - add back Win32 and shared builds to CI
     # - name: Upload Win32 shared library
-    #   if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
+    #   if: runner.os == 'Windows' && matrix.shared && matrix.platform == 'Win32'
     #   uses: actions/upload-artifact@v4
     #   with:
     #     name: windows-prebuilt-win32-no-opencv-${{ matrix.build-type }}
@@ -271,7 +283,7 @@ jobs:
 
     - name: Build and test find_package (installed)
       run: |
-        cmake -S tests/integration/ -B tests/integration/build_find_package -D TEST_FIND_PACKAGE=ON -D CMAKE_PREFIX_PATH="${{ github.workspace }}/depthai_install" ${{ env.CMAKE_ARGS }}
+        cmake -S tests/integration/ -B tests/integration/build_find_package ${{ runner.os == 'Windows' && format('-G Ninja -D CMAKE_BUILD_TYPE={0}', matrix.build-type) || '' }} -D TEST_FIND_PACKAGE=ON -D CMAKE_PREFIX_PATH="${{ github.workspace }}/depthai_install" ${{ env.CMAKE_ARGS }}
         cmake --build tests/integration/build_find_package --config ${{ matrix.build-type }} --parallel 4
         cd tests/integration/build_find_package
         ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error

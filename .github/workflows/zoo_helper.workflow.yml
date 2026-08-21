@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 
 env:
-  CMAKE_WINDOWS_SDK_VERSION: '10.0.18362.0'
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
