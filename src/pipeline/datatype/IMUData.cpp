@@ -18,7 +18,7 @@ void IMUData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datat
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 
 ProtoSerializable::SchemaPair IMUData::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<IMUData>();
 }
 
 std::vector<std::uint8_t> IMUData::serializeProto(bool) const {

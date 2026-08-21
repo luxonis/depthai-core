@@ -249,7 +249,7 @@ std::vector<std::uint8_t> PointCloudData::serializeProto(bool metadataOnly) cons
 }
 
 ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<PointCloudData>();
 }
 
 void PointCloudData::deserializeProto(const std::vector<std::uint8_t>& bytes) {

@@ -32,6 +32,8 @@
         template <>                                                                              \
         std::unique_ptr<google::protobuf::Message> getProtoMessage(const daiMsg* message, bool); \
         template <>                                                                              \
+        ProtoSerializable::SchemaPair getProtoSchema<daiMsg>();                                  \
+        template <>                                                                              \
         void setProtoMessage(daiMsg& obj, const google::protobuf::Message* msg, bool);           \
         void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes);
 #endif
@@ -40,7 +42,6 @@ namespace dai {
 namespace utility {
 
 std::vector<std::uint8_t> serializeProto(std::unique_ptr<google::protobuf::Message> protoMessage);
-ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::Message> protoMessage);
 
 // Common functions for serializing
 void serializeImgTransformation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation);
@@ -70,6 +71,10 @@ std::chrono::time_point<Clock> safeTimestamp(const dai::proto::common::Timestamp
 template <typename T>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const T*, bool = false) {
     throw std::runtime_error("getProtoMessage not implemented for this type");
+}
+template <typename T>
+ProtoSerializable::SchemaPair getProtoSchema() {
+    throw std::runtime_error("getProtoSchema not implemented for this type");
 }
 // Helpers to deserialize messages from protobuf
 template <typename T>

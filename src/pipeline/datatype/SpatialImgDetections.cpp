@@ -245,7 +245,7 @@ std::vector<std::uint8_t> SpatialImgDetections::serializeProto(bool metadataOnly
 }
 
 ProtoSerializable::SchemaPair SpatialImgDetections::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<SpatialImgDetections>();
 }
 
 void SpatialImgDetections::deserializeProto(const std::vector<std::uint8_t>& bytes) {

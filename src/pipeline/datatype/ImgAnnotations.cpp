@@ -19,7 +19,7 @@ void ImgAnnotations::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 
 ProtoSerializable::SchemaPair ImgAnnotations::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<ImgAnnotations>();
 }
 
 std::vector<std::uint8_t> ImgAnnotations::serializeProto(bool) const {

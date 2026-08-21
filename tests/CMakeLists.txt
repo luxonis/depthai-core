@@ -736,7 +736,6 @@ if(DEPTHAI_BUILD_BETA)
         BETA_PARSER_TEST_DATA_PATH="${beta_parser_test_nndata}"
     )
 endif()
->>>>>>> b87d032dd22f5ef4d8c153d3792a3ceca1fed12d
 
 # GPU availability test
 dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)

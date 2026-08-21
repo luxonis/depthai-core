@@ -356,7 +356,7 @@ void SegmentationMask::serialize(std::vector<std::uint8_t>& metadata, DatatypeEn
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 ProtoSerializable::SchemaPair SegmentationMask::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<SegmentationMask>();
 }
 
 std::vector<std::uint8_t> SegmentationMask::serializeProto(bool metadataOnly) const {

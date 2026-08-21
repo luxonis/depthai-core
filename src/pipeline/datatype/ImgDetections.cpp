@@ -196,7 +196,7 @@ ImgDetections ImgDetections::transformTo(const ImgTransformation& target) const 
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<ImgDetections>();
 }
 
 std::vector<std::uint8_t> ImgDetections::serializeProto(bool metadataOnly) const {

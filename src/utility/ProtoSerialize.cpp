@@ -22,6 +22,18 @@
 
 #ifndef DEPTHAI_PROTO_IMPL
     #define DEPTHAI_PROTO_IMPL(daiMsg, protoMsg)                                             \
+        template <>                                                                          \
+        ProtoSerializable::SchemaPair getProtoSchema<daiMsg>() {                             \
+            protoMsg protoMessage;                                                           \
+            const auto* descriptor = protoMessage.GetDescriptor();                           \
+            if(descriptor == nullptr) {                                                      \
+                throw std::runtime_error("Failed to get protobuf descriptor");               \
+            }                                                                                \
+            ProtoSerializable::SchemaPair returnPair;                                        \
+            returnPair.schemaName = descriptor->full_name();                                 \
+            returnPair.schema = serializeFdSet(descriptor);                                  \
+            return returnPair;                                                               \
+        }                                                                                    \
         void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes) {  \
             protoMsg protoMessage;                                                           \
             if(!protoMessage.ParseFromArray(bytes.data(), static_cast<int>(bytes.size()))) { \
@@ -65,17 +77,6 @@ std::vector<std::uint8_t> serializeProto(std::unique_ptr<google::protobuf::Messa
     }
 
     return buffer;
-}
-
-ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::Message> protoMessage) {
-    const auto* descriptor = protoMessage->GetDescriptor();
-    if(descriptor == nullptr) {
-        throw std::runtime_error("Failed to get protobuf descriptor");
-    }
-    ProtoSerializable::SchemaPair returnPair;
-    returnPair.schemaName = descriptor->full_name();
-    returnPair.schema = serializeFdSet(descriptor);
-    return returnPair;
 }
 
 void serializePoint2f(proto::common::Point2f* protoPoint, const Point2f& point) {
