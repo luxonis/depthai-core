@@ -245,7 +245,7 @@ bool MapOutputParser::runOnHost() const {
 
 void MapOutputParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("MapOutputParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
     auto config = getProperties().initialConfig;
     DAI_CHECK(config.validate(), "MapOutputParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
@@ -255,6 +255,7 @@ void MapOutputParser::run() {
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -280,6 +281,7 @@ void MapOutputParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
         const MapOutputParserConfig configSnapshot = config;
 
         // Extract
@@ -303,10 +305,13 @@ void MapOutputParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("MapOutputParser created map message with size {}x{}", message->getWidth(), message->getHeight());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

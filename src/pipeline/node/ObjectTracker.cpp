@@ -100,6 +100,7 @@ bool contains(const std::vector<T>& vec, const T& el) {
 void ObjectTracker::run() {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     float trackerThreshold = properties.trackerThreshold;
     std::vector<std::uint32_t> detectionLabelsToTrack = properties.detectionLabelsToTrack;
@@ -112,6 +113,7 @@ void ObjectTracker::run() {
     impl::OCSTracker tracker(properties);
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<ImgFrame> inputTrackerImg;
         std::shared_ptr<ImgFrame> inputDetectionImg;
         std::shared_ptr<ImgDetections> inputImgDetections;
@@ -148,6 +150,7 @@ void ObjectTracker::run() {
                 inputCfg = inputConfig.tryGet<ObjectTrackerConfig>();
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         if(inputCfg) {
             tracker.configure(*inputCfg);
@@ -215,6 +218,7 @@ void ObjectTracker::run() {
         }
         trackletsMsg->transformation = inputTrackerImg->transformation;
 
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
 
@@ -228,6 +232,8 @@ void ObjectTracker::run() {
                 }
             }
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 #else
     throw std::runtime_error("ObjectTracker::run() requires OpenCV support. Please compile with OpenCV.");

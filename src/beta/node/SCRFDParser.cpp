@@ -260,7 +260,7 @@ bool SCRFDParser::runOnHost() const {
 
 void SCRFDParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("SCRFDParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     SCRFDParserConfig activeConfig = getProperties().initialConfig;
     DAI_CHECK(activeConfig.validate(), "SCRFDParser initial configuration is invalid.");
@@ -280,6 +280,7 @@ void SCRFDParser::run() {
     std::vector<std::vector<std::array<float, 2>>> anchors;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -305,6 +306,7 @@ void SCRFDParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         const SCRFDParserConfig config = activeConfig;
 
@@ -407,10 +409,13 @@ void SCRFDParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("SCRFDParser created message with {} detections", message->detections.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

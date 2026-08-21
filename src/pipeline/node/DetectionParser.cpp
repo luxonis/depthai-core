@@ -486,7 +486,7 @@ bool DetectionParser::runOnHost() const {
 
 void DetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("Detection parser running on host.");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     using namespace std::chrono;
     while(mainLoop()) {
@@ -546,12 +546,7 @@ void DetectionParser::run() {
         }
 
         auto tAbsoluteEnd = steady_clock::now();
-        logger->trace("Detection parser took {} ms.",
-            duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000);
-        logger->trace("processing {}ms, getting_frames {}ms, sending_frames {}ms",
-            duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
-            duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
-            duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+        this->logTiming(logger, tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }
 }
 

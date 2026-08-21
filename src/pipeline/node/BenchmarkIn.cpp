@@ -30,6 +30,7 @@ void BenchmarkIn::measureIndividualLatencies(bool attachLatencies) {
 void BenchmarkIn::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     uint32_t numMessages = properties.reportEveryNMessages;
 
@@ -56,12 +57,14 @@ void BenchmarkIn::run() {
     auto start = steady_clock::now();
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<dai::Buffer> inMessage = nullptr;
         std::shared_ptr<dai::BenchmarkReport> reportMessage = nullptr;
         {
             auto blockEvent = this->inputBlockEvent();
             inMessage = input.get<dai::Buffer>();
         }
+        auto tGotInput = steady_clock::now();
 
         // If this is the first message of the batch, reset counters
         if(messageCount == 0) {
@@ -126,6 +129,7 @@ void BenchmarkIn::run() {
             messageCount = 0;
         }
 
+        auto tProcessed = steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
 
@@ -138,6 +142,8 @@ void BenchmarkIn::run() {
             // Passthrough the message
             passthrough.send(inMessage);
         }
+        auto tAbsoluteEnd = steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

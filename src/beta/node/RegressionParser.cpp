@@ -166,13 +166,14 @@ bool RegressionParser::runOnHost() const {
 
 void RegressionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("RegressionParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -181,6 +182,7 @@ void RegressionParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // Extract
         const auto layerNames = nnData->getAllLayerNames();
@@ -203,10 +205,13 @@ void RegressionParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("RegressionParser created message with {} values", message->predictions.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

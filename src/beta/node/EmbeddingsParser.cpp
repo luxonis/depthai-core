@@ -117,9 +117,10 @@ bool EmbeddingsParser::runOnHost() const {
 
 void EmbeddingsParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("EmbeddingsParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -128,6 +129,7 @@ void EmbeddingsParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // Extract: validate that exactly one output layer is selected. When the output layer name
         // is configured, the selection is trivially unambiguous and no per-message check is needed,
@@ -142,10 +144,13 @@ void EmbeddingsParser::run() {
         // Compute is the identity and emit forwards the same message unchanged, so all tensors,
         // sequence number, timestamps, and image transformation metadata are preserved.
         logger->debug("EmbeddingsParser forwarding NNData message");
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(nnData);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

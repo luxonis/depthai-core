@@ -16,6 +16,7 @@ bool MessageDemux::runOnHost() const {
 
 void MessageDemux::run() {
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     while(mainLoop()) {
         std::shared_ptr<MessageGroup> message = nullptr;

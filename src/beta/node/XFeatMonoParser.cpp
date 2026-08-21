@@ -253,7 +253,7 @@ bool XFeatMonoParser::runOnHost() const {
 
 void XFeatMonoParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("XFeatMonoParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
     auto config = getProperties().initialConfig;
     DAI_CHECK(config.validate(), "XFeatMonoParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
@@ -271,6 +271,7 @@ void XFeatMonoParser::run() {
     std::optional<utilities::XFeatUtils::XFeatResult> previousResult;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -296,6 +297,7 @@ void XFeatMonoParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
         const XFeatMonoParserConfig configSnapshot = config;
 
         // Extract
@@ -319,10 +321,13 @@ void XFeatMonoParser::run() {
             auto message = std::make_shared<dai::TrackedFeatures>();
             message->setBufferMetadataFrom(nnData);
             logger->debug("XFeatMonoParser: no keypoints found, sending empty TrackedFeatures message");
+            auto tProcessed = std::chrono::steady_clock::now();
             {
                 auto blockEvent = this->outputBlockEvent();
                 out.send(message);
             }
+            auto tAbsoluteEnd = std::chrono::steady_clock::now();
+            this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
             continue;
         }
 
@@ -336,6 +341,7 @@ void XFeatMonoParser::run() {
         }
         message->setBufferMetadataFrom(nnData);
         logger->debug("XFeatMonoParser created message with {} tracked features", message->trackedFeatures.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
@@ -345,6 +351,8 @@ void XFeatMonoParser::run() {
         if(trigger.exchange(false)) {
             previousResult = *result;
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

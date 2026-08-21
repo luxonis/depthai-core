@@ -193,6 +193,7 @@ int shiftDepthImg(const std::shared_ptr<dai::ImgFrame>& inVec,
 void ImageAlign::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     dai::CalibrationHandler calibHandler;
 
@@ -359,6 +360,7 @@ void ImageAlign::run() {
     uint32_t currentEepromId = getParentPipeline().getEepromId();
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<ImgFrame> inputImg = nullptr;
         std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
         bool hasConfig = false;
@@ -413,6 +415,7 @@ void ImageAlign::run() {
                 }
             }
         }
+        auto tGotInput = steady_clock::now();
 
         if(hasConfig) {
             latestConfig = inConfig;
@@ -475,8 +478,7 @@ void ImageAlign::run() {
 
         previousShiftFactor = constantShiftFactor;
 
-        decltype(steady_clock::now()) t1, t2, tStart, tStop;
-        tStart = steady_clock::now();
+        decltype(steady_clock::now()) t1, t2;
         if(PRINT_DEBUG) {
             t1 = steady_clock::now();
         }
@@ -599,16 +601,14 @@ void ImageAlign::run() {
         const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
         alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
 
-        tStop = steady_clock::now();
-        auto runtime = duration_cast<milliseconds>(tStop - tStart).count();
-
-        logger->trace("ImageAlign took {} ms.", runtime);
-
+        auto tProcessed = steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             outputAligned.send(alignedImg);
             passthroughInput.send(inputImg);
         }
+        auto tAbsoluteEnd = steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

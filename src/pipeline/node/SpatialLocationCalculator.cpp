@@ -22,7 +22,7 @@ bool SpatialLocationCalculator::runOnHost() const {
 
 void SpatialLocationCalculator::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("Start SpatialLocationCalculator");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     bool inputConfigSync = inputConfig.getWaitForMessage();
     if(!calculationConfig) {
@@ -118,11 +118,7 @@ void SpatialLocationCalculator::run() {
             passthroughDepth.send(imgFrame);
         }
         auto tAbsoluteEnd = steady_clock::now();
-        logger->trace("Spatial location calculator took {} ms.", duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000);
-        logger->trace("processing {} ms, getting_frames {} ms, sending_frames {} ms",
-                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+        this->logTiming(logger, tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }
 }
 }  // namespace node

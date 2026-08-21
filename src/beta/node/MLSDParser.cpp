@@ -255,7 +255,7 @@ bool MLSDParser::runOnHost() const {
 
 void MLSDParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("MLSDParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
     auto config = getProperties().initialConfig;
     DAI_CHECK(config.validate(), "MLSDParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
@@ -266,6 +266,7 @@ void MLSDParser::run() {
               "Output layer containing the heat tensor is not set. Please use setOutputLayerHeat method or correct NN archive.");
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -291,6 +292,7 @@ void MLSDParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
         const MLSDParserConfig configSnapshot = config;
 
         // Extract. The tpMap tensor is permuted to NCHW orientation; the heat tensor is read in
@@ -316,10 +318,13 @@ void MLSDParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("MLSDParser created message with {} lines", message->lines.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

@@ -252,7 +252,7 @@ bool XFeatStereoParser::runOnHost() const {
 
 void XFeatStereoParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("XFeatStereoParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
     auto config = getProperties().initialConfig;
     DAI_CHECK(config.validate(), "XFeatStereoParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
@@ -268,6 +268,7 @@ void XFeatStereoParser::run() {
     const double resizeRateH = static_cast<double>(properties.originalSize->second) / static_cast<double>(properties.inputSize.second);
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         // One reference message followed by one target message per iteration; two sequential
         // blocking reads without further synchronization, like the source run().
         std::shared_ptr<dai::NNData> referenceOutput;
@@ -297,6 +298,7 @@ void XFeatStereoParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
         const XFeatStereoParserConfig configSnapshot = config;
 
         // Extract
@@ -330,10 +332,13 @@ void XFeatStereoParser::run() {
             auto message = std::make_shared<dai::TrackedFeatures>();
             message->setBufferMetadataFrom(referenceOutput);
             logger->debug("XFeatStereoParser: no reference keypoints found, sending empty TrackedFeatures message");
+            auto tProcessed = std::chrono::steady_clock::now();
             {
                 auto blockEvent = this->outputBlockEvent();
                 out.send(message);
             }
+            auto tAbsoluteEnd = std::chrono::steady_clock::now();
+            this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
             continue;
         }
         if(!targetResult.has_value()) {
@@ -341,10 +346,13 @@ void XFeatStereoParser::run() {
             message->setBufferMetadataFrom(targetOutput);
             message->setSequenceNum(referenceOutput->getSequenceNum());
             logger->debug("XFeatStereoParser: no target keypoints found, sending empty TrackedFeatures message");
+            auto tProcessed = std::chrono::steady_clock::now();
             {
                 auto blockEvent = this->outputBlockEvent();
                 out.send(message);
             }
+            auto tAbsoluteEnd = std::chrono::steady_clock::now();
+            this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
             continue;
         }
 
@@ -355,10 +363,13 @@ void XFeatStereoParser::run() {
         message->setBufferMetadataFrom(targetOutput);
         message->setSequenceNum(referenceOutput->getSequenceNum());
         logger->debug("XFeatStereoParser created message with {} tracked features", message->trackedFeatures.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

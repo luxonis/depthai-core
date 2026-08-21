@@ -1,5 +1,8 @@
 #pragma once
 
+#include <spdlog/async_logger.h>
+
+#include <chrono>
 #include <memory>
 
 #include "depthai/device/Device.hpp"
@@ -40,6 +43,11 @@ class DeviceNode : public ThreadedNode {
     virtual dai::LogLevel getLogLevel() const override;
 
    protected:
+    void logTiming(const std::shared_ptr<spdlog::async_logger>& logger,
+                   std::chrono::steady_clock::time_point tAbsoluteBeginning,
+                   std::chrono::steady_clock::time_point tGotInput,
+                   std::chrono::steady_clock::time_point tProcessed,
+                   std::chrono::steady_clock::time_point tAbsoluteEnd);
     DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf);
     DeviceNode(std::unique_ptr<Properties> props, bool conf);
 

@@ -205,7 +205,7 @@ bool PPTextDetectionParser::runOnHost() const {
 
 void PPTextDetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("PPTextDetectionParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     PPTextDetectionParserConfig activeConfig = getProperties().initialConfig;
     DAI_CHECK(activeConfig.validate(), "PPTextDetectionParser initial configuration is invalid.");
@@ -216,6 +216,7 @@ void PPTextDetectionParser::run() {
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -241,6 +242,7 @@ void PPTextDetectionParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         const PPTextDetectionParserConfig config = activeConfig;
 
@@ -265,10 +267,13 @@ void PPTextDetectionParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("PPTextDetectionParser created message with {} detections", message->detections.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 
