@@ -2,7 +2,9 @@
 #include <chrono>
 #include <depthai/depthai.hpp>
 #include <depthai/pipeline/datatype/ImgAnnotations.hpp>
+#include <depthai/schemas/common.pb.h>
 #include <filesystem>
+#include <fstream>
 #include <sstream>
 #include <variant>
 
@@ -233,6 +235,31 @@ TEST_CASE("ProtoSerializable preserves explicit file extensions", "[ProtoSeriali
     dai::ImgFrame restored;
     restored.load(path);
     requireImgFrame(restored, source);
+}
+
+TEST_CASE("ProtoSerializable persists a schema envelope", "[ProtoSerializable][Envelope]") {
+    ScopedTempDir tempDir("depthai_proto_envelope");
+    const auto path = tempDir.get() / "img_frame";
+    const auto source = makeImgFrame(14);
+
+    source.save(path, true);
+
+    std::ifstream file(resolveSavedPath(path), std::ios::binary);
+    dai::proto::common::ProtoSerializableMessage envelope;
+    REQUIRE(envelope.ParseFromIstream(&file));
+    REQUIRE(envelope.schema_name() == source.serializeSchema().schemaName);
+    REQUIRE(envelope.metadata_only());
+    const auto serializedMessage = source.serializeProto(true);
+    REQUIRE(envelope.proto_message() == std::string(serializedMessage.begin(), serializedMessage.end()));
+}
+
+TEST_CASE("ProtoSerializable rejects a different schema", "[ProtoSerializable][Envelope]") {
+    ScopedTempDir tempDir("depthai_proto_schema_mismatch");
+    const auto path = tempDir.get() / "img_frame";
+
+    makeImgFrame(15).save(path);
+    dai::EncodedFrame message;
+    REQUIRE_THROWS_WITH(message.load(path), Catch::Matchers::ContainsSubstring("Schema mismatch"));
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for EncodedFrame", "[ProtoSerializable][EncodedFrame]") {

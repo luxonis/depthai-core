@@ -1,7 +1,8 @@
 #include "depthai/utility/ProtoSerializable.hpp"
 
+#include "depthai/schemas/common.pb.h"
+
 #include <fstream>
-#include <iostream>
 
 namespace dai {
 
@@ -20,61 +21,52 @@ std::filesystem::path resolveDataPath(const std::filesystem::path& path) {
     return resolved;
 }
 
-void writeMsgBinaryFile(const std::filesystem::path& path, const std::vector<std::uint8_t>& bytes, DatatypeEnum datatype) {
+void writeMsgBinaryFile(const std::filesystem::path& path, const proto::common::ProtoSerializableMessage& message) {
     std::ofstream file(path, std::ios::binary);
     if(!file) {
         throw std::runtime_error("Failed to open file for writing: " + path.string());
     }
-    file.write(reinterpret_cast<const char*>(&datatype), sizeof(datatype));
-    if(!bytes.empty()) {
-        file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-        if(!file) {
-            throw std::runtime_error("Failed to write file: " + path.string());
-        }
+    if(!message.SerializeToOstream(&file)) {
+        throw std::runtime_error("Failed to write protobuf message: " + path.string());
     }
 }
 
-std::vector<std::uint8_t> readMsgBinaryFile(const std::filesystem::path& path, DatatypeEnum datatype) {
+proto::common::ProtoSerializableMessage readMsgBinaryFile(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
     if(!file) {
         throw std::runtime_error("Failed to open file for reading: " + path.string());
     }
 
-    file.seekg(0, std::ios::end);
-    auto size = file.tellg();
-    if(size < 0) {
-        throw std::runtime_error("Failed to determine file size: " + path.string());
+    proto::common::ProtoSerializableMessage message;
+    if(!message.ParseFromIstream(&file)) {
+        throw std::runtime_error("Failed to parse protobuf message: " + path.string());
     }
-    if(static_cast<size_t>(size) < sizeof(datatype)) {
-        throw std::runtime_error("Invalid file: " + path.string());
-    }
-    file.seekg(0, std::ios::beg);
-
-    DatatypeEnum readDatatype = DatatypeEnum::ADatatype;
-    file.read(reinterpret_cast<char*>(&readDatatype), sizeof(readDatatype));
-    if(readDatatype != datatype) {
-        throw std::runtime_error("Datatype mismatch when reading file: " + path.string());
-    }
-
-    size -= sizeof(datatype);  // Subtract the size of the prepended datatype enum
-    std::vector<std::uint8_t> buffer(static_cast<size_t>(size));
-    if(!buffer.empty()) {
-        file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
-        if(!file) {
-            throw std::runtime_error("Failed to read file: " + path.string());
-        }
-    }
-    return buffer;
+    return message;
 }
 
 }  // namespace
 
 void ProtoSerializable::save(const std::filesystem::path& path, bool metadataOnly) const {
-    writeMsgBinaryFile(resolveDataPath(path), serializeProto(metadataOnly), getDatatype());
+    proto::common::ProtoSerializableMessage message;
+    message.set_schema_name(serializeSchema().schemaName);
+    message.set_metadata_only(metadataOnly);
+
+    const auto serializedMessage = serializeProto(metadataOnly);
+    if(!serializedMessage.empty()) {
+        message.set_proto_message(serializedMessage.data(), serializedMessage.size());
+    }
+    writeMsgBinaryFile(resolveDataPath(path), message);
 }
 
 void ProtoSerializable::load(const std::filesystem::path& path) {
-    deserializeProto(readMsgBinaryFile(resolveDataPath(path), getDatatype()));
+    const auto message = readMsgBinaryFile(resolveDataPath(path));
+    const auto expectedSchemaName = serializeSchema().schemaName;
+    if(message.schema_name() != expectedSchemaName) {
+        throw std::runtime_error("Schema mismatch when reading file: " + path.string());
+    }
+
+    const auto& serializedMessage = message.proto_message();
+    deserializeProto({serializedMessage.begin(), serializedMessage.end()});
 }
 
 #endif

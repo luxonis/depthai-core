@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "depthai/pipeline/datatype/ADatatype.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <filesystem>
@@ -11,7 +10,7 @@
 
 namespace dai {
 
-class ProtoSerializable : public ADatatypeInterface {
+class ProtoSerializable {
    public:
     struct SchemaPair {
         std::string schemaName;
