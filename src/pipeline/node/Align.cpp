@@ -492,9 +492,6 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(ImgFrame inputImg, const Align::I
     auto depthImgRectified = std::make_shared<ImgFrame>();
     depthImgRectified->setData(std::vector<uint8_t>(frameSize));
     depthImgRectified->setMetadata(inputImg);
-    depthImgRectified->setWidth(inputImg.getWidth());
-    depthImgRectified->setHeight(inputImg.getHeight());
-    depthImgRectified->setType(inputImg.getType());
     depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
 
     auto inputFrame = inputImg.getFrame();
@@ -541,9 +538,6 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(ImgFrame inputImg, const Align::I
 
     if(inputIsDepth && state.staticDepthPlane == 0 && !state.degenerateStereoTransform) {
         shiftedOutput->setMetadata(inputImg);
-        shiftedOutput->setWidth(inputImg.getWidth());
-        shiftedOutput->setHeight(inputImg.getHeight());
-        shiftedOutput->setType(inputImg.getType());
         shiftedOutput->fb.stride = shiftedOutput->fb.width * shiftedOutput->getBytesPerPixel();
 
         auto startProcessing = high_resolution_clock::now();
@@ -586,7 +580,6 @@ std::shared_ptr<ImgFrame> Align::alignImgFrame(ImgFrame inputImg, const Align::I
     alignedImg->setMetadata(inputImg);
     alignedImg->setWidth(alignWidth);
     alignedImg->setHeight(alignHeight);
-    alignedImg->setType(inputImg.getType());
     alignedImg->fb.stride = alignedImg->fb.width * alignedImg->getBytesPerPixel();
 
     auto warp2InputFrame = warp2Input->getFrame();
