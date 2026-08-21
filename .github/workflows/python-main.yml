@@ -255,18 +255,14 @@ jobs:
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
-      CMAKE_GENERATOR: Ninja
+      CMAKE_GENERATOR: Visual Studio 18 2026
+      CMAKE_GENERATOR_TOOLSET: version=14.44,host=x64
       VCPKG_BINARY_SOURCES: "clear;files,C:\\.vcpkg,readwrite"
     steps:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
         with:
-          cmake-version : '3.31.x'
-      - name: Configure MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-          toolset: '14.44'
+          cmake-version : '4.2.x'
       - name: Cache vcpkg folder
         uses: actions/cache@v3
         with:
