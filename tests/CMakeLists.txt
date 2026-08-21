@@ -719,9 +719,11 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
-# ProtoSerializable save/load test
-dai_add_test(proto_serializable_test src/onhost_tests/proto_serializable_test.cpp)
-dai_set_test_labels(proto_serializable_test ci)
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # ProtoSerializable save/load test
+    dai_add_test(proto_serializable_test src/onhost_tests/proto_serializable_test.cpp)
+    dai_set_test_labels(proto_serializable_test ci)
+endif()
 
 if(DEPTHAI_BUILD_BETA)
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)

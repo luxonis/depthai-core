@@ -79,6 +79,8 @@ std::vector<std::uint8_t> serializeProto(std::unique_ptr<google::protobuf::Messa
     return buffer;
 }
 
+namespace {
+
 void serializePoint2f(proto::common::Point2f* protoPoint, const Point2f& point) {
     protoPoint->set_x(point.x);
     protoPoint->set_y(point.y);
@@ -131,6 +133,8 @@ Rect deserializeSpatialRect(const proto::spatial_img_detections::Rect& rect) {
     }
     return Rect{rect.x(), rect.y(), rect.width(), rect.height()};
 }
+
+}  // namespace
 
 void serializeImgTransformation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation) {
     const auto [width, height] = transformation.getSize();
@@ -191,6 +195,19 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix;
     std::vector<float> distortionCoefficients;
     Extrinsics extrinsics;
+    const auto validateMatrix = [](const auto& matrix, const char* matrixName) {
+        if(matrix.arrays_size() < 3) {
+            throw std::runtime_error(std::string(matrixName) + " must contain at least three rows");
+        }
+        for(auto i = 0; i < 3; ++i) {
+            if(matrix.arrays(i).values_size() < 3) {
+                throw std::runtime_error(std::string(matrixName) + " must contain at least three columns per row");
+            }
+        }
+    };
+    validateMatrix(imgTransformation.transformationmatrix(), "Transformation matrix");
+    validateMatrix(imgTransformation.sourceintrinsicmatrix(), "Source intrinsic matrix");
+
     distortionCoefficients.reserve(imgTransformation.distortioncoefficients().values_size());
     for(auto i = 0U; i < 3; ++i)
         for(auto j = 0U; j < 3; ++j) transformationMatrix[i][j] = imgTransformation.transformationmatrix().arrays(i).values(j);
@@ -616,7 +633,9 @@ void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encoded_frame
     obj.cam.fps = encFrame.cam().fps();
     obj.cam.sensorTemperatureC = encFrame.cam().has_sensortemperaturec() ? std::make_optional(encFrame.cam().sensortemperaturec()) : std::nullopt;
 
-    obj.transformation = deserializeImgTransformation(encFrame.transformation());
+    if(encFrame.has_transformation()) {
+        obj.transformation = deserializeImgTransformation(encFrame.transformation());
+    }
 
     if(!metadataOnly) {
         std::vector<uint8_t> data(encFrame.data().begin(), encFrame.data().end());
@@ -626,8 +645,12 @@ void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encoded_frame
 
 // Helper function to populate an ImgFrame object from an ImgFrame proto
 void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& imgFrame, bool metadataOnly) {
-    obj.setTimestamp(utility::fromProtoTimestamp<std::chrono::steady_clock>(imgFrame.ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp<std::chrono::steady_clock>(imgFrame.tsdevice()));
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp<std::chrono::steady_clock>(protoTs) : steady_tp{};
+    };
+    obj.setTimestamp(safeTimestamp(imgFrame.ts(), imgFrame.has_ts()));
+    obj.setTimestampDevice(safeTimestamp(imgFrame.tsdevice(), imgFrame.has_tsdevice()));
 
     if(imgFrame.has_tssystem()) {
         obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(imgFrame.tssystem()));
@@ -672,8 +695,9 @@ void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& 
     obj.instanceNum = imgFrame.instancenum();
     obj.category = imgFrame.category();
 
-    // transformation
-    obj.transformation = deserializeImgTransformation(imgFrame.transformation());
+    if(imgFrame.has_transformation()) {
+        obj.transformation = deserializeImgTransformation(imgFrame.transformation());
+    }
 
     if(!metadataOnly) {
         std::vector<uint8_t> data(imgFrame.data().begin(), imgFrame.data().end());
@@ -1494,60 +1518,7 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     if(imgFrame == nullptr) {
         throw std::runtime_error("Failed to cast protobuf message to ImgFrame");
     }
-    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
-        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
-        return hasField ? utility::fromProtoTimestamp<std::chrono::steady_clock>(protoTs) : steady_tp{};
-    };
-    // create and populate ImgFrame protobuf message
-    obj.setTimestamp(safeTimestamp(imgFrame->ts(), imgFrame->has_ts()));
-    obj.setTimestampDevice(safeTimestamp(imgFrame->tsdevice(), imgFrame->has_tsdevice()));
-
-    if(imgFrame->has_tssystem()) {
-        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(imgFrame->tssystem()));
-    } else {
-        obj.setTimestampSystem(std::nullopt);
-    }
-
-    obj.setSequenceNum(imgFrame->sequencenum());
-
-    obj.fb.type = static_cast<dai::ImgFrame::Type>(imgFrame->fb().type());
-    obj.fb.width = imgFrame->fb().width();
-    obj.fb.height = imgFrame->fb().height();
-    obj.fb.stride = imgFrame->fb().stride();
-    obj.fb.bytesPP = imgFrame->fb().bytespp();
-    obj.fb.p1Offset = imgFrame->fb().p1offset();
-    obj.fb.p2Offset = imgFrame->fb().p2offset();
-    obj.fb.p3Offset = imgFrame->fb().p3offset();
-
-    obj.sourceFb.type = static_cast<dai::ImgFrame::Type>(imgFrame->sourcefb().type());
-    obj.sourceFb.width = imgFrame->sourcefb().width();
-    obj.sourceFb.height = imgFrame->sourcefb().height();
-    obj.sourceFb.stride = imgFrame->sourcefb().stride();
-    obj.sourceFb.bytesPP = imgFrame->sourcefb().bytespp();
-    obj.sourceFb.p1Offset = imgFrame->sourcefb().p1offset();
-    obj.sourceFb.p2Offset = imgFrame->sourcefb().p2offset();
-    obj.sourceFb.p3Offset = imgFrame->sourcefb().p3offset();
-
-    obj.cam.exposureTimeUs = imgFrame->cam().exposuretimeus();
-    obj.cam.sensitivityIso = imgFrame->cam().sensitivityiso();
-    obj.cam.lensPosition = imgFrame->cam().lensposition();
-    obj.cam.wbColorTemp = imgFrame->cam().wbcolortemp();
-    obj.cam.lensPositionRaw = imgFrame->cam().lenspositionraw();
-    obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame->cam().fsync());
-    obj.cam.sensorMode = imgFrame->cam().sensormode();
-    obj.cam.fps = imgFrame->cam().fps();
-    obj.cam.sensorTemperatureC = imgFrame->cam().has_sensortemperaturec() ? std::make_optional(imgFrame->cam().sensortemperaturec()) : std::nullopt;
-
-    obj.instanceNum = imgFrame->instancenum();
-
-    obj.category = imgFrame->category();
-
-    obj.transformation = deserializeImgTransformation(imgFrame->transformation());
-
-    if(!metadataOnly) {
-        std::vector<uint8_t> data(imgFrame->data().begin(), imgFrame->data().end());
-        obj.setData(std::move(data));
-    }
+    populateImgFrameFromProto(obj, *imgFrame, metadataOnly);
 }
 template <>
 void setProtoMessage(SegmentationMask& obj, const google::protobuf::Message* msg, bool metadataOnly) {
@@ -1689,7 +1660,7 @@ DEPTHAI_PROTO_IMPL(ImgFrame, proto::img_frame::ImgFrame)
 DEPTHAI_PROTO_IMPL(SegmentationMask, proto::segmentation_mask::SegmentationMask)
 DEPTHAI_PROTO_IMPL(PointCloudData, proto::point_cloud_data::PointCloudData)
 DEPTHAI_PROTO_IMPL(RGBDData, proto::rgbd_data::RGBDData)
+#undef DEPTHAI_PROTO_IMPL
 
 };  // namespace utility
 };  // namespace dai
-#undef DEPTHAI_PROTO_IMPL

@@ -124,13 +124,20 @@ TEST_CASE("ReplayMetadataOnly replays RGBDData MCAP", "[Replay][RGBDData]") {
     dai::Pipeline p(false);
     auto replayNode = p.create<dai::node::ReplayMetadataOnly>();
     replayNode->setReplayFile(replayPath);
-    replayNode->setLoop(false);
+    replayNode->setLoop(true);
     auto q = replayNode->out.createOutputQueue();
 
     p.start();
+    REQUIRE(q->get<dai::RGBDData>() != nullptr);
+    REQUIRE(q->get<dai::RGBDData>() != nullptr);
     auto data = q->get<dai::RGBDData>();
     REQUIRE(data != nullptr);
-    REQUIRE(data->getSequenceNum() == source.getSequenceNum());
+    const auto sequenceNumOffset = data->getSequenceNum() - source.getSequenceNum();
+    const auto timestampOffset = data->getTimestamp() - source.getTimestamp();
+    const auto deviceTimestampOffset = data->getTimestampDevice() - source.getTimestampDevice();
+    REQUIRE(sequenceNumOffset != 0);
+    REQUIRE(timestampOffset != std::chrono::steady_clock::duration::zero());
+    REQUIRE(deviceTimestampOffset != std::chrono::steady_clock::duration::zero());
     REQUIRE(data->getRGBFrame().has_value());
     REQUIRE(data->getDepthFrame().has_value());
     REQUIRE(std::holds_alternative<std::shared_ptr<dai::ImgFrame>>(data->getRGBFrame().value()));
@@ -143,16 +150,16 @@ TEST_CASE("ReplayMetadataOnly replays RGBDData MCAP", "[Replay][RGBDData]") {
     REQUIRE(replayedColor->getWidth() == colorFrame->getWidth());
     REQUIRE(replayedColor->getHeight() == colorFrame->getHeight());
     REQUIRE(toVector(replayedColor->getData()) == toVector(colorFrame->getData()));
-    REQUIRE(replayedColor->getSequenceNum() == colorFrame->getSequenceNum());
-    REQUIRE(replayedColor->getTimestamp() == colorFrame->getTimestamp());
-    REQUIRE(replayedColor->getTimestampDevice() == colorFrame->getTimestampDevice());
+    REQUIRE(replayedColor->getSequenceNum() == colorFrame->getSequenceNum() + sequenceNumOffset);
+    REQUIRE(replayedColor->getTimestamp() == colorFrame->getTimestamp() + timestampOffset);
+    REQUIRE(replayedColor->getTimestampDevice() == colorFrame->getTimestampDevice() + deviceTimestampOffset);
     REQUIRE(replayedColor->getTimestampSystem() == colorFrame->getTimestampSystem());
     REQUIRE(replayedDepth->getWidth() == depthFrame->getWidth());
     REQUIRE(replayedDepth->getHeight() == depthFrame->getHeight());
     REQUIRE(toVector(replayedDepth->getData()) == toVector(depthFrame->getData()));
-    REQUIRE(replayedDepth->getSequenceNum() == depthFrame->getSequenceNum());
-    REQUIRE(replayedDepth->getTimestamp() == depthFrame->getTimestamp());
-    REQUIRE(replayedDepth->getTimestampDevice() == depthFrame->getTimestampDevice());
+    REQUIRE(replayedDepth->getSequenceNum() == depthFrame->getSequenceNum() + sequenceNumOffset);
+    REQUIRE(replayedDepth->getTimestamp() == depthFrame->getTimestamp() + timestampOffset);
+    REQUIRE(replayedDepth->getTimestampDevice() == depthFrame->getTimestampDevice() + deviceTimestampOffset);
     REQUIRE(replayedDepth->getTimestampSystem() == depthFrame->getTimestampSystem());
     p.stop();
 }
