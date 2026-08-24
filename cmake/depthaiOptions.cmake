@@ -128,3 +128,7 @@ set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootl
 option(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4 "This build is part of the rvc4 firmware build" OFF)
 option(DEPTHAI_GENERATE_HOUSING_COORDS "Generate housing coordinate system data from JSON files" ON)
 option(DEPTHAI_TESTS_ENABLE_REPLAY "Set DEPTHAI_REPLAY for all tests" OFF)
+option(DEPTHAI_TEST_STEREO_RVC2_RVC4_HIL "Register the opt-in RVC2/RVC4 StereoDepth parity hardware test" OFF)
+set(DEPTHAI_TEST_STEREO_RVC2_DEVICE "" CACHE STRING "RVC2 device name or MXID for the StereoDepth parity hardware test")
+set(DEPTHAI_TEST_STEREO_RVC4_DEVICE "" CACHE STRING "RVC4 device name or ID for the StereoDepth parity hardware test")
+set(DEPTHAI_TEST_STEREO_PARITY_CORPUS "" CACHE PATH "Optional persisted corpus directory for the StereoDepth parity hardware test")

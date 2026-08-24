@@ -1324,6 +1324,77 @@ if (DEPTHAI_BUILD_PYTHON)
   add_subdirectory(bindings/python)
 endif()
 
+if(DEPTHAI_TEST_STEREO_RVC2_RVC4_HIL)
+    if(NOT DEPTHAI_BUILD_TESTS)
+        message(FATAL_ERROR "DEPTHAI_TEST_STEREO_RVC2_RVC4_HIL requires DEPTHAI_BUILD_TESTS=ON")
+    endif()
+    if(NOT DEPTHAI_BUILD_PYTHON OR NOT TARGET depthai)
+        message(FATAL_ERROR "DEPTHAI_TEST_STEREO_RVC2_RVC4_HIL requires DEPTHAI_BUILD_PYTHON=ON")
+    endif()
+    if(NOT DEPTHAI_TEST_STEREO_RVC2_DEVICE OR NOT DEPTHAI_TEST_STEREO_RVC4_DEVICE)
+        message(FATAL_ERROR
+            "DEPTHAI_TEST_STEREO_RVC2_RVC4_HIL requires DEPTHAI_TEST_STEREO_RVC2_DEVICE and DEPTHAI_TEST_STEREO_RVC4_DEVICE")
+    endif()
+
+    find_package(Python COMPONENTS Interpreter REQUIRED)
+    set(stereo_parity_hil_command
+        ${Python_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/python/StereoDepth/stereo_rvc2_rvc4_live_parity.py
+        --rvc2-device ${DEPTHAI_TEST_STEREO_RVC2_DEVICE}
+        --rvc4-device ${DEPTHAI_TEST_STEREO_RVC4_DEVICE}
+        --preset all
+        --width 64
+        --width 96
+        --filter-preset default
+        --filter-case native
+        --filter-case raw
+        --filter-case decimation-off
+        --filter-case median-off
+        --filter-case speckle-off
+        --filter-case spatial-off
+        --filter-case temporal-off
+        --filter-case threshold-off
+        --filter-case brightness-limited
+        --filter-case brightness-max-255
+        --filter-case hole-filling-off
+        --filter-case adaptive-median-off
+        --require-conclusive-filters
+        --runtime-config
+        --in-flight 4
+        --output disparity
+        --output depth
+        --frames 40
+        --warmup 10
+        --min-rvc4-fps 3.0)
+    if(DEPTHAI_TEST_STEREO_PARITY_CORPUS)
+        list(APPEND stereo_parity_hil_command --corpus ${DEPTHAI_TEST_STEREO_PARITY_CORPUS})
+    endif()
+
+    add_test(NAME stereo_rvc2_rvc4_parity_hil COMMAND ${stereo_parity_hil_command})
+    set_tests_properties(stereo_rvc2_rvc4_parity_hil PROPERTIES
+        ENVIRONMENT "PYTHONPATH=$<TARGET_FILE_DIR:depthai>"
+        LABELS "ondevice;hil;stereo;rvc2;rvc4"
+        RUN_SERIAL TRUE
+        TIMEOUT 3600)
+
+    add_test(NAME stereo_rvc2_runtime_transition_hil
+        COMMAND ${Python_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/examples/python/StereoDepth/stereo_rvc2_runtime_transition_hil.py
+            --rvc2-device ${DEPTHAI_TEST_STEREO_RVC2_DEVICE}
+            --rvc4-device ${DEPTHAI_TEST_STEREO_RVC4_DEVICE}
+            --width 64
+            --width 96
+            --cycles 2
+            --frames 4
+            --settle-frames 2
+            --warmup 2)
+    set_tests_properties(stereo_rvc2_runtime_transition_hil PROPERTIES
+        ENVIRONMENT "PYTHONPATH=$<TARGET_FILE_DIR:depthai>"
+        LABELS "ondevice;hil;stereo;rvc2;rvc4"
+        RUN_SERIAL TRUE
+        TIMEOUT 1200)
+endif()
+
 ########################
 # Documentation
 ########################
