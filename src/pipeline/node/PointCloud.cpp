@@ -856,6 +856,9 @@ void PointCloud::run() {
         auto pc = std::make_shared<PointCloudData>();
         pc->setBufferMetadataFrom(depthFrame);
         pc->setInstanceNum(depthFrame->getInstanceNum());
+        // Preserve the source ImgTransformation as metadata. The distortion model and
+        // coefficients describe the image used to generate the cloud; the 3D points have already
+        // been distortion-compensated.
         auto outputTransformation = depthFrame->getTransformation();
         if(targetExtrinsics_) {
             outputTransformation.setExtrinsics(*targetExtrinsics_);
