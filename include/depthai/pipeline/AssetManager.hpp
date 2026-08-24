@@ -16,9 +16,10 @@ struct Asset {
     Asset() = default;
     explicit Asset(std::string k) : key(std::move(k)) {}
     const std::string key;
-    std::vector<std::uint8_t> data;
+    mutable std::vector<std::uint8_t> data;
     std::uint32_t alignment = 1;
     std::vector<std::uint8_t>& getData();
+    const std::vector<std::uint8_t>& getData() const;
     std::size_t getSize() const;
     std::string getRelativeUri();
 
@@ -30,7 +31,9 @@ struct Asset {
 
     std::filesystem::path path;
     std::size_t size = 0;
-    bool dataLoaded = false;
+    mutable bool dataLoaded = false;
+
+    void loadData() const;
 };
 
 class AssetsMutable : public Assets {

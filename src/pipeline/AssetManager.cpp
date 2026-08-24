@@ -44,6 +44,16 @@ std::string Asset::getRelativeUri() {
 }
 
 std::vector<std::uint8_t>& Asset::getData() {
+    loadData();
+    return data;
+}
+
+const std::vector<std::uint8_t>& Asset::getData() const {
+    loadData();
+    return data;
+}
+
+void Asset::loadData() const {
     if(!dataLoaded && !path.empty()) {
         std::ifstream stream(path, std::ios::in | std::ios::binary);
         if(!stream.is_open()) {
@@ -68,11 +78,10 @@ std::vector<std::uint8_t>& Asset::getData() {
         data = std::move(loadedData);
         dataLoaded = true;
     }
-    return data;
 }
 
 std::size_t Asset::getSize() const {
-    return path.empty() ? data.size() : size;
+    return dataLoaded || path.empty() ? data.size() : size;
 }
 
 void Asset::setFile(std::filesystem::path path, std::size_t size) {
@@ -131,18 +140,20 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asse
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::filesystem::path& path, int alignment) {
+    const auto absolutePath = std::filesystem::absolute(path);
+
     // Load binary file at path
-    std::ifstream stream(path, std::ios::in | std::ios::binary);
+    std::ifstream stream(absolutePath, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
         // Throw an error
         // TODO(themarpe) - Unify exceptions into meaningful groups
-        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
+        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", absolutePath));
     }
 
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.setFile(path, static_cast<std::size_t>(std::filesystem::file_size(path)));
+    binaryAsset.setFile(absolutePath, static_cast<std::size_t>(std::filesystem::file_size(absolutePath)));
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -245,7 +256,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
             // Add alignment bytes
             storage.resize(storage.size() + toAdd);
 
-            if(!a.path.empty()) {
+            if(!a.path.empty() && !a.dataLoaded) {
                 try {
                     std::ifstream stream(a.path, std::ios::in | std::ios::binary);
                     if(!stream.is_open()) {

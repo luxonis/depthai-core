@@ -80,6 +80,72 @@ TEST_CASE("AssetManager preserves the size of path-backed assets when renaming t
     REQUIRE(renamedAsset->getSize() == 42);
 }
 
+TEST_CASE("AssetManager materializes path-backed assets through const access") {
+    const auto path = std::filesystem::temp_directory_path() / "depthai_asset_manager_const_access_test.bin";
+    {
+        std::ofstream stream(path, std::ios::binary);
+        stream.write("ab", 2);
+    }
+
+    dai::AssetManager assetManager;
+    assetManager.set("asset", path);
+
+    const auto& constAssetManager = assetManager;
+    const auto asset = constAssetManager.get("asset");
+    REQUIRE(asset != nullptr);
+    REQUIRE(asset->getData() == std::vector<std::uint8_t>{'a', 'b'});
+
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("AssetManager serializes materialized path-backed asset data") {
+    const auto path = std::filesystem::temp_directory_path() / "depthai_asset_manager_materialized_data_test.bin";
+    {
+        std::ofstream stream(path, std::ios::binary);
+        stream.write("ab", 2);
+    }
+
+    dai::AssetManager assetManager;
+    auto asset = assetManager.set("asset", path);
+    asset->getData()[1] = 'c';
+    std::filesystem::remove(path);
+
+    dai::AssetsMutable assets;
+    std::vector<std::uint8_t> storage;
+    assetManager.serialize(assets, storage);
+    REQUIRE(storage == std::vector<std::uint8_t>{'a', 'c'});
+}
+
+TEST_CASE("AssetManager resolves path-backed assets when they are registered") {
+    const auto root = std::filesystem::temp_directory_path() / "depthai_asset_manager_relative_path_test";
+    const auto sourceDirectory = root / "source";
+    const auto otherDirectory = root / "other";
+    std::filesystem::create_directories(sourceDirectory);
+    std::filesystem::create_directories(otherDirectory);
+    {
+        std::ofstream stream(sourceDirectory / "asset.bin", std::ios::binary);
+        stream.write("ab", 2);
+    }
+    {
+        std::ofstream stream(otherDirectory / "asset.bin", std::ios::binary);
+        stream.write("cd", 2);
+    }
+
+    const auto originalDirectory = std::filesystem::current_path();
+    std::filesystem::current_path(sourceDirectory);
+    dai::AssetManager assetManager;
+    assetManager.set("asset", "asset.bin");
+    std::filesystem::current_path(otherDirectory);
+
+    dai::AssetsMutable assets;
+    std::vector<std::uint8_t> storage;
+    assetManager.serialize(assets, storage);
+    std::filesystem::current_path(originalDirectory);
+
+    REQUIRE(storage == std::vector<std::uint8_t>{'a', 'b'});
+    std::filesystem::remove_all(root);
+}
+
 TEST_CASE("AssetManager restores storage when a path-backed asset changes") {
     const auto path = std::filesystem::temp_directory_path() / "depthai_asset_manager_serialization_test.bin";
     {
