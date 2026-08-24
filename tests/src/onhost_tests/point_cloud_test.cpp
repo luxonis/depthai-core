@@ -238,10 +238,8 @@ TEST_CASE("Unsupported distortion models are rejected by PointCloud", "[PointClo
     dai::node::PointCloud::Impl impl;
     impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, 3, 1);
 
-    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::RadialDivision, {0.1f}),
-                        "PointCloud does not support distortion model: RadialDivision");
-    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::Equirectangular, {0.1f}),
-                        "PointCloud does not support distortion model: Equirectangular");
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::RadialDivision, {0.1f}), "PointCloud does not support distortion model: RadialDivision");
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::Equirectangular, {0.1f}), "PointCloud does not support distortion model: Equirectangular");
 }
 
 // ============================================================================
