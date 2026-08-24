@@ -6,6 +6,8 @@
 #include <chrono>
 #include <cstring>
 #include <future>
+#include <stdexcept>
+#include <string>
 #include <thread>
 
 #ifdef DEPTHAI_ENABLE_KOMPUTE
@@ -33,6 +35,24 @@
 namespace dai {
 namespace node {
 
+namespace {
+
+const char* distortionModelName(CameraModel model) {
+    switch(model) {
+        case CameraModel::Perspective:
+            return "Perspective";
+        case CameraModel::Fisheye:
+            return "Fisheye";
+        case CameraModel::RadialDivision:
+            return "RadialDivision";
+        case CameraModel::Equirectangular:
+            return "Equirectangular";
+    }
+    return "Unknown";
+}
+
+}  // namespace
+
 // ── Impl: apply / get methods ──
 
 void PointCloud::Impl::setLogger(const std::shared_ptr<::spdlog::logger>& log) {
@@ -55,7 +75,10 @@ void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, std::vec
             break;
         case ComputeMethod::GPU:
             if(hasDistortion) {
-                if(logger) logger->warn("GPU compute does not support depth undistortion yet, falling back to CPU");
+                if(!gpuDistortionFallbackWarned) {
+                    if(logger) logger->warn("GPU compute does not support depth undistortion yet, falling back to CPU");
+                    gpuDistortionFallbackWarned = true;
+                }
                 computePointCloudDenseCPU(depthData, points);
             } else {
                 computePointCloudDenseGPU(depthData, points);
@@ -377,6 +400,7 @@ void PointCloud::Impl::useCPUMT(uint32_t numThreads) {
 }
 
 void PointCloud::Impl::useGPU(uint32_t device) {
+    gpuDistortionFallbackWarned = false;
     initializeGPU(device);
 }
 
@@ -406,9 +430,16 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
 }
 
 void PointCloud::Impl::setDistortion(CameraModel model, std::vector<float> coefficients) {
+    const bool nextHasDistortion = hasNonZeroDistortion(coefficients);
+    if(nextHasDistortion && model != CameraModel::Perspective && model != CameraModel::Fisheye) {
+        throw std::invalid_argument(std::string("PointCloud does not support distortion model: ") + distortionModelName(model));
+    }
+
+    const bool distortionStateChanged = hasDistortion != nextHasDistortion;
     distortionModel = model;
     distortionCoefficients = std::move(coefficients);
-    hasDistortion = hasNonZeroDistortion(distortionCoefficients);
+    hasDistortion = nextHasDistortion;
+    if(distortionStateChanged) gpuDistortionFallbackWarned = false;
     cacheUndistortedRays();
 }
 

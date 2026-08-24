@@ -108,6 +108,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         std::vector<float> distortionCoefficients;
         std::vector<Point2f> undistortedRays;
         bool hasDistortion = false;
+        bool gpuDistortionFallbackWarned = false;
         unsigned int width = 0u, height = 0u;
         size_t size = 0;
         bool intrinsicsSet = false;

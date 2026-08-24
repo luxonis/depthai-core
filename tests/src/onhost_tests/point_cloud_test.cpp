@@ -199,6 +199,42 @@ TEST_CASE("Distorted depth is undistorted before deprojection", "[PointCloud][Im
     REQUIRE(points[2].x < 5.f);
 }
 
+TEST_CASE("Fisheye depth is undistorted before deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Fisheye, {0.5f, 0.0f, 0.0f, 0.0f});
+
+    const auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
+
+    REQUIRE(points[2].x < 10.f);
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+}
+
+TEST_CASE("Zero distortion preserves the original deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {0.0f, 0.0f, 0.0f, 0.0f});
+
+    const auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
+
+    REQUIRE(points[2].x == Catch::Approx(10.f));
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+}
+
+TEST_CASE("Unsupported distortion models are rejected by PointCloud", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, 3, 1);
+
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::RadialDivision, {0.1f}),
+                        "PointCloud does not support distortion model: RadialDivision");
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::Equirectangular, {0.1f}),
+                        "PointCloud does not support distortion model: Equirectangular");
+}
+
 // ============================================================================
 // Depth with holes → filterValidPoints keeps only z > 0
 // ============================================================================
@@ -1077,6 +1113,24 @@ std::vector<dai::Point3fRGBA> computeDenseColored(dai::node::PointCloud::Impl& i
 }
 
 }  // namespace
+
+TEST_CASE("Colored deprojection uses undistorted rays", "[PointCloud][Impl][Colored]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {10.f});
+
+    const auto depth = makeConstantDepth(W, H, 1000);
+    const auto color = makeConstantColor(W, H, 1, 2, 3);
+    const auto points = computeDenseColored(impl, depth, color);
+
+    REQUIRE(points[2].x < 10.f);
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+    REQUIRE(points[2].r == 1);
+    REQUIRE(points[2].g == 2);
+    REQUIRE(points[2].b == 3);
+}
 
 // ============================================================================
 // Colored dense compute: constant depth + constant color
