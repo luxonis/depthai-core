@@ -39,6 +39,13 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
         DEPTHAI_SERIALIZE(RectificationMesh, meshLeftUri, meshRightUri, meshSize, stepWidth, stepHeight);
     };
 
+    /**
+     * Stereo depth implementation used by RVC4.
+     * EVA is the native RVC4 implementation. RVC2 reproduces the Myriad X
+     * implementation and accepts the normal StereoDepthConfig settings.
+     */
+    enum class StereoBackend : std::int32_t { EVA, RVC2 };
+
     /// Initial stereo config
     StereoDepthConfig initialConfig;
 

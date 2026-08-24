@@ -15,6 +15,8 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     py::class_<StereoDepthProperties::RectificationMesh> rectificationMesh(
         stereoDepthProperties, "RectificationMesh", DOC(dai, StereoDepthProperties, RectificationMesh));
     py::enum_<StereoDepth::PresetMode> stereoDepthPresetMode(stereoDepth, "PresetMode", DOC(dai, node, StereoDepth, PresetMode));
+    py::enum_<StereoDepthProperties::StereoBackend> stereoDepthStereoBackend(
+        stereoDepthProperties, "StereoBackend", DOC(dai, StereoDepthProperties, StereoBackend));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -72,6 +74,8 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
                        &StereoDepthProperties::depthAlignmentUseSpecTranslation,
                        DOC(dai, StereoDepthProperties, depthAlignmentUseSpecTranslation))
         .def_readwrite("alphaScaling", &StereoDepthProperties::alphaScaling, DOC(dai, StereoDepthProperties, alphaScaling));
+
+    stereoDepthStereoBackend.value("EVA", StereoDepthProperties::StereoBackend::EVA).value("RVC2", StereoDepthProperties::StereoBackend::RVC2);
 
     stereoDepthPresetMode.value("FAST_ACCURACY", StereoDepth::PresetMode::FAST_ACCURACY)
         .value("FAST_DENSITY", StereoDepth::PresetMode::FAST_DENSITY)
@@ -171,6 +175,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              &StereoDepth::setPostProcessingHardwareResources,
              DOC(dai, node, StereoDepth, setPostProcessingHardwareResources))
         .def("setDefaultProfilePreset", &StereoDepth::setDefaultProfilePreset, DOC(dai, node, StereoDepth, setDefaultProfilePreset))
+        .def("setStereoBackend", &StereoDepth::setStereoBackend, py::arg("backend"), DOC(dai, node, StereoDepth, setStereoBackend))
         .def("useHomographyRectification", &StereoDepth::useHomographyRectification, DOC(dai, node, StereoDepth, useHomographyRectification))
         .def("enableDistortionCorrection", &StereoDepth::enableDistortionCorrection, DOC(dai, node, StereoDepth, enableDistortionCorrection))
         .def("setBaseline", &StereoDepth::setBaseline, DOC(dai, node, StereoDepth, setBaseline))

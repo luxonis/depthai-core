@@ -66,8 +66,19 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
 
    private:
     // Platform specific profile presets
+    void preparePropertiesForPlatform(Platform platform);
+    void setProfilePresetForPlatform(Platform platform, PresetMode mode);
     void setRvc2ProfilePreset(PresetMode mode);
     void setRvc4ProfilePreset(PresetMode mode);
+
+    // Presets are overlays. Remember which RVC4 backend supplied the current
+    // configuration so a preset for the other backend starts clean. Backend
+    // selection itself remains configuration-orthogonal.
+    Properties::StereoBackend lastRvc4PresetBackend = Properties::StereoBackend::EVA;
+    Properties::StereoBackend stereoBackend = Properties::StereoBackend::EVA;
+
+    // Allows host tests to verify the platform-specific preset overlays without hardware.
+    friend struct StereoDepthTestAccess;
 
    public:
     using MedianFilter = dai::StereoDepthConfig::MedianFilter;
@@ -314,6 +325,24 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * prioritize coverage.
      */
     void setDefaultProfilePreset(PresetMode mode);
+
+    /**
+     * Select the stereo implementation. This setting is currently used only on
+     * RVC4 and does not modify the initial configuration or resource allocation.
+     *
+     * With StereoBackend::RVC2, setDefaultProfilePreset() applies the same
+     * preset configuration as it does on an RVC2 device. Select a 64- or
+     * 96-pixel search range through initialConfig.costMatching.disparityWidth.
+     * The exact backend currently supports 1280x800 rectified mono input.
+     * Backend selection alone leaves the configuration untouched. A preset
+     * applied for a backend different from the one that produced the current
+     * configuration resets the initial config (while preserving disparity
+     * width) and post-processing resource counts before applying the preset.
+     * Apply custom settings after selecting the backend and preset.
+     *
+     * @param backend Stereo implementation to use.
+     */
+    void setStereoBackend(Properties::StereoBackend backend);
 
     /**
      * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.

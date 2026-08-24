@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
@@ -43,7 +44,20 @@ StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = *initialConfig;
+    if(const auto device = getDevice()) {
+        preparePropertiesForPlatform(device->getPlatform());
+    }
     return properties;
+}
+
+void StereoDepth::preparePropertiesForPlatform(Platform platform) {
+    if(platform == Platform::RVC4) {
+        // Keep the legacy RVC2 StereoDepthProperties member count intact.
+        // This field is RVC2-only and ignored by the native RVC4 backend, so
+        // RVC4 firmware can use it as the backend selector without adding a
+        // serialized property that old RVC2 firmware cannot deserialize.
+        properties.enableRuntimeStereoModeSwitch = stereoBackend == Properties::StereoBackend::RVC2;
+    }
 }
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
@@ -190,19 +204,45 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     auto device = getDevice();
     DAI_CHECK_V(device, "Device is not set, cannot set default profile preset");
 
-    // Set profile settings for the current platform
-    switch(device->getPlatform()) {
+    setProfilePresetForPlatform(device->getPlatform(), mode);
+}
+
+void StereoDepth::setProfilePresetForPlatform(Platform platform, PresetMode mode) {
+    switch(platform) {
         case Platform::RVC2:
             setRvc2ProfilePreset(mode);
             break;
-        case Platform::RVC4:
-            setRvc4ProfilePreset(mode);
-            break;
+        case Platform::RVC4: {
+            const auto backend = stereoBackend;
+            if(lastRvc4PresetBackend != backend) {
+                // RVC2 and EVA presets touch different subsets of the config.
+                // Reapplying the target overlay on top of the previous backend
+                // would retain stale fields (for example subpixel and temporal
+                // filtering). Disparity width is deliberately independent of
+                // presets and remains the caller's choice.
+                const auto disparityWidth = initialConfig->costMatching.disparityWidth;
+                *initialConfig = StereoDepthConfig{};
+                initialConfig->costMatching.disparityWidth = disparityWidth;
+                properties.numPostProcessingShaves = Properties::AUTO;
+                properties.numPostProcessingMemorySlices = Properties::AUTO;
+            }
+
+            if(backend == Properties::StereoBackend::RVC2) {
+                setRvc2ProfilePreset(mode);
+            } else {
+                setRvc4ProfilePreset(mode);
+            }
+            lastRvc4PresetBackend = backend;
+        } break;
         case Platform::RVC3:
         default:
-            DAI_CHECK_V(false, "Unsupported platform: {}", device->getPlatformAsString());
+            DAI_CHECK_V(false, "Unsupported platform: {}", platform2string(platform));
             break;
     }
+}
+
+void StereoDepth::setStereoBackend(Properties::StereoBackend backend) {
+    stereoBackend = backend;
 }
 
 void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
