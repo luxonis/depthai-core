@@ -72,6 +72,15 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
      */
     CameraBoardSocket getBoardSocket() const;
 
+    /**
+     * Enable or disable undistortion for depth and auxiliary outputs.
+     *
+     * @param enable Whether to undistort the outputs.
+     * @note Undistortion is supported on RVC4. RVC2 logs a warning and leaves outputs unchanged.
+     * @return This ToF base node.
+     */
+    std::shared_ptr<ToFBase> setOutputUndistortion(bool enable);
+
    private:
     friend class ToF;
 
@@ -113,6 +122,15 @@ class ToF : public DeviceNodeGroup {
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ToFConfig::Profile presetMode = dai::ToFConfig::Profile::MID_RANGE,
                                std::optional<float> fps = std::nullopt);
+
+    /**
+     * Enable or disable undistortion for depth and auxiliary outputs.
+     *
+     * @param enable Whether to undistort the outputs.
+     * @note Undistortion is supported on RVC4. RVC2 logs a warning and leaves outputs unchanged.
+     * @return This ToF node.
+     */
+    std::shared_ptr<ToF> setOutputUndistortion(bool enable);
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
     void postBuildStage() override;

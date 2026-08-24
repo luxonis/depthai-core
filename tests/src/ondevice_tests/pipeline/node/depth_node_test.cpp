@@ -225,13 +225,19 @@ void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
     }
 }
 
-std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline, const StereoPair& pair) {
+// The cameras must be built with the same fps as the depth node.
+// This is because if the cameras were prebuilt with an fps above 15 when switching down to 15fps there is high chance for them to have different phase.
+// This phase shift in turn causes the sync node to try and sync them and fail, leading to a frame never being sent and the test failing due to a timeout.
+// The issue lies in how cameras are synced when switching fps and not in the sync node.
+std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline,
+                                                                                                     const StereoPair& pair,
+                                                                                                     float requestedOutputFps) {
     try {
-        auto leftCam = pipeline.create<node::Camera>()->build(pair.left, kUserStereoSensorResolution, kUserStereoFps);
-        auto rightCam = pipeline.create<node::Camera>()->build(pair.right, kUserStereoSensorResolution, kUserStereoFps);
+        auto leftCam = pipeline.create<node::Camera>()->build(pair.left, kUserStereoSensorResolution, requestedOutputFps);
+        auto rightCam = pipeline.create<node::Camera>()->build(pair.right, kUserStereoSensorResolution, requestedOutputFps);
         return {leftCam, rightCam};
     } catch(const std::exception& ex) {
-        SKIP(std::string("Skipping Depth user-camera test: cannot build stereo cameras at 1280x800@30: ") + ex.what());
+        SKIP(std::string("Skipping Depth user-camera test: cannot build stereo cameras at 1280x800@") + std::to_string(requestedOutputFps) + ": " + ex.what());
     }
     return {{}, {}};  // unreachable (SKIP throws)
 }
@@ -306,10 +312,13 @@ struct UserDepthCameraSetup {
 
 UserDepthCameraSetup wireUserStereoCamerasAndDepth(Pipeline& pipeline, const StereoPair& pair, std::optional<float> depthRequestedFps, bool userPreviewStream) {
     UserDepthCameraSetup setup;
-    std::tie(setup.leftCam, setup.rightCam) = buildUserStereoCamerasOrSkip(pipeline, pair);
+    float requestedOutputFps = kUserStereoFps;
+    if(depthRequestedFps.has_value()) requestedOutputFps = *depthRequestedFps;
+
+    std::tie(setup.leftCam, setup.rightCam) = buildUserStereoCamerasOrSkip(pipeline, pair, requestedOutputFps);
 
     if(userPreviewStream) {
-        auto* userLeftOut = setup.leftCam->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, kUserStereoFps);
+        auto* userLeftOut = setup.leftCam->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, requestedOutputFps);
         REQUIRE(userLeftOut != nullptr);
         setup.userFrameQueue = userLeftOut->createOutputQueue();
     }
@@ -386,7 +395,10 @@ void runUserCameraDepthTest(Pipeline& pipeline,
             requireUserAndDepthFrameSizes(device, setup.depth, userFrame, depthFrame);
         } else {
             // Host queue rates are only meaningful for the user mono stream; depth queues can burst after start.
-            requireReceiveFpsInRange(setup.userFrameQueue, kUserStereoFps * 0.5f, kUserStereoFps * 1.5f);
+            float requestedOutputFps = kUserStereoFps;
+            if(depthRequestedFps.has_value()) requestedOutputFps = *depthRequestedFps;
+
+            requireReceiveFpsInRange(setup.userFrameQueue, requestedOutputFps * 0.5f, requestedOutputFps * 1.5f);
             if(depthRequestedFps.has_value()) {
                 (void)requireStreamFrame(setup.depthFrameQueue, kDepthFrameTimeout);
             }
