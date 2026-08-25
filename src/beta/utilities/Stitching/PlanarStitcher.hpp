@@ -11,7 +11,9 @@
 
 namespace dai {
 namespace beta {
-namespace node {
+namespace utilities {
+
+using node::Stitching;
 
 /**
  * Projection of N images onto a common plane, rendered by a virtual pinhole camera - the implementation behind
@@ -128,6 +130,6 @@ class PlanarStitcher {
     cv::Ptr<cv::detail::ExposureCompensator> compensator;
 };
 
-}  // namespace node
+}  // namespace utilities
 }  // namespace beta
 }  // namespace dai

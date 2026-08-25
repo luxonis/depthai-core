@@ -10,7 +10,9 @@
 
 namespace dai {
 namespace beta {
-namespace node {
+namespace utilities {
+
+using node::Stitching;
 
 /**
  * Composes a panorama whose registered camera geometry does not change.
@@ -62,6 +64,6 @@ class FixedPanoramaCompositor {
     cv::Ptr<cv::detail::Blender> blender;
 };
 
-}  // namespace node
+}  // namespace utilities
 }  // namespace beta
 }  // namespace dai

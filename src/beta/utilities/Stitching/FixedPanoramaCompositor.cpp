@@ -10,7 +10,7 @@
 
 namespace dai {
 namespace beta {
-namespace node {
+namespace utilities {
 
 void FixedPanoramaCompositor::setConfig(const Config& config) {
     this->config = config;
@@ -178,6 +178,6 @@ cv::Mat FixedPanoramaCompositor::compose(const std::vector<cv::Mat>& images) {
     return result;
 }
 
-}  // namespace node
+}  // namespace utilities
 }  // namespace beta
 }  // namespace dai

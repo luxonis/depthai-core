@@ -12,7 +12,7 @@
 
 namespace dai {
 namespace beta {
-namespace node {
+namespace utilities {
 
 namespace {
 
@@ -473,6 +473,6 @@ cv::Mat PlanarStitcher::compose(const std::vector<cv::Mat>& images) {
     return result;
 }
 
-}  // namespace node
+}  // namespace utilities
 }  // namespace beta
 }  // namespace dai

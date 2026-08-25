@@ -547,8 +547,8 @@ set(TARGET_OPENCV_SOURCES
 if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_SUPPORT)
     list(APPEND TARGET_OPENCV_SOURCES
         src/beta/node/host/Stitching.cpp
-        src/beta/node/host/FixedPanoramaCompositor.cpp
-        src/beta/node/host/PlanarStitcher.cpp
+        src/beta/utilities/Stitching/FixedPanoramaCompositor.cpp
+        src/beta/utilities/Stitching/PlanarStitcher.cpp
     )
     list(APPEND DEPTHAI_OPENCV_LIBRARIES "opencv_stitching")
 endif()

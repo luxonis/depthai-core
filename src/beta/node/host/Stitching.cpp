@@ -11,9 +11,9 @@
 #include <stdexcept>
 #include <utility>
 
-#include "FixedPanoramaCompositor.hpp"
-#include "PlanarStitcher.hpp"
-#include "StitchingCompositing.hpp"
+#include "beta/utilities/Stitching/FixedPanoramaCompositor.hpp"
+#include "beta/utilities/Stitching/PlanarStitcher.hpp"
+#include "beta/utilities/Stitching/StitchingCompositing.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -22,6 +22,10 @@
 namespace dai {
 namespace beta {
 namespace node {
+
+using utilities::FixedPanoramaCompositor;
+using utilities::PlanarStitcher;
+namespace stitching = utilities::stitching;
 
 namespace {
 

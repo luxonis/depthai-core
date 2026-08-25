@@ -15,7 +15,9 @@
 
 namespace dai {
 namespace beta {
-namespace node {
+namespace utilities {
+
+using node::Stitching;
 
 /**
  * OpenCV stitching defaults shared by the panorama and planar projection implementations.
@@ -90,6 +92,6 @@ inline cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) 
 }
 
 }  // namespace stitching
-}  // namespace node
+}  // namespace utilities
 }  // namespace beta
 }  // namespace dai
