@@ -225,9 +225,9 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     SeamFinder getSeamFinder() const;
 
     void buildInternal() override;
+    void run() override;
 
    private:
-    void run() override;
     void initializeHostState();
     void invalidateHostState();
     void initializeInputNames(size_t numInputs);
