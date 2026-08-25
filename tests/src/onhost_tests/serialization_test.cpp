@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <limits>
 
 // Include depthai library
@@ -60,6 +61,24 @@ TEST_CASE("AssetManager uses the current size of memory-backed assets") {
     REQUIRE(assetManager.getSerializedSize() == 3);
 }
 
+TEST_CASE("AssetManager snapshots eagerly loaded path assets") {
+    const auto path = std::filesystem::temp_directory_path() / "depthai_asset_manager_eager_path_test.bin";
+    {
+        std::ofstream stream(path, std::ios::binary);
+        stream.write("ab", 2);
+    }
+
+    dai::AssetManager assetManager;
+    auto asset = assetManager.set("asset", path);
+    REQUIRE(asset->data == std::vector<std::uint8_t>{'a', 'b'});
+    std::filesystem::remove(path);
+
+    dai::AssetsMutable assets;
+    std::vector<std::uint8_t> storage;
+    assetManager.serialize(assets, storage);
+    REQUIRE(storage == std::vector<std::uint8_t>{'a', 'b'});
+}
+
 TEST_CASE("AssetManager rejects storage beyond 4 GiB") {
     dai::Asset asset("oversized");
     asset.setFile("placeholder", static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()) + 1);
@@ -88,12 +107,31 @@ TEST_CASE("AssetManager materializes path-backed assets through const access") {
     }
 
     dai::AssetManager assetManager;
-    assetManager.set("asset", path);
+    assetManager.setLazy("asset", path);
 
     const auto& constAssetManager = assetManager;
     const auto asset = constAssetManager.get("asset");
     REQUIRE(asset != nullptr);
     REQUIRE(asset->getData() == std::vector<std::uint8_t>{'a', 'b'});
+
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("AssetManager materializes path-backed assets once under concurrent access") {
+    const auto path = std::filesystem::temp_directory_path() / "depthai_asset_manager_concurrent_access_test.bin";
+    {
+        std::ofstream stream(path, std::ios::binary);
+        stream.write("ab", 2);
+    }
+
+    dai::AssetManager assetManager;
+    auto asset = assetManager.setLazy("asset", path);
+    const auto readData = [asset]() { return asset->getData(); };
+
+    auto first = std::async(std::launch::async, readData);
+    auto second = std::async(std::launch::async, readData);
+    REQUIRE(first.get() == std::vector<std::uint8_t>{'a', 'b'});
+    REQUIRE(second.get() == std::vector<std::uint8_t>{'a', 'b'});
 
     std::filesystem::remove(path);
 }
@@ -106,7 +144,7 @@ TEST_CASE("AssetManager serializes materialized path-backed asset data") {
     }
 
     dai::AssetManager assetManager;
-    auto asset = assetManager.set("asset", path);
+    auto asset = assetManager.setLazy("asset", path);
     asset->getData()[1] = 'c';
     std::filesystem::remove(path);
 
@@ -134,7 +172,7 @@ TEST_CASE("AssetManager resolves path-backed assets when they are registered") {
     const auto originalDirectory = std::filesystem::current_path();
     std::filesystem::current_path(sourceDirectory);
     dai::AssetManager assetManager;
-    assetManager.set("asset", "asset.bin");
+    assetManager.setLazy("asset", "asset.bin");
     std::filesystem::current_path(otherDirectory);
 
     dai::AssetsMutable assets;
@@ -154,7 +192,7 @@ TEST_CASE("AssetManager restores storage when a path-backed asset changes") {
     }
 
     dai::AssetManager assetManager;
-    assetManager.set("asset", path);
+    assetManager.setLazy("asset", path);
     {
         std::ofstream stream(path, std::ios::binary | std::ios::app);
         stream.write("c", 1);
@@ -177,7 +215,7 @@ TEST_CASE("AssetManager rolls back all assets when a later path-backed asset cha
 
     dai::AssetManager assetManager;
     assetManager.set("first", std::vector<std::uint8_t>{1, 2});
-    assetManager.set("second", path);
+    assetManager.setLazy("second", path);
     {
         std::ofstream stream(path, std::ios::binary | std::ios::app);
         stream.write("c", 1);

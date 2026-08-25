@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "depthai/pipeline/Assets.hpp"
@@ -20,15 +21,17 @@ struct Asset {
     std::uint32_t alignment = 1;
     std::vector<std::uint8_t>& getData();
     const std::vector<std::uint8_t>& getData() const;
+    void setData(std::vector<std::uint8_t> data);
     std::size_t getSize() const;
     std::string getRelativeUri();
 
-    /// Set the backing file and its expected size.
+    /// Set the backing file and its expected size. The file must remain available and unchanged until the asset is materialized or serialized.
     void setFile(std::filesystem::path path, std::size_t size);
 
    private:
     friend class AssetManager;
 
+    mutable std::shared_ptr<std::mutex> dataMutex = std::make_shared<std::mutex>();
     std::filesystem::path path;
     std::size_t size = 0;
     mutable bool dataLoaded = false;
@@ -90,7 +93,7 @@ class AssetManager /*: public Assets*/ {
     std::shared_ptr<dai::Asset> set(const std::string& key, Asset asset);
 
     /**
-     * Loads file into asset manager under specified key.
+     * Loads a file into the asset manager under the specified key.
      *
      * @param key Key under which the asset should be stored
      * @param path Path to file which to load as asset
@@ -99,7 +102,17 @@ class AssetManager /*: public Assets*/ {
     std::shared_ptr<dai::Asset> set(const std::string& key, const std::filesystem::path& path, int alignment = 64);
 
     /**
-     * Loads file into asset manager under specified key.
+     * Registers a file-backed asset under the specified key. Its contents are loaded lazily, so the file must remain available and unchanged
+     * until the pipeline is serialized or Asset::getData() is called.
+     *
+     * @param key Key under which the asset should be stored
+     * @param path Path to the file backing the asset
+     * @param alignment [Optional] alignment of asset data in asset storage. Default is 64B
+     */
+    std::shared_ptr<dai::Asset> setLazy(const std::string& key, const std::filesystem::path& path, int alignment = 64);
+
+    /**
+     * Loads data into the asset manager under the specified key.
      *
      * @param key Key under which the asset should be stored
      * @param data Asset data

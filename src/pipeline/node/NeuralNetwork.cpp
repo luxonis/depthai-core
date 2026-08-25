@@ -240,7 +240,7 @@ void NeuralNetwork::setOtherModelFormat(std::vector<uint8_t> otherModel) {
 }
 
 void NeuralNetwork::setOtherModelFormat(const std::filesystem::path& path) {
-    auto modelAsset = assetManager.set("__model", path);
+    auto modelAsset = assetManager.setLazy("__model", path);
     properties.modelUri = modelAsset->getRelativeUri();
     properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
 }

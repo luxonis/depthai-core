@@ -53,7 +53,16 @@ const std::vector<std::uint8_t>& Asset::getData() const {
     return data;
 }
 
+void Asset::setData(std::vector<std::uint8_t> data) {
+    std::lock_guard<std::mutex> lock(*dataMutex);
+    this->data = std::move(data);
+    path.clear();
+    size = 0;
+    dataLoaded = true;
+}
+
 void Asset::loadData() const {
+    std::lock_guard<std::mutex> lock(*dataMutex);
     if(!dataLoaded && !path.empty()) {
         std::ifstream stream(path, std::ios::in | std::ios::binary);
         if(!stream.is_open()) {
@@ -81,12 +90,15 @@ void Asset::loadData() const {
 }
 
 std::size_t Asset::getSize() const {
+    std::lock_guard<std::mutex> lock(*dataMutex);
     return dataLoaded || path.empty() ? data.size() : size;
 }
 
 void Asset::setFile(std::filesystem::path path, std::size_t size) {
+    std::lock_guard<std::mutex> lock(*dataMutex);
     this->path = std::move(path);
     this->size = size;
+    data.clear();
     dataLoaded = false;
 }
 
@@ -131,15 +143,30 @@ std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asset) {
     // Rename the asset with supplied key and store
     Asset a(key);
+    std::lock_guard<std::mutex> lock(*asset.dataMutex);
     a.data = std::move(asset.data);
-    const auto assetSize = asset.path.empty() ? 0 : asset.size;
-    a.setFile(std::move(asset.path), assetSize);
+    a.path = std::move(asset.path);
+    a.size = a.path.empty() ? 0 : asset.size;
     a.dataLoaded = asset.dataLoaded;
     a.alignment = asset.alignment;
     return set(std::move(a));
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::filesystem::path& path, int alignment) {
+    const auto absolutePath = std::filesystem::absolute(path);
+
+    std::ifstream stream(absolutePath, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) {
+        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", absolutePath));
+    }
+
+    Asset binaryAsset(key);
+    binaryAsset.alignment = alignment;
+    binaryAsset.setData(std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {}));
+    return set(std::move(binaryAsset));
+}
+
+std::shared_ptr<dai::Asset> AssetManager::setLazy(const std::string& key, const std::filesystem::path& path, int alignment) {
     const auto absolutePath = std::filesystem::absolute(path);
 
     // Load binary file at path
@@ -162,7 +189,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.data = data;
+    binaryAsset.setData(data);
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -171,7 +198,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vecto
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.data = std::move(data);
+    binaryAsset.setData(std::move(data));
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -238,8 +265,9 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         storage.reserve(getSerializedSize(storageStart));
         for(auto& kv : assetMap) {
             auto& a = *kv.second;
+            std::lock_guard<std::mutex> lock(*a.dataMutex);
 
-            const auto assetSize = a.getSize();
+            const auto assetSize = a.dataLoaded || a.path.empty() ? a.data.size() : a.size;
             const auto assetStorageStart = storage.size();
 
             // Calculate additional bytes needed to offset to alignment.
@@ -298,7 +326,9 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
 std::size_t AssetManager::getSerializedSize(std::size_t offset) const {
     for(const auto& kv : assetMap) {
         const auto& a = *kv.second;
-        offset = getSerializedEndOffset(offset, a.alignment, a.getSize());
+        std::lock_guard<std::mutex> lock(*a.dataMutex);
+        const auto assetSize = a.dataLoaded || a.path.empty() ? a.data.size() : a.size;
+        offset = getSerializedEndOffset(offset, a.alignment, assetSize);
     }
     return offset;
 }
