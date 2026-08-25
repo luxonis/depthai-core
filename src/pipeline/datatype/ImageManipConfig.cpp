@@ -106,11 +106,6 @@ ImageManipConfig& ImageManipConfig::addTransformFourPoints(const std::array<dai:
 
     validatePoints(src, "Source");
     validatePoints(dst, "Destination");
-    try {
-        matrix::getHomographyMatrix(src, dst);
-    } catch(const std::runtime_error&) {
-        throw std::invalid_argument("Source and destination points do not define a valid perspective transform.");
-    }
     base.transformFourPoints(src, dst, normalizedCoords);
     return *this;
 }
