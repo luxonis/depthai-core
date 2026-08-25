@@ -35,24 +35,6 @@
 namespace dai {
 namespace node {
 
-namespace {
-
-const char* distortionModelName(CameraModel model) {
-    switch(model) {
-        case CameraModel::Perspective:
-            return "Perspective";
-        case CameraModel::Fisheye:
-            return "Fisheye";
-        case CameraModel::RadialDivision:
-            return "RadialDivision";
-        case CameraModel::Equirectangular:
-            return "Equirectangular";
-    }
-    return "Unknown";
-}
-
-}  // namespace
-
 // ── Impl: apply / get methods ──
 
 void PointCloud::Impl::setLogger(const std::shared_ptr<::spdlog::logger>& log) {
@@ -432,7 +414,7 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
 void PointCloud::Impl::setDistortion(CameraModel model, std::vector<float> coefficients) {
     const bool nextHasDistortion = hasNonZeroDistortion(coefficients);
     if(nextHasDistortion && model != CameraModel::Perspective && model != CameraModel::Fisheye) {
-        throw std::invalid_argument(std::string("PointCloud does not support distortion model: ") + distortionModelName(model));
+        throw std::invalid_argument(std::string("PointCloud does not support distortion model: ") + toString(model));
     }
 
     const bool distortionStateChanged = hasDistortion != nextHasDistortion;
