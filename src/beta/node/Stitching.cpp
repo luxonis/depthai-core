@@ -238,7 +238,7 @@ Stitching::SeamFinder Stitching::getSeamFinder() const {
     return properties.seamFinder;
 }
 
-#if !defined(DEPTHAI_HAVE_OPENCV_STITCHING)
+#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_OPENCV_STITCHING)
 void Stitching::initializeHostState() {}
 
 void Stitching::run() {
