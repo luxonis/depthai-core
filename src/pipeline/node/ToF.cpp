@@ -108,6 +108,9 @@ void ToF::postBuildStage() {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     auto& logger = pimpl->logger;
     if(device->getPlatform() == Platform::RVC2) {
+        if(tofBase->properties.enableUndistortion) {
+            if(logger) logger->warn("ToF output undistortion is not supported on RVC2.");
+        }
         if(!confidence.getConnections().empty()) {
             if(logger) logger->warn("Confidence is not supported on this platform and will stream aplitude instead.");
         }
@@ -249,6 +252,16 @@ CameraBoardSocket ToFBase::getBoardSocket() const {
         throw std::runtime_error("ToF node must be built before calling getBoardSocket()");
     }
     return properties.boardSocket;
+}
+
+std::shared_ptr<ToFBase> ToFBase::setOutputUndistortion(bool enable) {
+    properties.enableUndistortion = enable;
+    return std::static_pointer_cast<ToFBase>(shared_from_this());
+}
+
+std::shared_ptr<ToF> ToF::setOutputUndistortion(bool enable) {
+    tofBase->setOutputUndistortion(enable);
+    return std::static_pointer_cast<ToF>(shared_from_this());
 }
 
 }  // namespace node
