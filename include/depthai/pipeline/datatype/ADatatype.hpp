@@ -8,6 +8,7 @@
 
 namespace dai {
 
+/// Abstract message
 class ADatatype {
    protected:
     friend class DataInputQueue;

@@ -1,6 +1,8 @@
 #include "depthai/utility/ProtoSerializable.hpp"
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 #include "depthai/schemas/common.pb.h"
+#endif
 
 #include <fstream>
 
