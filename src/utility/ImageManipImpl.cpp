@@ -747,6 +747,34 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                                              matvecmul(transformInv, imageCorners[2]),
                                              matvecmul(transformInv, imageCorners[3])});
                        imageCornersSet = true;
+                   },
+                   [&](CropRotated o) {
+                       if(o.normalized) {
+                           o.width *= width;
+                           o.height *= height;
+                       } else if((o.width > 0 && o.width < 1) || (o.height > 0 && o.height < 1)) {
+                           throw std::runtime_error("CropRotated not marked as normalized, but values seem to be normalized (height or width is less than 1)");
+                       }
+                       if(o.width <= 0 || o.height <= 0) {
+                           throw std::runtime_error("CropRotated width and height must be positive");
+                       }
+
+                       const float angle = -o.angle * (float)M_PI / 180.0f;
+                       const float cos = std::cos(angle);
+                       const float sin = std::sin(angle);
+                       const float centerX = o.width / 2;
+                       const float centerY = o.height / 2;
+                       mat = {{{cos, -sin, centerX - cos * centerX + sin * centerY}, {sin, cos, centerY - sin * centerX - cos * centerY}, {0, 0, 1}}};
+
+                       outputWidth = o.width;
+                       outputHeight = o.height;
+                       imageCorners = {{{0, 0}, {(float)outputWidth, 0}, {(float)outputWidth, (float)outputHeight}, {0, (float)outputHeight}}};
+                       const auto transformInv = matrix::getMatrixInverse(matmul(mat, transform));
+                       srcCorners.push_back({matvecmul(transformInv, imageCorners[0]),
+                                             matvecmul(transformInv, imageCorners[1]),
+                                             matvecmul(transformInv, imageCorners[2]),
+                                             matvecmul(transformInv, imageCorners[3])});
+                       imageCornersSet = true;
                    }},
         op.op);
     if(!imageCornersSet) {
