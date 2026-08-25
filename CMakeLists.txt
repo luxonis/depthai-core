@@ -216,7 +216,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
         set(DEPTHAI_OPENCV_LIBRARIES ${REQUIRED_OPENCV_LIBRARIES})
-        if("opencv_stitching" IN_LIST OpenCV_LIBS)
+        if(DEPTHAI_BUILD_BETA AND "opencv_stitching" IN_LIST OpenCV_LIBS)
             set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
         endif()
 
