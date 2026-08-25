@@ -202,8 +202,8 @@ set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
-    if(DEPTHAI_BUILD_BETA AND "opencv_stitching" IN_LIST OpenCV_LIBS)
-        list(APPEND REQUIRED_OPENCV_LIBRARIES "opencv_features2d")
+    if(DEPTHAI_BUILD_BETA)
+        list(APPEND REQUIRED_OPENCV_LIBRARIES "opencv_features2d" "opencv_stitching")
     endif()
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
@@ -544,15 +544,13 @@ set(TARGET_OPENCV_SOURCES
     src/opencv/HolisticRecordReplay.cpp
 )
 
-if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_SUPPORT)
     list(APPEND TARGET_OPENCV_SOURCES
         src/beta/node/host/Stitching.cpp
         src/beta/node/host/FixedPanoramaCompositor.cpp
         src/beta/node/host/PlanarStitcher.cpp
     )
     list(APPEND DEPTHAI_OPENCV_LIBRARIES "opencv_stitching")
-elseif(DEPTHAI_BUILD_BETA)
-    list(APPEND TARGET_CORE_SOURCES src/beta/node/StitchingNoOpenCV.cpp)
 endif()
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
@@ -606,6 +604,9 @@ add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 if(DEPTHAI_BUILD_BETA)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BETA)
+endif()
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAVE_OPENCV_STITCHING)
 endif()
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})

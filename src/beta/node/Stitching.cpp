@@ -238,6 +238,15 @@ Stitching::SeamFinder Stitching::getSeamFinder() const {
     return properties.seamFinder;
 }
 
+#if !defined(DEPTHAI_HAVE_OPENCV_STITCHING)
+void Stitching::initializeHostState() {}
+
+void Stitching::run() {
+    throw std::runtime_error(
+        "Stitching requires OpenCV support to run on the host. Enable OpenCV support or use setRunOnHost(false) with an RVC4 device.");
+}
+#endif
+
 }  // namespace node
 }  // namespace beta
 }  // namespace dai
