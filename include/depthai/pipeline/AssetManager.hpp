@@ -17,7 +17,7 @@ struct Asset {
     Asset() = default;
     explicit Asset(std::string k) : key(std::move(k)) {}
     const std::string key;
-    mutable std::vector<std::uint8_t> data;
+    std::vector<std::uint8_t> data;
     std::uint32_t alignment = 1;
     std::vector<std::uint8_t>& getData();
     const std::vector<std::uint8_t>& getData() const;
@@ -34,6 +34,7 @@ struct Asset {
     mutable std::shared_ptr<std::mutex> dataMutex = std::make_shared<std::mutex>();
     std::filesystem::path path;
     std::size_t size = 0;
+    mutable std::vector<std::uint8_t> lazyData;
     mutable bool dataLoaded = false;
 
     void loadData() const;

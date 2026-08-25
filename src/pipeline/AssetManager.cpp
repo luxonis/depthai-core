@@ -45,12 +45,12 @@ std::string Asset::getRelativeUri() {
 
 std::vector<std::uint8_t>& Asset::getData() {
     loadData();
-    return data;
+    return path.empty() ? data : lazyData;
 }
 
 const std::vector<std::uint8_t>& Asset::getData() const {
     loadData();
-    return data;
+    return path.empty() ? data : lazyData;
 }
 
 void Asset::setData(std::vector<std::uint8_t> data) {
@@ -58,6 +58,7 @@ void Asset::setData(std::vector<std::uint8_t> data) {
     this->data = std::move(data);
     path.clear();
     size = 0;
+    lazyData.clear();
     dataLoaded = true;
 }
 
@@ -84,14 +85,14 @@ void Asset::loadData() const {
             throw std::runtime_error(fmt::format("Cannot load asset, file at path {} has changed size.", path));
         }
 
-        data = std::move(loadedData);
+        lazyData = std::move(loadedData);
         dataLoaded = true;
     }
 }
 
 std::size_t Asset::getSize() const {
     std::lock_guard<std::mutex> lock(*dataMutex);
-    return dataLoaded || path.empty() ? data.size() : size;
+    return path.empty() ? data.size() : (dataLoaded ? lazyData.size() : size);
 }
 
 void Asset::setFile(std::filesystem::path path, std::size_t size) {
@@ -99,6 +100,7 @@ void Asset::setFile(std::filesystem::path path, std::size_t size) {
     this->path = std::move(path);
     this->size = size;
     data.clear();
+    lazyData.clear();
     dataLoaded = false;
 }
 
@@ -147,6 +149,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asse
     a.data = std::move(asset.data);
     a.path = std::move(asset.path);
     a.size = a.path.empty() ? 0 : asset.size;
+    a.lazyData = std::move(asset.lazyData);
     a.dataLoaded = asset.dataLoaded;
     a.alignment = asset.alignment;
     return set(std::move(a));
@@ -267,7 +270,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
             auto& a = *kv.second;
             std::lock_guard<std::mutex> lock(*a.dataMutex);
 
-            const auto assetSize = a.dataLoaded || a.path.empty() ? a.data.size() : a.size;
+            const auto assetSize = a.path.empty() ? a.data.size() : (a.dataLoaded ? a.lazyData.size() : a.size);
             const auto assetStorageStart = storage.size();
 
             // Calculate additional bytes needed to offset to alignment.
@@ -310,7 +313,8 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
                     throw;
                 }
             } else {
-                storage.insert(storage.end(), a.data.begin(), a.data.end());
+                const auto& assetData = a.path.empty() ? a.data : a.lazyData;
+                storage.insert(storage.end(), assetData.begin(), assetData.end());
             }
 
             // Add to map the currently added asset
@@ -327,7 +331,7 @@ std::size_t AssetManager::getSerializedSize(std::size_t offset) const {
     for(const auto& kv : assetMap) {
         const auto& a = *kv.second;
         std::lock_guard<std::mutex> lock(*a.dataMutex);
-        const auto assetSize = a.dataLoaded || a.path.empty() ? a.data.size() : a.size;
+        const auto assetSize = a.path.empty() ? a.data.size() : (a.dataLoaded ? a.lazyData.size() : a.size);
         offset = getSerializedEndOffset(offset, a.alignment, assetSize);
     }
     return offset;

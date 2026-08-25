@@ -3,9 +3,13 @@
 #include <fstream>
 #include <future>
 #include <limits>
+#include <type_traits>
+#include <utility>
 
 // Include depthai library
 #include <depthai/depthai.hpp>
+
+static_assert(std::is_const_v<std::remove_reference_t<decltype((std::declval<const dai::Asset&>().data))>>);
 
 TEST_CASE("Roundtrip") {
     dai::Pipeline p;
@@ -114,6 +118,23 @@ TEST_CASE("AssetManager materializes path-backed assets through const access") {
     REQUIRE(asset != nullptr);
     REQUIRE(asset->getData() == std::vector<std::uint8_t>{'a', 'b'});
 
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("Const Asset materializes private path-backed data") {
+    const auto path = std::filesystem::temp_directory_path() / "depthai_const_asset_access_test.bin";
+    {
+        std::ofstream stream(path, std::ios::binary);
+        stream.write("ab", 2);
+    }
+
+    const dai::Asset asset = [&] {
+        dai::Asset value("asset");
+        value.setFile(path, 2);
+        return value;
+    }();
+
+    REQUIRE(asset.getData() == std::vector<std::uint8_t>{'a', 'b'});
     std::filesystem::remove(path);
 }
 
