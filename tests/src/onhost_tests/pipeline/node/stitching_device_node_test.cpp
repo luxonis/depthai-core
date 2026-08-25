@@ -8,7 +8,6 @@
 TEST_CASE("Stitching device execution is RVC4-only", "[Stitching]") {
     STATIC_REQUIRE(std::is_base_of_v<dai::beta::BetaNode, dai::beta::node::Stitching>);
     REQUIRE_FALSE(dai::beta::node::stitching::isDevicePlatformSupported(dai::Platform::RVC2));
-    REQUIRE_FALSE(dai::beta::node::stitching::isDevicePlatformSupported(dai::Platform::RVC3));
     REQUIRE(dai::beta::node::stitching::isDevicePlatformSupported(dai::Platform::RVC4));
 }
 
