@@ -27,11 +27,18 @@ import depthai as dai
 import numpy as np
 
 
-CAMERA_FPS = 20.0
-ENCODER_FPS = 10.0
-NN_FPS = 15.0
 TOF_FPS = 30.0
 CAMERA_SIZE = (1280, 800)
+MANIP_SIZE = (1280, 720)
+MAX_VIDEO_WIDTH = 1920
+NN_MODEL = "yolov6-nano"
+NN_SHAVES_RVC2 = 6
+NEURAL_DEPTH_MODEL = dai.DeviceModelZoo.NEURAL_DEPTH_EXTRA_LARGE
+ENCODER_PROFILES = [
+    dai.VideoEncoderProperties.Profile.H264_MAIN,
+    dai.VideoEncoderProperties.Profile.MJPEG,
+    dai.VideoEncoderProperties.Profile.H265_MAIN,
+]
 
 DOT_STEP = 0.05
 FLOOD_STEP = 0.05
@@ -134,6 +141,90 @@ def add_detection_overlay(frame: np.ndarray, packet: dai.ImgDetections, labels: 
         cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
 
+def load_nn_archive(device: dai.Device, model_name: str) -> dai.NNArchive:
+    """Get the model for the platform of the device from the model zoo."""
+    description = dai.NNModelDescription(model_name)
+    description.platform = device.getPlatformAsString()
+    return dai.NNArchive(dai.getModelFromZoo(description))
+
+
+def limit_nn_shaves(network: Any, archive: dai.NNArchive, num_shaves: int) -> None:
+    """Compile the RVC2 superblob for a smaller number of shaves.
+
+    Other nodes in this pipeline use most of the CMX slices. If the blob asks
+    for more shaves than the device has free, the pipeline does not start.
+    """
+    if archive.getModelType() != dai.ModelType.SUPERBLOB:
+        return
+    network.setNNArchive(archive, numShaves=num_shaves)
+    print(f"Neural network blob compiled for {num_shaves} shaves")
+
+
+def pick_video_size(feature: Any) -> tuple[int, int]:
+    """Get the largest sensor configuration that an encoder can still take."""
+    sizes = {(config.width, config.height) for config in feature.configs}
+    usable = [size for size in sizes if size[0] <= MAX_VIDEO_WIDTH]
+    if not usable:
+        return min(sizes, key=lambda size: size[0] * size[1])
+    return max(usable, key=lambda size: size[0] * size[1])
+
+
+def add_manip_chain(pipeline: dai.Pipeline, source: dai.Node.Output, count: int) -> None:
+    """Chain image manipulation nodes to give the device more work.
+
+    The result stays on the device. Nothing reads the last output, so this
+    load does not use the link to the host.
+    """
+    for index in range(count):
+        manip = pipeline.create(dai.node.ImageManip)
+        manip.initialConfig.addRotateDeg(90 if index % 2 == 0 else -90)
+        manip.initialConfig.setOutputSize(*MANIP_SIZE)
+        manip.setMaxOutputFrameSize(MANIP_SIZE[0] * MANIP_SIZE[1] * 3)
+        source.link(manip.inputImage)
+        source = manip.out
+
+
+def nn_input_type(device: dai.Device, archive: dai.NNArchive) -> dai.ImgFrame.Type:
+    """Get the frame type that the model wants at its input."""
+    inputs = archive.getConfigV1().model.inputs
+    dai_type = inputs[0].preprocessing.daiType if inputs else None
+    if dai_type:
+        return getattr(dai.ImgFrame.Type, dai_type)
+    if device.getPlatform() == dai.Platform.RVC4:
+        return dai.ImgFrame.Type.BGR888i
+    return dai.ImgFrame.Type.BGR888p
+
+
+def add_downscale(
+    pipeline: dai.Pipeline,
+    source: dai.Node.Output,
+    size: tuple[int, int],
+    frame_type: Optional[dai.ImgFrame.Type] = None,
+    resize_mode: Any = dai.ImageManipConfig.ResizeMode.LETTERBOX,
+) -> dai.Node.Output:
+    """Resize frames on the device with an ImageManip node."""
+    manip = pipeline.create(dai.node.ImageManip)
+    manip.initialConfig.setOutputSize(size[0], size[1], resize_mode)
+    if frame_type is not None:
+        manip.initialConfig.setFrameType(frame_type)
+    manip.setMaxOutputFrameSize(size[0] * size[1] * 3)
+    source.link(manip.inputImage)
+    return manip.out
+
+
+def add_network(pipeline: dai.Pipeline, source: dai.Node.Output, archive: dai.NNArchive, frame_type: dai.ImgFrame.Type) -> Any:
+    """Add a detection network that gets its frames through an ImageManip node.
+
+    A camera gives a limited number of outputs, so these networks resize an
+    output that already exists instead of asking the camera for a new one.
+    Only the first network gets depth, and it takes its frames straight from
+    the camera, because the build method also aligns the depth to them.
+    """
+    size = (archive.getInputWidth(), archive.getInputHeight())
+    resized = add_downscale(pipeline, source, size, frame_type, dai.ImageManipConfig.ResizeMode.STRETCH)
+    return pipeline.create(dai.node.DetectionNetwork).build(resized, archive)
+
+
 def build_pipeline(
     device: dai.Device, args: argparse.Namespace
 ) -> tuple[dai.Pipeline, list[Stream], list[Any], Any, PipelineContext]:
@@ -141,7 +232,48 @@ def build_pipeline(
     pipeline = dai.Pipeline(device)
     streams: list[Stream] = []
     control_queues: list[Any] = []
-    context = PipelineContext(labels=[])
+    context = PipelineContext()
+    is_rvc4 = device.getPlatform() == dai.Platform.RVC4
+    if is_rvc4:
+        camera_fps = 30.0
+        encoder_fps = 30.0
+        n_encoders = 2
+        n_manips = 2
+        n_networks = 3
+        full_resolution_color = True
+        # An encoder takes the largest configuration that the sensor gives.
+        forced_video_size = None
+    else:
+        # RVC2 has much less compute, so it keeps a small number of nodes.
+        camera_fps = 20.0
+        encoder_fps = 10.0
+        n_encoders = 1
+        n_manips = 0
+        n_networks = 1
+        full_resolution_color = False
+        # A larger encoder input starves the other nodes of ISP bandwidth here.
+        forced_video_size = CAMERA_SIZE
+
+    # The command line replaces the values for the platform.
+    if args.camera_fps is not None:
+        camera_fps = args.camera_fps
+    if args.encoder_fps is not None:
+        encoder_fps = args.encoder_fps
+    if args.n_encoders is not None:
+        n_encoders = args.n_encoders
+    if args.n_manips is not None:
+        n_manips = args.n_manips
+    if args.n_nnets is not None:
+        n_networks = args.n_nnets
+    if args.full_res_color is not None:
+        full_resolution_color = args.full_res_color
+
+    print(
+        f"Load on {device.getPlatformAsString()}: camera {camera_fps} fps, "
+        f"{n_encoders} encoder(s) per camera at {encoder_fps} fps, "
+        f"{n_manips} manip(s) per camera, {n_networks} network(s), "
+        f"full resolution color {full_resolution_color}"
+    )
 
     system_logger = pipeline.create(dai.node.SystemLogger)
     system_logger.setRate(1.0)
@@ -177,15 +309,25 @@ def build_pipeline(
             print(f"Skipping {feature.socket}: unsupported sensor type {sensor_type}")
             continue
 
+        full_color = sensor_type == dai.CameraSensorType.COLOR and full_resolution_color
         camera = pipeline.create(dai.node.Camera).setSensorType(sensor_type).build(
             feature.socket,
-            sensorFps=CAMERA_FPS,
+            sensorFps=camera_fps,
         )
-        camera_output = camera.requestOutput(CAMERA_SIZE, fps=CAMERA_FPS)
-        # print(f"RES: ${feature.configs} ${feature.socket}")
-        if sensor_type not in (dai.CameraSensorType.COLOR, dai.CameraSensorType.MONO):
-            print(f"Skipping {feature.socket}: {CAMERA_SIZE} output size likely unsupported.")
-            continue
+
+        # Every camera runs at its full resolution. The color sensor gives
+        # frames that are too large for the host, so an ImageManip node on the
+        # device makes them smaller. requestFullResolutionOutput keeps away
+        # from configurations over 5000x4000, which other nodes cannot share.
+        full_output: Optional[dai.Node.Output] = None
+        if sensor_type == dai.CameraSensorType.MONO:
+            camera_output = camera.requestFullResolutionOutput(fps=camera_fps)
+        elif full_color:
+            full_output = camera.requestFullResolutionOutput(fps=camera_fps)
+            camera_output = add_downscale(pipeline, full_output, CAMERA_SIZE)
+            print(f"{feature.socket}: full resolution output, downscaled to {CAMERA_SIZE} for the host")
+        else:
+            camera_output = camera.requestOutput(CAMERA_SIZE, fps=camera_fps)
         socket_name = feature.socket.name
         streams.append(Stream(f"preview_{socket_name}", camera_output.createOutputQueue(maxSize=2, blocking=False), "image"))
         control_queues.append(camera.inputControl.createInputQueue(maxSize=4, blocking=False))
@@ -194,18 +336,42 @@ def build_pipeline(
         if sensor_type == dai.CameraSensorType.COLOR and color_camera is None:
             color_camera = camera
 
-        encoder = pipeline.create(dai.node.VideoEncoder).build(
-            camera_output,
-            frameRate=ENCODER_FPS,
-            profile=dai.VideoEncoderProperties.Profile.H264_MAIN,
-        )
-        streams.append(
-            Stream(
-                f"{socket_name}.encoded",
-                encoder.bitstream.createOutputQueue(maxSize=5, blocking=False),
-                "encoded",
+        # The VideoEncoder accepts only NV12 and GRAY8 frames. A mono camera
+        # gives GRAY8, but a color camera gives YUV420p, so ask for a second
+        # output in NV12 format. It is also the largest output that an encoder
+        # can take, which puts more load on the ISP and on the encoder.
+        # An output with no consumer stops the pipeline from starting, so ask
+        # for the encoder input only when there is an encoder to take it.
+        # Every output of a camera is requested at the rate of the sensor. Two
+        # outputs of one sensor at different rates make RVC2 deliver about one
+        # frame every five seconds on all of them.
+        encoder_frame_rate = min(encoder_fps, camera_fps)
+        video_size = forced_video_size or pick_video_size(feature)
+        if n_encoders <= 0:
+            encoder_input = None
+        elif full_output is not None:
+            encoder_input = add_downscale(pipeline, full_output, video_size, dai.ImgFrame.Type.NV12)
+        elif sensor_type == dai.CameraSensorType.COLOR:
+            encoder_input = camera.requestOutput(video_size, dai.ImgFrame.Type.NV12, fps=camera_fps)
+        else:
+            encoder_input = camera_output
+
+        for index in range(n_encoders):
+            encoder_profile = ENCODER_PROFILES[index % len(ENCODER_PROFILES)]
+            encoder = pipeline.create(dai.node.VideoEncoder).build(
+                encoder_input,
+                frameRate=encoder_frame_rate,
+                profile=encoder_profile,
             )
-        )
+            streams.append(
+                Stream(
+                    f"{socket_name}.{encoder_profile.name.lower()}",
+                    encoder.bitstream.createOutputQueue(maxSize=5, blocking=False),
+                    "encoded",
+                )
+            )
+
+        add_manip_chain(pipeline, camera_output, n_manips)
 
         if edge_count < args.n_edge_detectors:
             edge_count += 1
@@ -221,27 +387,38 @@ def build_pipeline(
             )
 
     stereo: Optional[Any] = None
-    stereo_left_output: Optional[Any] = None
-    stereo_right_output: Optional[Any] = None
     stereo_pairs = device.getStereoPairs()
     if stereo_pairs and not args.no_stereo:
         pair = stereo_pairs[0]
         left_entry = cameras.get(pair.left)
         right_entry = cameras.get(pair.right)
         if left_entry is not None and right_entry is not None:
-            stereo_left_output = left_entry[1]
-            stereo_right_output = right_entry[1]
-            stereo = pipeline.create(dai.node.StereoDepth).build(
-                stereo_left_output,
-                stereo_right_output,
-                dai.node.StereoDepth.PresetMode.HIGH_DETAIL,
-            )
-            stereo.setLeftRightCheck(True)
-            stereo.setSubpixel(True)
+            if is_rvc4:
+                # NeuralDepth rectifies the pair itself and has no depth
+                # alignment, so it needs no more configuration.
+                stereo = pipeline.create(dai.node.NeuralDepth).build(
+                    left_entry[1],
+                    right_entry[1],
+                    NEURAL_DEPTH_MODEL,
+                )
+                print(f"Using NeuralDepth with model {NEURAL_DEPTH_MODEL.name}")
+            else:
+                stereo = pipeline.create(dai.node.StereoDepth).build(
+                    left_entry[1],
+                    right_entry[1],
+                    dai.node.StereoDepth.PresetMode.DEFAULT,
+                )
+                stereo.setLeftRightCheck(True)
+                stereo.setSubpixel(True)
 
-            color_sockets = [socket for socket, entry in cameras.items() if entry[2] == dai.CameraSensorType.COLOR]
-            align_socket = color_sockets[0] if color_sockets else pair.left
-            stereo.setDepthAlign(align_socket)
+                color_sockets = [socket for socket, entry in cameras.items() if entry[2] == dai.CameraSensorType.COLOR]
+                align_socket = color_sockets[0] if color_sockets else pair.left
+                stereo.setDepthAlign(align_socket)
+                # Aligned depth takes the size of the color frame, and its
+                # width must be a multiple of 16. Some sensors, for example the
+                # IMX214 with its smallest configuration of 2104x1560, do not
+                # give such a width, so the size is set here.
+                stereo.setOutputSize(*CAMERA_SIZE)
             streams.append(Stream("stereo depth", stereo.depth.createOutputQueue(maxSize=2, blocking=False), "depth"))
         else:
             print(f"Stereo pair {pair.left}/{pair.right} is not available as a camera output; skipping depth")
@@ -251,29 +428,58 @@ def build_pipeline(
         print("Device has no stereo pair, skipping stereo depth")
 
     if color_camera is not None and not args.no_nnet:
-        model = dai.NNModelDescription("yolov6-nano")
-        if stereo is not None:
-            network = pipeline.create(dai.node.SpatialDetectionNetwork).build(color_camera, stereo, model, fps=NN_FPS)
-            network.setDepthLowerThreshold(100)
-            network.setDepthUpperThreshold(5000)
-            network.setBoundingBoxScaleFactor(0.5)
-        else:
-            network = pipeline.create(dai.node.DetectionNetwork).build(color_camera, model, fps=NN_FPS)
+        archive = load_nn_archive(device, args.nn_model)
+        color_output = cameras[color_camera.getBoardSocket()][1]
+        frame_type = nn_input_type(device, archive)
+        # The network takes frames at the rate of the sensor, for the same
+        # reason as the encoders.
+        for index in range(n_networks):
+            # Only the first network gets the depth. The others are there to
+            # keep the inference engines busy.
+            first_with_depth = index == 0 and stereo is not None
+            if index > 0:
+                network = add_network(pipeline, color_output, archive, frame_type)
+            elif first_with_depth:
+                network = pipeline.create(dai.node.SpatialDetectionNetwork).build(
+                    color_camera, stereo, archive, fps=camera_fps
+                )
+            else:
+                network = pipeline.create(dai.node.DetectionNetwork).build(color_camera, archive, fps=camera_fps)
 
-        network.setConfidenceThreshold(0.5)
-        network.input.setBlocking(False)
-        labels = network.getClasses()
-        context.labels = list(labels) if labels else []
-        streams.append(Stream("detections", network.out.createOutputQueue(maxSize=4, blocking=False), "detections"))
-        passthrough_name = f"preview_{color_camera.getBoardSocket().name}"
-        # streams.append(Stream(passthrough_name+"_passthrough", network.passthrough.createOutputQueue(maxSize=2, blocking=False), "image"))
-        context.detection_frame_name = passthrough_name
+            if first_with_depth:
+                network.setDepthLowerThreshold(100)
+                network.setDepthUpperThreshold(5000)
+                network.setBoundingBoxScaleFactor(0.5)
+
+            limit_nn_shaves(network, archive, args.nn_shaves)
+            network.setConfidenceThreshold(0.5)
+            network.input.setBlocking(False)
+            if index == 0:
+                labels = network.getClasses()
+                context.labels = list(labels) if labels else []
+                streams.append(Stream("detections", network.out.createOutputQueue(maxSize=4, blocking=False), "detections"))
+                context.detection_frame_name = f"preview_{color_camera.getBoardSocket().name}"
+            else:
+                streams.append(Stream(f"detections_{index}", network.out.createOutputQueue(maxSize=4, blocking=False), "extra"))
     elif color_camera is None:
         print("No color camera found, skipping neural network")
     else:
         print("--no-nnet set, skipping neural network")
 
     return pipeline, streams, control_queues, system_queue, context
+
+
+def apply_ir(device: dai.Device, has_ir: bool, dot: Optional[float] = None, flood: Optional[float] = None) -> None:
+    """Set the IR intensities, but only on a device that has the drivers.
+
+    A device without IR LEDs reports a file descriptor error for every call.
+    """
+    if not has_ir:
+        return
+    if dot is not None:
+        device.setIrLaserDotProjectorIntensity(dot)
+    if flood is not None:
+        device.setIrFloodLightIntensity(flood)
 
 
 def send_manual_exposure(control_queues: list[Any], exposure: int, iso: int) -> None:
@@ -283,12 +489,32 @@ def send_manual_exposure(control_queues: list[Any], exposure: int, iso: int) -> 
         queue.send(control)
 
 
-def stress_test(mxid: str = "") -> None:
+def stress_test() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mxid", default=mxid, help="Device ID, device name, or IP address")
+    parser.add_argument("--mxid", default="", help="Device ID, device name, or IP address")
     parser.add_argument("-ne", "--n-edge-detectors", default=0, type=int)
     parser.add_argument("--no-nnet", action="store_true", help="Do not create a detection network")
+    parser.add_argument("--nn-model", default=NN_MODEL, help="Model zoo name of the detection model")
+    parser.add_argument(
+        "--nn-shaves",
+        default=NN_SHAVES_RVC2,
+        type=int,
+        help="Number of shaves for the RVC2 blob. Decrease it if the device reports too few free shaves.",
+    )
     parser.add_argument("--no-stereo", action="store_true", help="Do not create stereo depth")
+    parser.add_argument("--camera-fps", type=float, help="Sensor frame rate. Higher values give more load.")
+    parser.add_argument("--encoder-fps", type=float, help="Frame rate that the video encoders declare. Camera outputs always use --camera-fps.")
+    parser.add_argument("--n-encoders", type=int, help="Number of video encoders per camera")
+    parser.add_argument("--n-manips", type=int, help="Number of chained image manipulation nodes per camera")
+    parser.add_argument("--n-nnets", type=int, help="Number of detection networks")
+    parser.add_argument(
+        "--full-res-color",
+        dest="full_res_color",
+        action="store_true",
+        default=None,
+        help="Use the largest sensor configuration for the color camera and downscale it on the device",
+    )
+    parser.add_argument("--no-full-res-color", dest="full_res_color", action="store_false", help="Do not use the largest sensor configuration")
     parser.add_argument("--slow-rampup", action="store_true", help="Ramp IR intensity after the pipeline starts")
     parser.add_argument("--rampup-seconds", type=float, default=5.0)
     args = parser.parse_args()
@@ -303,22 +529,26 @@ def stress_test(mxid: str = "") -> None:
 
     pipeline.start()
 
+    has_ir = bool(device.getIrDrivers())
+    if not has_ir:
+        print("Device has no IR drivers, skipping dot projector and flood light")
+
     if args.slow_rampup:
-        device.setIrLaserDotProjectorIntensity(0.0)
-        device.setIrFloodLightIntensity(0.0)
+        apply_ir(device, has_ir, dot=0.0, flood=0.0)
     else:
-        device.setIrLaserDotProjectorIntensity(dot_intensity)
-        device.setIrFloodLightIntensity(flood_intensity)
+        apply_ir(device, has_ir, dot=dot_intensity, flood=flood_intensity)
 
     start_time = time.monotonic()
-    ramp_start = start_time if args.slow_rampup else None
+    ramp_start = start_time if args.slow_rampup and has_ir else None
     last_ramp_update = 0.0
     last_dot = None
     last_flood = None
     last_frames: dict[str, np.ndarray] = {}
 
     try:
-        print(f"Started on {device.getPlatformAsString()} ({device.getUsbSpeed()})")
+        usb_speed = device.getUsbSpeed()
+        connection = f" over USB {usb_speed.name}" if usb_speed != dai.UsbSpeed.UNKNOWN else ""
+        print(f"Started on {device.getPlatformAsString()}{connection}")
         while pipeline.isRunning():
             if ramp_start is not None:
                 elapsed = time.monotonic() - ramp_start
@@ -328,10 +558,10 @@ def stress_test(mxid: str = "") -> None:
                     dot = dot_intensity * fraction
                     flood = flood_intensity * fraction
                     if last_dot is None or abs(dot - last_dot) >= 1e-3:
-                        device.setIrLaserDotProjectorIntensity(dot)
+                        apply_ir(device, has_ir, dot=dot)
                         last_dot = dot
                     if last_flood is None or abs(flood - last_flood) >= 1e-3:
-                        device.setIrFloodLightIntensity(flood)
+                        apply_ir(device, has_ir, flood=flood)
                         last_flood = flood
                     last_ramp_update = now
                 if fraction >= 1.0:
@@ -350,11 +580,11 @@ def stress_test(mxid: str = "") -> None:
                     frame_name = context.detection_frame_name
                     frame = last_frames.get(frame_name) if frame_name else None
                     if frame is not None:
-                        add_detection_overlay(frame, packet, context.labels or [])
+                        add_detection_overlay(frame, packet, context.labels)
 
             system_info = system_queue.tryGet()
             if system_info is not None:
-                print(f"[{int(time.monotonic() - start_time)}s] USB speed {device.getUsbSpeed()}")
+                print(f"[{int(time.monotonic() - start_time)}s]{connection}")
                 if isinstance(system_info, dai.SystemInformationRVC4):
                     print_system_information_rvc4(system_info)
                 else:
@@ -368,16 +598,16 @@ def stress_test(mxid: str = "") -> None:
                 break
             if key == ord("a"):
                 dot_intensity = clamp(dot_intensity - DOT_STEP, 0.0, 1.0)
-                device.setIrLaserDotProjectorIntensity(dot_intensity)
+                apply_ir(device, has_ir, dot=dot_intensity)
             elif key == ord("d"):
                 dot_intensity = clamp(dot_intensity + DOT_STEP, 0.0, 1.0)
-                device.setIrLaserDotProjectorIntensity(dot_intensity)
+                apply_ir(device, has_ir, dot=dot_intensity)
             elif key == ord("s"):
                 flood_intensity = clamp(flood_intensity - FLOOD_STEP, 0.0, 1.0)
-                device.setIrFloodLightIntensity(flood_intensity)
+                apply_ir(device, has_ir, flood=flood_intensity)
             elif key == ord("w"):
                 flood_intensity = clamp(flood_intensity + FLOOD_STEP, 0.0, 1.0)
-                device.setIrFloodLightIntensity(flood_intensity)
+                apply_ir(device, has_ir, flood=flood_intensity)
             elif key == ord("k"):
                 iso = int(clamp(iso - 50, 0, 1600))
                 send_manual_exposure(control_queues, exposure, iso)
