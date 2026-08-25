@@ -215,7 +215,6 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
-        set(DEPTHAI_OPENCV_LIBRARIES ${REQUIRED_OPENCV_LIBRARIES})
         if(DEPTHAI_BUILD_BETA AND "opencv_stitching" IN_LIST OpenCV_LIBS)
             set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
         endif()
@@ -550,7 +549,6 @@ if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_SUPPORT)
         src/beta/utilities/Stitching/FixedPanoramaCompositor.cpp
         src/beta/utilities/Stitching/PlanarStitcher.cpp
     )
-    list(APPEND DEPTHAI_OPENCV_LIBRARIES "opencv_stitching")
 endif()
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
@@ -688,7 +686,7 @@ endif()
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DEPTHAI_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
@@ -1092,7 +1090,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_OPENCV_NAME})
 
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${DEPTHAI_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
