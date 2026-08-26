@@ -256,8 +256,9 @@ void VideoPlayer::init(const std::string& filePath) {
         throw std::runtime_error("VideoPlayer file does not exist: " + filePath);
     }
     cvReader = std::make_unique<cv::VideoCapture>();
-    cvReader->open(filePath, cv::CAP_FFMPEG);
-    assert(cvReader->isOpened());
+    if(!cvReader->open(filePath, cv::CAP_FFMPEG) || !cvReader->isOpened()) {
+        throw std::runtime_error("Failed to open video with FFMPEG: " + filePath);
+    }
     initialized = true;
 }
 

@@ -613,6 +613,7 @@ void dai::impl::getTransformImpl(const ManipOp& op,
     float maxy = _maxy;
     float width = maxx - minx;
     float height = maxy - miny;
+    bool imageCornersSet = false;
 
     std::visit(
         overloaded{[](auto _) {},
@@ -669,11 +670,14 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                    },
                    [&](FourPoints o) {
                        if(o.normalized) {
+                           if(outputWidth == 0 || outputHeight == 0) {
+                               throw std::runtime_error("Output size must be set for normalized FourPoints transform");
+                           }
                            for(auto i = 0; i < 4; ++i) {
                                o.src[i].x *= width;
                                o.src[i].y *= height;
-                               o.dst[i].x *= width;
-                               o.dst[i].y *= height;
+                               o.dst[i].x *= (float)outputWidth;
+                               o.dst[i].y *= (float)outputHeight;
                            }
                        }
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
@@ -698,6 +702,14 @@ void dai::impl::getTransformImpl(const ManipOp& op,
 #else
                        mat = matrix::getHomographyMatrix(o.src, o.dst);
 #endif
+
+                       imageCorners = {{{o.dst[0].x, o.dst[0].y}, {o.dst[1].x, o.dst[1].y}, {o.dst[2].x, o.dst[2].y}, {o.dst[3].x, o.dst[3].y}}};
+                       const auto transformInv = matrix::getMatrixInverse(transform);
+                       srcCorners.push_back({matvecmul(transformInv, {o.src[0].x, o.src[0].y}),
+                                             matvecmul(transformInv, {o.src[1].x, o.src[1].y}),
+                                             matvecmul(transformInv, {o.src[2].x, o.src[2].y}),
+                                             matvecmul(transformInv, {o.src[3].x, o.src[3].y})});
+                       imageCornersSet = true;
                    },
                    [&](const Affine& o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
                    [&](const Perspective& o) {
@@ -734,14 +746,45 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                                              matvecmul(transformInv, imageCorners[1]),
                                              matvecmul(transformInv, imageCorners[2]),
                                              matvecmul(transformInv, imageCorners[3])});
+                       imageCornersSet = true;
+                   },
+                   [&](CropRotated o) {
+                       if(o.normalized) {
+                           o.width *= width;
+                           o.height *= height;
+                       } else if((o.width > 0 && o.width < 1) || (o.height > 0 && o.height < 1)) {
+                           throw std::runtime_error("CropRotated not marked as normalized, but values seem to be normalized (height or width is less than 1)");
+                       }
+                       if(o.width <= 0 || o.height <= 0) {
+                           throw std::runtime_error("CropRotated width and height must be positive");
+                       }
+
+                       const float angle = -o.angle * (float)M_PI / 180.0f;
+                       const float cos = std::cos(angle);
+                       const float sin = std::sin(angle);
+                       const float centerX = o.width / 2;
+                       const float centerY = o.height / 2;
+                       mat = {{{cos, -sin, centerX - cos * centerX + sin * centerY}, {sin, cos, centerY - sin * centerX - cos * centerY}, {0, 0, 1}}};
+
+                       outputWidth = o.width;
+                       outputHeight = o.height;
+                       imageCorners = {{{0, 0}, {(float)outputWidth, 0}, {(float)outputWidth, (float)outputHeight}, {0, (float)outputHeight}}};
+                       const auto transformInv = matrix::getMatrixInverse(matmul(mat, transform));
+                       srcCorners.push_back({matvecmul(transformInv, imageCorners[0]),
+                                             matvecmul(transformInv, imageCorners[1]),
+                                             matvecmul(transformInv, imageCorners[2]),
+                                             matvecmul(transformInv, imageCorners[3])});
+                       imageCornersSet = true;
                    }},
         op.op);
-    auto outerRectPoints =
-        getOuterRotatedRect(
-            {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])})
-            .getPoints();
-    for(auto i = 0; i < 4; ++i) {
-        imageCorners[i] = {outerRectPoints[i].x, outerRectPoints[i].y};
+    if(!imageCornersSet) {
+        auto outerRectPoints =
+            getOuterRotatedRect(
+                {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])})
+                .getPoints();
+        for(auto i = 0; i < 4; ++i) {
+            imageCorners[i] = {outerRectPoints[i].x, outerRectPoints[i].y};
+        }
     }
     transform = matmul(mat, transform);
 }
@@ -3007,6 +3050,7 @@ void WarpH::buildUndistort(bool enable,
                            const std::array<float, 9>& cameraMatrix,
                            const std::array<float, 9>& newCameraMatrix,
                            const std::vector<float>& distCoeffs,
+                           const std::optional<float> alpha,
                            const ImgFrame::Type type,
                            const uint32_t srcWidth,
                            const uint32_t srcHeight,
@@ -3014,6 +3058,7 @@ void WarpH::buildUndistort(bool enable,
                            const uint32_t dstHeight) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(enable) {
+        this->alphaScaling = alpha;  // unused
         if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
         auto undistortStatus = undistortImpl->build(cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
         switch(undistortStatus) {

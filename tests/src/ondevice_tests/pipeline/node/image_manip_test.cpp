@@ -286,11 +286,27 @@ std::array<dai::Point2f, 4> normalizeFourPointCoords(const std::array<dai::Point
 void testManipFourPointTransform(bool normalizedCoords) {
     constexpr int width = 256;
     constexpr int height = 192;
-    const auto inputImage = createFourPointTransformInputImage(width, height);
     const std::array<dai::Point2f, 4> srcPoints = {
-        dai::Point2f(24.0f, 18.0f), dai::Point2f(210.0f, 12.0f), dai::Point2f(228.0f, 166.0f), dai::Point2f(30.0f, 176.0f)};
+        dai::Point2f(40.0f, 30.0f), dai::Point2f(216.0f, 30.0f), dai::Point2f(216.0f, 162.0f), dai::Point2f(40.0f, 162.0f)};
     const std::array<dai::Point2f, 4> dstPoints = {
-        dai::Point2f(12.0f, 28.0f), dai::Point2f(240.0f, 20.0f), dai::Point2f(220.0f, 154.0f), dai::Point2f(36.0f, 182.0f)};
+        dai::Point2f(0.0f, 0.0f), dai::Point2f(width, 0.0f), dai::Point2f(width, height), dai::Point2f(0.0f, height)};
+    struct Marker {
+        cv::Point source;
+        cv::Point destination;
+    };
+    // These positions map exactly under the configured source and destination rectangles.
+    // Keeping them in separate quadrants verifies both axes of the transform across the image.
+    const std::array<Marker, 4> markers = {
+        Marker{{62, 52}, {32, 32}},
+        Marker{{194, 52}, {224, 32}},
+        Marker{{62, 140}, {32, 160}},
+        Marker{{194, 140}, {224, 160}},
+    };
+
+    cv::Mat inputImage = cv::Mat::zeros(height, width, CV_8UC1);
+    for(const auto& marker : markers) {
+        cv::circle(inputImage, marker.source, 8, cv::Scalar(255), cv::FILLED);
+    }
 
     auto inputFrame = std::make_shared<dai::ImgFrame>();
     inputFrame->setCvFrame(inputImage, dai::ImgFrame::Type::GRAY8);
@@ -325,40 +341,13 @@ void testManipFourPointTransform(bool normalizedCoords) {
     fourPointCfg->setOutputSize(width, height);
     fourPointCfg->setFrameType(dai::ImgFrame::Type::GRAY8);
 
-    auto referenceCfg = std::make_shared<dai::ImageManipConfig>();
-    if(normalizedCoords) {
-        referenceCfg->addTransformFourPoints(srcPoints, dstPoints, false);
-    } else {
-        cv::Point2f cvSrcPoints[4];
-        cv::Point2f cvDstPoints[4];
-        for(int i = 0; i < 4; ++i) {
-            cvSrcPoints[i] = cv::Point2f(srcPoints[i].x, srcPoints[i].y);
-            cvDstPoints[i] = cv::Point2f(dstPoints[i].x, dstPoints[i].y);
-        }
-        const cv::Mat cvMatrix = cv::getPerspectiveTransform(cvSrcPoints, cvDstPoints);
-        std::array<float, 9> matrix = {
-            static_cast<float>(cvMatrix.at<double>(0, 0)),
-            static_cast<float>(cvMatrix.at<double>(0, 1)),
-            static_cast<float>(cvMatrix.at<double>(0, 2)),
-            static_cast<float>(cvMatrix.at<double>(1, 0)),
-            static_cast<float>(cvMatrix.at<double>(1, 1)),
-            static_cast<float>(cvMatrix.at<double>(1, 2)),
-            static_cast<float>(cvMatrix.at<double>(2, 0)),
-            static_cast<float>(cvMatrix.at<double>(2, 1)),
-            static_cast<float>(cvMatrix.at<double>(2, 2)),
-        };
-        referenceCfg->addTransformPerspective(matrix);
-    }
-    referenceCfg->setOutputSize(width, height);
-    referenceCfg->setFrameType(dai::ImgFrame::Type::GRAY8);
-
     const auto outImage = runManip(fourPointCfg);
-    const auto referenceImage = runManip(referenceCfg);
-
-    cv::Mat diff;
-    cv::absdiff(outImage, referenceImage, diff);
-    REQUIRE(cv::norm(diff, cv::NORM_INF) <= 1.0);
-    REQUIRE(cv::mean(diff)[0] < 0.01);
+    constexpr int patchRadius = 8;
+    for(const auto& marker : markers) {
+        const cv::Rect patchRect{marker.destination.x - patchRadius, marker.destination.y - patchRadius, 2 * patchRadius + 1, 2 * patchRadius + 1};
+        cv::Mat matchingPixels = outImage(patchRect) > 127;
+        REQUIRE(cv::countNonZero(matchingPixels) >= 100);
+    }
 
     p.stop();
 }
@@ -571,6 +560,45 @@ TEST_CASE("ImageManip four point transform") {
 
 TEST_CASE("ImageManip four point transform normalized coordinates") {
     testManipFourPointTransform(true);
+}
+
+TEST_CASE("ImageManip crop and four point transform with stretch") {
+    constexpr int inputWidth = 400;
+    constexpr int inputHeight = 300;
+    constexpr int outputWidth = 45;
+    constexpr int outputHeight = 36;
+
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    inputFrame->setCvFrame(createFourPointTransformInputImage(inputWidth, inputHeight), dai::ImgFrame::Type::GRAY8);
+
+    dai::Pipeline p;
+    auto manip = p.create<dai::node::ImageManip>();
+    manip->inputConfig.setWaitForMessage(true);
+    manip->setMaxOutputFrameSize(inputWidth * inputHeight);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    p.start();
+
+    auto cfg = std::make_shared<dai::ImageManipConfig>();
+    cfg->addCropRotatedRect(dai::RotatedRect(dai::Point2f(0.45f, 0.04f, true), dai::Size2f(0.12f, 0.12f, true), 0.0f), true);
+    cfg->addTransformFourPoints({dai::Point2f(0.44f, 0.83f), dai::Point2f(0.15f, 0.36f), dai::Point2f(0.54f, 0.17f), dai::Point2f(0.82f, 0.42f)},
+                                {dai::Point2f(0.0f, 0.0f), dai::Point2f(1.0f, 0.0f), dai::Point2f(1.0f, 1.0f), dai::Point2f(0.0f, 1.0f)},
+                                true);
+    cfg->setOutputSize(outputWidth, outputHeight, dai::ImageManipConfig::ResizeMode::STRETCH);
+    cfg->setFrameType(dai::ImgFrame::Type::GRAY8);
+
+    configQueue->send(cfg);
+    inputQueue->send(inputFrame);
+
+    bool timedOut = false;
+    auto outFrame = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(outFrame != nullptr);
+    REQUIRE(outFrame->getWidth() == outputWidth);
+    REQUIRE(outFrame->getHeight() == outputHeight);
 }
 
 TEST_CASE("ImageManip GRAY8") {

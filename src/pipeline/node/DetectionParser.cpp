@@ -149,7 +149,13 @@ void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser,
         parser.strides = {1};
     }
     if(metadata.strides) {
-        const size_t numYoloOutputs = metadata.yoloOutputs ? metadata.yoloOutputs->size() : (head.outputs ? head.outputs->size() : 0);
+        size_t numYoloOutputs = 0;
+        if(metadata.yoloOutputs)
+            numYoloOutputs = metadata.yoloOutputs->size();
+        else if(head.outputs.has_value()) {
+            for(const auto& name : *head.outputs)
+                if(name.find("_yolo") != std::string::npos) numYoloOutputs++;
+        }
         DAI_CHECK_V(!metadata.strides->empty(), "`strides` must not be empty.");
         DAI_CHECK_V(numYoloOutputs > 0, "YOLO outputs must be defined when `strides` is provided.");
         DAI_CHECK_V(metadata.strides->size() == numYoloOutputs,
@@ -274,9 +280,9 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
     std::string subtypeStr = name;
     std::transform(subtypeStr.begin(), subtypeStr.end(), subtypeStr.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-    if(subtypeStr == "yolov6r1") return YoloDecodingFamily::R1AF;
-    if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov6" || subtypeStr == "yolov8" || subtypeStr == "yolov10"
-       || subtypeStr == "yolov11" || subtypeStr == "yolov12")
+    if(subtypeStr == "yolov6r1" || subtypeStr == "yolov6") return YoloDecodingFamily::R1AF;
+    if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov8" || subtypeStr == "yolov10" || subtypeStr == "yolov11"
+       || subtypeStr == "yolov12")
         return YoloDecodingFamily::TLBR;
     if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
     if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
@@ -670,7 +676,7 @@ void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& o
 void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections) {
     std::shared_ptr<spdlog::async_logger>& logger = ThreadedNode::pimpl->logger;
     switch(properties.parser.decodingFamily) {
-        case YoloDecodingFamily::R1AF:  // anchor free: yolo v6r1
+        case YoloDecodingFamily::R1AF:  // anchor free center/size: yolo v6, v6r1
             utilities::DetectionParserUtils::decodeR1AF(nnData, outDetections, properties, logger);
             break;
         case YoloDecodingFamily::v3AB:  // anchor based yolo v3 v3-Tiny
@@ -679,7 +685,7 @@ void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDet
         case YoloDecodingFamily::v5AB:  // anchor based yolo v5, v7, P
             utilities::DetectionParserUtils::decodeV5AB(nnData, outDetections, properties, logger);
             break;
-        case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8 v10 v11
+        case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8, v10, v11
             utilities::DetectionParserUtils::decodeTLBR(nnData, outDetections, properties, logger);
             break;
         case YoloDecodingFamily::YOLO26:  // already decoded TLBR model

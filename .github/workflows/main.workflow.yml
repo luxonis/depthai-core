@@ -17,7 +17,9 @@ on:
     branches:
       - main
       - develop
-    types: [opened, reopened, labeled]
+    types: [labeled]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
 
@@ -29,8 +31,12 @@ jobs:
     steps:
     - name: Evaluate trigger condition
       id: check
+      env:
+        CHECK_EVENT_NAME: ${{ github.event_name }}
+        CHECK_REVIEW_STATE: ${{ github.event.review.state }}
+        CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
       run: |
-        EVENT_NAME="${{ github.event_name }}"
+        EVENT_NAME="$CHECK_EVENT_NAME"
 
         RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
         if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
@@ -42,6 +48,10 @@ jobs:
         SHOULD_RUN="true"
         if [[ "$EVENT_NAME" == "pull_request" ]]; then
           if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          fi
+        elif [[ "$EVENT_NAME" == "pull_request_review" ]]; then
+          if [[ "$CHECK_REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop") ]]; then
             SHOULD_RUN="false"
           fi
         fi
@@ -155,7 +165,7 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install opencv
+        brew install opencv@4
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -166,7 +176,7 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'windows-2022'
       run: |
-        choco install opencv
+        choco install opencv --version=4.13.0 --yes
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Build
@@ -203,7 +213,7 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install opencv
+        brew install opencv@4
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -214,7 +224,7 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'windows-2022'
       run: |
-        choco install opencv
+        choco install opencv --version=4.13.0 --yes
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CMAKE_GENERATOR=Visual Studio 17 2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CMAKE_GENERATOR_PLATFORM=${{ matrix.platform }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -273,6 +283,25 @@ jobs:
     #     cd tests/integration/build_find_package_2
     #     ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
+  required_core_ci_report:
+    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Core CI report (not applicable)' }}
+    needs: [precheck, consistency, style, tidy, minimal-build, build, integration]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check required CI results
+      env:
+        SHOULD_RUN: ${{ needs.precheck.outputs.should_run }}
+        RESULTS: ${{ join(needs.*.result, ' ') }}
+      run: |
+        if [[ "$SHOULD_RUN" != "true" && "$RESULTS" != *failure* && "$RESULTS" != *cancelled* ]]; then
+          echo "Core CI is not required for this event."
+          exit 0
+        fi
+        if [[ "$RESULTS" == *failure* || "$RESULTS" == *cancelled* || "$RESULTS" == *skipped* ]]; then
+          echo "Required Core CI jobs failed or did not complete: $RESULTS"
+          exit 1
+        fi
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

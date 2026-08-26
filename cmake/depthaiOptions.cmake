@@ -32,6 +32,7 @@ option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" 
 
 # Build Behaviour
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
+option(DEPTHAI_BUILD_BETA "Build beta namespace APIs" ON)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
@@ -127,3 +128,4 @@ set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootl
 option(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4 "This build is part of the rvc4 firmware build" OFF)
 option(DEPTHAI_GENERATE_HOUSING_COORDS "Generate housing coordinate system data from JSON files" ON)
 option(DEPTHAI_TESTS_ENABLE_REPLAY "Set DEPTHAI_REPLAY for all tests" OFF)
+set(DEPTHAI_TEST_DEVICE_SEARCH_TIMEOUT 30 CACHE STRING "Seconds test_wrapper waits for a device before giving up")

@@ -27,6 +27,8 @@ set(TOP_CPP_EXAMPLES_CMAKE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # Regexes for example test failure
 set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
+# Emitted by test_wrapper when no device shows up; marks the test skipped rather than failed
+set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
 set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
 
 # Helper for adding new examples
@@ -75,6 +77,8 @@ function(dai_add_example example_name example_src enable_test use_pcl)
         add_dependencies(${example_name} test_wrapper)
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${STRICT_EXAMPLE_TEST_FAIL_REGEX}")
+        # No device available -> skip rather than fail
+        set_tests_properties(${example_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX}")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "${test_env}")
@@ -171,6 +175,9 @@ add_subdirectory(NeuralAssistedStereo)
 add_subdirectory(GPUStereo)
 add_subdirectory(Gate)
 add_subdirectory(PointCloud)
+if(DEPTHAI_BUILD_BETA)
+    add_subdirectory(Beta)
+endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_subdirectory(AutoCalibration)
 endif()

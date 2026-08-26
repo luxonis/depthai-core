@@ -1,4 +1,5 @@
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -40,9 +41,14 @@ int main() {
     pipeline.start();
 
     // Main loop
+    auto lastPrintTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     while(pipeline.isRunning() && !quitEvent) {
         auto inNNData = qNNData->get<dai::NNData>();
         auto tensor = inNNData->getFirstTensor<float>();
+        const auto now = std::chrono::steady_clock::now();
+        if(now - lastPrintTime < std::chrono::seconds(1)) continue;
+        lastPrintTime = now;
+
         std::cout << "Received NN data: " << tensor.shape()[0] << "x" << tensor.shape()[1] << std::endl;
     }
 
