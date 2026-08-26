@@ -9,6 +9,7 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 #include "ndarray_converter.h"
+#include "utility/MaskUtils.hpp"
 // pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
@@ -149,7 +150,12 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
              py::arg("frame"),
              DOC(dai, ImgDetectionsT, setSegmentationMask),
              py::return_value_policy::reference_internal)
-        .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetectionsT, getMaskData))
+        .def(
+            "getMaskData",
+            [](ImgDetections& det) {
+                return dai::bindings::toNumpyMask(det.getMaskData(), det.getSegmentationMaskWidth(), det.getSegmentationMaskHeight());
+            },
+            DOC(dai, ImgDetectionsT, getMaskData))
         .def("getSegmentationMask", &ImgDetections::getSegmentationMask, DOC(dai, ImgDetectionsT, getSegmentationMask))
         .def("transformTo", &ImgDetections::transformTo, py::arg("target"), DOC(dai, ImgDetections, transformTo))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

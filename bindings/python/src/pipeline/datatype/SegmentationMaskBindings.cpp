@@ -1,4 +1,3 @@
-#include <cstring>
 #include <memory>
 
 #include "DatatypeBindings.hpp"
@@ -7,34 +6,13 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "ndarray_converter.h"
+#include "utility/MaskUtils.hpp"
 // pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
-
-namespace {
-py::array_t<std::uint8_t> toNumpyMask(const dai::SegmentationMask& mask, const std::vector<std::uint8_t>& data) {
-    if(data.empty()) {
-        return py::array_t<std::uint8_t>();
-    }
-
-    const auto width = static_cast<py::ssize_t>(mask.getWidth());
-    const auto height = static_cast<py::ssize_t>(mask.getHeight());
-    const auto count = static_cast<py::ssize_t>(data.size());
-
-    if(width > 0 && height > 0 && width * height == count) {
-        py::array_t<std::uint8_t> arr({height, width});
-        std::memcpy(arr.mutable_data(), data.data(), data.size());
-        return arr;
-    }
-
-    py::array_t<std::uint8_t> arr(count);
-    std::memcpy(arr.mutable_data(), data.data(), data.size());
-    return arr;
-}
-}  // namespace
 
 void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -88,7 +66,9 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
              py::arg("frame"),
              DOC(dai, SegmentationMask, setMask, 2))
         .def(
-            "getMaskData", [](SegmentationMask& self) { return toNumpyMask(self, self.getMaskData()); }, DOC(dai, SegmentationMask, getMaskData))
+            "getMaskData",
+            [](SegmentationMask& self) { return dai::bindings::toNumpyMask(self.getMaskData(), self.getWidth(), self.getHeight()); },
+            DOC(dai, SegmentationMask, getMaskData))
         .def("getFrame", &SegmentationMask::getFrame, DOC(dai, SegmentationMask, getFrame))
         .def("setLabels", &SegmentationMask::setLabels, py::arg("labels"), DOC(dai, SegmentationMask, setLabels))
         .def("getLabels", &SegmentationMask::getLabels, DOC(dai, SegmentationMask, getLabels))
@@ -103,12 +83,12 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
              })
         .def(
             "getMaskByIndex",
-            [](SegmentationMask& self, uint8_t index) { return toNumpyMask(self, self.getMaskByIndex(index)); },
+            [](SegmentationMask& self, uint8_t index) { return dai::bindings::toNumpyMask(self.getMaskByIndex(index), self.getWidth(), self.getHeight()); },
             py::arg("index"),
             DOC(dai, SegmentationMask, getMaskByIndex))
         .def(
             "getMaskByLabel",
-            [](SegmentationMask& self, const std::string& label) { return toNumpyMask(self, self.getMaskByLabel(label)); },
+            [](SegmentationMask& self, const std::string& label) { return dai::bindings::toNumpyMask(self.getMaskByLabel(label), self.getWidth(), self.getHeight()); },
             py::arg("label"),
             DOC(dai, SegmentationMask, getMaskByLabel))
         .def("hasValidMask", &SegmentationMask::hasValidMask, DOC(dai, SegmentationMask, hasValidMask))
