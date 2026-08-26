@@ -96,7 +96,7 @@ RUN python3 -m venv venv && \
     . venv/bin/activate && \
     pip install --upgrade pip && \
     pip install numpy pytest pytest-html && \
-    pip install adbutils==2.12.0
+    pip install adbutils==2.12.0 && \
     pip install influxdb_client==1.50.0
 
 ENV PATH="/workspace/venv/bin:$PATH"
