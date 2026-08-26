@@ -17,6 +17,14 @@ FAILED_LIST_RE = re.compile(
 TEST_OUTPUT_RE = re.compile(
     r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
 )
+PASSED_RE = re.compile(
+    # matches similar lines: 103/172 Test #185: gpu_stereo ...............................   Passed   58.15 sec
+    r"^\[(?P<config>[^\]]+)\]\s+\d+/\d+\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.{3,}\s+Passed\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
+)
+TESTSUITE_RE = re.compile(
+    # print(f"Running tests for configuration: linux_rvc2_test / RVC2 - POE, on platform: RVC4, on protocol: POE, with labels: {labels if labels is not None else ""}")
+    r"^(Running tests for configuration: )(?P<name>.+?), on platform: (?P<platform>.+?), on protocol: (?P<protocol>.+?), with labels: (?P<labels>.+?)$"
+)
 
 def normalize_name(name: str) -> str:
     return " ".join(name.strip().split())
@@ -31,19 +39,22 @@ def parse_args(argv):
     context = " ".join(argv[3:]).strip()
     return log_path, junit_path, context
 
-
 def parse_log(log_path: Path):
     order = []
     summaries = {}
     failures = {}
+    passes = {}
     test_outputs = {}
+    descriptions = {}
 
     def ensure_config(config: str) -> None:
         if config not in summaries:
             summaries[config] = None
             failures[config] = OrderedDict()
+            passes[config] = OrderedDict()
             test_outputs[config] = {}
             order.append(config)
+            descriptions[config] = {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''}
 
     with log_path.open("r", errors="ignore") as handle:
         for raw_line in handle:
@@ -59,6 +70,14 @@ def parse_log(log_path: Path):
                 total = int(summary_match.group("total"))
                 passed = total - failed
                 summaries[config] = (passed, failed, total)
+
+            description_match = TESTSUITE_RE.search(line)
+            if description_match:
+                config = description_match.group("name").strip()
+                ensure_config(config)
+                descriptions[config]["DEPTHAI_PLATFORM"] = description_match.group("platform").strip()
+                descriptions[config]["DEPTHAI_PROTOCOL"] = description_match.group("protocol").strip()
+                descriptions[config]["labels"] = description_match.group("labels").strip()
 
             output_match = TEST_OUTPUT_RE.search(line)
             if output_match:
@@ -86,7 +105,16 @@ def parse_log(log_path: Path):
                     else:
                         failures[config][num] = (prev_name, prev_cause)
 
-    return order, summaries, failures, test_outputs
+            passed_match = PASSED_RE.search(line)
+            if passed_match:
+                config = passed_match.group("config").strip()
+                ensure_config(config)
+                num = passed_match.group("num").strip()
+                name = normalize_name(passed_match.group("name"))
+                seconds = float(passed_match.group('seconds'))
+                passes[config][num] = (name, seconds)
+
+    return order, summaries, failures, passes, test_outputs, descriptions
 
 
 def iter_configs(order, summaries, failures):
@@ -120,7 +148,9 @@ def write_junit(
     order,
     summaries,
     failures,
+    passes,
     test_outputs,
+    descriptions
 ):
     root = ET.Element("testsuites")
     all_tests = 0
@@ -152,15 +182,17 @@ def write_junit(
     for config in configs:
         summary = summaries.get(config)
         parsed_failures = failures.get(config, OrderedDict())
-
+        parsed_passes = passes.get(config, OrderedDict())
+        description = descriptions.get(config, {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''})
+        
         declared_failed = summary[1] if summary else len(parsed_failures)
         declared_total = summary[2] if summary else len(parsed_failures)
         declared_passed = summary[0] if summary else max(declared_total - declared_failed, 0)
 
         suite_failures = max(declared_failed, len(parsed_failures))
+        suite_passes = max(declared_passed, len(parsed_passes))
         suite_name = f"{context} / {config}" if context else config
-        # Report only emitted failed/unknown testcases in JUnit.
-        suite_tests = suite_failures
+        suite_tests = suite_failures+suite_passes
 
         suite = ET.SubElement(
             root,
@@ -171,6 +203,9 @@ def write_junit(
             errors="0",
             skipped="0",
             time="0",
+            labels=description['labels'],
+            DEPTHAI_PLATFORM=descriptions['DEPTHAI_PLATFORM'],
+            DEPTHAI_PROTOCOL=descriptions['DEPTHAI_PROTOCOL']
         )
 
         props = ET.SubElement(suite, "properties")
@@ -219,6 +254,20 @@ def write_junit(
             )
             failure.text = "CTest reported an extra failure that was not listed by name."
 
+        for num, entry in parsed_passes.items():
+            test_name, time = entry
+            case = ET.SubElement(
+                suite,
+                "testcase",
+                classname=suite_name,
+                name=f"#{num} {test_name}",
+                time=str(time),
+            )
+            failure = ET.SubElement(
+                case,
+                "success",
+            )
+
         all_tests += suite_tests
         all_failures += suite_failures
 
@@ -244,14 +293,16 @@ def main() -> int:
         print(f"Log file not found: {log_path}")
         return 0
 
-    order, summaries, failures, test_outputs = parse_log(log_path)
+    order, summaries, failures, passes, test_outputs, descriptions = parse_log(log_path)
     write_junit(
         junit_path=junit_path,
         context=context,
         order=order,
         summaries=summaries,
         failures=failures,
+        passes=passes,
         test_outputs=test_outputs,
+        descriptions=descriptions
     )
     print(f"Wrote JUnit report: {junit_path}")
     return 0
