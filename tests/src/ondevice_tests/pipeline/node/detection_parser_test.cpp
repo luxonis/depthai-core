@@ -592,14 +592,10 @@ TEST_CASE("DetectionParser segmentation mask test") {
 
     auto nnData = std::make_shared<dai::NNData>();
     std::ifstream nnMetadataFile(YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_METADATA, std::ios::binary);
-    const auto nnMetadata = std::vector<uint8_t>(
-        std::istreambuf_iterator<char>(nnMetadataFile),
-        std::istreambuf_iterator<char>());
+    const auto nnMetadata = std::vector<uint8_t>(std::istreambuf_iterator<char>(nnMetadataFile), std::istreambuf_iterator<char>());
     REQUIRE(dai::utility::deserialize(nnMetadata, *nnData));
     std::ifstream nnPayloadFile(YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA, std::ios::binary);
-    const auto nnDataPayload = std::vector<uint8_t>(
-        std::istreambuf_iterator<char>(nnPayloadFile),
-        std::istreambuf_iterator<char>());
+    const auto nnDataPayload = std::vector<uint8_t>(std::istreambuf_iterator<char>(nnPayloadFile), std::istreambuf_iterator<char>());
     REQUIRE(nnMetadata.size());
     REQUIRE(nnDataPayload.size());
     nnData->setData(nnDataPayload);
