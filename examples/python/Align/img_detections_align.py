@@ -43,11 +43,11 @@ def overlayDetectionsMsg(frame: np.ndarray, detectionsMsg: dai.ImgDetections) ->
     return output
 
 device = dai.Device()
-if device.getPlatform() == dai.Platform.RVC2:
-    raise RuntimeError("Align is not supported on the RVC2 platform.")
 
 fps = 30.0
 modelName = "luxonis/yolov8-instance-segmentation-large:coco-640x480"
+if device.getPlatform() == dai.Platform.RVC2:
+    modelName = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
 capability = dai.ImgFrameCapability()
 capability.resizeMode = dai.ImgResizeMode.STRETCH
 capability.enableUndistortion = False
@@ -71,6 +71,7 @@ with dai.Pipeline(device) as pipeline:
     alignToSource.link(manip.inputImage)
 
     align = pipeline.create(dai.node.Align)
+    # align.setRunOnHost(True)
     detectionNetwork.out.link(align.input)
     manip.out.link(align.inputAlignTo)
 

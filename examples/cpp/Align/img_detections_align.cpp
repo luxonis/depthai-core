@@ -73,12 +73,12 @@ int main() {
     signal(SIGINT, signalHandler);
 
     auto device = std::make_shared<dai::Device>();
-    if(device->getPlatform() == dai::Platform::RVC2) {
-        throw std::runtime_error("Align is not supported on the RVC2 platform.");
-    }
 
     dai::NNModelDescription modelDescription;
     modelDescription.model = "luxonis/yolov8-instance-segmentation-large:coco-640x480";
+    if (device->getPlatform() == dai::Platform::RVC2) {
+        modelDescription.model = "luxonis/yolov8-instance-segmentation-nano:coco-512x288";
+    }
 
     dai::ImgFrameCapability capability;
     capability.resizeMode = dai::ImgResizeMode::STRETCH;
