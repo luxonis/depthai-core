@@ -64,7 +64,6 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     using SeamFinder = StitchingProperties::SeamFinder;
 
    protected:
-    Properties& getProperties() override;
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    public:

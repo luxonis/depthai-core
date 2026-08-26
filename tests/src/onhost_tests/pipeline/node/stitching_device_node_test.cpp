@@ -1,15 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/depthai.hpp>
-#include <type_traits>
 #include <vector>
-
-#include "beta/node/StitchingPlatform.hpp"
-
-TEST_CASE("Stitching device execution is RVC4-only", "[Stitching]") {
-    STATIC_REQUIRE(std::is_base_of_v<dai::beta::BetaNode, dai::beta::node::Stitching>);
-    REQUIRE_FALSE(dai::beta::node::stitching::isDevicePlatformSupported(dai::Platform::RVC2));
-    REQUIRE(dai::beta::node::stitching::isDevicePlatformSupported(dai::Platform::RVC4));
-}
 
 TEST_CASE("Stitching accepts deserialized properties", "[Stitching]") {
     auto properties = std::make_unique<dai::beta::StitchingProperties>();

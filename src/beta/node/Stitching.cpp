@@ -3,7 +3,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "StitchingPlatform.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -24,13 +23,6 @@ Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<BetaNod
 }
 
 Stitching::~Stitching() = default;
-
-Stitching::Properties& Stitching::getProperties() {
-    if(device && !runOnHostVar && !stitching::isDevicePlatformSupported(device->getPlatform())) {
-        throw std::runtime_error("Stitching node is only supported on RVC4 devices. Use setRunOnHost(true) instead.");
-    }
-    return properties;
-}
 
 void Stitching::buildInternal() {
     initializeHostState();
