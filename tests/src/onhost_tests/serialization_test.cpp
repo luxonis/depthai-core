@@ -47,3 +47,38 @@ TEST_CASE("Roundtrip") {
         REQUIRE(des.numFramesPool == 42);
     }
 }
+
+TEST_CASE("EEPROM multi-device poses round-trip through every supported serialization format") {
+    dai::EepromData eeprom;
+    dai::Extrinsics extrinsics;
+    extrinsics.rotationMatrix = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    extrinsics.translation = {10.0f, -2.5f, 3.0f};
+    extrinsics.specTranslation = {11.0f, -3.0f, 4.0f};
+    extrinsics.toCameraSocket = dai::CameraBoardSocket::CAM_B;
+    eeprom.devicesData["device-a"][dai::CameraBoardSocket::CAM_A] = extrinsics;
+
+    const auto requireRoundTrip = [&eeprom, &extrinsics](dai::SerializationType format) {
+        dai::EepromData restored;
+        const auto serialized = dai::utility::serialize(eeprom, format);
+        REQUIRE_FALSE(serialized.empty());
+        REQUIRE(dai::utility::deserialize(serialized, restored, format));
+
+        const auto& pose = restored.devicesData.at("device-a").at(dai::CameraBoardSocket::CAM_A);
+        REQUIRE(pose.toCameraSocket == dai::CameraBoardSocket::CAM_B);
+        REQUIRE(pose.translation.x == Catch::Approx(10.0f));
+        REQUIRE(pose.translation.y == Catch::Approx(-2.5f));
+        REQUIRE(pose.translation.z == Catch::Approx(3.0f));
+        REQUIRE(pose.specTranslation.x == Catch::Approx(11.0f));
+        REQUIRE(pose.rotationMatrix == extrinsics.rotationMatrix);
+    };
+
+    SECTION("libnop") {
+        requireRoundTrip(dai::SerializationType::LIBNOP);
+    }
+    SECTION("JSON") {
+        requireRoundTrip(dai::SerializationType::JSON);
+    }
+    SECTION("MessagePack JSON") {
+        requireRoundTrip(dai::SerializationType::JSON_MSGPACK);
+    }
+}
