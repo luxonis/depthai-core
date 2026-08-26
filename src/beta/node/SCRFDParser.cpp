@@ -260,7 +260,7 @@ bool SCRFDParser::runOnHost() const {
 
 void SCRFDParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     SCRFDParserConfig activeConfig = getProperties().initialConfig;
     DAI_CHECK(activeConfig.validate(), "SCRFDParser initial configuration is invalid.");

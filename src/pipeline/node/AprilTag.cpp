@@ -183,7 +183,7 @@ void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagPropertie
 
 void AprilTag::run() {
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     // Retrieve properties and initial config
     const dai::AprilTagProperties& properties = getProperties();
     dai::AprilTagConfig config = properties.initialConfig;

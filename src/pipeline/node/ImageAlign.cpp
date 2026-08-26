@@ -193,7 +193,7 @@ int shiftDepthImg(const std::shared_ptr<dai::ImgFrame>& inVec,
 void ImageAlign::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     dai::CalibrationHandler calibHandler;
 

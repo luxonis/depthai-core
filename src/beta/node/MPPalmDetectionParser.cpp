@@ -195,7 +195,7 @@ bool MPPalmDetectionParser::runOnHost() const {
 
 void MPPalmDetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     MPPalmDetectionParserConfig activeConfig = getProperties().initialConfig;
     DAI_CHECK(activeConfig.validate(), "MPPalmDetectionParser initial configuration is invalid.");

@@ -93,7 +93,7 @@ std::shared_ptr<GateControl> Gate::waitForCommand() {
 
 void Gate::run() {
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto currentCommand = std::make_shared<GateControl>(*initialConfig);
 
     // Initialize the timer baseline

@@ -236,7 +236,7 @@ class TimestampCompare {
 void Sync::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     const auto inputsName = inputs.name;
 
     auto timestampSource = properties.timestampSource;

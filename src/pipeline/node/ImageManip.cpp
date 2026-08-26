@@ -17,7 +17,7 @@ ImageManip::ImageManip(std::unique_ptr<Properties> props)
 
 void ImageManip::run() {
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     impl::ImageManipOperations<impl::_ImageManipMemory, impl::ColorChangeH, impl::WarpH> manip(properties, logger);
     auto iConf = runOnHost() ? *initialConfig : properties.initialConfig;
     impl::loop<ImageManip>(

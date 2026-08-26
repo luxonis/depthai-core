@@ -3,6 +3,7 @@
 
 // std
 #include "spdlog/fmt/fmt.h"
+#include <spdlog/async_logger.h>
 
 // project
 #include "depthai/pipeline/Pipeline.hpp"

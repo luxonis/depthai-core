@@ -30,7 +30,7 @@ void BenchmarkIn::measureIndividualLatencies(bool attachLatencies) {
 void BenchmarkIn::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     uint32_t numMessages = properties.reportEveryNMessages;
 

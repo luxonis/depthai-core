@@ -22,7 +22,7 @@ bool SpatialLocationCalculator::runOnHost() const {
 
 void SpatialLocationCalculator::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     bool inputConfigSync = inputConfig.getWaitForMessage();
     if(!calculationConfig) {

@@ -301,7 +301,7 @@ bool ImageOutputParser::runOnHost() const {
 
 void ImageOutputParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     // The color output frame type is resolved from the pipeline's default device platform once at
     // startup, mirroring the source parser: BGR888p on RVC2, BGR888i otherwise. A device-less

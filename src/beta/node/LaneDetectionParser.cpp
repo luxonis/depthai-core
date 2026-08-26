@@ -202,7 +202,7 @@ bool LaneDetectionParser::runOnHost() const {
 
 void LaneDetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     DAI_CHECK(!properties.rowAnchors.empty(), "Row anchors must be specified!");
     DAI_CHECK(properties.gridingNum.has_value(), "Griding number must be specified!");

@@ -261,7 +261,7 @@ bool YuNetParser::runOnHost() const {
 
 void YuNetParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     YuNetParserConfig activeConfig = getProperties().initialConfig;
     DAI_CHECK(activeConfig.validate(), "YuNetParser initial configuration is invalid.");

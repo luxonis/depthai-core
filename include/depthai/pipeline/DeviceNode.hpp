@@ -1,7 +1,5 @@
 #pragma once
 
-#include <spdlog/async_logger.h>
-
 #include <chrono>
 #include <memory>
 
@@ -9,6 +7,10 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
+
+namespace spdlog {
+class async_logger;
+}  // namespace spdlog
 
 namespace dai {
 

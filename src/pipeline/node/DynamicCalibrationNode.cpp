@@ -1017,7 +1017,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
 }
 
 void DynamicCalibration::run() {
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
     if(!device) {
         logger->error("Dynamic calibration node does not have access to any device.");
         return;

@@ -638,7 +638,6 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
 
 void PipelineEventAggregation::run() {
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
 
     this->pipelineEventDispatcher->sendEvents = false;
 
@@ -654,7 +653,6 @@ void PipelineEventAggregation::run() {
     uint32_t sequenceNum = 0;
     std::chrono::time_point<std::chrono::steady_clock> lastSentTime;
     while(mainLoop()) {
-        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         bool gotConfig = false;
         {
             std::shared_ptr<dai::PipelineEventAggregationConfig> req = nullptr;
@@ -671,7 +669,6 @@ void PipelineEventAggregation::run() {
                 gotConfig = true;
             }
         }
-        auto tGotInput = std::chrono::steady_clock::now();
         if(properties.traceOutput && !traceOutputConfig.has_value() && gotConfig && currentConfig->repeatIntervalSeconds.has_value()) {
             // Use the first repeating config for trace output if enabled
             traceOutputConfig = currentConfig;
@@ -699,10 +696,7 @@ void PipelineEventAggregation::run() {
                || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value() && updated
                    && (now - lastSentTime) >= std::chrono::seconds(currentConfig->repeatIntervalSeconds.value()))) {
                 lastSentTime = now;
-                auto tProcessed = std::chrono::steady_clock::now();
                 out.send(outState);
-                auto tAbsoluteEnd = std::chrono::steady_clock::now();
-                this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
             }
         }
     }

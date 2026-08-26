@@ -100,7 +100,7 @@ bool contains(const std::vector<T>& vec, const T& el) {
 void ObjectTracker::run() {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     float trackerThreshold = properties.trackerThreshold;
     std::vector<std::uint32_t> detectionLabelsToTrack = properties.detectionLabelsToTrack;

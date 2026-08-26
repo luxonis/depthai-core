@@ -36,7 +36,8 @@ void SegmentationParser::buildInternal() {
         if(platform == Platform::RVC2) {
             setRunOnHost(true);
             auto& logger = ThreadedNode::pimpl->logger;
-            if (logger) logger->info("SegmentationParser: For RVC2 platform, running on host.");
+            if (logger) logger->info("For RVC2 platform, running on host.");
+            else std::cout << "SegmentationParser: For RVC2 platform, running on host." << std::endl;
         }
     }
 }
@@ -214,7 +215,7 @@ void SegmentationParser::validateTensor(std::optional<TensorInfo>& info) {
 void SegmentationParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     using std::chrono::steady_clock;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     const bool inputConfigSync = inputConfig.getWaitForMessage();
     const bool classesInSingleLayer = properties.classesInOneLayer;

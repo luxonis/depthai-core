@@ -218,7 +218,7 @@ bool RFDETRParser::runOnHost() const {
 
 void RFDETRParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     RFDETRParserConfig activeConfig = getProperties().initialConfig;
     DAI_CHECK(activeConfig.validate(), "RFDETRParser initial configuration is invalid.");

@@ -726,7 +726,7 @@ void PointCloud::run() {
     *initialConfig = properties.initialConfig;
 
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     uint32_t currentEepromId = getParentPipeline().getEepromId();
     auto latestConfig = initialConfig;

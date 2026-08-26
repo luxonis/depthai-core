@@ -785,7 +785,7 @@ void ImageFilters::run() {
 
     // A helper function to update an existing pipeline
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto updateExistingFilterPipeline = [&filters, &logger](const ImageFiltersConfig& config) {
         for(size_t i = 0; i < config.filterIndices.size(); i++) {
             const auto& index = config.filterIndices[i];
@@ -958,7 +958,7 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
 
 void ToFDepthConfidenceFilter::run() {
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto confidenceThreshold = getProperties().initialConfig.confidenceThreshold;
 
     std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;

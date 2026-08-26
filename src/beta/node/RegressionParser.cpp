@@ -166,7 +166,7 @@ bool RegressionParser::runOnHost() const {
 
 void RegressionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.

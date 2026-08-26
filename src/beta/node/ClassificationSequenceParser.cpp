@@ -207,7 +207,7 @@ bool ClassificationSequenceParser::runOnHost() const {
 
 void ClassificationSequenceParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto config = getProperties().initialConfig;
     DAI_CHECK(config.validate(), "ClassificationSequenceParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();

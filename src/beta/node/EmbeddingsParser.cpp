@@ -117,7 +117,7 @@ bool EmbeddingsParser::runOnHost() const {
 
 void EmbeddingsParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     while(mainLoop()) {
         auto tAbsoluteBeginning = std::chrono::steady_clock::now();

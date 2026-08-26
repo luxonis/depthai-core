@@ -24,7 +24,7 @@ bool BenchmarkOut::runOnHost() const {
 void BenchmarkOut::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     std::shared_ptr<ADatatype> inMessage = nullptr;
     {
         auto blockEvent = this->inputBlockEvent();

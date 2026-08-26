@@ -555,7 +555,7 @@ bool AutoCalibration::validateIncomingData() {
 }
 
 void AutoCalibration::run() {
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     logger->info("AutoCalibration started to work!");
     if(!validateIncomingData()) {
         return;

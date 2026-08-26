@@ -212,7 +212,7 @@ bool KeypointParser::runOnHost() const {
 
 void KeypointParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     DAI_CHECK(properties.nKeypoints.has_value(), "Number of keypoints must be specified!");
 

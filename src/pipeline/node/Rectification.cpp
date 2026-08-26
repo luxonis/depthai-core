@@ -108,7 +108,7 @@ dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& e
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
-    logger->info("{} running on {}.", this->getName(), runOnHost() ? "host" : "device");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     if(runOnHost()) {
         auto device = getParentPipeline().getDefaultDevice();
         if(device && device->getPlatform() != Platform::RVC4) {
