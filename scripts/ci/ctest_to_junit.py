@@ -204,8 +204,8 @@ def write_junit(
             skipped="0",
             time="0",
             labels=description['labels'],
-            DEPTHAI_PLATFORM=descriptions['DEPTHAI_PLATFORM'],
-            DEPTHAI_PROTOCOL=descriptions['DEPTHAI_PROTOCOL']
+            DEPTHAI_PLATFORM=description['DEPTHAI_PLATFORM'],
+            DEPTHAI_PROTOCOL=description['DEPTHAI_PROTOCOL']
         )
 
         props = ET.SubElement(suite, "properties")
