@@ -23,8 +23,8 @@ namespace node {
  * @brief Stitching node. Combines N time-synced image streams into a single stitched image.
  *
  * The node runs on the host by default and can run on an RVC4 device when selected with `setRunOnHost(false)`. Host
- * execution requires depthai-core OpenCV support. Inputs are fixed at build() time and synced by an internal host Sync
- * subnode, so the sources may come from different devices.
+ * execution requires depthai-core OpenCV support. Inputs are fixed at build() time and synced by an internal Sync
+ * subnode that follows the node's execution side, so host-mode sources may come from different devices.
  * Two independent stitching modes are available:
  *
  *  - `Mode::PANORAMA` wraps OpenCV's cv::Stitcher and registers the images from their content, so no calibration is

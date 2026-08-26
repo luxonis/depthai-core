@@ -53,13 +53,16 @@ TEST_CASE("Stitching serializes as a device node", "[Stitching]") {
     REQUIRE(properties.minIncidenceAngle == 12.0f);
 }
 
-TEST_CASE("Stitching runs on the host by default", "[Stitching]") {
+TEST_CASE("Stitching and its internal Sync follow host/device placement", "[Stitching]") {
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>();
 
     REQUIRE(stitching->runOnHost());
+    REQUIRE(stitching->sync->runOnHost());
     stitching->setRunOnHost(false);
     REQUIRE_FALSE(stitching->runOnHost());
+    REQUIRE_FALSE(stitching->sync->runOnHost());
     stitching->setRunOnHost(true);
     REQUIRE(stitching->runOnHost());
+    REQUIRE(stitching->sync->runOnHost());
 }

@@ -27,7 +27,7 @@ Stitching::~Stitching() = default;
 void Stitching::buildInternal() {
     initializeHostState();
     sync->out.link(inSync);
-    sync->setRunOnHost(true);
+    sync->setRunOnHost(runOnHostVar);
 }
 
 std::shared_ptr<Stitching> Stitching::build(size_t numInputs) {
@@ -78,6 +78,9 @@ void Stitching::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
 
 void Stitching::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
+    if(!configureMode) {
+        sync->setRunOnHost(runOnHost);
+    }
 }
 
 bool Stitching::runOnHost() const {
