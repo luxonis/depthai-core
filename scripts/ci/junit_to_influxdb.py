@@ -14,6 +14,7 @@ timeGlobal = datetime.datetime.now().isoformat()
 GITHUB_SHA = os.getenv('GITHUB_SHA', 'null')
 GITHUB_REF = os.getenv('GITHUB_REF', 'null')
 GITHUB_RUN_ID = os.getenv('GITHUB_RUN_ID', 'null')
+global workflowGlobal
 workflowGlobal = "null"
 
 client = influxdb_client.InfluxDBClient(
@@ -27,7 +28,7 @@ write_api = client.write_api(write_options=SYNCHRONOUS)
 def getPrevFailures(
     
 ):
-    return ['aaa']
+    return []
 
 def writeTestsuite(
     context: str,
@@ -126,8 +127,8 @@ def parseTesstSummary():
         name = testsuite.get('name', '')
         [context, config] = name.split(' / ') if ' / ' in name else ['null', name]
         labels = testsuite.get('labels', '')
-        protocol = testsuite.get('DEPTHAI_PLATFORM', 'null')
-        platform = testsuite.get('DEPTHAI_PROTOCOL', 'null')
+        protocol = testsuite.get('DEPTHAI_PROTOCOL', 'null')
+        platform = testsuite.get('DEPTHAI_PLATFORM', 'null')
         print("Processing testsuite", name)
         props = testsuite.find('properties')
         if (props == None):
