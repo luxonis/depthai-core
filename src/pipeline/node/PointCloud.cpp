@@ -414,7 +414,7 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
 void PointCloud::Impl::setDistortion(CameraModel model, std::vector<float> coefficients) {
     const bool nextHasDistortion = hasNonZeroDistortion(coefficients);
     if(nextHasDistortion && model != CameraModel::Perspective && model != CameraModel::Fisheye) {
-        throw std::invalid_argument(std::string("PointCloud does not support distortion model: ") + toString(model));
+        throw std::invalid_argument(std::string("PointCloud does not support distortion model: ") + std::string(toString(model)));
     }
 
     const bool distortionStateChanged = hasDistortion != nextHasDistortion;
