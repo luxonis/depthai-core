@@ -545,7 +545,7 @@ set(TARGET_OPENCV_SOURCES
 
 if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_SUPPORT)
     list(APPEND TARGET_OPENCV_SOURCES
-        src/beta/node/host/Stitching.cpp
+        src/beta/utilities/Stitching/Stitching.cpp
         src/beta/utilities/Stitching/FixedPanoramaCompositor.cpp
         src/beta/utilities/Stitching/PlanarStitcher.cpp
     )
@@ -1095,6 +1095,9 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_STITCHING)
+    endif()
     # Add public dependency to depthai::core library
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
 

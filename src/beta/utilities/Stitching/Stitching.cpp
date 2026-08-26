@@ -1,23 +1,25 @@
 #include "depthai/beta/node/Stitching.hpp"
 
-#include <algorithm>
-#include <cmath>
-#include <limits>
-#include <mutex>
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/stitching.hpp>
-#include <optional>
-#include <stdexcept>
-#include <utility>
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_HAVE_OPENCV_STITCHING)
 
-#include "beta/utilities/Stitching/FixedPanoramaCompositor.hpp"
-#include "beta/utilities/Stitching/PlanarStitcher.hpp"
-#include "beta/utilities/Stitching/StitchingCompositing.hpp"
-#include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/pipeline/datatype/MessageGroup.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
-#include "utility/ErrorMacros.hpp"
+    #include <algorithm>
+    #include <cmath>
+    #include <limits>
+    #include <mutex>
+    #include <opencv2/core.hpp>
+    #include <opencv2/imgproc.hpp>
+    #include <opencv2/stitching.hpp>
+    #include <optional>
+    #include <stdexcept>
+    #include <utility>
+
+    #include "beta/utilities/Stitching/FixedPanoramaCompositor.hpp"
+    #include "beta/utilities/Stitching/PlanarStitcher.hpp"
+    #include "beta/utilities/Stitching/StitchingCompositing.hpp"
+    #include "depthai/pipeline/datatype/ImgFrame.hpp"
+    #include "depthai/pipeline/datatype/MessageGroup.hpp"
+    #include "pipeline/ThreadedNodeImpl.hpp"
+    #include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace beta {
@@ -442,3 +444,5 @@ void Stitching::run() {
 }  // namespace node
 }  // namespace beta
 }  // namespace dai
+
+#endif
