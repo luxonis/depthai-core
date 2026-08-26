@@ -50,7 +50,10 @@ inline bool RRinRR(const dai::RotatedRect& in, const dai::RotatedRect& out) {
 }
 
 dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransformation& from, const ImgTransformation& to) {
-    if(!from.getExtrinsics().hasCompatibleCoordinateSystem(to.getExtrinsics())) {
+    const auto fromExtrinsics = from.getExtrinsics();
+    const auto toExtrinsics = to.getExtrinsics();
+
+    if(!fromExtrinsics.hasCompatibleCoordinateSystem(toExtrinsics)) {
         throw std::runtime_error("Cannot remap ImgTransformations expressed relative to different target coordinate systems.");
     }
     if(from.isEqualTransformation(to)) {
@@ -60,8 +63,8 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
     std::array<float, 3> normalizedUndistortedRay = pixelToRay(sourcePt, from);
 
     std::array<std::array<float, 3>, 3> rotationMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-    if(from.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO && to.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO) {
-        const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
+    if(fromExtrinsics.toCameraSocket != dai::CameraBoardSocket::AUTO && toExtrinsics.toCameraSocket != dai::CameraBoardSocket::AUTO) {
+        const std::array<std::array<float, 4>, 4> extriniscTransformation = fromExtrinsics.getExtrinsicsTransformationTo(toExtrinsics);
         rotationMatrix = matrix::getRotationMatrixFromProjection4x4(extriniscTransformation);
     }
 
