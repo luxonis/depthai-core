@@ -205,6 +205,8 @@ jobs:
       with:
         pattern: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-*
         path: ctest-logs
+    - name: Install reporter dependencies
+      run: python3 -m pip install influxdb-client==1.50.0
     - name: Generate combined summary
       run: |
         if ! command -v python3 >/dev/null 2>&1; then
