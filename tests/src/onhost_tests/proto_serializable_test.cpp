@@ -238,6 +238,16 @@ TEST_CASE("ProtoSerializable preserves explicit file extensions", "[ProtoSeriali
     requireImgFrame(restored, source);
 }
 
+TEST_CASE("ProtoSerializable rejects paths without a valid filename", "[ProtoSerializable][Paths]") {
+    ScopedTempDir tempDir("depthai_proto_invalid_paths");
+    const auto source = makeImgFrame(14);
+
+    REQUIRE_THROWS_AS(source.save(fs::path{}), std::invalid_argument);
+    REQUIRE_THROWS_AS(source.save(tempDir.get() / ""), std::invalid_argument);
+    REQUIRE_THROWS_AS(source.save(tempDir.get() / "."), std::invalid_argument);
+    REQUIRE_THROWS_AS(source.save(tempDir.get() / ".."), std::invalid_argument);
+}
+
 TEST_CASE("ProtoSerializable persists a schema envelope", "[ProtoSerializable][Envelope]") {
     ScopedTempDir tempDir("depthai_proto_envelope");
     const auto path = tempDir.get() / "img_frame";

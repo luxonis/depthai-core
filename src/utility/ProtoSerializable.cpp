@@ -5,6 +5,7 @@
 #endif
 
 #include <fstream>
+#include <stdexcept>
 
 namespace dai {
 
@@ -21,6 +22,13 @@ std::filesystem::path resolveDataPath(const std::filesystem::path& path) {
     auto resolved = path;
     resolved += ".dai";
     return resolved;
+}
+
+void validateFilename(const std::filesystem::path& path) {
+    const auto filename = path.filename();
+    if(filename.empty() || filename == "." || filename == "..") {
+        throw std::invalid_argument("Path must contain a valid filename: " + path.string());
+    }
 }
 
 void writeMsgBinaryFile(const std::filesystem::path& path, const proto::common::ProtoSerializableMessage& message) {
@@ -49,6 +57,8 @@ proto::common::ProtoSerializableMessage readMsgBinaryFile(const std::filesystem:
 }  // namespace
 
 void ProtoSerializable::save(const std::filesystem::path& path, bool metadataOnly) const {
+    validateFilename(path);
+
     proto::common::ProtoSerializableMessage message;
     message.set_schema_name(serializeSchema().schemaName);
     message.set_metadata_only(metadataOnly);
