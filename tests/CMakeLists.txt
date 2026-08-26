@@ -425,6 +425,7 @@ endfunction()
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
 target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
 target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+target_compile_definitions(test_wrapper PRIVATE DEVICE_SEARCH_TIMEOUT_SECONDS=${DEPTHAI_TEST_DEVICE_SEARCH_TIMEOUT})
 
 add_executable(telemetry_test_child src/ondevice_tests/telemetry_test_child.cpp)
 add_default_flags(telemetry_test_child LEAN)

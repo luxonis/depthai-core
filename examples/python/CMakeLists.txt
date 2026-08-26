@@ -16,6 +16,7 @@ set(TARGET_NAME "depthai")
 
 # Regexes for example test failure
 set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
+set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
 set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
 
 # Add a target to install_requirements (added to ALL)
@@ -92,6 +93,8 @@ function(add_python_example example_name python_script_path)
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION ${STRICT_EXAMPLE_TEST_FAIL_REGEX})
+
+        set_tests_properties (${example_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX}")
 
     endif()
 
