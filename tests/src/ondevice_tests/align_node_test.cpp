@@ -1,7 +1,10 @@
+#include <algorithm>
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <thread>
@@ -46,6 +49,23 @@ dai::ImgTransformation makeTransform(size_t width, size_t height, bool distorted
         transform.addScale(static_cast<float>(width) / static_cast<float>(kSourceWidth), static_cast<float>(height) / static_cast<float>(kSourceHeight));
     }
     return transform;
+}
+
+dai::ImgTransformation makeTransformNoExtrinsics(size_t width, size_t height) {
+    dai::ImgTransformation transform(kSourceWidth, kSourceHeight, makeIntrinsics(kSourceWidth, kSourceHeight), dai::CameraModel::Perspective, vector<float>{});
+    if(width != kSourceWidth || height != kSourceHeight) {
+        transform.addScale(static_cast<float>(width) / static_cast<float>(kSourceWidth), static_cast<float>(height) / static_cast<float>(kSourceHeight));
+    }
+    return transform;
+}
+
+dai::ImgTransformation makeTransformWithTranslation(float translationXMillimeters) {
+    return {kSourceWidth,
+            kSourceHeight,
+            makeIntrinsics(kSourceWidth, kSourceHeight),
+            dai::CameraModel::Perspective,
+            vector<float>{},
+            makeExtrinsics(translationXMillimeters)};
 }
 
 dai::ImgTransformation expectedAlignedTransform(const dai::ImgTransformation& alignToTransform) {
@@ -251,10 +271,15 @@ struct AlignmentResult {
 };
 
 template <typename InputT, typename AlignToT>
-AlignmentResult<InputT> runGenericAlignmentOnce(const shared_ptr<InputT>& inputMsg, const shared_ptr<AlignToT>& alignToMsg) {
+AlignmentResult<InputT> runGenericAlignmentOnce(const shared_ptr<InputT>& inputMsg,
+                                                const shared_ptr<AlignToT>& alignToMsg,
+                                                const std::function<void(dai::node::Align&)>& configure = {}) {
     dai::Pipeline pipeline(false);
     auto align = pipeline.create<dai::node::Align>();
     align->setRunOnHost(true);
+    if(configure) {
+        configure(*align);
+    }
 
     auto inputQueue = align->input.createInputQueue();
     auto alignToQueue = align->inputAlignTo.createInputQueue();
@@ -332,6 +357,49 @@ void requireMessageMetadata(const dai::Tracklets& expectedInput, const dai::Trac
     REQUIRE(actual.unit == expectedInput.unit);
     REQUIRE(actual.tracklets.size() == expectedInput.tracklets.size());
 }
+
+shared_ptr<dai::ImgFrame> createUniformDepthFrame(const dai::ImgTransformation& transform, uint16_t depthMillimeters, int64_t sequenceNum) {
+    auto msg = make_shared<dai::ImgFrame>();
+    const auto [sourceWidth, sourceHeight] = transform.getSourceSize();
+    const auto [width, height] = transform.getSize();
+
+    msg->setSourceSize(static_cast<unsigned int>(sourceWidth), static_cast<unsigned int>(sourceHeight));
+    msg->setSize(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
+    msg->setType(dai::ImgFrame::Type::RAW16);
+    vector<uint8_t> data(width * height * sizeof(uint16_t));
+    auto* pixels = reinterpret_cast<uint16_t*>(data.data());
+    fill(pixels, pixels + width * height, depthMillimeters);
+    msg->setData(std::move(data));
+    msg->setInstanceNum(static_cast<unsigned int>(700 + sequenceNum));
+    setCommonMetadata(*msg, sequenceNum);
+    msg->setTransformation(transform);
+
+    REQUIRE(msg->validateTransformations());
+    return msg;
+}
+
+const uint16_t* depthRow(const dai::ImgFrame& frame, size_t row) {
+    return reinterpret_cast<const uint16_t*>(frame.getData().data()) + row * frame.getWidth();
+}
+
+// Custom transformable message, mirroring what Python users implement by subclassing dai.TransformableBuffer.
+class TestLineMessage : public dai::TransformableBuffer {
+   public:
+    dai::Point2f startPoint;
+    dai::Point2f endPoint;
+
+    std::shared_ptr<dai::TransformableBuffer> transformTo(const dai::ImgTransformation& target) const override {
+        auto source = getTransformation();
+        if(!source.has_value()) {
+            throw std::runtime_error("Source transformation is not set");
+        }
+        auto out = std::make_shared<TestLineMessage>();
+        out->startPoint = source->remapPointTo(target, startPoint);
+        out->endPoint = source->remapPointTo(target, endPoint);
+        out->setTransformation(target);
+        return out;
+    }
+};
 
 template <typename InputT, typename AlignToT>
 void runGenericMetadataCase() {
@@ -435,4 +503,121 @@ TEST_CASE("Test Align generic path refreshes rectification metadata when ImgTran
 
     pipeline.stop();
     pipeline.wait();
+}
+
+TEST_CASE("Test Align aligns metadata messages without calibrated extrinsics") {
+    const auto inputTransform = makeTransformNoExtrinsics(kSourceWidth, kSourceHeight);
+    const auto alignToTransform = makeTransformNoExtrinsics(kTargetWidth, kTargetHeight);
+
+    SECTION("AprilTags -> ImgFrame") {
+        auto inputMsg = createSampleMessage<dai::AprilTags>(inputTransform, 11);
+        auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
+        auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
+
+        requireMessageMetadata(*inputMsg, *result.aligned, expectedAlignedTransform(alignToTransform));
+        requireMessageMetadata(*inputMsg, *result.passthrough, inputTransform);
+    }
+}
+
+TEST_CASE("Test Align transforms custom TransformableBuffer messages") {
+    const auto inputTransform = makeTransformNoExtrinsics(kSourceWidth, kSourceHeight);
+    const auto alignToTransform = makeTransformNoExtrinsics(kTargetWidth, kTargetHeight);
+
+    auto line = make_shared<TestLineMessage>();
+    line->setTransformation(inputTransform);
+    line->startPoint = dai::Point2f(10.0F, 12.0F);
+    line->endPoint = dai::Point2f(40.0F, 30.0F);
+
+    auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
+    auto result = runGenericAlignmentOnce(line, alignToMsg);
+
+    REQUIRE(result.aligned != nullptr);
+    const auto expectedStart = inputTransform.remapPointTo(alignToTransform, line->startPoint);
+    const auto expectedEnd = inputTransform.remapPointTo(alignToTransform, line->endPoint);
+    REQUIRE(result.aligned->startPoint.x == expectedStart.x);
+    REQUIRE(result.aligned->startPoint.y == expectedStart.y);
+    REQUIRE(result.aligned->endPoint.x == expectedEnd.x);
+    REQUIRE(result.aligned->endPoint.y == expectedEnd.y);
+    REQUIRE(result.aligned->getTransformation().has_value());
+    requireTransformEqual(alignToTransform, *result.aligned->getTransformation());
+}
+
+TEST_CASE("Test Align host path pixel content") {
+    SECTION("identical geometry keeps GRAY8 pixels identical") {
+        const auto transform = makeTransformWithTranslation(0.0F);
+        auto inputMsg = createSampleMessage<dai::ImgFrame>(transform, 11);
+        auto alignToMsg = createSampleMessage<dai::ImgFrame>(transform, 27);
+        auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
+
+        const auto inputData = inputMsg->getData();
+        const auto alignedData = result.aligned->getData();
+        REQUIRE(alignedData.size() == inputData.size());
+        REQUIRE(std::equal(alignedData.begin(), alignedData.end(), inputData.begin()));
+    }
+
+    SECTION("pure horizontal baseline keeps GRAY8 pixels in place") {
+        const auto inputTransform = makeTransformWithTranslation(75.0F);
+        const auto alignToTransform = makeTransformWithTranslation(0.0F);
+        auto inputMsg = createSampleMessage<dai::ImgFrame>(inputTransform, 11);
+        auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
+        auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
+
+        const auto inputData = inputMsg->getData();
+        const auto alignedData = result.aligned->getData();
+        REQUIRE(alignedData.size() == inputData.size());
+        REQUIRE(std::equal(alignedData.begin(), alignedData.end(), inputData.begin()));
+    }
+}
+
+TEST_CASE("Test Align host path shifts RAW16 depth by disparity") {
+    const auto inputTransform = makeTransformWithTranslation(75.0F);
+    const auto alignToTransform = makeTransformWithTranslation(0.0F);
+    constexpr uint16_t kDepthMillimeters = 1000;
+    // Expected disparity = translationX * fx / depth = 75 * 150 / 1000 mm -> 11 pixels
+    constexpr int kExpectedShift = 11;
+
+    auto inputMsg = createUniformDepthFrame(inputTransform, kDepthMillimeters, 11);
+    auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
+
+    SECTION("per-pixel depth shift") {
+        auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
+
+        const auto* row = depthRow(*result.aligned, kSourceHeight / 2);
+        REQUIRE(row[2] == 0);
+        REQUIRE(row[kExpectedShift - 2] == 0);
+        REQUIRE(row[kExpectedShift + 2] == kDepthMillimeters);
+        REQUIRE(row[kSourceWidth / 2] == kDepthMillimeters);
+
+        const auto* passthroughRow = depthRow(*result.passthrough, kSourceHeight / 2);
+        REQUIRE(passthroughRow[2] == kDepthMillimeters);
+    }
+
+    SECTION("static depth plane shift") {
+        auto result = runGenericAlignmentOnce(inputMsg, alignToMsg, [](dai::node::Align& align) { align.initialConfig->staticDepthPlane = kDepthMillimeters; });
+
+        const auto* row = depthRow(*result.aligned, kSourceHeight / 2);
+        REQUIRE(row[2] == 0);
+        REQUIRE(row[kExpectedShift - 2] == 0);
+        REQUIRE(row[kExpectedShift + 2] == kDepthMillimeters);
+        REQUIRE(row[kSourceWidth / 2] == kDepthMillimeters);
+    }
+}
+
+TEST_CASE("Test Align setOutputSize overrides the aligned output size") {
+    const auto inputTransform = makeTransform(kSourceWidth, kSourceHeight, false);
+    const auto alignToTransform = makeTransform(kTargetWidth, kTargetHeight, false);
+
+    auto inputMsg = createSampleMessage<dai::SegmentationMask>(inputTransform, 11);
+    auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
+
+    auto result = runGenericAlignmentOnce(inputMsg, alignToMsg, [](dai::node::Align& align) {
+        align.setOutputSize(static_cast<int>(kUpdatedTargetWidth), static_cast<int>(kUpdatedTargetHeight));
+    });
+
+    REQUIRE(result.aligned->getWidth() == kUpdatedTargetWidth);
+    REQUIRE(result.aligned->getHeight() == kUpdatedTargetHeight);
+    REQUIRE(result.aligned->getMaskData().size() == kUpdatedTargetWidth * kUpdatedTargetHeight);
+    const auto [transformWidth, transformHeight] = messageTransformation(*result.aligned).getSize();
+    REQUIRE(transformWidth == kUpdatedTargetWidth);
+    REQUIRE(transformHeight == kUpdatedTargetHeight);
 }

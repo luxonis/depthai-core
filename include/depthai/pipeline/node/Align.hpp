@@ -1,13 +1,11 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai/properties/ImageAlignProperties.hpp>
+#include <depthai/properties/AlignProperties.hpp>
 
-#include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
+#include "depthai/pipeline/datatype/AlignConfig.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
 
 namespace dai {
@@ -16,7 +14,7 @@ namespace node {
 /**
  * @brief Align node. Aligns ImgFrame and Transformable messages using ImgTransformation metadata.
  */
-class Align : public DeviceNodeCRTP<DeviceNode, Align, ImageAlignProperties>, public HostRunnable {
+class Align : public DeviceNodeCRTP<DeviceNode, Align, AlignProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "Align";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -28,13 +26,13 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, ImageAlignProperties>, pu
     /**
      * Initial config to use when aligning messages.
      */
-    std::shared_ptr<ImageAlignConfig> initialConfig = std::make_shared<ImageAlignConfig>();
+    std::shared_ptr<AlignConfig> initialConfig = std::make_shared<AlignConfig>();
 
     /**
      * Input message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImageAlignConfig, false}}}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::AlignConfig, false}}}};
 
     /**
      * Input message to be aligned. Can be either ImgFrame or any message that implements Transformable interface.
@@ -65,16 +63,6 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, ImageAlignProperties>, pu
     Align& setOutputSize(int alignWidth, int alignHeight);
 
     /**
-     * Specify interpolation method to use when resizing
-     */
-    Align& setInterpolation(Interpolation interp);
-
-    /**
-     * Specify number of shaves to use for this node
-     */
-    Align& setNumShaves(int numShaves);
-
-    /**
      * Specify number of frames in the pool
      */
     Align& setNumFramesPool(int numFramesPool);
@@ -92,24 +80,10 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, ImageAlignProperties>, pu
 
     void run() override;
 
+    void buildStage1() override;
+
    private:
     bool runOnHostVar = false;
-
-#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-    struct ImgFrameRunState;
-
-    ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform);
-    static void updateShiftFactor(ImgFrameRunState& state, uint16_t staticDepthPlane);
-    ImgTransformation extractTransformationFromBuffer(const std::shared_ptr<Buffer>& buffer, DatatypeEnum datatype);
-
-    std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame inputImg, const ImgFrameRunState& state, std::array<uint8_t, 3> bgColor = {0, 0, 0});
-
-    std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>& inputMsg,
-                                                      DatatypeEnum inputType,
-                                                      const ImgTransformation& targetTransform,
-                                                      const ImgFrameRunState& runState,
-                                                      bool& warnedAboutDistortion);
-#endif
 };
 
 }  // namespace node

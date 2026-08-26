@@ -798,6 +798,10 @@ dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
 dai_set_test_labels(align_node_test ondevice rvc2_all rvc4 ci)
 
+# Align device execution test (device-side Align is only available on RVC4)
+dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)
+dai_set_test_labels(align_node_device_test ondevice rvc4 ci)
+
 # Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
 dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4rgb ci)

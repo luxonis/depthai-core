@@ -40,6 +40,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
 void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
+void bind_alignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
 void bind_mapdata(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
@@ -92,6 +93,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pipelinestate);
     callstack.push_front(bind_transformdata);
     callstack.push_front(bind_imagealignconfig);
+    callstack.push_front(bind_alignconfig);
     callstack.push_front(bind_imageannotations);
     callstack.push_front(bind_rgbddata);
     callstack.push_front(bind_mapdata);
@@ -159,6 +161,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
+        .value("AlignConfig", DatatypeEnum::AlignConfig)
         .value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
         .value("MapData", DatatypeEnum::MapData)
         .value("RGBDData", DatatypeEnum::RGBDData)

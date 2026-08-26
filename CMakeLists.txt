@@ -356,6 +356,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageFiltersConfig.cpp
     src/pipeline/datatype/ImageAlignConfig.cpp
+    src/pipeline/datatype/AlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetectionsT.cpp
