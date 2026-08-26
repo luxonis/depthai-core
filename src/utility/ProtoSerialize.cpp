@@ -24,14 +24,17 @@
     #define DEPTHAI_PROTO_IMPL(daiMsg, protoMsg)                                             \
         template <>                                                                          \
         ProtoSerializable::SchemaPair getProtoSchema<daiMsg>() {                             \
-            protoMsg protoMessage;                                                           \
-            const auto* descriptor = protoMessage.GetDescriptor();                           \
-            if(descriptor == nullptr) {                                                      \
-                throw std::runtime_error("Failed to get protobuf descriptor");               \
-            }                                                                                \
-            ProtoSerializable::SchemaPair returnPair;                                        \
-            returnPair.schemaName = descriptor->full_name();                                 \
-            returnPair.schema = serializeFdSet(descriptor);                                  \
+            static const ProtoSerializable::SchemaPair returnPair = [] {                     \
+                protoMsg protoMessage;                                                       \
+                const auto* descriptor = protoMessage.GetDescriptor();                       \
+                if(descriptor == nullptr) {                                                  \
+                    throw std::runtime_error("Failed to get protobuf descriptor");           \
+                }                                                                            \
+                ProtoSerializable::SchemaPair schemaPair;                                    \
+                schemaPair.schemaName = descriptor->full_name();                             \
+                schemaPair.schema = serializeFdSet(descriptor);                              \
+                return schemaPair;                                                           \
+            }();                                                                             \
             return returnPair;                                                               \
         }                                                                                    \
         void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes) {  \
