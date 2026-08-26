@@ -4,7 +4,6 @@
 
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Memory.hpp"
-#include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 
 namespace dai {

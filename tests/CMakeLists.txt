@@ -720,6 +720,15 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # ProtoSerializable save/load test
+    dai_add_test(proto_serializable_test src/onhost_tests/proto_serializable_test.cpp)
+    # The test directly uses generated protobuf message types.  Keep protobuf
+    # private to depthai::core, but link this consumer to the generated messages.
+    target_link_libraries(proto_serializable_test PRIVATE messages)
+    dai_set_test_labels(proto_serializable_test ci)
+endif()
+
 if(DEPTHAI_BUILD_BETA)
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
@@ -901,6 +910,11 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
     dai_set_test_labels(replay_test onhost ci)
     target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
+    target_include_directories(replay_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include/depthai)
+    if(DEPTHAI_ENABLE_PROTOBUF)
+        # The RGBD replay case directly instantiates a generated protobuf message.
+        target_link_libraries(replay_test PRIVATE messages)
+    endif()
 endif()
 
 # Camera tests
