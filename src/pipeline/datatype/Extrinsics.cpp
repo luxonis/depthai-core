@@ -124,10 +124,10 @@ bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const
     return true;
 }
 
-bool Extrinsics::hasCompatibleCoordinateSystem(const Extrinsics& other) const {
-    const bool differentKnownDevices = !toDeviceId.empty() && !other.toDeviceId.empty() && toDeviceId != other.toDeviceId;
+bool Extrinsics::hasCompatibleCoordinateSystem(const Extrinsics& to) const {
+    const bool differentKnownDevices = !toDeviceId.empty() && !to.toDeviceId.empty() && toDeviceId != to.toDeviceId;
     const bool differentKnownSockets =
-        toCameraSocket != CameraBoardSocket::AUTO && other.toCameraSocket != CameraBoardSocket::AUTO && toCameraSocket != other.toCameraSocket;
+        toCameraSocket != CameraBoardSocket::AUTO && to.toCameraSocket != CameraBoardSocket::AUTO && toCameraSocket != to.toCameraSocket;
     return !differentKnownDevices && !differentKnownSockets;
 }
 

@@ -150,10 +150,10 @@ struct Extrinsics {
     /**
      * Check whether these extrinsics can be expressed relative to the same target coordinate system as another Extrinsics object.
      * Unknown device IDs and AUTO camera sockets are treated as compatible for backwards compatibility.
-     * @param other The other Extrinsics object to compare with
+     * @param to The target Extrinsics object to compare with
      * @return true if no known part of the target coordinate system differs, false otherwise
      */
-    bool hasCompatibleCoordinateSystem(const Extrinsics& other) const;
+    bool hasCompatibleCoordinateSystem(const Extrinsics& to) const;
 
     /**
      * Get the extrinsic transformation matrix from this Extrinsics to the target Extrinsics.
