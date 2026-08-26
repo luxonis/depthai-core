@@ -1,7 +1,7 @@
 #include "depthai/utility/ProtoSerializable.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-#include "depthai/schemas/common.pb.h"
+    #include "depthai/schemas/common.pb.h"
 #endif
 
 #include <fstream>
@@ -64,7 +64,8 @@ void ProtoSerializable::load(const std::filesystem::path& path) {
     const auto message = readMsgBinaryFile(resolveDataPath(path));
     const auto expectedSchemaName = serializeSchema().schemaName;
     if(message.schema_name() != expectedSchemaName) {
-        throw std::runtime_error("Schema mismatch when reading file: " + path.string() + ". Expected: " + expectedSchemaName + ", got: " + message.schema_name());
+        throw std::runtime_error("Schema mismatch when reading file: " + path.string() + ". Expected: " + expectedSchemaName
+                                 + ", got: " + message.schema_name());
     }
 
     const auto& serializedMessage = message.proto_message();

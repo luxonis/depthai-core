@@ -1,8 +1,9 @@
+#include <depthai/schemas/common.pb.h>
+
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <depthai/depthai.hpp>
 #include <depthai/pipeline/datatype/ImgAnnotations.hpp>
-#include <depthai/schemas/common.pb.h>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
