@@ -4,8 +4,8 @@ import cv2
 import depthai as dai
 
 FPS = 30.0
-SourceSize = (640, 640)
-AlignToSize = (1280, 720)
+SOURCE_SIZE = (640, 640)
+ALIGN_TO_SIZE = (1280, 720)
 
 class Line(dai.TransformableBuffer):
     def __init__(self):
@@ -35,9 +35,9 @@ def drawLine(frame, line: Line, color, label: str) -> None:
     cv2.putText(frame, label, (start[0] + 12, max(24, start[1] - 12)), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color)
 
 
-def makeLine(SourceFrame: dai.ImgFrame) -> Line:
+def makeLine(sourceFrame: dai.ImgFrame) -> Line:
     line = Line()
-    line.setTransformation(SourceFrame.getTransformation())
+    line.setTransformation(sourceFrame.getTransformation())
     line.startPoint = dai.Point2f(110.0, 150.0)
     line.endPoint = dai.Point2f(520.0, 430.0)
     return line
@@ -47,8 +47,8 @@ if __name__ == "__main__":
     pipeline = dai.Pipeline()
     camera = pipeline.create(dai.node.Camera).build(boardSocket=dai.CameraBoardSocket.CAM_A, sensorFps=FPS)
 
-    sourceOutput = camera.requestOutput(size=SourceSize, fps=FPS, resizeMode=dai.ImgResizeMode.LETTERBOX, enableUndistortion=False)
-    alignToOutput = camera.requestOutput(size=AlignToSize, fps=FPS, resizeMode=dai.ImgResizeMode.STRETCH, enableUndistortion=True)
+    sourceOutput = camera.requestOutput(size=SOURCE_SIZE, fps=FPS, resizeMode=dai.ImgResizeMode.LETTERBOX, enableUndistortion=False)
+    alignToOutput = camera.requestOutput(size=ALIGN_TO_SIZE, fps=FPS, resizeMode=dai.ImgResizeMode.STRETCH, enableUndistortion=True)
 
     align = pipeline.create(dai.node.Align)
     align.setRunOnHost(True) # for custom message, Align needs to run on host.
@@ -77,7 +77,7 @@ if __name__ == "__main__":
         drawLine(sourceFrame, sourceLine, (0, 255, 0), "source line")
         drawLine(alignToFrame, alignedLine, (0, 140, 255), "aligned line")
 
-        cv2.putText(sourceFrame, "source: CROP 640x640", (10, 28), cv2.FONT_HERSHEY_TRIPLEX, 0.6, (255, 255, 255))
+        cv2.putText(sourceFrame, "source: LETTERBOX 640x640", (10, 28), cv2.FONT_HERSHEY_TRIPLEX, 0.6, (255, 255, 255))
         cv2.putText(alignToFrame, "alignTo: STRETCH 1280x720", (10, 28), cv2.FONT_HERSHEY_TRIPLEX, 0.6, (255, 255, 255))
 
         cv2.imshow("Source output", sourceFrame)

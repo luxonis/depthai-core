@@ -9,7 +9,7 @@ void bind_align(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
     using namespace pybind11::literals;
 
-    auto align = ADD_NODE_DOC(Align, "Aligns ImgFrame and Transformable messages using ImgTransformation metadata.");
+    auto align = ADD_NODE(Align);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -24,18 +24,18 @@ void bind_align(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    align.def_readonly("initialConfig", &Align::initialConfig, "Initial config")
-        .def_readonly("inputConfig", &Align::inputConfig, "Input message with ability to modify parameters in runtime")
-        .def_readonly("input", &Align::input, "Input message to align")
-        .def_readonly("inputAlignTo", &Align::inputAlignTo, "Input message to align to")
-        .def_readonly("passthroughInput", &Align::passthroughInput, "Passthrough input message")
-        .def_readonly("outputAligned", &Align::outputAligned, "Aligned output message")
-        .def("setOutputSize", &Align::setOutputSize, py::arg("alignWidth"), py::arg("alignHeight"))
-        .def("setInterpolation", &Align::setInterpolation, py::arg("interp"))
-        .def("setNumShaves", &Align::setNumShaves, py::arg("numShaves"))
-        .def("setNumFramesPool", &Align::setNumFramesPool, py::arg("numFramesPool"))
-        .def("setRunOnHost", &Align::setRunOnHost, py::arg("runOnHost"))
-        .def("runOnHost", &Align::runOnHost);
+    align.def_readonly("initialConfig", &Align::initialConfig, DOC(dai, node, Align, initialConfig))
+        .def_readonly("inputConfig", &Align::inputConfig, DOC(dai, node, Align, inputConfig))
+        .def_readonly("input", &Align::input, DOC(dai, node, Align, input))
+        .def_readonly("inputAlignTo", &Align::inputAlignTo, DOC(dai, node, Align, inputAlignTo))
+        .def_readonly("passthroughInput", &Align::passthroughInput, DOC(dai, node, Align, passthroughInput))
+        .def_readonly("outputAligned", &Align::outputAligned, DOC(dai, node, Align, outputAligned))
+        .def("setOutputSize", &Align::setOutputSize, py::arg("alignWidth"), py::arg("alignHeight"), DOC(dai, node, Align, setOutputSize))
+        .def("setInterpolation", &Align::setInterpolation, py::arg("interp"), DOC(dai, node, Align, setInterpolation))
+        .def("setNumShaves", &Align::setNumShaves, py::arg("numShaves"), DOC(dai, node, Align, setNumShaves))
+        .def("setNumFramesPool", &Align::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, Align, setNumFramesPool))
+        .def("setRunOnHost", &Align::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Align, setRunOnHost))
+        .def("runOnHost", &Align::runOnHost, DOC(dai, node, Align, runOnHost));
 
     daiNodeModule.attr("Align").attr("Properties") = m.attr("ImageAlignProperties");
 }
