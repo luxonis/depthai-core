@@ -137,7 +137,7 @@ StereoPair requireFirstStereoPairForTest(const std::shared_ptr<Device>& device) 
     return pairs[0];
 }
 
-void requireDepthAutoBackend(const node::Depth& depth, Platform platform, bool autoUsesTof) {
+void requireDepthAutoBackend(const node::Depth& depth, Platform platform, bool hasTofSensor) {
     if(platform == Platform::RVC4) {
         switch(depth.getResolvedAlgorithm()) {
             case node::Depth::Algorithm::NEURAL:
@@ -155,7 +155,7 @@ void requireDepthAutoBackend(const node::Depth& depth, Platform platform, bool a
             default:
                 FAIL("Depth AUTO on RVC4 resolved to an unexpected backend.");
         }
-    } else if(platform == Platform::RVC2 && autoUsesTof) {
+    } else if(platform == Platform::RVC2 && hasTofSensor) {
         requireDepthSingleBackendChild(depth, "ToF");
     } else {
         requireDepthSingleBackendChild(depth, "StereoDepth");
@@ -377,7 +377,7 @@ void runUserCameraDepthTest(Pipeline& pipeline,
                             bool userPreviewStream) {
     PipelineStopGuard guard(pipeline);
     const auto platform = device->getPlatform();
-    const auto autoUsesTof = platform == Platform::RVC2 && deviceReportsTofSensor(device);
+    const auto hasTofSensor = deviceReportsTofSensor(device);
     auto setup = wireUserStereoCamerasAndDepth(pipeline, pair, depthRequestedFps, userPreviewStream);
 
     REQUIRE_FALSE(cameraInDepthSubtree(*setup.depth, setup.leftCam));
@@ -411,7 +411,7 @@ void runUserCameraDepthTest(Pipeline& pipeline,
         }
     }
 
-    requireDepthAutoBackend(*setup.depth, platform, autoUsesTof);
+    requireDepthAutoBackend(*setup.depth, platform, hasTofSensor);
 }
 
 }  // namespace
@@ -441,15 +441,15 @@ TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     const auto platform = device->getPlatform();
-    const auto autoUsesTof = platform == Platform::RVC2 && deviceReportsTofSensor(device);
-    if(!autoUsesTof) {
+    const auto hasTofSensor = deviceReportsTofSensor(device);
+    if(platform != Platform::RVC2 || !hasTofSensor) {
         (void)requireFirstStereoPairForTest(device);
     }
 
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 
-    requireDepthAutoBackend(*depth, platform, autoUsesTof);
+    requireDepthAutoBackend(*depth, platform, hasTofSensor);
 }
 
 TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
@@ -507,8 +507,9 @@ TEST_CASE("Depth: TOF requires connected ToF camera") {
 TEST_CASE("Depth: resolved algorithm + config can rebuild the same backend explicitly") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
-    const auto autoUsesTof = device->getPlatform() == Platform::RVC2 && deviceReportsTofSensor(device);
-    if(!autoUsesTof) {
+    const auto platform = device->getPlatform();
+    const auto hasTofSensor = deviceReportsTofSensor(device);
+    if(platform != Platform::RVC2 || !hasTofSensor) {
         (void)requireFirstStereoPairForTest(device);
     }
 
@@ -542,7 +543,7 @@ TEST_CASE("Depth: build reuses stereo cameras created before Depth node") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     const auto platform = device->getPlatform();
-    const auto autoUsesTof = platform == Platform::RVC2 && deviceReportsTofSensor(device);
+    const auto hasTofSensor = deviceReportsTofSensor(device);
     const auto pair = requireFirstStereoPairForTest(device);
 
     auto leftCam = pipeline.create<node::Camera>()->build(pair.left);
@@ -555,7 +556,7 @@ TEST_CASE("Depth: build reuses stereo cameras created before Depth node") {
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, rightCam));
     REQUIRE(countStereoCamerasInDepthSubtree(*depth, pair) == 0);
 
-    requireDepthAutoBackend(*depth, platform, autoUsesTof);
+    requireDepthAutoBackend(*depth, platform, hasTofSensor);
 }
 
 TEST_CASE("Depth: explicit NEURAL wires NeuralDepth when device supports it") {
@@ -635,7 +636,7 @@ TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline camera
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     const auto platform = device->getPlatform();
-    const auto autoUsesTof = platform == Platform::RVC2 && deviceReportsTofSensor(device);
+    const auto hasTofSensor = deviceReportsTofSensor(device);
     const auto pair = requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>();
@@ -648,7 +649,7 @@ TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline camera
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, rightCam));
     REQUIRE(countStereoCamerasInDepthSubtree(*depth, pair) == 0);
 
-    requireDepthAutoBackend(*depth, platform, autoUsesTof);
+    requireDepthAutoBackend(*depth, platform, hasTofSensor);
 }
 
 TEST_CASE("Depth: pipeline with SystemLogger and optional third camera still builds") {
