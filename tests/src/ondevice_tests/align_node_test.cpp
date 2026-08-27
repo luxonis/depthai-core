@@ -264,6 +264,35 @@ shared_ptr<dai::Tracklets> createSampleMessage<dai::Tracklets>(const dai::ImgTra
     return msg;
 }
 
+vector<uint8_t> makeYuvFrameData(size_t width, size_t height, uint8_t seed) {
+    vector<uint8_t> data = makeFrameData(width, height, seed);
+    data.resize(width * height * 3 / 2, 128);  // neutral chroma
+    return data;
+}
+
+// A YUV frame with an optional padded frame buffer layout, the way a camera delivers it.
+shared_ptr<dai::ImgFrame> createYuvSampleMessage(
+    const dai::ImgTransformation& transform, dai::ImgFrame::Type type, int64_t sequenceNum, size_t stride = 0, size_t planeHeight = 0) {
+    auto msg = make_shared<dai::ImgFrame>();
+    const auto [sourceWidth, sourceHeight] = transform.getSourceSize();
+    const auto [width, height] = transform.getSize();
+    if(stride == 0) stride = width;
+    if(planeHeight == 0) planeHeight = height;
+
+    msg->setSourceSize(static_cast<unsigned int>(sourceWidth), static_cast<unsigned int>(sourceHeight));
+    msg->setSize(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
+    msg->setType(type);
+    msg->setStride(static_cast<unsigned int>(stride));
+    msg->fb.p1Offset = 0;
+    msg->fb.p2Offset = static_cast<unsigned int>(stride * planeHeight);
+    msg->fb.p3Offset = static_cast<unsigned int>(stride * planeHeight * 5 / 4);
+    msg->setData(makeYuvFrameData(stride, planeHeight, static_cast<uint8_t>(sequenceNum)));
+    msg->setInstanceNum(static_cast<unsigned int>(700 + sequenceNum));
+    setCommonMetadata(*msg, sequenceNum);
+    msg->setTransformation(transform);
+    return msg;
+}
+
 template <typename InputT>
 struct AlignmentResult {
     shared_ptr<InputT> aligned;
@@ -567,6 +596,88 @@ TEST_CASE("Test Align host path pixel content") {
         REQUIRE(alignedData.size() == inputData.size());
         REQUIRE(std::equal(alignedData.begin(), alignedData.end(), inputData.begin()));
     }
+}
+
+TEST_CASE("Test Align rebuilds the frame buffer layout of 1.5 bytes per pixel frames") {
+    const auto inputTransform = makeTransform(kSourceWidth, kSourceHeight);
+    const auto alignToTransform = makeTransform(kTargetWidth, kTargetHeight);
+    auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
+
+    const auto type = GENERATE(dai::ImgFrame::Type::NV12, dai::ImgFrame::Type::YUV420p);
+
+    const auto requireTightlyPackedOutput = [&](const dai::ImgFrame& aligned) {
+        REQUIRE(aligned.getType() == type);
+        REQUIRE(aligned.getWidth() == kTargetWidth);
+        REQUIRE(aligned.getHeight() == kTargetHeight);
+        REQUIRE(aligned.getStride() == kTargetWidth);
+        REQUIRE(aligned.getPlaneHeight() == kTargetHeight);
+        REQUIRE(aligned.getData().size() == kTargetWidth * kTargetHeight * 3 / 2);
+    };
+
+    SECTION("tightly packed input") {
+        auto inputMsg = createYuvSampleMessage(inputTransform, type, 11);
+        auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
+
+        requireTightlyPackedOutput(*result.aligned);
+        requireCommonMetadata(*inputMsg, *result.aligned);
+        REQUIRE(result.aligned->getInstanceNum() == inputMsg->getInstanceNum());
+        REQUIRE_NOTHROW(result.aligned->getCvFrame());
+    }
+
+    SECTION("padded input keeps the padding out of the output") {
+        auto inputMsg = createYuvSampleMessage(inputTransform, type, 11, kSourceWidth + 32, kSourceHeight + 16);
+        auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
+
+        requireTightlyPackedOutput(*result.aligned);
+        REQUIRE_NOTHROW(result.aligned->getCvFrame());
+    }
+}
+
+TEST_CASE("Test Align resizes its buffers when the alignTo size or the input type changes") {
+    dai::Pipeline pipeline(false);
+    auto align = pipeline.create<dai::node::Align>();
+    align->setRunOnHost(true);
+
+    auto inputQueue = align->input.createInputQueue();
+    auto alignToQueue = align->inputAlignTo.createInputQueue();
+    auto alignedQueue = align->outputAligned.createOutputQueue();
+
+    pipeline.start();
+
+    const auto sendPair = [&](const shared_ptr<dai::ImgFrame>& inputMsg, size_t alignWidth, size_t alignHeight) {
+        inputQueue->send(inputMsg);
+        alignToQueue->send(createSampleMessage<dai::ImgFrame>(makeTransform(alignWidth, alignHeight), 27));
+        return getRequiredMessage<dai::ImgFrame>(alignedQueue);
+    };
+
+    const auto inputTransform = makeTransform(kSourceWidth, kSourceHeight);
+    const auto nv12Input = [&] { return createYuvSampleMessage(inputTransform, dai::ImgFrame::Type::NV12, 11); };
+
+    auto first = sendPair(nv12Input(), kTargetWidth, kTargetHeight);
+    REQUIRE(first->getData().size() == kTargetWidth * kTargetHeight * 3 / 2);
+
+    // Same frame type, larger alignTo. The rectification maps and every buffer follow the new size.
+    auto second = sendPair(nv12Input(), kUpdatedTargetWidth, kUpdatedTargetHeight);
+    REQUIRE(second->getWidth() == kUpdatedTargetWidth);
+    REQUIRE(second->getHeight() == kUpdatedTargetHeight);
+    REQUIRE(second->getStride() == kUpdatedTargetWidth);
+    REQUIRE(second->getPlaneHeight() == kUpdatedTargetHeight);
+    REQUIRE(second->getData().size() == kUpdatedTargetWidth * kUpdatedTargetHeight * 3 / 2);
+    REQUIRE_NOTHROW(second->getCvFrame());
+
+    // Same alignTo, an input type with a different byte size.
+    auto third = sendPair(createSampleMessage<dai::ImgFrame>(inputTransform, 11), kUpdatedTargetWidth, kUpdatedTargetHeight);
+    REQUIRE(third->getType() == dai::ImgFrame::Type::GRAY8);
+    REQUIRE(third->getStride() == kUpdatedTargetWidth);
+    REQUIRE(third->getData().size() == kUpdatedTargetWidth * kUpdatedTargetHeight);
+
+    // Back to the first alignTo size.
+    auto fourth = sendPair(nv12Input(), kTargetWidth, kTargetHeight);
+    REQUIRE(fourth->getData().size() == kTargetWidth * kTargetHeight * 3 / 2);
+    REQUIRE_NOTHROW(fourth->getCvFrame());
+
+    pipeline.stop();
+    pipeline.wait();
 }
 
 TEST_CASE("Test Align host path shifts RAW16 depth by disparity") {

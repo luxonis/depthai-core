@@ -164,7 +164,7 @@ std::vector<T> flatten(const std::vector<std::vector<T> >& orig) {
 }
 
 float alignFrameTypeBytesPerPixel(ImgFrame::Type type) {
-    if(type == ImgFrame::Type::YUV420p || type == ImgFrame::Type::NV12) {
+    if(type == ImgFrame::Type::YUV420p || type == ImgFrame::Type::NV12 || type == ImgFrame::Type::NV21) {
         return 1.5f;
     }
     if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) {
@@ -339,6 +339,33 @@ void remapYuv420(const cv::Mat& inputYuv420, cv::Mat& outputYuv420, const cv::Ma
     cv::cvtColor(remappedBgr, outputYuv420, cv::COLOR_BGR2YUV_I420);
 }
 
+std::shared_ptr<ImgFrame> makeRemapTarget(const ImgFrame& source, int width, int height, uint32_t dataSize) {
+    auto frame = std::make_shared<ImgFrame>();
+    frame->setData(std::vector<uint8_t>(dataSize));
+
+    frame->fb.type = source.fb.type;
+    frame->fb.width = static_cast<unsigned int>(width);
+    frame->fb.height = static_cast<unsigned int>(height);
+    frame->fb.bytesPP = static_cast<unsigned int>(ImgFrame::typeToBpp(source.fb.type));
+    frame->fb.stride = frame->fb.width * frame->fb.bytesPP;
+    frame->fb.p1Offset = 0;
+    frame->fb.p2Offset = 0;
+    frame->fb.p3Offset = 0;
+
+    frame->sourceFb = source.sourceFb;
+    frame->transformation = source.transformation;
+    frame->cam = source.cam;
+    frame->category = source.category;
+    frame->instanceNum = source.instanceNum;
+    frame->event = source.event;
+
+    frame->setBufferMetadataFrom(&source);
+    frame->setSize(width, height);
+    frame->setSequenceNum(source.getSequenceNum());
+    frame->setInstanceNum(source.instanceNum);
+    return frame;
+}
+
 std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunState& state, bool isSegmentationMask, std::array<uint8_t, 3> bgColorRgb) {
     const cv::Scalar bgColor(bgColorRgb[0], bgColorRgb[1], bgColorRgb[2]);
 
@@ -383,29 +410,18 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunSta
     };
 
     // warp1: undistort + rectify in the input camera frame
-    auto rectified = std::make_shared<ImgFrame>();
-    rectified->setData(std::vector<uint8_t>(frameSize));
-    rectified->setMetadata(inputImg);
-    rectified->fb.stride = rectified->fb.width * rectified->getBytesPerPixel();
+    auto rectified = makeRemapTarget(inputImg, width, height, frameSize);
     remapFrame(inputImg, *rectified, state.mapX1, state.mapY1);
 
     auto warp2Input = rectified;
     if(inputFrameType == ImgFrame::Type::RAW16 && state.staticDepthPlane == 0 && !state.degenerateStereoTransform) {
-        auto shifted = std::make_shared<ImgFrame>();
-        shifted->setData(std::vector<uint8_t>(frameSize));
-        shifted->setMetadata(inputImg);
-        shifted->fb.stride = shifted->fb.width * shifted->getBytesPerPixel();
+        auto shifted = makeRemapTarget(inputImg, width, height, frameSize);
         shiftDepthImg(*rectified, *shifted, state.inputIntrinsics, state.inputToAlignExtrinsics);
         warp2Input = shifted;
     }
 
     // warp2: rectify into the align camera frame
-    auto alignedImg = std::make_shared<ImgFrame>();
-    alignedImg->setData(std::vector<uint8_t>(outFrameSize));
-    alignedImg->setMetadata(inputImg);
-    alignedImg->setWidth(state.alignWidth);
-    alignedImg->setHeight(state.alignHeight);
-    alignedImg->fb.stride = alignedImg->fb.width * alignedImg->getBytesPerPixel();
+    auto alignedImg = makeRemapTarget(inputImg, state.alignWidth, state.alignHeight, outFrameSize);
     remapFrame(*warp2Input, *alignedImg, state.mapX2, state.mapY2);
 
     return alignedImg;
