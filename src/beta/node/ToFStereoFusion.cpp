@@ -24,7 +24,7 @@ void ToFStereoFusion::buildInternal() {
     neuralNetwork->out.link(nnDataInput);
     nnDataInput.setBlocking(false);
     neuralNetwork->setModelFromDeviceZoo(DeviceModelZoo::TOF_NEURAL_FUSION_672X804);
-    neuralNetwork->setBackendProperties({{"output_tensors", "logits_a,logits_u,logits_spec"}});
+    neuralNetwork->setBackendProperties({{"output_tensors", "logits_a,logits_spec"}});
     neuralDepthAlign->setRunOnHost(false);
 }
 
