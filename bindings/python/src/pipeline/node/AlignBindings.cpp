@@ -29,8 +29,7 @@ void bind_align(pybind11::module& m, void* pCallstack) {
     // Properties
     alignProperties.def_readwrite("initialConfig", &AlignProperties::initialConfig, DOC(dai, AlignProperties, initialConfig))
         .def_readwrite("numFramesPool", &AlignProperties::numFramesPool, DOC(dai, AlignProperties, numFramesPool))
-        .def_readwrite("alignWidth", &AlignProperties::alignWidth, DOC(dai, AlignProperties, alignWidth))
-        .def_readwrite("alignHeight", &AlignProperties::alignHeight, DOC(dai, AlignProperties, alignHeight));
+        ;
 
     // Node
     align.def_readonly("initialConfig", &Align::initialConfig, DOC(dai, node, Align, initialConfig))
@@ -39,7 +38,6 @@ void bind_align(pybind11::module& m, void* pCallstack) {
         .def_readonly("inputAlignTo", &Align::inputAlignTo, DOC(dai, node, Align, inputAlignTo))
         .def_readonly("passthroughInput", &Align::passthroughInput, DOC(dai, node, Align, passthroughInput))
         .def_readonly("outputAligned", &Align::outputAligned, DOC(dai, node, Align, outputAligned))
-        .def("setOutputSize", &Align::setOutputSize, py::arg("alignWidth"), py::arg("alignHeight"), DOC(dai, node, Align, setOutputSize))
         .def("setNumFramesPool", &Align::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, Align, setNumFramesPool))
         .def("setRunOnHost", &Align::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Align, setRunOnHost))
         .def("runOnHost", &Align::runOnHost, DOC(dai, node, Align, runOnHost));

@@ -36,12 +36,6 @@ AlignProperties& Align::getProperties() {
     return properties;
 }
 
-Align& Align::setOutputSize(int alignWidth, int alignHeight) {
-    properties.alignWidth = alignWidth;
-    properties.alignHeight = alignHeight;
-    return *this;
-}
-
 Align& Align::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
     return *this;
@@ -93,18 +87,6 @@ DatatypeEnum classifyInputDatatype(const std::shared_ptr<Buffer>& buffer) {
 bool isFrameLikeDatatype(DatatypeEnum datatype) {
     return datatype == DatatypeEnum::ImgFrame || datatype == DatatypeEnum::ImgDetections || datatype == DatatypeEnum::SpatialImgDetections
            || datatype == DatatypeEnum::SegmentationMask;
-}
-
-ImgTransformation adjustScale(ImgTransformation t, int w, int h) {
-    auto [currentW, currentH] = t.getSize();
-
-    if(static_cast<int>(currentW) != w || static_cast<int>(currentH) != h) {
-        float scaleX = static_cast<float>(w) / static_cast<float>(currentW);
-        float scaleY = static_cast<float>(h) / static_cast<float>(currentH);
-        t.addScale(scaleX, scaleY);
-        t.setSize(w, h);
-    }
-    return t;
 }
 
 template <typename Message>
@@ -638,13 +620,6 @@ void Align::run() {
     auto latestConfig = initialConfig;
     bool warnedAboutDistortion = false;
 
-    const auto adjustAlignToTransform = [&](ImgTransformation transform) {
-        if(properties.alignWidth > 0 && properties.alignHeight > 0) {
-            return adjustScale(std::move(transform), properties.alignWidth, properties.alignHeight);
-        }
-        return transform;
-    };
-
     ImgTransformation inputTransform;
     ImgTransformation alignToTransform;
     ImgFrameRunState runState;
@@ -675,7 +650,7 @@ void Align::run() {
         ImgTransformation newAlignToTransform = alignToTransform;
         if(alignToMsg) {
             const DatatypeEnum alignToDatatype = classifyInputDatatype(alignToMsg);
-            newAlignToTransform = adjustAlignToTransform(extractTransformationFromBuffer(alignToMsg, alignToDatatype, *logger));
+            newAlignToTransform = extractTransformationFromBuffer(alignToMsg, alignToDatatype, *logger);
         }
         const DatatypeEnum inputDatatype = classifyInputDatatype(inputMsg);
         ImgTransformation newInputTransform = extractTransformationFromBuffer(inputMsg, inputDatatype, *logger);

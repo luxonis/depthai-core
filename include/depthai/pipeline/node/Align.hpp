@@ -58,11 +58,6 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, AlignProperties>, public 
     Output passthroughInput{*this, {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
 
     /**
-     * Specify the output size of the aligned image
-     */
-    Align& setOutputSize(int alignWidth, int alignHeight);
-
-    /**
      * Specify number of frames in the pool
      */
     Align& setNumFramesPool(int numFramesPool);

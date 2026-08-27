@@ -714,21 +714,3 @@ TEST_CASE("Test Align host path shifts RAW16 depth by disparity") {
     }
 }
 
-TEST_CASE("Test Align setOutputSize overrides the aligned output size") {
-    const auto inputTransform = makeTransform(kSourceWidth, kSourceHeight, false);
-    const auto alignToTransform = makeTransform(kTargetWidth, kTargetHeight, false);
-
-    auto inputMsg = createSampleMessage<dai::SegmentationMask>(inputTransform, 11);
-    auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
-
-    auto result = runGenericAlignmentOnce(inputMsg, alignToMsg, [](dai::node::Align& align) {
-        align.setOutputSize(static_cast<int>(kUpdatedTargetWidth), static_cast<int>(kUpdatedTargetHeight));
-    });
-
-    REQUIRE(result.aligned->getWidth() == kUpdatedTargetWidth);
-    REQUIRE(result.aligned->getHeight() == kUpdatedTargetHeight);
-    REQUIRE(result.aligned->getMaskData().size() == kUpdatedTargetWidth * kUpdatedTargetHeight);
-    const auto [transformWidth, transformHeight] = messageTransformation(*result.aligned).getSize();
-    REQUIRE(transformWidth == kUpdatedTargetWidth);
-    REQUIRE(transformHeight == kUpdatedTargetHeight);
-}
