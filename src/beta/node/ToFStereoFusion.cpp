@@ -5,13 +5,19 @@
 
 namespace dai::beta::node {
 
-ToFStereoFusion::ToFStereoFusion(const std::shared_ptr<Device>& device) : DeviceNodeCRTP(device) {
+ToFStereoFusion::ToFStereoFusion(const std::shared_ptr<Device>& device)
+    : DeviceNodeCRTP(device), initialConfig(std::make_shared<ToFStereoFusionConfig>(properties.initialConfig)) {
     if(device && device->getPlatform() != Platform::RVC4) {
         throw std::runtime_error("ToFStereoFusion is only supported on RVC4 devices.");
     }
 }
 
 ToFStereoFusion::~ToFStereoFusion() = default;
+
+ToFStereoFusion::Properties& ToFStereoFusion::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
 
 void ToFStereoFusion::buildInternal() {
     if(getDevice() && getDevice()->getPlatform() != Platform::RVC4) {

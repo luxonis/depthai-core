@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/beta/properties/ToFStereoFusionProperties.hpp>
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
@@ -19,7 +20,7 @@ namespace dai::beta::node {
  *
  * @note This node is supported on RVC4 devices only. Creating it for an RVC2 device throws an exception.
  */
-class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, DeviceNodeGroupProperties> {
+class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFStereoFusionProperties> {
    public:
     using Input = Node::Input;
     using Output = Node::Output;
@@ -30,7 +31,8 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, Devic
     /** Creates a ToFStereoFusion node for the supplied device. */
     explicit ToFStereoFusion(const std::shared_ptr<Device>& device);
     /** Creates a ToFStereoFusion node from serialized properties. */
-    explicit ToFStereoFusion(std::unique_ptr<Properties> props) : DeviceNodeCRTP(std::move(props)) {}
+    explicit ToFStereoFusion(std::unique_ptr<Properties> props)
+        : DeviceNodeCRTP(std::move(props)), initialConfig(std::make_shared<ToFStereoFusionConfig>(properties.initialConfig)) {}
     ~ToFStereoFusion() override;
 
     /**
@@ -81,6 +83,7 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, Devic
     Output nnInput{*this, {"nnInput", DEFAULT_GROUP, {{{DatatypeEnum::NNData, false}}}}};
 
    private:
+    Properties& getProperties() override;
     void buildInternal() override;
 };
 
