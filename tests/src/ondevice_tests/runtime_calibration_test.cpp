@@ -180,6 +180,30 @@ TEST_CASE("Test runtime calibration") {
     }
 }
 
+TEST_CASE("Runtime calibration retains multi-device poses") {
+    dai::Device device;
+    auto eepromData = device.getCalibration().getEepromData();
+    dai::Extrinsics pose;
+    pose.rotationMatrix = makeIdentityRotation();
+    pose.translation = {10.0f, -2.5f, 3.0f};
+    pose.specTranslation = {11.0f, -3.0f, 4.0f};
+    pose.toCameraSocket = dai::CameraBoardSocket::CAM_A;
+    eepromData.devicesData["runtime-peer"][dai::CameraBoardSocket::CAM_B] = pose;
+
+    device.setCalibration(dai::CalibrationHandler(eepromData));
+    const auto readback = device.getCalibration().getEepromData();
+    const auto& restoredPose = readback.devicesData.at("runtime-peer").at(dai::CameraBoardSocket::CAM_B);
+
+    REQUIRE(restoredPose.toCameraSocket == dai::CameraBoardSocket::CAM_A);
+    REQUIRE(restoredPose.translation.x == Catch::Approx(10.0f));
+    REQUIRE(restoredPose.translation.y == Catch::Approx(-2.5f));
+    REQUIRE(restoredPose.translation.z == Catch::Approx(3.0f));
+    REQUIRE(restoredPose.specTranslation.x == Catch::Approx(11.0f));
+    REQUIRE(restoredPose.specTranslation.y == Catch::Approx(-3.0f));
+    REQUIRE(restoredPose.specTranslation.z == Catch::Approx(4.0f));
+    REQUIRE(restoredPose.rotationMatrix == pose.rotationMatrix);
+}
+
 TEST_CASE("Test device setCalibration before pipeline build") {
     dai::Pipeline p;
     auto camQ = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A)->requestOutput({640, 480})->createOutputQueue();
