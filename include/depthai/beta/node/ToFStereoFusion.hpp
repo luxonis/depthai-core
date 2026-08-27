@@ -57,10 +57,18 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
      */
     std::shared_ptr<ToFStereoFusion> build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right);
 
-   private:
+    /** Initial fusion configuration. Depth pixels below this confidence are returned as zero. */
+    std::shared_ptr<ToFStereoFusionConfig> initialConfig;
+
+   public:
+    /** Internal ToF pipeline; its depth output is available for downstream use. */
     Subnode<dai::node::ToF> tof{*this, "tof"};
+    /** Internal neural stereo-depth pipeline; its depth output is available for downstream use. */
     Subnode<dai::node::NeuralDepth> neuralDepth{*this, "neuralDepth"};
+    /** Internal alpha fusion network. */
     Subnode<dai::node::NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
+
+   private:
     Subnode<dai::node::ImageAlign> neuralDepthAlign{*this, "neuralDepthAlign"};
     Subnode<dai::node::Sync> sync{*this, "sync"};
 
