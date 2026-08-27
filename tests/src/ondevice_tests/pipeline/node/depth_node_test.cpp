@@ -210,8 +210,6 @@ constexpr float kDepthStereoFps = 15.0f;
 constexpr auto kStreamFrameTimeout = std::chrono::seconds(30);
 constexpr auto kDepthFrameTimeout = std::chrono::seconds(45);
 constexpr auto kFpsMeasureWindow = std::chrono::milliseconds(3000);
-/** StereoDepth output size on RVC2/RVC3 when user cameras are at 1280x800 (not neural model size). */
-constexpr std::pair<uint32_t, uint32_t> kRvc2UserCameraDepthOutputSize{640, 400};
 constexpr float kMinFpsMeasureSeconds = 0.5f;
 
 void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
@@ -360,12 +358,9 @@ void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
         }
     } else {
         requireDepthSingleBackendChild(*depth, "StereoDepth");
-        REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
-                 || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
-        REQUIRE(depthFrame->getWidth() == static_cast<int>(kRvc2UserCameraDepthOutputSize.first));
-        const bool depthHeightMatchesBackend = depthFrame->getHeight() == static_cast<int>(kRvc2UserCameraDepthOutputSize.second);
-        const bool depthHeightMatchesUser = depthFrame->getHeight() == static_cast<int>(kUserStereoSensorResolution.second);
-        REQUIRE((depthHeightMatchesBackend || depthHeightMatchesUser));
+        // StereoDepth preserves the size of its pre-built camera inputs.
+        REQUIRE(depthFrame->getWidth() == static_cast<int>(kUserStereoSensorResolution.first));
+        REQUIRE(depthFrame->getHeight() == static_cast<int>(kUserStereoSensorResolution.second));
     }
 }
 
@@ -695,7 +690,7 @@ TEST_CASE("Depth: pre-built user stereo cameras with depth build(fps) at 15 FPS"
     REQUIRE_NOTHROW(runUserCameraDepthTest(pipeline, device, pair, kDepthStereoFps, false, false));
 }
 
-TEST_CASE("Depth: user camera resolution unchanged; depth uses backend size") {
+TEST_CASE("Depth: user camera and StereoDepth preserve the requested resolution") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     skipUnlessUserStereoDepthScenario(device);
