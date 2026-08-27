@@ -11,10 +11,14 @@ enum class CameraModel : int8_t { Perspective = 0, Fisheye = 1, Equirectangular 
 
 [[nodiscard]] constexpr std::string_view toString(CameraModel model) {
     switch(model) {
-        case CameraModel::Perspective:    return "Perspective";
-        case CameraModel::Fisheye:         return "Fisheye";
-        case CameraModel::Equirectangular: return "Equirectangular";
-        case CameraModel::RadialDivision:  return "RadialDivision";
+        case CameraModel::Perspective:
+            return "Perspective";
+        case CameraModel::Fisheye:
+            return "Fisheye";
+        case CameraModel::Equirectangular:
+            return "Equirectangular";
+        case CameraModel::RadialDivision:
+            return "RadialDivision";
     }
 
     return "Unknown";
