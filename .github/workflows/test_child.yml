@@ -244,7 +244,7 @@ jobs:
           report_context="${context//\//_}"
           report_context="${report_context// /_}"
           python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
-          python3 scripts/ci/junit_to_influxdb.py ${{ github.workflow }} "ctest-reports/${report_context}.xml"
+          python3 scripts/ci/junit_to_influxdb.py "${{ github.workflow }}" "ctest-reports/${report_context}.xml"
           echo "" >> "$GITHUB_STEP_SUMMARY"
         done
 
