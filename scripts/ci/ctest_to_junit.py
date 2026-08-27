@@ -186,8 +186,8 @@ def write_junit(
         description = descriptions.get(config, {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''})
         
         declared_failed = summary[1] if summary else len(parsed_failures)
-        declared_total = summary[2] if summary else len(parsed_failures)
-        declared_passed = summary[0] if summary else max(declared_total - declared_failed, 0)
+        declared_total = summary[2] if summary else len(parsed_failures) + len(parsed_passes)
+        declared_passed = summary[0] if summary else len(parsed_passes)
 
         suite_failures = max(declared_failed, len(parsed_failures))
         suite_passes = max(declared_passed, len(parsed_passes))

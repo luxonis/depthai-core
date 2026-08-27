@@ -162,10 +162,12 @@ def parseTesstSummary():
                     broken = True
                     brokenCt += 1
                     prevFailureList.remove(testname)
-                logs = 'Could not find logs'
+                logs = ''
                 for t in failure.itertext():
-                    if (not t.startswith("Relevant test output:")): continue
-                    logs = t
+                    s = t.strip()
+                    if len(s)>10:
+                        logs += s+"\n\n"
+                if (len(logs) < 16): logs = "Could not find logs"
                 writeSingleTest(
                     labels=labels, platform=platform, protocol=protocol, context=context, config=config,
                     testname=testname, logs=logs, status="failed"
