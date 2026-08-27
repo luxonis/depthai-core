@@ -9,6 +9,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
         .def(py::init<>())
         .def_readwrite("confidenceThreshold", &beta::ToFStereoFusionConfig::confidenceThreshold)
         .def("setConfidenceThreshold", &beta::ToFStereoFusionConfig::setConfidenceThreshold, py::arg("threshold"));
+
     m.def_submodule("beta", "Experimental APIs");
     auto node = addBetaNode<ToFStereoFusion>("ToFStereoFusion", DOC(dai, beta, node, ToFStereoFusion));
 
@@ -22,6 +23,12 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
         .def_readonly("initialConfig", &ToFStereoFusion::initialConfig)
         .def_property_readonly(
             "neuralConfidence", [](ToFStereoFusion& n) -> Node::Output& { return n.neuralConfidence; }, DOC(dai, beta, node, ToFStereoFusion, neuralConfidence))
+        .def_property_readonly(
+            "tof", [](ToFStereoFusion& n) -> dai::node::ToF& { return *n.tof; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "neuralDepth", [](ToFStereoFusion& n) -> dai::node::NeuralDepth& { return *n.neuralDepth; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "neuralNetwork", [](ToFStereoFusion& n) -> dai::node::NeuralNetwork& { return *n.neuralNetwork; }, py::return_value_policy::reference_internal)
         .def("build",
              py::overload_cast<const std::shared_ptr<dai::node::Camera>&, const std::shared_ptr<dai::node::Camera>&>(&ToFStereoFusion::build),
              py::arg("left"),
