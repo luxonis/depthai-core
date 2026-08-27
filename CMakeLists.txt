@@ -320,6 +320,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/Align.cpp
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
@@ -355,6 +356,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageFiltersConfig.cpp
     src/pipeline/datatype/ImageAlignConfig.cpp
+    src/pipeline/datatype/AlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetectionsT.cpp
