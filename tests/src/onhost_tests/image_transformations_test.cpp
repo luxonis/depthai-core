@@ -9,6 +9,7 @@
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <iostream>
+#include <limits>
 #include <thread>
 
 #include "depthai/depthai.hpp"
@@ -519,4 +520,64 @@ TEST_CASE("Get outer rect opencv comparison") {
         REQUIRE_THAT(rrImpl.size.height, Catch::Matchers::WithinAbs(rrCv.size.height, 0.01));
         REQUIRE_THAT(rrImpl.angle, Catch::Matchers::WithinAbs(rrCv.angle, 0.01));
     }
+}
+
+TEST_CASE("ImageManip four point transform validates points") {
+    const std::array<dai::Point2f, 4> points = {dai::Point2f{0.0F, 0.0F}, dai::Point2f{1.0F, 0.0F}, dai::Point2f{1.0F, 1.0F}, dai::Point2f{0.0F, 1.0F}};
+
+    dai::ImageManipConfig config;
+    REQUIRE_NOTHROW(config.addTransformFourPoints(points, points, true));
+
+    auto nonFinite = points;
+    nonFinite[1].x = std::numeric_limits<float>::infinity();
+    REQUIRE_THROWS_AS(config.addTransformFourPoints(nonFinite, points, false), std::invalid_argument);
+
+    auto collinearSource = points;
+    collinearSource[1] = {0.5F, 0.5F};
+    collinearSource[2] = {1.0F, 1.0F};
+    REQUIRE_THROWS_AS(config.addTransformFourPoints(collinearSource, points, true), std::invalid_argument);
+
+    auto nearlyCollinearSource = points;
+    nearlyCollinearSource[1] = {0.5F, 0.5F + std::numeric_limits<float>::epsilon() / 4.0F};
+    nearlyCollinearSource[2] = {1.0F, 1.0F};
+    REQUIRE_THROWS_AS(config.addTransformFourPoints(nearlyCollinearSource, points, true), std::invalid_argument);
+
+    auto collinearDestination = points;
+    collinearDestination[1] = {0.5F, 0.5F};
+    collinearDestination[2] = {1.0F, 1.0F};
+    REQUIRE_THROWS_AS(config.addTransformFourPoints(points, collinearDestination, true), std::invalid_argument);
+}
+
+TEST_CASE("ImageManip CropRotated maps the requested rectangle to the output") {
+    constexpr float inputWidth = 1000.0f;
+    constexpr float inputHeight = 800.0f;
+    const dai::RotatedRect crop{{400.0f, 300.0f}, {240.0f, 120.0f}, 30.0f};
+
+    dai::ImageManipConfig config;
+    config.addCropRotatedRect(crop);
+
+    REQUIRE(config.base.getOperations().size() == 2);
+    REQUIRE(std::holds_alternative<dai::CropRotated>(config.base.getOperations()[1].op));
+
+    dai::ImageManipConfig configCopy;
+    dai::utility::deserialize(dai::utility::serialize(config), configCopy);
+    REQUIRE(configCopy.base.getOperations().size() == 2);
+    const auto& serializedCrop = std::get<dai::CropRotated>(configCopy.base.getOperations()[1].op);
+    REQUIRE(serializedCrop.width == crop.size.width);
+    REQUIRE(serializedCrop.height == crop.size.height);
+    REQUIRE(serializedCrop.angle == crop.angle);
+    REQUIRE_FALSE(serializedCrop.normalized);
+
+    auto [matrix, imageCorners, srcCorners] = dai::impl::getTransform(config.base.getOperations(), inputWidth, inputHeight, 0, 0);
+    const auto cropCorners = crop.getPoints();
+    const std::array<std::array<float, 2>, 4> expected = {
+        {{0.0f, 0.0f}, {crop.size.width, 0.0f}, {crop.size.width, crop.size.height}, {0.0f, crop.size.height}}};
+
+    for(size_t i = 0; i < cropCorners.size(); ++i) {
+        const auto transformed = dai::impl::matvecmul(matrix, {cropCorners[i].x, cropCorners[i].y});
+        REQUIRE_THAT(transformed[0], Catch::Matchers::WithinAbs(expected[i][0], 1e-3f));
+        REQUIRE_THAT(transformed[1], Catch::Matchers::WithinAbs(expected[i][1], 1e-3f));
+    }
+    REQUIRE(imageCorners == expected);
+    REQUIRE(srcCorners.size() == 1);
 }

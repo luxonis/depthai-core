@@ -96,6 +96,11 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
+
+    /**
      * Serialize schema to proto buffer
      *
      * @returns serialized schema
