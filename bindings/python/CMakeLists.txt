@@ -73,6 +73,7 @@ set(SOURCE_LIST
     src/pipeline/node/NodeBindings.cpp
 
     src/pipeline/node/ColorCameraBindings.cpp
+    src/pipeline/node/CropConfigGeneratorBindings.cpp
     src/pipeline/node/CameraBindings.cpp
     src/pipeline/node/MonoCameraBindings.cpp
     src/pipeline/node/StereoDepthBindings.cpp
