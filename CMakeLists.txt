@@ -202,6 +202,9 @@ set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
+    if(DEPTHAI_BUILD_BETA)
+        list(APPEND REQUIRED_OPENCV_LIBRARIES "opencv_features2d" "opencv_stitching")
+    endif()
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -212,6 +215,9 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+        if(DEPTHAI_BUILD_BETA AND "opencv_stitching" IN_LIST OpenCV_LIBS)
+            set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
+        endif()
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
     else()
@@ -476,6 +482,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/RFDETRParser.cpp
         src/beta/node/SCRFDParser.cpp
         src/beta/node/SuperAnimalParser.cpp
+        src/beta/node/Stitching.cpp
         src/beta/node/XFeatMonoParser.cpp
         src/beta/node/XFeatStereoParser.cpp
         src/beta/node/YuNetParser.cpp
@@ -538,6 +545,14 @@ set(TARGET_OPENCV_SOURCES
     src/opencv/HolisticRecordReplay.cpp
 )
 
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_SUPPORT)
+    list(APPEND TARGET_OPENCV_SOURCES
+        src/beta/utilities/Stitching/Stitching.cpp
+        src/beta/utilities/Stitching/FixedPanoramaCompositor.cpp
+        src/beta/utilities/Stitching/PlanarStitcher.cpp
+    )
+endif()
+
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 
 set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp)
@@ -589,6 +604,9 @@ add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 if(DEPTHAI_BUILD_BETA)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BETA)
+endif()
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAVE_OPENCV_STITCHING)
 endif()
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
@@ -1079,6 +1097,9 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_STITCHING)
+    endif()
     # Add public dependency to depthai::core library
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
 
