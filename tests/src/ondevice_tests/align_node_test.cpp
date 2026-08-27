@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 #include "depthai/depthai.hpp"
@@ -18,12 +19,12 @@ using namespace std::chrono_literals;
 
 namespace {
 
-constexpr size_t kSourceWidth = 64;
-constexpr size_t kSourceHeight = 48;
-constexpr size_t kTargetWidth = 80;
-constexpr size_t kTargetHeight = 60;
-constexpr size_t kUpdatedTargetWidth = 96;
-constexpr size_t kUpdatedTargetHeight = 72;
+constexpr size_t kSourceWidth = 320;
+constexpr size_t kSourceHeight = 240;
+constexpr size_t kTargetWidth = 400;
+constexpr size_t kTargetHeight = 300;
+constexpr size_t kUpdatedTargetWidth = 480;
+constexpr size_t kUpdatedTargetHeight = 360;
 
 array<array<float, 3>, 3> makeIntrinsics(size_t width, size_t height) {
     return {{{150.0F, 0.0F, static_cast<float>(width) / 2.0F}, {0.0F, 148.0F, static_cast<float>(height) / 2.0F}, {0.0F, 0.0F, 1.0F}}};
@@ -68,10 +69,16 @@ dai::ImgTransformation makeTransformWithTranslation(float translationXMillimeter
             makeExtrinsics(translationXMillimeters)};
 }
 
-dai::ImgTransformation expectedAlignedTransform(const dai::ImgTransformation& alignToTransform) {
+template <typename MsgT>
+constexpr bool expectsUndistortedOutput() {
+    return is_same_v<MsgT, dai::ImgFrame> || is_same_v<MsgT, dai::SegmentationMask> || is_same_v<MsgT, dai::ImgDetections>
+           || is_same_v<MsgT, dai::SpatialImgDetections>;
+}
+
+dai::ImgTransformation expectedAlignedTransform(const dai::ImgTransformation& alignToTransform, bool undistorted = true) {
     dai::ImgTransformation expected = alignToTransform;
     auto distortion = expected.getDistortionCoefficients();
-    if(!distortion.empty()) {
+    if(undistorted && !distortion.empty()) {
         expected.setDistortionCoefficients(vector<float>(distortion.size(), 0.0F));
     }
     return expected;
@@ -303,9 +310,8 @@ template <typename InputT, typename AlignToT>
 AlignmentResult<InputT> runGenericAlignmentOnce(const shared_ptr<InputT>& inputMsg,
                                                 const shared_ptr<AlignToT>& alignToMsg,
                                                 const std::function<void(dai::node::Align&)>& configure = {}) {
-    dai::Pipeline pipeline(false);
+    dai::Pipeline pipeline;
     auto align = pipeline.create<dai::node::Align>();
-    align->setRunOnHost(true);
     if(configure) {
         configure(*align);
     }
@@ -439,8 +445,62 @@ void runGenericMetadataCase() {
     auto alignToMsg = createSampleMessage<AlignToT>(alignToTransform, 27);
     auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
 
-    requireMessageMetadata(*inputMsg, *result.aligned, expectedAlignedTransform(alignToTransform));
+    requireMessageMetadata(*inputMsg, *result.aligned, expectedAlignedTransform(alignToTransform, expectsUndistortedOutput<InputT>()));
     requireMessageMetadata(*inputMsg, *result.passthrough, inputTransform);
+}
+
+template <typename AlignToT>
+void runCameraInputMetadataCase() {
+    dai::Pipeline pipeline;
+    auto align = pipeline.create<dai::node::Align>();
+    auto camera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto* cameraOutput = camera->requestOutput({kSourceWidth, kSourceHeight}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH, std::nullopt, false);
+    REQUIRE(cameraOutput != nullptr);
+    cameraOutput->link(align->input);
+
+    auto cameraQueue = cameraOutput->createOutputQueue();
+    auto alignToQueue = align->inputAlignTo.createInputQueue();
+    auto alignedQueue = align->outputAligned.createOutputQueue();
+    auto passthroughQueue = align->passthroughInput.createOutputQueue();
+
+    pipeline.start();
+
+    // Build the alignTo transformation from a real camera frame, so its extrinsics resolve against the input.
+    auto cameraFrame = cameraQueue->get<dai::ImgFrame>();
+    REQUIRE(cameraFrame != nullptr);
+    dai::ImgTransformation alignToTransform = cameraFrame->transformation;
+    alignToTransform.addScale(static_cast<float>(kTargetWidth) / static_cast<float>(cameraFrame->getWidth()),
+                              static_cast<float>(kTargetHeight) / static_cast<float>(cameraFrame->getHeight()));
+    alignToQueue->send(createSampleMessage<AlignToT>(alignToTransform, 27));
+
+    auto aligned = alignedQueue->get<dai::ImgFrame>();
+    auto passthrough = passthroughQueue->get<dai::ImgFrame>();
+    REQUIRE(aligned != nullptr);
+    REQUIRE(passthrough != nullptr);
+
+    // The point of this case: a camera frame reaches the passthrough with its buffer intact. A camera frame is
+    // stride aligned on the device, so the buffer follows the declared layout rather than width * height.
+    REQUIRE(passthrough->getType() == dai::ImgFrame::Type::NV12);
+    REQUIRE(passthrough->getWidth() == cameraFrame->getWidth());
+    REQUIRE(passthrough->getHeight() == cameraFrame->getHeight());
+    REQUIRE(passthrough->getStride() >= passthrough->getWidth());
+    REQUIRE(passthrough->getPlaneHeight() >= passthrough->getHeight());
+    REQUIRE(passthrough->getData().size() == passthrough->getStride() * passthrough->getPlaneHeight() * 3 / 2);
+    requireTransformEqual(cameraFrame->transformation, passthrough->transformation);
+
+    // The aligned frame follows the alignTo geometry and drops the distortion, being pixel data.
+    REQUIRE(aligned->getWidth() == kTargetWidth);
+    REQUIRE(aligned->getHeight() == kTargetHeight);
+    REQUIRE(aligned->getData().size() == kTargetWidth * kTargetHeight * 3 / 2);
+    requireTransformEqual(expectedAlignedTransform(alignToTransform), aligned->transformation);
+
+    // Both outputs describe the same input frame.
+    REQUIRE(aligned->getSequenceNum() == passthrough->getSequenceNum());
+    REQUIRE(aligned->getTimestamp() == passthrough->getTimestamp());
+    REQUIRE(aligned->getInstanceNum() == passthrough->getInstanceNum());
+
+    pipeline.stop();
+    pipeline.wait();
 }
 }  // namespace
 
@@ -464,19 +524,19 @@ TEST_CASE("Test Align generic path message to ImgFrame metadata") {
 
 TEST_CASE("Test Align generic path ImgFrame to message metadata") {
     SECTION("ImgFrame -> ImgDetections") {
-        runGenericMetadataCase<dai::ImgFrame, dai::ImgDetections>();
+        runCameraInputMetadataCase<dai::ImgDetections>();
     }
     SECTION("ImgFrame -> SpatialImgDetections") {
-        runGenericMetadataCase<dai::ImgFrame, dai::SpatialImgDetections>();
+        runCameraInputMetadataCase<dai::SpatialImgDetections>();
     }
     SECTION("ImgFrame -> SegmentationMask") {
-        runGenericMetadataCase<dai::ImgFrame, dai::SegmentationMask>();
+        runCameraInputMetadataCase<dai::SegmentationMask>();
     }
     SECTION("ImgFrame -> AprilTags") {
-        runGenericMetadataCase<dai::ImgFrame, dai::AprilTags>();
+        runCameraInputMetadataCase<dai::AprilTags>();
     }
     SECTION("ImgFrame -> Tracklets") {
-        runGenericMetadataCase<dai::ImgFrame, dai::Tracklets>();
+        runCameraInputMetadataCase<dai::Tracklets>();
     }
 }
 
@@ -498,10 +558,31 @@ TEST_CASE("Test Align generic path message to message metadata") {
     }
 }
 
+TEST_CASE("Test Align keeps the alignTo distortion for detections without a segmentation mask") {
+    const auto inputTransform = makeTransform(kSourceWidth, kSourceHeight, false);
+    const auto alignToTransform = makeTransform(kTargetWidth, kTargetHeight, true);
+    auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
+
+    auto inputMsg = make_shared<dai::ImgDetections>();
+    dai::ImgDetection detection;
+    detection.label = 2;
+    detection.labelName = "person";
+    detection.confidence = 0.83F;
+    detection.setBoundingBox(dai::RotatedRect(dai::Rect(8.0F, 6.0F, 20.0F, 14.0F, false), 11.0F));
+    inputMsg->detections.push_back(detection);
+    setCommonMetadata(*inputMsg, 11);
+    inputMsg->setTransformation(inputTransform);
+
+    auto result = runGenericAlignmentOnce(inputMsg, alignToMsg);
+
+    REQUIRE_FALSE(result.aligned->getMaskData().has_value());
+    REQUIRE(result.aligned->detections.size() == 1);
+    requireTransformEqual(alignToTransform, messageTransformation(*result.aligned));
+}
+
 TEST_CASE("Test Align generic path refreshes rectification metadata when ImgTransformation changes") {
-    dai::Pipeline pipeline(false);
+    dai::Pipeline pipeline;
     auto align = pipeline.create<dai::node::Align>();
-    align->setRunOnHost(true);
 
     auto inputQueue = align->input.createInputQueue();
     auto alignToQueue = align->inputAlignTo.createInputQueue();
@@ -534,6 +615,43 @@ TEST_CASE("Test Align generic path refreshes rectification metadata when ImgTran
     pipeline.wait();
 }
 
+TEST_CASE("Test Align follows a new inputAlignTo message sent at runtime") {
+    dai::Pipeline pipeline;
+    auto align = pipeline.create<dai::node::Align>();
+
+    auto inputQueue = align->input.createInputQueue();
+    auto alignToQueue = align->inputAlignTo.createInputQueue();
+    auto alignedQueue = align->outputAligned.createOutputQueue();
+
+    const auto inputTransform = makeTransform(kSourceWidth, kSourceHeight);
+    const auto firstAlignToTransform = makeTransform(kTargetWidth, kTargetHeight);
+    const auto secondAlignToTransform = makeTransform(kUpdatedTargetWidth, kUpdatedTargetHeight);
+
+    pipeline.start();
+
+    inputQueue->send(createSampleMessage<dai::ImgFrame>(inputTransform, 301));
+    alignToQueue->send(createSampleMessage<dai::ImgFrame>(firstAlignToTransform, 401));
+
+    auto firstAligned = getRequiredMessage<dai::ImgFrame>(alignedQueue);
+    REQUIRE(firstAligned->getWidth() == kTargetWidth);
+    REQUIRE(firstAligned->getHeight() == kTargetHeight);
+    REQUIRE(firstAligned->getData().size() == kTargetWidth * kTargetHeight);
+    requireTransformEqual(expectedAlignedTransform(firstAlignToTransform), firstAligned->transformation);
+
+    REQUIRE(alignToQueue->trySend(createSampleMessage<dai::ImgFrame>(secondAlignToTransform, 402)));
+    inputQueue->send(createSampleMessage<dai::ImgFrame>(inputTransform, 302));
+
+    auto secondAligned = getRequiredMessage<dai::ImgFrame>(alignedQueue);
+    REQUIRE(secondAligned->getSequenceNum() == 302);
+    REQUIRE(secondAligned->getWidth() == kUpdatedTargetWidth);
+    REQUIRE(secondAligned->getHeight() == kUpdatedTargetHeight);
+    REQUIRE(secondAligned->getData().size() == kUpdatedTargetWidth * kUpdatedTargetHeight);
+    requireTransformEqual(expectedAlignedTransform(secondAlignToTransform), secondAligned->transformation);
+
+    pipeline.stop();
+    pipeline.wait();
+}
+
 TEST_CASE("Test Align aligns metadata messages without calibrated extrinsics") {
     const auto inputTransform = makeTransformNoExtrinsics(kSourceWidth, kSourceHeight);
     const auto alignToTransform = makeTransformNoExtrinsics(kTargetWidth, kTargetHeight);
@@ -558,7 +676,7 @@ TEST_CASE("Test Align transforms custom TransformableBuffer messages") {
     line->endPoint = dai::Point2f(40.0F, 30.0F);
 
     auto alignToMsg = createSampleMessage<dai::ImgFrame>(alignToTransform, 27);
-    auto result = runGenericAlignmentOnce(line, alignToMsg);
+    auto result = runGenericAlignmentOnce(line, alignToMsg, [](dai::node::Align& align) { align.setRunOnHost(true); });
 
     REQUIRE(result.aligned != nullptr);
     const auto expectedStart = inputTransform.remapPointTo(alignToTransform, line->startPoint);
@@ -571,7 +689,7 @@ TEST_CASE("Test Align transforms custom TransformableBuffer messages") {
     requireTransformEqual(alignToTransform, *result.aligned->getTransformation());
 }
 
-TEST_CASE("Test Align host path pixel content") {
+TEST_CASE("Test Align pixel content") {
     SECTION("identical geometry keeps GRAY8 pixels identical") {
         const auto transform = makeTransformWithTranslation(0.0F);
         auto inputMsg = createSampleMessage<dai::ImgFrame>(transform, 11);
@@ -634,9 +752,8 @@ TEST_CASE("Test Align rebuilds the frame buffer layout of 1.5 bytes per pixel fr
 }
 
 TEST_CASE("Test Align resizes its buffers when the alignTo size or the input type changes") {
-    dai::Pipeline pipeline(false);
+    dai::Pipeline pipeline;
     auto align = pipeline.create<dai::node::Align>();
-    align->setRunOnHost(true);
 
     auto inputQueue = align->input.createInputQueue();
     auto alignToQueue = align->inputAlignTo.createInputQueue();
@@ -680,7 +797,7 @@ TEST_CASE("Test Align resizes its buffers when the alignTo size or the input typ
     pipeline.wait();
 }
 
-TEST_CASE("Test Align host path shifts RAW16 depth by disparity") {
+TEST_CASE("Test Align shifts RAW16 depth by disparity") {
     const auto inputTransform = makeTransformWithTranslation(75.0F);
     const auto alignToTransform = makeTransformWithTranslation(0.0F);
     constexpr uint16_t kDepthMillimeters = 1000;
@@ -713,4 +830,3 @@ TEST_CASE("Test Align host path shifts RAW16 depth by disparity") {
         REQUIRE(row[kSourceWidth / 2] == kDepthMillimeters);
     }
 }
-

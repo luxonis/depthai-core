@@ -339,6 +339,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
     pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send));
+    pyInputQueue.def("trySend", &InputQueue::trySend, py::arg("msg"), DOC(dai, InputQueue, trySend));
 
     // Node::Id bindings
     py::class_<Node::Id>(pyNode, "Id", "Node identificator. Unique for every node on a single Pipeline");
