@@ -576,7 +576,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("isEqualExtrinsics", &Extrinsics::isEqualExtrinsics, py::arg("other"), py::arg("epsilon") = 1e-6f, DOC(dai, Extrinsics, isEqualExtrinsics))
         .def("hasCompatibleCoordinateSystem",
              &Extrinsics::hasCompatibleCoordinateSystem,
-             py::arg("other"),
+             py::arg("to"),
              DOC(dai, Extrinsics, hasCompatibleCoordinateSystem))
         .def("getExtrinsicsTransformationTo",
              &Extrinsics::getExtrinsicsTransformationTo,
