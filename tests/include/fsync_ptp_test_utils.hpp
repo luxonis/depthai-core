@@ -56,7 +56,8 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
                        std::optional<dai::ExternalFrameSyncRole> role,
                        std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
                        std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                       std::vector<std::string>& camSockets);
+                       std::vector<std::string>& camSockets,
+                       std::optional<std::string>& masterName);
 
 void setUpIrLeds(std::shared_ptr<dai::Device> device);
 
