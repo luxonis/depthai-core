@@ -187,6 +187,8 @@ write_api = client.write_api(write_options=SYNCHRONOUS)
 
 # parseTesstSummary()
 
+print("VALUES:", bucket, url[0:5] if url is not None else "no URL")
+
 test = (influxdb_client
     .Point("test")
     .time(timeGlobal)
