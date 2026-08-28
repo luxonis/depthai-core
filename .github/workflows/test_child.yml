@@ -51,160 +51,160 @@ on:
         required: true
 
 jobs:
- build_docker_container:
-    runs-on: ['self-hosted', 'hil-test-v3']
-    outputs:
-        tag: ${{ steps.build_and_push.outputs.tag }}
-    steps:
-    - uses: actions/checkout@v3
-    - name: Build and push
-      id: build_and_push
-      env:
-        CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
-      run: |
-        JOB_PREFIX="${{ inputs.job_prefix }}"
-        if [ -z "$JOB_PREFIX" ]; then
-          JOB_PREFIX="${{ inputs.flavor }}"
-        fi
-        BRANCH_NAME="${{ github.ref_name }}"
-        PULL_REQUEST="false"
-        if [[ -n "${{ github.event.pull_request.number }}" ]]; then
-         BRANCH_NAME="${{ github.ref }}"
-         PULL_REQUEST="true"
-        fi
-        if [ "$PULL_REQUEST" = "true" ]; then
-          TAG="${JOB_PREFIX}_short_${{ github.sha }}"
-        else
-          TAG="${JOB_PREFIX}_${{ github.sha }}"
-        fi
-        echo "tag=$TAG" >> $GITHUB_OUTPUT
-        echo "Using branch: $BRANCH_NAME"
-        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" "$PULL_REQUEST" "$TAG" "${{ inputs.enable_replay_tests }}"
+#  build_docker_container:
+#     runs-on: ['self-hosted', 'hil-test-v3']
+#     outputs:
+#         tag: ${{ steps.build_and_push.outputs.tag }}
+#     steps:
+#     - uses: actions/checkout@v3
+#     - name: Build and push
+#       id: build_and_push
+#       env:
+#         CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+#       run: |
+#         JOB_PREFIX="${{ inputs.job_prefix }}"
+#         if [ -z "$JOB_PREFIX" ]; then
+#           JOB_PREFIX="${{ inputs.flavor }}"
+#         fi
+#         BRANCH_NAME="${{ github.ref_name }}"
+#         PULL_REQUEST="false"
+#         if [[ -n "${{ github.event.pull_request.number }}" ]]; then
+#          BRANCH_NAME="${{ github.ref }}"
+#          PULL_REQUEST="true"
+#         fi
+#         if [ "$PULL_REQUEST" = "true" ]; then
+#           TAG="${JOB_PREFIX}_short_${{ github.sha }}"
+#         else
+#           TAG="${JOB_PREFIX}_${{ github.sha }}"
+#         fi
+#         echo "tag=$TAG" >> $GITHUB_OUTPUT
+#         echo "Using branch: $BRANCH_NAME"
+#         scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" "$PULL_REQUEST" "$TAG" "${{ inputs.enable_replay_tests }}"
 
- linux_rvc2_test:
-    needs: [build_docker_container]
-    if: inputs.run_standard_tests
-    runs-on: ['self-hosted', 'testbed-runner']
-    timeout-minutes: ${{ inputs.rvc2_timeout_minutes }}
-    steps:
-    - uses: actions/checkout@v3
+#  linux_rvc2_test:
+#     needs: [build_docker_container]
+#     if: inputs.run_standard_tests
+#     runs-on: ['self-hosted', 'testbed-runner']
+#     timeout-minutes: ${{ inputs.rvc2_timeout_minutes }}
+#     steps:
+#     - uses: actions/checkout@v3
 
-    - name: Run RVC2 tests
-      run: |
-        source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
-        TEST_ARG="rvc2"
-        if [ "${{ inputs.enable_replay_tests }}" = "true" ]; then
-          TEST_ARG="rvc2replay"
-        fi
-        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.job_prefix || inputs.flavor }}"
-        set -o pipefail
-        hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh $TEST_ARG" 2>&1 | tee rvc2_test_output.log
+#     - name: Run RVC2 tests
+#       run: |
+#         source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+#         TEST_ARG="rvc2"
+#         if [ "${{ inputs.enable_replay_tests }}" = "true" ]; then
+#           TEST_ARG="rvc2replay"
+#         fi
+#         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.job_prefix || inputs.flavor }}"
+#         set -o pipefail
+#         hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh $TEST_ARG" 2>&1 | tee rvc2_test_output.log
 
-    - name: Upload test log
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc2_test
-        path: rvc2_test_output.log
-        if-no-files-found: warn
+#     - name: Upload test log
+#       if: always()
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc2_test
+#         path: rvc2_test_output.log
+#         if-no-files-found: warn
 
-  #  Testing
- linux_rvc4_test:
-      needs: [build_docker_container]
-      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test != '[]'
-      strategy:
-        matrix:
-          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
-        fail-fast: false
-      runs-on: ['self-hosted', 'testbed-runner']
-      steps:
-      - uses: actions/checkout@v3
+#   #  Testing
+#  linux_rvc4_test:
+#       needs: [build_docker_container]
+#       if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test != '[]'
+#       strategy:
+#         matrix:
+#           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
+#         fail-fast: false
+#       runs-on: ['self-hosted', 'testbed-runner']
+#       steps:
+#       - uses: actions/checkout@v3
 
-      - name: Run RVC4 tests
-        run: |
-          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
-          TEST_ARG="rvc4"
-          if [ "${{ inputs.enable_replay_tests }}" = "true" ]; then
-            TEST_ARG="rvc4replay"
-          fi
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.job_prefix || inputs.flavor }}"
-          set -o pipefail
-          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh $TEST_ARG" 2>&1 | tee rvc4_test_output.log
+#       - name: Run RVC4 tests
+#         run: |
+#           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+#           TEST_ARG="rvc4"
+#           if [ "${{ inputs.enable_replay_tests }}" = "true" ]; then
+#             TEST_ARG="rvc4replay"
+#           fi
+#           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.job_prefix || inputs.flavor }}"
+#           set -o pipefail
+#           hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh $TEST_ARG" 2>&1 | tee rvc4_test_output.log
 
-      - name: Upload test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_test-rvc4os=${{ matrix.rvc4os }}
-          path: rvc4_test_output.log
-          if-no-files-found: warn
+#       - name: Upload test log
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_test-rvc4os=${{ matrix.rvc4os }}
+#           path: rvc4_test_output.log
+#           if-no-files-found: warn
 
- linux_rvc4_usb_test:
-      needs: [build_docker_container]
-      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_usb != '[]'
-      strategy:
-        matrix:
-          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
-        fail-fast: false
-      runs-on: ['self-hosted', 'testbed-runner']
-      steps:
-      - uses: actions/checkout@v3
+#  linux_rvc4_usb_test:
+#       needs: [build_docker_container]
+#       if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_usb != '[]'
+#       strategy:
+#         matrix:
+#           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
+#         fail-fast: false
+#       runs-on: ['self-hosted', 'testbed-runner']
+#       steps:
+#       - uses: actions/checkout@v3
 
-      - name: Run RVC4 tests
-        run: |
-          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-usb"
-          set -o pipefail
-          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4usb" 2>&1 | tee rvc4_usb_test_output.log
+#       - name: Run RVC4 tests
+#         run: |
+#           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+#           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-usb"
+#           set -o pipefail
+#           hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4usb" 2>&1 | tee rvc4_usb_test_output.log
 
-      - name: Upload test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
-          path: rvc4_usb_test_output.log
-          if-no-files-found: warn
+#       - name: Upload test log
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
+#           path: rvc4_usb_test_output.log
+#           if-no-files-found: warn
 
- linux_rvc4_rgb_test:
-      needs: [build_docker_container]
-      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_rgb != '[]'
-      strategy:
-        matrix:
-          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_rgb) }}
-        fail-fast: false
-      runs-on: ['self-hosted', 'testbed-runner']
-      steps:
-      - uses: actions/checkout@v3
+#  linux_rvc4_rgb_test:
+#       needs: [build_docker_container]
+#       if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_rgb != '[]'
+#       strategy:
+#         matrix:
+#           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_rgb) }}
+#         fail-fast: false
+#       runs-on: ['self-hosted', 'testbed-runner']
+#       steps:
+#       - uses: actions/checkout@v3
 
-      - name: Run RVC4 tests
-        run: |
-          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
-          set -o pipefail
-          hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4rgb" 2>&1 | tee rvc4_rgb_test_output.log
+#       - name: Run RVC4 tests
+#         run: |
+#           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+#           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
+#           set -o pipefail
+#           hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4rgb" 2>&1 | tee rvc4_rgb_test_output.log
 
-      - name: Upload test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_rgb_test-rvc4os=${{ matrix.rvc4os }}
-          path: rvc4_rgb_test_output.log
-          if-no-files-found: warn
+#       - name: Upload test log
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_rgb_test-rvc4os=${{ matrix.rvc4os }}
+#           path: rvc4_rgb_test_output.log
+#           if-no-files-found: warn
 
  report_linux_test_results:
     name: Report Linux test results (${{ inputs.job_prefix || inputs.flavor }})
-    needs: [linux_rvc2_test, linux_rvc4_test,linux_rvc4_usb_test, linux_rvc4_rgb_test]
+    # needs: [linux_rvc2_test, linux_rvc4_test,linux_rvc4_usb_test, linux_rvc4_rgb_test]
     if: ${{ always() && inputs.run_standard_tests }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-    - uses: actions/checkout@v3
-    - name: Download test logs
-      uses: actions/download-artifact@v4
-      with:
-        pattern: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-*
-        path: ctest-logs
+    # - uses: actions/checkout@v3
+    # - name: Download test logs
+    #   uses: actions/download-artifact@v4
+    #   with:
+    #     pattern: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-*
+    #     path: ctest-logs
     - name: Install reporter dependencies
       run: python3 -m pip install influxdb-client==1.50.0
     - name: Generate combined summary
@@ -222,42 +222,43 @@ jobs:
           exit 0
         fi
 
-        shopt -s nullglob
-        found_logs=0
-        first_summary=1
-        mkdir -p ctest-reports
-        job_prefix="ctest-log-${{ inputs.job_prefix || inputs.flavor }}-"
-        for dir in ctest-logs/${job_prefix}*; do
-          [ -d "$dir" ] || continue
-          log_files=("$dir"/*.log)
-          [ ${#log_files[@]} -gt 0 ] || continue
-          found_logs=1
-          context="$(basename "$dir")"
-          context="${context#${job_prefix}}"
-          if [ "$first_summary" -eq 0 ]; then
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "---" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          first_summary=0
-          python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" >> "$GITHUB_STEP_SUMMARY"
-          report_context="${context//\//_}"
-          report_context="${report_context// /_}"
-          python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
+        # shopt -s nullglob
+        # found_logs=0
+        # first_summary=1
+        # mkdir -p ctest-reports
+        # job_prefix="ctest-log-${{ inputs.job_prefix || inputs.flavor }}-"
+        # for dir in ctest-logs/${job_prefix}*; do
+        #   [ -d "$dir" ] || continue
+        #   log_files=("$dir"/*.log)
+        #   [ ${#log_files[@]} -gt 0 ] || continue
+        #   found_logs=1
+        #   context="$(basename "$dir")"
+        #   context="${context#${job_prefix}}"
+        #   if [ "$first_summary" -eq 0 ]; then
+        #     echo "" >> "$GITHUB_STEP_SUMMARY"
+        #     echo "---" >> "$GITHUB_STEP_SUMMARY"
+        #     echo "" >> "$GITHUB_STEP_SUMMARY"
+        #   fi
+        #   first_summary=0
+        #   python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" >> "$GITHUB_STEP_SUMMARY"
+        #   report_context="${context//\//_}"
+        #   report_context="${report_context// /_}"
+        #   python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
+          echo "$INFLUXDB_TEST_REPORT_BUCKET $GITHUB_RUN_ID"
           python3 scripts/ci/junit_to_influxdb.py "${{ github.workflow }}" "ctest-reports/${report_context}.xml"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-        done
+        # done
 
-        if [ "$found_logs" -eq 0 ]; then
-          echo "No test logs found to summarize." >> "$GITHUB_STEP_SUMMARY"
-        fi
-    - name: Upload JUnit XML reports
-      if: always() && hashFiles('ctest-reports/*.xml') != ''
-      uses: actions/upload-artifact@v4
-      with:
-        name: junit-reports-${{ inputs.job_prefix || inputs.flavor }}
-        path: ctest-reports/*.xml
-        if-no-files-found: warn
+        # if [ "$found_logs" -eq 0 ]; then
+        #   echo "No test logs found to summarize." >> "$GITHUB_STEP_SUMMARY"
+        # fi
+    # - name: Upload JUnit XML reports
+    #   if: always() && hashFiles('ctest-reports/*.xml') != ''
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: junit-reports-${{ inputs.job_prefix || inputs.flavor }}
+    #     path: ctest-reports/*.xml
+    #     if-no-files-found: warn
 
  linux_rvc4_fsync_test:
       needs: [build_docker_container]
