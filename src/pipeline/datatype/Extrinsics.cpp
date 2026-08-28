@@ -125,24 +125,32 @@ bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const
 }
 
 bool Extrinsics::hasCompatibleCoordinateSystem(const Extrinsics& to) const {
-    const bool differentKnownDevices = !toDeviceId.empty() && !to.toDeviceId.empty() && toDeviceId != to.toDeviceId;
-    const bool differentKnownSockets =
-        toCameraSocket != CameraBoardSocket::AUTO && to.toCameraSocket != CameraBoardSocket::AUTO && toCameraSocket != to.toCameraSocket;
-    return !differentKnownDevices && !differentKnownSockets;
+    // transformation A  |  transforamtion B    |    sameTargetDevice
+    //        ""           |       ""           |      true
+    //        ""           |       "x"          |      false
+    //        "x"          |       ""           |      false
+    //        "x"          |       "x"          |      true
+    const bool sameTargetDevice = toDeviceId == to.toDeviceId;  // XNOR
+
+    // transformation A  |  transforamtion B    |    compatibleTargetSockets
+    //        AUTO       |       AUTO           |      true
+    //        AUTO       |        A             |      true
+    //         A         |       AUTO           |      true
+    //         A         |        B             |      false
+    const bool compatibleTargetSockets =
+        toCameraSocket == CameraBoardSocket::AUTO || to.toCameraSocket == CameraBoardSocket::AUTO || toCameraSocket == to.toCameraSocket;
+    return sameTargetDevice && compatibleTargetSockets;
 }
 
 std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(const Extrinsics& to,
                                                                               const bool useSpecTranslation,
                                                                               const LengthUnit sourceUnit) const {
-    if(!hasCompatibleCoordinateSystem(to)) {
-        throw std::runtime_error("Cannot get extrinsics between different target coordinate systems.");
-    }
-    if(this->toCameraSocket == dai::CameraBoardSocket::AUTO || to.toCameraSocket == dai::CameraBoardSocket::AUTO) {
-        throw std::runtime_error(
-            "Cannot get extrinsics transformation to or from an extrinsics with AUTO camera socket. Please specify the camera socket for both extrinsics.");
-    }
-    if(this->toCameraSocket != to.toCameraSocket) {
-        throw std::runtime_error("Cannot get extrinsics to a transformation with a different base camera socket.");
+    if(!hasCompatibleCoordinateSystem(to) || this->toCameraSocket == CameraBoardSocket::AUTO || to.toCameraSocket == CameraBoardSocket::AUTO) {
+        const auto describeTarget = [](const Extrinsics& extrinsics) {
+            return "deviceId '" + extrinsics.toDeviceId + "', socket " + toString(extrinsics.toCameraSocket);
+        };
+        throw std::runtime_error("Cannot get extrinsics between different target coordinate systems. Source target: " + describeTarget(*this)
+                                 + ". Destination target: " + describeTarget(to) + ".");
     }
 
     // this -> Common

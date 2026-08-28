@@ -53,9 +53,6 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
     const auto fromExtrinsics = from.getExtrinsics();
     const auto toExtrinsics = to.getExtrinsics();
 
-    if(!fromExtrinsics.hasCompatibleCoordinateSystem(toExtrinsics)) {
-        throw std::runtime_error("Cannot remap ImgTransformations expressed relative to different target coordinate systems.");
-    }
     if(from.isEqualTransformation(to)) {
         return sourcePt;
     }
