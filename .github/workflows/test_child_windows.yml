@@ -21,7 +21,7 @@ on:
 
 jobs:
   build_windows_tests:
-    runs-on: windows-2022
+    runs-on: windows-2025
     outputs:
         artifact_id: ${{ steps.reuse.outputs.artifact_id || steps.artifact-upload-step.outputs.artifact-id }}
     env:
@@ -49,7 +49,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         REPO: ${{ github.repository }}
-        ARTIFACT_NAME: depthai-core-win-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
+        ARTIFACT_NAME: depthai-core-win-2025-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
       run: |
         $ErrorActionPreference = "Stop"
 
@@ -104,7 +104,7 @@ jobs:
       id: vcpkg-restore
       with:
         path: C:\vcpkg_binaries
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        key: vcpkg-archives-windows-2025-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
       if: steps.reuse.outputs.skip_build != 'true'
@@ -161,14 +161,14 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: C:\vcpkg_binaries
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        key: vcpkg-archives-windows-2025-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Upload artifact
       if: steps.reuse.outputs.skip_build != 'true'
       id: artifact-upload-step
       uses: actions/upload-artifact@v4
       with:
-        name: depthai-core-win-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
+        name: depthai-core-win-2025-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
         path: C:\depthai-core
         retention-days: 1
 
