@@ -30,6 +30,14 @@ void bind_detectionscrop(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, DetectionsCrop, inputImage))
         .def_property_readonly(
             "out", [](DetectionsCrop& self) { return &self.out; }, py::return_value_policy::reference_internal, DOC(dai, node, DetectionsCrop, out))
-        .def("runOnHost", &DetectionsCrop::runOnHost, DOC(dai, node, DetectionsCrop, runOnHost))
-        .def("setRunOnHost", &DetectionsCrop::setRunOnHost, py::arg("runOnHost") = true, DOC(dai, node, DetectionsCrop, setRunOnHost));
+        .def_property_readonly(
+            "cropConfigGenerator",
+            [](DetectionsCrop& self) { return &*self.cropConfigGenerator; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, DetectionsCrop, cropConfigGenerator))
+        .def_property_readonly(
+            "imageManip",
+            [](DetectionsCrop& self) { return &*self.imageManip; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, DetectionsCrop, imageManip));
 }

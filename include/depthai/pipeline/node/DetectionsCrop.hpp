@@ -18,19 +18,21 @@ namespace node {
  * The internal ImageManip waits for each generated config, ensuring that the
  * config is applied to the image emitted with it.
  */
-class DetectionsCrop : public DeviceNodeGroup, public HostRunnable {
-   private:
-    bool runOnHostVar = false;
-
+class DetectionsCrop : public DeviceNodeGroup {
    public:
-    DetectionsCrop();
     explicit DetectionsCrop(const std::shared_ptr<Device>& device);
     ~DetectionsCrop() override;
 
-    [[nodiscard]] static std::shared_ptr<DetectionsCrop> create();
-    [[nodiscard]] static std::shared_ptr<DetectionsCrop> create(const std::shared_ptr<Device>& device);
+    [[nodiscard]] static std::shared_ptr<DetectionsCrop> create(const std::shared_ptr<Device>& device) {
+        auto node = std::make_shared<DetectionsCrop>(device);
+        node->buildInternal();
+        return node;
+    }
 
+    /** Crop config generator used by this node group. */
     Subnode<CropConfigGenerator> cropConfigGenerator{*this, "cropConfigGenerator"};
+
+    /** Image manipulation node used by this node group. */
     Subnode<ImageManip> imageManip{*this, "imageManip"};
 
     /**
@@ -48,16 +50,6 @@ class DetectionsCrop : public DeviceNodeGroup, public HostRunnable {
      * Cropped images, emitted one by one in detection order.
      */
     Output& out;
-
-    /**
-     * Specify whether the group and both internal nodes run on host or device.
-     */
-    DetectionsCrop& setRunOnHost(bool runOnHost = true);
-
-    /**
-     * Check whether the group is configured to run on host.
-     */
-    bool runOnHost() const override;
 
     void buildInternal() override;
 };
