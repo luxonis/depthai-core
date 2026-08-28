@@ -37,6 +37,10 @@ jobs:
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
       CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
+      INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+      INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+      INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+      INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
 
   required_hil_test_report:
     name: ${{ ((github.event.review.state == 'approved' || (github.event_name == 'pull_request' && github.event.label.name == 'testable')) && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'develop')) && 'Required HIL test report' || 'HIL test report (not applicable)' }}
