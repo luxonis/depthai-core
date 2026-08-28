@@ -58,6 +58,7 @@ enum class DatatypeEnum : std::int32_t {
     VppConfig,
     PacketizedData,
     Transformable,
+    AlignConfig,
     ImgDetectionsFilterConfig,
     Classifications,
     Keypoints,

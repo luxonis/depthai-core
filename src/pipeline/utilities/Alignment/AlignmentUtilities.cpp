@@ -315,6 +315,6 @@ inline float coeffAt(const std::vector<float>& coeffs, size_t idx) {
     return idx < coeffs.size() ? coeffs[idx] : 0.0f;
 }
 
-inline bool hasNonZeroDistortion(const std::vector<float>& coeffs) {
+bool hasNonZeroDistortion(const std::vector<float>& coeffs) {
     return std::any_of(coeffs.begin(), coeffs.end(), [](float value) { return std::abs(value) > 0.0f; });
 }

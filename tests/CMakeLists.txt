@@ -346,7 +346,7 @@ function(dai_add_test test_name test_src)
 
     # Link to core and Catch2 testing framework
     set(DEPTHAI_TARGET depthai::core)
-    if(NOT DEPTHAI_MERGED_TARGET)
+    if(NOT DEPTHAI_MERGED_TARGET AND TARGET depthai::opencv)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
     target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
@@ -572,6 +572,23 @@ dai_add_test(detections_crop_test src/onhost_tests/pipeline/node/detections_crop
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 dai_set_test_labels(crop_config_generator_test onhost ci)
 dai_set_test_labels(detections_crop_test onhost ci)
+
+if(DEPTHAI_BUILD_BETA)
+    # Stitching device-node configuration tests (must not require host OpenCV support)
+    dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+    dai_set_test_labels(stitching_device_node_test onhost ci)
+
+    if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
+        dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+        target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+        dai_set_test_labels(stitching_node_test onhost ci)
+    endif()
+
+    if(DEPTHAI_HAVE_OPENCV_STITCHING)
+        dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+        dai_set_test_labels(planar_stitching_node_test onhost ci)
+    endif()
+endif()
 
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
@@ -859,6 +876,14 @@ dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+
+# Align test
+dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
+dai_set_test_labels(align_node_test ondevice rvc4 ci)
+
+# Align device execution test (device-side Align is only available on RVC4)
+dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)
+dai_set_test_labels(align_node_device_test ondevice rvc4 ci)
 
 # Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)

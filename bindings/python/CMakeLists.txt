@@ -109,6 +109,7 @@ set(SOURCE_LIST
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
+    src/pipeline/node/AlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
     src/pipeline/node/RectificationBindings.cpp
@@ -158,6 +159,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/PipelineStateBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
+    src/pipeline/datatype/AlignConfigBindings.cpp
     src/pipeline/datatype/ImgAnnotationsBindings.cpp
     src/pipeline/datatype/VppConfigBindings.cpp
     src/remote_connection/RemoteConnectionBindings.cpp
@@ -210,6 +212,7 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/RFDETRParserBindings.cpp
         src/beta/node/SCRFDParserBindings.cpp
         src/beta/node/SuperAnimalParserBindings.cpp
+        src/beta/node/StitchingBindings.cpp
         src/beta/node/XFeatMonoParserBindings.cpp
         src/beta/node/XFeatStereoParserBindings.cpp
         src/beta/node/YuNetParserBindings.cpp

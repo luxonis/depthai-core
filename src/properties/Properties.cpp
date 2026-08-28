@@ -1,5 +1,6 @@
 #include "depthai/properties/Properties.hpp"
 
+#include "depthai/properties/AlignProperties.hpp"
 #include "depthai/properties/AprilTagProperties.hpp"
 #include "depthai/properties/BenchmarkInProperties.hpp"
 #include "depthai/properties/BenchmarkOutProperties.hpp"
@@ -77,6 +78,7 @@ GPUStereoProperties::~GPUStereoProperties() = default;
 FeatureTrackerProperties::~FeatureTrackerProperties() = default;
 IMUProperties::~IMUProperties() = default;
 ImageAlignProperties::~ImageAlignProperties() = default;
+AlignProperties::~AlignProperties() = default;
 ImageManipProperties::~ImageManipProperties() = default;
 DeviceNodeGroupProperties::~DeviceNodeGroupProperties() = default;
 MessageDemuxProperties::~MessageDemuxProperties() = default;
