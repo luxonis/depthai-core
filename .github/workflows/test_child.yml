@@ -199,7 +199,7 @@ jobs:
     permissions:
       contents: read
     steps:
-    # - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
     # - name: Download test logs
     #   uses: actions/download-artifact@v4
     #   with:
@@ -244,9 +244,8 @@ jobs:
         #   report_context="${context//\//_}"
         #   report_context="${report_context// /_}"
         #   python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
-          echo "$INFLUXDB_TEST_REPORT_BUCKET $GITHUB_RUN_ID"
           python3 scripts/ci/junit_to_influxdb.py "${{ github.workflow }}" "ctest-reports/${report_context}.xml"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
+          # echo "" >> "$GITHUB_STEP_SUMMARY"
         # done
 
         # if [ "$found_logs" -eq 0 ]; then
