@@ -5,7 +5,6 @@
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
-#include <depthai/pipeline/node/ImageAlign.hpp>
 #include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -69,7 +68,6 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     Subnode<dai::node::NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
 
    private:
-    Subnode<dai::node::ImageAlign> neuralDepthAlign{*this, "neuralDepthAlign"};
     Subnode<dai::node::Sync> sync{*this, "sync"};
 
    public:

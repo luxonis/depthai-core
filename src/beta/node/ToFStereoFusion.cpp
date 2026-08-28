@@ -31,7 +31,6 @@ void ToFStereoFusion::buildInternal() {
     nnDataInput.setBlocking(false);
     neuralNetwork->setModelFromDeviceZoo(DeviceModelZoo::TOF_NEURAL_FUSION_672X804);
     neuralNetwork->setBackendProperties({{"output_tensors", "logits_a,logits_spec"}});
-    neuralDepthAlign->setRunOnHost(false);
 }
 
 std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right) {
@@ -57,12 +56,10 @@ std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<da
 #endif
     tof->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, 30.0f);
     tof->setOutputUndistortion(true);
-    neuralDepth->depth.link(neuralDepthAlign->input);
+    neuralDepth->depth.link(sync->inputs["neuralDepth"]);
+    neuralDepth->confidence.link(sync->inputs["neuralConfidence"]);
     tof->tofBaseNode.depth.link(sync->inputs["tofDepth"]);
     tof->tofBaseNode.confidence.link(sync->inputs["tofConfidence"]);
-    tof->tofBaseNode.intensity.link(sync->inputs["tofIntensity"]);
-    tof->tofBaseNode.depth.link(neuralDepthAlign->inputAlignTo);
-    neuralDepthAlign->outputAligned.link(sync->inputs["neuralDepth"]);
     return std::static_pointer_cast<ToFStereoFusion>(shared_from_this());
 }
 
