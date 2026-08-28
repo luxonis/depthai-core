@@ -16,6 +16,7 @@ GITHUB_REF = os.getenv('GITHUB_REF', 'null')
 GITHUB_RUN_ID = os.getenv('GITHUB_RUN_ID', 'null')
 global workflowGlobal
 workflowGlobal = "null"
+print("VALUES:", bucket, url[0:5] if url is not None else "no URL")
 
 client = influxdb_client.InfluxDBClient(
    url=url,
@@ -186,8 +187,6 @@ write_api = client.write_api(write_options=SYNCHRONOUS)
 #         )
 
 # parseTesstSummary()
-
-print("VALUES:", bucket, url[0:5] if url is not None else "no URL")
 
 test = (influxdb_client
     .Point("test")

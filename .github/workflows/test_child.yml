@@ -217,6 +217,10 @@ jobs:
       run: python3 -m pip install influxdb-client==1.50.0
     - name: Generate combined summary
       env:
+        INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+        INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+        INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+        INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
         GITHUB_RUN_ID: ${{ github.run_id }}
         GITHUB_SHA: ${{ github.sha }}
         GITHUB_REF: ${{ github.ref }}
