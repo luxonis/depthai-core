@@ -30,7 +30,6 @@ void ToFStereoFusion::buildInternal() {
     neuralNetwork->out.link(nnDataInput);
     nnDataInput.setBlocking(false);
     neuralNetwork->setModelFromDeviceZoo(DeviceModelZoo::TOF_NEURAL_FUSION_672X804);
-    neuralNetwork->setBackendProperties({{"output_tensors", "logits_a,logits_spec"}});
 }
 
 std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right) {
