@@ -8,6 +8,7 @@
 #include "node/ColorCamera.hpp"
 #include "node/CropConfigGenerator.hpp"
 #include "node/Depth.hpp"
+#include "node/DetectionsCrop.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
 #include "node/Rectification.hpp"

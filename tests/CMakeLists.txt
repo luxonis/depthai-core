@@ -568,8 +568,10 @@ dai_set_test_labels(model_slug_test onhost ci)
 # GPUStereo node tests
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_add_test(crop_config_generator_test src/onhost_tests/pipeline/node/crop_config_generator_test.cpp)
+dai_add_test(detections_crop_test src/onhost_tests/pipeline/node/detections_crop_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 dai_set_test_labels(crop_config_generator_test onhost ci)
+dai_set_test_labels(detections_crop_test onhost ci)
 
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
