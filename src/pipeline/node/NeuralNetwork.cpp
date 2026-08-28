@@ -287,6 +287,14 @@ void NeuralNetwork::setBackendProperties(const std::map<std::string, std::string
     properties.backendProperties = props;
 }
 
+void NeuralNetwork::setOutputTensorName(const std::string& name) {
+    properties.outputTensorNames = {name};
+}
+
+void NeuralNetwork::setOutputTensorNames(const std::vector<std::string>& names) {
+    properties.outputTensorNames = names;
+}
+
 int NeuralNetwork::getNumInferenceThreads() const {
     return properties.numThreads;
 }

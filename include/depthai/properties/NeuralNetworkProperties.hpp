@@ -53,6 +53,8 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
      * Specify backend properties
      */
     std::map<std::string, std::string> backendProperties;
+    /** Output tensors requested from the runtime. Empty selects graph-default outputs. */
+    std::vector<std::string> outputTensorNames;
     /**
      * Device model from device model zoo
      */
@@ -71,6 +73,7 @@ DEPTHAI_SERIALIZE_EXT(NeuralNetworkProperties,
                       numShavesPerThread,
                       backend,
                       backendProperties,
+                      outputTensorNames,
                       deviceModel);
 
 }  // namespace dai

@@ -210,6 +210,11 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      */
     void setBackendProperties(const std::map<std::string, std::string>& properties);
 
+    /** Select one output tensor by name. */
+    void setOutputTensorName(const std::string& name);
+    /** Select one or more output tensors by name. */
+    void setOutputTensorNames(const std::vector<std::string>& names);
+
     /**
      * How many inference threads will be used to run the network
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
