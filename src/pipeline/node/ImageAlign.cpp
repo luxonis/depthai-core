@@ -353,10 +353,42 @@ void ImageAlign::run() {
     auto latestConfig = initialConfig;
 
     int previousShiftFactor = 0;
+    bool refreshAlignToTransform = false;
 
     ImgTransformation inputAlignToTransform;
     ImgFrame inputAlignToImgFrame;
     uint32_t currentEepromId = getParentPipeline().getEepromId();
+
+    auto updateAlignToData = [&](const std::shared_ptr<ImgFrame>& inputAlignToImg) {
+        inputAlignToImgFrame = *inputAlignToImg;
+
+        auto alignTransform = inputAlignToImg->transformation;
+        const auto alignToDistortion = alignTransform.getDistortionCoefficients();
+        const bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
+        if(hasDistortion) {
+            logger->warn(
+                "The input connected to inputAlignTo is distorted. The aligned image will still be undistorted, meaning it won't be perfectly "
+                "aligned.");
+        }
+
+        alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
+        if(alignWidth == 0 || alignHeight == 0) {
+            alignWidth = inputAlignToImg->getWidth();
+            alignHeight = inputAlignToImg->getHeight();
+        }
+
+        auto alignTransformForIntrinsics = alignTransform;
+        auto [alignTransformWidth, alignTransformHeight] = alignTransformForIntrinsics.getSize();
+        if(static_cast<int>(alignTransformWidth) != alignWidth || static_cast<int>(alignTransformHeight) != alignHeight) {
+            float scaleX = static_cast<float>(alignWidth) / static_cast<float>(alignTransformWidth);
+            float scaleY = static_cast<float>(alignHeight) / static_cast<float>(alignTransformHeight);
+            alignTransformForIntrinsics.addScale(scaleX, scaleY);
+            alignTransformForIntrinsics.setSize(alignWidth, alignHeight);
+        }
+
+        alignSourceIntrinsics = alignTransformForIntrinsics.getIntrinsicMatrix();
+        inputAlignToTransform = alignTransformForIntrinsics;
+    };
 
     while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputImg = nullptr;
@@ -371,35 +403,7 @@ void ImageAlign::run() {
                 initialized = true;
 
                 auto inputAlignToImg = inputAlignTo.get<ImgFrame>();
-
-                inputAlignToImgFrame = *inputAlignToImg;
-
-                inputAlignToTransform = inputAlignToImg->transformation;
-                const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
-                const bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
-                if(hasDistortion) {
-                    logger->warn(
-                        "The input connected to inputAlignTo is distorted. The aligned image will still be undistorted, meaning it won't be perfectly "
-                        "aligned.");
-                }
-
-                alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
-                if(alignWidth == 0 || alignHeight == 0) {
-                    alignWidth = inputAlignToImg->getWidth();
-                    alignHeight = inputAlignToImg->getHeight();
-                }
-
-                auto alignTransformForIntrinsics = inputAlignToTransform;
-                auto [alignTransformWidth, alignTransformHeight] = alignTransformForIntrinsics.getSize();
-                if(static_cast<int>(alignTransformWidth) != alignWidth || static_cast<int>(alignTransformHeight) != alignHeight) {
-                    float scaleX = static_cast<float>(alignWidth) / static_cast<float>(alignTransformWidth);
-                    float scaleY = static_cast<float>(alignHeight) / static_cast<float>(alignTransformHeight);
-                    alignTransformForIntrinsics.addScale(scaleX, scaleY);
-                    alignTransformForIntrinsics.setSize(alignWidth, alignHeight);
-                }
-
-                alignSourceIntrinsics = alignTransformForIntrinsics.getIntrinsicMatrix();
-                inputAlignToTransform = alignTransformForIntrinsics;
+                updateAlignToData(inputAlignToImg);
             }
 
             if(inputConfig.getWaitForMessage()) {
@@ -451,8 +455,20 @@ void ImageAlign::run() {
         if(latestEepromId > currentEepromId) {
             logger->debug("EEPROM data changed (ID: {} -> {}), reconfiguring ...", currentEepromId, latestEepromId);
             calibrationSet = false;
+            previousShiftFactor = 0;
+            refreshAlignToTransform = true;
             calibHandler = pipeline.getCalibrationData();
             currentEepromId = latestEepromId;
+        }
+
+        if(refreshAlignToTransform) {
+            if(auto latestAlignToImg = inputAlignTo.tryGet<ImgFrame>()) {
+                updateAlignToData(latestAlignToImg);
+                refreshAlignToTransform = false;
+            } else {
+                logger->trace("Waiting for updated inputAlignTo frame after calibration change.");
+                continue;
+            }
         }
 
         try {
