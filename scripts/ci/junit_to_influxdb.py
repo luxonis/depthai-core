@@ -10,12 +10,12 @@ org = os.getenv('INFLUXDB_ORG')
 token = os.getenv('INFLUXDB_TOKEN')
 url = os.getenv('INFLUXDB_URL')
 
-timeGlobal = datetime.datetime.now().isoformat()
 GITHUB_SHA = os.getenv('GITHUB_SHA', 'null')
 GITHUB_REF = os.getenv('GITHUB_REF', 'null')
 GITHUB_RUN_ID = os.getenv('GITHUB_RUN_ID', 'null')
-global workflowGlobal
+global workflowGlobal, timeGlobal
 workflowGlobal = "null"
+timeGlobal = '1970-01-01T00:00:00'
 
 client = influxdb_client.InfluxDBClient(
    url=url,
@@ -121,6 +121,7 @@ def parseTesstSummary():
         print("COULD NOT UPLOAD JUNITS TO INFLUXDB, BECAUSE SCRIPT WAS CALLED INCORRECTLY")
         return
     workflowGlobal = sys.argv[1]
+    timeGlobal = sys.argv[2]
     junits = ET.parse(sys.argv[2])
     testsuites = junits.getroot()
     for testsuite in testsuites:

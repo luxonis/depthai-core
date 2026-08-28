@@ -213,8 +213,6 @@ jobs:
       with:
         pattern: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-*
         path: ctest-logs
-    - name: Install reporter dependencies
-      run: python3 -m pip install influxdb-client==1.50.0
     - name: Generate combined summary
       env:
         INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
@@ -252,7 +250,7 @@ jobs:
           report_context="${context//\//_}"
           report_context="${report_context// /_}"
           python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
-          python3 scripts/ci/junit_to_influxdb.py "${{ github.workflow }}" "ctest-reports/${report_context}.xml"
+          python3 scripts/ci/junit_to_influxdb.py "${{ github.workflow }}" "$(date +%Y-%m-%dT%H-%M-%S)" "ctest-reports/${report_context}.xml"
           echo "" >> "$GITHUB_STEP_SUMMARY"
         done
 
