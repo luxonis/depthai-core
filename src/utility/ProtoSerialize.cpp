@@ -341,6 +341,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
+        case DatatypeEnum::AlignConfig:
         case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::ObjectTrackerConfig:
