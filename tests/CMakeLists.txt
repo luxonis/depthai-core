@@ -474,6 +474,14 @@ dai_set_test_labels(naming_test onhost ci)
 
 # Image transformations test
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # The protobuf round trip uses generated message types directly and includes
+    # src/utility/ProtoSerialize.hpp, which resolves depthai headers relative to
+    # include/depthai. Keep protobuf private to depthai::core, but link this
+    # consumer to the generated messages.
+    target_include_directories(image_transformations_test PRIVATE ${CMAKE_SOURCE_DIR}/include/depthai)
+    target_link_libraries(image_transformations_test PRIVATE messages)
+endif()
 dai_set_test_labels(image_transformations_test onhost ci)
 
 # Matrix operations tests

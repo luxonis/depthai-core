@@ -4,6 +4,11 @@
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
+#include "depthai/utility/Serialization.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/ImgFrame.pb.h"
+    #include "utility/ProtoSerialize.hpp"
+#endif
 #define CATCH_CONFIG_MAIN
 
 #include <catch2/catch_all.hpp>
@@ -230,6 +235,81 @@ TEST_CASE("identityTransformation") {
     REQUIRE_THAT(back.y, Catch::Matchers::WithinAbs(r.y, 1e-6));
     REQUIRE_THAT(back.width, Catch::Matchers::WithinAbs(r.width, 1e-6));
     REQUIRE_THAT(back.height, Catch::Matchers::WithinAbs(r.height, 1e-6));
+}
+
+TEST_CASE("ImgTransformation target coordinate system metadata") {
+    auto makeTransformation = [](const std::string& toDeviceId, dai::CameraBoardSocket toCameraSocket) {
+        dai::ImgTransformation transformation(640, 480);
+        auto extrinsics = transformation.getExtrinsics();
+        extrinsics.toDeviceId = toDeviceId;
+        extrinsics.toCameraSocket = toCameraSocket;
+        transformation.setExtrinsics(extrinsics);
+        return transformation;
+    };
+
+    auto source = makeTransformation("mxid-a", dai::CameraBoardSocket::CAM_A);
+    REQUIRE(source.getExtrinsics().toDeviceId == "mxid-a");
+
+    auto sameTarget = makeTransformation("mxid-a", dai::CameraBoardSocket::CAM_A);
+    REQUIRE(source.getExtrinsics().hasCompatibleCoordinateSystem(sameTarget.getExtrinsics()));
+    REQUIRE(source.isEqualTransformation(sameTarget));
+    REQUIRE(source.isAlignedTo(sameTarget));
+
+    auto otherDevice = makeTransformation("mxid-b", dai::CameraBoardSocket::CAM_A);
+    REQUIRE_FALSE(source.getExtrinsics().hasCompatibleCoordinateSystem(otherDevice.getExtrinsics()));
+    REQUIRE_FALSE(source.isEqualTransformation(otherDevice));
+    REQUIRE_FALSE(source.isAlignedTo(otherDevice));
+    REQUIRE_THROWS(source.getExtrinsicsTransformationMatrixTo(otherDevice));
+
+    auto otherSocket = makeTransformation("mxid-a", dai::CameraBoardSocket::CAM_B);
+    REQUIRE_FALSE(source.getExtrinsics().hasCompatibleCoordinateSystem(otherSocket.getExtrinsics()));
+    REQUIRE_FALSE(source.isAlignedTo(otherSocket));
+    REQUIRE_THROWS(source.getExtrinsicsTransformationMatrixTo(otherSocket));
+
+    auto unknownDevice = makeTransformation("", dai::CameraBoardSocket::CAM_A);
+    REQUIRE_FALSE(source.getExtrinsics().hasCompatibleCoordinateSystem(unknownDevice.getExtrinsics()));
+    REQUIRE_FALSE(source.isAlignedTo(unknownDevice));
+    REQUIRE_THROWS(source.getExtrinsicsTransformationMatrixTo(unknownDevice));
+
+    auto otherUnknownDevice = makeTransformation("", dai::CameraBoardSocket::CAM_A);
+    REQUIRE(unknownDevice.getExtrinsics().hasCompatibleCoordinateSystem(otherUnknownDevice.getExtrinsics()));
+    REQUIRE(unknownDevice.isAlignedTo(otherUnknownDevice));
+
+    auto unknownSocket = makeTransformation("mxid-a", dai::CameraBoardSocket::AUTO);
+    REQUIRE(source.getExtrinsics().hasCompatibleCoordinateSystem(unknownSocket.getExtrinsics()));
+
+    dai::Point2f point{10.0f, 20.0f};
+    REQUIRE_THROWS(source.remapPointTo(otherDevice, point));
+    REQUIRE_THROWS(source.remapPointTo(otherSocket, point));
+
+    dai::ImgTransformation replayTransformation(640, 480);
+    REQUIRE_FALSE(source.getExtrinsics().hasCompatibleCoordinateSystem(replayTransformation.getExtrinsics()));
+    REQUIRE_FALSE(source.isEqualTransformation(replayTransformation));
+    REQUIRE_FALSE(source.isAlignedTo(replayTransformation));
+
+    const auto remappedReplayPoint = replayTransformation.remapPointTo(source, point);
+    REQUIRE_THAT(remappedReplayPoint.x, Catch::Matchers::WithinAbs(point.x, 1e-6));
+    REQUIRE_THAT(remappedReplayPoint.y, Catch::Matchers::WithinAbs(point.y, 1e-6));
+
+    const auto serialized = dai::utility::serialize(source);
+    dai::ImgTransformation deserialized;
+    dai::utility::deserialize(serialized, deserialized);
+    REQUIRE(deserialized.getExtrinsics().toDeviceId == "mxid-a");
+    REQUIRE(deserialized.isEqualTransformation(source));
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    dai::ImgFrame frame;
+    frame.transformation = source;
+    const auto serializedProto = frame.serializeProto();
+    dai::proto::img_frame::ImgFrame protoFrame;
+    REQUIRE(protoFrame.ParseFromArray(serializedProto.data(), static_cast<int>(serializedProto.size())));
+
+    dai::ImgFrame deserializedProtoFrame;
+    dai::utility::setProtoMessage(deserializedProtoFrame, &protoFrame, false);
+    const auto& deserializedProtoTransformation = deserializedProtoFrame.transformation;
+    REQUIRE(deserializedProtoTransformation.getExtrinsics().toDeviceId == "mxid-a");
+    REQUIRE(deserializedProtoTransformation.isEqualTransformation(source));
+#endif
 }
 
 // -----------------------------------------------------------------------------
