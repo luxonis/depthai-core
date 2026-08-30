@@ -245,6 +245,70 @@ std::vector<std::shared_ptr<Device>> Pipeline::getDevices() const {
     return impl()->getDevices();
 }
 
+void Pipeline::setCameraTuningBlobPath(const std::shared_ptr<Device>& device, const fs::path& path) {
+    impl()->setCameraTuningBlobPath(device, path);
+}
+
+void Pipeline::setCameraTuningBlobPath(const std::shared_ptr<Device>& device, CameraBoardSocket socket, const fs::path& path) {
+    impl()->setCameraTuningBlobPath(device, socket, path);
+}
+
+void Pipeline::setXLinkChunkSize(const std::shared_ptr<Device>& device, int sizeBytes) {
+    impl()->setXLinkChunkSize(device, sizeBytes);
+}
+
+void Pipeline::setSippBufferSize(const std::shared_ptr<Device>& device, int sizeBytes) {
+    impl()->setSippBufferSize(device, sizeBytes);
+}
+
+void Pipeline::setSippDmaBufferSize(const std::shared_ptr<Device>& device, int sizeBytes) {
+    impl()->setSippDmaBufferSize(device, sizeBytes);
+}
+
+void Pipeline::setBoardConfig(const std::shared_ptr<Device>& device, const BoardConfig& board) {
+    impl()->setBoardConfig(device, board);
+}
+
+BoardConfig Pipeline::getBoardConfig(const std::shared_ptr<Device>& device) const {
+    return impl()->getBoardConfig(device);
+}
+
+Device::Config Pipeline::getDeviceConfig(const std::shared_ptr<Device>& device) const {
+    return impl()->getDeviceConfig(device);
+}
+
+void Pipeline::setCalibrationData(const std::shared_ptr<Device>& device, const CalibrationHandler& calibrationDataHandler) {
+    impl()->setCalibrationData(device, calibrationDataHandler);
+}
+
+bool Pipeline::isCalibrationDataAvailable(const std::shared_ptr<Device>& device) const {
+    return impl()->isCalibrationDataAvailable(device);
+}
+
+CalibrationHandler Pipeline::getCalibrationData(const std::shared_ptr<Device>& device) const {
+    return impl()->getCalibrationData(device);
+}
+
+void Pipeline::setEepromData(const std::shared_ptr<Device>& device, const std::optional<EepromData>& eepromData) {
+    impl()->setEepromData(device, eepromData);
+}
+
+std::optional<EepromData> Pipeline::getEepromData(const std::shared_ptr<Device>& device) const {
+    return impl()->getEepromData(device);
+}
+
+uint32_t Pipeline::getEepromId(const std::shared_ptr<Device>& device) const {
+    return impl()->getEepromId(device);
+}
+
+void Pipeline::setDeviceProperties(const std::shared_ptr<Device>& device, const DeviceProperties& deviceProperties) {
+    impl()->setDeviceProperties(device, deviceProperties);
+}
+
+DeviceProperties Pipeline::getDeviceProperties(const std::shared_ptr<Device>& device) const {
+    return impl()->getDeviceProperties(device);
+}
+
 PipelineSchema Pipeline::getPipelineSchema(SerializationType type, bool includePipelineDebugging) const {
     return pimpl->getPipelineSchema(type, includePipelineDebugging);
 }
@@ -817,6 +881,106 @@ uint32_t PipelineImpl::getEepromId() const {
         return defaultDeviceProperties->eepromId;
     }
     return 0;
+}
+
+std::shared_ptr<Device> PipelineImpl::resolvePipelineDevice(const std::shared_ptr<Device>& device) const {
+    if(device == nullptr) {
+        throw std::invalid_argument("Device is null");
+    }
+    if(device == defaultDevice || std::find(devices.begin(), devices.end(), device) != devices.end()) {
+        return device;
+    }
+    throw std::invalid_argument("Device is not part of this pipeline - add it with addDevice or use it with a node first");
+}
+
+Device::Config PipelineImpl::getDeviceConfig(const std::shared_ptr<Device>& device) const {
+    resolvePipelineDevice(device);
+    Device::Config config;
+    config.board = getBoardConfig(device);
+    return config;
+}
+
+void PipelineImpl::setCameraTuningBlobPath(const std::shared_ptr<Device>& device, const fs::path& path) {
+    resolvePipelineDevice(device);
+    // Per-device asset key so different devices can carry different tuning blobs
+    std::string assetKey = "camTuning_" + device->getDeviceInfo().getDeviceId();
+    auto asset = assetManager.set(assetKey, path);
+    device->setCameraTuningBlob(asset->getRelativeUri(), static_cast<uint32_t>(asset->getSize()));
+}
+
+void PipelineImpl::setCameraTuningBlobPath(const std::shared_ptr<Device>& device, CameraBoardSocket socket, const fs::path& path) {
+    resolvePipelineDevice(device);
+    std::string assetKey = "camTuning_" + device->getDeviceInfo().getDeviceId() + "_" + std::to_string(static_cast<int>(socket));
+    auto asset = assetManager.set(assetKey, path);
+    device->setCameraSocketTuningBlob(socket, asset->getRelativeUri(), static_cast<uint32_t>(asset->getSize()));
+}
+
+void PipelineImpl::setXLinkChunkSize(const std::shared_ptr<Device>& device, int sizeBytes) {
+    resolvePipelineDevice(device)->setXLinkChunkSize(sizeBytes);
+}
+
+void PipelineImpl::setSippBufferSize(const std::shared_ptr<Device>& device, int sizeBytes) {
+    resolvePipelineDevice(device)->setSippBufferSize(sizeBytes);
+}
+
+void PipelineImpl::setSippDmaBufferSize(const std::shared_ptr<Device>& device, int sizeBytes) {
+    resolvePipelineDevice(device)->setSippDmaBufferSize(sizeBytes);
+}
+
+void PipelineImpl::setBoardConfig(const std::shared_ptr<Device>& device, const BoardConfig& boardCfg) {
+    resolvePipelineDevice(device);
+    if(device == defaultDevice) {
+        board = boardCfg;
+    } else {
+        deviceBoardConfigs[device.get()] = boardCfg;
+    }
+}
+
+BoardConfig PipelineImpl::getBoardConfig(const std::shared_ptr<Device>& device) const {
+    resolvePipelineDevice(device);
+    if(device == defaultDevice) {
+        return board;
+    }
+    auto it = deviceBoardConfigs.find(device.get());
+    if(it != deviceBoardConfigs.end()) {
+        return it->second;
+    }
+    return BoardConfig{};
+}
+
+void PipelineImpl::setCalibrationData(const std::shared_ptr<Device>& device, const CalibrationHandler& calibrationDataHandler) {
+    setEepromData(device, calibrationDataHandler.getEepromData());
+}
+
+bool PipelineImpl::isCalibrationDataAvailable(const std::shared_ptr<Device>& device) const {
+    return resolvePipelineDevice(device)->isCalibrationAvailable();
+}
+
+CalibrationHandler PipelineImpl::getCalibrationData(const std::shared_ptr<Device>& device) const {
+    return resolvePipelineDevice(device)->getCalibration();
+}
+
+void PipelineImpl::setEepromData(const std::shared_ptr<Device>& device, const std::optional<EepromData>& eepromData) {
+    resolvePipelineDevice(device)->setCalibration(eepromData);
+}
+
+std::optional<EepromData> PipelineImpl::getEepromData(const std::shared_ptr<Device>& device) const {
+    if(auto calibration = resolvePipelineDevice(device)->tryGetCalibration()) {
+        return calibration->getEepromData();
+    }
+    return std::nullopt;
+}
+
+uint32_t PipelineImpl::getEepromId(const std::shared_ptr<Device>& device) const {
+    return resolvePipelineDevice(device)->getProperties().eepromId;
+}
+
+void PipelineImpl::setDeviceProperties(const std::shared_ptr<Device>& device, const DeviceProperties& deviceProperties) {
+    resolvePipelineDevice(device)->setProperties(deviceProperties);
+}
+
+DeviceProperties PipelineImpl::getDeviceProperties(const std::shared_ptr<Device>& device) const {
+    return resolvePipelineDevice(device)->getProperties();
 }
 
 bool PipelineImpl::isHostOnly() const {

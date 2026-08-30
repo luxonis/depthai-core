@@ -246,15 +246,104 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("socket"),
              py::arg("path"),
              DOC(dai, Pipeline, setCameraTuningBlobPath, 2))
-        .def("setXLinkChunkSize", &Pipeline::setXLinkChunkSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setXLinkChunkSize))
-        .def("setSippBufferSize", &Pipeline::setSippBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippBufferSize))
-        .def("setSippDmaBufferSize", &Pipeline::setSippDmaBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippDmaBufferSize))
-        .def("setCalibrationData", &Pipeline::setCalibrationData, py::arg("calibrationDataHandler"), DOC(dai, Pipeline, setCalibrationData))
-        .def("getCalibrationData", &Pipeline::getCalibrationData, DOC(dai, Pipeline, getCalibrationData))
-        .def("getDeviceConfig", &Pipeline::getDeviceConfig, DOC(dai, Pipeline, getDeviceConfig))
+        .def("setCameraTuningBlobPath",
+             py::overload_cast<const std::shared_ptr<Device>&, const fs::path&>(&Pipeline::setCameraTuningBlobPath),
+             py::arg("device"),
+             py::arg("path"),
+             DOC(dai, Pipeline, setCameraTuningBlobPath, 3))
+        .def("setCameraTuningBlobPath",
+             py::overload_cast<const std::shared_ptr<Device>&, CameraBoardSocket, const fs::path&>(&Pipeline::setCameraTuningBlobPath),
+             py::arg("device"),
+             py::arg("socket"),
+             py::arg("path"),
+             DOC(dai, Pipeline, setCameraTuningBlobPath, 4))
+        .def("setXLinkChunkSize", py::overload_cast<int>(&Pipeline::setXLinkChunkSize), py::arg("sizeBytes"), DOC(dai, Pipeline, setXLinkChunkSize))
+        .def("setXLinkChunkSize",
+             py::overload_cast<const std::shared_ptr<Device>&, int>(&Pipeline::setXLinkChunkSize),
+             py::arg("device"),
+             py::arg("sizeBytes"),
+             DOC(dai, Pipeline, setXLinkChunkSize, 2))
+        .def("setSippBufferSize", py::overload_cast<int>(&Pipeline::setSippBufferSize), py::arg("sizeBytes"), DOC(dai, Pipeline, setSippBufferSize))
+        .def("setSippBufferSize",
+             py::overload_cast<const std::shared_ptr<Device>&, int>(&Pipeline::setSippBufferSize),
+             py::arg("device"),
+             py::arg("sizeBytes"),
+             DOC(dai, Pipeline, setSippBufferSize, 2))
+        .def("setSippDmaBufferSize", py::overload_cast<int>(&Pipeline::setSippDmaBufferSize), py::arg("sizeBytes"), DOC(dai, Pipeline, setSippDmaBufferSize))
+        .def("setSippDmaBufferSize",
+             py::overload_cast<const std::shared_ptr<Device>&, int>(&Pipeline::setSippDmaBufferSize),
+             py::arg("device"),
+             py::arg("sizeBytes"),
+             DOC(dai, Pipeline, setSippDmaBufferSize, 2))
+        .def("setCalibrationData",
+             py::overload_cast<CalibrationHandler>(&Pipeline::setCalibrationData),
+             py::arg("calibrationDataHandler"),
+             DOC(dai, Pipeline, setCalibrationData))
+        .def("setCalibrationData",
+             py::overload_cast<const std::shared_ptr<Device>&, const CalibrationHandler&>(&Pipeline::setCalibrationData),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             py::arg("calibrationDataHandler"),
+             DOC(dai, Pipeline, setCalibrationData, 2))
+        .def("getCalibrationData", py::overload_cast<>(&Pipeline::getCalibrationData, py::const_), DOC(dai, Pipeline, getCalibrationData))
+        .def("getCalibrationData",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getCalibrationData, py::const_),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, getCalibrationData, 2))
+        .def("isCalibrationDataAvailable", py::overload_cast<>(&Pipeline::isCalibrationDataAvailable, py::const_), DOC(dai, Pipeline, isCalibrationDataAvailable))
+        .def("isCalibrationDataAvailable",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::isCalibrationDataAvailable, py::const_),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, isCalibrationDataAvailable, 2))
+        .def("setEepromData", py::overload_cast<std::optional<EepromData>>(&Pipeline::setEepromData), py::arg("eepromData"), DOC(dai, Pipeline, setEepromData))
+        .def("setEepromData",
+             py::overload_cast<const std::shared_ptr<Device>&, const std::optional<EepromData>&>(&Pipeline::setEepromData),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             py::arg("eepromData"),
+             DOC(dai, Pipeline, setEepromData, 2))
+        .def("getEepromData", py::overload_cast<>(&Pipeline::getEepromData, py::const_), DOC(dai, Pipeline, getEepromData))
+        .def("getEepromData",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getEepromData, py::const_),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, getEepromData, 2))
+        .def("getEepromId", py::overload_cast<>(&Pipeline::getEepromId, py::const_), DOC(dai, Pipeline, getEepromId))
+        .def("getEepromId",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getEepromId, py::const_),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, getEepromId, 2))
+        .def("setDeviceProperties",
+             &Pipeline::setDeviceProperties,
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             py::arg("deviceProperties"),
+             DOC(dai, Pipeline, setDeviceProperties))
+        .def("getDeviceProperties",
+             &Pipeline::getDeviceProperties,
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, getDeviceProperties))
+        .def("getDeviceConfig", py::overload_cast<>(&Pipeline::getDeviceConfig, py::const_), DOC(dai, Pipeline, getDeviceConfig))
+        .def("getDeviceConfig",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getDeviceConfig, py::const_),
+             py::arg("device"),
+             DOC(dai, Pipeline, getDeviceConfig, 2))
         .def("serializeToJson", &Pipeline::serializeToJson, DOC(dai, Pipeline, serializeToJson))
-        .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
-        .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
+        .def("setBoardConfig", py::overload_cast<BoardConfig>(&Pipeline::setBoardConfig), DOC(dai, Pipeline, setBoardConfig))
+        .def("setBoardConfig",
+             py::overload_cast<const std::shared_ptr<Device>&, const BoardConfig&>(&Pipeline::setBoardConfig),
+             py::arg("device"),
+             py::arg("board"),
+             DOC(dai, Pipeline, setBoardConfig, 2))
+        .def("getBoardConfig", py::overload_cast<>(&Pipeline::getBoardConfig, py::const_), DOC(dai, Pipeline, getBoardConfig))
+        .def("getBoardConfig",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getBoardConfig, py::const_),
+             py::arg("device"),
+             DOC(dai, Pipeline, getBoardConfig, 2))
         .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
         .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
         .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))

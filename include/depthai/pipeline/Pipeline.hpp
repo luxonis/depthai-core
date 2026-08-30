@@ -104,6 +104,29 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setCameraTuningBlobPath(const fs::path& path);
     void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path);
     void setXLinkChunkSize(int sizeBytes);
+
+    // Per-device variants of the pipeline-level device setters/getters. The device
+    // must already be part of this pipeline; the no-device forms target the master.
+    std::shared_ptr<Device> resolvePipelineDevice(const std::shared_ptr<Device>& device) const;
+    Device::Config getDeviceConfig(const std::shared_ptr<Device>& device) const;
+    void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, const fs::path& path);
+    void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, CameraBoardSocket socket, const fs::path& path);
+    void setXLinkChunkSize(const std::shared_ptr<Device>& device, int sizeBytes);
+    void setSippBufferSize(const std::shared_ptr<Device>& device, int sizeBytes);
+    void setSippDmaBufferSize(const std::shared_ptr<Device>& device, int sizeBytes);
+    void setBoardConfig(const std::shared_ptr<Device>& device, const BoardConfig& boardCfg);
+    BoardConfig getBoardConfig(const std::shared_ptr<Device>& device) const;
+    void setCalibrationData(const std::shared_ptr<Device>& device, const CalibrationHandler& calibrationDataHandler);
+    bool isCalibrationDataAvailable(const std::shared_ptr<Device>& device) const;
+    CalibrationHandler getCalibrationData(const std::shared_ptr<Device>& device) const;
+    void setEepromData(const std::shared_ptr<Device>& device, const std::optional<EepromData>& eepromData);
+    std::optional<EepromData> getEepromData(const std::shared_ptr<Device>& device) const;
+    uint32_t getEepromId(const std::shared_ptr<Device>& device) const;
+    void setDeviceProperties(const std::shared_ptr<Device>& device, const DeviceProperties& deviceProperties);
+    DeviceProperties getDeviceProperties(const std::shared_ptr<Device>& device) const;
+
+    // Board configuration per non-master device; the master keeps using 'board'
+    std::unordered_map<const Device*, BoardConfig> deviceBoardConfigs;
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(const GlobalProperties& globalProperties);
     void setDefaultDeviceProperties(const DeviceProperties& deviceProperties);
@@ -772,6 +795,58 @@ class Pipeline {
     void setDeviceStateCallback(std::function<void(std::shared_ptr<Device>, DeviceState)> callback) {
         impl()->setDeviceStateCallback(std::move(callback));
     }
+
+    /// Set a camera IQ (Image Quality) tuning blob for all cameras of the given pipeline device
+    void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, const fs::path& path);
+
+    /// Set a camera IQ (Image Quality) tuning blob for a specific board socket of the given pipeline device
+    void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, CameraBoardSocket socket, const fs::path& path);
+
+    /// Set chunk size for splitting device-sent XLink packets for the given pipeline device; see the no-device overload
+    void setXLinkChunkSize(const std::shared_ptr<Device>& device, int sizeBytes);
+
+    /// Set the SIPP buffer size of the given pipeline device; see the no-device overload
+    void setSippBufferSize(const std::shared_ptr<Device>& device, int sizeBytes);
+
+    /// Set the SIPP DMA buffer size of the given pipeline device; see the no-device overload
+    void setSippDmaBufferSize(const std::shared_ptr<Device>& device, int sizeBytes);
+
+    /**
+     * Sets the board configuration for the given pipeline device. Board configuration
+     * is applied when a device boots, so for an already connected device it only takes
+     * effect on flows that (re)boot with this pipeline's configuration.
+     */
+    void setBoardConfig(const std::shared_ptr<Device>& device, const BoardConfig& board);
+
+    /// Gets the board configuration of the given pipeline device
+    BoardConfig getBoardConfig(const std::shared_ptr<Device>& device) const;
+
+    /// Get device configuration needed for this pipeline, for the given pipeline device
+    Device::Config getDeviceConfig(const std::shared_ptr<Device>& device) const;
+
+    /// Sets the calibration of the given pipeline device, overriding the one in eeprom
+    void setCalibrationData(const std::shared_ptr<Device>& device, const CalibrationHandler& calibrationDataHandler);
+
+    /// Check if calibration data is available on the given pipeline device
+    bool isCalibrationDataAvailable(const std::shared_ptr<Device>& device) const;
+
+    /// Gets the calibration data of the given pipeline device
+    CalibrationHandler getCalibrationData(const std::shared_ptr<Device>& device) const;
+
+    /// Sets the eeprom data of the given pipeline device
+    void setEepromData(const std::shared_ptr<Device>& device, const std::optional<EepromData>& eepromData);
+
+    /// Gets the eeprom data of the given pipeline device
+    std::optional<EepromData> getEepromData(const std::shared_ptr<Device>& device) const;
+
+    /// Gets the eeprom id of the given pipeline device
+    uint32_t getEepromId(const std::shared_ptr<Device>& device) const;
+
+    /// Sets device properties of the given pipeline device
+    void setDeviceProperties(const std::shared_ptr<Device>& device, const DeviceProperties& deviceProperties);
+
+    /// Gets device properties of the given pipeline device
+    DeviceProperties getDeviceProperties(const std::shared_ptr<Device>& device) const;
 
     std::string getTelemetryPipelineId() const {
         return impl()->telemetryPipelineId;
