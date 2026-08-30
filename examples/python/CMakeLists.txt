@@ -433,3 +433,10 @@ dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
 
 add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
 dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
+
+# Multi-device examples: registered without labels so they never run in CI
+# (they need at least two devices; the CI test wrapper pins to a single device)
+add_python_example(multi_device_cam_sync MultiDevice/multi_device_cam_sync.py)
+add_python_example(multi_device_frame_sync MultiDevice/multi_device_frame_sync.py --ptp-sync)
+add_python_example(multi_device_host_node MultiDevice/multi_device_host_node.py)
+add_python_example(device_to_device_relay MultiDevice/device_to_device_relay.py)
