@@ -50,9 +50,15 @@ void XLinkOutHost::run() {
     while(reconnect) {
         reconnect = false;
         auto currentMaxSize = device::XLINK_USB_BUFFER_MAX_SIZE + device::XLINK_MESSAGE_METADATA_MAX_SIZE;
+        // Copy under the lock - setConnection can rebind concurrently
+        std::shared_ptr<XLinkConnection> currentConn;
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            currentConn = conn;
+        }
         std::unique_ptr<XLinkStream> streamPtr;
         try {
-            streamPtr = std::make_unique<XLinkStream>(conn, streamName, currentMaxSize);
+            streamPtr = std::make_unique<XLinkStream>(currentConn, streamName, currentMaxSize);
         } catch(const std::exception& ex) {
             // Connection unusable (e.g. closed while waking up) - park until it is
             // refreshed or the device is declared gone
@@ -70,13 +76,13 @@ void XLinkOutHost::run() {
         XLinkStream& stream = *streamPtr;
         // File descriptors are only valid across a local shared-memory transport;
         // any other destination gets the mapped bytes instead (one copy)
-        const bool destinationIsLocalShdmem = conn != nullptr && conn->getDeviceInfo().protocol == X_LINK_LOCAL_SHDMEM;
-        auto increaseBufferSize = [&stream, &currentMaxSize, this](const std::size_t& maxSize) {
+        const bool destinationIsLocalShdmem = currentConn != nullptr && currentConn->getDeviceInfo().protocol == X_LINK_LOCAL_SHDMEM;
+        auto increaseBufferSize = [&stream, &currentMaxSize, &currentConn, this](const std::size_t& maxSize) {
             if(!this->allowResize) {
                 logger::error("Data size exceeds the maximum buffer size - please increase the buffer size");
                 throw std::runtime_error("Data size exceeds the maximum buffer size");
             }
-            stream = XLinkStream(this->conn, this->streamName, maxSize);
+            stream = XLinkStream(currentConn, this->streamName, maxSize);
             currentMaxSize = maxSize;
         };
         while(mainLoop()) {
@@ -134,7 +140,7 @@ void XLinkOutHost::run() {
                 }
             } catch(const std::exception& ex) {
                 if(isRunning()) {
-                    auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+                    logger::error("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                     std::unique_lock<std::mutex> lck(mtx);
                     logger::info("Waiting for reconnect (XLINKOUTHOST)\n");
                     isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });

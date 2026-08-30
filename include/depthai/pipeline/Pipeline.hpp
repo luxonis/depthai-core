@@ -230,7 +230,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Input -> distinct source devices (nullptr entry = host), resolved from the user
     // graph at build() before bridge insertion. See Node::Input::getSourceDevice.
-    std::unordered_map<Node::Input*, std::vector<std::shared_ptr<Device>>> inputSourceDevices;
+    std::unordered_map<const Node::Input*, std::vector<std::shared_ptr<Device>>> inputSourceDevices;
 
     // Source device of an input: the device of the upstream node, nullptr if the
     // upstream node runs on host. Uses the map above after build, resolves live before.

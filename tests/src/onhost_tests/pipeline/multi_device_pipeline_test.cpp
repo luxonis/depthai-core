@@ -57,3 +57,37 @@ TEST_CASE("DeviceInfo::local targets the booted local shared-memory device") {
     REQUIRE(info.state == X_LINK_BOOTED);
     REQUIRE(info.protocol == X_LINK_LOCAL_SHDMEM);
 }
+
+TEST_CASE("MessageGroup interval uses the timestamp source the group was synced with") {
+    using namespace std::chrono;
+    using Source = dai::SyncProperties::TimestampSource;
+
+    auto makeBuffer = [](int64_t hostMs, int64_t deviceMs) {
+        auto buffer = std::make_shared<dai::Buffer>();
+        buffer->setTimestamp(time_point<steady_clock, steady_clock::duration>(milliseconds(hostMs)));
+        buffer->setTimestampDevice(time_point<steady_clock, steady_clock::duration>(milliseconds(deviceMs)));
+        return buffer;
+    };
+
+    dai::MessageGroup group;
+    group.add("a", makeBuffer(100, 1000));
+    group.add("b", makeBuffer(103, 1020));
+
+    SECTION("DEVICE source (default, matches device-produced groups)") {
+        REQUIRE(group.getTimestampSource() == Source::DEVICE);
+        REQUIRE(group.getIntervalNs() == duration_cast<nanoseconds>(milliseconds(20)).count());
+        REQUIRE(group.isSynced(duration_cast<nanoseconds>(milliseconds(20)).count()));
+        REQUIRE(!group.isSynced(duration_cast<nanoseconds>(milliseconds(19)).count()));
+    }
+
+    SECTION("HOST source measures host timestamps") {
+        group.setTimestampSource(Source::HOST);
+        REQUIRE(group.getIntervalNs() == duration_cast<nanoseconds>(milliseconds(3)).count());
+        REQUIRE(group.isSynced(duration_cast<nanoseconds>(milliseconds(3)).count()));
+    }
+
+    SECTION("SYSTEM source skips entries without a system timestamp") {
+        group.setTimestampSource(Source::SYSTEM);
+        REQUIRE(group.getIntervalNs() == 0);
+    }
+}

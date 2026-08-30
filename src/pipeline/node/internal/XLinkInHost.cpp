@@ -96,7 +96,13 @@ void XLinkInHost::run() {
     while(reconnect) {
         reconnect = false;
         try {
-            stream = std::make_unique<XLinkStream>(std::move(conn), streamName, 1);
+            // Copy under the lock - setConnection can rebind concurrently
+            std::shared_ptr<XLinkConnection> currentConn;
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                currentConn = conn;
+            }
+            stream = std::make_unique<XLinkStream>(std::move(currentConn), streamName, 1);
         } catch(const std::exception& ex) {
             // Connection unusable (e.g. closed while waking up) - park until it is
             // refreshed or the device is declared gone
