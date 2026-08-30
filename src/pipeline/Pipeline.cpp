@@ -1249,12 +1249,61 @@ void PipelineImpl::build() {
                 throw std::runtime_error("Device-to-device connection found with an unassigned device");
             }
             if(outDevice != inDevice) {
-                throw std::runtime_error(
-                    fmt::format("Direct connection between device nodes '{}' ({}) and '{}' ({}) on different devices is not supported in this MVP",
-                                outNode->getName(),
-                                outDevice->getDeviceId(),
-                                inNode->getName(),
-                                inDevice->getDeviceId()));
+                // Device A -> device B: relay through the host. A-side bridge is shared
+                // with any direct host consumers of the same output, B-side with any
+                // host producers into the same input.
+                if(bridgesOut.count(connection.out) == 0) {
+                    bridgesOut[connection.out] = dai::node::internal::XLinkOutBridge{
+                        create<node::internal::XLinkOut>(shared_from_this(), outDevice),
+                        create<node::internal::XLinkInHost>(shared_from_this()),
+                    };
+                    auto& outBridge = bridgesOut[connection.out];
+                    auto streamName = fmt::format("__x_{}_{}_{}", outNode->id, connection.outputGroup, connection.outputName);
+                    if(uniqueStreamNames.count(streamName) > 0) {
+                        throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
+                    }
+                    uniqueStreamNames.insert(streamName);
+                    outBridge.xLinkOut->setStreamName(streamName);
+                    outBridge.xLinkInHost->setStreamName(streamName);
+                    outBridge.xLinkInHost->setConnection(outDevice->getConnection());
+                    connection.out->link(outBridge.xLinkOut->input);
+                    bridgeHostDevices[outBridge.xLinkInHost->id] = outDevice;
+                    xlinkBridges.push_back({outBridge.xLinkOut->id, outBridge.xLinkInHost->id});
+                    connection.out->xLinkBridge = std::make_shared<dai::node::internal::XLinkOutBridge>(outBridge);
+                }
+                if(bridgesIn.count(connection.in) == 0) {
+                    bridgesIn[connection.in] = dai::node::internal::XLinkInBridge{
+                        create<node::internal::XLinkOutHost>(shared_from_this()),
+                        create<node::internal::XLinkIn>(shared_from_this(), inDevice),
+                    };
+                    auto& inBridge = bridgesIn[connection.in];
+                    auto streamName = fmt::format("__x_{}_{}_{}", inNode->id, connection.inputGroup, connection.inputName);
+                    if(uniqueStreamNames.count(streamName) > 0) {
+                        throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
+                    }
+                    uniqueStreamNames.insert(streamName);
+                    inBridge.xLinkOutHost->setStreamName(streamName);
+                    inBridge.xLinkIn->setStreamName(streamName);
+                    inBridge.xLinkOutHost->setConnection(inDevice->getConnection());
+                    inBridge.xLinkIn->out.link(*connection.in);
+                    inBridge.xLinkOutHost->allowStreamResize(true);
+                    // Relay queue: drop rather than block when the consuming device lags
+                    inBridge.xLinkOutHost->in.setBlocking(false);
+                    inBridge.xLinkOutHost->in.setMaxSize(8);
+                    bridgeHostDevices[inBridge.xLinkOutHost->id] = inDevice;
+                    xlinkBridges.push_back({inBridge.xLinkOutHost->id, inBridge.xLinkIn->id});
+                    connection.in->xLinkBridge = std::make_shared<dai::node::internal::XLinkInBridge>(inBridge);
+                }
+                auto outBridge = bridgesOut[connection.out];
+                auto inBridge = bridgesIn[connection.in];
+                connection.out->unlink(*connection.in);
+                outBridge.xLinkInHost->out.link(inBridge.xLinkOutHost->in);
+                Logging::getInstance().logger.info("Inserted host relay '__x_{}_{}_{}': device {} -> device {}",
+                                                   outNode->id,
+                                                   connection.outputGroup,
+                                                   connection.outputName,
+                                                   outDevice->getDeviceInfo().getDeviceId(),
+                                                   inDevice->getDeviceInfo().getDeviceId());
             }
         } else if(!outNode->runOnHost() && inNode->runOnHost()) {
             auto outDevice = getAssignedDevice(outNode);

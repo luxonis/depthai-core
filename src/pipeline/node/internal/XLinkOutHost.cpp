@@ -45,6 +45,9 @@ void XLinkOutHost::run() {
         reconnect = false;
         auto currentMaxSize = device::XLINK_USB_BUFFER_MAX_SIZE + device::XLINK_MESSAGE_METADATA_MAX_SIZE;
         XLinkStream stream(conn, streamName, currentMaxSize);
+        // File descriptors are only valid across a local shared-memory transport;
+        // any other destination gets the mapped bytes instead (one copy)
+        const bool destinationIsLocalShdmem = conn != nullptr && conn->getDeviceInfo().protocol == X_LINK_LOCAL_SHDMEM;
         auto increaseBufferSize = [&stream, &currentMaxSize, this](const std::size_t& maxSize) {
             if(!this->allowResize) {
                 logger::error("Data size exceeds the maximum buffer size - please increase the buffer size");
@@ -71,7 +74,7 @@ void XLinkOutHost::run() {
                 }
                 if(outgoing->data->getSize() > 0) {
                     auto sharedMemory = std::dynamic_pointer_cast<SharedMemory>(outgoing->data);
-                    if(sharedMemory && sharedMemory->getFd() > 0) {
+                    if(sharedMemory && sharedMemory->getFd() > 0 && destinationIsLocalShdmem) {
                         stream.write(sharedMemory->getFd(), metadata);
                     } else {
                         stream.write(outgoing->data->getData(), metadata);
@@ -118,7 +121,7 @@ void XLinkOutHost::run() {
                     break;
                 } else {
                     // If the node is not running, we can safely ignore the exception, since it's expected
-                    logger::info("XLinkInHost node stopped - exception: {}", ex.what());
+                    logger::info("XLinkOutHost node stopped - exception: {}", ex.what());
                     break;
                 }
             }
