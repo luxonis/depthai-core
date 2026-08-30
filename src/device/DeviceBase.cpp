@@ -2485,7 +2485,9 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
-    pipeline.impl()->serialize(schema, assets, assetStorage, DEFAULT_SERIALIZATION_TYPE, getDeviceId());
+    // Filter by the stable host-side identifier - must match the deviceId stamped
+    // into NodeObjInfo by PipelineImpl::getPipelineSchema (no RPC on either side)
+    pipeline.impl()->serialize(schema, assets, assetStorage, DEFAULT_SERIALIZATION_TYPE, deviceInfo.getDeviceId());
 
     // if debug or lower
     if(getLogOutputLevel() <= LogLevel::DEBUG) {

@@ -37,6 +37,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string_view>
+#include <thread>
 #include <unordered_set>
 
 // libraries
@@ -228,6 +229,22 @@ Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<Pipe
 
 Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) : pimpl(std::move(pimpl)) {}
 
+std::shared_ptr<Device> Pipeline::addDevice(std::shared_ptr<Device> device) {
+    return impl()->registerDevice(std::move(device));
+}
+
+std::shared_ptr<Device> Pipeline::addDevice(const DeviceInfo& deviceInfo) {
+    return impl()->registerDevice(std::make_shared<Device>(deviceInfo));
+}
+
+std::shared_ptr<Device> Pipeline::addDevice(const std::string& idOrIpOrName) {
+    return impl()->registerDevice(std::make_shared<Device>(idOrIpOrName));
+}
+
+std::vector<std::shared_ptr<Device>> Pipeline::getDevices() const {
+    return impl()->getDevices();
+}
+
 PipelineSchema Pipeline::getPipelineSchema(SerializationType type, bool includePipelineDebugging) const {
     return pimpl->getPipelineSchema(type, includePipelineDebugging);
 }
@@ -303,13 +320,26 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getSourceNodes() {
 
 void PipelineImpl::serialize(
     PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type, std::optional<std::string> deviceId) const {
+    // Devices are started in parallel and node property serialization is not thread safe
+    std::lock_guard<std::mutex> lock(serializeMtx);
+
     // Set schema
-    schema = getDevicePipelineSchema(type, true, std::move(deviceId));
+    schema = getDevicePipelineSchema(type, true, deviceId);
+
+    // Only ship a device the assets of nodes that run on it; without a device filter include all
+    auto includeNodeAssets = [&deviceId](const std::shared_ptr<Node>& node) {
+        if(!deviceId.has_value()) return true;
+        if(node->runOnHost()) return false;
+        auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
+        if(deviceNode == nullptr || deviceNode->getDevice() == nullptr) return false;
+        return deviceNode->getDevice()->getDeviceInfo().getDeviceId() == *deviceId;
+    };
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
     std::size_t storageSize = assetManager.getSerializedSize();
     for(auto& node : getAllNodes()) {
+        if(!includeNodeAssets(node)) continue;
         storageSize = node->getAssetManager().getSerializedSize(storageSize);
     }
     assetStorage.reserve(storageSize);
@@ -318,6 +348,7 @@ void PipelineImpl::serialize(
     assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
     // Node assets
     for(auto& node : getAllNodes()) {
+        if(!includeNodeAssets(node)) continue;
         node->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", node->id));
     }
 
@@ -433,7 +464,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
                 throw std::invalid_argument(fmt::format("Device node '{}' has no assigned device", info.name));
             }
             if(device != nullptr) {
-                info.deviceId = device->getDeviceId();
+                // Stable host-side identifier, no RPC. Must stay consistent with the
+                // deviceId used to filter per-device schemas in DeviceBase::startPipelineImpl.
+                info.deviceId = device->getDeviceInfo().getDeviceId();
             }
             deviceNode->getProperties().serialize(info.properties, type);
             if(std::string(deviceNode->getName()) == "DeviceNodeGroup") {
@@ -820,6 +853,85 @@ std::vector<std::shared_ptr<Device>> PipelineImpl::getAllAssignedDevices() const
     return devices;
 }
 
+std::shared_ptr<Device> PipelineImpl::registerDevice(std::shared_ptr<Device> device) {
+    if(device == nullptr) {
+        throw std::invalid_argument("Device is null");
+    }
+    // Already registered or the master itself - no-op
+    if(device == defaultDevice) {
+        return device;
+    }
+    for(const auto& registered : devices) {
+        if(registered == device) {
+            return device;
+        }
+    }
+    // Two distinct Device instances connected to the same physical device would
+    // produce overlapping per-device schemas - reject early
+    const auto deviceId = device->getDeviceInfo().getDeviceId();
+    if(!deviceId.empty()) {
+        auto sameId = [&deviceId](const std::shared_ptr<Device>& other) {
+            return other != nullptr && other->getDeviceInfo().getDeviceId() == deviceId;
+        };
+        if(sameId(defaultDevice) || std::any_of(devices.begin(), devices.end(), sameId)) {
+            throw std::invalid_argument(fmt::format("A different Device instance with id '{}' is already part of the pipeline", deviceId));
+        }
+    }
+
+    // First device is promoted to master so getDefaultDevice() and nodes created
+    // without an explicit device keep working
+    if(defaultDevice == nullptr) {
+        defaultDevice = device;
+    } else {
+        devices.push_back(device);
+    }
+    return device;
+}
+
+std::vector<std::shared_ptr<Device>> PipelineImpl::getDevices() const {
+    std::vector<std::shared_ptr<Device>> result;
+    if(defaultDevice != nullptr) {
+        result.push_back(defaultDevice);
+    }
+    result.insert(result.end(), devices.begin(), devices.end());
+    return result;
+}
+
+std::shared_ptr<Device> PipelineImpl::getInputSourceDevice(const Node::Input* input) const {
+    auto throwIfAmbiguous = [input](std::size_t distinctSources) {
+        if(distinctSources > 1) {
+            throw std::runtime_error(fmt::format("Input '{}' receives data from sources on more than one device", input->toString()));
+        }
+    };
+    if(isBuild) {
+        // Resolved from the user graph at build(), before bridge insertion
+        auto it = inputSourceDevices.find(const_cast<Node::Input*>(input));
+        if(it == inputSourceDevices.end()) {
+            return nullptr;
+        }
+        throwIfAmbiguous(it->second.size());
+        return it->second.front();
+    }
+    // Not built yet - resolve live; the graph still holds the direct user connections
+    std::vector<std::shared_ptr<Device>> sources;
+    for(const auto& connection : getConnectionsInternal()) {
+        if(connection.in != input) continue;
+        auto outNode = connection.outputNode.lock();
+        std::shared_ptr<Device> device = nullptr;  // host
+        if(outNode != nullptr && !outNode->runOnHost()) {
+            device = getAssignedDevice(outNode);
+        }
+        if(std::find(sources.begin(), sources.end(), device) == sources.end()) {
+            sources.push_back(device);
+        }
+    }
+    if(sources.empty()) {
+        return nullptr;
+    }
+    throwIfAmbiguous(sources.size());
+    return sources.front();
+}
+
 PipelineStateApi PipelineImpl::getPipelineState() {
     bool hasPipelineMergeNode = false;
     for(const auto& node : getAllNodes()) {
@@ -859,9 +971,14 @@ void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
             throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
         }
 
-        // In case we have a device node without an assigned device (usually subnodes in non-DeviceNode nodes), use the default device
-        if(std::dynamic_pointer_cast<DeviceNode>(curNode) != nullptr && std::dynamic_pointer_cast<DeviceNode>(curNode)->getDevice() == nullptr) {
-            std::dynamic_pointer_cast<DeviceNode>(curNode)->setDevice(defaultDevice);
+        // In case we have a device node without an assigned device (usually subnodes in non-DeviceNode nodes), use the default device.
+        // Nodes arriving with an explicitly assigned device register it with the pipeline.
+        if(auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(curNode)) {
+            if(deviceNode->getDevice() == nullptr) {
+                deviceNode->setDevice(defaultDevice);
+            } else {
+                registerDevice(deviceNode->getDevice());
+            }
         }
 
         for(auto& n : curNode->nodeMap) {
@@ -915,18 +1032,18 @@ bool PipelineImpl::hasDynamicCalibration() const {
 }
 #endif
 
-std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
-    if(!defaultDevice) {
+std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair(const std::shared_ptr<Device>& device) const {
+    if(!device) {
         return {nullptr, nullptr};
     }
-    auto stereoSockets = defaultDevice->getStereoPairs();
+    auto stereoSockets = device->getStereoPairs();
     if(stereoSockets.size() != 1) {
         return {nullptr, nullptr};
     }
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
     // call this only with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
-        if(std::string_view(node->getName()) == dai::node::Camera::NAME) {
+        if(std::string_view(node->getName()) == dai::node::Camera::NAME && getAssignedDevice(node) == device) {
             auto camera = std::static_pointer_cast<dai::node::Camera>(node);
             auto boardSocket = camera->getBoardSocket();
             if(boardSocket == stereoSockets[0].left) {
@@ -966,8 +1083,18 @@ void PipelineImpl::build() {
     }
 
     if(autoCalibrationMode == PipelineAutoCalibrationMode::CONTINUOUS || autoCalibrationMode == PipelineAutoCalibrationMode::ON_START) {
-        if(defaultDevice && defaultDevice->tryGetCalibration()) {
-            auto stereoPair = getStereoPair();
+        if(isHostOnly()) {
+            Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
+                                               autoCalibrationString);
+        }
+        // One AutoCalibration per device that has exactly one stereo pair with valid calibration
+        for(const auto& autoCalibDevice : getAllAssignedDevices()) {
+            if(!autoCalibDevice->tryGetCalibration()) {
+                Logging::getInstance().logger.info("Device {} has no valid initial calibration. Skipping autocalibration.",
+                                                   autoCalibDevice->getDeviceInfo().getDeviceId());
+                continue;
+            }
+            auto stereoPair = getStereoPair(autoCalibDevice);
 
             auto hasStereoPairValidCalibration = [&stereoPair](const std::shared_ptr<CalibrationHandler>& calibration) -> bool {
                 if(!calibration) return false;
@@ -989,16 +1116,17 @@ void PipelineImpl::build() {
                 }
             };
 
-            if(stereoPair.first && stereoPair.second && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
-                auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+            if(stereoPair.first && stereoPair.second && hasStereoPairValidCalibration(autoCalibDevice->tryGetCalibration())) {
+                auto autoCalibrationNode =
+                    create<dai::node::AutoCalibration>(shared_from_this(), autoCalibDevice)->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
 
                 // Build-time flash safety: disable flashing when runtime calibration differs from EEPROM.
-                const auto runtimeCalibration = defaultDevice->tryGetCalibration();
+                const auto runtimeCalibration = autoCalibDevice->tryGetCalibration();
                 bool allowFlashCalibration = autoCalibrationNode->initialConfig->flashCalibration;
                 if(allowFlashCalibration && runtimeCalibration) {
                     try {
-                        const auto eepromCalibration = defaultDevice->readFactoryCalibration();
+                        const auto eepromCalibration = autoCalibDevice->readFactoryCalibration();
 
                         bool compared = false;
                         for(const auto socket : {stereoPair.first->getBoardSocket(), stereoPair.second->getBoardSocket()}) {
@@ -1034,13 +1162,6 @@ void PipelineImpl::build() {
                 } else {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
                 }
-            }
-        } else {
-            if(isHostOnly()) {
-                Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
-                                                   autoCalibrationString);
-            } else {
-                Logging::getInstance().logger.info("Device has no valid initial calibration. Skipping autocalibration.");
             }
         }
     } else if(!autoCalibrationMode && !autoCalibrationString.empty()) {
@@ -1092,6 +1213,21 @@ void PipelineImpl::build() {
     //     create XlinkOutHost node
     //     create XlinkIn node
     //     connect them
+
+    // Resolve every input's source device from the user graph, before bridge
+    // insertion rewires connections through XLink bridge nodes
+    inputSourceDevices.clear();
+    for(auto& connection : getConnectionsInternal()) {
+        auto outNode = connection.outputNode.lock();
+        std::shared_ptr<Device> sourceDevice = nullptr;  // host
+        if(outNode != nullptr && !outNode->runOnHost()) {
+            sourceDevice = getAssignedDevice(outNode);
+        }
+        auto& sources = inputSourceDevices[connection.in];
+        if(std::find(sources.begin(), sources.end(), sourceDevice) == sources.end()) {
+            sources.push_back(sourceDevice);
+        }
+    }
 
     // Create a map of already visited nodes to only create one xlink bridge
     std::unordered_map<dai::Node::Output*, dai::node::internal::XLinkOutBridge> bridgesOut;
@@ -1262,40 +1398,61 @@ void PipelineImpl::start() {
         node->postBuildStage();
     }
 
-    Logging::getInstance().logger.debug("Full schema dump: {}", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
-
-    // Indicate that pipeline is running
-    running = true;
+    if(Logging::getInstance().logger.should_log(spdlog::level::debug)) {
+        Logging::getInstance().logger.debug("Full schema dump: {}", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
+    }
 
     const auto devices = getAllAssignedDevices();
-    // Add pointer to the pipeline to the device before device-side startup can emit telemetry.
-    if(defaultDevice) {
-        std::shared_ptr<PipelineImpl> shared = shared_from_this();
-        const auto weak = std::weak_ptr<PipelineImpl>(shared);
-        defaultDevice->pipelinePtr = weak;
+    // Add pointer to the pipeline to every device before device-side startup, so that
+    // device-side telemetry can resolve the pipeline and a disconnect during another
+    // device's (slow) startup still finds the pipeline for reconnection.
+    {
+        const auto weak = std::weak_ptr<PipelineImpl>(shared_from_this());
+        if(defaultDevice) defaultDevice->pipelinePtr = weak;
+        for(const auto& device : devices) {
+            device->pipelinePtr = weak;
+        }
     }
 
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
-        for(const auto& device : devices) {
-            device->startPipeline(Pipeline(shared_from_this()));
+        // Start all devices in parallel, all-or-nothing: if any fails, close the
+        // ones that started and rethrow
+        std::vector<std::thread> startThreads;
+        std::vector<std::exception_ptr> startErrors(devices.size());
+        // Each thread writes only its own index; read after join
+        std::vector<uint8_t> started(devices.size(), 0);
+        for(std::size_t i = 0; i < devices.size(); i++) {
+            startThreads.emplace_back([this, &devices, &startErrors, &started, i]() {
+                try {
+                    devices[i]->startPipeline(Pipeline(shared_from_this()));
+                    started[i] = true;
+                } catch(...) {
+                    startErrors[i] = std::current_exception();
+                }
+            });
+        }
+        for(auto& thread : startThreads) {
+            thread.join();
+        }
+        for(std::size_t i = 0; i < devices.size(); i++) {
+            if(startErrors[i]) {
+                for(std::size_t j = 0; j < devices.size(); j++) {
+                    if(started[j]) devices[j]->close();
+                }
+                std::rethrow_exception(startErrors[i]);
+            }
         }
     }
+
+    // Indicate that pipeline is running
+    running = true;
 
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
             node->start();
-        }
-    }
-
-    // Add pointer to the pipeline to the device
-    if(!devices.empty()) {
-        std::shared_ptr<PipelineImpl> shared = shared_from_this();
-        const auto weak = std::weak_ptr<PipelineImpl>(shared);
-        for(const auto& device : devices) {
-            device->pipelinePtr = weak;
         }
     }
 
@@ -1419,16 +1576,23 @@ void PipelineImpl::stop() {
     // Close the task queue
     tasks.destruct();
 
-    // Close device if present - a pipeline might be host only and still have a device
-    // For example, one only adds host nodes
+    // Close devices if present - a pipeline might be host only and still have a device
+    // For example, one only adds host nodes. Devices close in parallel - each close
+    // waits on its own watchdog/monitor threads.
     auto assignedDevices = getAllAssignedDevices();
     std::unordered_set<Device*> closedDevices;
     for(const auto& device : assignedDevices) {
-        device->close();
         closedDevices.insert(device.get());
     }
     if(defaultDevice != nullptr && closedDevices.count(defaultDevice.get()) == 0) {
-        defaultDevice->close();
+        assignedDevices.push_back(defaultDevice);
+    }
+    std::vector<std::thread> closeThreads;
+    for(const auto& device : assignedDevices) {
+        closeThreads.emplace_back([device]() { device->close(); });
+    }
+    for(auto& thread : closeThreads) {
+        thread.join();
     }
 
     // Indicate that pipeline is not runnin

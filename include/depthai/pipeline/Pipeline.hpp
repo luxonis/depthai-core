@@ -44,6 +44,7 @@ enum class PipelineAutoCalibrationMode : int {
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
+    friend class Node::Input;
     friend class DeviceBase;
     friend class utility::PipelineImplHelper;
 
@@ -112,7 +113,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(const BoardConfig& board);
     void setAutoCalibrationMode(PipelineAutoCalibrationMode mode);
-    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
+    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair(const std::shared_ptr<Device>& device) const;
     bool hasDynamicCalibration() const;
     PipelineAutoCalibrationMode getAutoCalibrationMode() const;
 
@@ -195,6 +196,30 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Queue for tasks
     LockingQueue<std::function<void()>> tasks;
+
+    // Devices that are part of this pipeline. Registered explicitly via addDevice
+    // or implicitly on first use (node created with an explicit device).
+    // defaultDevice is the master and is not necessarily contained here.
+    std::vector<std::shared_ptr<Device>> devices;
+
+    // Serializes concurrent per-device schema serialization (devices start in parallel)
+    mutable std::mutex serializeMtx;
+
+    // Input -> distinct source devices (nullptr entry = host), resolved from the user
+    // graph at build() before bridge insertion. See Node::Input::getSourceDevice.
+    std::unordered_map<Node::Input*, std::vector<std::shared_ptr<Device>>> inputSourceDevices;
+
+    // Source device of an input: the device of the upstream node, nullptr if the
+    // upstream node runs on host. Uses the map above after build, resolves live before.
+    std::shared_ptr<Device> getInputSourceDevice(const Node::Input* input) const;
+
+    // Register a device with this pipeline. The first registered device is promoted
+    // to master (default device) if none exists. Registering the same device twice is a no-op.
+    std::shared_ptr<Device> registerDevice(std::shared_ptr<Device> device);
+
+    // All devices that are part of this pipeline: master (default device) first,
+    // then the rest in registration order.
+    std::vector<std::shared_ptr<Device>> getDevices() const;
 
     void addTask(std::function<void()> task) {
         tasks.push(std::move(task));
@@ -450,11 +475,20 @@ class Pipeline {
         return impl()->create<N>(pimpl, std::forward<Args>(args)...);
     }
 
+    /**
+     * Creates a device node on the specified device and adds it to the pipeline.
+     * The device becomes part of the pipeline on first use. Only device nodes can be
+     * created this way - creating a host node with a device is a compile-time error.
+     */
     template <class N, typename... Args>
     std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> create(std::shared_ptr<Device> device, Args&&... args) {
         return impl()->createWithDevice<N>(pimpl, std::move(device), std::forward<Args>(args)...);
     }
 
+    /**
+     * Creates a device node on the specified device and adds it to the pipeline.
+     * Same as create(device, ...) - kept as an explicitly named alternative.
+     */
     template <class N, typename... Args>
     std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createForDevice(std::shared_ptr<Device> device, Args&&... args) {
         return impl()->createWithDevice<N>(pimpl, std::move(device), std::forward<Args>(args)...);
@@ -670,6 +704,39 @@ class Pipeline {
     std::shared_ptr<const Device> getDefaultDevice() const {
         return impl()->defaultDevice;
     }
+
+    /**
+     * Add a device to the pipeline. The first device added to a pipeline created
+     * without an implicit device is promoted to the default device (master), so
+     * nodes created without an explicit device run on it.
+     *
+     * @param device Already constructed device to add
+     * @returns The added device
+     */
+    std::shared_ptr<Device> addDevice(std::shared_ptr<Device> device);
+
+    /**
+     * Construct a device from the given device info and add it to the pipeline.
+     *
+     * @param deviceInfo Device info to construct the device from
+     * @returns The constructed device
+     */
+    std::shared_ptr<Device> addDevice(const DeviceInfo& deviceInfo);
+
+    /**
+     * Construct a device from a device id, IP address or name and add it to the pipeline.
+     *
+     * @param idOrIpOrName Device id, IP address or name to construct the device from
+     * @returns The constructed device
+     */
+    std::shared_ptr<Device> addDevice(const std::string& idOrIpOrName);
+
+    /**
+     * Get all devices that are part of this pipeline - the default device (master)
+     * first, then the rest in registration order. Devices become part of the pipeline
+     * explicitly via addDevice or implicitly on first use by a node.
+     */
+    std::vector<std::shared_ptr<Device>> getDevices() const;
 
     std::string getTelemetryPipelineId() const {
         return impl()->telemetryPipelineId;
