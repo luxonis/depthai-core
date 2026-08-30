@@ -40,10 +40,37 @@ DeviceInfo::DeviceInfo(
     std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status)
     : name(std::move(name)), deviceId(std::move(deviceId)), state(state), protocol(protocol), platform(platform), status(status) {}
 
+// Strict dotted-quad IPv4 check (no inet_pton to stay platform independent)
+static bool isIpv4Address(const std::string& str) {
+    int octets = 0;
+    std::size_t pos = 0;
+    while(pos <= str.size()) {
+        auto dot = str.find('.', pos);
+        auto part = str.substr(pos, dot == std::string::npos ? std::string::npos : dot - pos);
+        if(part.empty() || part.size() > 3) return false;
+        int value = 0;
+        for(char c : part) {
+            if(c < '0' || c > '9') return false;
+            value = value * 10 + (c - '0');
+        }
+        if(value > 255) return false;
+        octets++;
+        if(dot == std::string::npos) break;
+        pos = dot + 1;
+    }
+    return octets == 4;
+}
+
 DeviceInfo::DeviceInfo(std::string deviceIdOrName) {
     // Parse parameter and set to ip if any dots found
     // deviceId doesn't have a dot in the name
     if(deviceIdOrName.find(".") != std::string::npos) {
+        // An actual IP address always resolves to TCP_IP, so it can never silently land
+        // on the local shared-memory socket (TCP_IP_OR_LOCAL_SHDMEM tries that first).
+        // USB paths and hostnames keep protocol ANY.
+        if(isIpv4Address(deviceIdOrName)) {
+            protocol = X_LINK_TCP_IP;
+        }
         // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
         name = std::move(deviceIdOrName);
         deviceId = "";
@@ -52,6 +79,13 @@ DeviceInfo::DeviceInfo(std::string deviceIdOrName) {
         name = "";
         deviceId = std::move(deviceIdOrName);
     }
+}
+
+DeviceInfo DeviceInfo::local() {
+    DeviceInfo info;
+    info.state = X_LINK_BOOTED;
+    info.protocol = X_LINK_LOCAL_SHDMEM;
+    return info;
 }
 
 deviceDesc_t DeviceInfo::getXLinkDeviceDesc() const {

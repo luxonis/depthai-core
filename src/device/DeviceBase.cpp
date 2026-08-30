@@ -231,8 +231,13 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
             first = false;
         }
         auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, timeoutMs);
-        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE, X_LINK_GATE_SETUP}) {
+        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE, X_LINK_GATE_SETUP, X_LINK_BOOTED}) {
             for(const auto& device : devices) {
+                // A booted device is only 'available' over local shared memory (the
+                // process runs on the device itself); a booted USB/TCP device is in use
+                if(searchState == X_LINK_BOOTED && device.protocol != X_LINK_LOCAL_SHDMEM) {
+                    continue;
+                }
                 if(device.state == searchState) {
                     if(device.status == X_LINK_SUCCESS) {
                         found = true;
@@ -687,7 +692,7 @@ void DeviceBase::startTelemetryLifecycle(bool reconnect) {
             {"platform", lowercase(getPlatformAsString())},
             {"protocol", telemetryProtocolName(deviceInfo.protocol)},
             {"protocol_speed", telemetryProtocolSpeed(deviceInfo.protocol, getUsbSpeed())},
-            {"standalone", isLoopbackDeviceName(deviceInfo.name)},
+            {"standalone", isLoopbackDeviceName(deviceInfo.name) || deviceInfo.protocol == X_LINK_LOCAL_SHDMEM},
         };
         properties["device_os_version"] = getOSVersion();
         dai::utility::Telemetry::getInstance().event(*this, "depthai_device_constructor", std::move(properties));
@@ -715,7 +720,10 @@ void DeviceBase::stopTelemetryLifecycle() {
 }
 
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
-    std::chrono::milliseconds protocolTimeout = (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT : device::XLINK_USB_WATCHDOG_TIMEOUT);
+    // TCP_IP_OR_LOCAL_SHDMEM may ride on TCP - use the longer TCP-class timeout for both;
+    // LOCAL_SHDMEM is an explicit local socket and keeps the short USB-class timeout
+    std::chrono::milliseconds protocolTimeout = ((protocol == X_LINK_TCP_IP || protocol == X_LINK_TCP_IP_OR_LOCAL_SHDMEM) ? device::XLINK_TCP_WATCHDOG_TIMEOUT
+                                                                                                                          : device::XLINK_USB_WATCHDOG_TIMEOUT);
     int timeoutMs = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", DEFAULT_CRASHDUMP_TIMEOUT_MS + protocolTimeout.count(), false);
     return timeoutMs;
 }
@@ -1079,7 +1087,9 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
     // Check if WD env var is set
     std::chrono::milliseconds watchdogTimeout = device::XLINK_USB_WATCHDOG_TIMEOUT;
-    if(deviceInfo.protocol == X_LINK_TCP_IP) {
+    if(deviceInfo.protocol == X_LINK_TCP_IP || deviceInfo.protocol == X_LINK_TCP_IP_OR_LOCAL_SHDMEM) {
+        // TCP-backed protocols get the longer timeout; X_LINK_LOCAL_SHDMEM explicitly
+        // keeps the short USB-class timeout (local socket, no network jitter)
         watchdogTimeout = device::XLINK_TCP_WATCHDOG_TIMEOUT;
     }
     auto watchdogMsStr = utility::getEnvAs<std::string>("DEPTHAI_WATCHDOG", "");
@@ -1268,7 +1278,8 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
                     }
                     std::unique_lock<std::mutex> lock(watchdogMtx);
                     // Calculate the dynamic sleep time based on protocol
-                    auto sleepDuration = (deviceInfo.protocol == X_LINK_TCP_IP) ? watchdogTimeout / 4 : watchdogTimeout / 2;
+                    auto sleepDuration = (deviceInfo.protocol == X_LINK_TCP_IP || deviceInfo.protocol == X_LINK_TCP_IP_OR_LOCAL_SHDMEM) ? watchdogTimeout / 4
+                                                                                                                                        : watchdogTimeout / 2;
                     watchdogCondVar.wait_for(lock, sleepDuration, [this]() { return !watchdogRunning; });
                 }
             } catch(const std::exception& ex) {
