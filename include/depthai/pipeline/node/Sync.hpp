@@ -93,6 +93,11 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
      */
     bool runOnHost() const override;
 
+    /**
+     * Validates the timestamp source when inputs come from more than one device.
+     */
+    void buildStage1() override;
+
     void run() override;
 };
 

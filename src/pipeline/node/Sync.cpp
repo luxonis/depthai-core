@@ -1,7 +1,10 @@
 #include "depthai/pipeline/node/Sync.hpp"
 
 #include <chrono>
+#include <thread>
+#include <unordered_set>
 
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
@@ -38,6 +41,28 @@ std::chrono::nanoseconds Sync::getSyncThreshold() const {
 
 int Sync::getSyncAttempts() const {
     return properties.syncAttempts;
+}
+
+void Sync::buildStage1() {
+    // Inputs spanning more than one device can only be synchronized with clocks that
+    // are comparable across devices; per-device monotonic DEVICE timestamps are not
+    std::unordered_set<const Device*> sources;
+    for(const auto& input : inputs) {
+        auto device = input.second.getSourceDevice();
+        if(device != nullptr) {
+            sources.insert(device.get());
+        }
+    }
+    if(sources.size() > 1) {
+        if(properties.timestampSource == TimestampSource::DEVICE) {
+            throw std::runtime_error("Sync: TimestampSource::DEVICE cannot synchronize inputs from more than one device - use HOST or SYSTEM");
+        }
+        if(!runOnHost() && properties.timestampSource == TimestampSource::DEFAULT) {
+            throw std::runtime_error(
+                "Sync: inputs from more than one device with the default timestamp source require the node to run on the host (setRunOnHost(true)), or an "
+                "explicit HOST/SYSTEM timestamp source");
+        }
+    }
 }
 
 void Sync::setRunOnHost(bool runOnHost) {
@@ -257,21 +282,69 @@ void Sync::run() {
     auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
+    // Resolve which device produces each input (nullptr = host); while any of those
+    // devices is not RUNNING the node drops instead of blocking on a dead stream.
+    // The pipeline is resolved weakly per check - holding a strong reference for the
+    // node's lifetime would let the pipeline destruct on this very thread.
+    std::unordered_map<std::string, std::shared_ptr<Device>> sourceDevices;
+    for(const auto& name : inputNames) {
+        sourceDevices[name] = inputs[name].getSourceDevice();
+    }
+    auto anySourceNotRunning = [this, &sourceDevices]() {
+        auto pipelineImpl = parent.lock();
+        if(pipelineImpl == nullptr) {
+            return false;
+        }
+        Pipeline pipeline(std::move(pipelineImpl));
+        for(const auto& entry : sourceDevices) {
+            if(entry.second != nullptr && pipeline.getDeviceState(entry.second) != DeviceState::RUNNING) {
+                return true;
+            }
+        }
+        return false;
+    };
+    // Receive one message without blocking indefinitely; nullptr means a source
+    // device is degraded (or the node is stopping) and the current group is dropped
+    auto receive = [this, &anySourceNotRunning](const std::string& name) -> std::shared_ptr<dai::Buffer> {
+        auto& input = inputs[name];
+        while(mainLoop()) {
+            auto msg = input.tryGet<dai::Buffer>();
+            if(msg != nullptr) return msg;
+            if(anySourceNotRunning()) return nullptr;
+            std::vector<std::reference_wrapper<MessageQueue>> queues{std::ref(static_cast<MessageQueue&>(input))};
+            MessageQueue::waitAny(queues, std::chrono::milliseconds(100));
+        }
+        return nullptr;
+    };
+
     time_point<steady_clock> tAfterMessageBeginning;
 
     while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
+        bool dropped = false;
         {
             auto blockEvent = this->inputBlockEvent();
 
+            // Drop (emit nothing) while any input's device is not running
+            if(anySourceNotRunning()) {
+                for(const auto& name : inputNames) {
+                    inputs[name].tryGetAll();
+                }
+                std::this_thread::sleep_for(milliseconds(100));
+                continue;
+            }
+
             for(auto name : inputNames) {
                 logger->trace("Receiving input: {}", name);
-                inputFrames[name] = inputs[name].get<dai::Buffer>();
+                inputFrames[name] = receive(name);
                 if(inputFrames[name] == nullptr) {
-                    logger->error("Received nullptr from input {}, sync node only accepts messages inherited from Buffer on the inputs", name);
-                    throw std::runtime_error("Received nullptr from input " + name);
+                    dropped = true;
+                    break;
                 }
+            }
+            if(dropped) {
+                continue;
             }
             // Print out the timestamps
             for(const auto& frame : inputFrames) {
@@ -314,9 +387,16 @@ void Sync::run() {
                 // Get the message with the minimum timestamp (oldest message)
                 std::string minTsName = tsCompare.getMinName();
                 logger->trace("Receiving input: {}", minTsName);
-                inputFrames[minTsName] = inputs[minTsName].get<dai::Buffer>();
+                inputFrames[minTsName] = receive(minTsName);
+                if(inputFrames[minTsName] == nullptr) {
+                    dropped = true;
+                    break;
+                }
                 attempts++;
             }
+        }
+        if(dropped) {
+            continue;
         }
         auto tBeforeSend = steady_clock::now();
         auto outputGroup = std::make_shared<dai::MessageGroup>();
@@ -329,6 +409,7 @@ void Sync::run() {
         }
 
         outputGroup->setBufferMetadataFrom(newestFrame);
+        outputGroup->setTimestampSource(timestampSource);
 
         {
             auto blockEvent = this->outputBlockEvent();
