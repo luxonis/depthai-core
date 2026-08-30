@@ -229,7 +229,7 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     }
     auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
-    properties.blobSize = static_cast<uint32_t>(asset->data.size());
+    properties.blobSize = static_cast<uint32_t>(asset->getSize());
     properties.modelSource = Properties::ModelSource::BLOB;
 }
 
@@ -240,7 +240,7 @@ void NeuralNetwork::setOtherModelFormat(std::vector<uint8_t> otherModel) {
 }
 
 void NeuralNetwork::setOtherModelFormat(const std::filesystem::path& path) {
-    auto modelAsset = assetManager.set("__model", path);
+    auto modelAsset = assetManager.setLazy("__model", path);
     properties.modelUri = modelAsset->getRelativeUri();
     properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
 }
