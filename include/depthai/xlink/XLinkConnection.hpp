@@ -107,6 +107,12 @@ class XLinkConnection {
     int getLinkId() const;
 
     /**
+     * Get device information of this connection. The protocol reflects the actually
+     * negotiated protocol (e.g. TCP_IP_OR_LOCAL_SHDMEM resolves to the transport in use).
+     */
+    DeviceInfo getDeviceInfo() const;
+
+    /**
      * Explicitly closes xlink connection.
      * @note This function does not need to be explicitly called
      * as destructor closes the connection automatically

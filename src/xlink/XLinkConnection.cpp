@@ -620,6 +620,10 @@ int XLinkConnection::getLinkId() const {
     return deviceLinkId;
 }
 
+DeviceInfo XLinkConnection::getDeviceInfo() const {
+    return deviceInfo;
+}
+
 std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {
     return XLinkErrorToStr(errorCode);
 }
