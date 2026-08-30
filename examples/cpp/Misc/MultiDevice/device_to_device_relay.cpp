@@ -8,7 +8,6 @@
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
-
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"

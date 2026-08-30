@@ -722,8 +722,8 @@ void DeviceBase::stopTelemetryLifecycle() {
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     // TCP_IP_OR_LOCAL_SHDMEM may ride on TCP - use the longer TCP-class timeout for both;
     // LOCAL_SHDMEM is an explicit local socket and keeps the short USB-class timeout
-    std::chrono::milliseconds protocolTimeout = ((protocol == X_LINK_TCP_IP || protocol == X_LINK_TCP_IP_OR_LOCAL_SHDMEM) ? device::XLINK_TCP_WATCHDOG_TIMEOUT
-                                                                                                                          : device::XLINK_USB_WATCHDOG_TIMEOUT);
+    std::chrono::milliseconds protocolTimeout =
+        ((protocol == X_LINK_TCP_IP || protocol == X_LINK_TCP_IP_OR_LOCAL_SHDMEM) ? device::XLINK_TCP_WATCHDOG_TIMEOUT : device::XLINK_USB_WATCHDOG_TIMEOUT);
     int timeoutMs = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", DEFAULT_CRASHDUMP_TIMEOUT_MS + protocolTimeout.count(), false);
     return timeoutMs;
 }

@@ -15,11 +15,10 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
+#include <opencv2/opencv.hpp>
 #include <optional>
 #include <string>
 #include <vector>
-
-#include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
 
