@@ -267,7 +267,13 @@ TEST_CASE("ImgTransformation target coordinate system metadata") {
     REQUIRE_THROWS(source.getExtrinsicsTransformationMatrixTo(otherSocket));
 
     auto unknownDevice = makeTransformation("", dai::CameraBoardSocket::CAM_A);
-    REQUIRE(source.getExtrinsics().hasCompatibleCoordinateSystem(unknownDevice.getExtrinsics()));
+    REQUIRE_FALSE(source.getExtrinsics().hasCompatibleCoordinateSystem(unknownDevice.getExtrinsics()));
+    REQUIRE_FALSE(source.isAlignedTo(unknownDevice));
+    REQUIRE_THROWS(source.getExtrinsicsTransformationMatrixTo(unknownDevice));
+
+    auto otherUnknownDevice = makeTransformation("", dai::CameraBoardSocket::CAM_A);
+    REQUIRE(unknownDevice.getExtrinsics().hasCompatibleCoordinateSystem(otherUnknownDevice.getExtrinsics()));
+    REQUIRE(unknownDevice.isAlignedTo(otherUnknownDevice));
 
     auto unknownSocket = makeTransformation("mxid-a", dai::CameraBoardSocket::AUTO);
     REQUIRE(source.getExtrinsics().hasCompatibleCoordinateSystem(unknownSocket.getExtrinsics()));
@@ -277,9 +283,9 @@ TEST_CASE("ImgTransformation target coordinate system metadata") {
     REQUIRE_THROWS(source.remapPointTo(otherSocket, point));
 
     dai::ImgTransformation replayTransformation(640, 480);
-    REQUIRE(source.getExtrinsics().hasCompatibleCoordinateSystem(replayTransformation.getExtrinsics()));
+    REQUIRE_FALSE(source.getExtrinsics().hasCompatibleCoordinateSystem(replayTransformation.getExtrinsics()));
     REQUIRE_FALSE(source.isEqualTransformation(replayTransformation));
-    REQUIRE(source.isAlignedTo(replayTransformation));
+    REQUIRE_FALSE(source.isAlignedTo(replayTransformation));
 
     const auto remappedReplayPoint = replayTransformation.remapPointTo(source, point);
     REQUIRE_THAT(remappedReplayPoint.x, Catch::Matchers::WithinAbs(point.x, 1e-6));
