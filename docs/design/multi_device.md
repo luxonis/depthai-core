@@ -1,10 +1,10 @@
 # Multi-device support in a single `dai::Pipeline`
 
-|        |                                                         |
-| ------ | ------------------------------------------------------- |
-| Status | Draft for review                                        |
-| Target | depthai-core 3.x (next minor after 3.9.0), additive API |
-| Author | Aljaž Konec                                             |
+|        |                                                              |
+| ------ | ------------------------------------------------------------ |
+| Status | v1 implemented on `feat/multi_device_support` (see appendix) |
+| Target | depthai-core 3.x (next minor after 3.9.0), additive API      |
+| Author | Aljaž Konec                                                  |
 
 This document records the design decisions for running **several devices inside one
 `dai::Pipeline`**, the backend changes they require, and the ordered plan of PRs that
@@ -379,3 +379,42 @@ other once 4 has landed.
 - Which XLink fork branch receives PR 1 and its release cadence.
 - Whether `HostRelay` should default to non-blocking/depth 8 or mirror existing bridge
   defaults.
+
+---
+
+## Appendix: v1 implementation notes (deviations from the plan)
+
+The plan above was implemented on `feat/multi_device_support`. A base MVP (per-node
+device assignment, per-device schema filter, per-device bridge binding, sequential
+multi-device start/stop) had already landed via develop; the remaining work follows
+this plan with the deviations below.
+
+- **PR 1 (XLink)** is not part of this repo and remains open: shdmem discovery still
+  reports MYRIAD_X/empty id, and the `writeFdEventMultipart` mmap leak still stands.
+  `DeviceInfo::local()` works independent of that fix (booted-device re-search fills
+  the name in).
+- **Relay (§4.3)** is composed from the existing bridge nodes -
+  `XLinkOut(A) → XLinkInHost(A) → XLinkOutHost(B) → XLinkIn(B)` - instead of one
+  fused `HostRelay` node, so it reuses the battle-tested reconnect/rebind machinery.
+  Two threads instead of one; the observable contract of §4.3 holds (fd rule via the
+  destination protocol, non-blocking depth-8 relay queue, fps knob through
+  `getXLinkBridge()`, schema visibility, one info log line).
+- **Fatal devices (§5.3)**: with the relay implemented, cross-device consumers do
+  exist in v1 - the B side of every relay is derived as fatal at build.
+- **§4.2 step 6 (per-device pipeline-debugging aggregators)** is not implemented;
+  multi-device pipelines keep rejecting pipeline debugging (pre-existing MVP throw).
+- **§4.2 step 4** `uniqueStreamNames` stays one global set - node ids are
+  pipeline-unique so stream names are already unique across devices.
+- **Source-aware `MessageGroup` (§6)** records its timestamp source in a
+  non-serialized field: the wire format is shared with device firmware, and groups
+  received from a device are DEVICE-synced anyway.
+- **Sync (§6)**: `TimestampSource::DEVICE` with inputs from more than one device
+  throws at build; `DEFAULT` additionally throws when such a Sync runs on device
+  (it would resolve to DEVICE there). On host, DEFAULT resolves to HOST as before.
+- **Tests**: the plan said examples-only verification; host-only unit tests
+  (`multi_device_pipeline_test`, ctest label `onhost` without `ci`) were added
+  anyway as a regression guard - CI selection is unchanged.
+- **Reconnect hardening** beyond the plan: the reconnect probe now waits for the
+  *lost device's id* instead of any available device (in a multi-device pipeline the
+  healthy devices satisfied the any-device gate instantly and one failed attempt
+  aborted the loop), and single attempts survive exceptions.
