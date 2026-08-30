@@ -308,6 +308,11 @@ void PipelineImpl::serialize(
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
+    std::size_t storageSize = assetManager.getSerializedSize();
+    for(auto& node : getAllNodes()) {
+        storageSize = node->getAssetManager().getSerializedSize(storageSize);
+    }
+    assetStorage.reserve(storageSize);
     AssetsMutable mutableAssets;
     // Pipeline assets
     assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
@@ -600,10 +605,10 @@ void PipelineImpl::setCameraTuningBlobPath(const fs::path& path) {
     auto asset = assetManager.set(assetKey, path);
 
     if(defaultDevice) {
-        defaultDevice->setCameraTuningBlob(asset->getRelativeUri(), static_cast<uint32_t>(asset->data.size()));
+        defaultDevice->setCameraTuningBlob(asset->getRelativeUri(), static_cast<uint32_t>(asset->getSize()));
     } else if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->cameraTuningBlobUri = asset->getRelativeUri();
-        defaultDeviceProperties->cameraTuningBlobSize = static_cast<uint32_t>(asset->data.size());
+        defaultDeviceProperties->cameraTuningBlobSize = static_cast<uint32_t>(asset->getSize());
     }
 }
 
@@ -614,10 +619,10 @@ void PipelineImpl::setCameraTuningBlobPath(CameraBoardSocket socket, const fs::p
     auto asset = assetManager.set(assetKey, path);
 
     if(defaultDevice) {
-        defaultDevice->setCameraSocketTuningBlob(socket, asset->getRelativeUri(), static_cast<uint32_t>(asset->data.size()));
+        defaultDevice->setCameraSocketTuningBlob(socket, asset->getRelativeUri(), static_cast<uint32_t>(asset->getSize()));
     } else if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->cameraSocketTuningBlobUri[socket] = asset->getRelativeUri();
-        defaultDeviceProperties->cameraSocketTuningBlobSize[socket] = static_cast<uint32_t>(asset->data.size());
+        defaultDeviceProperties->cameraSocketTuningBlobSize[socket] = static_cast<uint32_t>(asset->getSize());
     }
 }
 
@@ -1478,9 +1483,9 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
              if(asset != nullptr) {
                  if(moveAsset) {
                      p.assetManager.remove(uriString);
-                     return std::move(asset->data);
+                     return std::move(asset->getData());
                  }
-                 return asset->data;
+                 return asset->getData();
              }
              for(auto& node : p.nodes) {
                  auto& assetManager = node->getAssetManager();
@@ -1488,9 +1493,9 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
                  if(asset != nullptr) {
                      if(moveAsset) {
                          assetManager.remove(uriString);
-                         return std::move(asset->data);
+                         return std::move(asset->getData());
                      }
-                     return asset->data;
+                     return asset->getData();
                  }
              }
              // Asset not found anywhere

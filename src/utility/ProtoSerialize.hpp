@@ -6,12 +6,10 @@
 #include <chrono>
 #include <memory>
 
-#include "common/Timestamp.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
-#include "depthai/pipeline/datatypes.hpp"
 #include "depthai/schemas/EncodedFrame.pb.h"
 #include "depthai/schemas/IMUData.pb.h"
 #include "depthai/schemas/ImageAnnotations.pb.h"
@@ -19,16 +17,31 @@
 #include "depthai/schemas/ImgFrame.pb.h"
 #include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/schemas/RGBDData.pb.h"
+#include "depthai/schemas/SegmentationMask.pb.h"
 #include "depthai/schemas/SpatialImgDetections.pb.h"
 #include "depthai/schemas/common.pb.h"
+#include "pipeline/datatype/EncodedFrame.hpp"
+#include "pipeline/datatype/IMUData.hpp"
+#include "pipeline/datatype/PointCloudData.hpp"
+#include "pipeline/datatype/RGBDData.hpp"
 #include "pipeline/datatype/SegmentationMask.hpp"
 #include "utility/ProtoSerializable.hpp"
+
+#ifndef DEPTHAI_PROTO_DECLARE
+    #define DEPTHAI_PROTO_DECLARE(daiMsg)                                                        \
+        template <>                                                                              \
+        std::unique_ptr<google::protobuf::Message> getProtoMessage(const daiMsg* message, bool); \
+        template <>                                                                              \
+        ProtoSerializable::SchemaPair getProtoSchema<daiMsg>();                                  \
+        template <>                                                                              \
+        void setProtoMessage(daiMsg& obj, const google::protobuf::Message* msg, bool);           \
+        void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes);
+#endif
 
 namespace dai {
 namespace utility {
 
 std::vector<std::uint8_t> serializeProto(std::unique_ptr<google::protobuf::Message> protoMessage);
-ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::Message> protoMessage);
 
 // Common functions for serializing
 void serializeImgTransformation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation);
@@ -59,44 +72,25 @@ template <typename T>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const T*, bool = false) {
     throw std::runtime_error("getProtoMessage not implemented for this type");
 }
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* message, bool);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool metadataOnly);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* message, bool);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool metadataOnly);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const SegmentationMask* message, bool metadataOnly);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* message, bool metadataOnly);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* message, bool metadataOnly);
-
+template <typename T>
+ProtoSerializable::SchemaPair getProtoSchema() {
+    throw std::runtime_error("getProtoSchema not implemented for this type");
+}
 // Helpers to deserialize messages from protobuf
 template <typename T>
 void setProtoMessage(T&, const google::protobuf::Message*, bool = false);
-// template <>
-// void setProtoMessage(ImgAnnotations& obj, google::protobuf::Message* msg, bool);
-// template <>
-// void setProtoMessage(SpatialImgDetections& obj, google::protobuf::Message* msg, bool);
-// template <>
-// void setProtoMessage(ImgDetections& obj, google::protobuf::Message* msg, bool);
-template <>
-void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool);
-template <>
-void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool metadataOnly);
-template <>
-void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bool metadataOnly);
-template <>
-void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, bool metadataOnly);
-template <>
-void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool metadataOnly);
+
+DEPTHAI_PROTO_DECLARE(ImgAnnotations)
+DEPTHAI_PROTO_DECLARE(SpatialImgDetections)
+DEPTHAI_PROTO_DECLARE(IMUData)
+DEPTHAI_PROTO_DECLARE(ImgDetections)
+DEPTHAI_PROTO_DECLARE(EncodedFrame)
+DEPTHAI_PROTO_DECLARE(ImgFrame)
+DEPTHAI_PROTO_DECLARE(SegmentationMask)
+DEPTHAI_PROTO_DECLARE(PointCloudData)
+DEPTHAI_PROTO_DECLARE(RGBDData)
 
 };  // namespace utility
 };  // namespace dai
+
+#undef DEPTHAI_PROTO_DECLARE

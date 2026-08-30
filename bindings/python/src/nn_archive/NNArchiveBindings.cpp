@@ -79,7 +79,14 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
                   DOC(dai, NNArchive, NNArchive));
     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getBlob));
-    nnArchive.def("getOtherModelFormat", &NNArchive::getOtherModelFormat, DOC(dai, NNArchive, getOtherModelFormat));
+    nnArchive.def(
+        "getOtherModelFormat",
+        [](const NNArchive& archive) -> py::object {
+            const auto model = archive.getOtherModelFormat();
+            if(!model.has_value()) return py::none();
+            return py::bytes(reinterpret_cast<const char*>(model->data()), model->size());
+        },
+        DOC(dai, NNArchive, getOtherModelFormat));
     nnArchive.def("getConfig", &NNArchive::getConfig<NNArchiveConfig>, DOC(dai, NNArchive, getConfig));
     nnArchive.def("getConfigV1", &NNArchive::getConfig<v1::Config>, DOC(dai, NNArchive, getConfig));
     nnArchive.def("getModelType", &NNArchive::getModelType, DOC(dai, NNArchive, getModelType));

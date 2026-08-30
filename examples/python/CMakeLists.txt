@@ -16,6 +16,7 @@ set(TARGET_NAME "depthai")
 
 # Regexes for example test failure
 set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
+set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
 set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
 
 # Add a target to install_requirements (added to ALL)
@@ -92,6 +93,8 @@ function(add_python_example example_name python_script_path)
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION ${STRICT_EXAMPLE_TEST_FAIL_REGEX})
+
+        set_tests_properties (${example_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX}")
 
     endif()
 
@@ -325,6 +328,12 @@ dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 c
 ## ImageAlign
 add_python_example(depth_align ImageAlign/depth_align.py)
 dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
+
+## Align
+add_python_example(img_detections_align Align/img_detections_align.py)
+dai_set_example_test_labels(img_detections_align ondevice rvc4 ci)
+add_python_example(custom_message_align Align/custom_message_align.py)
+dai_set_example_test_labels(custom_message_align ondevice rvc2_all rvc4 ci)
 
 ## Visualizer
 
