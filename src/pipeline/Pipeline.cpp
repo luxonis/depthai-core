@@ -1034,9 +1034,7 @@ std::shared_ptr<Device> PipelineImpl::registerDevice(std::shared_ptr<Device> dev
     // produce overlapping per-device schemas - reject early
     const auto deviceId = device->getDeviceInfo().getDeviceId();
     if(!deviceId.empty()) {
-        auto sameId = [&deviceId](const std::shared_ptr<Device>& other) {
-            return other != nullptr && other->getDeviceInfo().getDeviceId() == deviceId;
-        };
+        auto sameId = [&deviceId](const std::shared_ptr<Device>& other) { return other != nullptr && other->getDeviceInfo().getDeviceId() == deviceId; };
         if(sameId(defaultDevice) || std::any_of(devices.begin(), devices.end(), sameId)) {
             throw std::invalid_argument(fmt::format("A different Device instance with id '{}' is already part of the pipeline", deviceId));
         }
@@ -1281,8 +1279,7 @@ void PipelineImpl::build() {
             };
 
             if(stereoPair.first && stereoPair.second && hasStereoPairValidCalibration(autoCalibDevice->tryGetCalibration())) {
-                auto autoCalibrationNode =
-                    create<dai::node::AutoCalibration>(shared_from_this(), autoCalibDevice)->build(stereoPair.first, stereoPair.second);
+                auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this(), autoCalibDevice)->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
 
                 // Build-time flash safety: disable flashing when runtime calibration differs from EEPROM.

@@ -152,8 +152,11 @@ void Node::Output::link(Input& in) {
     auto outputPipeline = parent.get().parent.lock();
     auto inputPipeline = in.getParent().parent.lock();
     if(outputPipeline != nullptr && inputPipeline != nullptr && outputPipeline != inputPipeline) {
-        throw std::runtime_error(fmt::format(
-            "Cannot link '{}.{}' to '{}.{}' - nodes are part of different pipelines", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}' - nodes are part of different pipelines",
+                                             getParent().getName(),
+                                             toString(),
+                                             in.getParent().getName(),
+                                             in.toString()));
     }
 
     // First check if can connect

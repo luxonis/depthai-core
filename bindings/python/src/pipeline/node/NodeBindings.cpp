@@ -350,8 +350,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     // Node::Connection bindings
     py::class_<Node::Connection> nodeConnection(pyNode, "Connection", DOC(dai, Node, Connection));
     // Node::InputMap bindings
-    bindNodeMap<Node::InputMap>(pyNode, "InputMap")
-        .def("getSourceDevices", &Node::InputMap::getSourceDevices, DOC(dai, Node, InputMap, getSourceDevices));
+    bindNodeMap<Node::InputMap>(pyNode, "InputMap").def("getSourceDevices", &Node::InputMap::getSourceDevices, DOC(dai, Node, InputMap, getSourceDevices));
     // Node::OutputMap bindings
     bindNodeMap<Node::OutputMap>(pyNode, "OutputMap");
 

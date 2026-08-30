@@ -291,7 +291,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              py::call_guard<py::gil_scoped_release>(),
              py::arg("device"),
              DOC(dai, Pipeline, getCalibrationData, 2))
-        .def("isCalibrationDataAvailable", py::overload_cast<>(&Pipeline::isCalibrationDataAvailable, py::const_), DOC(dai, Pipeline, isCalibrationDataAvailable))
+        .def("isCalibrationDataAvailable",
+             py::overload_cast<>(&Pipeline::isCalibrationDataAvailable, py::const_),
+             DOC(dai, Pipeline, isCalibrationDataAvailable))
         .def("isCalibrationDataAvailable",
              py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::isCalibrationDataAvailable, py::const_),
              py::call_guard<py::gil_scoped_release>(),
@@ -347,10 +349,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
         .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
         .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
-        .def("addDevice",
-             py::overload_cast<std::shared_ptr<Device>>(&Pipeline::addDevice),
-             py::arg("device"),
-             DOC(dai, Pipeline, addDevice))
+        .def("addDevice", py::overload_cast<std::shared_ptr<Device>>(&Pipeline::addDevice), py::arg("device"), DOC(dai, Pipeline, addDevice))
         .def("addDevice",
              py::overload_cast<const DeviceInfo&>(&Pipeline::addDevice),
              py::call_guard<py::gil_scoped_release>(),
