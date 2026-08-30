@@ -33,3 +33,27 @@ TEST_CASE("addDevice rejects a null device") {
     dai::Pipeline p(false);
     REQUIRE_THROWS_AS(p.addDevice(std::shared_ptr<dai::Device>()), std::invalid_argument);
 }
+
+TEST_CASE("DeviceInfo from an IP address resolves to TCP_IP") {
+    REQUIRE(dai::DeviceInfo("10.12.234.143").protocol == X_LINK_TCP_IP);
+    REQUIRE(dai::DeviceInfo("192.168.1.1").protocol == X_LINK_TCP_IP);
+}
+
+TEST_CASE("DeviceInfo from a non-IP dotted name keeps ANY protocol") {
+    REQUIRE(dai::DeviceInfo("oak-1.local").protocol == X_LINK_ANY_PROTOCOL);
+    REQUIRE(dai::DeviceInfo("1.2.3.4.5").protocol == X_LINK_ANY_PROTOCOL);
+    REQUIRE(dai::DeviceInfo("999.1.1.1").protocol == X_LINK_ANY_PROTOCOL);
+    REQUIRE(dai::DeviceInfo("2.1.usb").protocol == X_LINK_ANY_PROTOCOL);
+}
+
+TEST_CASE("DeviceInfo from a device id keeps ANY protocol") {
+    auto info = dai::DeviceInfo("14442C10D13EABCE00");
+    REQUIRE(info.protocol == X_LINK_ANY_PROTOCOL);
+    REQUIRE(info.getDeviceId() == "14442C10D13EABCE00");
+}
+
+TEST_CASE("DeviceInfo::local targets the booted local shared-memory device") {
+    auto info = dai::DeviceInfo::local();
+    REQUIRE(info.state == X_LINK_BOOTED);
+    REQUIRE(info.protocol == X_LINK_LOCAL_SHDMEM);
+}
