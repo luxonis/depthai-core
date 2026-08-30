@@ -22,14 +22,15 @@ void XLinkOutHost::setStreamName(const std::string& name) {
 }
 
 void XLinkOutHost::setConnection(std::shared_ptr<XLinkConnection> conn) {
-    this->conn = std::move(conn);
     std::lock_guard<std::mutex> lock(mtx);
+    this->conn = std::move(conn);
+    connectionRefreshed = true;
     isWaitingForReconnect.notify_all();
 }
 
 void XLinkOutHost::disconnect() {
-    isDisconnected = true;
     std::lock_guard<std::mutex> lock(mtx);
+    isDisconnected = true;
     isWaitingForReconnect.notify_all();
 }
 
@@ -38,13 +39,35 @@ void XLinkOutHost::allowStreamResize(bool allow) {
 }
 
 void XLinkOutHost::run() {
+    {
+        // Consume a connection refresh recorded before the node started (build time)
+        std::lock_guard<std::mutex> lock(mtx);
+        connectionRefreshed = false;
+    }
     // // Create a stream for the connection
     // TODO(Morato) - automatically increase the buffer size lazily
     bool reconnect = true;
     while(reconnect) {
         reconnect = false;
         auto currentMaxSize = device::XLINK_USB_BUFFER_MAX_SIZE + device::XLINK_MESSAGE_METADATA_MAX_SIZE;
-        XLinkStream stream(conn, streamName, currentMaxSize);
+        std::unique_ptr<XLinkStream> streamPtr;
+        try {
+            streamPtr = std::make_unique<XLinkStream>(conn, streamName, currentMaxSize);
+        } catch(const std::exception& ex) {
+            // Connection unusable (e.g. closed while waking up) - park until it is
+            // refreshed or the device is declared gone
+            logger::error("Cannot open stream '{}': {}", streamName, ex.what());
+            std::unique_lock<std::mutex> lck(mtx);
+            isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });
+            if(isDisconnected) {
+                logger::warn("XLinkOutHost '{}' stopping - device connection was lost", streamName);
+                return;
+            }
+            connectionRefreshed = false;
+            reconnect = true;
+            continue;
+        }
+        XLinkStream& stream = *streamPtr;
         // File descriptors are only valid across a local shared-memory transport;
         // any other destination gets the mapped bytes instead (one copy)
         const bool destinationIsLocalShdmem = conn != nullptr && conn->getDeviceInfo().protocol == X_LINK_LOCAL_SHDMEM;
@@ -114,8 +137,14 @@ void XLinkOutHost::run() {
                     auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                     std::unique_lock<std::mutex> lck(mtx);
                     logger::info("Waiting for reconnect (XLINKOUTHOST)\n");
-                    isWaitingForReconnect.wait(lck);
-                    if(isDisconnected) throw std::runtime_error(exceptionMessage);
+                    isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });
+                    if(isDisconnected) {
+                        // Device is gone for good - exit quietly so this stream stops
+                        // instead of tearing down the whole pipeline
+                        logger::warn("XLinkOutHost '{}' stopping - device connection was lost", streamName);
+                        return;
+                    }
+                    connectionRefreshed = false;
                     logger::info("Reconnected (XLINKOUTHOST)\n");
                     reconnect = true;
                     break;

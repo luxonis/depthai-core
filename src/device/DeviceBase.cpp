@@ -1450,11 +1450,16 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                     connection->close();
                 }
             }
+            // The watchdog stopped: either a missed ping (above), the watchdog writer
+            // failing, or a deliberate close. The first two are a device loss.
+            if(!isClosing) {
+                notifyPipelineDeviceState(DeviceState::DISCONNECTED);
+            }
             if(isClosing) {
-                auto shared = pipelinePtr.lock();
-                if(shared) {
-                    shared->disconnectXLinkHosts();
-                }
+                // Device was closed on purpose - it is gone for good from the pipeline's
+                // point of view; the pipeline idles this device's streams and decides
+                // whether to stop (last/fatal device)
+                notifyPipelineDeviceState(DeviceState::FAILED);
                 return;
             }
             if(maxReconnectionAttempts == 0) {
@@ -1510,24 +1515,46 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
             int attempts = 0;
             pimpl->logger.warn("Attempting to reconnect. Timeout is {}\n", reconnectTimeout);
             auto reconnected = false;
+            // Wait for this specific device to reappear. A search for any available
+            // device is wrong in a multi-device pipeline: the healthy devices satisfy
+            // it immediately while the lost one is still rebooting.
+            const auto prevDeviceId = prev.deviceInfo.getDeviceId();
+            auto waitForLostDevice = [this, &prevDeviceId](std::chrono::milliseconds timeout) -> bool {
+                if(prevDeviceId.empty()) {
+                    return std::get<0>(getAnyAvailableDevice(timeout));
+                }
+                auto waitStart = std::chrono::steady_clock::now();
+                do {
+                    if(std::get<0>(XLinkConnection::getDeviceById(prevDeviceId, X_LINK_ANY_STATE, false))) return true;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                } while(std::chrono::steady_clock::now() - waitStart < timeout);
+                return false;
+            };
             for(attempts = 0; attempts < maxReconnectionAttempts; attempts++) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
-                if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))) {
+                notifyPipelineDeviceState(DeviceState::RECONNECTING);
+                if(waitForLostDevice(reconnectTimeout)) {
                     if(isClosing) {
                         break;
                     }
-                    init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
-                    if(isCrashDumpCollectionEnabled()) {
-                        crashed = hasCrashDump();
-                        if(crashed && !crashDumpHandled.load()) {
-                            collectAndLogCrashDump();
-                        }
-                    }
                     auto shared = pipelinePtr.lock();
                     if(!shared) throw std::runtime_error("Pipeline was destroyed");
-                    shared->resetConnections();
-                    reconnected = true;
-                    break;
+                    try {
+                        init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
+                        if(isCrashDumpCollectionEnabled()) {
+                            crashed = hasCrashDump();
+                            if(crashed && !crashDumpHandled.load()) {
+                                collectAndLogCrashDump();
+                            }
+                        }
+                        shared->resetConnections(this);
+                        reconnected = true;
+                        break;
+                    } catch(const std::exception& ex) {
+                        // One failed attempt (e.g. device seen but not connectable yet)
+                        // must not abort the remaining attempts
+                        pimpl->logger.warn("Reconnection attempt failed: {}", ex.what());
+                    }
                 }
                 pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts - 1);
             }
@@ -1537,6 +1564,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                 break;
             }
             if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
+            notifyPipelineDeviceState(DeviceState::RUNNING);
             pimpl->logger.warn("Reconnection successful\n");
             if(isCrashDumpCollectionEnabled()) {
                 const bool hasPendingCrashDump = hasCrashDump();
@@ -1549,10 +1577,15 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
     }
-    // Close the pipeline
-    auto shared = pipelinePtr.lock();
-    if(shared) {
-        shared->disconnectXLinkHosts();
+    // Device is gone for good: idle its streams; the pipeline stops only when this
+    // was the last device or a fatal one (a device consuming other devices' streams)
+    notifyPipelineDeviceState(DeviceState::FAILED);
+}
+
+void DeviceBase::notifyPipelineDeviceState(DeviceState state) {
+    auto pipeline = pipelinePtr.lock();
+    if(pipeline) {
+        pipeline->onDeviceStateChanged(this, state);
     }
 }
 

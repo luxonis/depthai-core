@@ -68,6 +68,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
     py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
     py::class_<PipelineStateApi> pipelineStateApi(m, "PipelineStateApi", DOC(dai, PipelineStateApi));
+    py::enum_<DeviceState>(m, "DeviceState", DOC(dai, DeviceState))
+        .value("RUNNING", DeviceState::RUNNING)
+        .value("DISCONNECTED", DeviceState::DISCONNECTED)
+        .value("RECONNECTING", DeviceState::RECONNECTING)
+        .value("FAILED", DeviceState::FAILED);
     py::class_<NodesStateApi> nodesStateApi(m, "NodesStateApi", DOC(dai, NodesStateApi));
     py::class_<NodeStateApi> nodeStateApi(m, "NodeStateApi", DOC(dai, NodeStateApi));
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
@@ -268,6 +273,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("idOrIpOrName"),
              DOC(dai, Pipeline, addDevice, 3))
         .def("getDevices", &Pipeline::getDevices, DOC(dai, Pipeline, getDevices))
+        .def("getDeviceState", &Pipeline::getDeviceState, py::arg("device"), DOC(dai, Pipeline, getDeviceState))
+        .def("setDeviceStateCallback", &Pipeline::setDeviceStateCallback, py::arg("callback"), DOC(dai, Pipeline, setDeviceStateCallback))
         // 'Template' create function
         .def(
             "add",

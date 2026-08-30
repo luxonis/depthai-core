@@ -213,6 +213,22 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // upstream node runs on host. Uses the map above after build, resolves live before.
     std::shared_ptr<Device> getInputSourceDevice(const Node::Input* input) const;
 
+    // Per-device pipeline state (guarded by deviceStateMtx)
+    mutable std::mutex deviceStateMtx;
+    std::unordered_map<const DeviceBase*, DeviceState> deviceStates;
+    std::function<void(std::shared_ptr<Device>, DeviceState)> deviceStateCallback;
+    // Devices that consume other devices' streams (B side of a relay feeding a device
+    // node); losing one of these for good stops the pipeline. Derived at build().
+    std::unordered_set<const Device*> fatalDevices;
+
+    // Called from a device's monitor thread on state transitions. On FAILED, idles the
+    // device's XLink host nodes and stops the pipeline when the device was fatal or the
+    // last one alive.
+    void onDeviceStateChanged(DeviceBase* device, DeviceState state);
+
+    DeviceState getDeviceState(const std::shared_ptr<Device>& device) const;
+    void setDeviceStateCallback(std::function<void(std::shared_ptr<Device>, DeviceState)> callback);
+
     // Register a device with this pipeline. The first registered device is promoted
     // to master (default device) if none exists. Registering the same device twice is a no-op.
     std::shared_ptr<Device> registerDevice(std::shared_ptr<Device> device);
@@ -361,9 +377,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void stop();
     void run();
 
-    // Reset connections
-    void resetConnections();
-    void disconnectXLinkHosts();
+    // Reset connections and re-send the pipeline; restricted to one device when given
+    void resetConnections(DeviceBase* device = nullptr);
+    // Make XLink host nodes of the given device (all when null) exit quietly
+    void disconnectXLinkHosts(DeviceBase* device = nullptr);
 
    private:
     // Resource
@@ -737,6 +754,24 @@ class Pipeline {
      * explicitly via addDevice or implicitly on first use by a node.
      */
     std::vector<std::shared_ptr<Device>> getDevices() const;
+
+    /**
+     * Get the pipeline-level state of a device: RUNNING, DISCONNECTED, RECONNECTING
+     * or FAILED. Losing a device does not stop the pipeline (its streams go idle)
+     * unless it was the last device alive or a device consuming other devices' streams.
+     */
+    DeviceState getDeviceState(const std::shared_ptr<Device>& device) const {
+        return impl()->getDeviceState(device);
+    }
+
+    /**
+     * Set a callback invoked on every device state transition. The callback is invoked
+     * from the affected device's monitor thread; do not block in it and do not call
+     * pipeline stop/start from it directly.
+     */
+    void setDeviceStateCallback(std::function<void(std::shared_ptr<Device>, DeviceState)> callback) {
+        impl()->setDeviceStateCallback(std::move(callback));
+    }
 
     std::string getTelemetryPipelineId() const {
         return impl()->telemetryPipelineId;

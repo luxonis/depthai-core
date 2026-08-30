@@ -22,14 +22,15 @@ void XLinkInHost::setStreamName(const std::string& name) {
 }
 
 void XLinkInHost::setConnection(std::shared_ptr<XLinkConnection> conn) {
-    this->conn = std::move(conn);
     std::lock_guard<std::mutex> lock(mtx);
+    this->conn = std::move(conn);
+    connectionRefreshed = true;
     isWaitingForReconnect.notify_all();
 }
 
 void XLinkInHost::disconnect() {
-    isDisconnected = true;
     std::lock_guard<std::mutex> lock(mtx);
+    isDisconnected = true;
     isWaitingForReconnect.notify_all();
 }
 
@@ -85,11 +86,31 @@ void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& message
 }
 
 void XLinkInHost::run() {
+    {
+        // Consume a connection refresh recorded before the node started (build time)
+        std::lock_guard<std::mutex> lock(mtx);
+        connectionRefreshed = false;
+    }
     // Create a stream for the connection
     bool reconnect = true;
     while(reconnect) {
         reconnect = false;
-        stream = std::make_unique<XLinkStream>(std::move(conn), streamName, 1);
+        try {
+            stream = std::make_unique<XLinkStream>(std::move(conn), streamName, 1);
+        } catch(const std::exception& ex) {
+            // Connection unusable (e.g. closed while waking up) - park until it is
+            // refreshed or the device is declared gone
+            logger::error("Cannot open stream '{}': {}", streamName, ex.what());
+            std::unique_lock<std::mutex> lck(mtx);
+            isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });
+            if(isDisconnected) {
+                logger::warn("XLinkInHost '{}' stopping - device connection was lost", streamName);
+                return;
+            }
+            connectionRefreshed = false;
+            reconnect = true;
+            continue;
+        }
         while(mainLoop()) {
             try {
                 // Blocking -- parse packet and gather timing information
@@ -140,8 +161,14 @@ void XLinkInHost::run() {
                     logger::error(exceptionMessage);
                     std::unique_lock<std::mutex> lck(mtx);
                     logger::info("Waiting for reconnect (XLINKINHOST)\n");
-                    isWaitingForReconnect.wait(lck);
-                    if(isDisconnected) throw std::runtime_error(exceptionMessage);
+                    isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });
+                    if(isDisconnected) {
+                        // Device is gone for good - exit quietly so downstream inputs
+                        // go idle instead of tearing down the whole pipeline
+                        logger::warn("XLinkInHost '{}' stopping - device connection was lost", streamName);
+                        return;
+                    }
+                    connectionRefreshed = false;
                     logger::info("Reconnected (XLINKINHOST)\n");
                     reconnect = true;
                     break;
