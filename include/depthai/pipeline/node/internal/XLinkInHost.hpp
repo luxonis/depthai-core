@@ -21,6 +21,7 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     std::condition_variable isWaitingForReconnect;
     std::mutex mtx;
     bool isDisconnected = false;
+    bool connectionRefreshed = false;
     std::unique_ptr<XLinkStream> stream;
 
     virtual StreamPacketDesc readStreamMessage() const;
