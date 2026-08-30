@@ -1536,6 +1536,8 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                 }
                 auto waitStart = std::chrono::steady_clock::now();
                 do {
+                    // Abort promptly when the device is being closed (close() joins this thread)
+                    if(isClosing) return false;
                     if(std::get<0>(XLinkConnection::getDeviceById(prevDeviceId, X_LINK_ANY_STATE, false))) return true;
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 } while(std::chrono::steady_clock::now() - waitStart < timeout);

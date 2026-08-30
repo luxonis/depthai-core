@@ -1030,6 +1030,11 @@ std::shared_ptr<Device> PipelineImpl::registerDevice(std::shared_ptr<Device> dev
             return device;
         }
     }
+    // The device set is read from device monitor threads while running - it must not
+    // grow any more (hot-plug of a new device is not supported)
+    if(running) {
+        throw std::runtime_error("Cannot add a device to a running pipeline");
+    }
     // Two distinct Device instances connected to the same physical device would
     // produce overlapping per-device schemas - reject early
     const auto deviceId = device->getDeviceInfo().getDeviceId();
@@ -1067,7 +1072,7 @@ std::shared_ptr<Device> PipelineImpl::getInputSourceDevice(const Node::Input* in
     };
     if(isBuild) {
         // Resolved from the user graph at build(), before bridge insertion
-        auto it = inputSourceDevices.find(const_cast<Node::Input*>(input));
+        auto it = inputSourceDevices.find(input);
         if(it == inputSourceDevices.end()) {
             return nullptr;
         }
@@ -1660,16 +1665,30 @@ void PipelineImpl::start() {
         }
     }
 
-    // All devices are up
+    // All devices that have no recorded transition are up. A monitor thread may have
+    // recorded a transition already (pipelinePtr is set before the start loop), and a
+    // terminal FAILED recorded in that window must not be clobbered - handle it below.
+    std::vector<std::shared_ptr<Device>> failedDuringStart;
     {
         std::lock_guard<std::mutex> stateLock(deviceStateMtx);
         for(const auto& device : devices) {
-            deviceStates[device.get()] = DeviceState::RUNNING;
+            auto it = deviceStates.find(device.get());
+            if(it == deviceStates.end()) {
+                deviceStates[device.get()] = DeviceState::RUNNING;
+            } else if(it->second == DeviceState::FAILED) {
+                failedDuringStart.push_back(device);
+            }
         }
     }
 
     // Indicate that pipeline is running
     running = true;
+
+    // A device that died for good while the others were still starting gets the full
+    // failure handling now (idle its streams, fatal/last-device stop decision)
+    for(const auto& device : failedDuringStart) {
+        onDeviceStateChanged(device.get(), DeviceState::FAILED);
+    }
 
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : getAllNodes()) {
@@ -1785,12 +1804,16 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
         deviceStates[device] = state;
         if(pipelineRunning) callback = deviceStateCallback;
     }
+    if(state == DeviceState::FAILED) {
+        // Idle this device's XLink host nodes - consumers see silence, not errors.
+        // This must happen even while the pipeline is stopping: a bridge node parked
+        // waiting for a reconnect is only woken by disconnect(), and stop() joins it.
+        disconnectXLinkHosts(device);
+    }
     if(!pipelineRunning) return;
 
     bool shouldStop = false;
     if(state == DeviceState::FAILED) {
-        // Idle this device's XLink host nodes - consumers see silence, not errors
-        disconnectXLinkHosts(device);
         // Fatal device (consumes other devices' streams) or last device alive -> stop
         const bool fatal = fatalDevices.count(devicePtr.get()) > 0;
         bool anyAlive = false;
@@ -1830,9 +1853,7 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
 }
 
 DeviceState PipelineImpl::getDeviceState(const std::shared_ptr<Device>& device) const {
-    if(device == nullptr) {
-        throw std::invalid_argument("Device is null");
-    }
+    resolvePipelineDevice(device);
     std::lock_guard<std::mutex> lock(deviceStateMtx);
     auto it = deviceStates.find(device.get());
     if(it == deviceStates.end()) {
@@ -1863,6 +1884,10 @@ void PipelineImpl::stop() {
     // Mark not running up front: device monitors report state changes while their
     // devices are closed below, and those must not re-trigger stop or user callbacks
     running = false;
+
+    // Wake any XLink host node parked waiting for a reconnect - stopping joins the
+    // node threads and a parked node would never exit on its own
+    disconnectXLinkHosts();
 
     if(telemetryPipelineStartedAt.has_value()) {
         const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - *telemetryPipelineStartedAt).count();

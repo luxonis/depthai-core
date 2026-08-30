@@ -124,6 +124,7 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
     xLinkConnection.def(py::init<const DeviceInfo&, std::vector<std::uint8_t> >())
         .def(py::init<const DeviceInfo&, std::string>())
         .def(py::init<const DeviceInfo&>())
+        .def("getDeviceInfo", &XLinkConnection::getDeviceInfo, DOC(dai, XLinkConnection, getDeviceInfo))
         .def_static("getAllConnectedDevices",
                     &XLinkConnection::getAllConnectedDevices,
                     py::arg("state") = X_LINK_ANY_STATE,
