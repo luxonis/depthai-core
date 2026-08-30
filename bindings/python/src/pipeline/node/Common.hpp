@@ -20,34 +20,36 @@ extern py::handle daiNodeModule;
 extern py::handle daiNodeInternalModule;
 extern py::handle daiBetaNodeModule;
 
+// Shared creator for all bound node types: device-aware for DeviceNode types,
+// an explicit error when a device is passed for a host node
+template <typename T>
+std::shared_ptr<dai::Node> createBoundNode(dai::Pipeline& p, py::object class_, const std::shared_ptr<dai::Device>& device) {
+    if constexpr(std::is_base_of_v<dai::DeviceNode, T>) {
+        if(device) return p.createForDevice<T>(device);
+    } else {
+        if(device) throw std::invalid_argument(std::string(py::str(class_)) + " is a host node and cannot be created for a specific device");
+    }
+    return p.create<T>();
+}
+
 template <typename T, typename DERIVED = dai::DeviceNode>
 py::class_<T, DERIVED, std::shared_ptr<T>> addNode(const char* name, const char* docstring = nullptr) {
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
-    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_, const std::shared_ptr<dai::Device>& device) {
-        if constexpr(std::is_base_of_v<dai::DeviceNode, T>) {
-            if(device) return p.createForDevice<T>(device);
-        }
-        return p.create<T>();
-    }));
+    pyNodeCreateMap.push_back(std::make_pair(node, &createBoundNode<T>));
     return node;
 }
 
 template <typename T, typename DERIVED = dai::DeviceNode>
 py::class_<T, DERIVED, std::shared_ptr<T>> addNodeInternal(const char* name, const char* docstring = nullptr) {
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeInternalModule, name, docstring);
-    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_, const std::shared_ptr<dai::Device>& device) {
-        if constexpr(std::is_base_of_v<dai::DeviceNode, T>) {
-            if(device) return p.createForDevice<T>(device);
-        }
-        return p.create<T>();
-    }));
+    pyNodeCreateMap.push_back(std::make_pair(node, &createBoundNode<T>));
     return node;
 }
 
 template <typename T, typename DERIVED = dai::DeviceNode>
 py::class_<T, DERIVED, std::shared_ptr<T>> addBetaNode(const char* name, const char* docstring = nullptr) {
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiBetaNodeModule, name, docstring);
-    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_) { return p.create<T>(); }));
+    pyNodeCreateMap.push_back(std::make_pair(node, &createBoundNode<T>));
     return node;
 }
 
