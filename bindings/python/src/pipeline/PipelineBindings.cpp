@@ -201,7 +201,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  d.wait();
              })
         //.def(py::init<const Pipeline&>())
-        .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         .def("setDefaultDeviceProperties",
              &Pipeline::setDefaultDeviceProperties,
@@ -254,6 +253,21 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
         .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
         .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
+        .def("addDevice",
+             py::overload_cast<std::shared_ptr<Device>>(&Pipeline::addDevice),
+             py::arg("device"),
+             DOC(dai, Pipeline, addDevice))
+        .def("addDevice",
+             py::overload_cast<const DeviceInfo&>(&Pipeline::addDevice),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("deviceInfo"),
+             DOC(dai, Pipeline, addDevice, 2))
+        .def("addDevice",
+             py::overload_cast<const std::string&>(&Pipeline::addDevice),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("idOrIpOrName"),
+             DOC(dai, Pipeline, addDevice, 3))
+        .def("getDevices", &Pipeline::getDevices, DOC(dai, Pipeline, getDevices))
         // 'Template' create function
         .def(
             "add",

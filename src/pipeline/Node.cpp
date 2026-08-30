@@ -148,6 +148,14 @@ bool Node::Output::canConnect(const Input& in) {
 }
 
 void Node::Output::link(Input& in) {
+    // Linking across two different pipelines is not supported
+    auto outputPipeline = parent.get().parent.lock();
+    auto inputPipeline = in.getParent().parent.lock();
+    if(outputPipeline != nullptr && inputPipeline != nullptr && outputPipeline != inputPipeline) {
+        throw std::runtime_error(fmt::format(
+            "Cannot link '{}.{}' to '{}.{}' - nodes are part of different pipelines", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+    }
+
     // First check if can connect
     if(!canConnect(in)) {
         throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
@@ -812,6 +820,22 @@ std::shared_ptr<dai::node::internal::XLinkInBridge> Node::Input::getXLinkBridge(
 
 std::shared_ptr<dai::node::internal::XLinkOutBridge> Node::Output::getXLinkBridge() const {
     return xLinkBridge;
+}
+
+std::shared_ptr<Device> Node::Input::getSourceDevice() const {
+    auto pipeline = parent.get().parent.lock();
+    if(pipeline == nullptr) {
+        return nullptr;
+    }
+    return pipeline->getInputSourceDevice(this);
+}
+
+std::map<std::string, std::shared_ptr<Device>> Node::InputMap::getSourceDevices() const {
+    std::map<std::string, std::shared_ptr<Device>> sourceDevices;
+    for(const auto& entry : *this) {
+        sourceDevices[entry.first.second] = entry.second.getSourceDevice();
+    }
+    return sourceDevices;
 }
 
 }  // namespace dai
