@@ -127,7 +127,7 @@ void loop(N& node,
             auto tAbsoluteEnd = steady_clock::now();
             logTiming(tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
-            auto outImage = getFrame(node.properties.outputFrameSize);
+            auto outImage = getFrame(outputSize);
 
             bool success = true;
             {

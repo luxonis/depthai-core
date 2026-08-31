@@ -99,8 +99,7 @@ with dai.Pipeline(device) as pipeline:
         assert isinstance(passthrough, dai.ImgFrame)
         assert isinstance(depthFrame, dai.ImgFrame)
 
-        depthImg = depthFrame.getCvFrame()
-        colorizedDepth = cv2.applyColorMap(cv2.convertScaleAbs(depthImg, alpha=0.03), cv2.COLORMAP_JET)
+        colorizedDepth = dai.utility.colorizeDepthFrame(depthFrame).getCvFrame()
         image = passthrough.getCvFrame()
 
         filterKeypoints = [0, 3, 4, 7, 8, 13, 14, 15, 16] # filter out nose, ears, elbows, knees, ankles

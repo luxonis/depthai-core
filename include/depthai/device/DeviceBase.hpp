@@ -598,6 +598,14 @@ class DeviceBase {
     std::vector<CameraBoardSocket> getConnectedCameras();
 
     /**
+     * Get cameras that are connected to the device and support a given sensor type
+     *
+     * @param type Sensor type to filter by (e.g. CameraSensorType::COLOR)
+     * @returns Vector of sockets of the connected cameras that support the given type
+     */
+    std::vector<CameraBoardSocket> getConnectedCameras(CameraSensorType type);
+
+    /**
      * Get connection interfaces for device
      *
      * @returns Vector of connection type
@@ -1207,6 +1215,13 @@ class DeviceBase {
      * @param enable Enables or disables strobe
      */
     void setExternalStrobeEnable(bool enable);
+
+    /**
+     * Set which camera will control the external strobe exposure. Automaticaly enables external strobe.
+     * External strobe signal is low for the duration of exposure, and high for the rest of the frame.
+     * @param exposureMasterSocket CameraBoardSocket of the camera which will control the external strobe exposure
+     */
+    void setExternalStrobeEnable(dai::CameraBoardSocket exposureMasterSocket);
 
     /**
      * Mock camera features from a recording. Used for holistic record and replay.

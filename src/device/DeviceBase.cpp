@@ -1582,6 +1582,16 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcCallChecked<std::vector<CameraBoardSocket>>("getConnectedCameras");
 }
 
+std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras(CameraSensorType type) {
+    std::vector<CameraBoardSocket> sockets;
+    for(const auto& features : getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), type) != features.supportedTypes.end()) {
+            sockets.push_back(features.socket);
+        }
+    }
+    return sockets;
+}
+
 std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
     return getStereoPairs();
 }
@@ -1728,6 +1738,10 @@ std::tuple<bool, std::string> DeviceBase::setExternalStrobeRelativeLimits(float 
 
 void DeviceBase::setExternalStrobeEnable(bool enable) {
     pimpl->rpcCallCheckedVoid("setExternalStrobeEnable", enable);
+}
+
+void DeviceBase::setExternalStrobeEnable(dai::CameraBoardSocket exposureMasterSocket) {
+    pimpl->rpcCallCheckedVoid("setExternalStrobeEnableExposureMaster", exposureMasterSocket);
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {
