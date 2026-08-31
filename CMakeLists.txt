@@ -666,7 +666,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
 
-    if(UNIX AND NOT APPLE)
+    if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
         # Give consumers an explicit -rpath-link to our libdynamic_calibration.so so ld's link-time symbol
         # resolution doesn't pick up a like-named/incompatible copy earlier on LD_LIBRARY_PATH (e.g. from a ROS system install).
         target_link_options(${TARGET_CORE_NAME} INTERFACE
