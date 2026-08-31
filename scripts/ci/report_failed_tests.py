@@ -8,8 +8,8 @@ import json
 import sys
 
 bucket = os.getenv('INFLUXDB_TEST_REPORT_BUCKET')
-org = os.getenv('INFLUXDB_ORG')
-token = os.getenv('INFLUXDB_TOKEN')
+org = os.getenv('INFLUXDB_ORG', '')
+token = os.getenv('INFLUXDB_TOKEN', '')
 url = os.getenv('INFLUXDB_URL')
 
 GITHUB_REF = os.getenv('GITHUB_REF', '')
@@ -56,7 +56,7 @@ def statusToEmoji(status):
     emojiList = ['exclamation', 'x', 'white_square', 'white_check_mark']
     return emojiList[status]
 
-def getTestHistory(ref):
+def getTestHistory(ref) -> list[list[dict]]:
     got = read_api.query(f'''
 statuses = from(bucket: "{bucket}")
     |> range(start: 1970)
@@ -92,7 +92,7 @@ join(
         history: history,
         currentlyFailed: failedTestNames
     }},
-    on: ["testName", "config","context","os"],
+    on: ["testName", "config","context"],
     method: "inner"
 )''', org=org)
     history = list(map(lambda r: r.records, got))
@@ -120,7 +120,7 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
     }
     if len(history) > 0:
         tableRows = []
-        headerRow = [{"type": "raw_text", "text": "test name and config"}]
+        headerRow: list[dict] = [{"type": "raw_text", "text": "test name and config"}]
         columnsDict = {}
         for i in history:
             for j in i:
@@ -146,10 +146,7 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
         tableRows.append(headerRow)
 
         for i in history:
-            row = [{
-                "type": "raw_text",
-                "text": f'{i[0]["testName"]} ({i[0]["config"]}@{i[0]["context"]}/{i[0]["os"]})'
-            }]
+            row: list[dict] = []
             columnIdx = 0
             for j in i:
                 while columnIdx < len(columns) and columns[columnIdx][0] != j["_time"]:
@@ -171,7 +168,10 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
                 })
                 columnIdx += 1
             row.reverse()
-            tableRows.append(row)
+            tableRows.append([{
+                "type": "raw_text",
+                "text": f'{i[0]["testName"]} ({i[0]["config"]}@{i[0]["context"]}/{i[0]["context"]})'
+            }, *row])
 
         tableBlock = {
             "type": "table",
@@ -185,5 +185,4 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
     return json.dump(ret, fp=open(sys.argv[1], mode='w'))
 
 history = getTestHistory(GITHUB_REF)
-print(history)
 writeTestHistory(history)

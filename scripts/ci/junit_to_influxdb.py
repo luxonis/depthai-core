@@ -4,9 +4,9 @@ import xml.etree.ElementTree as ET
 import os
 import sys
 
-bucket = os.getenv('INFLUXDB_TEST_REPORT_BUCKET')
-org = os.getenv('INFLUXDB_ORG')
-token = os.getenv('INFLUXDB_TOKEN')
+bucket = os.getenv('INFLUXDB_TEST_REPORT_BUCKET', '')
+org = os.getenv('INFLUXDB_ORG', '')
+token = os.getenv('INFLUXDB_TOKEN', '')
 url = os.getenv('INFLUXDB_URL')
 
 GITHUB_SHA = os.getenv('GITHUB_SHA', 'null')
@@ -209,7 +209,7 @@ def parseTestSummary():
         fixedCt = len(prevFailureList)
         writeTestsuite(
             labels=labels, platform=platform, protocol=protocol, context=context, config=config,
-            passed=passed, failed=failed, tests=total, fixed=fixedCt, broken=brokenCt,
+            passed=passed, failed=failed, tests=total, fixed=fixedCt, broken=brokenCt, skipped=skipped
         )
 
 parseTestSummary()
