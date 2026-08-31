@@ -575,7 +575,11 @@ dai_set_test_labels(model_slug_test onhost ci)
 
 # GPUStereo node tests
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
+dai_add_test(crop_config_generator_test src/onhost_tests/pipeline/node/crop_config_generator_test.cpp)
+dai_add_test(detections_crop_test src/onhost_tests/pipeline/node/detections_crop_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
+dai_set_test_labels(crop_config_generator_test onhost ci)
+dai_set_test_labels(detections_crop_test onhost ci)
 
 if(DEPTHAI_BUILD_BETA)
     # Stitching device-node configuration tests (must not require host OpenCV support)
@@ -778,6 +782,13 @@ dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
 dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
+
+# CropConfigGenerator and DetectionsCrop device execution tests
+dai_add_test(crop_config_generator_ondevice_test src/ondevice_tests/pipeline/node/crop_config_generator_test.cpp)
+dai_set_test_labels(crop_config_generator_ondevice_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+dai_add_test(detections_crop_ondevice_test src/ondevice_tests/pipeline/node/detections_crop_test.cpp)
+dai_set_test_labels(detections_crop_ondevice_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # Depth algorithm selection (on-device)
 dai_add_test(depth_algorithm_selection_test src/ondevice_tests/pipeline/node/depth_algorithm_selection_test.cpp)

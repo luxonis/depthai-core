@@ -302,6 +302,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/internal/XLinkIn.cpp
     src/pipeline/node/internal/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/CropConfigGenerator.cpp
+    src/pipeline/node/DetectionsCrop.cpp
     src/pipeline/node/Camera.cpp
     src/pipeline/node/Thermal.cpp
     src/pipeline/node/ToF.cpp
