@@ -103,8 +103,8 @@ def writeTestHistory(history):
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": f'''ref: <https://github.com/luxonis/depthai-core/{getGithubRefUrl(GITHUB_REF)}|{GITHUB_REF}> ({GITHUB_HEAD_REF})
-Commit: <https://github.com/luxonis/depthai-core/commits{GITHUB_SHA}|{GITHUB_SHA[0:8]}>
+            "text": f'''ref: <https://github.com/luxonis/depthai-core/{getGithubRefUrl(GITHUB_REF)}|{GITHUB_REF}> {f"({GITHUB_HEAD_REF})" if GITHUB_HEAD_REF is not '' else ''}
+Commit: <https://github.com/luxonis/depthai-core/commit/{GITHUB_SHA}|{GITHUB_SHA[0:8]}>
 Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITHUB_RUN_ID}>
 
 '''
@@ -170,7 +170,7 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
             row.reverse()
             tableRows.append([{
                 "type": "raw_text",
-                "text": f'{i[0]["testName"]} ({i[0]["config"]}@{i[0]["context"]}/{i[0]["context"]})'
+                "text": f'{i[0]["testName"]} ({i[0]["config"]}@{i[0]["context"]}/{i[0]["os"]})'
             }, *row])
 
         tableBlock = {

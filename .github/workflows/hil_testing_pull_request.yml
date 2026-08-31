@@ -20,14 +20,15 @@ jobs:
   run_pr_tests:
     name: Run Linux PR HIL tests
     if: >
-      (
+      (github.event_name == 'workflow_dispatch') ||
+      ((
         github.event.review.state == 'approved' ||
         (github.event_name == 'pull_request' && github.event.label.name == 'testable')
       ) &&
       (
         github.event.pull_request.base.ref == 'main' ||
         github.event.pull_request.base.ref == 'develop'
-      )
+      ))
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
