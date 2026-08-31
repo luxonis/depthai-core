@@ -185,6 +185,7 @@ void serializeImgTransformation(proto::common::ImgTransformation* imgTransformat
     protoExtrinsics->mutable_spectranslation()->set_z(extrinsics.specTranslation.z);
     protoExtrinsics->set_tocamerasocket(static_cast<proto::common::CameraBoardSocket>(extrinsics.toCameraSocket));
     protoExtrinsics->set_lengthunit(static_cast<proto::common::LengthUnit>(extrinsics.lengthUnit));
+    protoExtrinsics->set_todeviceid(extrinsics.toDeviceId);
 
     for(const auto& crop : transformation.getSrcCrops()) {
         auto* protoCrop = imgTransformation->add_srccrops();
@@ -243,6 +244,7 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
             extrinsics.specTranslation = Point3f(t.x(), t.y(), t.z());
         }
         extrinsics.toCameraSocket = static_cast<CameraBoardSocket>(protoExtrinsics.tocamerasocket());
+        extrinsics.toDeviceId = protoExtrinsics.todeviceid();
         if(protoExtrinsics.has_lengthunit()) {
             extrinsics.lengthUnit = static_cast<LengthUnit>(protoExtrinsics.lengthunit());
         } else {
