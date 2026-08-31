@@ -749,6 +749,16 @@ class CalibrationHandler {
      */
     dai::CameraBoardSocket getCameraWithLowestId() const;
 
+    /**
+     * Get the calibration-origin socket for a camera and its transform to that
+     * origin.
+     *
+     * @param cameraId Camera whose transform and origin are requested.
+     * @param originSocket Output socket of the local calibration origin.
+     * @return Transform from cameraId to originSocket.
+     */
+    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, CameraBoardSocket& originSocket) const;
+
    private:
     /** when the user is writing extrinsics do we validate if
      * the connection between all the cameras exists ?

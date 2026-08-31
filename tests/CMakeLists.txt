@@ -447,6 +447,8 @@ endif()
 # CalibrationHandler test
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
+dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
+dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
 
 # Calibration CBA merge test
 dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_test.cpp)
@@ -487,6 +489,8 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     target_link_libraries(image_transformations_test PRIVATE messages)
 endif()
 dai_set_test_labels(image_transformations_test onhost ci)
+dai_add_test(img_transformation_rebase_test src/onhost_tests/img_transformation_rebase_test.cpp)
+dai_set_test_labels(img_transformation_rebase_test onhost ci)
 
 # Matrix operations tests
 dai_add_test(matrix_ops_tests src/onhost_tests/matrix_ops_tests.cpp)

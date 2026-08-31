@@ -7,6 +7,8 @@
 #include <cmath>
 #include <cstring>
 #include <depthai/utility/matrixOps.hpp>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -16,6 +18,82 @@
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
 namespace dai {
+
+namespace {
+
+constexpr float kRebaseRotationTolerance = 1e-3f;
+
+bool isSupportedRebaseLengthUnit(LengthUnit unit) {
+    switch(unit) {
+        case LengthUnit::METER:
+        case LengthUnit::CENTIMETER:
+        case LengthUnit::MILLIMETER:
+        case LengthUnit::INCH:
+        case LengthUnit::FOOT:
+            return true;
+        case LengthUnit::CUSTOM:
+        default:
+            return false;
+    }
+}
+
+bool isConcreteRebaseSocket(CameraBoardSocket socket) {
+    return socket != CameraBoardSocket::AUTO && static_cast<int32_t>(socket) >= static_cast<int32_t>(CameraBoardSocket::CAM_A)
+           && static_cast<int32_t>(socket) <= static_cast<int32_t>(CameraBoardSocket::CBA);
+}
+
+bool isValidRebaseRotation(const std::vector<std::vector<float>>& rotation) {
+    if(rotation.size() != 3 || rotation[0].size() != 3 || rotation[1].size() != 3 || rotation[2].size() != 3) {
+        return false;
+    }
+
+    for(const auto& row : rotation) {
+        for(const auto value : row) {
+            if(!std::isfinite(value)) {
+                return false;
+            }
+        }
+    }
+
+    const float determinant = rotation[0][0] * (rotation[1][1] * rotation[2][2] - rotation[1][2] * rotation[2][1])
+                              - rotation[0][1] * (rotation[1][0] * rotation[2][2] - rotation[1][2] * rotation[2][0])
+                              + rotation[0][2] * (rotation[1][0] * rotation[2][1] - rotation[1][1] * rotation[2][0]);
+
+    for(size_t row = 0; row < 3; ++row) {
+        for(size_t column = 0; column < 3; ++column) {
+            float dot = 0.0f;
+            for(size_t index = 0; index < 3; ++index) {
+                dot += rotation[index][row] * rotation[index][column];
+            }
+            const float expected = row == column ? 1.0f : 0.0f;
+            if(std::abs(dot - expected) > kRebaseRotationTolerance) {
+                return false;
+            }
+        }
+    }
+
+    return std::abs(determinant - 1.0f) <= kRebaseRotationTolerance;
+}
+
+void validateRebaseExtrinsics(const Extrinsics& extrinsics, const char* name) {
+    if(extrinsics.toDeviceId.empty()) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " device ID cannot be empty.");
+    }
+    if(!isConcreteRebaseSocket(extrinsics.toCameraSocket)) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " socket must be concrete.");
+    }
+    if(!isSupportedRebaseLengthUnit(extrinsics.lengthUnit)) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " length unit is not supported.");
+    }
+    if(!isValidRebaseRotation(extrinsics.rotationMatrix)) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " rotation matrix is invalid.");
+    }
+    if(!std::isfinite(extrinsics.translation.x) || !std::isfinite(extrinsics.translation.y) || !std::isfinite(extrinsics.translation.z)) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " translation must be finite.");
+    }
+}
+
+}  // namespace
 
 constexpr float ROUND_UP_EPS = 1e-3f;
 
@@ -342,6 +420,20 @@ ImgTransformation& ImgTransformation::setSize(size_t width, size_t height) {
 ImgTransformation& ImgTransformation::setSourceSize(size_t width, size_t height) {
     this->srcWidth = width;
     this->srcHeight = height;
+    return *this;
+}
+ImgTransformation& ImgTransformation::rebaseExtrinsics(const Extrinsics& localOriginToTarget) {
+    validateRebaseExtrinsics(extrinsics, "current extrinsics");
+    validateRebaseExtrinsics(localOriginToTarget, "rebase extrinsics");
+
+    const auto sourceToLocal = extrinsics.getTransformationMatrix(false, LengthUnit::METER);
+    const auto localToTarget = localOriginToTarget.getTransformationMatrix(false, LengthUnit::METER);
+    const auto sourceToTarget = matrix::matMul(localToTarget, sourceToLocal);
+
+    auto rebasedMatrix = sourceToTarget;
+    Extrinsics rebased(rebasedMatrix, localOriginToTarget.toCameraSocket, LengthUnit::METER);
+    rebased.toDeviceId = localOriginToTarget.toDeviceId;
+    this->extrinsics = std::move(rebased);
     return *this;
 }
 ImgTransformation& ImgTransformation::setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix) {

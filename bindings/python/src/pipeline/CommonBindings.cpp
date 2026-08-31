@@ -45,6 +45,7 @@
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/common/YoloDecodingFamily.hpp"
+#include "depthai/device/MultiDeviceCalibrationHandler.hpp"
 
 // depthai
 #include "depthai/common/CameraExposureOffset.hpp"
@@ -77,6 +78,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<CameraModel> cameraModel(m, "CameraModel", DOC(dai, CameraModel));
     py::class_<StereoRectification> stereoRectification(m, "StereoRectification", DOC(dai, StereoRectification));
     py::class_<Extrinsics> extrinsics(m, "Extrinsics", DOC(dai, Extrinsics));
+    py::class_<MultiDeviceExtrinsics> multiDeviceExtrinsics(m, "MultiDeviceExtrinsics", DOC(dai, MultiDeviceExtrinsics));
+    py::class_<MultiDeviceCalibrationHandler> multiDeviceCalibrationHandler(m, "MultiDeviceCalibrationHandler", DOC(dai, MultiDeviceCalibrationHandler));
     py::class_<CameraInfo> cameraInfo(m, "CameraInfo", DOC(dai, CameraInfo));
     py::class_<EepromData> eepromData(m, "EepromData", DOC(dai, EepromData));
     py::class_<ImuNoiseParameters> imuNoiseParameters(m, "ImuNoiseParameters", DOC(dai, ImuNoiseParameters));
@@ -584,6 +587,21 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("useSpecTranslation") = false,
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getExtrinsicsTransformationTo));
+
+    // MultiDeviceExtrinsics
+    multiDeviceExtrinsics.def(py::init<>())
+        .def_readwrite("fromDeviceId", &MultiDeviceExtrinsics::fromDeviceId)
+        .def_readwrite("fromSocket", &MultiDeviceExtrinsics::fromSocket)
+        .def_readwrite("extrinsics", &MultiDeviceExtrinsics::extrinsics);
+
+    // MultiDeviceCalibrationHandler
+    multiDeviceCalibrationHandler.def(py::init<>())
+        .def(py::init<std::vector<MultiDeviceExtrinsics>>(), py::arg("graph"))
+        .def("getDeviceSocket", &MultiDeviceCalibrationHandler::getDeviceSocket, py::arg("deviceId"))
+        .def("getExtrinsicsToOrigin",
+             &MultiDeviceCalibrationHandler::getExtrinsicsToOrigin,
+             py::arg("deviceId"),
+             py::arg("localOriginSocket"));
 
     // CameraInfo
     cameraInfo.def(py::init<>())

@@ -465,6 +465,24 @@ class Pipeline {
     }
 
     /**
+     * Sets the optional cross-device calibration graph shared by all devices
+     * in a multi-device pipeline.
+     */
+    void setMultiDeviceCalibrationHandler(std::optional<MultiDeviceCalibrationHandler> handler) {
+        auto globalProperties = getGlobalProperties();
+        globalProperties.multiDeviceCalibration = std::move(handler);
+        setGlobalProperties(std::move(globalProperties));
+    }
+
+    /**
+     * Gets the optional cross-device calibration graph shared by all devices
+     * in a multi-device pipeline.
+     */
+    std::optional<MultiDeviceCalibrationHandler> getMultiDeviceCalibrationHandler() const {
+        return getGlobalProperties().multiDeviceCalibration;
+    }
+
+    /**
      * Sets default device properties
      */
     void setDefaultDeviceProperties(DeviceProperties deviceProperties) {

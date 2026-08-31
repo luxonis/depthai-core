@@ -2,6 +2,7 @@
 
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/optional.hpp"
+#include "depthai/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/properties/Properties.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
 
@@ -13,6 +14,7 @@ namespace dai {
 struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
     std::optional<std::string> pipelineName;
     std::optional<std::string> pipelineVersion;
+    std::optional<MultiDeviceCalibrationHandler> multiDeviceCalibration;
     ~GlobalProperties() override;
 };
 
@@ -110,7 +112,7 @@ struct DeviceProperties : PropertiesSerializable<Properties, DeviceProperties> {
 
 DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
 
-DEPTHAI_SERIALIZE_EXT(GlobalProperties, pipelineName, pipelineVersion);
+DEPTHAI_SERIALIZE_EXT(GlobalProperties, pipelineName, pipelineVersion, multiDeviceCalibration);
 
 DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 

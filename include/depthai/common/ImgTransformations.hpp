@@ -200,6 +200,20 @@ struct ImgTransformation {
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**
+     * Re-express the source extrinsics relative to a new target coordinate
+     * system.
+     *
+     * The supplied transform must map the current local calibration origin to
+     * the new target. Only the extrinsics are changed; all image-space
+     * transformation data is preserved.
+     *
+     * @param localOriginToTarget Transform from the current local calibration
+     * origin to the new target coordinate system.
+     * @return This transformation.
+     */
+    ImgTransformation& rebaseExtrinsics(const Extrinsics& localOriginToTarget);
+
+    /**
      * Returns true if the point is inside the transformed region of interest (determined by crops used).
      */
     bool getSrcMaskPt(size_t x, size_t y);
