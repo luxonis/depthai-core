@@ -146,13 +146,14 @@ bool ClassificationParser::runOnHost() const {
 
 void ClassificationParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("ClassificationParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     // The resolved layer name persists across messages once auto-selected from a
     // single-tensor NNData, mirroring the source parser behavior.
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -161,6 +162,7 @@ void ClassificationParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // Extract
         const auto layerNames = nnData->getAllLayerNames();
@@ -188,10 +190,13 @@ void ClassificationParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("ClassificationParser created message with {} classes", message->classes.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

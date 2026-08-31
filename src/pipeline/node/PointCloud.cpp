@@ -769,7 +769,8 @@ void PointCloud::run() {
     // On device, apply the deserialized config from properties
     *initialConfig = properties.initialConfig;
 
-    pimpl->logger->info("PointCloud node started (colorMode={})", colorMode);
+    auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     uint32_t currentEepromId = getParentPipeline().getEepromId();
     auto latestConfig = initialConfig;
@@ -780,6 +781,7 @@ void PointCloud::run() {
             continue;
         }
 
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         // Get synced frames from MessageGroup
         std::shared_ptr<MessageGroup> group;
         {
@@ -802,6 +804,7 @@ void PointCloud::run() {
             latestConfig = newConfig;
             initialized = false;
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // Read organized mode from config
         const bool organized = latestConfig->getOrganized();
@@ -855,6 +858,7 @@ void PointCloud::run() {
 
         pc->updateBoundingBox();
 
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             outputPointCloud.send(pc);
@@ -863,6 +867,8 @@ void PointCloud::run() {
                 passthroughDepth.send(depthFrame);
             }
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

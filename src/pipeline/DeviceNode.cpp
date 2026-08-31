@@ -1,6 +1,10 @@
 #include "depthai/pipeline/DeviceNode.hpp"
 
+#include <ratio>
+
 // std
+#include <spdlog/async_logger.h>
+
 #include "spdlog/fmt/fmt.h"
 
 // project
@@ -65,6 +69,19 @@ void DeviceNode::setLogLevel(dai::LogLevel level) {
         int64_t myid = id;
         device->setNodeLogLevel(myid, level);
     }
+}
+
+void DeviceNode::logTiming(const std::shared_ptr<spdlog::async_logger>& logger,
+                           std::chrono::steady_clock::time_point tAbsoluteBeginning,
+                           std::chrono::steady_clock::time_point tGotInput,
+                           std::chrono::steady_clock::time_point tProcessed,
+                           std::chrono::steady_clock::time_point tAbsoluteEnd) {
+    logger->trace("{} took {}ms, getting input {}ms, processing {}ms,  sending output {}ms",
+                  this->getName(),
+                  std::chrono::duration_cast<std::chrono::microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
+                  std::chrono::duration_cast<std::chrono::microseconds>(tGotInput - tAbsoluteBeginning).count() / 1000,
+                  std::chrono::duration_cast<std::chrono::microseconds>(tProcessed - tGotInput).count() / 1000,
+                  std::chrono::duration_cast<std::chrono::microseconds>(tAbsoluteEnd - tProcessed).count() / 1000);
 }
 
 dai::LogLevel DeviceNode::getLogLevel() const {

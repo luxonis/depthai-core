@@ -5,6 +5,7 @@
 #include <spdlog/async_logger.h>
 #include <stdint.h>
 
+#include <chrono>
 #include <cmath>
 #include <sstream>
 
@@ -53,6 +54,10 @@ template <typename N>
 void loop(N& node,
           const ImageManipConfig& initialConfig,
           std::shared_ptr<spdlog::async_logger> logger,
+          const std::function<void(std::chrono::steady_clock::time_point,
+                                   std::chrono::steady_clock::time_point,
+                                   std::chrono::steady_clock::time_point,
+                                   std::chrono::steady_clock::time_point)>& logTiming,
           const std::function<size_t(const ImageManipConfig&, const ImgFrame&)>& build,
           const std::function<std::shared_ptr<ImgFrame>(size_t)>& getFrame,
           const std::function<bool(const std::shared_ptr<OffsetMemory>&, std::shared_ptr<OffsetMemory>)>& apply,
@@ -63,6 +68,7 @@ void loop(N& node,
     std::shared_ptr<ImgFrame> inImage;
 
     while(node.mainLoop()) {
+        auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<ImageManipConfig> pConfig;
         bool hasConfig = false;
         bool needsImage = true;
@@ -110,41 +116,36 @@ void loop(N& node,
                 logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
             }
         }
+        auto tGotInput = steady_clock::now();
 
-        auto startP = std::chrono::steady_clock::now();
-
-        auto t1 = steady_clock::now();
         auto outputSize = build(config, *inImage);
-        auto t2 = steady_clock::now();
 
         // Check the output image size requirements, and check whether pool has the size required
         if(outputSize == 0) {
+            auto tProcessed = steady_clock::now();
             node.out.send(inImage);
+            auto tAbsoluteEnd = steady_clock::now();
+            logTiming(tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
             auto outImage = getFrame(outputSize);
 
             bool success = true;
             {
-                auto t3 = steady_clock::now();
                 success = apply(ConvertedOffsetMemory::convert(inImage->data), ConvertedOffsetMemory::convert(outImage->data));
-                auto t4 = steady_clock::now();
 
                 setFrame(*inImage, *outImage);
-
-                logger->trace("Build time: {}us, Process time: {}us, Total time: {}us, image manip id: {}",
-                              duration_cast<microseconds>(t2 - t1).count(),
-                              duration_cast<microseconds>(t4 - t3).count(),
-                              duration_cast<microseconds>(t4 - t1).count(),
-                              node.id);
             }
             if(!success) {
                 logger->error("Processing failed, potentially unsupported config");
             }
+            auto tProcessed = steady_clock::now();
             {
                 auto blockEvent = node.outputBlockEvent();
 
                 node.out.send(outImage);
             }
+            auto tAbsoluteEnd = steady_clock::now();
+            logTiming(tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
         } else {
             logger->error(
                 "Output image is bigger ({}B) than maximum frame size specified in properties ({}B) - skipping frame.\nPlease use the setMaxOutputFrameSize "
@@ -152,10 +153,6 @@ void loop(N& node,
                 outputSize,
                 node.properties.outputFrameSize);
         }
-
-        // Update previousConfig of preprocessor, to be able to check if it needs to be updated
-        auto loopNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - startP).count();
-        logger->trace("ImageManip | total process took {}ns ({}ms)", loopNanos, (double)loopNanos / 1e6);
     }
 }
 

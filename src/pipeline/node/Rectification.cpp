@@ -108,6 +108,7 @@ dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& e
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     if(runOnHost()) {
         auto device = getParentPipeline().getDefaultDevice();
         if(device && device->getPlatform() != Platform::RVC4) {
@@ -126,6 +127,7 @@ void Rectification::run() {
     dai::ImgTransformation previousInput1Transformation;
     dai::ImgTransformation previousInput2Transformation;
     while(mainLoop()) {
+        auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<dai::ImgFrame> input1Frame;
         std::shared_ptr<dai::ImgFrame> input2Frame;
         {
@@ -133,6 +135,7 @@ void Rectification::run() {
             input1Frame = input1.get<dai::ImgFrame>();
             input2Frame = input2.get<dai::ImgFrame>();
         }
+        auto tGotInput = steady_clock::now();
         uint32_t output1FrameWidth;
         uint32_t output1FrameHeight;
         uint32_t output2FrameWidth;
@@ -247,8 +250,6 @@ void Rectification::run() {
             previousInput2Transformation = input2Frame->transformation;
         }
 
-        auto start = steady_clock::now();
-
         std::shared_ptr<dai::ImgFrame> rectifiedFrame1 = std::make_shared<dai::ImgFrame>();
         size_t frameSize1 = output1FrameWidth * output1FrameHeight;
         rectifiedFrame1->setData(std::vector<uint8_t>(frameSize1));
@@ -293,10 +294,7 @@ void Rectification::run() {
         rectifiedFrame1->transformation = output1ImgTransformation;
         rectifiedFrame2->transformation = output2ImgTransformation;
 
-        auto end = steady_clock::now();
-        auto duration = duration_cast<milliseconds>(end - start).count();
-        logger->debug("Rectification took {} ms", duration);
-
+        auto tProcessed = steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             output1.send(rectifiedFrame1);
@@ -306,6 +304,8 @@ void Rectification::run() {
             passthrough1.send(input1Frame);
             passthrough2.send(input2Frame);
         }
+        auto tAbsoluteEnd = steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 #endif  // DEPTHAI_HAVE_OPENCV_SUPPORT

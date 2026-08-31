@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "pipeline/ThreadedNodeImpl.hpp"
+
 namespace dai {
 namespace beta {
 namespace node {
@@ -160,9 +162,12 @@ bool ImgDetectionsFilter::runOnHost() const {
 }
 
 void ImgDetectionsFilter::run() {
+    auto& logger = ThreadedNode::pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto config = getProperties().initialConfig;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<ImgDetections> detections;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -179,10 +184,15 @@ void ImgDetectionsFilter::run() {
             }
         }
 
+        auto tGotInput = std::chrono::steady_clock::now();
+        auto filteredDetections = applyConfig(detections, config);
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
-            output.send(applyConfig(detections, config));
+            output.send(filteredDetections);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

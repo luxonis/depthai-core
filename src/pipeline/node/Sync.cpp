@@ -236,6 +236,7 @@ class TimestampCompare {
 void Sync::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     const auto inputsName = inputs.name;
 
     auto timestampSource = properties.timestampSource;
@@ -335,11 +336,7 @@ void Sync::run() {
             out.send(outputGroup);
         }
         auto tAbsoluteEnd = steady_clock::now();
-        logger->debug("Sync total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
-                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+        this->logTiming(logger, tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }
 }
 }  // namespace node
