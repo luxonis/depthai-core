@@ -1,9 +1,11 @@
 #include "depthai/pipeline/DeviceNode.hpp"
+
 #include <ratio>
 
 // std
-#include "spdlog/fmt/fmt.h"
 #include <spdlog/async_logger.h>
+
+#include "spdlog/fmt/fmt.h"
 
 // project
 #include "depthai/pipeline/Pipeline.hpp"
