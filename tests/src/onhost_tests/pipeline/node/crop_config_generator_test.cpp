@@ -74,6 +74,20 @@ TEST_CASE("CropConfigGenerator generates paired crops from ImgDetections", "[Cro
     CHECK(output.image == image);
 }
 
+TEST_CASE("CropConfigGenerator uses an explicitly set ImgDetection boundingBox", "[CropConfigGenerator]") {
+    auto detections = std::make_shared<dai::ImgDetections>();
+    dai::ImgDetection detection;
+    detection.xmin = 0.0F;
+    detection.ymin = 0.0F;
+    detection.xmax = 1.0F;
+    detection.ymax = 1.0F;
+    detection.boundingBox = dai::RotatedRect(dai::Point2f(0.65F, 0.35F, true), dai::Size2f(0.25F, 0.15F, true), 20.0F);
+    detections->detections.push_back(detection);
+
+    const auto output = runGenerator(detections, makeImage());
+    requireCrop(*output.config, 0.65F, 0.35F, 0.25F, 0.15F, 20.0F);
+}
+
 TEST_CASE("CropConfigGenerator supports SpatialImgDetections", "[CropConfigGenerator]") {
     auto detections = std::make_shared<dai::SpatialImgDetections>();
     detections->detections.emplace_back(dai::RotatedRect(dai::Point2f(0.55F, 0.45F, true), dai::Size2f(0.3F, 0.25F, true), -10.0F),
@@ -81,6 +95,20 @@ TEST_CASE("CropConfigGenerator supports SpatialImgDetections", "[CropConfigGener
 
     const auto output = runGenerator(detections, makeImage());
     requireCrop(*output.config, 0.55F, 0.45F, 0.3F, 0.25F, -10.0F);
+}
+
+TEST_CASE("CropConfigGenerator uses an explicitly set SpatialImgDetection boundingBox", "[CropConfigGenerator]") {
+    auto detections = std::make_shared<dai::SpatialImgDetections>();
+    dai::SpatialImgDetection detection;
+    detection.xmin = 0.0F;
+    detection.ymin = 0.0F;
+    detection.xmax = 1.0F;
+    detection.ymax = 1.0F;
+    detection.boundingBox = dai::RotatedRect(dai::Point2f(0.3F, 0.7F, true), dai::Size2f(0.4F, 0.2F, true), -25.0F);
+    detections->detections.push_back(detection);
+
+    const auto output = runGenerator(detections, makeImage());
+    requireCrop(*output.config, 0.3F, 0.7F, 0.4F, 0.2F, -25.0F);
 }
 
 TEST_CASE("CropConfigGenerator supports Tracklets", "[CropConfigGenerator]") {
