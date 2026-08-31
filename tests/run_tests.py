@@ -17,22 +17,22 @@ class ResultThread(threading.Thread):
         self.stdout_lines = []
         self.stderr_lines = []
 
-def run(self):
-    process = subprocess.Popen(
-        self.cmd,
-        env=self.env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
+    def run(self):
+        process = subprocess.Popen(
+            self.cmd,
+            env=self.env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
 
-    for output in process.stdout:
-        line = output.rstrip()
-        print(f"[{self.name}] {line}", flush=True)
-        self.stdout_lines.append(line)
+        for output in process.stdout:
+            line = output.rstrip()
+            print(f"[{self.name}] {line}", flush=True)
+            self.stdout_lines.append(line)
 
-    process.wait()
-    self.result = process
+        process.wait()
+        self.result = process
 
 def enableUARTonAllDevices(enable):
     from adbutils import adb
