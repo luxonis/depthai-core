@@ -1350,9 +1350,9 @@ configure_file(cmake/depthaiConfig.cmake.in _install/${PROJECT_NAME}Config.cmake
 # below) so runtime .so files like dynamic_calibration can still be found
 # after install without polluting the shared lib/ directory with a generic name.
 if(APPLE)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/;@loader_path/${PROJECT_NAME}")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path/${PROJECT_NAME};@loader_path;@loader_path/")
 elseif(UNIX)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/:$ORIGIN/${PROJECT_NAME}")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN/${PROJECT_NAME}:$ORIGIN:$ORIGIN/")
   # Force the usage of RPATH instead of the new RUNPATH.
   # LD_LIBRARY_PATH is searched after the RPATH, so our namespaced runtime dependencies are always preferred.
   target_link_options(${TARGET_CORE_NAME} PRIVATE "-Wl,--disable-new-dtags")
