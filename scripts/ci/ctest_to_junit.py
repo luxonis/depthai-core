@@ -21,6 +21,10 @@ PASSED_RE = re.compile(
     # matches similar lines: 103/172 Test #185: gpu_stereo ...............................   Passed   58.15 sec
     r"^\[(?P<config>[^\]]+)\]\s+\d+/\d+\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.{3,}\s+Passed\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
 )
+SKIPPED_RE = re.compile(
+    # 51/172 Test #107: april_tags ...............................***Skipped  33.29 sec
+    r"^\[(?P<config>[^\]]+)\]\s+\d+/\d+\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.{3,}\s+\*\*\*Skipped\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
+)
 TESTSUITE_RE = re.compile(
     # print(f"Running tests for configuration: linux_rvc2_test / RVC2 - POE, on platform: RVC4, on protocol: POE, with labels: {labels if labels is not None else ""}")
     r"^(Running tests for configuration: )(?P<name>.+?), on platform: (?P<platform>.+?), on protocol: (?P<protocol>.+?), with labels: (?P<labels>.+?)$"
@@ -44,6 +48,7 @@ def parse_log(log_path: Path):
     summaries = {}
     failures = {}
     passes = {}
+    skips = {}
     test_outputs = {}
     descriptions = {}
 
@@ -52,9 +57,10 @@ def parse_log(log_path: Path):
             summaries[config] = None
             failures[config] = OrderedDict()
             passes[config] = OrderedDict()
+            skips[config] = OrderedDict()
             test_outputs[config] = {}
             order.append(config)
-            descriptions[config] = {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''}
+            descriptions[config] = {"name": "null", "DEPTHAI_PLATFORM": 'HOST', "DEPTHAI_PROTOCOL": 'HOST', "labels": ''}
 
     with log_path.open("r", errors="ignore") as handle:
         for raw_line in handle:
@@ -114,7 +120,15 @@ def parse_log(log_path: Path):
                 seconds = float(passed_match.group('seconds'))
                 passes[config][num] = (name, seconds)
 
-    return order, summaries, failures, passes, test_outputs, descriptions
+            skipped_match = SKIPPED_RE.search(line)
+            if skipped_match:
+                config = skipped_match.group("config").strip()
+                ensure_config(config)
+                num = skipped_match.group("num").strip()
+                name = normalize_name(skipped_match.group("name"))
+                seconds = float(skipped_match.group('seconds'))
+                skips[config][num] = (name, seconds)
+    return order, summaries, failures, passes, skips, test_outputs, descriptions
 
 
 def iter_configs(order, summaries, failures):
@@ -149,6 +163,7 @@ def write_junit(
     summaries,
     failures,
     passes,
+    skips,
     test_outputs,
     descriptions
 ):
@@ -172,7 +187,7 @@ def write_junit(
             empty_suite,
             "testcase",
             classname=f"{context or 'ctest'}",
-            name="summary",
+            name="summary empty",
             time="0",
         )
         system_out = ET.SubElement(empty_case, "system-out")
@@ -183,7 +198,8 @@ def write_junit(
         summary = summaries.get(config)
         parsed_failures = failures.get(config, OrderedDict())
         parsed_passes = passes.get(config, OrderedDict())
-        description = descriptions.get(config, {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''})
+        parsed_skips = skips.get(config, OrderedDict())
+        description = descriptions.get(config, {"name": "null", "DEPTHAI_PLATFORM": 'HOST', "DEPTHAI_PROTOCOL": 'HOST', "labels": ''})
         
         declared_failed = summary[1] if summary else len(parsed_failures)
         declared_total = summary[2] if summary else len(parsed_failures) + len(parsed_passes)
@@ -191,8 +207,9 @@ def write_junit(
 
         suite_failures = max(declared_failed, len(parsed_failures))
         suite_passes = max(declared_passed, len(parsed_passes))
+        suite_skips = len(parsed_skips)
         suite_name = f"{context} / {config}" if context else config
-        suite_tests = suite_failures+suite_passes
+        suite_tests = suite_failures+suite_passes+suite_skips
 
         suite = ET.SubElement(
             root,
@@ -200,8 +217,8 @@ def write_junit(
             name=suite_name,
             tests=str(suite_tests),
             failures=str(suite_failures),
-            errors="0",
-            skipped="0",
+            errors="?",
+            skipped=str(suite_skips),
             time="0",
             labels=description['labels'],
             DEPTHAI_PLATFORM=description['DEPTHAI_PLATFORM'],
@@ -243,7 +260,7 @@ def write_junit(
                 suite,
                 "testcase",
                 classname=suite_name,
-                name=f"unknown failure {index}",
+                name=f"unknown_failure {index}",
                 time="0",
             )
             failure = ET.SubElement(
@@ -254,6 +271,21 @@ def write_junit(
             )
             failure.text = "CTest reported an extra failure that was not listed by name."
 
+        for num, entry in parsed_skips.items():
+            test_name, time = entry
+            case = ET.SubElement(
+                suite,
+                "testcase",
+                classname=suite_name,
+                name=f"#{num} {test_name}",
+                time=str(time),
+            )
+            skip = ET.SubElement(
+                case,
+                "skip",
+            )
+        
+
         for num, entry in parsed_passes.items():
             test_name, time = entry
             case = ET.SubElement(
@@ -263,7 +295,7 @@ def write_junit(
                 name=f"#{num} {test_name}",
                 time=str(time),
             )
-            failure = ET.SubElement(
+            success = ET.SubElement(
                 case,
                 "success",
             )
@@ -293,7 +325,7 @@ def main() -> int:
         print(f"Log file not found: {log_path}")
         return 0
 
-    order, summaries, failures, passes, test_outputs, descriptions = parse_log(log_path)
+    order, summaries, failures, passes, skips, test_outputs, descriptions = parse_log(log_path)
     write_junit(
         junit_path=junit_path,
         context=context,
@@ -301,6 +333,7 @@ def main() -> int:
         summaries=summaries,
         failures=failures,
         passes=passes,
+        skips=skips,
         test_outputs=test_outputs,
         descriptions=descriptions
     )

@@ -241,6 +241,8 @@ jobs:
         GITHUB_RUN_ID: ${{ github.run_id }}
         GITHUB_SHA: ${{ github.sha }}
         GITHUB_REF: ${{ github.ref }}
+        GITHUB_HEAD_REF: ${{ github.head_ref }}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
       run: |
         if ! command -v python3 >/dev/null 2>&1; then
           echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
@@ -269,7 +271,7 @@ jobs:
           report_context="${context//\//_}"
           report_context="${report_context// /_}"
           python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
-          python3 scripts/ci/junit_to_influxdb.py "${{ github.workflow }}" "$(date +%Y-%m-%dT%H-%M-%S)" "ctest-reports/${report_context}.xml"
+          python3 scripts/ci/junit_to_influxdb.py "$(date +%Y-%m-%dT%H:%M:%S)" "windows" "ctest-reports/${report_context}.xml"
           echo "" >> "$GITHUB_STEP_SUMMARY"
         done
 
