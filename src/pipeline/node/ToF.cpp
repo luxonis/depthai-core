@@ -176,8 +176,12 @@ void ToF::buildInternal() {
 }
 
 void ToF::buildAutoCamera() {
-    if(!autoCamera || !usesAutoCamera(getDevice())) {
+    if(!usesAutoCamera(getDevice())) {
         return;
+    }
+
+    if(!autoCamera) {
+        autoCamera = std::make_unique<Subnode<Camera>>(*this, "autoCamera");
     }
 
     auto& camera = **autoCamera;
