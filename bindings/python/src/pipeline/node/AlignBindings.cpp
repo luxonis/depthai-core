@@ -28,8 +28,7 @@ void bind_align(pybind11::module& m, void* pCallstack) {
 
     // Properties
     alignProperties.def_readwrite("initialConfig", &AlignProperties::initialConfig, DOC(dai, AlignProperties, initialConfig))
-        .def_readwrite("numFramesPool", &AlignProperties::numFramesPool, DOC(dai, AlignProperties, numFramesPool))
-        ;
+        .def_readwrite("numFramesPool", &AlignProperties::numFramesPool, DOC(dai, AlignProperties, numFramesPool));
 
     // Node
     align.def_readonly("initialConfig", &Align::initialConfig, DOC(dai, node, Align, initialConfig))

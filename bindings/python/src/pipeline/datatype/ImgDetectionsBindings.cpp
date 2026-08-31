@@ -149,7 +149,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
              py::arg("frame"),
              DOC(dai, ImgDetectionsT, setSegmentationMask),
              py::return_value_policy::reference_internal)
-                .def(
+        .def(
             "getMaskData",
             [](const ImgDetections& self) -> py::object {
                 const auto maskData = self.getMaskData();

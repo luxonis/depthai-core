@@ -76,7 +76,7 @@ int main() {
 
     dai::NNModelDescription modelDescription;
     modelDescription.model = "luxonis/yolov8-instance-segmentation-large:coco-640x480";
-    if (device->getPlatform() == dai::Platform::RVC2) {
+    if(device->getPlatform() == dai::Platform::RVC2) {
         modelDescription.model = "luxonis/yolov8-instance-segmentation-nano:coco-512x288";
     }
 
