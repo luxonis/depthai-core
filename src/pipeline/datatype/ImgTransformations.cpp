@@ -21,8 +21,6 @@ namespace dai {
 
 namespace {
 
-constexpr float kRebaseRotationTolerance = 1e-3f;
-
 bool isSupportedRebaseLengthUnit(LengthUnit unit) {
     switch(unit) {
         case LengthUnit::METER:
@@ -42,39 +40,6 @@ bool isConcreteRebaseSocket(CameraBoardSocket socket) {
            && static_cast<int32_t>(socket) <= static_cast<int32_t>(CameraBoardSocket::CBA);
 }
 
-bool isValidRebaseRotation(const std::vector<std::vector<float>>& rotation) {
-    if(rotation.size() != 3 || rotation[0].size() != 3 || rotation[1].size() != 3 || rotation[2].size() != 3) {
-        return false;
-    }
-
-    for(const auto& row : rotation) {
-        for(const auto value : row) {
-            if(!std::isfinite(value)) {
-                return false;
-            }
-        }
-    }
-
-    const float determinant = rotation[0][0] * (rotation[1][1] * rotation[2][2] - rotation[1][2] * rotation[2][1])
-                              - rotation[0][1] * (rotation[1][0] * rotation[2][2] - rotation[1][2] * rotation[2][0])
-                              + rotation[0][2] * (rotation[1][0] * rotation[2][1] - rotation[1][1] * rotation[2][0]);
-
-    for(size_t row = 0; row < 3; ++row) {
-        for(size_t column = 0; column < 3; ++column) {
-            float dot = 0.0f;
-            for(size_t index = 0; index < 3; ++index) {
-                dot += rotation[index][row] * rotation[index][column];
-            }
-            const float expected = row == column ? 1.0f : 0.0f;
-            if(std::abs(dot - expected) > kRebaseRotationTolerance) {
-                return false;
-            }
-        }
-    }
-
-    return std::abs(determinant - 1.0f) <= kRebaseRotationTolerance;
-}
-
 void validateRebaseExtrinsics(const Extrinsics& extrinsics, const char* name) {
     if(extrinsics.toDeviceId.empty()) {
         throw std::invalid_argument(std::string("ImgTransformation ") + name + " device ID cannot be empty.");
@@ -85,7 +50,9 @@ void validateRebaseExtrinsics(const Extrinsics& extrinsics, const char* name) {
     if(!isSupportedRebaseLengthUnit(extrinsics.lengthUnit)) {
         throw std::invalid_argument(std::string("ImgTransformation ") + name + " length unit is not supported.");
     }
-    if(!isValidRebaseRotation(extrinsics.rotationMatrix)) {
+    try {
+        matrix::validateRotationMatrix3x3(extrinsics.rotationMatrix);
+    } catch(const std::runtime_error&) {
         throw std::invalid_argument(std::string("ImgTransformation ") + name + " rotation matrix is invalid.");
     }
     if(!std::isfinite(extrinsics.translation.x) || !std::isfinite(extrinsics.translation.y) || !std::isfinite(extrinsics.translation.z)) {

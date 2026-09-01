@@ -15,8 +15,6 @@ namespace {
 
 using Transform = std::array<std::array<float, 4>, 4>;
 
-constexpr float kRotationTolerance = 1e-3f;
-
 struct CoordinateKey {
     std::string deviceId;
     CameraBoardSocket socket = CameraBoardSocket::AUTO;
@@ -67,39 +65,6 @@ bool isFiniteTranslation(const Point3f& translation) {
     return std::isfinite(translation.x) && std::isfinite(translation.y) && std::isfinite(translation.z);
 }
 
-bool isValidRotation(const std::vector<std::vector<float>>& rotation) {
-    if(rotation.size() != 3 || rotation[0].size() != 3 || rotation[1].size() != 3 || rotation[2].size() != 3) {
-        return false;
-    }
-
-    for(const auto& row : rotation) {
-        for(const auto value : row) {
-            if(!std::isfinite(value)) {
-                return false;
-            }
-        }
-    }
-
-    float determinant = rotation[0][0] * (rotation[1][1] * rotation[2][2] - rotation[1][2] * rotation[2][1])
-                        - rotation[0][1] * (rotation[1][0] * rotation[2][2] - rotation[1][2] * rotation[2][0])
-                        + rotation[0][2] * (rotation[1][0] * rotation[2][1] - rotation[1][1] * rotation[2][0]);
-
-    for(size_t row = 0; row < 3; ++row) {
-        for(size_t column = 0; column < 3; ++column) {
-            float dot = 0.0f;
-            for(size_t index = 0; index < 3; ++index) {
-                dot += rotation[index][row] * rotation[index][column];
-            }
-            const float expected = row == column ? 1.0f : 0.0f;
-            if(std::abs(dot - expected) > kRotationTolerance) {
-                return false;
-            }
-        }
-    }
-
-    return std::abs(determinant - 1.0f) <= kRotationTolerance;
-}
-
 Extrinsics normalizeExtrinsics(const Extrinsics& input) {
     if(input.toDeviceId.empty()) {
         throw std::invalid_argument("Multi-device extrinsics destination device ID cannot be empty.");
@@ -110,7 +75,9 @@ Extrinsics normalizeExtrinsics(const Extrinsics& input) {
     if(!isSupportedLengthUnit(input.lengthUnit)) {
         throw std::invalid_argument("Multi-device extrinsics length unit is not supported.");
     }
-    if(!isValidRotation(input.rotationMatrix)) {
+    try {
+        matrix::validateRotationMatrix3x3(input.rotationMatrix);
+    } catch(const std::runtime_error&) {
         throw std::invalid_argument("Multi-device extrinsics rotation matrix must be a finite proper 3x3 rotation.");
     }
     if(!isFiniteTranslation(input.translation)) {

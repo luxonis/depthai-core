@@ -48,6 +48,11 @@ std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>&
 std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::array<float, 3>, 3>& R);
 std::array<std::array<float, 3>, 3> vectorMatrixToMatrix3x3(const std::vector<std::vector<float>>& R);
 bool isValidIntrinsicsMatrix(const std::vector<std::vector<float>>& intrinsics);
+/**
+ * Validate that a matrix is a finite, proper 3x3 rotation matrix.
+ *
+ * @throws std::runtime_error when the matrix is not a valid rotation matrix.
+ */
 void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix);
 std::vector<std::vector<float>> extractRotationMatrix(const std::vector<std::vector<float>>& transform);
 std::vector<float> extractTranslationVector(const std::vector<std::vector<float>>& transform);

@@ -610,10 +610,6 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     return extrinsics;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(CameraBoardSocket cameraId, CameraBoardSocket& originSocket) const {
-    return getExtrinsicsToOrigin(cameraId, false, originSocket);
-}
-
 CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
     if(eepromData.cameraData.empty()) {
         throw std::runtime_error("No camera data available in the calibration data.");

@@ -2,10 +2,23 @@
 #include <catch2/catch_all.hpp>
 #include <depthai/common/Point2f.hpp>
 #include <depthai/utility/matrixOps.hpp>
+#include <limits>
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/imgproc.hpp>
 #endif
+
+TEST_CASE("Rotation matrix validation accepts proper rotations") {
+    REQUIRE_NOTHROW(dai::matrix::validateRotationMatrix3x3({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}));
+    REQUIRE_NOTHROW(dai::matrix::validateRotationMatrix3x3({{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}));
+}
+
+TEST_CASE("Rotation matrix validation rejects invalid rotations") {
+    REQUIRE_THROWS(dai::matrix::validateRotationMatrix3x3({{1.0f, 0.0f}, {0.0f, 1.0f}}));
+    REQUIRE_THROWS(dai::matrix::validateRotationMatrix3x3({{2.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}));
+    REQUIRE_THROWS(dai::matrix::validateRotationMatrix3x3({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}}));
+    REQUIRE_THROWS(dai::matrix::validateRotationMatrix3x3({{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}));
+}
 
 namespace {
 

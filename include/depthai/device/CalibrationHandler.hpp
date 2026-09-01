@@ -750,14 +750,15 @@ class CalibrationHandler {
     dai::CameraBoardSocket getCameraWithLowestId() const;
 
     /**
-     * Get the calibration-origin socket for a camera and its transform to that
-     * origin.
+     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
+     * and linked to CameraBoardSocket.AUTO).
      *
-     * @param cameraId Camera whose transform and origin are requested.
+     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated.
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data.
      * @param originSocket Output socket of the local calibration origin.
-     * @return Transform from cameraId to originSocket.
+     * @return A transformation matrix which is 4x4 in homogeneous coordinate system.
      */
-    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, CameraBoardSocket& originSocket) const;
+    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
 
    private:
     /** when the user is writing extrinsics do we validate if
@@ -780,14 +781,6 @@ class CalibrationHandler {
     };
     ExtrinsicGraphValidationResult validateExtrinsicGraph() const;
 
-    /**
-     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
-     * and linked to CameraBoardSocket.AUTO)
-     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
-     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
-     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
-     */
-    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
     std::vector<std::vector<float>> getHousingToHousingOriginExtrinsics(const HousingCoordinateSystem housingCS,
                                                                         bool useSpecTranslation,
                                                                         CameraBoardSocket& originSocket,
