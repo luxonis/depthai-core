@@ -74,7 +74,7 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     /** Fused depth output, aligned to the ToF sensor. */
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     /** Confidence output produced by the ToF-neural fusion network. */
-    Output neuralConfidence{*this, {"neuralConfidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /** Left camera input used when the node runs outside the RVC4 device build. */
