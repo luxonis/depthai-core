@@ -7,6 +7,8 @@ namespace dai::beta {
 
 struct ToFStereoFusionProperties : PropertiesSerializable<Properties, ToFStereoFusionProperties> {
     ToFStereoFusionConfig initialConfig;
+
+    ~ToFStereoFusionProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(ToFStereoFusionProperties, initialConfig);
