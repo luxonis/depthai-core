@@ -92,7 +92,7 @@ join(
         history: history,
         currentlyFailed: failedTestNames
     }},
-    on: ["testName", "config","context"],
+    on: ["testName", "config","context","os"],
     method: "inner"
 )''', org=org)
     history = list(map(lambda r: r.records, got))
@@ -103,7 +103,7 @@ def writeTestHistory(history):
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": f'''ref: <https://github.com/luxonis/depthai-core/{getGithubRefUrl(GITHUB_REF)}|{GITHUB_REF}> {f"({GITHUB_HEAD_REF})" if GITHUB_HEAD_REF is not '' else ''}
+            "text": f'''ref: <https://github.com/luxonis/depthai-core/{getGithubRefUrl(GITHUB_REF)}|{GITHUB_REF}> {f"({GITHUB_HEAD_REF})" if GITHUB_HEAD_REF != '' else ''}
 Commit: <https://github.com/luxonis/depthai-core/commit/{GITHUB_SHA}|{GITHUB_SHA[0:8]}>
 Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITHUB_RUN_ID}>
 

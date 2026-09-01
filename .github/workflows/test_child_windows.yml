@@ -254,6 +254,7 @@ jobs:
         first_summary=1
         mkdir -p ctest-reports
         artifact_prefix="ctest-log-windows-"
+        current_time_stamp=$(date +%Y-%m-%dT%H:%M:%S)
         for dir in ctest-logs/${artifact_prefix}*; do
           [ -d "$dir" ] || continue
           log_files=("$dir"/*.log)
@@ -271,7 +272,7 @@ jobs:
           report_context="${context//\//_}"
           report_context="${report_context// /_}"
           python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
-          python3 scripts/ci/junit_to_influxdb.py "$(date +%Y-%m-%dT%H:%M:%S)" "windows" "ctest-reports/${report_context}.xml"
+          python3 scripts/ci/junit_to_influxdb.py "$current_time_stamp" "windows" "ctest-reports/${report_context}.xml"
           echo "" >> "$GITHUB_STEP_SUMMARY"
         done
 
