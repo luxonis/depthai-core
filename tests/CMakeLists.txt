@@ -449,6 +449,12 @@ dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.
 dai_set_test_labels(calibration_handler_test onhost ci)
 dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
 dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
+dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
+dai_set_test_labels(multi_device_calibration_result_test onhost ci)
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    dai_add_test(multi_device_scale_estimation_test src/onhost_tests/multi_device_scale_estimation_test.cpp)
+    dai_set_test_labels(multi_device_scale_estimation_test onhost ci)
+endif()
 
 # Calibration CBA merge test
 dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_test.cpp)

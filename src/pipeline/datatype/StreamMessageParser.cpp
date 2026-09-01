@@ -47,6 +47,8 @@
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+#include "depthai/pipeline/datatype/MultiDeviceCalibrationControl.hpp"
+#include "depthai/pipeline/datatype/MultiDeviceCalibrationResult.hpp"
 #include "PacketizedData.hpp"
 #include "depthai/pipeline/datatype/AlignConfig.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
@@ -457,6 +459,13 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::CoverageData:
             break;
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        case DatatypeEnum::MultiDeviceCalibrationControl:
+            return parseDatatype<MultiDeviceCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::MultiDeviceCalibrationResult:
+            return parseDatatype<MultiDeviceCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+            break;
         case DatatypeEnum::COUNT:
             break;
         default:

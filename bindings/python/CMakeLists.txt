@@ -239,6 +239,7 @@ endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND SOURCE_LIST
         src/pipeline/node/DynamicCalibrationBindings.cpp
+        src/pipeline/node/MultiDeviceCalibrationBindings.cpp
         src/pipeline/datatype/DynamicCalibrationResultsBindings.cpp
         src/pipeline/datatype/DynamicCalibrationControlBindings.cpp
         src/pipeline/node/AutoCalibrationBindings.cpp
@@ -246,6 +247,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/AutoCalibrationResultBindings.cpp
     )
 endif()
+
+list(APPEND SOURCE_LIST
+    src/pipeline/datatype/MultiDeviceCalibrationControlBindings.cpp
+    src/pipeline/datatype/MultiDeviceCalibrationResultBindings.cpp
+)
 
 # Add files for python module
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
