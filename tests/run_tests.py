@@ -266,7 +266,7 @@ if __name__ == "__main__":
         labels = config.get("labels")
         excluded_labels = replay_excluded_labels if args.rvc4replay or args.rvc2replay else []
 
-        print(f"Running tests for configuration: {name}, on platform: {env_vars['DEPTHAI_PLATFORM'] if 'DEPTHAI_PLATFORM' in env_vars else 'null'}, on protocol: {env_vars['DEPTHAI_PROTOCOL'] if 'DEPTHAI_PROTOCOL' in env_vars else 'null'}, with labels: {",".join(labels) if labels is not None else ""}")
+        print(f"Running tests for configuration: {name}, on platform: {env_vars['DEPTHAI_PLATFORM'] if 'DEPTHAI_PLATFORM' in env_vars else 'HOST'}, on protocol: {env_vars['DEPTHAI_PROTOCOL'] if 'DEPTHAI_PROTOCOL' in env_vars else 'HOST'}, with labels: {",".join(labels) if labels is not None else ""}")
         resultThread = run_ctest(env_vars, labels, excluded_labels=excluded_labels, blocking=False, name=name)
         resultThreads.append((name, resultThread))
 

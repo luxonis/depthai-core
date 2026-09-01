@@ -60,7 +60,7 @@ def parse_log(log_path: Path):
             skips[config] = OrderedDict()
             test_outputs[config] = {}
             order.append(config)
-            descriptions[config] = {"name": "null", "DEPTHAI_PLATFORM": 'HOST', "DEPTHAI_PROTOCOL": 'HOST', "labels": ''}
+            descriptions[config] = {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''}
 
     with log_path.open("r", errors="ignore") as handle:
         for raw_line in handle:
@@ -199,7 +199,7 @@ def write_junit(
         parsed_failures = failures.get(config, OrderedDict())
         parsed_passes = passes.get(config, OrderedDict())
         parsed_skips = skips.get(config, OrderedDict())
-        description = descriptions.get(config, {"name": "null", "DEPTHAI_PLATFORM": 'HOST', "DEPTHAI_PROTOCOL": 'HOST', "labels": ''})
+        description = descriptions.get(config, {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''})
         
         declared_failed = summary[1] if summary else len(parsed_failures)
         declared_total = summary[2] if summary else len(parsed_failures) + len(parsed_passes)
