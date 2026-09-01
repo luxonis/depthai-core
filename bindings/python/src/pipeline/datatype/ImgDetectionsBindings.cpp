@@ -20,7 +20,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawImgDetections, RawBuffer, std::shared_ptr<RawImgDetections>> rawImgDetections(m, "RawImgDetections", DOC(dai, RawImgDetections));
-    py::class_<ImgDetections, Py<ImgDetections>, Buffer, Transformable, std::shared_ptr<ImgDetections>> imgDetections(
+    py::class_<ImgDetections, Py<ImgDetections>, Buffer, ProtoSerializable, Transformable, std::shared_ptr<ImgDetections>> imgDetections(
         m, "ImgDetections", DOC(dai, ImgDetections));
     py::class_<ImgDetection> imgDetection(m, "ImgDetection", DOC(dai, ImgDetection));
 
@@ -149,7 +149,14 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
              py::arg("frame"),
              DOC(dai, ImgDetectionsT, setSegmentationMask),
              py::return_value_policy::reference_internal)
-        .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetectionsT, getMaskData))
+        .def(
+            "getMaskData",
+            [](const ImgDetections& self) -> py::object {
+                const auto maskData = self.getMaskData();
+                if(!maskData) return py::none();
+                return py::array_t<uint8_t>(static_cast<py::ssize_t>(maskData->size()), maskData->data());
+            },
+            DOC(dai, ImgDetectionsT, getMaskData))
         .def("getSegmentationMask", &ImgDetections::getSegmentationMask, DOC(dai, ImgDetectionsT, getSegmentationMask))
         .def("transformTo", &ImgDetections::transformTo, py::arg("target"), DOC(dai, ImgDetections, transformTo))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

@@ -246,6 +246,12 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_metadata.bin"
         LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_metadata
     )
+    private_data(
+        URL "https://artifacts.luxonis.com/api/v1/repositories/luxonis-depthai-data-local/download/yolo_v8_seg_640x352_kitchen.dai"
+        SHA1 "40b3973f3a6c87d256211a05f8c23abd1d11982a"
+        FILE "yolo_v8_seg_640x352_kitchen.dai"
+        LOCATION yolo_v8_seg_640x352_kitchen_dai
+    )
 
     private_data(
         URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
@@ -346,7 +352,7 @@ function(dai_add_test test_name test_src)
 
     # Link to core and Catch2 testing framework
     set(DEPTHAI_TARGET depthai::core)
-    if(NOT DEPTHAI_MERGED_TARGET)
+    if(NOT DEPTHAI_MERGED_TARGET AND TARGET depthai::opencv)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
     target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
@@ -425,6 +431,7 @@ endfunction()
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
 target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
 target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+target_compile_definitions(test_wrapper PRIVATE DEVICE_SEARCH_TIMEOUT_SECONDS=${DEPTHAI_TEST_DEVICE_SEARCH_TIMEOUT})
 
 add_executable(telemetry_test_child src/ondevice_tests/telemetry_test_child.cpp)
 add_default_flags(telemetry_test_child LEAN)
@@ -473,6 +480,14 @@ dai_set_test_labels(naming_test onhost ci)
 
 # Image transformations test
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # The protobuf round trip uses generated message types directly and includes
+    # src/utility/ProtoSerialize.hpp, which resolves depthai headers relative to
+    # include/depthai. Keep protobuf private to depthai::core, but link this
+    # consumer to the generated messages.
+    target_include_directories(image_transformations_test PRIVATE ${CMAKE_SOURCE_DIR}/include/depthai)
+    target_link_libraries(image_transformations_test PRIVATE messages)
+endif()
 dai_set_test_labels(image_transformations_test onhost ci)
 
 # Matrix operations tests
@@ -567,6 +582,23 @@ dai_set_test_labels(model_slug_test onhost ci)
 # GPUStereo node tests
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
+
+if(DEPTHAI_BUILD_BETA)
+    # Stitching device-node configuration tests (must not require host OpenCV support)
+    dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+    dai_set_test_labels(stitching_device_node_test onhost ci)
+
+    if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
+        dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+        target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+        dai_set_test_labels(stitching_node_test onhost ci)
+    endif()
+
+    if(DEPTHAI_HAVE_OPENCV_STITCHING)
+        dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+        dai_set_test_labels(planar_stitching_node_test onhost ci)
+    endif()
+endif()
 
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
@@ -719,6 +751,15 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # ProtoSerializable save/load test
+    dai_add_test(proto_serializable_test src/onhost_tests/proto_serializable_test.cpp)
+    # The test directly uses generated protobuf message types.  Keep protobuf
+    # private to depthai::core, but link this consumer to the generated messages.
+    target_link_libraries(proto_serializable_test PRIVATE messages)
+    dai_set_test_labels(proto_serializable_test ci)
+endif()
+
 if(DEPTHAI_BUILD_BETA)
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
@@ -776,8 +817,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FIRE_VIDEO="${fire_video}"
         KITCHEN_IMAGE_PATH="${kitchen_image}"
         YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2}"
-        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_data}"
-        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_METADATA="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_metadata}"
+        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA="${yolo_v8_seg_640x352_kitchen_dai}"
     )
     dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
 endif()
@@ -846,6 +886,14 @@ dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
+# Align test
+dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
+dai_set_test_labels(align_node_test ondevice rvc4 ci)
+
+# Align device execution test (device-side Align is only available on RVC4)
+dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)
+dai_set_test_labels(align_node_device_test ondevice rvc4 ci)
+
 # Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
 dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
@@ -900,6 +948,11 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
     dai_set_test_labels(replay_test onhost ci)
     target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
+    target_include_directories(replay_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include/depthai)
+    if(DEPTHAI_ENABLE_PROTOBUF)
+        # The RGBD replay case directly instantiates a generated protobuf message.
+        target_link_libraries(replay_test PRIVATE messages)
+    endif()
 endif()
 
 # Camera tests

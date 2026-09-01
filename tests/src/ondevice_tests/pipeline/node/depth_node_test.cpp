@@ -137,8 +137,7 @@ StereoPair requireFirstStereoPairForTest(const std::shared_ptr<Device>& device) 
     return pairs[0];
 }
 
-void requireDepthAutoBackend(const node::Depth& depth, const std::shared_ptr<Device>& device) {
-    const auto platform = device->getPlatform();
+void requireDepthAutoBackend(const node::Depth& depth, Platform platform, bool hasTofSensor) {
     if(platform == Platform::RVC4) {
         switch(depth.getResolvedAlgorithm()) {
             case node::Depth::Algorithm::NEURAL:
@@ -156,7 +155,7 @@ void requireDepthAutoBackend(const node::Depth& depth, const std::shared_ptr<Dev
             default:
                 FAIL("Depth AUTO on RVC4 resolved to an unexpected backend.");
         }
-    } else if(platform == Platform::RVC2 && deviceReportsTofSensor(device)) {
+    } else if(platform == Platform::RVC2 && hasTofSensor) {
         requireDepthSingleBackendChild(depth, "ToF");
     } else {
         requireDepthSingleBackendChild(depth, "StereoDepth");
@@ -211,8 +210,6 @@ constexpr float kDepthStereoFps = 15.0f;
 constexpr auto kStreamFrameTimeout = std::chrono::seconds(30);
 constexpr auto kDepthFrameTimeout = std::chrono::seconds(45);
 constexpr auto kFpsMeasureWindow = std::chrono::milliseconds(3000);
-/** StereoDepth output size on RVC2/RVC3 when user cameras are at 1280x800 (not neural model size). */
-constexpr std::pair<uint32_t, uint32_t> kRvc2UserCameraDepthOutputSize{640, 400};
 constexpr float kMinFpsMeasureSeconds = 0.5f;
 
 void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
@@ -225,13 +222,19 @@ void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
     }
 }
 
-std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline, const StereoPair& pair) {
+// The cameras must be built with the same fps as the depth node.
+// This is because if the cameras were prebuilt with an fps above 15 when switching down to 15fps there is high chance for them to have different phase.
+// This phase shift in turn causes the sync node to try and sync them and fail, leading to a frame never being sent and the test failing due to a timeout.
+// The issue lies in how cameras are synced when switching fps and not in the sync node.
+std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline,
+                                                                                                     const StereoPair& pair,
+                                                                                                     float requestedOutputFps) {
     try {
-        auto leftCam = pipeline.create<node::Camera>()->build(pair.left, kUserStereoSensorResolution, kUserStereoFps);
-        auto rightCam = pipeline.create<node::Camera>()->build(pair.right, kUserStereoSensorResolution, kUserStereoFps);
+        auto leftCam = pipeline.create<node::Camera>()->build(pair.left, kUserStereoSensorResolution, requestedOutputFps);
+        auto rightCam = pipeline.create<node::Camera>()->build(pair.right, kUserStereoSensorResolution, requestedOutputFps);
         return {leftCam, rightCam};
     } catch(const std::exception& ex) {
-        SKIP(std::string("Skipping Depth user-camera test: cannot build stereo cameras at 1280x800@30: ") + ex.what());
+        SKIP(std::string("Skipping Depth user-camera test: cannot build stereo cameras at 1280x800@") + std::to_string(requestedOutputFps) + ": " + ex.what());
     }
     return {{}, {}};  // unreachable (SKIP throws)
 }
@@ -306,10 +309,13 @@ struct UserDepthCameraSetup {
 
 UserDepthCameraSetup wireUserStereoCamerasAndDepth(Pipeline& pipeline, const StereoPair& pair, std::optional<float> depthRequestedFps, bool userPreviewStream) {
     UserDepthCameraSetup setup;
-    std::tie(setup.leftCam, setup.rightCam) = buildUserStereoCamerasOrSkip(pipeline, pair);
+    float requestedOutputFps = kUserStereoFps;
+    if(depthRequestedFps.has_value()) requestedOutputFps = *depthRequestedFps;
+
+    std::tie(setup.leftCam, setup.rightCam) = buildUserStereoCamerasOrSkip(pipeline, pair, requestedOutputFps);
 
     if(userPreviewStream) {
-        auto* userLeftOut = setup.leftCam->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, kUserStereoFps);
+        auto* userLeftOut = setup.leftCam->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, requestedOutputFps);
         REQUIRE(userLeftOut != nullptr);
         setup.userFrameQueue = userLeftOut->createOutputQueue();
     }
@@ -352,12 +358,9 @@ void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
         }
     } else {
         requireDepthSingleBackendChild(*depth, "StereoDepth");
-        REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
-                 || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
-        REQUIRE(depthFrame->getWidth() == static_cast<int>(kRvc2UserCameraDepthOutputSize.first));
-        const bool depthHeightMatchesBackend = depthFrame->getHeight() == static_cast<int>(kRvc2UserCameraDepthOutputSize.second);
-        const bool depthHeightMatchesUser = depthFrame->getHeight() == static_cast<int>(kUserStereoSensorResolution.second);
-        REQUIRE((depthHeightMatchesBackend || depthHeightMatchesUser));
+        // StereoDepth preserves the size of its pre-built camera inputs.
+        REQUIRE(depthFrame->getWidth() == static_cast<int>(kUserStereoSensorResolution.first));
+        REQUIRE(depthFrame->getHeight() == static_cast<int>(kUserStereoSensorResolution.second));
     }
 }
 
@@ -368,6 +371,8 @@ void runUserCameraDepthTest(Pipeline& pipeline,
                             bool checkFrameSizes,
                             bool userPreviewStream) {
     PipelineStopGuard guard(pipeline);
+    const auto platform = device->getPlatform();
+    const auto hasTofSensor = deviceReportsTofSensor(device);
     auto setup = wireUserStereoCamerasAndDepth(pipeline, pair, depthRequestedFps, userPreviewStream);
 
     REQUIRE_FALSE(cameraInDepthSubtree(*setup.depth, setup.leftCam));
@@ -386,7 +391,10 @@ void runUserCameraDepthTest(Pipeline& pipeline,
             requireUserAndDepthFrameSizes(device, setup.depth, userFrame, depthFrame);
         } else {
             // Host queue rates are only meaningful for the user mono stream; depth queues can burst after start.
-            requireReceiveFpsInRange(setup.userFrameQueue, kUserStereoFps * 0.5f, kUserStereoFps * 1.5f);
+            float requestedOutputFps = kUserStereoFps;
+            if(depthRequestedFps.has_value()) requestedOutputFps = *depthRequestedFps;
+
+            requireReceiveFpsInRange(setup.userFrameQueue, requestedOutputFps * 0.5f, requestedOutputFps * 1.5f);
             if(depthRequestedFps.has_value()) {
                 (void)requireStreamFrame(setup.depthFrameQueue, kDepthFrameTimeout);
             }
@@ -398,7 +406,7 @@ void runUserCameraDepthTest(Pipeline& pipeline,
         }
     }
 
-    requireDepthAutoBackend(*setup.depth, device);
+    requireDepthAutoBackend(*setup.depth, platform, hasTofSensor);
 }
 
 }  // namespace
@@ -428,15 +436,15 @@ TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     const auto platform = device->getPlatform();
-    const auto autoUsesTof = platform == Platform::RVC2 && deviceReportsTofSensor(device);
-    if(!autoUsesTof) {
+    const auto hasTofSensor = deviceReportsTofSensor(device);
+    if(platform != Platform::RVC2 || !hasTofSensor) {
         (void)requireFirstStereoPairForTest(device);
     }
 
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 
-    requireDepthAutoBackend(*depth, device);
+    requireDepthAutoBackend(*depth, platform, hasTofSensor);
 }
 
 TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
@@ -494,8 +502,9 @@ TEST_CASE("Depth: TOF requires connected ToF camera") {
 TEST_CASE("Depth: resolved algorithm + config can rebuild the same backend explicitly") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
-    const auto autoUsesTof = device->getPlatform() == Platform::RVC2 && deviceReportsTofSensor(device);
-    if(!autoUsesTof) {
+    const auto platform = device->getPlatform();
+    const auto hasTofSensor = deviceReportsTofSensor(device);
+    if(platform != Platform::RVC2 || !hasTofSensor) {
         (void)requireFirstStereoPairForTest(device);
     }
 
@@ -528,6 +537,8 @@ TEST_CASE("Depth: explicit algorithm + config rejects algorithms unsupported by 
 TEST_CASE("Depth: build reuses stereo cameras created before Depth node") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
+    const auto platform = device->getPlatform();
+    const auto hasTofSensor = deviceReportsTofSensor(device);
     const auto pair = requireFirstStereoPairForTest(device);
 
     auto leftCam = pipeline.create<node::Camera>()->build(pair.left);
@@ -540,7 +551,7 @@ TEST_CASE("Depth: build reuses stereo cameras created before Depth node") {
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, rightCam));
     REQUIRE(countStereoCamerasInDepthSubtree(*depth, pair) == 0);
 
-    requireDepthAutoBackend(*depth, device);
+    requireDepthAutoBackend(*depth, platform, hasTofSensor);
 }
 
 TEST_CASE("Depth: explicit NEURAL wires NeuralDepth when device supports it") {
@@ -619,6 +630,8 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
 TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline cameras") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
+    const auto platform = device->getPlatform();
+    const auto hasTofSensor = deviceReportsTofSensor(device);
     const auto pair = requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>();
@@ -631,7 +644,7 @@ TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline camera
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, rightCam));
     REQUIRE(countStereoCamerasInDepthSubtree(*depth, pair) == 0);
 
-    requireDepthAutoBackend(*depth, device);
+    requireDepthAutoBackend(*depth, platform, hasTofSensor);
 }
 
 TEST_CASE("Depth: pipeline with SystemLogger and optional third camera still builds") {
@@ -677,7 +690,7 @@ TEST_CASE("Depth: pre-built user stereo cameras with depth build(fps) at 15 FPS"
     REQUIRE_NOTHROW(runUserCameraDepthTest(pipeline, device, pair, kDepthStereoFps, false, false));
 }
 
-TEST_CASE("Depth: user camera resolution unchanged; depth uses backend size") {
+TEST_CASE("Depth: user camera and StereoDepth preserve the requested resolution") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     skipUnlessUserStereoDepthScenario(device);

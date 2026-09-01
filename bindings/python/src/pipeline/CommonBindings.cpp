@@ -543,6 +543,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
         .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket)
+        .def_readwrite("toDeviceId", &Extrinsics::toDeviceId)
         .def_readwrite("lengthUnit", &Extrinsics::lengthUnit)
         .def("getRotationMatrix", &Extrinsics::getRotationMatrix, DOC(dai, Extrinsics, getRotationMatrix))
         .def("getInverseRotationMatrix", &Extrinsics::getInverseRotationMatrix, DOC(dai, Extrinsics, getInverseRotationMatrix))
@@ -573,6 +574,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getTranslationVector))
         .def("isEqualExtrinsics", &Extrinsics::isEqualExtrinsics, py::arg("other"), py::arg("epsilon") = 1e-6f, DOC(dai, Extrinsics, isEqualExtrinsics))
+        .def("hasCompatibleCoordinateSystem", &Extrinsics::hasCompatibleCoordinateSystem, py::arg("to"), DOC(dai, Extrinsics, hasCompatibleCoordinateSystem))
         .def("getExtrinsicsTransformationTo",
              &Extrinsics::getExtrinsicsTransformationTo,
              py::arg("to"),

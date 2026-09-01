@@ -1,6 +1,7 @@
 #pragma once
 
 // all the nodes
+#include "node/Align.hpp"
 #include "node/AprilTag.hpp"
 #include "node/BenchmarkIn.hpp"
 #include "node/BenchmarkOut.hpp"

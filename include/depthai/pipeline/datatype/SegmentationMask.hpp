@@ -31,7 +31,7 @@ class SegmentationMask : public Buffer, public ProtoSerializable, public Transfo
      * Internal transform hook used by transformTo().
      *
      * Segmentation mask remapping is currently not implemented here, so this hook is a no-op.
-     * Use ImageAlign to align segmentation masks instead.
+     * Use Align to align segmentation masks instead.
      */
     void transformToInternal(const ImgTransformation& target) override;
 
@@ -67,7 +67,7 @@ class SegmentationMask : public Buffer, public ProtoSerializable, public Transfo
      *
      * Segmentation mask remapping is not implemented. For optimal performance,
      * segmentation masks should be generated from already aligned source messages instead
-     * of being transformed after the fact. Use ImageAlign on the source inputs to align
+     * of being transformed after the fact. Use Align on the source inputs to align
      * segmentation masks.
      *
      * @param target Target image transformation.
@@ -219,6 +219,11 @@ class SegmentationMask : public Buffer, public ProtoSerializable, public Transfo
      * @returns serialized message
      */
     std::vector<std::uint8_t> serializeProto(bool = false) const override;
+
+    /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
 
     /**
      * Serialize schema to proto buffer

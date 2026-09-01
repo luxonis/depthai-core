@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <tuple>
@@ -30,6 +31,10 @@ namespace {
 
 constexpr size_t kImuCalibrationRowCount = 3;
 constexpr size_t kImuCalibrationColumnCount = 4;
+
+bool isValidCalibrationDimension(float dimension) {
+    return std::isfinite(dimension) && dimension > 0.0f && dimension <= std::numeric_limits<uint16_t>::max() && std::trunc(dimension) == dimension;
+}
 
 std::optional<std::array<float, 3>> lookupHousingEntry(const std::string& productName, HousingCoordinateSystem housingCs) {
     if(productName.empty()) return std::nullopt;
@@ -333,9 +338,8 @@ bool CalibrationHandler::hasCameraCalibration(CameraBoardSocket cameraId) const 
 }
 
 void CalibrationHandler::validateIntrinsicsMatrix(CameraBoardSocket cameraId) const {
-    const auto& storedIntrinsics = eepromData.cameraData.at(cameraId).intrinsicMatrix;
-    if(storedIntrinsics.size() < 3 || storedIntrinsics[0].size() < 3 || storedIntrinsics[1].size() < 3 || storedIntrinsics[2].size() < 3
-       || storedIntrinsics[0][0] == 0) {
+    const auto& cameraData = eepromData.cameraData.at(cameraId);
+    if(cameraData.width == 0 || cameraData.height == 0 || !isValidIntrinsicsMatrix(cameraData.intrinsicMatrix)) {
         throw std::runtime_error("There is no Intrinsic matrix available for the requested cameraID");
     }
 }
@@ -1037,12 +1041,11 @@ void CalibrationHandler::setProductName(const std::string& productName) {
 }
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& intrinsics, int width, int height) {
-    if(intrinsics.size() != 3 || intrinsics[0].size() != 3) {
-        throw std::runtime_error("Intrinsic Matrix size should always be 3x3 ");
+    if(!isValidIntrinsicsMatrix(intrinsics)) {
+        throw std::runtime_error("Invalid Intrinsic Matrix entered: " + nlohmann::json(intrinsics).dump());
     }
-
-    if(intrinsics[1][0] != 0 || intrinsics[2][0] != 0 || intrinsics[2][1] != 0) {
-        throw std::runtime_error("Invalid Intrinsic Matrix entered!!");
+    if(width <= 0 || height <= 0 || width > std::numeric_limits<uint16_t>::max() || height > std::numeric_limits<uint16_t>::max()) {
+        throw std::runtime_error("Invalid calibration resolution entered!!");
     }
 
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
@@ -1060,6 +1063,9 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const s
 }
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& intrinsics, Size2f frameSize) {
+    if(!isValidCalibrationDimension(frameSize.width) || !isValidCalibrationDimension(frameSize.height)) {
+        throw std::runtime_error("Invalid calibration resolution entered!!");
+    }
     setCameraIntrinsics(cameraId, intrinsics, static_cast<int>(frameSize.width), static_cast<int>(frameSize.height));
     return;
 }

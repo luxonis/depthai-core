@@ -28,6 +28,7 @@ if(DEPTHAI_BUILD_BETA)
     list(APPEND PYBIND11_TEST_FILES
         "beta_img_detections_filter_test.py"
         "beta_parser_config_test.py"
+        "beta_stitching_test.py"
     )
 endif()
 
