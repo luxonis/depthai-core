@@ -65,8 +65,7 @@ jobs:
           exit 1
         fi
   notify_slack:
-    needs:
-      - run_pr_tests
+    needs: [run_pr_tests, required_hil_test_report]
     if: >
       always() &&
       (

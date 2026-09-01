@@ -59,7 +59,7 @@ def statusToEmoji(status):
 def getTestHistory(ref) -> list[list[dict]]:
     got = read_api.query(f'''
 statuses = from(bucket: "{bucket}")
-    |> range(start: 1970)
+    |> range(start: 0, stop: time(v: "2262-01-01T01:01:01.999Z"))
     |> filter(fn: (r) =>
         r._measurement == "test" and
         r._field == "status" and
