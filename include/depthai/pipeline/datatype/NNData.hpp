@@ -13,6 +13,7 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/common/optional.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 #include "depthai/utility/span.hpp"
 
@@ -57,7 +58,7 @@ namespace dai {
 /**
  * NNData message. Carries tensors and their metadata
  */
-class NNData : public Buffer {
+class NNData : public Buffer, public ProtoSerializable {
     static constexpr int DATA_ALIGNMENT = 64;
     static uint16_t fp32_to_fp16(float);
     static float fp16_to_fp32(uint16_t);
@@ -610,6 +611,27 @@ class NNData : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::NNData;
     }
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
+
+    /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, tensors, batchSize, transformation);
 };

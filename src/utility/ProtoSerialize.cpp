@@ -289,6 +289,8 @@ DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
         return DatatypeEnum::ImgDetections;
     } else if(schemaName == proto::img_frame::ImgFrame::descriptor()->full_name()) {
         return DatatypeEnum::ImgFrame;
+    } else if(schemaName == proto::nn_data::NNData::descriptor()->full_name()) {
+        return DatatypeEnum::NNData;
     } else if(schemaName == proto::segmentation_mask::SegmentationMask::descriptor()->full_name()) {
         return DatatypeEnum::SegmentationMask;
     } else if(schemaName == proto::point_cloud_data::PointCloudData::descriptor()->full_name()) {
@@ -308,6 +310,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::ImgFrame:
+        case DatatypeEnum::NNData:
         case DatatypeEnum::EncodedFrame:
         case DatatypeEnum::IMUData:
         case DatatypeEnum::SegmentationMask:
@@ -317,7 +320,6 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
-        case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::GateControl:
@@ -707,6 +709,101 @@ void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& 
 
     if(!metadataOnly) {
         std::vector<uint8_t> data(imgFrame.data().begin(), imgFrame.data().end());
+        obj.setData(std::move(data));
+    }
+}
+
+// Helper function to populate an NNData proto from an NNData object
+void populateNNDataToProto(proto::nn_data::NNData* nnData, const NNData* message, bool metadataOnly) {
+    nnData->set_sequencenum(message->sequenceNum);
+
+    proto::common::Timestamp* ts = nnData->mutable_ts();
+    ts->set_sec(message->ts.sec);
+    ts->set_nsec(message->ts.nsec);
+
+    proto::common::Timestamp* tsDevice = nnData->mutable_tsdevice();
+    tsDevice->set_sec(message->tsDevice.sec);
+    tsDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = nnData->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        nnData->clear_tssystem();
+    }
+
+    for(const auto& tensor : message->tensors) {
+        proto::nn_data::TensorInfo* protoTensor = nnData->add_tensors();
+        protoTensor->set_order(static_cast<proto::nn_data::StorageOrder>(tensor.order));
+        protoTensor->set_datatype(static_cast<proto::nn_data::DataType>(tensor.dataType));
+        protoTensor->set_numdimensions(tensor.numDimensions);
+        for(const auto& dim : tensor.dims) {
+            protoTensor->add_dims(dim);
+        }
+        for(const auto& stride : tensor.strides) {
+            protoTensor->add_strides(stride);
+        }
+        protoTensor->set_name(tensor.name);
+        protoTensor->set_offset(tensor.offset);
+        protoTensor->set_quantization(tensor.quantization);
+        protoTensor->set_qpscale(tensor.qpScale);
+        protoTensor->set_qpzp(tensor.qpZp);
+    }
+
+    nnData->set_batchsize(message->batchSize);
+
+    if(message->transformation.has_value()) {
+        utility::serializeImgTransformation(nnData->mutable_transformation(), message->transformation.value());
+    } else {
+        nnData->clear_transformation();
+    }
+
+    if(!metadataOnly) {
+        const auto data = message->data->getData();
+        nnData->set_data(data.data(), data.size());
+    }
+}
+
+// Helper function to populate an NNData object from an NNData proto
+void populateNNDataFromProto(NNData& obj, const proto::nn_data::NNData& nnData, bool metadataOnly) {
+    obj.setSequenceNum(nnData.sequencenum());
+    obj.setTimestamp(utility::safeTimestamp<std::chrono::steady_clock>(nnData.ts(), nnData.has_ts()));
+    obj.setTimestampDevice(utility::safeTimestamp<std::chrono::steady_clock>(nnData.tsdevice(), nnData.has_tsdevice()));
+
+    if(nnData.has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(nnData.tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+
+    obj.tensors.clear();
+    obj.tensors.reserve(nnData.tensors_size());
+    for(const auto& protoTensor : nnData.tensors()) {
+        TensorInfo tensor;
+        tensor.order = static_cast<TensorInfo::StorageOrder>(protoTensor.order());
+        tensor.dataType = static_cast<TensorInfo::DataType>(protoTensor.datatype());
+        tensor.numDimensions = protoTensor.numdimensions();
+        tensor.dims.assign(protoTensor.dims().begin(), protoTensor.dims().end());
+        tensor.strides.assign(protoTensor.strides().begin(), protoTensor.strides().end());
+        tensor.name = protoTensor.name();
+        tensor.offset = protoTensor.offset();
+        tensor.quantization = protoTensor.quantization();
+        tensor.qpScale = protoTensor.qpscale();
+        tensor.qpZp = protoTensor.qpzp();
+        obj.tensors.push_back(std::move(tensor));
+    }
+
+    obj.batchSize = nnData.batchsize();
+
+    if(nnData.has_transformation()) {
+        obj.transformation = deserializeImgTransformation(nnData.transformation());
+    } else {
+        obj.transformation = std::nullopt;
+    }
+
+    if(!metadataOnly) {
+        std::vector<uint8_t> data(nnData.data().begin(), nnData.data().end());
         obj.setData(std::move(data));
     }
 }
@@ -1103,6 +1200,12 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
     auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
     populateImgFrameToProto(imgFrame.get(), message, metadataOnly);
     return imgFrame;
+}
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const NNData* message, bool metadataOnly) {
+    auto nnData = std::make_unique<proto::nn_data::NNData>();
+    populateNNDataToProto(nnData.get(), message, metadataOnly);
+    return nnData;
 }
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const SegmentationMask* message, bool metadataOnly) {
@@ -1527,6 +1630,14 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     populateImgFrameFromProto(obj, *imgFrame, metadataOnly);
 }
 template <>
+void setProtoMessage(NNData& obj, const google::protobuf::Message* msg, bool metadataOnly) {
+    auto nnData = dynamic_cast<const proto::nn_data::NNData*>(msg);
+    if(nnData == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to NNData");
+    }
+    populateNNDataFromProto(obj, *nnData, metadataOnly);
+}
+template <>
 void setProtoMessage(SegmentationMask& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto segmentationMask = dynamic_cast<const proto::segmentation_mask::SegmentationMask*>(msg);
     if(segmentationMask == nullptr) {
@@ -1663,6 +1774,7 @@ DEPTHAI_PROTO_IMPL(IMUData, proto::imu_data::IMUData)
 DEPTHAI_PROTO_IMPL(ImgDetections, proto::img_detections::ImgDetections)
 DEPTHAI_PROTO_IMPL(EncodedFrame, proto::encoded_frame::EncodedFrame)
 DEPTHAI_PROTO_IMPL(ImgFrame, proto::img_frame::ImgFrame)
+DEPTHAI_PROTO_IMPL(NNData, proto::nn_data::NNData)
 DEPTHAI_PROTO_IMPL(SegmentationMask, proto::segmentation_mask::SegmentationMask)
 DEPTHAI_PROTO_IMPL(PointCloudData, proto::point_cloud_data::PointCloudData)
 DEPTHAI_PROTO_IMPL(RGBDData, proto::rgbd_data::RGBDData)
