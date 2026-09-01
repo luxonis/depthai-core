@@ -105,8 +105,20 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
              &DeviceBootloader::close,
              "Closes the connection to device. Better alternative is the usage of context manager: `with depthai.DeviceBootloader(deviceInfo) as bootloader:`")
 
-        .def_static("getFirstAvailableDevice", &DeviceBootloader::getFirstAvailableDevice, DOC(dai, DeviceBootloader, getFirstAvailableDevice))
-        .def_static("getAllAvailableDevices", &DeviceBootloader::getAllAvailableDevices, DOC(dai, DeviceBootloader, getAllAvailableDevices))
+        .def_static(
+            "getFirstAvailableDevice",
+            []() {
+                py::gil_scoped_release release;
+                return DeviceBootloader::getFirstAvailableDevice();
+            },
+            DOC(dai, DeviceBootloader, getFirstAvailableDevice))
+        .def_static(
+            "getAllAvailableDevices",
+            []() {
+                py::gil_scoped_release release;
+                return DeviceBootloader::getAllAvailableDevices();
+            },
+            DOC(dai, DeviceBootloader, getAllAvailableDevices))
         .def_static("saveDepthaiApplicationPackage",
                     py::overload_cast<const std::filesystem::path&, const Pipeline&, const std::filesystem::path&, bool, const std::string&, bool>(
                         &DeviceBootloader::saveDepthaiApplicationPackage),
