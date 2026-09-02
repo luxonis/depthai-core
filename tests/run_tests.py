@@ -22,24 +22,16 @@ class ResultThread(threading.Thread):
             self.cmd,
             env=self.env,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
         )
-        # Capture stdout in real-time
-        while True:
-            output = process.stdout.readline()
-            if output == "" and process.poll() is not None:
-                break
-            if output:
-                print(f"[{self.name}] {output.strip()}")
-                self.stdout_lines.append(output.strip())
 
-        # Capture stderr in real-time
-        stderr_output, _ = process.communicate()
-        if stderr_output:
-            print(f"[{self.name} ERROR] {stderr_output.strip()}")
-            self.stderr_lines.append(stderr_output.strip())
+        for output in process.stdout:
+            line = output.rstrip()
+            print(f"[{self.name}] {line}", flush=True)
+            self.stdout_lines.append(line)
 
+        process.wait()
         self.result = process
 
 def enableUARTonAllDevices(enable):

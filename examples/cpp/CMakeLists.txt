@@ -26,10 +26,10 @@ set(test_env
 set(TOP_CPP_EXAMPLES_CMAKE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # Regexes for example test failure
-set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
+set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\\\[warning\\\\];\\\\[error\\\\];\\\\[critical\\\\]")
 # Emitted by test_wrapper when no device shows up; marks the test skipped rather than failed
 set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
-set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
+set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\\\[error\\\\];\\\\[critical\\\\]")
 
 # Helper for adding new examples
 function(dai_add_example example_name example_src enable_test use_pcl)

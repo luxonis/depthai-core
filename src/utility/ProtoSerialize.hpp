@@ -15,6 +15,7 @@
 #include "depthai/schemas/ImageAnnotations.pb.h"
 #include "depthai/schemas/ImgDetections.pb.h"
 #include "depthai/schemas/ImgFrame.pb.h"
+#include "depthai/schemas/NNData.pb.h"
 #include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/schemas/RGBDData.pb.h"
 #include "depthai/schemas/SegmentationMask.pb.h"
@@ -22,6 +23,7 @@
 #include "depthai/schemas/common.pb.h"
 #include "pipeline/datatype/EncodedFrame.hpp"
 #include "pipeline/datatype/IMUData.hpp"
+#include "pipeline/datatype/NNData.hpp"
 #include "pipeline/datatype/PointCloudData.hpp"
 #include "pipeline/datatype/RGBDData.hpp"
 #include "pipeline/datatype/SegmentationMask.hpp"
@@ -86,6 +88,7 @@ DEPTHAI_PROTO_DECLARE(IMUData)
 DEPTHAI_PROTO_DECLARE(ImgDetections)
 DEPTHAI_PROTO_DECLARE(EncodedFrame)
 DEPTHAI_PROTO_DECLARE(ImgFrame)
+DEPTHAI_PROTO_DECLARE(NNData)
 DEPTHAI_PROTO_DECLARE(SegmentationMask)
 DEPTHAI_PROTO_DECLARE(PointCloudData)
 DEPTHAI_PROTO_DECLARE(RGBDData)

@@ -117,7 +117,11 @@ unsigned int ImgFrame::getHeight() const {
     return fb.height;
 }
 unsigned int ImgFrame::getPlaneHeight() const {
-    return getPlaneStride() / getStride();
+    const auto stride = getStride();
+    if(stride == 0) {
+        return 0;
+    }
+    return getPlaneStride() / stride;
 }
 ImgFrame::Type ImgFrame::getType() const {
     return fb.type;

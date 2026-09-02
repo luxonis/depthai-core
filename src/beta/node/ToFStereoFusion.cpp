@@ -3,6 +3,12 @@
 #include <chrono>
 #include <stdexcept>
 
+namespace dai::beta {
+
+ToFStereoFusionProperties::~ToFStereoFusionProperties() = default;
+
+}  // namespace dai::beta
+
 namespace dai::beta::node {
 
 ToFStereoFusion::ToFStereoFusion(const std::shared_ptr<Device>& device)

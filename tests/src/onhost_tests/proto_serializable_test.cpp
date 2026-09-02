@@ -207,7 +207,84 @@ dai::EncodedFrame makeEncodedFrame(int64_t seed) {
     return frame;
 }
 
+void requireTensorInfo(const dai::TensorInfo& actual, const dai::TensorInfo& expected) {
+    REQUIRE(actual.order == expected.order);
+    REQUIRE(actual.dataType == expected.dataType);
+    REQUIRE(actual.numDimensions == expected.numDimensions);
+    REQUIRE(actual.dims == expected.dims);
+    REQUIRE(actual.strides == expected.strides);
+    REQUIRE(actual.name == expected.name);
+    REQUIRE(actual.offset == expected.offset);
+    REQUIRE(actual.quantization == expected.quantization);
+    REQUIRE(actual.qpScale == Catch::Approx(expected.qpScale));
+    REQUIRE(actual.qpZp == Catch::Approx(expected.qpZp));
+}
+
+void requireNNData(const dai::NNData& actual, const dai::NNData& expected, bool expectData = true) {
+    requireBufferMetadata(actual, expected);
+    REQUIRE(actual.batchSize == expected.batchSize);
+    requireTransformation(actual.transformation, expected.transformation);
+    REQUIRE(actual.tensors.size() == expected.tensors.size());
+    for(std::size_t i = 0; i < expected.tensors.size(); ++i) {
+        requireTensorInfo(actual.tensors[i], expected.tensors[i]);
+    }
+    if(expectData) {
+        REQUIRE(toVector(actual.getData()) == toVector(expected.getData()));
+    } else {
+        REQUIRE(actual.getData().empty());
+    }
+}
+
+dai::NNData makeNNData(int64_t seed) {
+    dai::NNData nnData;
+    applyBufferMetadata(nnData, seed);
+    nnData.batchSize = static_cast<unsigned int>(seed + 3);
+    nnData.transformation = dai::ImgTransformation(8, 6);
+
+    dai::TensorInfo quantized;
+    quantized.order = dai::TensorInfo::StorageOrder::NHWC;
+    quantized.dataType = dai::TensorInfo::DataType::U8F;
+    quantized.numDimensions = 4;
+    quantized.dims = {1, 2, 3, 4};
+    quantized.strides = {24, 12, 4, 1};
+    quantized.name = "quantized";
+    quantized.offset = 0;
+    quantized.quantization = true;
+    quantized.qpScale = 0.125F;
+    quantized.qpZp = 7.0F;
+
+    dai::TensorInfo plain;
+    plain.order = dai::TensorInfo::StorageOrder::CHW;
+    plain.dataType = dai::TensorInfo::DataType::FP16;
+    plain.numDimensions = 3;
+    plain.dims = {3, 2, 1};
+    plain.strides = {2, 1, 1};
+    plain.name = "plain";
+    plain.offset = 64;
+    plain.quantization = false;
+    plain.qpScale = 1.0F;
+    plain.qpZp = 0.0F;
+
+    nnData.tensors = {quantized, plain};
+    nnData.setData(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
+    return nnData;
+}
+
 }  // namespace
+
+TEST_CASE("ProtoSerializable save/load roundtrip for NNData", "[ProtoSerializable][NNData]") {
+    ScopedTempDir tempDir("depthai_proto_nndata");
+    const auto path = tempDir.get() / "nn_data";
+
+    const auto source = makeNNData(5);
+    const auto restored = saveLoad(source, path);
+    requireNNData(restored, source);
+
+    source.save(path, true);
+    dai::NNData reused = makeNNData(105);
+    reused.load(path);
+    requireNNData(reused, source, false);
+}
 
 TEST_CASE("ProtoSerializable save/load roundtrip for ImgFrame", "[ProtoSerializable][ImgFrame]") {
     ScopedTempDir tempDir("depthai_proto_imgframe");
