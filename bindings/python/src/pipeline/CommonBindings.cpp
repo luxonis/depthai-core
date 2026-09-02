@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 
 #include <array>
+#include <filesystem>
 #include <vector>
 
 // Libraries
@@ -597,6 +598,18 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     // MultiDeviceCalibrationHandler
     multiDeviceCalibrationHandler.def(py::init<>())
         .def(py::init<std::vector<MultiDeviceExtrinsics>>(), py::arg("graph"))
+        .def(py::init<std::filesystem::path>(),
+             py::arg("calibrationDataPath"),
+             DOC(dai, MultiDeviceCalibrationHandler, MultiDeviceCalibrationHandler, 3))
+        .def_static("fromJson",
+                    &MultiDeviceCalibrationHandler::fromJson,
+                    py::arg("calibrationDataJson"),
+                    DOC(dai, MultiDeviceCalibrationHandler, fromJson))
+        .def("toJson", &MultiDeviceCalibrationHandler::toJson, DOC(dai, MultiDeviceCalibrationHandler, toJson))
+        .def("toJsonFile",
+             &MultiDeviceCalibrationHandler::toJsonFile,
+             py::arg("destPath"),
+             DOC(dai, MultiDeviceCalibrationHandler, toJsonFile))
         .def("getDeviceSocket", &MultiDeviceCalibrationHandler::getDeviceSocket, py::arg("deviceId"))
         .def("getExtrinsicsToOrigin",
              &MultiDeviceCalibrationHandler::getExtrinsicsToOrigin,

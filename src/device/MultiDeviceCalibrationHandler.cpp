@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <fstream>
+#include <iomanip>
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -225,6 +227,31 @@ struct MultiDeviceCalibrationHandler::ResolvedGraph {
 
 MultiDeviceCalibrationHandler::MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics> graph) : graph(normalizeAndSortGraph(std::move(graph))) {
     getResolvedGraph();
+}
+
+MultiDeviceCalibrationHandler::MultiDeviceCalibrationHandler(std::filesystem::path calibrationDataPath) {
+    std::ifstream stream(calibrationDataPath);
+    if(!stream.is_open()) {
+        throw std::runtime_error("Multi-device calibration file does not exist at the provided path.");
+    }
+    nlohmann::json json;
+    stream >> json;
+    *this = fromJson(json);
+}
+
+MultiDeviceCalibrationHandler MultiDeviceCalibrationHandler::fromJson(const nlohmann::json& calibrationDataJson) {
+    return MultiDeviceCalibrationHandler(calibrationDataJson.at("graph").get<std::vector<MultiDeviceExtrinsics>>());
+}
+
+nlohmann::json MultiDeviceCalibrationHandler::toJson() const {
+    return nlohmann::json(*this);
+}
+
+bool MultiDeviceCalibrationHandler::toJsonFile(std::filesystem::path destPath) const {
+    std::ofstream stream(destPath);
+    if(!stream.is_open()) return false;
+    stream << std::setw(4) << toJson() << std::endl;
+    return stream.good();
 }
 
 std::shared_ptr<const MultiDeviceCalibrationHandler::ResolvedGraph> MultiDeviceCalibrationHandler::getResolvedGraph() const {

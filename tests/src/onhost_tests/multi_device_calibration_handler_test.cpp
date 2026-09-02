@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <depthai/properties/GlobalProperties.hpp>
 #include <depthai/utility/Serialization.hpp>
+#include <filesystem>
 #include <limits>
 #include <stdexcept>
 
@@ -85,6 +86,21 @@ TEST_CASE("Multi-device calibration handles chains, components, units, and seria
     REQUIRE(roundTripBridge->toDeviceId == "device-a");
     REQUIRE(roundTripBridge->translation.x == Catch::Approx(3.0f));
 
+    const auto json = handler.toJson();
+    REQUIRE(json.contains("graph"));
+    const auto jsonRoundTrip = MultiDeviceCalibrationHandler::fromJson(json);
+    const auto jsonBridge = jsonRoundTrip.getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
+    REQUIRE(jsonBridge.has_value());
+    REQUIRE(jsonBridge->translation.x == Catch::Approx(3.0f));
+
+    const auto jsonPath = std::filesystem::temp_directory_path() / "depthai_multi_device_calibration_handler_test.json";
+    REQUIRE(handler.toJsonFile(jsonPath));
+    const MultiDeviceCalibrationHandler fileRoundTrip(jsonPath);
+    const auto fileBridge = fileRoundTrip.getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
+    REQUIRE(fileBridge.has_value());
+    REQUIRE(fileBridge->translation.x == Catch::Approx(3.0f));
+    REQUIRE(std::filesystem::remove(jsonPath));
+
     GlobalProperties properties;
     properties.multiDeviceCalibration = handler;
     for(const auto serializationType : {SerializationType::LIBNOP, SerializationType::JSON}) {
@@ -150,4 +166,6 @@ TEST_CASE("Multi-device calibration rejects invalid graph structure") {
 
     const MultiDeviceCalibrationHandler handler({edge});
     REQUIRE_THROWS_AS(handler.getExtrinsicsToOrigin("device-a", CameraBoardSocket::CAM_B), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler::fromJson(nlohmann::json::object()), nlohmann::json::out_of_range);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::filesystem::path("/path/that/does/not/exist.json")), std::runtime_error);
 }

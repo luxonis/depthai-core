@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -40,6 +41,18 @@ class MultiDeviceCalibrationHandler {
 
     explicit MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics> graph);
 
+    /** Construct and validate a handler from a JSON file. */
+    explicit MultiDeviceCalibrationHandler(std::filesystem::path calibrationDataPath);
+
+    /** Construct and validate a handler from its JSON representation. */
+    static MultiDeviceCalibrationHandler fromJson(const nlohmann::json& calibrationDataJson);
+
+    /** Return the handler's JSON representation. */
+    nlohmann::json toJson() const;
+
+    /** Write the handler's JSON representation to a file. */
+    bool toJsonFile(std::filesystem::path destPath) const;
+
     /**
      * Get the local calibration-origin socket used by a device in the graph.
      *
@@ -72,8 +85,7 @@ class MultiDeviceCalibrationHandler {
     }
 
     friend void from_json(const nlohmann::json& json, MultiDeviceCalibrationHandler& handler) {
-        json.at("graph").get_to(handler.graph);
-        handler.resolvedGraph.reset();
+        handler = MultiDeviceCalibrationHandler(json.at("graph").get<std::vector<MultiDeviceExtrinsics>>());
     }
 
     DEPTHAI_DISPLAY(MultiDeviceCalibrationHandler)
