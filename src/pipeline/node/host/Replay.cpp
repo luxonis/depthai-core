@@ -18,6 +18,7 @@
 
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/RecordReplayImpl.hpp"
@@ -30,6 +31,7 @@
     #include "depthai/schemas/ImageAnnotations.pb.h"
     #include "depthai/schemas/ImgDetections.pb.h"
     #include "depthai/schemas/ImgFrame.pb.h"
+    #include "depthai/schemas/NNData.pb.h"
     #include "depthai/schemas/PointCloudData.pb.h"
     #include "depthai/schemas/RGBDData.pb.h"
     #include "depthai/schemas/SegmentationMask.pb.h"
@@ -63,6 +65,11 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
             auto encFrame = std::make_shared<EncodedFrame>();
             utility::setProtoMessage(*encFrame, metadata.get(), false);
             return encFrame;
+        }
+        case DatatypeEnum::NNData: {
+            auto nnData = std::make_shared<NNData>();
+            utility::setProtoMessage(*nnData, metadata.get(), false);
+            return nnData;
         }
         case DatatypeEnum::IMUData: {
             auto imuData = std::make_shared<IMUData>();
@@ -102,7 +109,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
-        case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::SystemInformation:
@@ -193,6 +199,13 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
+        case DatatypeEnum::NNData: {
+            auto msg = bytePlayer.next<proto::nn_data::NNData>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::nn_data::NNData>(msg.value());
+            }
+            break;
+        }
         case DatatypeEnum::PointCloudData: {
             auto msg = bytePlayer.next<proto::point_cloud_data::PointCloudData>();
             if(msg.has_value()) {
@@ -238,7 +251,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
-        case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::SystemInformation:

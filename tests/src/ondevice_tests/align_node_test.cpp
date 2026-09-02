@@ -25,6 +25,7 @@ constexpr size_t kTargetWidth = 400;
 constexpr size_t kTargetHeight = 300;
 constexpr size_t kUpdatedTargetWidth = 480;
 constexpr size_t kUpdatedTargetHeight = 360;
+constexpr uint16_t kDepthMillimeters = 1000;
 
 array<array<float, 3>, 3> makeIntrinsics(size_t width, size_t height) {
     return {{{150.0F, 0.0F, static_cast<float>(width) / 2.0F}, {0.0F, 148.0F, static_cast<float>(height) / 2.0F}, {0.0F, 0.0F, 1.0F}}};
@@ -800,7 +801,6 @@ TEST_CASE("Test Align resizes its buffers when the alignTo size or the input typ
 TEST_CASE("Test Align shifts RAW16 depth by disparity") {
     const auto inputTransform = makeTransformWithTranslation(75.0F);
     const auto alignToTransform = makeTransformWithTranslation(0.0F);
-    constexpr uint16_t kDepthMillimeters = 1000;
     // Expected disparity = translationX * fx / depth = 75 * 150 / 1000 mm -> 11 pixels
     constexpr int kExpectedShift = 11;
 

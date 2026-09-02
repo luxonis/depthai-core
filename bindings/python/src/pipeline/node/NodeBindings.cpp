@@ -196,6 +196,7 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack);
 void bind_vpp(pybind11::module& m, void* pCallstack);
 void bind_gate(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BETA
+void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack);
 void bind_beta_classificationparser(pybind11::module& m, void* pCallstack);
 void bind_beta_classificationsequenceparser(pybind11::module& m, void* pCallstack);
 void bind_beta_embeddingsparser(pybind11::module& m, void* pCallstack);
@@ -278,6 +279,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_vpp);
     callstack.push_front(bind_gate);
 #ifdef DEPTHAI_HAVE_BETA
+    callstack.push_front(bind_beta_tofstereofusion);
     callstack.push_front(bind_beta_classificationparser);
     callstack.push_front(bind_beta_classificationsequenceparser);
     callstack.push_front(bind_beta_embeddingsparser);

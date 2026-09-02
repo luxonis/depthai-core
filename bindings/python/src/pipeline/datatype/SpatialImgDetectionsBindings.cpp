@@ -138,7 +138,14 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
              py::arg("frame"),
              DOC(dai, ImgDetectionsT, setSegmentationMask),
              py::return_value_policy::reference_internal)
-        .def("getMaskData", &SpatialImgDetections::getMaskData, DOC(dai, ImgDetectionsT, getMaskData))
+        .def(
+            "getMaskData",
+            [](const SpatialImgDetections& self) -> py::object {
+                const auto maskData = self.getMaskData();
+                if(!maskData) return py::none();
+                return py::array_t<uint8_t>(static_cast<py::ssize_t>(maskData->size()), maskData->data());
+            },
+            DOC(dai, ImgDetectionsT, getMaskData))
         .def("getSegmentationMask", &SpatialImgDetections::getSegmentationMask, DOC(dai, ImgDetectionsT, getSegmentationMask))
         .def("transformTo", &SpatialImgDetections::transformTo, py::arg("target"), DOC(dai, SpatialImgDetections, transformTo))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

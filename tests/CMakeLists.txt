@@ -246,6 +246,12 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_metadata.bin"
         LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_metadata
     )
+    private_data(
+        URL "https://artifacts.luxonis.com/api/v1/repositories/luxonis-depthai-data-local/download/yolo_v8_seg_640x352_kitchen.dai"
+        SHA1 "40b3973f3a6c87d256211a05f8c23abd1d11982a"
+        FILE "yolo_v8_seg_640x352_kitchen.dai"
+        LOCATION yolo_v8_seg_640x352_kitchen_dai
+    )
 
     private_data(
         URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
@@ -815,8 +821,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FIRE_VIDEO="${fire_video}"
         KITCHEN_IMAGE_PATH="${kitchen_image}"
         YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2}"
-        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_data}"
-        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_METADATA="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_metadata}"
+        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA="${yolo_v8_seg_640x352_kitchen_dai}"
     )
     dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
 endif()

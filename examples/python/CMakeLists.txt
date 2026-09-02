@@ -15,9 +15,9 @@ endif()
 set(TARGET_NAME "depthai")
 
 # Regexes for example test failure
-set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
+set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\\\[warning\\\\];\\\\[error\\\\];\\\\[critical\\\\]")
 set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
-set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
+set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\\\[error\\\\];\\\\[critical\\\\]")
 
 # Add a target to install_requirements (added to ALL)
 # For windows we don't install open3d-cpu
