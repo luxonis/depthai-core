@@ -205,7 +205,8 @@ struct ImgTransformation {
      *
      * The supplied transform must map the current local calibration origin to
      * the new target. Only the extrinsics are changed; all image-space
-     * transformation data is preserved.
+     * transformation data is preserved. The rebased extrinsics translation is
+     * stored in centimeters.
      *
      * @param localOriginToTarget Transform from the current local calibration
      * origin to the new target coordinate system.

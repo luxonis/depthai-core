@@ -37,10 +37,11 @@ TEST_CASE("ImgTransformation rebases extrinsics while preserving image transform
     const auto result = transformation.getExtrinsics();
     REQUIRE(result.toDeviceId == "global-device");
     REQUIRE(result.toCameraSocket == CameraBoardSocket::CAM_B);
-    REQUIRE(result.lengthUnit == LengthUnit::METER);
-    REQUIRE(result.translation.x == Catch::Approx(3.0f));
+    REQUIRE(result.lengthUnit == LengthUnit::CENTIMETER);
+    REQUIRE(result.translation.x == Catch::Approx(300.0f));
     REQUIRE(result.translation.y == Catch::Approx(0.0f));
     REQUIRE(result.translation.z == Catch::Approx(0.0f));
+    REQUIRE(result.getTranslationVector(false, LengthUnit::METER)[0] == Catch::Approx(3.0f));
     REQUIRE(transformation.getMatrix() == matrixBefore);
     REQUIRE(transformation.getSourceIntrinsicMatrix() == intrinsicBefore);
     REQUIRE(transformation.getDistortionCoefficients() == distortionBefore);
@@ -78,8 +79,9 @@ TEST_CASE("ImgTransformation composes rotation and translation while rebasing") 
     transformation.rebaseExtrinsics(globalBridge);
 
     const auto result = transformation.getExtrinsics();
-    REQUIRE(result.translation.x == Catch::Approx(2.0f));
-    REQUIRE(result.translation.y == Catch::Approx(1.0f));
+    REQUIRE(result.lengthUnit == LengthUnit::CENTIMETER);
+    REQUIRE(result.translation.x == Catch::Approx(200.0f));
+    REQUIRE(result.translation.y == Catch::Approx(100.0f));
     REQUIRE(result.rotationMatrix[0][0] == Catch::Approx(0.0f));
     REQUIRE(result.rotationMatrix[0][1] == Catch::Approx(-1.0f));
     REQUIRE(result.rotationMatrix[1][0] == Catch::Approx(1.0f));
