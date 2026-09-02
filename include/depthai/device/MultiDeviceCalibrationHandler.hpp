@@ -47,10 +47,10 @@ class MultiDeviceCalibrationHandler {
     /** Construct and validate a handler from its JSON representation. */
     static MultiDeviceCalibrationHandler fromJson(const nlohmann::json& calibrationDataJson);
 
-    /** Return the handler's JSON representation. */
+    /** Return the handler's JSON representation with translations in centimeters. */
     nlohmann::json toJson() const;
 
-    /** Write the handler's JSON representation to a file. */
+    /** Write the handler's centimeter-normalized JSON representation to a file. */
     bool toJsonFile(std::filesystem::path destPath) const;
 
     /**
@@ -80,9 +80,7 @@ class MultiDeviceCalibrationHandler {
     std::vector<MultiDeviceExtrinsics> graph;
     mutable std::shared_ptr<const ResolvedGraph> resolvedGraph;
 
-    friend void to_json(nlohmann::json& json, const MultiDeviceCalibrationHandler& handler) {
-        json["graph"] = handler.graph;
-    }
+    friend void to_json(nlohmann::json& json, const MultiDeviceCalibrationHandler& handler);
 
     friend void from_json(const nlohmann::json& json, MultiDeviceCalibrationHandler& handler) {
         handler = MultiDeviceCalibrationHandler(json.at("graph").get<std::vector<MultiDeviceExtrinsics>>());

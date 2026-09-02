@@ -54,6 +54,7 @@ TEST_CASE("Multi-device calibration handles chains, components, units, and seria
     first.fromDeviceId = "device-c";
     first.fromSocket = CameraBoardSocket::CAM_A;
     first.extrinsics = makeExtrinsics("device-b", CameraBoardSocket::CAM_A, {100.0f, 0.0f, 0.0f}, LengthUnit::CENTIMETER);
+    first.extrinsics.specTranslation = {50.0f, 0.0f, 0.0f};
 
     MultiDeviceExtrinsics second;
     second.fromDeviceId = "device-b";
@@ -88,10 +89,17 @@ TEST_CASE("Multi-device calibration handles chains, components, units, and seria
 
     const auto json = handler.toJson();
     REQUIRE(json.contains("graph"));
+    for(const auto& jsonEdge : json.at("graph")) {
+        REQUIRE(jsonEdge.at("extrinsics").at("lengthUnit") == static_cast<int32_t>(LengthUnit::CENTIMETER));
+    }
+    REQUIRE(json.at("graph").at(0).at("extrinsics").at("translation").at("x") == Catch::Approx(200.0f));
+    REQUIRE(json.at("graph").at(1).at("extrinsics").at("translation").at("x") == Catch::Approx(100.0f));
+    REQUIRE(json.at("graph").at(1).at("extrinsics").at("specTranslation").at("x") == Catch::Approx(50.0f));
     const auto jsonRoundTrip = MultiDeviceCalibrationHandler::fromJson(json);
     const auto jsonBridge = jsonRoundTrip.getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
     REQUIRE(jsonBridge.has_value());
     REQUIRE(jsonBridge->translation.x == Catch::Approx(3.0f));
+    REQUIRE(jsonRoundTrip.toJson().at("graph").at(1).at("extrinsics").at("specTranslation").at("x") == Catch::Approx(50.0f));
 
     const auto jsonPath = std::filesystem::temp_directory_path() / "depthai_multi_device_calibration_handler_test.json";
     REQUIRE(handler.toJsonFile(jsonPath));
@@ -133,6 +141,10 @@ TEST_CASE("Multi-device calibration rejects invalid graph structure") {
     auto nonFiniteTranslation = edge;
     nonFiniteTranslation.extrinsics.translation.x = std::numeric_limits<float>::quiet_NaN();
     REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({nonFiniteTranslation}), std::invalid_argument);
+
+    auto nonFiniteSpecTranslation = edge;
+    nonFiniteSpecTranslation.extrinsics.specTranslation.x = std::numeric_limits<float>::quiet_NaN();
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({nonFiniteSpecTranslation}), std::invalid_argument);
 
     auto invalidRotation = edge;
     invalidRotation.extrinsics.rotationMatrix[0][0] = 2.0f;

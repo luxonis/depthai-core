@@ -85,9 +85,14 @@ Extrinsics normalizeExtrinsics(const Extrinsics& input) {
     if(!isFiniteTranslation(input.translation)) {
         throw std::invalid_argument("Multi-device extrinsics translation must be finite.");
     }
+    if(!isFiniteTranslation(input.specTranslation)) {
+        throw std::invalid_argument("Multi-device extrinsics specification translation must be finite.");
+    }
 
     const auto translation = input.getTranslationVector(false, LengthUnit::METER);
+    const auto specTranslation = input.getTranslationVector(true, LengthUnit::METER);
     Extrinsics normalized(input.rotationMatrix, Point3f(translation[0], translation[1], translation[2]), input.toCameraSocket, LengthUnit::METER);
+    normalized.specTranslation = Point3f(specTranslation[0], specTranslation[1], specTranslation[2]);
     normalized.toDeviceId = input.toDeviceId;
     return normalized;
 }
@@ -252,6 +257,18 @@ bool MultiDeviceCalibrationHandler::toJsonFile(std::filesystem::path destPath) c
     if(!stream.is_open()) return false;
     stream << std::setw(4) << toJson() << std::endl;
     return stream.good();
+}
+
+void to_json(nlohmann::json& json, const MultiDeviceCalibrationHandler& handler) {
+    auto centimeterGraph = handler.graph;
+    for(auto& edge : centimeterGraph) {
+        const auto translation = edge.extrinsics.getTranslationVector(false, LengthUnit::CENTIMETER);
+        const auto specTranslation = edge.extrinsics.getTranslationVector(true, LengthUnit::CENTIMETER);
+        edge.extrinsics.translation = Point3f(translation[0], translation[1], translation[2]);
+        edge.extrinsics.specTranslation = Point3f(specTranslation[0], specTranslation[1], specTranslation[2]);
+        edge.extrinsics.lengthUnit = LengthUnit::CENTIMETER;
+    }
+    json["graph"] = std::move(centimeterGraph);
 }
 
 std::shared_ptr<const MultiDeviceCalibrationHandler::ResolvedGraph> MultiDeviceCalibrationHandler::getResolvedGraph() const {
