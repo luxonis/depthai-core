@@ -529,7 +529,6 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
         src/pipeline/node/host/MultiDeviceCalibration.cpp
-        src/pipeline/node/MultiDeviceScaleEstimation.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
         src/pipeline/datatype/DynamicCalibrationControl.cpp
         src/pipeline/node/AutoCalibration.cpp
