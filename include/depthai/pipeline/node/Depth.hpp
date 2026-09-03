@@ -8,6 +8,7 @@
 
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/StereoPair.hpp"
+#include "depthai/beta/node/ToFStereoFusion.hpp"
 #include "depthai/device/Device.hpp"
 #include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Subnode.hpp"
@@ -46,6 +47,7 @@ class Depth : public DeviceNodeGroup {
         NEURAL,
         NEURAL_ASSISTED_STEREO,
         TOF,
+        TOF_STEREO_FUSION,
         GPU_STEREO,
     };
 
@@ -234,6 +236,7 @@ class Depth : public DeviceNodeGroup {
     std::unique_ptr<::dai::Subnode<GPUStereo>> gpuStereoBackend_;
     std::shared_ptr<NeuralAssistedStereo> nasBackend_;
     std::shared_ptr<ToF> tofBackend_;
+    std::shared_ptr<beta::node::ToFStereoFusion> tofStereoFusionBackend_;
     std::unique_ptr<::dai::Subnode<ImageAlign>> imageAlignBackend_;
 };
 
