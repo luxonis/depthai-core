@@ -17,7 +17,48 @@ class ToFConfig : public Buffer {
         HIGH_RANGE,
     };
 
+    /**
+     * Runtime controls specific to the VD55H1 IPP used by RVC4.
+     *
+     * An unset value keeps the selected ToF profile's default. These controls
+     * have no effect on RVC2.
+     */
+    struct VD55H1 {
+        std::optional<float> phaseUnwrapErrorThreshold;
+
+        std::optional<bool> enableBilateralFilter;
+        std::optional<float> bilateralStdFactor;
+        std::optional<std::uint32_t> bilateralKernelSize;
+
+        std::optional<bool> enableTemporalNoiseReduction;
+        std::optional<std::uint32_t> temporalNoiseReductionMaxGain;
+        std::optional<float> temporalNoiseReductionStdFactor;
+
+        std::optional<bool> enableFlyingPixelFilter;
+        std::optional<float> flyingPixelDepthThreshold;
+        std::optional<float> flyingPixelMinDepthOccurrence;
+
+        /** Use the VD55H1 IPP radial-to-perpendicular correction instead of depthai-core's calibration correction. */
+        std::optional<bool> enableRadialToPerpendicularCorrection;
+
+        DEPTHAI_SERIALIZE(VD55H1,
+                          phaseUnwrapErrorThreshold,
+                          enableBilateralFilter,
+                          bilateralStdFactor,
+                          bilateralKernelSize,
+                          enableTemporalNoiseReduction,
+                          temporalNoiseReductionMaxGain,
+                          temporalNoiseReductionStdFactor,
+                          enableFlyingPixelFilter,
+                          flyingPixelDepthThreshold,
+                          flyingPixelMinDepthOccurrence,
+                          enableRadialToPerpendicularCorrection);
+    };
+
     Profile profile = Profile::MID_RANGE;
+
+    /** Controls for the RVC4 VD55H1 IPP. */
+    VD55H1 vd55h1;
     /**
      * Set kernel size for depth median filtering, or disable
      */
@@ -97,6 +138,7 @@ class ToFConfig : public Buffer {
 
     DEPTHAI_SERIALIZE(ToFConfig,
                       profile,
+                      vd55h1,
                       median,
                       enablePhaseShuffleTemporalFilter,
                       enableBurstMode,
