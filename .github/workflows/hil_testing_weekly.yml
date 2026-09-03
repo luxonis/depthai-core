@@ -127,8 +127,9 @@ jobs:
       - run_replay_tests
       - run_vanilla_mac_tests
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ['self-hosted', 'testbed-runner']
     steps:
+      - uses: actions/checkout@v3
       - name: Download JUnit reports
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -143,6 +144,14 @@ jobs:
           SLACK_BOT_CHANNEL_ID: ${{ secrets.SLACK_BOT_CHANNEL_ID_TEST }}
           NEEDS_JSON: ${{ toJson(needs) }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+          INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+          INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+          INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           SUMMARY=$(jq -r '
             def job_label:
@@ -225,3 +234,9 @@ jobs:
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-type: application/json" \
             --data @payload.json
+          
+          python3 scripts/ci/report_failed_tests.py "slackNotificationPayload.json"
+          curl -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-type: application/json" \
+            --data @slackNotificationPayload.json 

@@ -96,7 +96,8 @@ RUN python3 -m venv venv && \
     . venv/bin/activate && \
     pip install --upgrade pip && \
     pip install numpy pytest pytest-html && \
-    pip install adbutils==2.12.0
+    pip install adbutils==2.12.0 && \
+    pip install influxdb-client==1.50.0
 
 ENV PATH="/workspace/venv/bin:$PATH"
 
@@ -124,11 +125,11 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
         -D VCPKG_OVERLAY_TRIPLETS="/workspace/cmake/triplets/release" \
         -D DEPTHAI_BUILD_TESTS=ON \
         ${REPLAY_CMAKE_ARG} \
-        $(if [ "$PULL_REQUEST" = "false" ]; then echo "-D DEPTHAI_BUILD_EXAMPLES=ON \
+        -D DEPTHAI_BUILD_EXAMPLES=ON \
         -D DEPTHAI_TEST_EXAMPLES=ON \
         -D DEPTHAI_BUILD_PYTHON=ON \
         -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON \
-        -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON"; fi)
+        -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
 
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \

@@ -49,6 +49,14 @@ on:
         required: true
       CI_TELEMETRY_API_KEY:
         required: true
+      INFLUXDB_TEST_REPORT_BUCKET:
+        required: true
+      INFLUXDB_ORG:
+        required: true
+      INFLUXDB_TOKEN:
+        required: true
+      INFLUXDB_URL:
+        required: true
 
 jobs:
  build_docker_container:
@@ -195,7 +203,7 @@ jobs:
     name: Report Linux test results (${{ inputs.job_prefix || inputs.flavor }})
     needs: [linux_rvc2_test, linux_rvc4_test,linux_rvc4_usb_test, linux_rvc4_rgb_test]
     if: ${{ always() && inputs.run_standard_tests }}
-    runs-on: ubuntu-latest
+    runs-on: ['self-hosted', 'testbed-runner']
     permissions:
       contents: read
     steps:
@@ -206,6 +214,16 @@ jobs:
         pattern: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-*
         path: ctest-logs
     - name: Generate combined summary
+      env:
+        INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+        INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+        INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+        INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_SHA: ${{ github.sha }}
+        GITHUB_REF: ${{ github.ref }}
+        GITHUB_HEAD_REF: ${{ github.head_ref }}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
       run: |
         if ! command -v python3 >/dev/null 2>&1; then
           echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
@@ -217,6 +235,7 @@ jobs:
         first_summary=1
         mkdir -p ctest-reports
         job_prefix="ctest-log-${{ inputs.job_prefix || inputs.flavor }}-"
+        current_time_stamp=$(date +%Y-%m-%dT%H:%M:%S)
         for dir in ctest-logs/${job_prefix}*; do
           [ -d "$dir" ] || continue
           log_files=("$dir"/*.log)
@@ -234,6 +253,7 @@ jobs:
           report_context="${context//\//_}"
           report_context="${report_context// /_}"
           python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
+          python3 scripts/ci/junit_to_influxdb.py "$current_time_stamp" "linux" "ctest-reports/${report_context}.xml"
           echo "" >> "$GITHUB_STEP_SUMMARY"
         done
 

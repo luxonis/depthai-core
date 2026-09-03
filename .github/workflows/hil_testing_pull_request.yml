@@ -2,6 +2,7 @@ name: DepthAI Core HIL Testing PR
 
 # Trigger on submitted reviews or when manually marked as testable
 on:
+  workflow_dispatch:
   pull_request_review:
     types: [submitted]
   pull_request:
@@ -19,14 +20,15 @@ jobs:
   run_pr_tests:
     name: Run Linux PR HIL tests
     if: >
-      (
+      (github.event_name == 'workflow_dispatch') ||
+      ((
         github.event.review.state == 'approved' ||
         (github.event_name == 'pull_request' && github.event.label.name == 'testable')
       ) &&
       (
         github.event.pull_request.base.ref == 'main' ||
         github.event.pull_request.base.ref == 'develop'
-      )
+      ))
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
@@ -37,6 +39,10 @@ jobs:
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
       CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
+      INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+      INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+      INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+      INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
 
   required_hil_test_report:
     name: ${{ ((github.event.review.state == 'approved' || (github.event_name == 'pull_request' && github.event.label.name == 'testable')) && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'develop')) && 'Required HIL test report' || 'HIL test report (not applicable)' }}
@@ -58,3 +64,40 @@ jobs:
           echo "run_pr_tests: $RESULT"
           exit 1
         fi
+  notify_slack:
+    needs: [run_pr_tests, required_hil_test_report]
+    if: >
+      always() &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'push' &&
+          (
+            github.ref == 'refs/heads/main' ||
+            github.ref == 'refs/heads/develop' ||
+            startsWith(github.ref, 'refs/heads/release')
+          )
+        )
+      )
+    runs-on: ['self-hosted', 'testbed-runner']
+    steps:
+      - uses: actions/checkout@v3
+      - name: Send Slack test summary
+        continue-on-error: true
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_BOT_CHANNEL_ID: ${{ secrets.SLACK_BOT_CHANNEL_ID_TEST }}
+          INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+          INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+          INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+          INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+        run: |
+          python3 scripts/ci/report_failed_tests.py "slackNotificationPayload.json"
+          curl -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-type: application/json" \
+            --data @slackNotificationPayload.json 
