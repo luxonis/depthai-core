@@ -170,6 +170,8 @@ if(DEPTHAI_BUILD_BETA)
     add_python_example(beta_yunet_parser Beta/yunet_parser.py)
 endif()
 
+add_python_example(tof_vd55h1_controls ToF/tof_vd55h1_controls.py)
+
 
 ## Camera output
 add_python_example(camera_output Camera/camera_output.py)
