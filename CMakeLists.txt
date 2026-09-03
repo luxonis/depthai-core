@@ -174,7 +174,7 @@ endif()
 include(GNUInstallDirs)
 # Install public headers under an ament-style, package-namespaced path
 # (include/${PROJECT_NAME}) instead of the flat "include" default.
-set(CMAKE_INSTALL_INCLUDEDIR "include/${PROJECT_NAME}" CACHE PATH "" FORCE)
+set(CMAKE_INSTALL_INCLUDEDIR "include/${PROJECT_NAME}")
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
