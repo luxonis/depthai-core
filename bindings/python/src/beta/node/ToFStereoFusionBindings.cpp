@@ -22,7 +22,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
             "depth", [](ToFStereoFusion& n) -> Node::Output& { return n.depth; }, DOC(dai, beta, node, ToFStereoFusion, depth))
         .def_readonly("initialConfig", &ToFStereoFusion::initialConfig)
         .def_property_readonly(
-            "neuralConfidence", [](ToFStereoFusion& n) -> Node::Output& { return n.neuralConfidence; }, DOC(dai, beta, node, ToFStereoFusion, neuralConfidence))
+            "confidence", [](ToFStereoFusion& n) -> Node::Output& { return n.confidence; }, DOC(dai, beta, node, ToFStereoFusion, confidence))
         .def_property_readonly(
             "tof", [](ToFStereoFusion& n) -> dai::node::ToF& { return *n.tof; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
