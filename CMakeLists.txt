@@ -171,6 +171,10 @@ endif()
 
 ### Get and find dependencies
 
+include(GNUInstallDirs)
+# Install public headers under an ament-style, package-namespaced path
+# (include/${PROJECT_NAME}) instead of the flat "include" default.
+set(CMAKE_INSTALL_INCLUDEDIR "include/${PROJECT_NAME}")
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
@@ -727,6 +731,15 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     # Link the dynamic calibration target
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+
+    if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+        # Give consumers an explicit -rpath-link to our libdynamic_calibration.so so ld's link-time symbol
+        # resolution doesn't pick up a like-named/incompatible copy earlier on LD_LIBRARY_PATH (e.g. from a ROS system install).
+        target_link_options(${TARGET_CORE_NAME} INTERFACE
+            "$<BUILD_INTERFACE:-Wl,-rpath-link,${DYNAMIC_CALIBRATION_DIR}/lib>"
+            "$<INSTALL_INTERFACE:-Wl,-rpath-link,$<TARGET_FILE_DIR:${PROJECT_NAME}::${TARGET_CORE_ALIAS}>/${PROJECT_NAME}>"
+        )
+    endif()
 endif()
 
 # Set constant
@@ -878,8 +891,8 @@ endif()
 target_include_directories(${TARGET_CORE_NAME}
     PUBLIC
         # Relative path to include directories after installed
-        "$<INSTALL_INTERFACE:include>"
-        "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
 
         # Build time path to include directories
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
@@ -1401,10 +1414,16 @@ configure_file(cmake/depthaiConfig.cmake.in _install/${PROJECT_NAME}Config.cmake
 
 # Modify RPath to point to the cmake/depthai/dependencies/lib
 # note: macOS is APPLE and also UNIX!
+# Also add the namespaced runtime dependencies subdir (see DLL_INSTALLATION_DIR
+# below) so runtime .so files like dynamic_calibration can still be found
+# after install without polluting the shared lib/ directory with a generic name.
 if(APPLE)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path/${PROJECT_NAME};@loader_path;@loader_path/")
 elseif(UNIX)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN/${PROJECT_NAME}:$ORIGIN:$ORIGIN/")
+  # Force the usage of RPATH instead of the new RUNPATH.
+  # LD_LIBRARY_PATH is searched after the RPATH, so our namespaced runtime dependencies are always preferred.
+  target_link_options(${TARGET_CORE_NAME} PRIVATE "-Wl,--disable-new-dtags")
 endif()
 
 # Export to CMake registry if specified
@@ -1437,7 +1456,7 @@ if(DEPTHAI_INSTALL)
     endif()
     # Install any required dll files
     if(DEFINED required_dll_files)
-        set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_LIBDIR}")
+        set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}")
         if(WIN32)
             set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_BINDIR}")
         endif()
