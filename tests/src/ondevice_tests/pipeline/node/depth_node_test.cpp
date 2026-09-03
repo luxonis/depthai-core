@@ -16,6 +16,7 @@
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
+#include "depthai/beta/node/ToFStereoFusion.hpp"
 
 using namespace dai;
 
@@ -118,6 +119,10 @@ void requireDepthSingleBackendChild(const node::Depth& depth, const char* expect
         REQUIRE(std::dynamic_pointer_cast<node::ToF>(child) != nullptr);
         return;
     }
+    if(std::strcmp(expectedNodeName, "ToFStereoFusion") == 0) {
+        REQUIRE(std::dynamic_pointer_cast<beta::node::ToFStereoFusion>(child) != nullptr);
+        return;
+    }
     REQUIRE(std::strcmp(child->getName(), expectedNodeName) == 0);
 }
 
@@ -140,6 +145,9 @@ StereoPair requireFirstStereoPairForTest(const std::shared_ptr<Device>& device) 
 void requireDepthAutoBackend(const node::Depth& depth, Platform platform, bool hasTofSensor) {
     if(platform == Platform::RVC4) {
         switch(depth.getResolvedAlgorithm()) {
+            case node::Depth::Algorithm::TOF_STEREO_FUSION:
+                requireDepthSingleBackendChild(depth, "ToFStereoFusion");
+                break;
             case node::Depth::Algorithm::NEURAL:
                 requireDepthSingleBackendChild(depth, "NeuralDepth");
                 break;
@@ -458,6 +466,19 @@ TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "StereoDepth");
+}
+
+TEST_CASE("Depth: AUTO uses ToFStereoFusion only on RVC4 devices with stereo and ToF") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4 || !deviceReportsTofSensor(device) || device->getStereoPairs().empty()) {
+        SKIP("Skipping fusion test: requires RVC4 with a stereo pair and ToF sensor.");
+    }
+
+    auto depth = pipeline.create<node::Depth>();
+    REQUIRE_NOTHROW((void)&depth->depth());
+    REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::TOF_STEREO_FUSION);
+    requireDepthSingleBackendChild(*depth, "ToFStereoFusion");
 }
 
 TEST_CASE("Depth: TOF confidence output maps to ToF confidence output") {
