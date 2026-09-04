@@ -246,7 +246,7 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
     // }
     auto sendToInputs = [this, &msg]() {
         for(auto& messageQueue : connectedInputs) {
-            messageQueue->send(msg);
+            if(!messageQueue->isClosed()) messageQueue->send(msg);
         }
     };
     if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
