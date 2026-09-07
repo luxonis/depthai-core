@@ -2,6 +2,59 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+## Features
+
+* **[_Beta_] Stitching node**
+  * Stitches frames from two different sensors based on matching features in the overlap of the images
+  * Supports two stitching modes:
+    * Panorama stitching based on the image overlap
+    * Planar projection onto a configurable plane
+  * A [panorama example](https://github.com/luxonis/depthai-core/blob/main/examples/python/HostNodes/stitching_panorama.py) and a [planar projection example](https://github.com/luxonis/depthai-core/blob/main/examples/python/HostNodes/stitching_planar_projection.py) are available
+* **[*RVC4*] Align node**
+  * A generic way to align `Transformable` messages or `ImgFrame`s with each other in any order
+  * Can align an `ImgFrame` to any transformable message type
+  * Supports transforming custom messages if they override the `transformTo` function and the node runs on the host. A [Python example](https://github.com/luxonis/depthai-core/blob/main/examples/python/Align/custom_message_align.py) and a [C++ example](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/Align/custom_message_align.cpp) are available
+  * `ImgDetections` alignment is shown in a [C++ example](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/Align/img_detections_align.cpp) and a [Python example](https://github.com/luxonis/depthai-core/blob/main/examples/python/Align/img_detections_align.py)
+* **Message save and load functions**
+  * DepthAI messages can be written to a file and then read back with the new API: `msg.save("name.dai")` and `msg.load("name.dai")`
+  * The saved file is a binary protobuf envelope
+  * The following messages are supported: `ImgFrame`, `NNData`, `ImgDetections`, `SpatialImgDetections`, `SegmentationMask`, `PointCloudData`, `RGBDData`, `IMUData`, and `ImgAnnotations`
+* **[*RVC4*] ToF undistortion**
+  * `setOutputUndistortion` lets you undistort the ToF depth frame
+* **Extrinsics now carry a `toDeviceId` field**
+  * Used together with `toCameraSocket` for better transformation handling in multi-device setups
+  * The field is automatically populated with the ID of the device that created the message, because that is the device `toCameraSocket` refers to
+
+## Bug fixes
+
+* **[*RVC2*] VideoEncoder checks parameter coherency**
+  * Unvalidated parameters caused significant performance degradation when rendering a video stream with incorrect parameters
+* [**RVC2**] The LEON OS unwind section now uses the standard `.eh_frame` naming, so the linker cleans up stale unwind records
+* `getMaskData` bindings for `SpatialImgDetections` and `ImgDetections` now return a generic `py::object`
+* Device discovery functions (for example `getAllConnectedDevices`) now release the GIL, which prevents stuttering of a running pipeline
+* Four-point transform in ImageManip now properly handles normalized coordinates
+* Rotation is now properly applied to `addCropRotatedRect` when coordinates are normalized
+* Stricter intrinsics matrix validation
+* The device health check is now more robust when the device is in use
+* DetectionParser only considers outputs with `_yolo` in the name when validating the number of strides
+
+## Misc
+
+* [**RVC4**] Optimized the loading of NN models and reduced the RAM footprint by half
+* Added a DepthAI-specific reviewer skill for easier development and a faster merge process
+* Embedded visualizer updated to 3.9.6:
+  * Improved performance and stability
+
+## Known issues
+
+* Downgrading from OS 1.40.0 to any OS between 1.24.0 and 1.31.1 causes an STM flash error that leads to a device crash when running any pipeline. To fix the issue, downgrade to OS 1.35.0 first, before you downgrade to the above OS range
+
+## [**RVC4**] Luxonis OS compatibility
+
+Integration tested with Luxonis OS 1.30.1, 1.35.0, and 1.40.0.
+
 3.9.0 (2026-08-17)
 ------------------
 ## Features
