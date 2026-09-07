@@ -2,8 +2,8 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.10.0 (2026-09-07)
+-------------------
 ## Features
 
 * **[_Beta_] Stitching node**
