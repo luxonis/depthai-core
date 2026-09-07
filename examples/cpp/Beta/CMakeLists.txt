@@ -18,4 +18,8 @@ dai_add_example(beta_mp_palm_detection_parser mp_palm_detection_parser.cpp OFF O
 dai_add_example(beta_pp_text_detection_parser pp_text_detection_parser.cpp OFF OFF)
 dai_add_example(beta_scrfd_parser scrfd_parser.cpp OFF OFF)
 dai_add_example(beta_superanimal_parser superanimal_parser.cpp OFF OFF)
+dai_add_example(beta_tof_neural_fusion tof_neural_fusion.cpp OFF OFF)
+if(DEPTHAI_MERGED_TARGET)
+    dai_add_example(beta_tof_neural_fusion_pointcloud tof_neural_fusion_pointcloud.cpp ON OFF)
+endif()
 dai_add_example(beta_yunet_parser yunet_parser.cpp OFF OFF)

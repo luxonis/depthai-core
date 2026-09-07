@@ -124,6 +124,9 @@ class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
     Tracklets transformTo(const ImgTransformation& target);
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::Tracklets;
+    }
 
     DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, ts, tsDevice, tsSystem, sequenceNum, unit);
 };

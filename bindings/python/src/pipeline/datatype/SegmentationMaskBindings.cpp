@@ -39,7 +39,7 @@ py::array_t<std::uint8_t> toNumpyMask(const dai::SegmentationMask& mask, const s
 void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<SegmentationMask, Py<SegmentationMask>, Buffer, Transformable, std::shared_ptr<SegmentationMask>> segmentationMask(
+    py::class_<SegmentationMask, Py<SegmentationMask>, Buffer, ProtoSerializable, Transformable, std::shared_ptr<SegmentationMask>> segmentationMask(
         m, "SegmentationMask", DOC(dai, SegmentationMask));
 
     ///////////////////////////////////////////////////////////////////////

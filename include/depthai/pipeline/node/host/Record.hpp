@@ -86,5 +86,7 @@ class RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordMetadataOnly>
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
 };
 
+using RecordMessage = RecordMetadataOnly;
+
 }  // namespace node
 }  // namespace dai

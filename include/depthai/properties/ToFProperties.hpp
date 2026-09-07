@@ -32,6 +32,11 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
     std::vector<int> warpHwIds;
 
     /**
+     * Undistort depth and auxiliary outputs before publishing them.
+     */
+    bool enableUndistortion = false;
+
+    /**
      * Which socket will color camera use
      */
     CameraBoardSocket boardSocket = CameraBoardSocket::AUTO;
@@ -59,6 +64,7 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
     ~ToFProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
+DEPTHAI_SERIALIZE_EXT(
+    ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, enableUndistortion, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
 
 }  // namespace dai

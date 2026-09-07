@@ -1217,6 +1217,13 @@ class DeviceBase {
     void setExternalStrobeEnable(bool enable);
 
     /**
+     * Set which camera will control the external strobe exposure. Automaticaly enables external strobe.
+     * External strobe signal is low for the duration of exposure, and high for the rest of the frame.
+     * @param exposureMasterSocket CameraBoardSocket of the camera which will control the external strobe exposure
+     */
+    void setExternalStrobeEnable(dai::CameraBoardSocket exposureMasterSocket);
+
+    /**
      * Mock camera features from a recording. Used for holistic record and replay.
      */
     void mockCameraFeatures(const std::filesystem::path& replayPath);

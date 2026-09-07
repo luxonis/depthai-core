@@ -30,13 +30,15 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
     tofProperties.def_readwrite("initialConfig", &ToFProperties::initialConfig, DOC(dai, ToFProperties, initialConfig))
         .def_readwrite("numFramesPool", &ToFProperties::numFramesPool, DOC(dai, ToFProperties, numFramesPool))
         .def_readwrite("numShaves", &ToFProperties::numShaves, DOC(dai, ToFProperties, numShaves))
-        .def_readwrite("warpHwIds", &ToFProperties::warpHwIds, DOC(dai, ToFProperties, warpHwIds));
+        .def_readwrite("warpHwIds", &ToFProperties::warpHwIds, DOC(dai, ToFProperties, warpHwIds))
+        .def_readwrite("enableUndistortion", &ToFProperties::enableUndistortion, DOC(dai, ToFProperties, enableUndistortion));
 
     // ToFBase Node
     tofBase.def_readonly("inputConfig", &ToFBase::inputConfig, DOC(dai, node, ToFBase, inputConfig), DOC(dai, node, ToFBase, inputConfig))
         .def_readonly("depth", &ToFBase::depth, DOC(dai, node, ToFBase, depth), DOC(dai, node, ToFBase, depth))
         .def_readonly("amplitude", &ToFBase::amplitude, DOC(dai, node, ToFBase, amplitude), DOC(dai, node, ToFBase, amplitude))
         .def_readonly("intensity", &ToFBase::intensity, DOC(dai, node, ToFBase, intensity), DOC(dai, node, ToFBase, intensity))
+        .def_readonly("confidence", &ToFBase::confidence, DOC(dai, node, ToFBase, confidence), DOC(dai, node, ToFBase, confidence))
         .def_readonly("phase", &ToFBase::phase, DOC(dai, node, ToFBase, phase), DOC(dai, node, ToFBase, phase))
         .def_readonly("raw", &ToFBase::raw, DOC(dai, node, ToFBase, raw), DOC(dai, node, ToFBase, raw))
         .def_readonly("initialConfig", &ToFBase::initialConfig, DOC(dai, node, ToFBase, initialConfig), DOC(dai, node, ToFBase, initialConfig))
@@ -46,6 +48,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
              "profile"_a = ToFConfig::Profile::MID_RANGE,
              "fps"_a = std::nullopt,
              DOC(dai, node, ToFBase, build))
+        .def("setOutputUndistortion", &ToFBase::setOutputUndistortion, "enable"_a, DOC(dai, node, ToFBase, setOutputUndistortion))
         .def("getBoardSocket", &ToFBase::getBoardSocket, DOC(dai, node, ToFBase, getBoardSocket));
 
     // ToF Node (DeviceNodeGroup)
@@ -64,6 +67,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "profile"_a = ToFConfig::Profile::MID_RANGE,
              "fps"_a = std::nullopt)
+        .def("setOutputUndistortion", &ToF::setOutputUndistortion, "enable"_a, DOC(dai, node, ToF, setOutputUndistortion))
         .def("getInitialConfig", [&](const ToF& self) { return *self.tofBaseNode.initialConfig; })
         .def("setInitialConfig", [&](ToF& self, ToFConfig& config) { self.tofBaseNode.initialConfig = std::make_shared<ToFConfig>(config); });
     DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING

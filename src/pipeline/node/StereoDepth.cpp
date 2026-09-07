@@ -55,15 +55,15 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
     std::string assetKey;
     meshAsset.alignment = 64;
 
-    meshAsset.data = dataLeft;
+    meshAsset.setData(dataLeft);
     assetKey = "meshLeft";
     properties.mesh.meshLeftUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
-    meshAsset.data = dataRight;
+    meshAsset.setData(dataRight);
     assetKey = "meshRight";
     properties.mesh.meshRightUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
-    properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.data.size());
+    properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.getSize());
 }
 
 void StereoDepth::loadMeshFiles(const std::filesystem::path& pathLeft, const std::filesystem::path& pathRight) {

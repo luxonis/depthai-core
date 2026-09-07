@@ -19,6 +19,8 @@ on:
       - main
       - develop
     types: [labeled]
+  pull_request_review:
+    types: [submitted]
 
 ###################################
 ###################################
@@ -43,9 +45,12 @@ jobs:
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
         CHECK_GITHUB_REF: ${{ github.ref }}
+        CHECK_REVIEW_STATE: ${{ github.event.review.state }}
+        CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
         GITHUB_REF="$CHECK_GITHUB_REF"
+        REVIEW_STATE="$CHECK_REVIEW_STATE"
 
         RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
         if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
@@ -63,10 +68,12 @@ jobs:
           WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
         fi
 
-        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+        if [[ "$EVENT_NAME" == "pull_request" || "$EVENT_NAME" == "pull_request_review" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
-          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+          if [[ "$EVENT_NAME" == "pull_request" ]] && ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          elif [[ "$EVENT_NAME" == "pull_request_review" && ("$REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop")) ]]; then
             SHOULD_RUN="false"
           fi
         fi
@@ -758,6 +765,26 @@ jobs:
           # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
           $env:EXPECTED_VERSION = $ver
           python bindings/python/ci/smoke_depthai.py
+
+  required_python_ci_report:
+    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Python CI report' || 'Python CI report (not applicable)' }}
+    needs: [precheck, pytest, combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check required CI results
+      env:
+        SHOULD_RUN: ${{ needs.precheck.outputs.should_run }}
+        RESULTS: ${{ join(needs.*.result, ' ') }}
+      run: |
+        if [[ "$SHOULD_RUN" != "true" && "$RESULTS" != *failure* && "$RESULTS" != *cancelled* ]]; then
+          echo "Python CI is not required for this event."
+          exit 0
+        fi
+        if [[ "$RESULTS" == *failure* || "$RESULTS" == *cancelled* || "$RESULTS" == *skipped* ]]; then
+          echo "Required Python CI jobs failed or did not complete: $RESULTS"
+          exit 1
+        fi
 
   upload-wheels-to-ak:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'

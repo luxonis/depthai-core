@@ -39,24 +39,22 @@ jobs:
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   required_hil_test_report:
-    name: Required HIL test report
+    name: ${{ ((github.event.review.state == 'approved' || (github.event_name == 'pull_request' && github.event.label.name == 'testable')) && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'develop')) && 'Required HIL test report' || 'HIL test report (not applicable)' }}
     needs: [run_pr_tests]
-    if: >
-      always() &&
-      (
-        github.event.review.state == 'approved' ||
-        (github.event_name == 'pull_request' && github.event.label.name == 'testable')
-      ) &&
-      (
-        github.event.pull_request.base.ref == 'main' ||
-        github.event.pull_request.base.ref == 'develop'
-      )
+    if: always()
     runs-on: ubuntu-latest
     steps:
     - name: Check required test results
+      env:
+        SHOULD_RUN: ${{ (github.event.review.state == 'approved' || (github.event_name == 'pull_request' && github.event.label.name == 'testable')) && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'develop') }}
+        RESULT: ${{ needs.run_pr_tests.result }}
       run: |
-        if [[ "${{ needs.run_pr_tests.result }}" != "success" ]]; then
+        if [[ "$SHOULD_RUN" != "true" ]]; then
+          echo "HIL testing is not required for this event."
+          exit 0
+        fi
+        if [[ "$RESULT" != "success" ]]; then
           echo "Required HIL tests failed or did not complete."
-          echo "run_pr_tests: ${{ needs.run_pr_tests.result }}"
+          echo "run_pr_tests: $RESULT"
           exit 1
         fi

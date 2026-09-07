@@ -1,8 +1,10 @@
 #include <catch2/catch_all.hpp>
 #include <cmath>
 #include <depthai/device/CalibrationHandler.hpp>
+#include <limits>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 using namespace dai;
@@ -418,6 +420,115 @@ TEST_CASE("Missing camera intrinsics reports calibration guidance", "[getCameraI
 
     REQUIRE_THROWS_WITH(handler.getCameraIntrinsics(CameraBoardSocket::CAM_A, 640, 480),
                         Catch::Matchers::ContainsSubstring("Camera data available for the requested cameraID"));
+}
+
+TEST_CASE("Camera intrinsics must follow the calibration matrix contract", "[getCameraIntrinsics]") {
+    const auto requireInvalidIntrinsics = [](std::vector<std::vector<float>> intrinsics) {
+        auto data = loadValidHandler().getEepromData();
+        data.cameraData.at(CameraBoardSocket::CAM_A).intrinsicMatrix = std::move(intrinsics);
+        const CalibrationHandler handler(data);
+
+        REQUIRE_THROWS_WITH(handler.getDefaultIntrinsics(CameraBoardSocket::CAM_A), Catch::Matchers::ContainsSubstring("no Intrinsic matrix available"));
+    };
+
+    SECTION("oversized matrix") {
+        requireInvalidIntrinsics({{1000.0f, 0.0f, 960.0f, 0.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}});
+    }
+
+    SECTION("ragged matrix") {
+        requireInvalidIntrinsics({{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f}, {0.0f, 0.0f, 1.0f}});
+    }
+
+    SECTION("singular matrix") {
+        requireInvalidIntrinsics({{1000.0f, 0.0f, 960.0f}, {0.0f, 0.0f, 540.0f}, {0.0f, 0.0f, 1.0f}});
+    }
+
+    SECTION("negative focal length") {
+        requireInvalidIntrinsics({{-1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}});
+    }
+
+    SECTION("nonzero element below horizontal focal length") {
+        requireInvalidIntrinsics({{1000.0f, 0.0f, 960.0f}, {1.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}});
+    }
+
+    SECTION("nonzero first element in homogeneous row") {
+        requireInvalidIntrinsics({{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {1.0f, 0.0f, 1.0f}});
+    }
+
+    SECTION("nonzero second element in homogeneous row") {
+        requireInvalidIntrinsics({{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 1.0f, 1.0f}});
+    }
+
+    SECTION("noncanonical homogeneous scale") {
+        requireInvalidIntrinsics({{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 2.0f}});
+    }
+
+    SECTION("non-finite matrix") {
+        requireInvalidIntrinsics({{1000.0f, 0.0f, 960.0f}, {0.0f, std::numeric_limits<float>::infinity(), 540.0f}, {0.0f, 0.0f, 1.0f}});
+    }
+}
+
+TEST_CASE("Invertible camera intrinsics with skew remain valid", "[getCameraIntrinsics]") {
+    auto data = loadValidHandler().getEepromData();
+    const std::vector<std::vector<float>> intrinsics = {{1000.0f, 2.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}};
+    data.cameraData.at(CameraBoardSocket::CAM_A).intrinsicMatrix = intrinsics;
+
+    const CalibrationHandler handler(data);
+    REQUIRE(std::get<0>(handler.getDefaultIntrinsics(CameraBoardSocket::CAM_A)) == intrinsics);
+}
+
+TEST_CASE("Camera intrinsics require a valid calibration resolution", "[getCameraIntrinsics][setCameraIntrinsics]") {
+    auto data = loadValidHandler().getEepromData();
+    data.cameraData.at(CameraBoardSocket::CAM_A).width = 0;
+    const CalibrationHandler handler(data);
+    REQUIRE_THROWS_WITH(handler.getDefaultIntrinsics(CameraBoardSocket::CAM_A), Catch::Matchers::ContainsSubstring("no Intrinsic matrix available"));
+
+    auto mutableHandler = loadValidHandler();
+    const std::vector<std::vector<float>> intrinsics = {{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}};
+    REQUIRE_THROWS_WITH(mutableHandler.setCameraIntrinsics(CameraBoardSocket::CAM_A, intrinsics, 0, 1080),
+                        Catch::Matchers::ContainsSubstring("Invalid calibration resolution"));
+    REQUIRE_THROWS_WITH(mutableHandler.setCameraIntrinsics(CameraBoardSocket::CAM_A, intrinsics, 1920, 100000),
+                        Catch::Matchers::ContainsSubstring("Invalid calibration resolution"));
+}
+
+TEST_CASE("Size2f camera intrinsics require valid calibration dimensions", "[setCameraIntrinsics]") {
+    auto handler = loadValidHandler();
+    const std::vector<std::vector<float>> intrinsics = {{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}};
+
+    const std::vector<std::pair<const char*, float>> invalidDimensions = {
+        {"fractional", 1920.5f},
+        {"NaN", std::numeric_limits<float>::quiet_NaN()},
+        {"infinite", std::numeric_limits<float>::infinity()},
+        {"zero", 0.0f},
+        {"negative", -1.0f},
+        {"outside uint16_t range", static_cast<float>(std::numeric_limits<uint16_t>::max()) + 1.0f},
+    };
+
+    for(const auto& [category, dimension] : invalidDimensions) {
+        DYNAMIC_SECTION(category << " width") {
+            REQUIRE_THROWS_WITH(handler.setCameraIntrinsics(CameraBoardSocket::CAM_A, intrinsics, Size2f(dimension, 1080.0f)),
+                                Catch::Matchers::ContainsSubstring("Invalid calibration resolution"));
+        }
+        DYNAMIC_SECTION(category << " height") {
+            REQUIRE_THROWS_WITH(handler.setCameraIntrinsics(CameraBoardSocket::CAM_A, intrinsics, Size2f(1920.0f, dimension)),
+                                Catch::Matchers::ContainsSubstring("Invalid calibration resolution"));
+        }
+    }
+}
+
+TEST_CASE("Setting camera intrinsics uses the same validation contract", "[setCameraIntrinsics]") {
+    auto handler = loadValidHandler();
+    const std::vector<std::vector<float>> validIntrinsics = {{1000.0f, 2.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}};
+
+    handler.setCameraIntrinsics(CameraBoardSocket::CAM_A, validIntrinsics, 1920, 1080);
+    REQUIRE(std::get<0>(handler.getDefaultIntrinsics(CameraBoardSocket::CAM_A)) == validIntrinsics);
+
+    REQUIRE_THROWS_WITH(handler.setCameraIntrinsics(CameraBoardSocket::CAM_A, {{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f}, {0.0f, 0.0f, 1.0f}}, 1920, 1080),
+                        Catch::Matchers::ContainsSubstring("Invalid Intrinsic Matrix")
+                            && Catch::Matchers::ContainsSubstring("[[1000.0,0.0,960.0],[0.0,1000.0],[0.0,0.0,1.0]]"));
+    REQUIRE_THROWS_WITH(
+        handler.setCameraIntrinsics(CameraBoardSocket::CAM_A, {{-1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}}, 1920, 1080),
+        Catch::Matchers::ContainsSubstring("Invalid Intrinsic Matrix"));
 }
 
 TEST_CASE("Invalid camera ID throws", "[getCameraIntrinsics]") {

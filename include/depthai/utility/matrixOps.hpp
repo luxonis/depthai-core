@@ -47,6 +47,7 @@ std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& 
 std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
 std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::array<float, 3>, 3>& R);
 std::array<std::array<float, 3>, 3> vectorMatrixToMatrix3x3(const std::vector<std::vector<float>>& R);
+bool isValidIntrinsicsMatrix(const std::vector<std::vector<float>>& intrinsics);
 void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix);
 std::vector<std::vector<float>> extractRotationMatrix(const std::vector<std::vector<float>>& transform);
 std::vector<float> extractTranslationVector(const std::vector<std::vector<float>>& transform);

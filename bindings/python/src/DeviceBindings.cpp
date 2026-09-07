@@ -395,16 +395,34 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         // static
         .def_static(
             "getAnyAvailableDevice",
-            [](std::chrono::milliseconds ms) { return DeviceBase::getAnyAvailableDevice(ms); },
+            [](std::chrono::milliseconds ms) {
+                py::gil_scoped_release release;
+                return DeviceBase::getAnyAvailableDevice(ms);
+            },
             py::arg("timeout"),
             DOC(dai, DeviceBase, getAnyAvailableDevice))
         .def_static(
-            "getAnyAvailableDevice", []() { return DeviceBase::getAnyAvailableDevice(); }, DOC(dai, DeviceBase, getAnyAvailableDevice, 2))
-        .def_static("getFirstAvailableDevice",
-                    &DeviceBase::getFirstAvailableDevice,
-                    py::arg("skipInvalidDevices") = true,
-                    DOC(dai, DeviceBase, getFirstAvailableDevice))
-        .def_static("getAllAvailableDevices", &DeviceBase::getAllAvailableDevices, DOC(dai, DeviceBase, getAllAvailableDevices))
+            "getAnyAvailableDevice",
+            []() {
+                py::gil_scoped_release release;
+                return DeviceBase::getAnyAvailableDevice();
+            },
+            DOC(dai, DeviceBase, getAnyAvailableDevice, 2))
+        .def_static(
+            "getFirstAvailableDevice",
+            [](bool skipInvalidDevices) {
+                py::gil_scoped_release release;
+                return DeviceBase::getFirstAvailableDevice(skipInvalidDevices);
+            },
+            py::arg("skipInvalidDevices") = true,
+            DOC(dai, DeviceBase, getFirstAvailableDevice))
+        .def_static(
+            "getAllAvailableDevices",
+            []() {
+                py::gil_scoped_release release;
+                return DeviceBase::getAllAvailableDevices();
+            },
+            DOC(dai, DeviceBase, getAllAvailableDevices))
         .def_static("getEmbeddedDeviceBinary",
                     py::overload_cast<bool, OpenVINO::Version>(&DeviceBase::getEmbeddedDeviceBinary),
                     py::arg("usb2Mode"),
@@ -414,10 +432,37 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                     py::overload_cast<const DeviceBase::Config&>(&DeviceBase::getEmbeddedDeviceBinary),
                     py::arg("config"),
                     DOC(dai, DeviceBase, getEmbeddedDeviceBinary, 2))
-        .def_static("getDeviceById", &DeviceBase::getDeviceById, py::arg("deviceId"), DOC(dai, DeviceBase, getDeviceById))
-        .def_static("getDeviceByIdOrName", &DeviceBase::getDeviceByIdOrName, py::arg("deviceIdOrName"), DOC(dai, DeviceBase, getDeviceByIdOrName))
-        .def_static("isInSetupMode", &DeviceBase::isInSetupMode, py::arg("deviceIdOrName"), DOC(dai, DeviceBase, isInSetupMode))
-        .def_static("getAllConnectedDevices", &DeviceBase::getAllConnectedDevices, DOC(dai, DeviceBase, getAllConnectedDevices))
+        .def_static(
+            "getDeviceById",
+            [](const std::string& deviceId) {
+                py::gil_scoped_release release;
+                return DeviceBase::getDeviceById(deviceId);
+            },
+            py::arg("deviceId"),
+            DOC(dai, DeviceBase, getDeviceById))
+        .def_static(
+            "getDeviceByIdOrName",
+            [](const std::string& deviceIdOrName) {
+                py::gil_scoped_release release;
+                return DeviceBase::getDeviceByIdOrName(deviceIdOrName);
+            },
+            py::arg("deviceIdOrName"),
+            DOC(dai, DeviceBase, getDeviceByIdOrName))
+        .def_static(
+            "isInSetupMode",
+            [](const std::string& deviceIdOrName) {
+                py::gil_scoped_release release;
+                return DeviceBase::isInSetupMode(deviceIdOrName);
+            },
+            py::arg("deviceIdOrName"),
+            DOC(dai, DeviceBase, isInSetupMode))
+        .def_static(
+            "getAllConnectedDevices",
+            []() {
+                py::gil_scoped_release release;
+                return DeviceBase::getAllConnectedDevices();
+            },
+            DOC(dai, DeviceBase, getAllConnectedDevices))
         .def_static("getGlobalProfilingData", &DeviceBase::getGlobalProfilingData, DOC(dai, DeviceBase, getGlobalProfilingData))
         .def_static(
             "performHealthCheck",
@@ -1097,6 +1142,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             py::arg("enable"),
             DOC(dai, DeviceBase, setExternalStrobeEnable))
+        .def(
+            "setExternalStrobeEnable",
+            [](DeviceBase& d, dai::CameraBoardSocket exposureMasterSocket) {
+                py::gil_scoped_release release;
+                d.setExternalStrobeEnable(exposureMasterSocket);
+            },
+            py::arg("exposureMasterSocket"),
+            DOC(dai, DeviceBase, setExternalStrobeEnable, 2))
         .def(
             "getDeviceName",
             [](DeviceBase& d) {

@@ -286,6 +286,8 @@ void Sync::run() {
                     for(const auto& frame : inputFrames) {
                         logger->warn("Output {} timestamp is {} ms", frame.first, getTimestampMs(timestampSource, *frame.second));
                     }
+                    logger->warn("Current timestamp {} ms",
+                                 static_cast<double>(duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count()) / 1e6);
                 }
 
                 if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {

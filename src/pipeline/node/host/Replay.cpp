@@ -2,7 +2,12 @@
 
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#include "depthai/pipeline/datatype/ImgAnnotations.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
+#include "depthai/pipeline/datatype/RGBDData.hpp"
+#include "depthai/pipeline/datatype/SegmentationMask.hpp"
+#include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #define _USE_MATH_DEFINES
 #include <chrono>
 #include <cmath>
@@ -13,6 +18,7 @@
 
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/RecordReplayImpl.hpp"
@@ -22,8 +28,14 @@
 
     #include "depthai/schemas/EncodedFrame.pb.h"
     #include "depthai/schemas/IMUData.pb.h"
+    #include "depthai/schemas/ImageAnnotations.pb.h"
+    #include "depthai/schemas/ImgDetections.pb.h"
     #include "depthai/schemas/ImgFrame.pb.h"
+    #include "depthai/schemas/NNData.pb.h"
     #include "depthai/schemas/PointCloudData.pb.h"
+    #include "depthai/schemas/RGBDData.pb.h"
+    #include "depthai/schemas/SegmentationMask.pb.h"
+    #include "depthai/schemas/SpatialImgDetections.pb.h"
     #include "utility/ProtoSerialize.hpp"
 #endif
 
@@ -54,6 +66,11 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
             utility::setProtoMessage(*encFrame, metadata.get(), false);
             return encFrame;
         }
+        case DatatypeEnum::NNData: {
+            auto nnData = std::make_shared<NNData>();
+            utility::setProtoMessage(*nnData, metadata.get(), false);
+            return nnData;
+        }
         case DatatypeEnum::IMUData: {
             auto imuData = std::make_shared<IMUData>();
             utility::setProtoMessage(*imuData, metadata.get(), false);
@@ -64,14 +81,36 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
             utility::setProtoMessage(*pclData, metadata.get(), false);
             return pclData;
         }
+        case DatatypeEnum::ImgAnnotations: {
+            auto annotations = std::make_shared<ImgAnnotations>();
+            utility::setProtoMessage(*annotations, metadata.get(), false);
+            return annotations;
+        }
+        case DatatypeEnum::ImgDetections: {
+            auto detections = std::make_shared<ImgDetections>();
+            utility::setProtoMessage(*detections, metadata.get(), false);
+            return detections;
+        }
+        case DatatypeEnum::SpatialImgDetections: {
+            auto detections = std::make_shared<SpatialImgDetections>();
+            utility::setProtoMessage(*detections, metadata.get(), false);
+            return detections;
+        }
+        case DatatypeEnum::SegmentationMask: {
+            auto mask = std::make_shared<SegmentationMask>();
+            utility::setProtoMessage(*mask, metadata.get(), false);
+            return mask;
+        }
+        case DatatypeEnum::RGBDData: {
+            auto rgbdData = std::make_shared<RGBDData>();
+            utility::setProtoMessage(*rgbdData, metadata.get(), false);
+            return rgbdData;
+        }
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
-        case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
-        case DatatypeEnum::ImgDetections:
-        case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
@@ -94,10 +133,9 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
-        case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::AlignConfig:
         case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
-        case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
@@ -110,7 +148,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
-        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
         case DatatypeEnum::ImgDetectionsFilterConfig:
@@ -162,6 +199,13 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
+        case DatatypeEnum::NNData: {
+            auto msg = bytePlayer.next<proto::nn_data::NNData>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::nn_data::NNData>(msg.value());
+            }
+            break;
+        }
         case DatatypeEnum::PointCloudData: {
             auto msg = bytePlayer.next<proto::point_cloud_data::PointCloudData>();
             if(msg.has_value()) {
@@ -169,14 +213,46 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
+        case DatatypeEnum::ImgAnnotations: {
+            auto msg = bytePlayer.next<proto::image_annotations::ImageAnnotations>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::image_annotations::ImageAnnotations>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::ImgDetections: {
+            auto msg = bytePlayer.next<proto::img_detections::ImgDetections>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::img_detections::ImgDetections>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::SpatialImgDetections: {
+            auto msg = bytePlayer.next<proto::spatial_img_detections::SpatialImgDetections>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::spatial_img_detections::SpatialImgDetections>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::SegmentationMask: {
+            auto msg = bytePlayer.next<proto::segmentation_mask::SegmentationMask>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::segmentation_mask::SegmentationMask>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::RGBDData: {
+            auto msg = bytePlayer.next<proto::rgbd_data::RGBDData>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::rgbd_data::RGBDData>(msg.value());
+            }
+            break;
+        }
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
-        case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
-        case DatatypeEnum::ImgDetections:
-        case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
@@ -199,10 +275,9 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
-        case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::AlignConfig:
         case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
-        case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
@@ -215,7 +290,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
-        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
         case DatatypeEnum::ImgDetectionsFilterConfig:
@@ -249,6 +323,35 @@ inline std::chrono::milliseconds getReplayFallbackInterval(const std::optional<f
         return std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value()));
     }
     return std::chrono::milliseconds(33);
+}
+
+inline void offsetRGBDChildFrameMetadata(const std::shared_ptr<Buffer>& buffer,
+                                         int64_t sequenceNumOffset,
+                                         std::chrono::steady_clock::duration timestampOffset,
+                                         std::chrono::steady_clock::duration deviceTimestampOffset) {
+    auto rgbdData = std::dynamic_pointer_cast<RGBDData>(buffer);
+    if(rgbdData == nullptr) {
+        return;
+    }
+
+    const auto offsetFrameMetadata = [&](const std::optional<RGBDData::FrameVariant>& frame) {
+        if(!frame.has_value()) {
+            return;
+        }
+
+        std::visit(
+            [&](const auto& typedFrame) {
+                if(typedFrame != nullptr) {
+                    typedFrame->setSequenceNum(typedFrame->getSequenceNum() + sequenceNumOffset);
+                    typedFrame->setTimestamp(typedFrame->getTimestamp() + timestampOffset);
+                    typedFrame->setTimestampDevice(typedFrame->getTimestampDevice() + deviceTimestampOffset);
+                }
+            },
+            frame.value());
+    };
+
+    offsetFrameMetadata(rgbdData->getRGBFrame());
+    offsetFrameMetadata(rgbdData->getDepthFrame());
 }
 
 inline std::chrono::milliseconds ensureReplayInterval(std::chrono::milliseconds interval, const std::optional<float>& fps) {
@@ -498,6 +601,10 @@ void ReplayMetadataOnly::run() {
             loopState.tsOffset = loopState.firstTs;
         }
 
+        const auto originalSequenceNum = buffer->getSequenceNum();
+        const auto originalTimestamp = buffer->getTimestamp();
+        const auto originalTimestampDevice = buffer->getTimestampDevice();
+
         // Update sequence num and timestamps for looping
         buffer->setSequenceNum(buffer->getSequenceNum() - loopState.firstSeqNum + loopState.seqNumOffset);
         loopState.lastSeqNum = buffer->getSequenceNum();
@@ -508,6 +615,10 @@ void ReplayMetadataOnly::run() {
             loopState.lastInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestamp() - loopState.lastTs);
         }
         loopState.lastTs = buffer->getTimestamp();
+        offsetRGBDChildFrameMetadata(buffer,
+                                     buffer->getSequenceNum() - originalSequenceNum,
+                                     buffer->getTimestamp() - originalTimestamp,
+                                     buffer->getTimestampDevice() - originalTimestampDevice);
 
         if(!(fps.has_value() && fps.value() > 0.1f)) {
             auto sleepInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestampDevice() - prevMsgTs);

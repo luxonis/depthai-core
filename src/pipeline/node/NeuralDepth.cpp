@@ -48,6 +48,7 @@ std::pair<int, int> NeuralDepth::getInputSize(DeviceModelZoo model) {
             return {288, 180};
         case DeviceModelZoo::NEURAL_DEPTH_192X120:
             return {192, 120};
+        case DeviceModelZoo::TOF_NEURAL_FUSION_672X804:
         default:
             throw std::runtime_error("Unknown DeviceModelZoo model");
     }

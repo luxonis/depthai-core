@@ -125,7 +125,7 @@ with dai.Pipeline(device) as pipeline:
                     continue
 
                 image = cv2.circle(image, (int(x * image.shape[1]), int(y * image.shape[0])), 10, (255, 0, 0), -1)
-                cv2.circle(colorizedDepth, (int(x * depthImg.shape[1]), int(y * depthImg.shape[0])), 10, (0, 0, 255), -1)
+                cv2.circle(colorizedDepth, (int(x * colorizedDepth.shape[1]), int(y * colorizedDepth.shape[0])), 10, (0, 0, 255), -1)
                 cv2.putText(image,f"Z: {int(kp.spatialCoordinates.z / 10)} cm", (int(x * image.shape[1]), int(y * image.shape[0]) - 15), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255), 2)
                 spatialPointsCm.append([-kp.spatialCoordinates.x / 1000.0,
                                         -kp.spatialCoordinates.y / 1000.0,

@@ -6,12 +6,102 @@
 #include "utility/spdlog-fmt.hpp"
 
 // std
+#include <algorithm>
+#include <array>
 #include <fstream>
+#include <limits>
 
 namespace dai {
 
+namespace {
+
+constexpr std::size_t MAX_ASSET_STORAGE_SIZE = std::numeric_limits<std::uint32_t>::max();
+
+std::size_t getSerializedEndOffset(std::size_t offset, std::uint32_t alignment, std::size_t assetSize) {
+    if(alignment == 0) {
+        throw std::runtime_error("Asset alignment cannot be zero");
+    }
+
+    if(offset > MAX_ASSET_STORAGE_SIZE || assetSize > MAX_ASSET_STORAGE_SIZE) {
+        throw std::runtime_error("Asset storage cannot exceed 4 GiB");
+    }
+
+    std::size_t padding = 0;
+    if(alignment > 1 && offset % alignment != 0) {
+        padding = alignment - (offset % alignment);
+    }
+
+    if(padding > MAX_ASSET_STORAGE_SIZE - offset || assetSize > MAX_ASSET_STORAGE_SIZE - offset - padding) {
+        throw std::runtime_error("Asset storage cannot exceed 4 GiB");
+    }
+    return offset + padding + assetSize;
+}
+
+}  // namespace
+
 std::string Asset::getRelativeUri() {
     return fmt::format("{}:{}", "asset", key);
+}
+
+std::vector<std::uint8_t>& Asset::getData() {
+    loadData();
+    return path.empty() ? data : lazyData;
+}
+
+const std::vector<std::uint8_t>& Asset::getData() const {
+    loadData();
+    return path.empty() ? data : lazyData;
+}
+
+void Asset::setData(std::vector<std::uint8_t> data) {
+    std::lock_guard<std::mutex> lock(*dataMutex);
+    this->data = std::move(data);
+    path.clear();
+    size = 0;
+    lazyData.clear();
+    dataLoaded = true;
+}
+
+void Asset::loadData() const {
+    std::lock_guard<std::mutex> lock(*dataMutex);
+    if(!dataLoaded && !path.empty()) {
+        std::ifstream stream(path, std::ios::in | std::ios::binary);
+        if(!stream.is_open()) {
+            throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
+        }
+
+        auto loadedData = std::vector<std::uint8_t>(size);
+        std::size_t loadedSize = 0;
+        while(loadedSize < size) {
+            const auto bytesToRead = std::min<std::size_t>(size - loadedSize, 1024 * 1024);
+            stream.read(reinterpret_cast<char*>(loadedData.data() + loadedSize), bytesToRead);
+            const auto bytesRead = stream.gcount();
+            if(bytesRead != static_cast<std::streamsize>(bytesToRead)) {
+                throw std::runtime_error(fmt::format("Cannot load asset, file at path {} has changed size.", path));
+            }
+            loadedSize += static_cast<std::size_t>(bytesRead);
+        }
+        if(stream.peek() != std::char_traits<char>::eof()) {
+            throw std::runtime_error(fmt::format("Cannot load asset, file at path {} has changed size.", path));
+        }
+
+        lazyData = std::move(loadedData);
+        dataLoaded = true;
+    }
+}
+
+std::size_t Asset::getSize() const {
+    std::lock_guard<std::mutex> lock(*dataMutex);
+    return path.empty() ? data.size() : (dataLoaded ? lazyData.size() : size);
+}
+
+void Asset::setFile(std::filesystem::path path, std::size_t size) {
+    std::lock_guard<std::mutex> lock(*dataMutex);
+    this->path = std::move(path);
+    this->size = size;
+    data.clear();
+    lazyData.clear();
+    dataLoaded = false;
 }
 
 AssetManager::AssetManager() {}
@@ -55,24 +145,45 @@ std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asset) {
     // Rename the asset with supplied key and store
     Asset a(key);
+    std::lock_guard<std::mutex> lock(*asset.dataMutex);
     a.data = std::move(asset.data);
+    a.path = std::move(asset.path);
+    a.size = a.path.empty() ? 0 : asset.size;
+    a.lazyData = std::move(asset.lazyData);
+    a.dataLoaded = asset.dataLoaded;
     a.alignment = asset.alignment;
     return set(std::move(a));
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::filesystem::path& path, int alignment) {
+    const auto absolutePath = std::filesystem::absolute(path);
+
+    std::ifstream stream(absolutePath, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) {
+        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", absolutePath));
+    }
+
+    Asset binaryAsset(key);
+    binaryAsset.alignment = alignment;
+    binaryAsset.setData(std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {}));
+    return set(std::move(binaryAsset));
+}
+
+std::shared_ptr<dai::Asset> AssetManager::setLazy(const std::string& key, const std::filesystem::path& path, int alignment) {
+    const auto absolutePath = std::filesystem::absolute(path);
+
     // Load binary file at path
-    std::ifstream stream(path, std::ios::in | std::ios::binary);
+    std::ifstream stream(absolutePath, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
         // Throw an error
         // TODO(themarpe) - Unify exceptions into meaningful groups
-        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
+        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", absolutePath));
     }
 
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    binaryAsset.setFile(absolutePath, static_cast<std::size_t>(std::filesystem::file_size(absolutePath)));
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -81,7 +192,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.data = std::move(data);
+    binaryAsset.setData(data);
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -90,7 +201,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vecto
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
-    binaryAsset.data = std::move(data);
+    binaryAsset.setData(std::move(data));
     // Store asset
     return set(std::move(binaryAsset));
 }
@@ -151,27 +262,79 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         prefix = rootPath;
     }
 
-    for(auto& kv : assetMap) {
-        auto& a = *kv.second;
+    const auto storageStart = storage.size();
+    const auto mutableAssetsStart = mutableAssets;
+    try {
+        storage.reserve(getSerializedSize(storageStart));
+        for(auto& kv : assetMap) {
+            auto& a = *kv.second;
+            std::lock_guard<std::mutex> lock(*a.dataMutex);
 
-        // calculate additional bytes needed to offset to alignment
-        int toAdd = 0;
-        if(a.alignment > 1 && storage.size() % a.alignment != 0) {
-            toAdd = a.alignment - (storage.size() % a.alignment);
+            const auto assetSize = a.path.empty() ? a.data.size() : (a.dataLoaded ? a.lazyData.size() : a.size);
+            const auto assetStorageStart = storage.size();
+
+            // Calculate additional bytes needed to offset to alignment.
+            std::size_t toAdd = 0;
+            if(a.alignment > 1 && storage.size() % a.alignment != 0) {
+                toAdd = a.alignment - (storage.size() % a.alignment);
+            }
+
+            getSerializedEndOffset(storage.size(), a.alignment, assetSize);
+
+            // calculate offset
+            std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;
+
+            // Add alignment bytes
+            storage.resize(storage.size() + toAdd);
+
+            if(!a.path.empty() && !a.dataLoaded) {
+                try {
+                    std::ifstream stream(a.path, std::ios::in | std::ios::binary);
+                    if(!stream.is_open()) {
+                        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", a.path));
+                    }
+                    std::vector<std::uint8_t> buffer(1024 * 1024);
+                    std::size_t streamedSize = 0;
+                    while(streamedSize < assetSize) {
+                        const auto bytesToRead = std::min(buffer.size(), assetSize - streamedSize);
+                        stream.read(reinterpret_cast<char*>(buffer.data()), bytesToRead);
+                        auto bytesRead = stream.gcount();
+                        if(bytesRead != static_cast<std::streamsize>(bytesToRead)) {
+                            throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
+                        }
+                        storage.insert(storage.end(), buffer.data(), buffer.data() + bytesRead);
+                        streamedSize += static_cast<std::size_t>(bytesRead);
+                    }
+                    if(stream.peek() != std::char_traits<char>::eof()) {
+                        throw std::runtime_error(fmt::format("Asset at path {} changed while serializing.", a.path));
+                    }
+                } catch(...) {
+                    storage.resize(assetStorageStart);
+                    throw;
+                }
+            } else {
+                const auto& assetData = a.path.empty() ? a.data : a.lazyData;
+                storage.insert(storage.end(), assetData.begin(), assetData.end());
+            }
+
+            // Add to map the currently added asset
+            mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(assetSize), a.alignment);
         }
-
-        // calculate offset
-        std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;
-
-        // Add alignment bytes
-        storage.resize(storage.size() + toAdd);
-
-        // copy data
-        storage.insert(storage.end(), a.data.begin(), a.data.end());
-
-        // Add to map the currently added asset
-        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
+    } catch(...) {
+        storage.resize(storageStart);
+        mutableAssets = mutableAssetsStart;
+        throw;
     }
+}
+
+std::size_t AssetManager::getSerializedSize(std::size_t offset) const {
+    for(const auto& kv : assetMap) {
+        const auto& a = *kv.second;
+        std::lock_guard<std::mutex> lock(*a.dataMutex);
+        const auto assetSize = a.path.empty() ? a.data.size() : (a.dataLoaded ? a.lazyData.size() : a.size);
+        offset = getSerializedEndOffset(offset, a.alignment, assetSize);
+    }
+    return offset;
 }
 
 void AssetsMutable::set(const std::string& key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment) {
