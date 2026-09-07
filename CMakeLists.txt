@@ -79,7 +79,6 @@ else()
 endif()
 
 # Create depthai project
-<<<<<<< HEAD
 set(DEPTHAI_PROJECT_NAME "depthai_v3") # Should be depthai for ROS kilted or newer
 
 project(${DEPTHAI_PROJECT_NAME} VERSION "3.10.0" LANGUAGES CXX C)
