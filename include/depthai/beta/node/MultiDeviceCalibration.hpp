@@ -70,7 +70,7 @@ class MultiDeviceCalibration : public NodeCRTP<dai::node::ThreadedHostNode, Mult
     /** Supply an optional local-origin-to-local-origin initial pose estimate. */
     void setInitialGuess(std::string fromDeviceId, CameraBoardSocket fromSocket, std::string toDeviceId, CameraBoardSocket toSocket, const Extrinsics& guess);
 
-    /** Register an explicit factory-calibrated stereo pair for scale recovery. */
+    /** Restrict metric scale recovery to an explicit factory-calibrated stereo pair. */
     void setStereoPair(std::string deviceId, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket);
 
     /** Override live calibration for recorded/offline streams and tests. */

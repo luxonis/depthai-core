@@ -37,9 +37,11 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     control_queue.send(dai.MultiDeviceCalibrationControl.start())
     result = result_queue.get(timedelta(minutes=3))
 
-    if result is None or not result.passed or not result.complete or result.handler is None:
+    if result is None or not result.passed or result.handler is None:
         raise RuntimeError(result.info if result is not None else "Calibration timed out")
     if not result.handler.toJsonFile(output_path):
         raise RuntimeError(f"Failed to save calibration to {output_path}")
 
     print(f"Calibration saved to {output_path}")
+    print(f"Confidence: {result.dataConfidence:.3f}")
+    print(f"Sampson error: {result.sampsonError:.6g}")
