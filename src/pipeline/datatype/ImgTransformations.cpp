@@ -7,6 +7,8 @@
 #include <cmath>
 #include <cstring>
 #include <depthai/utility/matrixOps.hpp>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -16,6 +18,49 @@
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
 namespace dai {
+
+namespace {
+
+bool isSupportedRebaseLengthUnit(LengthUnit unit) {
+    switch(unit) {
+        case LengthUnit::METER:
+        case LengthUnit::CENTIMETER:
+        case LengthUnit::MILLIMETER:
+        case LengthUnit::INCH:
+        case LengthUnit::FOOT:
+            return true;
+        case LengthUnit::CUSTOM:
+        default:
+            return false;
+    }
+}
+
+bool isConcreteRebaseSocket(CameraBoardSocket socket) {
+    return socket != CameraBoardSocket::AUTO && static_cast<int32_t>(socket) >= static_cast<int32_t>(CameraBoardSocket::CAM_A)
+           && static_cast<int32_t>(socket) <= static_cast<int32_t>(CameraBoardSocket::CBA);
+}
+
+void validateRebaseExtrinsics(const Extrinsics& extrinsics, const char* name) {
+    if(extrinsics.toDeviceId.empty()) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " device ID cannot be empty.");
+    }
+    if(!isConcreteRebaseSocket(extrinsics.toCameraSocket)) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " socket must be concrete.");
+    }
+    if(!isSupportedRebaseLengthUnit(extrinsics.lengthUnit)) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " length unit is not supported.");
+    }
+    try {
+        matrix::validateRotationMatrix3x3(extrinsics.rotationMatrix);
+    } catch(const std::runtime_error&) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " rotation matrix is invalid.");
+    }
+    if(!std::isfinite(extrinsics.translation.x) || !std::isfinite(extrinsics.translation.y) || !std::isfinite(extrinsics.translation.z)) {
+        throw std::invalid_argument(std::string("ImgTransformation ") + name + " translation must be finite.");
+    }
+}
+
+}  // namespace
 
 constexpr float ROUND_UP_EPS = 1e-3f;
 
@@ -342,6 +387,24 @@ ImgTransformation& ImgTransformation::setSize(size_t width, size_t height) {
 ImgTransformation& ImgTransformation::setSourceSize(size_t width, size_t height) {
     this->srcWidth = width;
     this->srcHeight = height;
+    return *this;
+}
+ImgTransformation& ImgTransformation::rebaseExtrinsics(const Extrinsics& localOriginToTarget) {
+    validateRebaseExtrinsics(extrinsics, "current extrinsics");
+    validateRebaseExtrinsics(localOriginToTarget, "rebase extrinsics");
+
+    const auto sourceToLocal = extrinsics.getTransformationMatrix(false, LengthUnit::METER);
+    const auto localToTarget = localOriginToTarget.getTransformationMatrix(false, LengthUnit::METER);
+    const auto sourceToTarget = matrix::matMul(localToTarget, sourceToLocal);
+
+    auto rebasedMatrix = sourceToTarget;
+    constexpr auto meterToCentimeter = getDistanceUnitScale(LengthUnit::CENTIMETER, LengthUnit::METER);
+    for(std::size_t axis = 0; axis < 3; ++axis) {
+        rebasedMatrix[axis][3] *= meterToCentimeter;
+    }
+    Extrinsics rebased(rebasedMatrix, localOriginToTarget.toCameraSocket, LengthUnit::CENTIMETER);
+    rebased.toDeviceId = localOriginToTarget.toDeviceId;
+    this->extrinsics = std::move(rebased);
     return *this;
 }
 ImgTransformation& ImgTransformation::setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix) {
