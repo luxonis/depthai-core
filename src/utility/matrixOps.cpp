@@ -151,6 +151,8 @@ bool isValidIntrinsicsMatrix(const std::vector<std::vector<float>>& intrinsics) 
 }
 
 void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix) {
+    constexpr float rotationTolerance = 1e-3f;
+
     if(rotationMatrix.size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
@@ -158,6 +160,34 @@ void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMa
         if(row.size() != 3) {
             throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
         }
+    }
+
+    for(const auto& row : rotationMatrix) {
+        for(const auto value : row) {
+            if(!std::isfinite(value)) {
+                throw std::runtime_error("Rotation Matrix values should be finite.");
+            }
+        }
+    }
+
+    for(size_t row = 0; row < 3; ++row) {
+        for(size_t column = 0; column < 3; ++column) {
+            float dot = 0.0f;
+            for(size_t index = 0; index < 3; ++index) {
+                dot += rotationMatrix[index][row] * rotationMatrix[index][column];
+            }
+            const float expected = row == column ? 1.0f : 0.0f;
+            if(std::abs(dot - expected) > rotationTolerance) {
+                throw std::runtime_error("Rotation Matrix must be orthonormal.");
+            }
+        }
+    }
+
+    const float determinant = rotationMatrix[0][0] * (rotationMatrix[1][1] * rotationMatrix[2][2] - rotationMatrix[1][2] * rotationMatrix[2][1])
+                              - rotationMatrix[0][1] * (rotationMatrix[1][0] * rotationMatrix[2][2] - rotationMatrix[1][2] * rotationMatrix[2][0])
+                              + rotationMatrix[0][2] * (rotationMatrix[1][0] * rotationMatrix[2][1] - rotationMatrix[1][1] * rotationMatrix[2][0]);
+    if(std::abs(determinant - 1.0f) > rotationTolerance) {
+        throw std::runtime_error("Rotation Matrix determinant should be 1.");
     }
 }
 
