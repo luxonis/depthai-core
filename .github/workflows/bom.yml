@@ -108,7 +108,7 @@ jobs:
           fi
 
           if [[ "${{ github.event.inputs.device }}" == 'stereo' ]]; then
-            MODELS="oak4_pro or oak4_d"
+            MODELS="oak4_pro or oak4_d or oak4_lite_usb or oak4_lite_poe"
           else
             MODELS="oak4_s"
             RGB="rgb"
