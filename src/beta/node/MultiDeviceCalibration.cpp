@@ -14,7 +14,10 @@
 #include <utility>
 #include <vector>
 
+#include "beta/node/MultiDeviceCalibrationUtils.hpp"
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/calib3d.hpp>
     #include <opencv2/core.hpp>
 #endif
 
@@ -233,6 +236,12 @@ void MultiDeviceCalibration::setInitialGuess(
     pimpl->requireIdle("initial guess");
     const Endpoint from{std::move(fromDeviceId), fromSocket};
     const Endpoint to{std::move(toDeviceId), toSocket};
+    const auto reverse = std::find_if(
+        pimpl->initialGuesses.begin(), pimpl->initialGuesses.end(), [&](const InitialGuess& initial) { return initial.from == to && initial.to == from; });
+    DAI_CHECK_V(reverse == pimpl->initialGuesses.end(),
+                "MultiDeviceCalibration initial guess between {} and {} is already registered in the opposite direction",
+                from.deviceId,
+                to.deviceId);
     const auto existing = std::find_if(
         pimpl->initialGuesses.begin(), pimpl->initialGuesses.end(), [&](const InitialGuess& initial) { return initial.from == from && initial.to == to; });
     if(existing != pimpl->initialGuesses.end()) {
@@ -269,11 +278,7 @@ void MultiDeviceCalibration::setDeviceCalibration(std::string deviceId, const Ca
 
 namespace {
 
-using Transform = std::vector<std::vector<float>>;
-
-Transform identityTransform() {
-    return {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
-}
+using detail::MultiDeviceTransform;
 
 }  // namespace
 
@@ -437,15 +442,11 @@ bool MultiDeviceCalibration::loadCompleteGroup(const std::shared_ptr<MessageGrou
 
 namespace {
 
-void sendFailure(MultiDeviceCalibration& node, const std::string& info, const std::string& reason) {
+void sendFailure(MultiDeviceCalibration& node, const std::string& info) {
     auto result = std::make_shared<MultiDeviceCalibrationResult>();
     result->handler.reset();
     result->passed = false;
-    result->complete = false;
     result->info = info;
-    MultiDeviceCalibrationResult::EdgeDiagnostic diagnostic;
-    diagnostic.rejectionReason = reason;
-    result->diagnostics.push_back(std::move(diagnostic));
     node.calibrationOutput.send(std::move(result));
 }
 
@@ -455,141 +456,131 @@ void sendFailure(MultiDeviceCalibration& node, const std::string& info, const st
 
 namespace {
 
-Extrinsics makeLocalOriginEdge(const Transform& transform, const std::string& toDeviceId, CameraBoardSocket toSocket) {
+Extrinsics makeLocalOriginEdge(const MultiDeviceTransform& transform, const std::string& toDeviceId, CameraBoardSocket toSocket) {
     const auto translation = matrix::extractTranslationVector(transform);
     Extrinsics edge(matrix::extractRotationMatrix(transform), Point3f(translation[0], translation[1], translation[2]), toSocket, LengthUnit::METER);
     edge.toDeviceId = toDeviceId;
     return edge;
 }
 
+MultiDeviceTransform transformFromDclPose(const dcl::MultiDevicePose& pose) {
+    cv::Mat rotationVector(3, 1, CV_64F);
+    for(std::size_t axis = 0; axis < 3; ++axis) rotationVector.at<double>(static_cast<int>(axis)) = pose.rvec[axis];
+    cv::Mat rotation;
+    cv::Rodrigues(rotationVector, rotation);
+
+    MultiDeviceTransform transform = detail::identityTransform();
+    for(std::size_t row = 0; row < 3; ++row) {
+        for(std::size_t column = 0; column < 3; ++column)
+            transform[row][column] = static_cast<float>(rotation.at<double>(static_cast<int>(row), static_cast<int>(column)));
+        transform[row][3] = static_cast<float>(pose.tvecMeters[row]);
+    }
+    return transform;
+}
+
+dcl::MultiDevicePose makeDclPose(const std::shared_ptr<const dcl::Device>& device, const MultiDeviceTransform& transform) {
+    cv::Mat rotation(3, 3, CV_64F);
+    for(std::size_t row = 0; row < 3; ++row) {
+        for(std::size_t column = 0; column < 3; ++column) rotation.at<double>(static_cast<int>(row), static_cast<int>(column)) = transform[row][column];
+    }
+    cv::Mat rotationVector;
+    cv::Rodrigues(rotation, rotationVector);
+
+    dcl::MultiDevicePose pose;
+    pose.device = device;
+    for(std::size_t axis = 0; axis < 3; ++axis) {
+        pose.rvec[axis] = rotationVector.at<double>(static_cast<int>(axis));
+        pose.tvecMeters[axis] = transform[axis][3];
+    }
+    return pose;
+}
+
 }  // namespace
 
 void MultiDeviceCalibration::estimateAndEmit() {
     auto result = std::make_shared<MultiDeviceCalibrationResult>();
-    const auto toDclTransform = [](const auto& transform) {
-        dcl::RigidTransform converted;
-        for(std::size_t row = 0; row < 3; ++row) {
-            for(std::size_t column = 0; column < 3; ++column) converted.rotation[row * 3 + column] = transform[row][column];
-            converted.translationMeters[row] = transform[row][3];
-        }
-        return converted;
-    };
-    const auto findCamera = [&](const Endpoint& endpoint) -> const Impl::Camera* {
-        const auto found = std::find_if(pimpl->cameras.begin(), pimpl->cameras.end(), [&](const Impl::Camera& camera) {
-            return camera.deviceId == endpoint.deviceId && camera.socket == endpoint.socket;
-        });
-        return found == pimpl->cameras.end() ? nullptr : &*found;
-    };
+    if(pimpl->dclDevices.empty()) {
+        result->info = "no DCL devices were registered";
+        calibrationOutput.send(std::move(result));
+        return;
+    }
+    const auto& [referenceDeviceId, referenceDevice] = *pimpl->dclDevices.begin();
 
     dcl::MultiDeviceCalibrationRequest request;
+    request.referenceDevice = referenceDevice;
+    request.sensors.reserve(pimpl->cameras.size());
+    std::map<Endpoint, std::size_t> sensorIndices;
     std::map<std::string, CameraBoardSocket> deviceOrigins;
-    for(const auto& [deviceId, dclDevice] : pimpl->dclDevices) {
-        dcl::MultiDeviceInput deviceInput;
-        deviceInput.key = deviceId;
-        deviceInput.device = dclDevice;
-        for(const auto& camera : pimpl->cameras) {
-            if(camera.deviceId != deviceId) continue;
-            deviceOrigins.emplace(deviceId, camera.localOrigin);
-            const auto originToSensor = pimpl->calibrations.at(deviceId).getCameraExtrinsics(camera.localOrigin, camera.socket, false, LengthUnit::METER);
-            deviceInput.sensors.push_back(dcl::MultiDeviceSensorInput{
-                .key = toString(camera.socket),
-                .sensor = camera.sensor,
-                .originToSensor = toDclTransform(originToSensor),
-            });
-        }
-        request.devices.push_back(std::move(deviceInput));
+    for(const auto& camera : pimpl->cameras) {
+        sensorIndices.emplace(Endpoint{camera.deviceId, camera.socket}, request.sensors.size());
+        request.sensors.push_back(camera.sensor);
+        deviceOrigins.emplace(camera.deviceId, camera.localOrigin);
     }
+
+    request.knownDistances.reserve(pimpl->knownDistances.size());
     for(const auto& known : pimpl->knownDistances) {
-        const auto* from = findCamera(known.from);
-        const auto* to = findCamera(known.to);
-        if(from && to) request.knownDistances.push_back({from->sensor, to->sensor, known.meters});
+        const auto from = sensorIndices.find(known.from);
+        const auto to = sensorIndices.find(known.to);
+        if(from == sensorIndices.end() || to == sensorIndices.end()) {
+            result->info = "known-distance endpoints must both be registered cameras";
+            calibrationOutput.send(std::move(result));
+            return;
+        }
+        request.knownDistances.push_back(dcl::KnownDistanceConstraint{request.sensors[from->second], request.sensors[to->second], known.meters});
     }
-    for(const auto& initial : pimpl->initialGuesses) {
-        request.initialGuesses.push_back(dcl::DevicePoseInitialGuess{
-            .fromDeviceKey = initial.from.deviceId,
-            .toDeviceKey = initial.to.deviceId,
-            .fromOriginToToOrigin = toDclTransform(initial.guess.getTransformationMatrix(false, LengthUnit::METER)),
-        });
-    }
+
+    request.stereoPairAllowlist.reserve(pimpl->stereoPairs.size());
     for(const auto& stereo : pimpl->stereoPairs) {
-        const auto* left = findCamera({stereo.deviceId, stereo.leftSocket});
-        const auto* right = findCamera({stereo.deviceId, stereo.rightSocket});
-        if(left && right) request.stereoPairAllowlist.push_back({stereo.deviceId, left->sensor, right->sensor});
+        const auto left = sensorIndices.find({stereo.deviceId, stereo.leftSocket});
+        const auto right = sensorIndices.find({stereo.deviceId, stereo.rightSocket});
+        if(left == sensorIndices.end() || right == sensorIndices.end()) continue;
+        request.stereoPairAllowlist.emplace_back(request.sensors[left->second], request.sensors[right->second]);
+    }
+
+    std::vector<detail::PairwiseDeviceTransform> pairwiseInitialGuesses;
+    pairwiseInitialGuesses.reserve(pimpl->initialGuesses.size());
+    for(const auto& initial : pimpl->initialGuesses) {
+        const auto initialTransform = initial.guess.getTransformationMatrix(false, LengthUnit::METER);
+        MultiDeviceTransform fromToTo = detail::identityTransform();
+        for(std::size_t row = 0; row < 4; ++row) {
+            for(std::size_t column = 0; column < 4; ++column) fromToTo[row][column] = initialTransform[row][column];
+        }
+        pairwiseInitialGuesses.push_back(detail::PairwiseDeviceTransform{initial.from.deviceId, initial.to.deviceId, std::move(fromToTo)});
+    }
+    const auto referenceToDevice = detail::makeReferenceRelativeTransforms(referenceDeviceId, pairwiseInitialGuesses);
+    for(const auto& [deviceId, transform] : referenceToDevice) {
+        if(deviceId == referenceDeviceId) continue;
+        const auto device = pimpl->dclDevices.find(deviceId);
+        if(device != pimpl->dclDevices.end()) request.initialGuesses.push_back(makeDclPose(device->second, transform));
     }
 
     auto calibrated = pimpl->dcl->findMultiDeviceCalibration(request);
     if(!calibrated.passed()) {
         result->info = "DynamicCalibration failed: " + calibrated.errorMessage();
-        MultiDeviceCalibrationResult::EdgeDiagnostic diagnostic;
-        diagnostic.rejectionReason = result->info;
-        result->diagnostics.push_back(std::move(diagnostic));
         calibrationOutput.send(std::move(result));
         return;
     }
 
     std::vector<MultiDeviceExtrinsics> graph;
-    for(const auto& dclEdge : calibrated.value.forest) {
-        Transform transform = identityTransform();
-        for(std::size_t row = 0; row < 3; ++row) {
-            for(std::size_t column = 0; column < 3; ++column) transform[row][column] = dclEdge.fromOriginToToOrigin.rotation[row * 3 + column];
-            transform[row][3] = dclEdge.fromOriginToToOrigin.translationMeters[row];
-        }
+    for(const auto& dclPose : calibrated.value.poses) {
+        const auto device = std::find_if(pimpl->dclDevices.begin(), pimpl->dclDevices.end(), [&](const auto& entry) { return entry.second == dclPose.device; });
+        if(device == pimpl->dclDevices.end() || device->first == referenceDeviceId) continue;
+
         MultiDeviceExtrinsics edge;
-        edge.fromDeviceId = dclEdge.fromDeviceKey;
-        edge.fromSocket = deviceOrigins.at(dclEdge.fromDeviceKey);
-        edge.extrinsics = makeLocalOriginEdge(transform, dclEdge.toDeviceKey, deviceOrigins.at(dclEdge.toDeviceKey));
+        edge.fromDeviceId = device->first;
+        edge.fromSocket = deviceOrigins.at(device->first);
+        edge.extrinsics =
+            makeLocalOriginEdge(detail::inverseRigidTransform(transformFromDclPose(dclPose)), referenceDeviceId, deviceOrigins.at(referenceDeviceId));
         graph.push_back(std::move(edge));
     }
-    std::map<std::string, std::string> metricSourceByDevice;
-    std::map<std::string, float> metricResidualByDevice;
-    for(const auto& component : calibrated.value.components) {
-        if(!component.metric) continue;
-        const std::set<std::string> componentDevices(component.deviceKeys.begin(), component.deviceKeys.end());
-        const bool usesKnownDistance = std::any_of(pimpl->knownDistances.begin(), pimpl->knownDistances.end(), [&](const KnownDistance& known) {
-            return componentDevices.count(known.from.deviceId) != 0 && componentDevices.count(known.to.deviceId) != 0;
-        });
-        for(const auto& deviceKey : component.deviceKeys) {
-            metricSourceByDevice[deviceKey] = usesKnownDistance ? "known camera-center distance" : "fixed rig geometry";
-            metricResidualByDevice[deviceKey] = static_cast<float>(component.metricResidualMeters);
-        }
-    }
-    for(const auto& diagnostic : calibrated.value.diagnostics) {
-        if(diagnostic.fromDeviceKey.empty() || diagnostic.toDeviceKey.empty()) {
-            if(!diagnostic.message.empty()) {
-                if(!result->info.empty()) result->info += "; ";
-                result->info += diagnostic.message;
-            }
-            continue;
-        }
-        MultiDeviceCalibrationResult::EdgeDiagnostic converted;
-        converted.fromDeviceId = diagnostic.fromDeviceKey;
-        converted.toDeviceId = diagnostic.toDeviceKey;
-        if(deviceOrigins.count(converted.fromDeviceId)) converted.fromSocket = deviceOrigins.at(converted.fromDeviceId);
-        if(deviceOrigins.count(converted.toDeviceId)) converted.toSocket = deviceOrigins.at(converted.toDeviceId);
-        converted.accepted = diagnostic.status == dcl::MultiDeviceDiagnosticStatus::USED_IN_FOREST;
-        converted.dclConfidence = diagnostic.dataConfidence;
-        converted.reprojectionError = diagnostic.sampsonError;
-        converted.sampsonError = diagnostic.sampsonError;
-        const auto metricSource = metricSourceByDevice.find(converted.fromDeviceId);
-        const auto metricResidual = metricResidualByDevice.find(converted.fromDeviceId);
-        if(metricSource != metricSourceByDevice.end()) converted.scaleSource = metricSource->second;
-        if(diagnostic.stage == dcl::MultiDeviceDiagnosticStage::OPTIMIZATION) {
-            converted.scaleResidual = static_cast<float>(diagnostic.metricResidualMeters);
-        } else if(metricResidual != metricResidualByDevice.end()) {
-            converted.scaleResidual = metricResidual->second;
-        }
-        converted.rejectionReason = diagnostic.message;
-        if(diagnostic.status == dcl::MultiDeviceDiagnosticStatus::OMITTED_FROM_FOREST)
-            converted.rejectionReason = "used in optimization, omitted from output forest";
-        result->diagnostics.push_back(std::move(converted));
-    }
-    for(const auto& component : calibrated.value.components) result->dataConfidence = std::max(result->dataConfidence, component.dataConfidence);
-    result->complete = calibrated.value.complete;
-    if(!graph.empty()) {
+
+    result->dataConfidence = calibrated.value.dataConfidence;
+    result->sampsonError = calibrated.value.sampsonError;
+    if(graph.size() + 1 == pimpl->dclDevices.size()) {
         result->handler.emplace(std::move(graph));
         result->passed = true;
     } else {
-        result->info = "no usable validated metric edge exists";
+        result->info = "DynamicCalibration returned an incomplete device pose set";
     }
     calibrationOutput.send(std::move(result));
 }
@@ -605,7 +596,7 @@ void MultiDeviceCalibration::run() {
             std::lock_guard<std::mutex> lock(pimpl->mutex);
             if(pimpl->state != Impl::State::IDLE) continue;
             pimpl->state = Impl::State::COMPLETE;
-            sendFailure(*this, "MultiDeviceCalibration requires OpenCV support", "opencv support unavailable");
+            sendFailure(*this, "MultiDeviceCalibration requires OpenCV support");
         } else if(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(control->command)) {
             std::lock_guard<std::mutex> lock(pimpl->mutex);
             pimpl->clearCycle();
@@ -626,7 +617,7 @@ void MultiDeviceCalibration::run() {
                 for(const auto& camera : pimpl->cameras) deviceIds.insert(camera.deviceId);
                 if(pimpl->cameras.size() < 2 || deviceIds.size() < 2) {
                     pimpl->state = Impl::State::COMPLETE;
-                    sendFailure(*this, "MultiDeviceCalibration needs at least two cameras on two devices", "insufficient registered cameras");
+                    sendFailure(*this, "MultiDeviceCalibration needs at least two cameras on two devices");
                 }
             } else if(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(control->command)) {
                 std::lock_guard<std::mutex> lock(pimpl->mutex);
@@ -641,7 +632,7 @@ void MultiDeviceCalibration::run() {
                 std::lock_guard<std::mutex> lock(pimpl->mutex);
                 if(pimpl->state == Impl::State::COLLECTING) {
                     pimpl->clearCycle();
-                    sendFailure(*this, "stopped", "stopped");
+                    sendFailure(*this, "stopped");
                     pimpl->state = Impl::State::IDLE;
                 }
             } else if(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(control->command)) {
@@ -676,7 +667,7 @@ void MultiDeviceCalibration::run() {
         try {
             if(!pimpl->dclInitialized && !initializeCycle(group, error)) {
                 pimpl->state = Impl::State::COMPLETE;
-                sendFailure(*this, error, error);
+                sendFailure(*this, error);
                 continue;
             }
             if(!loadCompleteGroup(group, error)) {
@@ -689,7 +680,7 @@ void MultiDeviceCalibration::run() {
             }
         } catch(const std::exception& ex) {
             pimpl->state = Impl::State::COMPLETE;
-            sendFailure(*this, std::string("MultiDeviceCalibration failed: ") + ex.what(), "calibration exception");
+            sendFailure(*this, std::string("MultiDeviceCalibration failed: ") + ex.what());
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
