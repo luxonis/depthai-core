@@ -777,6 +777,9 @@ if(DEPTHAI_BUILD_BETA)
     dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
     dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
 
+    dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
+    dai_set_test_labels(multi_device_calibration_result_test onhost ci)
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 
