@@ -19,6 +19,8 @@
 #include "datatype/ImgFrame.hpp"
 #include "datatype/MapData.hpp"
 #include "datatype/MessageGroup.hpp"
+#include "datatype/MultiDeviceCalibrationControl.hpp"
+#include "datatype/MultiDeviceCalibrationResult.hpp"
 #include "datatype/NNData.hpp"
 #include "datatype/NeuralDepthConfig.hpp"
 #include "datatype/ObjectTrackerConfig.hpp"

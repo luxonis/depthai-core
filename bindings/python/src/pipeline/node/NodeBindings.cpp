@@ -209,6 +209,9 @@ void bind_beta_lanedetectionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack);
+    #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+void bind_beta_multi_device_calibration(pybind11::module& m, void* pCallstack);
+    #endif
 void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_regressionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack);
@@ -292,6 +295,9 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_mapoutputparser);
     callstack.push_front(bind_beta_mlsdparser);
     callstack.push_front(bind_beta_mppalmdetectionparser);
+    #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    callstack.push_front(bind_beta_multi_device_calibration);
+    #endif
     callstack.push_front(bind_beta_pptextdetectionparser);
     callstack.push_front(bind_beta_regressionparser);
     callstack.push_front(bind_beta_rfdetrparser);

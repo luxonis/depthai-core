@@ -347,6 +347,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/Gate.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
+    src/pipeline/datatype/MultiDeviceCalibrationControl.cpp
+    src/pipeline/datatype/MultiDeviceCalibrationResult.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
     src/pipeline/node/Depth.cpp
@@ -533,6 +535,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/AutoCalibrationResult.cpp
         src/pipeline/datatype/AutoCalibrationConfig.cpp
     )
+    if(DEPTHAI_BUILD_BETA)
+        list(APPEND TARGET_CORE_SOURCES
+            src/beta/node/MultiDeviceCalibration.cpp
+        )
+    endif()
 endif()
 
 set(TARGET_OPENCV_SOURCES
