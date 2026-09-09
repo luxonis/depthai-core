@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -40,6 +41,9 @@ int main() {
     // Create output queues
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
     auto qDet = detectionNetwork->out.createOutputQueue();
+    // Start with the thresholds loaded from the model and update them while running.
+    auto configQueue = detectionNetwork->detectionParser->inputConfig.createInputQueue();
+    auto config = detectionNetwork->detectionParser->initialConfig;
 
     cv::Mat frame;
     auto startTime = std::chrono::steady_clock::now();
@@ -48,6 +52,7 @@ int main() {
     cv::Scalar textColor(255, 255, 255);
 
     pipeline.start();
+    std::cout << "Controls: w/s confidence +/- 0.05, e/d IoU +/- 0.05, q quit." << std::endl;
     auto lastPrintTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     while(pipeline.isRunning() && !quitEvent) {
         auto inRgb = qRgb->get<dai::ImgFrame>();
@@ -97,7 +102,19 @@ int main() {
             }
         }
 
-        if(cv::waitKey(1) == 'q') {
+        const int key = cv::waitKey(1);
+        if(key == 'w' || key == 's' || key == 'e' || key == 'd') {
+            if(key == 'w' || key == 's') {
+                const float delta = key == 'w' ? 0.05f : -0.05f;
+                config->setConfidenceThreshold(std::clamp(config->getConfidenceThreshold() + delta, 0.0f, 1.0f));
+            } else {
+                const float delta = key == 'e' ? 0.05f : -0.05f;
+                config->setIouThreshold(std::clamp(config->getIouThreshold() + delta, 0.0f, 1.0f));
+            }
+            configQueue->send(config);
+            std::cout << "Confidence: " << config->getConfidenceThreshold() << ", IoU: " << config->getIouThreshold() << std::endl;
+        }
+        if(key == 'q') {
             break;
         }
     }

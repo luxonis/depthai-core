@@ -24,6 +24,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack);
 void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack);
 void bind_gpustereoconfig(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
+void bind_detectionparserconfig(pybind11::module& m, void* pCallstack);
 void bind_segmentationparserconfig(pybind11::module& m, void* pCallstack);
 void bind_segmentationmask(pybind11::module& m, void* pCallstack);
 void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack);
@@ -100,6 +101,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuraldepthconfig);
     callstack.push_front(bind_gpustereoconfig);
     callstack.push_front(bind_spatialimgdetections);
+    callstack.push_front(bind_detectionparserconfig);
     callstack.push_front(bind_segmentationparserconfig);
     callstack.push_front(bind_segmentationmask);
     callstack.push_front(bind_spatiallocationcalculatorconfig);
@@ -181,6 +183,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("CameraControl", DatatypeEnum::CameraControl)
         .value("ImgDetections", DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)
+        .value("DetectionParserConfig", DatatypeEnum::DetectionParserConfig)
         .value("SegmentationParserConfig", DatatypeEnum::SegmentationParserConfig)
         .value("SegmentationMask", DatatypeEnum::SegmentationMask)
         .value("SystemInformation", DatatypeEnum::SystemInformation)

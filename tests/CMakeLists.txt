@@ -800,6 +800,15 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
 endif()
 
+# Synthetic DetectionParser runtime tests do not require model downloads.
+if(DEPTHAI_XTENSOR_SUPPORT)
+    dai_add_test(detection_parser_runtime_test src/onhost_tests/detection_parser_runtime_test.cpp)
+    dai_set_test_labels(detection_parser_runtime_test onhost ci)
+    dai_add_test(detection_parser_runtime_device_test src/onhost_tests/detection_parser_runtime_test.cpp)
+    target_compile_definitions(detection_parser_runtime_device_test PRIVATE DETECTION_PARSER_TEST_DEVICE)
+    dai_set_test_labels(detection_parser_runtime_device_test ondevice rvc2_all rvc4 ci)
+endif()
+
 # DetectionParser test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(detection_parser_test src/ondevice_tests/pipeline/node/detection_parser_test.cpp)

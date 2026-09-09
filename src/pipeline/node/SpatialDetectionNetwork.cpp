@@ -102,7 +102,7 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& 
 
 void SpatialDetectionNetwork::buildInternal() {
     // Default confidence threshold
-    detectionParser->properties.parser.confidenceThreshold = 0.5;
+    detectionParser->setConfidenceThreshold(0.5f);
 
     // Mirror SpatialDetectionNetwork properties onto the SpatialLocationCalculator initial config
     auto& initialConfig = *spatialLocationCalculator->initialConfig;
