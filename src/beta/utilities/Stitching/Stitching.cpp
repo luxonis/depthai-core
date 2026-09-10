@@ -53,6 +53,43 @@ bool isUndistorted(const ImgTransformation& transformation) {
     });
 }
 
+void alignCamerasToMeanYAxis(std::vector<cv::detail::CameraParams>& cameras) {
+    constexpr double AXIS_EPSILON = 1e-6;
+    DAI_CHECK_V(!cameras.empty(), "Calibrated panorama needs at least one camera to determine its mean Y axis");
+
+    cv::Vec3d meanYAxis(0.0, 0.0, 0.0);
+    for(const auto& camera : cameras) {
+        cv::Mat rotation;
+        camera.R.convertTo(rotation, CV_64F);
+        meanYAxis += cv::Vec3d(rotation.at<double>(0, 1), rotation.at<double>(1, 1), rotation.at<double>(2, 1));
+    }
+    meanYAxis /= static_cast<double>(cameras.size());
+
+    const double meanNorm = cv::norm(meanYAxis);
+    DAI_CHECK_V(meanNorm > AXIS_EPSILON, "Calibrated panorama camera Y axes have no well-defined mean direction");
+    meanYAxis /= meanNorm;
+
+    const cv::Vec3d panoramaYAxis(0.0, 1.0, 0.0);
+    const cv::Vec3d cross = meanYAxis.cross(panoramaYAxis);
+    const double sineSquared = cross.dot(cross);
+    const double cosine = meanYAxis.dot(panoramaYAxis);
+
+    cv::Mat alignment = cv::Mat::eye(3, 3, CV_64F);
+    if(sineSquared > AXIS_EPSILON * AXIS_EPSILON) {
+        const cv::Mat crossMatrix = (cv::Mat_<double>(3, 3) << 0.0, -cross[2], cross[1], cross[2], 0.0, -cross[0], -cross[1], cross[0], 0.0);
+        alignment += crossMatrix + crossMatrix * crossMatrix * ((1.0 - cosine) / sineSquared);
+    } else if(cosine < 0.0) {
+        alignment = (cv::Mat_<double>(3, 3) << 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0);
+    }
+
+    for(auto& camera : cameras) {
+        cv::Mat rotation;
+        camera.R.convertTo(rotation, CV_64F);
+        const cv::Mat aligned = alignment * rotation;
+        aligned.convertTo(camera.R, CV_32F);
+    }
+}
+
 /** Decorates OpenCV's matcher and scores a candidate by confidence weighted by geometrically consistent inliers. */
 class ScoringFeaturesMatcher : public cv::detail::FeaturesMatcher {
    public:
@@ -439,7 +476,10 @@ void Stitching::run() {
             cv::Mat pano;
             try {
                 if(!impl->fixedPanorama.isPrepared()) {
-                    const auto cameras = impl->camerasFromInputCalibration(transformations);
+                    auto cameras = impl->camerasFromInputCalibration(transformations);
+                    if(currentProperties.cameraModel == CameraModel::CYLINDRICAL) {
+                        alignCamerasToMeanYAxis(cameras);
+                    }
                     cv::Size panoramaSize;
                     if(!impl->panoramaFits(images, cameras, 1.0, panoramaSize, currentProperties)) {
                         if(logger) {
