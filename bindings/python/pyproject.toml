@@ -1,2 +1,6 @@
 [build-system]
-requires = ["setuptools>=77.0.3", "wheel>=0.45.1", "mypy", "numpy", "jinja2", "cmake==3.30"]
+requires = [
+    "setuptools>=77.0.3", "wheel>=0.45.1", "mypy", "numpy", "jinja2",
+    "cmake==3.30; sys_platform != 'win32'",
+    "cmake==4.2.*; sys_platform == 'win32'", # Visual Studio 2026 support.
+]
