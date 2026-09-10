@@ -64,6 +64,7 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
 
     stitchingProperties.def_readwrite("mode", &StitchingProperties::mode)
         .def_readwrite("cameraModel", &StitchingProperties::cameraModel)
+        .def_readwrite("useInputCalibration", &StitchingProperties::useInputCalibration)
         .def_readwrite("continuous", &StitchingProperties::continuous)
         .def_readwrite("estimationFrames", &StitchingProperties::estimationFrames)
         .def_readwrite("maxPanoramaWidth", &StitchingProperties::maxPanoramaWidth)
@@ -116,6 +117,11 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
         .def("getMinIncidenceAngle", &Stitching::getMinIncidenceAngle, DOC(dai, beta, node, Stitching, getMinIncidenceAngle))
         .def("setCameraModel", &Stitching::setCameraModel, py::arg("model"), DOC(dai, beta, node, Stitching, setCameraModel))
         .def("getCameraModel", &Stitching::getCameraModel, DOC(dai, beta, node, Stitching, getCameraModel))
+        .def("setUseInputCalibration",
+             &Stitching::setUseInputCalibration,
+             py::arg("useInputCalibration"),
+             DOC(dai, beta, node, Stitching, setUseInputCalibration))
+        .def("getUseInputCalibration", &Stitching::getUseInputCalibration, DOC(dai, beta, node, Stitching, getUseInputCalibration))
         .def("setContinuous", &Stitching::setContinuous, py::arg("continuous"), DOC(dai, beta, node, Stitching, setContinuous))
         .def("getContinuous", &Stitching::getContinuous, DOC(dai, beta, node, Stitching, getContinuous))
         .def("setEstimationFrames", &Stitching::setEstimationFrames, py::arg("frames"), DOC(dai, beta, node, Stitching, setEstimationFrames))

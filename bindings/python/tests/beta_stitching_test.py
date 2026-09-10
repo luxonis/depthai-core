@@ -11,3 +11,7 @@ def test_stitching_is_exposed_only_through_beta_api():
         assert isinstance(stitching, dai.beta.node.Stitching)
         assert stitching.getNumInputs() == 2
         assert stitching.getMode() == dai.beta.node.Stitching.Mode.PANORAMA
+        assert not stitching.getUseInputCalibration()
+
+        stitching.setUseInputCalibration(True)
+        assert stitching.getUseInputCalibration()
