@@ -5,8 +5,15 @@ DEPTHAI_VERSION="$1"
 
 RELEASE_URL="https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/"
 SNAPSHOT_URL="https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/"
+WHEEL_DIR="$4"
 
-if [ -z "$DEPTHAI_VERSION" ] || [ "$DEPTHAI_VERSION" == "latest" ]; then
+if [ -d "$WHEEL_DIR" ]; then
+    echo "Installing depthai from $WHEEL_DIR"
+    rm -rf venv
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install --no-cache-dir "$WHEEL_DIR"/*.whl
+elif [ -z "$DEPTHAI_VERSION" ] || [ "$DEPTHAI_VERSION" == "latest" ]; then
     echo "Using latest depthai"
     source /home/hil/.hil/bin/activate
 else

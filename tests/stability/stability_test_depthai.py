@@ -183,4 +183,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeout", type=float, help="Stop the stability-test loop after this many hours")
     args = parser.parse_args()
+    if args.timeout is not None and (not math.isfinite(args.timeout) or args.timeout <= 0):
+        parser.error("--timeout must be a positive finite number")
     stability_test(30, args.timeout)

@@ -30,8 +30,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f protocol=tcpip -f timeout=168
-          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f protocol=usb -f timeout=168
+          WHEEL_RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow python-main.yml --branch develop --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [[ -z "$WHEEL_RUN_ID" ]]; then
+            echo "No successful develop Python workflow found"
+            exit 1
+          fi
+          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=tcpip -f timeout=168
+          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=usb -f timeout=168
 
       - name: Trigger nightly develop HIL testing
         if: github.event.schedule == '0 1 * * *'
