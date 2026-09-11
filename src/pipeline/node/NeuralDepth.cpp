@@ -83,6 +83,8 @@ void NeuralDepth::buildInternal() {
     // Link left and right inputs to internal inputs
     rectification->output1.link(leftInternal);
     rectification->output2.link(rightInternal);
+    rectification->passthrough1.link(leftSourceInternal);
+    rectification->passthrough2.link(rightSourceInternal);
 
     // Link rectification outputs to neural network
     rectification->output1.link(neuralNetwork->inputs["left"]);

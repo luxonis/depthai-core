@@ -85,6 +85,10 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
      */
     Input rightInternal{*this, {"rightFrameInternal", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ImgFrame, false}}}}};
 
+    // Original images provide the valid sampling domain of the rectified pair.
+    Input leftSourceInternal{*this, {"leftSourceInternal", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Input rightSourceInternal{*this, {"rightSourceInternal", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ImgFrame, false}}}}};
+
     /**
      * Output disparity ImgFrame
      */
