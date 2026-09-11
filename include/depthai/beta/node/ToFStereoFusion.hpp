@@ -59,6 +59,9 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     /** Initial fusion configuration. Depth pixels below this confidence are returned as zero. */
     std::shared_ptr<ToFStereoFusionConfig> initialConfig;
 
+    /** Runtime confidence configuration. The latest update is applied before processing a frame. */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ToFStereoFusionConfig, false}}}}};
+
    public:
     /** Internal ToF pipeline; its depth output is available for downstream use. */
     Subnode<dai::node::ToF> tof{*this, "tof"};

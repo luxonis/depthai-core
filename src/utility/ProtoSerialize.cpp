@@ -334,6 +334,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::ToFStereoFusionConfig:
         case DatatypeEnum::GPUStereoConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:

@@ -1,4 +1,6 @@
 #include <catch2/catch_all.hpp>
+#include <limits>
+#include <depthai/beta/datatype/ToFStereoFusionConfig.hpp>
 
 // Include depthai library
 #include <depthai/depthai.hpp>
@@ -155,3 +157,22 @@ TEST_CASE("Beta parser Config has a clear error when beta support is disabled") 
                         Catch::Matchers::ContainsSubstring("Cannot parse beta datatype: depthai-core was built without beta support"));
 }
 #endif
+
+TEST_CASE("ToF stereo fusion config survives transport", "[fusion][config]") {
+    dai::beta::ToFStereoFusionConfig config;
+    for(float threshold : {0.0f, 0.75f, 1.0f}) {
+        config.setConfidenceThreshold(threshold);
+        auto bytes = dai::StreamMessageParser::serializeMetadata(config);
+        streamPacketDesc_t packet{};
+        packet.data = bytes.data();
+        packet.length = bytes.size();
+        packet.fd = -1;
+        auto parsed = std::dynamic_pointer_cast<dai::beta::ToFStereoFusionConfig>(dai::StreamMessageParser::parseMessage(&packet));
+        REQUIRE(parsed);
+        REQUIRE(parsed->getDatatype() == dai::DatatypeEnum::ToFStereoFusionConfig);
+        REQUIRE(parsed->confidenceThreshold == threshold);
+    }
+    REQUIRE_THROWS_AS(config.setConfidenceThreshold(-0.1f), std::invalid_argument);
+    REQUIRE_THROWS_AS(config.setConfidenceThreshold(1.1f), std::invalid_argument);
+    REQUIRE_THROWS_AS(config.setConfidenceThreshold(std::numeric_limits<float>::quiet_NaN()), std::invalid_argument);
+}

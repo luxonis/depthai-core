@@ -7,6 +7,11 @@ namespace dai::beta {
 
 ToFStereoFusionProperties::~ToFStereoFusionProperties() = default;
 
+void ToFStereoFusionConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = getDatatype();
+}
+
 }  // namespace dai::beta
 
 namespace dai::beta::node {

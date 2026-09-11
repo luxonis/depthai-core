@@ -148,6 +148,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::ToFStereoFusionConfig:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
         case DatatypeEnum::ImgDetectionsFilterConfig:
@@ -290,6 +291,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::ToFStereoFusionConfig:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
         case DatatypeEnum::ImgDetectionsFilterConfig:

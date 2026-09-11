@@ -239,6 +239,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
     datatypeEnum.value("MapOutputParserConfig", DatatypeEnum::MapOutputParserConfig);
     datatypeEnum.value("XFeatMonoParserConfig", DatatypeEnum::XFeatMonoParserConfig);
     datatypeEnum.value("XFeatStereoParserConfig", DatatypeEnum::XFeatStereoParserConfig);
+    datatypeEnum.value("ToFStereoFusionConfig", DatatypeEnum::ToFStereoFusionConfig);
 #endif  // DEPTHAI_HAVE_BETA
     datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

@@ -5,7 +5,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::beta::node;
 
-    py::class_<beta::ToFStereoFusionConfig, std::shared_ptr<beta::ToFStereoFusionConfig>>(m, "ToFStereoFusionConfig")
+    py::class_<beta::ToFStereoFusionConfig, Buffer, std::shared_ptr<beta::ToFStereoFusionConfig>>(m, "ToFStereoFusionConfig")
         .def(py::init<>())
         .def_readwrite("confidenceThreshold", &beta::ToFStereoFusionConfig::confidenceThreshold)
         .def("setConfidenceThreshold", &beta::ToFStereoFusionConfig::setConfidenceThreshold, py::arg("threshold"));
@@ -21,6 +21,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
     node.def_property_readonly(
             "depth", [](ToFStereoFusion& n) -> Node::Output& { return n.depth; }, DOC(dai, beta, node, ToFStereoFusion, depth))
         .def_readonly("initialConfig", &ToFStereoFusion::initialConfig)
+        .def_readonly("inputConfig", &ToFStereoFusion::inputConfig)
         .def_property_readonly(
             "neuralConfidence", [](ToFStereoFusion& n) -> Node::Output& { return n.neuralConfidence; }, DOC(dai, beta, node, ToFStereoFusion, neuralConfidence))
         .def_property_readonly(

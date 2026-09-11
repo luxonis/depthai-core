@@ -19,6 +19,7 @@
 #include "datatype/RFDETRParserConfig.hpp"
 #include "datatype/SCRFDParserConfig.hpp"
 #include "datatype/SuperAnimalParserConfig.hpp"
+#include "datatype/ToFStereoFusionConfig.hpp"
 #include "datatype/XFeatMonoParserConfig.hpp"
 #include "datatype/XFeatStereoParserConfig.hpp"
 #include "datatype/YuNetParserConfig.hpp"

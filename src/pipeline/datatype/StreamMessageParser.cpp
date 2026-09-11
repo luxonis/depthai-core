@@ -9,6 +9,7 @@
 #include <spdlog/spdlog.h>
 
 // project
+#include "depthai/beta/datatype/ToFStereoFusionConfig.hpp"
 #ifdef DEPTHAI_HAVE_BETA
     #include "depthai/beta/datatype/ClassificationSequenceParserConfig.hpp"
     #include "depthai/beta/datatype/Classifications.hpp"
@@ -281,6 +282,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<StereoDepthConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::ToFStereoFusionConfig:
+            return parseDatatype<beta::ToFStereoFusionConfig>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::NeuralDepthConfig:
             return parseDatatype<NeuralDepthConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
