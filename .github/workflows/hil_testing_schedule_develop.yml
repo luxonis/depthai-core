@@ -3,8 +3,8 @@ name: DepthAI Core HIL Testing Develop Schedule
 on:
   schedule:
     - cron: '0 1 * * *' # Every day at 01:00 UTC
-    - cron: '0 21 * * 5' # Fridays at 21:00 UTC
     - cron: '0 3 * * 6' # Saturdays at 03:00 UTC
+    - cron: '0 3 * * 0' # Sundays at 03:00 UTC
 
 permissions:
   actions: write
@@ -19,24 +19,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run hil_testing_weekly.yml --repo "$GITHUB_REPOSITORY" --ref develop
 
-      - name: Trigger weekly Python CI/CD (wheels build)
-        if: github.event.schedule == '0 21 * * 5'
+      - name: Trigger weekly Python wheels and stability
+        if: github.event.schedule == '0 3 * * 0'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run python-main.yml --repo "$GITHUB_REPOSITORY" --ref develop
-
-      - name: Trigger weekly stability runs
-        if: github.event.schedule == '0 3 * * 6'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          WHEEL_RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow python-main.yml --branch develop --status success --limit 1 --json databaseId --jq '.[0].databaseId')
-          if [[ -z "$WHEEL_RUN_ID" ]]; then
-            echo "No successful develop Python workflow found"
-            exit 1
-          fi
-          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=tcpip -f timeout=168
-          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=usb -f timeout=168
+        run: gh workflow run weekly_stability.yml --repo "$GITHUB_REPOSITORY" --ref develop
 
       - name: Trigger nightly develop HIL testing
         if: github.event.schedule == '0 1 * * *'

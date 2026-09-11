@@ -87,7 +87,7 @@ jobs:
           if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
             RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
           else
-            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-stability-${{ github.event.inputs.protocol }}"
+            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-stability-$INPUT_PROTOCOL"
             RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
           fi
           if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
@@ -95,4 +95,4 @@ jobs:
           fi
 
           printf -v STABILITY_COMMAND 'scripts/hil/run_hil_stability.sh %q %q %q %q' "$INPUT_DEPTHAI_VERSION" "$INPUT_PROTOCOL" "$INPUT_TIMEOUT" stability-wheels
-          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name depthai-stability-${{ github.event.inputs.protocol }} --commands 'cd /tmp/depthai-core || exit' "$STABILITY_COMMAND"
+          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name "depthai-stability-$INPUT_PROTOCOL" --commands 'cd /tmp/depthai-core || exit' "$STABILITY_COMMAND"
