@@ -1,7 +1,7 @@
 import depthai as dai
 
 
-def test_stitching_is_exposed_only_through_beta_api():
+def test_stitching_beta_api_and_input_calibration_configuration():
     assert not hasattr(dai.node, "Stitching")
     assert dai.beta.node.Stitching.Properties is dai.beta.StitchingProperties
 
