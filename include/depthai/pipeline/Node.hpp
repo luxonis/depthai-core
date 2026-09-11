@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -29,6 +30,7 @@ namespace dai {
 // fwd declare Pipeline
 class Pipeline;
 class PipelineImpl;
+class Device;
 namespace utility {
 class PipelineImplHelper;
 }
@@ -499,6 +501,14 @@ class Node : public std::enable_shared_from_this<Node> {
          * @return std::shared_ptr<dai::node::internal::XLinkInBridge>: pointer to the XLink bridge or nullptr if not applicable
          */
         std::shared_ptr<dai::node::internal::XLinkInBridge> getXLinkBridge() const;
+
+        /**
+         * @brief Get the device that produces the data arriving at this input, resolved at pipeline build.
+         *
+         * @return The source device, or nullptr when the upstream node runs on the host.
+         *         Throws if this input is connected to sources on more than one device.
+         */
+        std::shared_ptr<Device> getSourceDevice() const;
     };
 
     /**
@@ -521,6 +531,13 @@ class Node : public std::enable_shared_from_this<Node> {
         Input& operator[](std::pair<std::string, std::string> groupKey);
         // Check if the input exists
         bool has(const std::string& key) const;
+
+        /**
+         * @brief Get the source device of every input in this map, resolved at pipeline build.
+         *
+         * @return Map of input name to source device; nullptr when the source runs on the host.
+         */
+        std::map<std::string, std::shared_ptr<Device>> getSourceDevices() const;
     };
 
     /// Connection between an Input and Output internal

@@ -638,7 +638,8 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     // USB speed and generation check
     if(config.checkUsbGeneration) {
         logger::info("Health check: Checking USB generation");
-        if(device->getDeviceInfo().protocol == X_LINK_TCP_IP) {
+        if(device->getDeviceInfo().protocol == X_LINK_TCP_IP || device->getDeviceInfo().protocol == X_LINK_TCP_IP_OR_LOCAL_SHDMEM
+           || device->getDeviceInfo().protocol == X_LINK_LOCAL_SHDMEM) {
             metrics.usbGeneration = UsbGeneration::UNKNOWN;
         } else {
             const auto usbSpeed = device->getUsbSpeed();

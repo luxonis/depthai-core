@@ -23,6 +23,7 @@
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "depthai/device/DeviceState.hpp"
 #include "depthai/device/HealthCheck.hpp"
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
@@ -1364,8 +1365,11 @@ class DeviceBase {
     int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
     std::atomic<bool> crashDumpHandled{false};
-    bool isClosing = false;  // if true, don't attempt to reconnect
+    std::atomic<bool> isClosing{false};  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
+
+    // Report this device's pipeline-level state to the pipeline (no-op without a pipeline)
+    void notifyPipelineDeviceState(DeviceState state);
 
     // Mock features
     bool hasMockedFeatures = false;

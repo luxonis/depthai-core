@@ -32,6 +32,13 @@ struct DeviceInfo {
      * @param deviceIdOrName Either DeviceId, IP Address or USB port name
      */
     explicit DeviceInfo(std::string deviceIdOrName);
+
+    /**
+     * DeviceInfo of the local device reachable over shared memory (a pipeline process
+     * running on the device itself). Booted state and LOCAL_SHDMEM protocol are set,
+     * so constructing a Device from it skips the network device search.
+     */
+    static DeviceInfo local();
     explicit DeviceInfo(const deviceDesc_t& desc);
     deviceDesc_t getXLinkDeviceDesc() const;
     [[deprecated("Use getDeviceId() instead")]] std::string getMxId() const;
@@ -105,6 +112,12 @@ class XLinkConnection {
     bool getRebootOnDestruction() const;
 
     int getLinkId() const;
+
+    /**
+     * Get device information of this connection. The protocol reflects the actually
+     * negotiated protocol (e.g. TCP_IP_OR_LOCAL_SHDMEM resolves to the transport in use).
+     */
+    DeviceInfo getDeviceInfo() const;
 
     /**
      * Explicitly closes xlink connection.

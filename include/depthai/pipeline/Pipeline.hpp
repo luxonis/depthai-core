@@ -44,6 +44,7 @@ enum class PipelineAutoCalibrationMode : int {
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
+    friend class Node::Input;
     friend class DeviceBase;
     friend class utility::PipelineImplHelper;
 
@@ -70,6 +71,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
     std::string defaultDeviceId;
+    std::unordered_map<Node::Id, std::shared_ptr<Device>> bridgeHostDevices;
     // Is the pipeline building on host? Some steps should be skipped when building on device
     bool buildingOnHost = true;
 
@@ -95,11 +97,36 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
-    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
+    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE,
+                                           bool includePipelineDebugging = true,
+                                           std::optional<std::string> deviceId = std::nullopt) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const fs::path& path);
     void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path);
     void setXLinkChunkSize(int sizeBytes);
+
+    // Per-device variants of the pipeline-level device setters/getters. The device
+    // must already be part of this pipeline; the no-device forms target the master.
+    std::shared_ptr<Device> resolvePipelineDevice(const std::shared_ptr<Device>& device) const;
+    Device::Config getDeviceConfig(const std::shared_ptr<Device>& device) const;
+    void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, const fs::path& path);
+    void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, CameraBoardSocket socket, const fs::path& path);
+    void setXLinkChunkSize(const std::shared_ptr<Device>& device, int sizeBytes);
+    void setSippBufferSize(const std::shared_ptr<Device>& device, int sizeBytes);
+    void setSippDmaBufferSize(const std::shared_ptr<Device>& device, int sizeBytes);
+    void setBoardConfig(const std::shared_ptr<Device>& device, const BoardConfig& boardCfg);
+    BoardConfig getBoardConfig(const std::shared_ptr<Device>& device) const;
+    void setCalibrationData(const std::shared_ptr<Device>& device, const CalibrationHandler& calibrationDataHandler);
+    bool isCalibrationDataAvailable(const std::shared_ptr<Device>& device) const;
+    CalibrationHandler getCalibrationData(const std::shared_ptr<Device>& device) const;
+    void setEepromData(const std::shared_ptr<Device>& device, const std::optional<EepromData>& eepromData);
+    std::optional<EepromData> getEepromData(const std::shared_ptr<Device>& device) const;
+    uint32_t getEepromId(const std::shared_ptr<Device>& device) const;
+    void setDeviceProperties(const std::shared_ptr<Device>& device, const DeviceProperties& deviceProperties);
+    DeviceProperties getDeviceProperties(const std::shared_ptr<Device>& device) const;
+
+    // Board configuration per non-master device; the master keeps using 'board'
+    std::unordered_map<const Device*, BoardConfig> deviceBoardConfigs;
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(const GlobalProperties& globalProperties);
     void setDefaultDeviceProperties(const DeviceProperties& deviceProperties);
@@ -109,13 +136,17 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(const BoardConfig& board);
     void setAutoCalibrationMode(PipelineAutoCalibrationMode mode);
-    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
+    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair(const std::shared_ptr<Device>& device) const;
     bool hasDynamicCalibration() const;
     PipelineAutoCalibrationMode getAutoCalibrationMode() const;
 
     BoardConfig getBoardConfig() const;
 
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    void serialize(PipelineSchema& schema,
+                   Assets& assets,
+                   std::vector<std::uint8_t>& assetStorage,
+                   SerializationType type = DEFAULT_SERIALIZATION_TYPE,
+                   std::optional<std::string> deviceId = std::nullopt) const;
     nlohmann::json serializeToJson(bool includeAssets) const;
     void remove(const std::shared_ptr<Node>& node);
 
@@ -131,6 +162,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     uint32_t getEepromId() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
+    std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const;
 
     // Pipeline state getters
     PipelineStateApi getPipelineState();
@@ -188,6 +220,46 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Queue for tasks
     LockingQueue<std::function<void()>> tasks;
 
+    // Devices that are part of this pipeline. Registered explicitly via addDevice
+    // or implicitly on first use (node created with an explicit device).
+    // defaultDevice is the master and is not necessarily contained here.
+    std::vector<std::shared_ptr<Device>> devices;
+
+    // Serializes concurrent per-device schema serialization (devices start in parallel)
+    mutable std::mutex serializeMtx;
+
+    // Input -> distinct source devices (nullptr entry = host), resolved from the user
+    // graph at build() before bridge insertion. See Node::Input::getSourceDevice.
+    std::unordered_map<const Node::Input*, std::vector<std::shared_ptr<Device>>> inputSourceDevices;
+
+    // Source device of an input: the device of the upstream node, nullptr if the
+    // upstream node runs on host. Uses the map above after build, resolves live before.
+    std::shared_ptr<Device> getInputSourceDevice(const Node::Input* input) const;
+
+    // Per-device pipeline state (guarded by deviceStateMtx)
+    mutable std::mutex deviceStateMtx;
+    std::unordered_map<const DeviceBase*, DeviceState> deviceStates;
+    std::function<void(std::shared_ptr<Device>, DeviceState)> deviceStateCallback;
+    // Devices that consume other devices' streams (B side of a relay feeding a device
+    // node); losing one of these for good stops the pipeline. Derived at build().
+    std::unordered_set<const Device*> fatalDevices;
+
+    // Called from a device's monitor thread on state transitions. On FAILED, idles the
+    // device's XLink host nodes and stops the pipeline when the device was fatal or the
+    // last one alive.
+    void onDeviceStateChanged(DeviceBase* device, DeviceState state);
+
+    DeviceState getDeviceState(const std::shared_ptr<Device>& device) const;
+    void setDeviceStateCallback(std::function<void(std::shared_ptr<Device>, DeviceState)> callback);
+
+    // Register a device with this pipeline. The first registered device is promoted
+    // to master (default device) if none exists. Registering the same device twice is a no-op.
+    std::shared_ptr<Device> registerDevice(std::shared_ptr<Device> device);
+
+    // All devices that are part of this pipeline: master (default device) first,
+    // then the rest in registration order.
+    std::vector<std::shared_ptr<Device>> getDevices() const;
+
     void addTask(std::function<void()> task) {
         tasks.push(std::move(task));
     }
@@ -220,31 +292,66 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         }
     }
 
-    template <typename N, typename... Args>
-    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
-        // N is a subclass of DeviceNode
-        // return N::create();  // Specific create call for DeviceNode subclasses
+    template <typename N>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode() {
         if(defaultDevice == nullptr) {
             throw std::runtime_error("Pipeline is host only, cannot create device node");
         }
-        return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+        return N::create(defaultDevice);
     }
 
-    template <typename N, typename... Args>
-    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
-        // N is a subclass of DeviceNode
-        // return N::create();  // Specific create call for DeviceNode subclasses
-        if(defaultDevice == nullptr) {
-            return N::create(std::forward<Args>(args)...);  // Generic create call
-        } else {
-            return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+    template <typename N, typename... Rest>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(
+        std::shared_ptr<Device> device, Rest&&... rest) {
+        if(device == nullptr) {
+            throw std::runtime_error("Explicit device is null");
         }
+        return N::create(device, std::forward<Rest>(rest)...);
+    }
+
+    template <typename N, typename First, typename... Rest>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value
+                         && !std::is_same_v<std::decay_t<First>, std::shared_ptr<Device>>,
+                     std::shared_ptr<N>>
+    createNode(First&& first, Rest&&... rest) {
+        if(defaultDevice == nullptr) {
+            throw std::runtime_error("Pipeline is host only, cannot create device node");
+        }
+        return N::create(defaultDevice, std::forward<First>(first), std::forward<Rest>(rest)...);
+    }
+
+    template <typename N>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode() {
+        if(defaultDevice == nullptr) {
+            return N::create();
+        } else {
+            return N::create(defaultDevice);
+        }
+    }
+
+    template <typename N, typename... Rest>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(
+        std::shared_ptr<Device> device, Rest&&... rest) {
+        if(device == nullptr) {
+            throw std::runtime_error("Explicit device is null");
+        }
+        return N::create(device, std::forward<Rest>(rest)...);
+    }
+
+    template <typename N, typename First, typename... Rest>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value
+                         && !std::is_same_v<std::decay_t<First>, std::shared_ptr<Device>>,
+                     std::shared_ptr<N>>
+    createNode(First&& first, Rest&&... rest) {
+        if(defaultDevice == nullptr) {
+            return N::create(std::forward<First>(first), std::forward<Rest>(rest)...);
+        }
+        return N::create(defaultDevice, std::forward<First>(first), std::forward<Rest>(rest)...);
     }
 
     template <typename N, typename... Args>
     std::enable_if_t<!std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
-        // N is not a subclass of DeviceNode
-        return N::create(std::forward<Args>(args)...);  // Generic create call
+        return N::create(std::forward<Args>(args)...);
     }
 
     // Template create function
@@ -258,6 +365,20 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         // std::shared_ptr<N> node = nullptr;
         add(node);
         // Return shared pointer to this node
+        return node;
+    }
+
+    template <class N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createWithDevice(const std::shared_ptr<PipelineImpl>& itself,
+                                                                                                 std::shared_ptr<Device> device,
+                                                                                                 Args&&... args) {
+        (void)itself;
+        static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
+        if(device == nullptr) {
+            throw std::runtime_error("Explicit device is null");
+        }
+        auto node = N::create(device, std::forward<Args>(args)...);
+        add(node);
         return node;
     }
 
@@ -279,9 +400,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void stop();
     void run();
 
-    // Reset connections
-    void resetConnections();
-    void disconnectXLinkHosts();
+    // Reset connections and re-send the pipeline; restricted to one device when given
+    void resetConnections(DeviceBase* device = nullptr);
+    // Make XLink host nodes of the given device (all when null) exit quietly
+    void disconnectXLinkHosts(DeviceBase* device = nullptr);
 
    private:
     // Resource
@@ -391,6 +513,25 @@ class Pipeline {
     template <class N, typename... Args>
     std::shared_ptr<N> create(Args&&... args) {
         return impl()->create<N>(pimpl, std::forward<Args>(args)...);
+    }
+
+    /**
+     * Creates a device node on the specified device and adds it to the pipeline.
+     * The device becomes part of the pipeline on first use. Only device nodes can be
+     * created this way - creating a host node with a device is a compile-time error.
+     */
+    template <class N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> create(std::shared_ptr<Device> device, Args&&... args) {
+        return impl()->createWithDevice<N>(pimpl, std::move(device), std::forward<Args>(args)...);
+    }
+
+    /**
+     * Creates a device node on the specified device and adds it to the pipeline.
+     * Same as create(device, ...) - kept as an explicitly named alternative.
+     */
+    template <class N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createForDevice(std::shared_ptr<Device> device, Args&&... args) {
+        return impl()->createWithDevice<N>(pimpl, std::move(device), std::forward<Args>(args)...);
     }
 
     /**
@@ -603,6 +744,109 @@ class Pipeline {
     std::shared_ptr<const Device> getDefaultDevice() const {
         return impl()->defaultDevice;
     }
+
+    /**
+     * Add a device to the pipeline. The first device added to a pipeline created
+     * without an implicit device is promoted to the default device (master), so
+     * nodes created without an explicit device run on it.
+     *
+     * @param device Already constructed device to add
+     * @returns The added device
+     */
+    std::shared_ptr<Device> addDevice(std::shared_ptr<Device> device);
+
+    /**
+     * Construct a device from the given device info and add it to the pipeline.
+     *
+     * @param deviceInfo Device info to construct the device from
+     * @returns The constructed device
+     */
+    std::shared_ptr<Device> addDevice(const DeviceInfo& deviceInfo);
+
+    /**
+     * Construct a device from a device id, IP address or name and add it to the pipeline.
+     *
+     * @param idOrIpOrName Device id, IP address or name to construct the device from
+     * @returns The constructed device
+     */
+    std::shared_ptr<Device> addDevice(const std::string& idOrIpOrName);
+
+    /**
+     * Get all devices that are part of this pipeline - the default device (master)
+     * first, then the rest in registration order. Devices become part of the pipeline
+     * explicitly via addDevice or implicitly on first use by a node.
+     */
+    std::vector<std::shared_ptr<Device>> getDevices() const;
+
+    /**
+     * Get the pipeline-level state of a device: RUNNING, DISCONNECTED, RECONNECTING
+     * or FAILED. Losing a device does not stop the pipeline (its streams go idle)
+     * unless it was the last device alive or a device consuming other devices' streams.
+     */
+    DeviceState getDeviceState(const std::shared_ptr<Device>& device) const {
+        return impl()->getDeviceState(device);
+    }
+
+    /**
+     * Set a callback invoked on every device state transition. The callback is invoked
+     * from the affected device's monitor thread; do not block in it and do not call
+     * pipeline stop/start from it directly.
+     */
+    void setDeviceStateCallback(std::function<void(std::shared_ptr<Device>, DeviceState)> callback) {
+        impl()->setDeviceStateCallback(std::move(callback));
+    }
+
+    /// Set a camera IQ (Image Quality) tuning blob for all cameras of the given pipeline device
+    void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, const fs::path& path);
+
+    /// Set a camera IQ (Image Quality) tuning blob for a specific board socket of the given pipeline device
+    void setCameraTuningBlobPath(const std::shared_ptr<Device>& device, CameraBoardSocket socket, const fs::path& path);
+
+    /// Set chunk size for splitting device-sent XLink packets for the given pipeline device; see the no-device overload
+    void setXLinkChunkSize(const std::shared_ptr<Device>& device, int sizeBytes);
+
+    /// Set the SIPP buffer size of the given pipeline device; see the no-device overload
+    void setSippBufferSize(const std::shared_ptr<Device>& device, int sizeBytes);
+
+    /// Set the SIPP DMA buffer size of the given pipeline device; see the no-device overload
+    void setSippDmaBufferSize(const std::shared_ptr<Device>& device, int sizeBytes);
+
+    /**
+     * Sets the board configuration for the given pipeline device. Board configuration
+     * is applied when a device boots, so for an already connected device it only takes
+     * effect on flows that (re)boot with this pipeline's configuration.
+     */
+    void setBoardConfig(const std::shared_ptr<Device>& device, const BoardConfig& board);
+
+    /// Gets the board configuration of the given pipeline device
+    BoardConfig getBoardConfig(const std::shared_ptr<Device>& device) const;
+
+    /// Get device configuration needed for this pipeline, for the given pipeline device
+    Device::Config getDeviceConfig(const std::shared_ptr<Device>& device) const;
+
+    /// Sets the calibration of the given pipeline device, overriding the one in eeprom
+    void setCalibrationData(const std::shared_ptr<Device>& device, const CalibrationHandler& calibrationDataHandler);
+
+    /// Check if calibration data is available on the given pipeline device
+    bool isCalibrationDataAvailable(const std::shared_ptr<Device>& device) const;
+
+    /// Gets the calibration data of the given pipeline device
+    CalibrationHandler getCalibrationData(const std::shared_ptr<Device>& device) const;
+
+    /// Sets the eeprom data of the given pipeline device
+    void setEepromData(const std::shared_ptr<Device>& device, const std::optional<EepromData>& eepromData);
+
+    /// Gets the eeprom data of the given pipeline device
+    std::optional<EepromData> getEepromData(const std::shared_ptr<Device>& device) const;
+
+    /// Gets the eeprom id of the given pipeline device
+    uint32_t getEepromId(const std::shared_ptr<Device>& device) const;
+
+    /// Sets device properties of the given pipeline device
+    void setDeviceProperties(const std::shared_ptr<Device>& device, const DeviceProperties& deviceProperties);
+
+    /// Gets device properties of the given pipeline device
+    DeviceProperties getDeviceProperties(const std::shared_ptr<Device>& device) const;
 
     std::string getTelemetryPipelineId() const {
         return impl()->telemetryPipelineId;

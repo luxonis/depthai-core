@@ -15,6 +15,7 @@ class XLinkOutHost : public NodeCRTP<ThreadedHostNode, XLinkOutHost> {
     std::condition_variable isWaitingForReconnect;
     std::mutex mtx;
     bool isDisconnected = false;
+    bool connectionRefreshed = false;
     bool allowResize = false;
 
    public:

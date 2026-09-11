@@ -7,6 +7,7 @@
 #include "depthai/common/ADatatypeSharedPtrSerialization.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/properties/SyncProperties.hpp"
 #include "depthai/utility/Serialization.hpp"
 namespace dai {
 /**
@@ -48,9 +49,25 @@ class MessageGroup : public Buffer {
     bool isSynced(int64_t thresholdNs) const;
 
     /**
-     * Retrieves interval between the first and the last message in the group.
+     * Retrieves interval between the first and the last message in the group,
+     * measured with the timestamp source that produced the group.
      */
     int64_t getIntervalNs() const;
+
+    /**
+     * Get the timestamp source this group was synced with.
+     */
+    SyncProperties::TimestampSource getTimestampSource() const {
+        return timestampSource;
+    }
+
+    /**
+     * Set the timestamp source this group was synced with. Used by the host Sync node;
+     * groups received from a device keep the DEVICE default.
+     */
+    void setTimestampSource(SyncProperties::TimestampSource source) {
+        timestampSource = source;
+    }
 
     int64_t getNumMessages() const;
 
@@ -64,6 +81,11 @@ class MessageGroup : public Buffer {
         return DatatypeEnum::MessageGroup;
     }
     DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
+
+   private:
+    // Deliberately NOT serialized (wire format is shared with device firmware):
+    // device-produced groups are synced with DEVICE timestamps, host Sync overwrites
+    SyncProperties::TimestampSource timestampSource = SyncProperties::TimestampSource::DEVICE;
 };
 
 }  // namespace dai
