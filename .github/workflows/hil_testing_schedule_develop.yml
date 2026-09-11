@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: '0 1 * * *' # Every day at 01:00 UTC
     - cron: '0 3 * * 6' # Saturdays at 03:00 UTC
+    - cron: '0 3 * * 0' # Sundays at 03:00 UTC
 
 permissions:
   actions: write
@@ -17,6 +18,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run hil_testing_weekly.yml --repo "$GITHUB_REPOSITORY" --ref develop
+
+      - name: Trigger weekly Python wheels and stability
+        if: github.event.schedule == '0 3 * * 0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run weekly_stability.yml --repo "$GITHUB_REPOSITORY" --ref develop
 
       - name: Trigger nightly develop HIL testing
         if: github.event.schedule == '0 1 * * *'
