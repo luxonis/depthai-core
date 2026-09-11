@@ -70,15 +70,15 @@ jobs:
     if: >
       always() &&
       (
-        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_dispatch') ||
+        ((
+          github.event.review.state == 'approved'
+        ) &&
         (
-          github.event_name == 'push' &&
-          (
-            github.ref == 'refs/heads/main' ||
-            github.ref == 'refs/heads/develop' ||
-            startsWith(github.ref, 'refs/heads/release')
-          )
-        )
+          github.event.pull_request.base.ref == 'main' ||
+          github.event.pull_request.base.ref == 'develop' ||
+          startsWith(github.event.pull_request.base.ref, 'release')
+        ))
       )
     runs-on: ['self-hosted', 'testbed-runner']
     steps:
