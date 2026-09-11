@@ -120,7 +120,7 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
     }
     if len(history) > 0:
         tableRows = []
-        headerRow: list[dict] = [{"type": "raw_text", "text": "test name and config"}]
+        headerRow: list[dict] = []
         columnsDict = {}
         for i in history:
             for j in i:
@@ -143,6 +143,8 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
                     }
                 ]
             })
+        headerRow.append({"type": "raw_text", "text": "test name and config"})
+        headerRow.reverse()
         tableRows.append(headerRow)
 
         for i in history:
@@ -166,6 +168,9 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
                         }
                     ]
                 })
+                columnIdx += 1
+            while columnIdx < len(columns):
+                row.append({"type": "raw_text", "text": "not ran"})
                 columnIdx += 1
             row.reverse()
             tableRows.append([{
