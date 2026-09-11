@@ -23,6 +23,18 @@ on:
         type: string
         default: "latest"
         description: "Version for depthai"
+      protocol:
+        required: false
+        type: choice
+        default: "tcpip"
+        options:
+          - tcpip
+          - usb
+        description: "Connect to the device over PoE (tcpip) or USB"
+      timeout:
+        required: false
+        type: string
+        description: "Stop the stability test after this many hours; unlimited when omitted"
 
 
 jobs:
@@ -50,11 +62,11 @@ jobs:
           if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
             RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
           else
-            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-stability"
+            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-stability-${{ github.event.inputs.protocol }}"
             RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
           fi
           if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
             UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
           fi
 
-          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name depthai-stability --commands 'cd /tmp/depthai-core || exit' 'scripts/hil/run_hil_stability.sh ${{ github.event.inputs.depthai  }}'
+          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name depthai-stability-${{ github.event.inputs.protocol }} --commands 'cd /tmp/depthai-core || exit' 'scripts/hil/run_hil_stability.sh ${{ github.event.inputs.depthai }} ${{ github.event.inputs.protocol }} ${{ github.event.inputs.timeout }}'

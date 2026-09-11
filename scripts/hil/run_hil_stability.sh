@@ -18,6 +18,12 @@ else
 fi
 
 export DEPTHAI_PLATFORM=rvc4
+export DEPTHAI_PROTOCOL="${2:-tcpip}"
 export DISPLAY=:99
 
-python tests/stability/stability_test_depthai.py
+TIMEOUT_ARGS=()
+if [[ -n "$3" ]]; then
+    TIMEOUT_ARGS=(--timeout "$3")
+fi
+
+python tests/stability/stability_test_depthai.py "${TIMEOUT_ARGS[@]}"

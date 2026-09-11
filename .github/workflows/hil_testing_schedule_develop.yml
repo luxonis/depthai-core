@@ -3,6 +3,7 @@ name: DepthAI Core HIL Testing Develop Schedule
 on:
   schedule:
     - cron: '0 1 * * *' # Every day at 01:00 UTC
+    - cron: '0 21 * * 5' # Fridays at 21:00 UTC
     - cron: '0 3 * * 6' # Saturdays at 03:00 UTC
 
 permissions:
@@ -17,6 +18,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run hil_testing_weekly.yml --repo "$GITHUB_REPOSITORY" --ref develop
+
+      - name: Trigger weekly Python CI/CD (wheels build)
+        if: github.event.schedule == '0 21 * * 5'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run python-main.yml --repo "$GITHUB_REPOSITORY" --ref develop
+
+      - name: Trigger weekly stability runs
+        if: github.event.schedule == '0 3 * * 6'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f protocol=tcpip -f timeout=168
+          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f protocol=usb -f timeout=168
 
       - name: Trigger nightly develop HIL testing
         if: github.event.schedule == '0 1 * * *'
