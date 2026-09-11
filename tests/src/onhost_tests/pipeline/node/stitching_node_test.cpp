@@ -41,6 +41,66 @@ std::shared_ptr<dai::ImgFrame> toFrame(const cv::Mat& image, int64_t sequenceNum
     return frame;
 }
 
+dai::ImgTransformation calibratedTransformation(double yawDegrees,
+                                                const std::string& originDeviceId = "reference-device",
+                                                std::vector<float> distortionCoefficients = {},
+                                                double rigPitchDegrees = 0.0) {
+    const double yaw = yawDegrees * CV_PI / 180.0;
+    const double pitch = rigPitchDegrees * CV_PI / 180.0;
+    const double cosYaw = std::cos(yaw);
+    const double sinYaw = std::sin(yaw);
+    const double cosPitch = std::cos(pitch);
+    const double sinPitch = std::sin(pitch);
+    const std::vector<std::vector<float>> rotation = {
+        {static_cast<float>(cosYaw), 0.0f, static_cast<float>(sinYaw)},
+        {static_cast<float>(sinPitch * sinYaw), static_cast<float>(cosPitch), static_cast<float>(-sinPitch * cosYaw)},
+        {static_cast<float>(-cosPitch * sinYaw), static_cast<float>(sinPitch), static_cast<float>(cosPitch * cosYaw)},
+    };
+    // Deliberately different centers: calibrated panorama mode must ignore translation.
+    dai::Extrinsics extrinsics(rotation, {static_cast<float>(yawDegrees), 50.0f, -25.0f}, dai::CameraBoardSocket::CAM_A);
+    extrinsics.toDeviceId = originDeviceId;
+    const std::array<std::array<float, 3>, 3> intrinsics = {
+        {{static_cast<float>(FOCAL), 0.0f, VIEW_WIDTH / 2.0f}, {0.0f, static_cast<float>(FOCAL), VIEW_HEIGHT / 2.0f}, {0.0f, 0.0f, 1.0f}}};
+    return {VIEW_WIDTH, VIEW_HEIGHT, intrinsics, dai::CameraModel::Perspective, std::move(distortionCoefficients), extrinsics};
+}
+
+std::shared_ptr<dai::ImgFrame> toCalibratedFrame(const cv::Mat& image, double yawDegrees, int64_t sequenceNum, double rigPitchDegrees = 0.0) {
+    auto frame = toFrame(image, sequenceNum);
+    frame->getTransformation() = calibratedTransformation(yawDegrees, "reference-device", {}, rigPitchDegrees);
+    return frame;
+}
+
+cv::Mat composeCalibratedCylindricalPanorama(const std::vector<cv::Mat>& images, const std::vector<double>& yaws, const std::vector<double>& pitches) {
+    REQUIRE(images.size() == yaws.size());
+    REQUIRE(images.size() == pitches.size());
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(images.size());
+    stitching->setUseInputCalibration(true);
+    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+
+    std::vector<std::shared_ptr<dai::InputQueue>> inputs;
+    inputs.reserve(images.size());
+    for(size_t i = 0; i < images.size(); ++i) {
+        inputs.push_back(stitching->inputs["input" + std::to_string(i)].createInputQueue());
+    }
+    auto output = stitching->out.createOutputQueue();
+
+    pipeline.start();
+    for(size_t i = 0; i < images.size(); ++i) {
+        inputs[i]->send(toCalibratedFrame(images[i], yaws[i], 1, pitches[i]));
+    }
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    pipeline.stop();
+
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(panorama != nullptr);
+    return panorama->getCvFrame();
+}
+
 }  // namespace
 
 TEST_CASE("Stitching rejects fewer than two inputs", "[Stitching]") {
@@ -55,6 +115,275 @@ TEST_CASE("Stitching stitches panoramas by default", "[Stitching]") {
     auto stitching = pipeline.create<dai::beta::node::Stitching>();
 
     REQUIRE(stitching->getMode() == dai::beta::node::Stitching::Mode::PANORAMA);
+}
+
+TEST_CASE("Stitching uses input calibration to compose a cylindrical panorama", "[Stitching]") {
+    const std::vector<double> yaws = {-15.0, 0.0, 15.0};
+    const std::vector<cv::Mat> featurelessViews = {
+        cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(40, 60, 80)),
+        cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(80, 60, 40)),
+        cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(60, 80, 40)),
+    };
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(featurelessViews.size());
+    stitching->setUseInputCalibration(true);
+    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+    REQUIRE(stitching->getUseInputCalibration());
+
+    std::vector<std::shared_ptr<dai::InputQueue>> inputQueues;
+    for(size_t i = 0; i < featurelessViews.size(); ++i) {
+        inputQueues.push_back(stitching->inputs["input" + std::to_string(i)].createInputQueue());
+    }
+    auto output = stitching->out.createOutputQueue();
+
+    pipeline.start();
+    for(size_t i = 0; i < featurelessViews.size(); ++i) {
+        inputQueues[i]->send(toCalibratedFrame(featurelessViews[i], yaws[i], 11));
+    }
+
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    pipeline.stop();
+
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(panorama != nullptr);
+    REQUIRE(panorama->getSequenceNum() == 11);
+    REQUIRE(panorama->getWidth() > static_cast<unsigned int>(VIEW_WIDTH));
+    REQUIRE(panorama->getWidth() < static_cast<unsigned int>(2 * VIEW_WIDTH));
+    REQUIRE(panorama->getHeight() >= static_cast<unsigned int>(VIEW_HEIGHT * 0.95));
+    REQUIRE(panorama->getHeight() <= static_cast<unsigned int>(VIEW_HEIGHT));
+}
+
+TEST_CASE("Calibrated cylindrical panorama uses the mean camera Y axis", "[Stitching]") {
+    const std::vector<double> yaws = {-30.0, -15.0, 0.0, 15.0, 30.0};
+    const std::vector<double> levelRigPitches = {-10.0, -5.0, 0.0, 5.0, 10.0};
+    const std::vector<double> pitchedRigPitches = {10.0, 15.0, 20.0, 25.0, 30.0};
+    const std::vector<cv::Mat> views = {
+        cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(20, 40, 60)),
+        cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(50, 70, 90)),
+        cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(80, 100, 120)),
+        cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(110, 130, 150)),
+        cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(140, 160, 180)),
+    };
+
+    const auto levelRig = composeCalibratedCylindricalPanorama(views, yaws, levelRigPitches);
+    const auto pitchedRig = composeCalibratedCylindricalPanorama(views, yaws, pitchedRigPitches);
+
+    // These symmetric pitch offsets have mean Y aligned with panorama Y. OpenCV determines the
+    // cylindrical canvas from a variable ROI, so only require non-empty, bounded geometry here.
+    REQUIRE_FALSE(levelRig.empty());
+    REQUIRE(levelRig.cols <= static_cast<int>(views.size()) * VIEW_WIDTH);
+    REQUIRE(levelRig.rows <= static_cast<int>(views.size()) * VIEW_HEIGHT);
+    REQUIRE(pitchedRig.size() == levelRig.size());
+    const double meanAbsoluteDifference = cv::norm(pitchedRig, levelRig, cv::NORM_L1) / static_cast<double>(pitchedRig.total() * pitchedRig.channels());
+    REQUIRE(meanAbsoluteDifference < 1e-3);
+}
+
+TEST_CASE("Calibrated panorama directly copies overlapping inputs", "[Stitching]") {
+    const cv::Vec3b firstColor(20, 40, 60);
+    const cv::Vec3b secondColor(180, 200, 220);
+    const cv::Mat firstImage(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, firstColor);
+    const cv::Mat secondImage(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, secondColor);
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    stitching->setUseInputCalibration(true);
+    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+
+    auto firstInput = stitching->inputs["input0"].createInputQueue();
+    auto secondInput = stitching->inputs["input1"].createInputQueue();
+    auto output = stitching->out.createOutputQueue();
+
+    pipeline.start();
+    firstInput->send(toCalibratedFrame(firstImage, 0.0, 12));
+    secondInput->send(toCalibratedFrame(secondImage, 0.0, 12));
+
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    pipeline.stop();
+
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(panorama != nullptr);
+    const auto result = panorama->getCvFrame();
+    REQUIRE(result.at<cv::Vec3b>(result.rows / 2, result.cols / 2) == secondColor);
+}
+
+TEST_CASE("Calibrated panorama blends overlapping inputs when seam finding is enabled", "[Stitching]") {
+    const cv::Vec3b firstColor(20, 40, 60);
+    const cv::Vec3b secondColor(180, 200, 220);
+    const cv::Mat firstImage(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, firstColor);
+    const cv::Mat secondImage(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, secondColor);
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    stitching->setUseInputCalibration(true);
+    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::GRAPHCUT_COLOR);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+
+    auto firstInput = stitching->inputs["input0"].createInputQueue();
+    auto secondInput = stitching->inputs["input1"].createInputQueue();
+    auto output = stitching->out.createOutputQueue();
+
+    pipeline.start();
+    firstInput->send(toCalibratedFrame(firstImage, 0.0, 14));
+    secondInput->send(toCalibratedFrame(secondImage, 0.0, 14));
+
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    pipeline.stop();
+
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(panorama != nullptr);
+    const auto result = panorama->getCvFrame();
+    const auto center = result.at<cv::Vec3b>(result.rows / 2, result.cols / 2);
+    REQUIRE(center != firstColor);
+    REQUIRE(center != secondColor);
+}
+
+TEST_CASE("Calibrated cylindrical panorama masks inputs crossing the wrap boundary", "[Stitching]") {
+    const cv::Vec3b referenceColor(20, 80, 140);
+    const cv::Vec3b wrappedColor(180, 100, 40);
+    const cv::Mat referenceImage(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, referenceColor);
+    const cv::Mat wrappedImage(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, wrappedColor);
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    stitching->setUseInputCalibration(true);
+    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+
+    auto referenceInput = stitching->inputs["input0"].createInputQueue();
+    auto wrappedInput = stitching->inputs["input1"].createInputQueue();
+    auto output = stitching->out.createOutputQueue();
+
+    pipeline.start();
+    referenceInput->send(toCalibratedFrame(referenceImage, 0.0, 13));
+    wrappedInput->send(toCalibratedFrame(wrappedImage, 170.0, 13));
+
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    pipeline.stop();
+
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(panorama != nullptr);
+    const auto result = panorama->getCvFrame();
+    REQUIRE(result.at<cv::Vec3b>(result.rows / 2, result.cols / 2) == referenceColor);
+}
+
+TEST_CASE("Calibrated panorama rejects camera geometry changes after preparation", "[Stitching]") {
+    const cv::Mat image(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(40, 60, 80));
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    stitching->setUseInputCalibration(true);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+
+    auto firstInput = stitching->inputs["input0"].createInputQueue();
+    auto secondInput = stitching->inputs["input1"].createInputQueue();
+    auto output = stitching->out.createOutputQueue();
+
+    pipeline.start();
+    firstInput->send(toCalibratedFrame(image, -10.0, 20));
+    secondInput->send(toCalibratedFrame(image, 10.0, 20));
+
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(panorama != nullptr);
+
+    firstInput->send(toCalibratedFrame(image, -10.0, 21));
+    secondInput->send(toCalibratedFrame(image, 15.0, 21));
+    panorama = output->get<dai::ImgFrame>(std::chrono::milliseconds(200), timedOut);
+    pipeline.stop();
+
+    REQUIRE(timedOut);
+    REQUIRE(panorama == nullptr);
+}
+
+TEST_CASE("Calibrated panorama rejects distorted inputs", "[Stitching]") {
+    const cv::Mat image(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(40, 60, 80));
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    stitching->setUseInputCalibration(true);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+
+    auto firstInput = stitching->inputs["input0"].createInputQueue();
+    auto secondInput = stitching->inputs["input1"].createInputQueue();
+    auto output = stitching->out.createOutputQueue();
+
+    auto distorted = toCalibratedFrame(image, 10.0, 30);
+    distorted->getTransformation() = calibratedTransformation(10.0, "reference-device", {0.1f, 0.0f, 0.0f, 0.0f});
+
+    pipeline.start();
+    firstInput->send(toCalibratedFrame(image, -10.0, 30));
+    secondInput->send(distorted);
+
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::milliseconds(200), timedOut);
+    pipeline.stop();
+
+    REQUIRE(timedOut);
+    REQUIRE(panorama == nullptr);
+}
+
+TEST_CASE("Calibrated panorama rejects inputs with different destination origins", "[Stitching]") {
+    const cv::Mat image(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, cv::Scalar(40, 60, 80));
+
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    stitching->setUseInputCalibration(true);
+    stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
+    stitching->setSyncThreshold(std::chrono::seconds(1));
+
+    auto firstInput = stitching->inputs["input0"].createInputQueue();
+    auto secondInput = stitching->inputs["input1"].createInputQueue();
+    auto output = stitching->out.createOutputQueue();
+
+    pipeline.start();
+    firstInput->send(toCalibratedFrame(image, -10.0, 0));
+    auto mismatched = toCalibratedFrame(image, 10.0, 0);
+    auto mismatchedTransformation = calibratedTransformation(10.0);
+    auto mismatchedExtrinsics = mismatchedTransformation.getExtrinsics();
+    SECTION("device ID") {
+        mismatchedExtrinsics.toDeviceId = "different-device";
+    }
+    SECTION("camera socket") {
+        mismatchedExtrinsics.toCameraSocket = dai::CameraBoardSocket::CAM_B;
+    }
+    mismatchedTransformation.setExtrinsics(mismatchedExtrinsics);
+    mismatched->getTransformation() = mismatchedTransformation;
+    secondInput->send(mismatched);
+
+    bool timedOut = false;
+    auto panorama = output->get<dai::ImgFrame>(std::chrono::milliseconds(200), timedOut);
+    REQUIRE(timedOut);
+    REQUIRE(panorama == nullptr);
+
+    firstInput->send(toCalibratedFrame(image, -10.0, 1));
+    secondInput->send(toCalibratedFrame(image, 10.0, 1));
+    panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(panorama != nullptr);
+    REQUIRE(panorama->getSequenceNum() == 1);
+
+    firstInput->send(toCalibratedFrame(image, -10.0, 2));
+    auto changedOrigin = toCalibratedFrame(image, 10.0, 2);
+    auto changedTransformation = calibratedTransformation(10.0, "changed-after-preparation");
+    changedOrigin->getTransformation() = changedTransformation;
+    secondInput->send(changedOrigin);
+    panorama = output->get<dai::ImgFrame>(std::chrono::milliseconds(200), timedOut);
+    pipeline.stop();
+
+    REQUIRE(timedOut);
+    REQUIRE(panorama == nullptr);
 }
 
 TEST_CASE("Stitching combines three rotated views into a wider panorama", "[Stitching]") {
