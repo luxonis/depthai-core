@@ -17,6 +17,10 @@ on:
         required: false
         type: number
         default: 720
+      rvc2_protocol:
+        required: false
+        type: string
+        default: "all"
       run_standard_tests:
         required: false
         type: boolean
@@ -114,7 +118,7 @@ jobs:
         fi
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.job_prefix || inputs.flavor }}"
         set -o pipefail
-        hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh $TEST_ARG --test-label '${{ inputs.test_label }}' --timeout '${{ inputs.test_timeout }}'" 2>&1 | tee rvc2_test_output.log
+        hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh $TEST_ARG --rvc2-protocol '${{ inputs.rvc2_protocol }}' --test-label '${{ inputs.test_label }}' --timeout '${{ inputs.test_timeout }}'" 2>&1 | tee rvc2_test_output.log
 
     - name: Upload test log
       if: always()

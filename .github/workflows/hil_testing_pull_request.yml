@@ -33,6 +33,7 @@ jobs:
     with:
       flavor: "vanilla"
       job_prefix: "pr-approved"
+      rvc2_protocol: "usb"
       luxonis_os_versions_to_test: "['1.33.0']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}

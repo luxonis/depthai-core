@@ -165,6 +165,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--rvc2-protocol",
+        choices=["all", "usb", "tcpip"],
+        default="all",
+    )
+
+    parser.add_argument(
         "--rvc4replay",
         action="store_true",
         required=False,
@@ -188,6 +194,8 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    if args.rvc2_protocol != "all" and not (args.rvc2 or args.rvc2replay):
+        parser.error("--rvc2-protocol requires --rvc2 or --rvc2replay")
     test_dir = args.test_dir
     print("Going to run tests in directory:", test_dir)
     # cd to the test directory
@@ -266,6 +274,13 @@ if __name__ == "__main__":
     else:
         parser.error("One test target argument is required.")
 
+    if args.rvc2_protocol != "all":
+        test_configs = [
+            config
+            for config in test_configs
+            if config["env"].get("DEPTHAI_PROTOCOL") == args.rvc2_protocol
+            or (args.rvc2_protocol == "usb" and "onhost" in config["labels"])
+        ]
 
     for config in test_configs:
         name = config["name"]
