@@ -9,7 +9,10 @@
 // project
 #include "CallbackHandler.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/device/Version.hpp"
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
 #include "depthai/pipeline/Pipeline.hpp"
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -20,6 +23,10 @@
 #include "depthai-bootloader-shared/Type.hpp"
 
 namespace dai {
+
+#ifdef DEPTHAI_DEVICE_MANAGER_ONLY
+class Pipeline;
+#endif
 
 namespace fs = std::filesystem;
 // DeviceBootloader (RAII), connects to device and maintains watchdog ...

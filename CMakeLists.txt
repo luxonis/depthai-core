@@ -1057,6 +1057,121 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 ########################
+# Device manager target
+########################
+# depthai::device-manager: DeviceBootloader + XLinkConnection + embedded bootloader firmware, without the
+# pipeline, nodes or datatypes. Used by device management tools (e.g. oakctl) that only flash and configure.
+if(DEPTHAI_BUILD_DEVICE_MANAGER)
+    set(TARGET_DEVICE_MANAGER_NAME ${PROJECT_NAME}-device-manager)
+    set(TARGET_DEVICE_MANAGER_ALIAS device-manager)
+
+    add_library(${TARGET_DEVICE_MANAGER_NAME}
+        "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
+        src/device/DeviceBootloader.cpp
+        src/device/Platform.cpp
+        src/device/Version.cpp
+        src/xlink/XLinkConnection.cpp
+        src/xlink/XLinkStream.cpp
+        src/openvino/OpenVINO.cpp
+        src/openvino/BlobReader.cpp
+        src/utility/Resources.cpp
+        src/utility/Initialization.cpp
+        src/utility/XLinkGlobalProfilingLogger.cpp
+        src/utility/Logging.cpp
+        src/utility/Environment.cpp
+        src/utility/Platform.cpp
+        src/utility/ArchiveUtil.cpp
+        src/utility/Serialization.cpp
+        src/utility/Checksum.cpp
+        src/utility/Memory.cpp
+        src/utility/SharedMemory.cpp
+        src/utility/VectorMemory.cpp
+        src/utility/MemoryWrappers.cpp
+        src/bspatch/bspatch.c
+    )
+    add_library("${PROJECT_NAME}::${TARGET_DEVICE_MANAGER_ALIAS}" ALIAS ${TARGET_DEVICE_MANAGER_NAME})
+    set_target_properties(${TARGET_DEVICE_MANAGER_NAME} PROPERTIES EXPORT_NAME ${TARGET_DEVICE_MANAGER_ALIAS})
+    list(APPEND targets_to_export ${TARGET_DEVICE_MANAGER_NAME})
+
+    target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME}
+        PUBLIC
+            DEPTHAI_TARGET_CORE
+            DEPTHAI_DEVICE_MANAGER_ONLY
+        PRIVATE
+            DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_VERSION}"
+            DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
+            DEPTHAI_DEVICE_RVC3_VERSION="${DEPTHAI_DEVICE_RVC3_VERSION}"
+            DEPTHAI_DEVICE_RVC4_VERSION="${DEPTHAI_DEVICE_RVC4_VERSION}"
+    )
+    if(DEPTHAI_ENABLE_LIBUSB)
+        target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_ENABLE_LIBUSB DEPTHAI_HAVE_LIBUSB_SUPPORT)
+    endif()
+    if(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+        target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+    endif()
+    if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
+        target_link_libraries(${TARGET_DEVICE_MANAGER_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
+        target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_RESOURCE_COMPILED_BINARIES)
+    endif()
+    if(DEPTHAI_ENABLE_BACKWARD)
+        target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_ENABLE_BACKWARD)
+        target_link_libraries(${TARGET_DEVICE_MANAGER_NAME} PRIVATE Backward::Backward)
+    endif()
+
+    target_include_directories(${TARGET_DEVICE_MANAGER_NAME}
+        PUBLIC
+            "$<INSTALL_INTERFACE:include>"
+            "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
+            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
+            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
+        PRIVATE
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/depthai>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
+            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
+            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+    )
+    target_include_directories(${TARGET_DEVICE_MANAGER_NAME} SYSTEM PUBLIC "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>")
+
+    target_link_libraries(${TARGET_DEVICE_MANAGER_NAME}
+        PUBLIC
+            nlohmann_json::nlohmann_json
+            libnop
+        INTERFACE
+            XLinkPublic
+        PRIVATE
+            fmt::fmt
+            spdlog::spdlog
+            XLink
+            Threads::Threads
+            BZip2::BZip2
+            LibArchive::LibArchive
+            liblzma::liblzma
+            semver::semver
+    )
+
+    add_default_flags(${TARGET_DEVICE_MANAGER_NAME})
+    if(DEPTHAI_VCPKG_INTERNAL_ONLY)
+        exclude_archive_libs_symbols(${TARGET_DEVICE_MANAGER_NAME})
+    endif()
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} PROPERTY CXX_STANDARD 17)
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} PROPERTY CXX_EXTENSIONS OFF)
+    target_compile_features(${TARGET_DEVICE_MANAGER_NAME} INTERFACE cxx_std_17)
+
+    if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
+        add_runtime_dependencies(${TARGET_DEVICE_MANAGER_NAME} usb-1.0)
+    endif()
+    if(APPLE)
+        set_target_properties(${TARGET_DEVICE_MANAGER_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
+    elseif(UNIX)
+        set_target_properties(${TARGET_DEVICE_MANAGER_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
+    endif()
+endif()
+
+########################
 # OpenCV Support 2
 ########################
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)

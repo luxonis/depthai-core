@@ -8,6 +8,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <thread>
+#include <unordered_set>
 
 // libarchive
 #include "archive.h"
