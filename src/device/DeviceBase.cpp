@@ -67,6 +67,7 @@
 namespace {
 
 constexpr double PI = 3.14159265358979323846;
+constexpr int LOW_ETHERNET_LINK_SPEED_THRESHOLD_MBPS = 100;
 
 struct ScopedRpcTimeout {
    public:
@@ -1293,6 +1294,19 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         try {
             auto level = spdlogLevelToLogLevel(logger::get_level());
             setLogLevel(config.logLevel.value_or(level));
+
+            if(deviceInfo.protocol == X_LINK_TCP_IP) {
+                try {
+                    const auto linkSpeedMbps = pimpl->rpcCallChecked<int>("getEthernetLinkSpeed");
+                    if(linkSpeedMbps > 0 && linkSpeedMbps <= LOW_ETHERNET_LINK_SPEED_THRESHOLD_MBPS) {
+                        pimpl->logger.warn("Device is connected over Ethernet at {} Mbps. This connection may limit performance. "
+                                           "Check that the cable and network equipment support Gigabit Ethernet.",
+                                           linkSpeedMbps);
+                    }
+                } catch(const std::exception& ex) {
+                    pimpl->logger.debug("Could not determine Ethernet link speed: {}", ex.what());
+                }
+            }
 
             // Sets system inforation logging rate. By default 1s
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
