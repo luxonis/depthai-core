@@ -266,21 +266,45 @@ if(DEPTHAI_BASALT_SUPPORT)
 endif()
 
 # Create core library
+# Sources of depthai::device-manager (bootloader, XLink, embedded resources, logging); also part of depthai::core
+set(DEPTHAI_DEVICE_MANAGER_SOURCES
+    src/device/DeviceBootloader.cpp
+    src/device/Platform.cpp
+    src/device/Version.cpp
+    src/xlink/XLinkConnection.cpp
+    src/xlink/XLinkStream.cpp
+    src/openvino/OpenVINO.cpp
+    src/openvino/BlobReader.cpp
+    src/utility/Resources.cpp
+    src/utility/Initialization.cpp
+    src/utility/XLinkGlobalProfilingLogger.cpp
+    src/utility/Logging.cpp
+    src/utility/Environment.cpp
+    src/utility/Platform.cpp
+    src/utility/ArchiveUtil.cpp
+    src/utility/Serialization.cpp
+    src/utility/Checksum.cpp
+    src/utility/Memory.cpp
+    src/utility/SharedMemory.cpp
+    src/utility/VectorMemory.cpp
+    src/utility/MemoryWrappers.cpp
+    src/bspatch/bspatch.c
+)
+
 set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
+    # sources shared with depthai::device-manager
+    "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
     src/common/ModelType.cpp
     src/device/CrashDump.cpp
     src/device/CrashDumpManager.cpp
     src/device/Device.cpp
     src/device/DeviceBase.cpp
-    src/device/DeviceBootloader.cpp
     src/device/HealthCheck.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
-    src/device/Platform.cpp
-    src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/PipelineStateApi.cpp
     src/pipeline/AssetManager.cpp
@@ -398,37 +422,19 @@ set(TARGET_CORE_SOURCES
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/ObjectTrackerImpl.cpp
-    src/utility/Memory.cpp
-    src/utility/VectorMemory.cpp
-    src/utility/SharedMemory.cpp
     src/utility/ProtoSerializable.cpp
-    src/utility/Initialization.cpp
-    src/utility/Resources.cpp
-    src/utility/Platform.cpp
     src/utility/PipelineEventDispatcher.cpp
     src/utility/PipelineImplHelper.cpp
     src/utility/RecordReplay.cpp
     src/utility/McapImpl.cpp
-    src/utility/Environment.cpp
     src/utility/Compression.cpp
     src/utility/Telemetry.cpp
     src/utility/Uuid.cpp
-    src/utility/XLinkGlobalProfilingLogger.cpp
-    src/utility/Logging.cpp
-    src/utility/Checksum.cpp
     src/utility/matrixOps.cpp
     src/utility/EepromDataParser.cpp
     src/utility/LogCollection.cpp
-    src/utility/MemoryWrappers.cpp
-    src/utility/Serialization.cpp
     src/utility/OCVPorts.cpp
-    src/xlink/XLinkConnection.cpp
-    src/xlink/XLinkStream.cpp
-    src/openvino/OpenVINO.cpp
-    src/openvino/BlobReader.cpp
-    src/bspatch/bspatch.c
     src/device/DeviceGate.cpp
-    src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
     src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/Zoo.cpp
@@ -1079,27 +1085,7 @@ if(DEPTHAI_BUILD_DEVICE_MANAGER)
 
     add_library(${TARGET_DEVICE_MANAGER_NAME}
         "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
-        src/device/DeviceBootloader.cpp
-        src/device/Platform.cpp
-        src/device/Version.cpp
-        src/xlink/XLinkConnection.cpp
-        src/xlink/XLinkStream.cpp
-        src/openvino/OpenVINO.cpp
-        src/openvino/BlobReader.cpp
-        src/utility/Resources.cpp
-        src/utility/Initialization.cpp
-        src/utility/XLinkGlobalProfilingLogger.cpp
-        src/utility/Logging.cpp
-        src/utility/Environment.cpp
-        src/utility/Platform.cpp
-        src/utility/ArchiveUtil.cpp
-        src/utility/Serialization.cpp
-        src/utility/Checksum.cpp
-        src/utility/Memory.cpp
-        src/utility/SharedMemory.cpp
-        src/utility/VectorMemory.cpp
-        src/utility/MemoryWrappers.cpp
-        src/bspatch/bspatch.c
+        "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     )
     add_library("${PROJECT_NAME}::${TARGET_DEVICE_MANAGER_ALIAS}" ALIAS ${TARGET_DEVICE_MANAGER_NAME})
     set_target_properties(${TARGET_DEVICE_MANAGER_NAME} PROPERTIES EXPORT_NAME ${TARGET_DEVICE_MANAGER_ALIAS})
