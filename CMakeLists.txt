@@ -858,6 +858,15 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
     # Link to resource library
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
 
+    # Bootloader-only resource library for depthai::device-manager, so it does not embed device firmware it cannot use
+    if(DEPTHAI_BUILD_DEVICE_MANAGER)
+        set(DEPTHAI_BOOTLOADER_RESOURCE_LIBRARY_NAME "depthai-bootloader-resources")
+        cmrc_add_resource_library("${DEPTHAI_BOOTLOADER_RESOURCE_LIBRARY_NAME}" NAMESPACE depthai
+            WHENCE "${DEPTHAI_RESOURCES_OUTPUT_DIR}"
+            "${DEPTHAI_BOOTLOADER_RESOURCE_LIST}"
+        )
+    endif()
+
     # Set define that binaries are resource compiled
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_RESOURCE_COMPILED_BINARIES)
 
@@ -1110,7 +1119,7 @@ if(DEPTHAI_BUILD_DEVICE_MANAGER)
         target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
     endif()
     if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
-        target_link_libraries(${TARGET_DEVICE_MANAGER_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
+        target_link_libraries(${TARGET_DEVICE_MANAGER_NAME} PRIVATE "${DEPTHAI_BOOTLOADER_RESOURCE_LIBRARY_NAME}")
         target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_RESOURCE_COMPILED_BINARIES)
     endif()
     if(DEPTHAI_ENABLE_BACKWARD)
@@ -1472,6 +1481,9 @@ if(NOT BUILD_SHARED_LIBS)
     list(APPEND targets_to_export XLink)
     if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
         list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+        if(DEPTHAI_BUILD_DEVICE_MANAGER)
+            list(APPEND targets_to_export ${DEPTHAI_BOOTLOADER_RESOURCE_LIBRARY_NAME})
+        endif()
     endif()
     if(DEPTHAI_ENABLE_PROTOBUF)
         list(APPEND targets_to_export messages)
