@@ -24,10 +24,6 @@
 
 namespace dai {
 
-#ifdef DEPTHAI_DEVICE_MANAGER_ONLY
-class Pipeline;
-#endif
-
 namespace fs = std::filesystem;
 // DeviceBootloader (RAII), connects to device and maintains watchdog ...
 
