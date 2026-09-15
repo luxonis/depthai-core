@@ -86,6 +86,10 @@ int main() {
             if(dynCalibrationResult->calibrationData) {
                 std::cout << "Successfully evaluated metrics from calibration output." << std::endl;
                 printMetrics(dynCalibrationResult->calibrationData->calibrationDifference);
+            }
+            const bool invalidTranslation =
+                dynCalibrationResult->info == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more";
+            if(dynCalibrationResult->calibrationData || invalidTranslation) {
                 dynCalibInputControl->send(DCC::resetData());
             }
         } else {

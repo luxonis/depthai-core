@@ -29,7 +29,9 @@ namespace node {
 namespace {
 
 bool isExpectedCalibrationInfoMessage(const std::string& message) {
-    return message == "Not enough coverage" || message == "Not enough data" || message == "Requested sensors are not connected by measurement pairs";
+    return message == "Not enough coverage" || message == "Not enough data" || message == "No data"
+           || message == "Requested sensors are not connected by measurement pairs"
+           || message == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more";
 }
 
 struct DynamicCalibrationTelemetryAggregateState {

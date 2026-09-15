@@ -93,6 +93,13 @@ with dai.Pipeline() as pipeline:
                         flash=False
                     )
                 )
+            invalidTranslation = (
+                calibration_result.info
+                == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more"
+            )
+            if calibration_result.calibrationData is not None or invalidTranslation:
+                inputControl.send(dai.DynamicCalibrationControl.resetData())
+                inputControl.send(dai.DynamicCalibrationControl.startCalibration())
 
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()

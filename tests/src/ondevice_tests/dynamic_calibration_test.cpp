@@ -201,6 +201,27 @@ static dai::CalibrationHandler getHandler(bool toHousing = false) {
 
     return handler;
 }
+
+static dai::CalibrationHandler getTwoCameraHandler(const std::array<double, 3>& rvecLeftToRight, const std::vector<float>& cvecLeftToRight) {
+    const auto camLeft = dai::CameraBoardSocket::CAM_C;
+    const auto camRight = dai::CameraBoardSocket::CAM_B;
+    const auto rotationLeftToRight = dai::matrix::rvecToRotationMatrix(rvecLeftToRight.data());
+    const auto tvecLeftToRight = dai::matrix::matVecMul(rotationLeftToRight, cvecLeftToRight);
+    const std::vector<std::vector<float>> intrinsics = {{564.0f, 0.0f, 640.0f}, {0.0f, 564.0f, 400.0f}, {0.0f, 0.0f, 1.0f}};
+    const std::vector<float> distortion(14, 0.0f);
+
+    dai::CalibrationHandler handler;
+    auto eepromData = handler.getEepromData();
+    eepromData.stereoUseSpecTranslation = false;
+    eepromData.stereoEnableDistortionCorrection = true;
+    handler = dai::CalibrationHandler(eepromData);
+    handler.setCameraIntrinsics(camLeft, intrinsics, 1280, 800);
+    handler.setCameraIntrinsics(camRight, intrinsics, 1280, 800);
+    handler.setDistortionCoefficients(camLeft, distortion);
+    handler.setDistortionCoefficients(camRight, distortion);
+    handler.setCameraExtrinsics(camLeft, camRight, rotationLeftToRight, tvecLeftToRight, cvecLeftToRight);
+    return handler;
+}
 }  // namespace
 
 TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
@@ -511,6 +532,46 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     REQUIRE(std::fabs(cvecBaseToLeft[0] - cvecBaseToLeftBefore[0]) < thresholdTranslation);
     REQUIRE(std::fabs(cvecBaseToLeft[1] - cvecBaseToLeftBefore[1]) < thresholdTranslation);
     REQUIRE(std::fabs(cvecBaseToLeft[2] - cvecBaseToLeftBefore[2]) < thresholdTranslation);
+
+    p.stop();
+    p.wait();
+}
+
+TEST_CASE("DynamicCalibration: Rejects excessive translation direction change.") {
+    TestHelper helper;
+
+    auto device = std::make_shared<dai::Device>();
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, false);
+
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+
+    // Give DCL a baseline direction which differs substantially from the
+    // direction implied by the recorded stereo images.
+    auto calibrationHandler = getTwoCameraHandler({0.0, 0.0, 0.0}, {-5.0f, -5.0f, 0.0f});
+    device->setCalibration(calibrationHandler);
+
+    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibrationHandler);
+    p.start();
+    dynCalib->syncInput.send(group);
+    std::this_thread::sleep_for(0.5s);
+
+    for(int i = 0; i < 7; ++i) {
+        auto frameGroup = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibrationHandler);
+        dynCalib->syncInput.send(frameGroup);
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
+        auto coverage = coverageOutput->get<dai::CoverageData>();
+        REQUIRE(coverage->coverageAcquired > 0.0f);
+    }
+
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true, true}));
+    auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
+
+    REQUIRE(result != nullptr);
+    REQUIRE_FALSE(result->calibrationData.has_value());
+    REQUIRE(result->info == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more");
 
     p.stop();
     p.wait();
