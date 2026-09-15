@@ -176,6 +176,17 @@ Stitching::CameraModel Stitching::getCameraModel() const {
     return properties.cameraModel;
 }
 
+void Stitching::setUseInputCalibration(bool useInputCalibration) {
+    std::lock_guard<std::mutex> lock(hostPropertiesMutex);
+    properties.useInputCalibration = useInputCalibration;
+    invalidateHostState();
+}
+
+bool Stitching::getUseInputCalibration() const {
+    std::lock_guard<std::mutex> lock(hostPropertiesMutex);
+    return properties.useInputCalibration;
+}
+
 void Stitching::setContinuous(bool continuous) {
     std::lock_guard<std::mutex> lock(hostPropertiesMutex);
     properties.continuous = continuous;
