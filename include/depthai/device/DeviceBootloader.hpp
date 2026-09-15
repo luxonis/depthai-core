@@ -11,7 +11,7 @@
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/Version.hpp"
 #ifndef DEPTHAI_DEVICE_MANAGER_ONLY
-#include "depthai/pipeline/Pipeline.hpp"
+    #include "depthai/pipeline/Pipeline.hpp"
 #endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
