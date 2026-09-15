@@ -24,10 +24,6 @@
 
 namespace dai {
 
-#ifdef DEPTHAI_DEVICE_MANAGER_ONLY
-class Pipeline;
-#endif
-
 namespace fs = std::filesystem;
 // DeviceBootloader (RAII), connects to device and maintains watchdog ...
 
@@ -128,6 +124,7 @@ class DeviceBootloader {
      */
     static std::vector<DeviceInfo> getAllAvailableDevices();
 
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
     /**
      * Creates application package which can be flashed to depthai device.
      * @param pipeline Pipeline from which to create the application package
@@ -175,6 +172,7 @@ class DeviceBootloader {
      */
     static void saveDepthaiApplicationPackage(
         const fs::path& path, const Pipeline& pipeline, bool compress, const std::string& applicationName = "", bool checkChecksum = false);
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 
     /**
      * @returns Embedded bootloader version
@@ -233,6 +231,7 @@ class DeviceBootloader {
      */
     ~DeviceBootloader();
 
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
     /**
      * Flashes a given pipeline to the device.
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
@@ -255,6 +254,7 @@ class DeviceBootloader {
      */
     std::tuple<bool, std::string> flash(
         const Pipeline& pipeline, bool compress = false, const std::string& applicationName = "", Memory memory = Memory::AUTO, bool checkChecksum = false);
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 
     /**
      * Reads information about flashed application in specified memory from device
