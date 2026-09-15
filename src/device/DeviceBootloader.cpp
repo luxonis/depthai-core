@@ -9,15 +9,15 @@
 #include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #ifndef DEPTHAI_DEVICE_MANAGER_ONLY
-#include "depthai/pipeline/Assets.hpp"
+    #include "depthai/pipeline/Assets.hpp"
 #endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
 
 // project
 #ifndef DEPTHAI_DEVICE_MANAGER_ONLY
-#include "device/Device.hpp"
-#include "pipeline/Pipeline.hpp"
+    #include "device/Device.hpp"
+    #include "pipeline/Pipeline.hpp"
 #endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "utility/Platform.hpp"
 #include "utility/Resources.hpp"

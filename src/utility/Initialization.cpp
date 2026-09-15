@@ -12,7 +12,7 @@
 #include "utility/Logging.hpp"
 #include "utility/Resources.hpp"
 #ifndef DEPTHAI_DEVICE_MANAGER_ONLY
-#include "utility/Telemetry.hpp"
+    #include "utility/Telemetry.hpp"
 #endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "utility/XLinkGlobalProfilingLogger.hpp"
 
