@@ -1147,10 +1147,10 @@ if(DEPTHAI_BUILD_DEVICE_MANAGER)
     target_link_libraries(${TARGET_DEVICE_MANAGER_NAME}
         PUBLIC
             nlohmann_json::nlohmann_json
-            libnop
         INTERFACE
             XLinkPublic
         PRIVATE
+            libnop
             fmt::fmt
             spdlog::spdlog
             XLink

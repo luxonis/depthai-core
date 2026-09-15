@@ -7,7 +7,6 @@
 #include <type_traits>
 
 // project
-#include "CallbackHandler.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/Version.hpp"
 #ifndef DEPTHAI_DEVICE_MANAGER_ONLY
