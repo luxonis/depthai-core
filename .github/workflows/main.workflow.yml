@@ -133,6 +133,32 @@ jobs:
     - name: Build minimal target set
       run: cmake --build --preset minimal
 
+  device-manager-build:
+    runs-on: ubuntu-24.04
+    needs: [precheck, consistency]
+    if: needs.precheck.outputs.should_run == 'true'
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.13
+      with:
+        cmake-version: '3.29.x'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libudev-dev libusb-1.0-0-dev
+
+    - name: Configure device-manager build
+      run: cmake --preset device-manager
+
+    - name: Build depthai::device-manager
+      run: cmake --build --preset device-manager
+
   build:
     runs-on: ${{ matrix.os }}
     needs: [precheck, consistency]
