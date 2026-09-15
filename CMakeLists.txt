@@ -590,6 +590,9 @@ if(DEPTHAI_BUILD_BETA)
 endif()
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
+# depthai::core and depthai::device-manager define the same symbols; make CMake refuse a consumer that links both
+set_property(TARGET ${TARGET_CORE_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "core")
+set_property(TARGET ${TARGET_CORE_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
@@ -1100,6 +1103,8 @@ if(DEPTHAI_BUILD_DEVICE_MANAGER)
     )
     add_library("${PROJECT_NAME}::${TARGET_DEVICE_MANAGER_ALIAS}" ALIAS ${TARGET_DEVICE_MANAGER_NAME})
     set_target_properties(${TARGET_DEVICE_MANAGER_NAME} PROPERTIES EXPORT_NAME ${TARGET_DEVICE_MANAGER_ALIAS})
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "device-manager")
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
     list(APPEND targets_to_export ${TARGET_DEVICE_MANAGER_NAME})
 
     target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME}
