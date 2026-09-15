@@ -1036,7 +1036,7 @@ macro(add_runtime_dependencies depending_target dependency)
         message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
     endif()
     # Create a list of required dll files
-    set(required_dll_files ${dlls})
+    list(APPEND required_dll_files ${dlls})
     # Copy the required dlls
     if(WIN32)
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
