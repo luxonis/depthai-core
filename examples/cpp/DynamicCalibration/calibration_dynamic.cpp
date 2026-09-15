@@ -90,8 +90,12 @@ int main() {
                 }
                 std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
                 std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
+            }
 
-                // Reset and start a new round if desired
+            const bool invalidTranslation =
+                dynCalibrationResult->info == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more";
+            if(dynCalibrationResult->calibrationData || invalidTranslation) {
+                dynCalibInputControl->send(DCC::resetData());
                 dynCalibInputControl->send(DCC::startCalibration());
             }
         }
