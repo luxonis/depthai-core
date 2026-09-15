@@ -111,11 +111,13 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
     
     if(crashDumpData) {
         cpr::Buffer crashDumpBuffer(crashDumpData->content.begin(), crashDumpData->content.end(), crashDumpData->name);
-        if (static_cast<int64>(crashDumpBuffer.datalen) < freeSpace) multipart.parts.emplace_back("crashDumpFile", crashDumpBuffer);
+        if (static_cast<int64>(crashDumpBuffer.datalen) < freeSpace) {
+            multipart.parts.emplace_back("crashDumpFile", crashDumpBuffer);
+            freeSpace -= static_cast<int64>(crashDumpBuffer.datalen);
+        }
         else logger::warn("Not uploading crashdump because it exceeds size limit {}/{}bytes", crashDumpBuffer.datalen, freeSpace);
         multipart.parts.emplace_back("crashDumpId", crashDumpData->sha1Hash);
         multipart.parts.emplace_back("crashDumpFileSize", std::to_string(crashDumpBuffer.datalen));
-        freeSpace -= static_cast<int64>(crashDumpBuffer.datalen);
     }
     
     if(pipelineData) {
