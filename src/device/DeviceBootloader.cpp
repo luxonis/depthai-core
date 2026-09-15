@@ -9,6 +9,7 @@
 #include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai/pipeline/Assets.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
 
@@ -230,19 +231,25 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
                                                                        bool compress,
                                                                        const std::string& applicationName,
                                                                        bool checkChecksum) {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     return createDepthaiApplicationPackage(pipeline, "", compress, applicationName, checkChecksum);
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
     const fs::path& path, const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, const std::string& applicationName, bool checkChecksum) {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName, checkChecksum);
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
     const fs::path& path, const Pipeline& pipeline, bool compress, const std::string& applicationName, bool checkChecksum) {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
@@ -633,12 +640,16 @@ std::tuple<bool, std::string> DeviceBootloader::flash(const std::function<void(f
                                                       const std::string& applicationName,
                                                       Memory memory,
                                                       bool checkCheksum) {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flash(
     const Pipeline& pipeline, bool compress, const std::string& applicationName, Memory memory, bool checkCheksum) {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory mem) {
@@ -822,7 +833,9 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(c
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(const std::vector<uint8_t>& package, Memory memory) {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     return flashDepthaiApplicationPackage(nullptr, package, memory);
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashClear(Memory memory) {

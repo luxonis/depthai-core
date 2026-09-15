@@ -1,7 +1,15 @@
 #include "DeviceBootloaderBindings.hpp"
 
+#include <utility>
+
 // depthai
 #include "depthai/device/DeviceBootloader.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
+
+namespace {
+constexpr const char* RVC2_STANDALONE_DEPRECATION_MESSAGE =
+    "RVC2 standalone applications (.dap) are deprecated and unsupported in DepthAI v3. Use RVC2 in peripheral mode or OAK Apps on RVC4 instead.";
+}  // namespace
 
 void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -107,19 +115,38 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
 
         .def_static("getFirstAvailableDevice", &DeviceBootloader::getFirstAvailableDevice, DOC(dai, DeviceBootloader, getFirstAvailableDevice))
         .def_static("getAllAvailableDevices", &DeviceBootloader::getAllAvailableDevices, DOC(dai, DeviceBootloader, getAllAvailableDevices))
-        .def_static("saveDepthaiApplicationPackage",
-                    py::overload_cast<const std::filesystem::path&, const Pipeline&, const std::filesystem::path&, bool, const std::string&, bool>(
-                        &DeviceBootloader::saveDepthaiApplicationPackage),
-                    py::arg("path"),
-                    py::arg("pipeline"),
-                    py::arg("pathToCmd") = std::filesystem::path(),
-                    py::arg("compress") = false,
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage))
         .def_static(
             "saveDepthaiApplicationPackage",
-            py::overload_cast<const std::filesystem::path&, const Pipeline&, bool, const std::string&, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
+            [](const std::filesystem::path& path,
+               const Pipeline& pipeline,
+               const std::filesystem::path& pathToCmd,
+               bool compress,
+               const std::string& applicationName,
+               bool checkChecksum) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, RVC2_STANDALONE_DEPRECATION_MESSAGE, 1) < 0) {
+                    throw pybind11::error_already_set();
+                }
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+                DeviceBootloader::saveDepthaiApplicationPackage(path, pipeline, pathToCmd, compress, applicationName, checkChecksum);
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+            },
+            py::arg("path"),
+            py::arg("pipeline"),
+            py::arg("pathToCmd") = std::filesystem::path(),
+            py::arg("compress") = false,
+            py::arg("applicationName") = "",
+            py::arg("checkChecksum") = false,
+            DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage))
+        .def_static(
+            "saveDepthaiApplicationPackage",
+            [](const std::filesystem::path& path, const Pipeline& pipeline, bool compress, const std::string& applicationName, bool checkChecksum) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, RVC2_STANDALONE_DEPRECATION_MESSAGE, 1) < 0) {
+                    throw pybind11::error_already_set();
+                }
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+                DeviceBootloader::saveDepthaiApplicationPackage(path, pipeline, compress, applicationName, checkChecksum);
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+            },
             py::arg("path"),
             py::arg("pipeline"),
             py::arg("compress"),
@@ -128,20 +155,35 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage, 2))
         .def_static(
             "createDepthaiApplicationPackage",
-            py::overload_cast<const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
+            [](const Pipeline& pipeline, const std::filesystem::path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, RVC2_STANDALONE_DEPRECATION_MESSAGE, 1) < 0) {
+                    throw pybind11::error_already_set();
+                }
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+                return DeviceBootloader::createDepthaiApplicationPackage(pipeline, pathToCmd, compress, std::move(applicationName), checkChecksum);
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+            },
             py::arg("pipeline"),
             py::arg("pathToCmd") = std::filesystem::path(),
             py::arg("compress") = false,
             py::arg("applicationName") = "",
             py::arg("checkChecksum") = false,
             DOC(dai, DeviceBootloader, createDepthaiApplicationPackage))
-        .def_static("createDepthaiApplicationPackage",
-                    py::overload_cast<const Pipeline&, bool, const std::string&, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
-                    py::arg("pipeline"),
-                    py::arg("compress"),
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, createDepthaiApplicationPackage, 2))
+        .def_static(
+            "createDepthaiApplicationPackage",
+            [](const Pipeline& pipeline, bool compress, const std::string& applicationName, bool checkChecksum) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, RVC2_STANDALONE_DEPRECATION_MESSAGE, 1) < 0) {
+                    throw pybind11::error_already_set();
+                }
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+                return DeviceBootloader::createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+            },
+            py::arg("pipeline"),
+            py::arg("compress"),
+            py::arg("applicationName") = "",
+            py::arg("checkChecksum") = false,
+            DOC(dai, DeviceBootloader, createDepthaiApplicationPackage, 2))
         .def_static("getEmbeddedBootloaderVersion", &DeviceBootloader::getEmbeddedBootloaderVersion, DOC(dai, DeviceBootloader, getEmbeddedBootloaderVersion))
         .def_static("getEmbeddedBootloaderBinary", &DeviceBootloader::getEmbeddedBootloaderBinary, DOC(dai, DeviceBootloader, getEmbeddedBootloaderBinary))
 
@@ -168,8 +210,13 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
                std::string applicationName,
                DeviceBootloader::Memory memory,
                bool checkChecksum) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, RVC2_STANDALONE_DEPRECATION_MESSAGE, 1) < 0) {
+                    throw pybind11::error_already_set();
+                }
                 py::gil_scoped_release release;
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                 return db.flash(progressCallback, pipeline, compress, applicationName, memory, checkChecksum);
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
             },
             py::arg("progressCallback"),
             py::arg("pipeline"),
@@ -186,8 +233,13 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
                std::string applicationName,
                DeviceBootloader::Memory memory,
                bool checkChecksum) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, RVC2_STANDALONE_DEPRECATION_MESSAGE, 1) < 0) {
+                    throw pybind11::error_already_set();
+                }
                 py::gil_scoped_release release;
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                 return db.flash(pipeline, compress, applicationName, memory, checkChecksum);
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
             },
             py::arg("pipeline"),
             py::arg("compress") = false,
@@ -229,8 +281,13 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(
             "flashDepthaiApplicationPackage",
             [](DeviceBootloader& db, std::function<void(float)> progressCallback, std::vector<uint8_t> package, DeviceBootloader::Memory memory) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, RVC2_STANDALONE_DEPRECATION_MESSAGE, 1) < 0) {
+                    throw pybind11::error_already_set();
+                }
                 py::gil_scoped_release release;
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                 return db.flashDepthaiApplicationPackage(progressCallback, package);
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
             },
             py::arg("progressCallback"),
             py::arg("package"),
@@ -239,8 +296,13 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(
             "flashDepthaiApplicationPackage",
             [](DeviceBootloader& db, std::vector<uint8_t> package, DeviceBootloader::Memory memory) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, RVC2_STANDALONE_DEPRECATION_MESSAGE, 1) < 0) {
+                    throw pybind11::error_already_set();
+                }
                 py::gil_scoped_release release;
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                 return db.flashDepthaiApplicationPackage(package);
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
             },
             py::arg("package"),
             py::arg("memory") = DeviceBootloader::Memory::AUTO,
