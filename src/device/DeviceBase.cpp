@@ -764,7 +764,19 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
         if(crashDumpPathStr == "0") {
             pimpl->logger.warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved nor uploaded to the Luxonis servers.");
         } else {
-            logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
+            auto task = [schema = pipelineSchema,
+            dump = std::move(crashDump),
+            info = deviceInfo]() {
+                try {
+                    logCollection::logCrashDump(schema, *dump, info);
+                } catch(const std::exception& ex) {
+                    logger::error("Crash dump logging failed: {}", ex.what());
+                } catch(...) {
+                    logger::error("Crash dump logging failed with an unknown exception");
+                }
+            };
+            std::thread worker(std::move(task));
+            worker.detach();
         }
         crashDumpHandled.store(true);
     }
