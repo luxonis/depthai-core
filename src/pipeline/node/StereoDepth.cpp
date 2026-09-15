@@ -41,6 +41,10 @@ StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
+StereoDepth::StereoDepth(const std::shared_ptr<Device>& device) : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(device) {
+    setDefaultProfilePreset(PresetMode::DEFAULT);
+}
+
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = *initialConfig;
     return properties;
@@ -206,6 +210,9 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
 }
 
 void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
+    *initialConfig = StereoDepthConfig{};
+    setPostProcessingHardwareResources(Properties::AUTO, Properties::AUTO);
+
     switch(mode) {
         case PresetMode::ACCURACY:
         case PresetMode::FAST_ACCURACY: {
@@ -404,6 +411,8 @@ void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
 }
 
 void StereoDepth::setRvc4ProfilePreset(PresetMode mode) {
+    *initialConfig = StereoDepthConfig{};
+
     switch(mode) {
         case PresetMode::DENSITY:
         case PresetMode::FAST_DENSITY:
