@@ -5,8 +5,15 @@ DEPTHAI_VERSION="$1"
 
 RELEASE_URL="https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/"
 SNAPSHOT_URL="https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/"
+WHEEL_DIR="$4"
 
-if [ -z "$DEPTHAI_VERSION" ] || [ "$DEPTHAI_VERSION" == "latest" ]; then
+if [ -d "$WHEEL_DIR" ]; then
+    echo "Installing depthai from $WHEEL_DIR"
+    rm -rf venv
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install --no-cache-dir "$WHEEL_DIR"/*.whl
+elif [ -z "$DEPTHAI_VERSION" ] || [ "$DEPTHAI_VERSION" == "latest" ]; then
     echo "Using latest depthai"
     source /home/hil/.hil/bin/activate
 else
@@ -18,6 +25,12 @@ else
 fi
 
 export DEPTHAI_PLATFORM=rvc4
+export DEPTHAI_PROTOCOL="${2:-tcpip}"
 export DISPLAY=:99
 
-python tests/stability/stability_test_depthai.py
+TIMEOUT_ARGS=()
+if [[ -n "$3" ]]; then
+    TIMEOUT_ARGS=(--timeout "$3")
+fi
+
+python tests/stability/stability_test_depthai.py "${TIMEOUT_ARGS[@]}"
