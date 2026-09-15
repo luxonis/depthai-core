@@ -28,7 +28,9 @@
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
-#include "zlib.h"
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
+    #include "zlib.h"
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 
 namespace dai {
 
