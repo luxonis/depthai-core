@@ -349,7 +349,7 @@ jobs:
 
     # Clone repository
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       with:
         submodules: 'recursive'
         persist-credentials: false
@@ -358,27 +358,27 @@ jobs:
     # TODO(themarpe) - Node12, has to be updated
     - name: Get latest release version number
       id: tag
-      uses: battila7/get-version-action@v2
+      uses: battila7/get-version-action@d97fbc34ceb64d1f5d95f4dfd6dce33521ccccf5 # v2
 
     # Check if version matches (TODO)
     #- name: Check if version matches
     #   run: |
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4
       with:
         python-version: '3.8'
     - name: Install dependencies
       run: python3.8 -m pip install git-archive-all
 
     - name: Download Win64 artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       with:
         pattern: windows-prebuilt-win64*
         merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win64
 
     # - name: Download Win32 artifacts
-    #   uses: actions/download-artifact@v4
+    #   uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
     #   with:
     #     pattern: windows-prebuilt-win32-no-opencv*
     #     merge-multiple: true
@@ -411,7 +411,7 @@ jobs:
 
     # Upload release assets
     - name: Upload source package (zip)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 # v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -421,7 +421,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload source package (tar.gz)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 # v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -431,7 +431,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Win64 package (zip)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 # v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -441,7 +441,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     # - name: Upload Win32 package (zip)
-    #   uses: actions/upload-release-asset@v1.0.1
+    #   uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 # v1.0.1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:
