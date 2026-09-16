@@ -17,7 +17,7 @@ on:
     branches:
       - main
       - develop
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
 
 jobs:
 
