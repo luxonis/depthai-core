@@ -12,33 +12,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_ci_tests:
-    uses: ./.github/workflows/test_child.yml
-    with:
-      flavor: "vanilla"
-      job_prefix: "vanilla-ci"
-      rvc2_protocol: "all"
-      test_label: "ci"
-      luxonis_os_versions_to_test: "['1.33.0']"
-      luxonis_os_versions_to_test_usb: "['1.33.0']"
-    secrets:
-      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
-      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
-      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
-      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
-      INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
-      INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
-      INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
-      INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
-
-  run_ci_nightly_tests:
+  run_ci_and_ci_nightly_tests:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
       job_prefix: "vanilla-ci-nightly"
-      test_label: "ci_nightly"
-      test_timeout: 3000
+      rvc2_protocol: "all"
+      test_label: "ci|ci_nightly"
       luxonis_os_versions_to_test: "['1.33.0']"
+      luxonis_os_versions_to_test_usb: "['1.33.0']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}

@@ -2,6 +2,7 @@ import os
 import subprocess
 import threading
 import argparse
+import re
 from functools import reduce
 import pathlib
 import atexit
@@ -81,7 +82,7 @@ def run_ctest(env_vars, labels, test_label="ci", timeout=1000, excluded_labels=N
         "--no-tests=error",
         "-VV",
         "-L",
-        f"^{test_label}$",
+        f"^({test_label})$",
         "--timeout",
         str(timeout),
         "-C",
@@ -257,7 +258,7 @@ if __name__ == "__main__":
         test_configs = [
             config
             for config in all_configs
-            if "rvc2" in config.get("labels", []) or (args.test_label == "ci" and "onhost" in config.get("labels", []))
+            if "rvc2" in config.get("labels", []) or (re.fullmatch(args.test_label, "ci") and "onhost" in config.get("labels", []))
         ]
     elif args.rvc4replay:
         test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "tcpip"]
