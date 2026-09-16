@@ -146,6 +146,8 @@ const char* deviceModelZooName(DeviceModelZoo model) {
             return "NEURAL_DEPTH_288X180";
         case DeviceModelZoo::NEURAL_DEPTH_192X120:
             return "NEURAL_DEPTH_192X120";
+        case DeviceModelZoo::TOF_NEURAL_FUSION_672X804:
+            return "TOF_NEURAL_FUSION_672X804";
     }
     return "UNKNOWN";
 }

@@ -135,6 +135,21 @@ std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& A,
     return res;
 }
 
+bool isValidIntrinsicsMatrix(const std::vector<std::vector<float>>& intrinsics) {
+    if(intrinsics.size() != 3 || intrinsics[0].size() != 3 || intrinsics[1].size() != 3 || intrinsics[2].size() != 3) {
+        return false;
+    }
+
+    for(const auto& row : intrinsics) {
+        if(!std::all_of(row.begin(), row.end(), [](float value) { return std::isfinite(value); })) {
+            return false;
+        }
+    }
+
+    return intrinsics[0][0] > 0.0f && intrinsics[1][1] > 0.0f && intrinsics[1][0] == 0.0f && intrinsics[2][0] == 0.0f && intrinsics[2][1] == 0.0f
+           && intrinsics[2][2] == 1.0f;
+}
+
 void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix) {
     if(rotationMatrix.size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");

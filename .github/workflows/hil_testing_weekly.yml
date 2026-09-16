@@ -40,9 +40,9 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.20.5','1.27.1','1.33.0']"
-      luxonis_os_versions_to_test_rgb: "['1.33.0']"
-      luxonis_os_versions_to_test_usb: "['1.33.0']"
+      luxonis_os_versions_to_test: "['1.30.1','1.35.0','1.40.0']"
+      luxonis_os_versions_to_test_rgb: "['1.40.0']"
+      luxonis_os_versions_to_test_usb: "['1.40.0']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -55,7 +55,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
-      luxonis_os_versions_to_test: "['1.33.0']"
+      luxonis_os_versions_to_test: "['1.40.0']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -68,7 +68,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
-      luxonis_os_versions_to_test: "['1.33.0']"
+      luxonis_os_versions_to_test: "['1.40.0']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -80,8 +80,8 @@ jobs:
     if: inputs.test_os || needs.select_tests.outputs.test_all == 'true'
     uses: ./.github/workflows/test_child_windows.yml
     with:
-      luxonis_os_versions_to_test: "['1.33.0']"
-      luxonis_os_versions_to_test_usb: '["1.33.0"]'
+      luxonis_os_versions_to_test: "['1.40.0']"
+      luxonis_os_versions_to_test_usb: '["1.40.0"]'
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -97,7 +97,7 @@ jobs:
       job_prefix: "vanilla-replay"
       enable_replay_tests: true
       rvc2_timeout_minutes: 1440
-      luxonis_os_versions_to_test: "['1.33.0']"
+      luxonis_os_versions_to_test: "['1.40.0']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -110,8 +110,8 @@ jobs:
     uses: ./.github/workflows/test_child_mac.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.33.0']"
-      luxonis_os_versions_to_test_usb: '["1.33.0"]'
+      luxonis_os_versions_to_test: "['1.40.0']"
+      luxonis_os_versions_to_test_usb: '["1.40.0"]'
     secrets:
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
       CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}

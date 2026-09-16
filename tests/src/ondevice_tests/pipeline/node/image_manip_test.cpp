@@ -344,10 +344,7 @@ void testManipFourPointTransform(bool normalizedCoords) {
     const auto outImage = runManip(fourPointCfg);
     constexpr int patchRadius = 8;
     for(const auto& marker : markers) {
-        const cv::Rect patchRect{marker.destination.x - patchRadius,
-                                 marker.destination.y - patchRadius,
-                                 2 * patchRadius + 1,
-                                 2 * patchRadius + 1};
+        const cv::Rect patchRect{marker.destination.x - patchRadius, marker.destination.y - patchRadius, 2 * patchRadius + 1, 2 * patchRadius + 1};
         cv::Mat matchingPixels = outImage(patchRect) > 127;
         REQUIRE(cv::countNonZero(matchingPixels) >= 100);
     }

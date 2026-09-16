@@ -27,7 +27,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
         m, "IMUReportRotationVectorWAcc", DOC(dai, IMUReportRotationVectorWAcc));
     py::class_<IMUPacket> imuPacket(m, "IMUPacket", DOC(dai, IMUPacket));
     // py::class_<RawIMUData, RawBuffer, std::shared_ptr<RawIMUData>> rawIMUPackets(m, "RawIMUData", DOC(dai, RawIMUData));
-    py::class_<IMUData, Py<IMUData>, Buffer, std::shared_ptr<IMUData>> imuData(m, "IMUData", DOC(dai, IMUData));
+    py::class_<IMUData, Py<IMUData>, Buffer, ProtoSerializable, std::shared_ptr<IMUData>> imuData(m, "IMUData", DOC(dai, IMUData));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

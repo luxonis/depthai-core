@@ -117,7 +117,11 @@ unsigned int ImgFrame::getHeight() const {
     return fb.height;
 }
 unsigned int ImgFrame::getPlaneHeight() const {
-    return getPlaneStride() / getStride();
+    const auto stride = getStride();
+    if(stride == 0) {
+        return 0;
+    }
+    return getPlaneStride() / stride;
 }
 ImgFrame::Type ImgFrame::getType() const {
     return fb.type;
@@ -362,11 +366,17 @@ Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& or
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 ProtoSerializable::SchemaPair ImgFrame::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<ImgFrame>();
 }
 
 std::vector<std::uint8_t> ImgFrame::serializeProto(bool metadataOnly) const {
     return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }
+
+void ImgFrame::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
+
 #endif
+
 }  // namespace dai
