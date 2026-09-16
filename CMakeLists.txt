@@ -1041,9 +1041,9 @@ endif()
 
 # Helper function
 macro(add_runtime_dependencies depending_target dependency)
+    set(dlls "")
     if(TARGET ${dependency})
         get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-        set(dlls "")
         message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
         foreach(cfg ${imported_configs})
             message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
@@ -1055,14 +1055,15 @@ macro(add_runtime_dependencies depending_target dependency)
     endif()
     # Create a list of required dll files
     list(APPEND required_dll_files ${dlls})
+    list(REMOVE_DUPLICATES required_dll_files)
     # Copy the required dlls
     if(WIN32)
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
+            "$<$<BOOL:${dlls}>:${CMAKE_COMMAND};-E;copy_if_different;${dlls};$<TARGET_FILE_DIR:${depending_target}>>"
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
-        message(STATUS "Required dlls for core are: ${required_dll_files}")
+        message(STATUS "Required dlls for ${depending_target} are: ${dlls}")
     endif()
 endmacro()
 # Add libusb dll in build time when libusb is provided by vcpkg.
