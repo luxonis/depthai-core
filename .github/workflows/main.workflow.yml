@@ -391,7 +391,7 @@ jobs:
         # zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     # Create GitHub release
-    - uses: actions/create-release@master
+    - uses: actions/create-release@89e8dc236279a907f495cdc4ebff2056b7036b3d # master
       id: createRelease
       name: Create ${{ steps.tag.outputs.version }} depthai-core release
       env:
