@@ -8,13 +8,17 @@
 #include "depthai-bootloader-shared/SBR.h"
 #include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai/pipeline/Assets.hpp"
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
+    #include "depthai/pipeline/Assets.hpp"
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
 
 // project
-#include "device/Device.hpp"
-#include "pipeline/Pipeline.hpp"
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
+    #include "device/Device.hpp"
+    #include "pipeline/Pipeline.hpp"
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
 #include "utility/spdlog-fmt.hpp"
@@ -24,7 +28,9 @@
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
-#include "zlib.h"
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
+    #include "zlib.h"
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 
 namespace dai {
 
@@ -64,6 +70,7 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
     return availableDevices;
 }
 
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
 std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
     const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
     // Serialize the pipeline
@@ -246,6 +253,7 @@ void DeviceBootloader::saveDepthaiApplicationPackage(
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devInfo) {
     init(true, {}, std::nullopt, false);
@@ -627,6 +635,7 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
     return allowFlashingBootloader;
 }
 
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
 std::tuple<bool, std::string> DeviceBootloader::flash(const std::function<void(float)>& progressCb,
                                                       const Pipeline& pipeline,
                                                       bool compress,
@@ -640,6 +649,7 @@ std::tuple<bool, std::string> DeviceBootloader::flash(
     const Pipeline& pipeline, bool compress, const std::string& applicationName, Memory memory, bool checkCheksum) {
     return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 
 DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory mem) {
     // Send request to retrieve bootloader version

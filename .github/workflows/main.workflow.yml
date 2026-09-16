@@ -1,7 +1,8 @@
 name: DepthAI Core CI/CD
 
 concurrency:
-  group: depthai-core-${{ github.event.pull_request.number || github.ref }}
+  # Review notifications must not cancel PR builds or approved-review builds.
+  group: depthai-core-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.review.state || 'none' }}
   cancel-in-progress: true
 
 on:
@@ -17,9 +18,12 @@ on:
     branches:
       - main
       - develop
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
   pull_request_review:
     types: [submitted]
+
+permissions:
+  contents: read
 
 jobs:
 
@@ -67,6 +71,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+        persist-credentials: false
 
     - name: Install consistency check dependencies
       run: |
@@ -88,6 +93,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+        persist-credentials: false
 
     - name: Install format dependencies
       run: |
@@ -110,6 +116,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+        persist-credentials: false
 
     - name: Install dependencies
       run: |
@@ -131,6 +138,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+        persist-credentials: false
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.13
@@ -142,6 +150,33 @@ jobs:
 
     - name: Build minimal target set
       run: cmake --build --preset minimal
+
+  device-manager-build:
+    runs-on: ubuntu-24.04
+    needs: [precheck, consistency]
+    if: needs.precheck.outputs.should_run == 'true'
+
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      with:
+        submodules: 'recursive'
+        persist-credentials: false
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@65b272e1213f99771fbba0c237e0b3312270e0c9 # v1.13
+      with:
+        cmake-version: '3.29.x'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libudev-dev libusb-1.0-0-dev
+
+    - name: Configure device-manager build
+      run: cmake --preset device-manager
+
+    - name: Build depthai::device-manager
+      run: cmake --build --preset device-manager
 
   build:
     runs-on: ${{ matrix.os }}
@@ -156,6 +191,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+        persist-credentials: false
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.13
@@ -209,6 +245,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+        persist-credentials: false
 
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
@@ -285,7 +322,7 @@ jobs:
 
   required_core_ci_report:
     name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Core CI report (not applicable)' }}
-    needs: [precheck, consistency, style, tidy, minimal-build, build, integration]
+    needs: [precheck, consistency, style, tidy, minimal-build, device-manager-build, build, integration]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -304,41 +341,44 @@ jobs:
         fi
 
   release:
+    permissions:
+      contents: write
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, style, integration, minimal-build]
     runs-on: ubuntu-latest
 
     # Clone repository
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       with:
         submodules: 'recursive'
+        persist-credentials: false
 
     # Get tag version
     # TODO(themarpe) - Node12, has to be updated
     - name: Get latest release version number
       id: tag
-      uses: battila7/get-version-action@v2
+      uses: battila7/get-version-action@d97fbc34ceb64d1f5d95f4dfd6dce33521ccccf5 # v2
 
     # Check if version matches (TODO)
     #- name: Check if version matches
     #   run: |
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4
       with:
         python-version: '3.8'
     - name: Install dependencies
       run: python3.8 -m pip install git-archive-all
 
     - name: Download Win64 artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       with:
         pattern: windows-prebuilt-win64*
         merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win64
 
     # - name: Download Win32 artifacts
-    #   uses: actions/download-artifact@v4
+    #   uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
     #   with:
     #     pattern: windows-prebuilt-win32-no-opencv*
     #     merge-multiple: true
@@ -352,7 +392,7 @@ jobs:
         # zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     # Create GitHub release
-    - uses: actions/create-release@master
+    - uses: actions/create-release@89e8dc236279a907f495cdc4ebff2056b7036b3d # master
       id: createRelease
       name: Create ${{ steps.tag.outputs.version }} depthai-core release
       env:
@@ -371,7 +411,7 @@ jobs:
 
     # Upload release assets
     - name: Upload source package (zip)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 # v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -381,7 +421,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload source package (tar.gz)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 # v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -391,7 +431,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Win64 package (zip)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 # v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -401,7 +441,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     # - name: Upload Win32 package (zip)
-    #   uses: actions/upload-release-asset@v1.0.1
+    #   uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 # v1.0.1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:

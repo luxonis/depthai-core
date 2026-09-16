@@ -272,21 +272,45 @@ if(DEPTHAI_BASALT_SUPPORT)
 endif()
 
 # Create core library
+# Sources of depthai::device-manager (bootloader, XLink, embedded resources, logging); also part of depthai::core
+set(DEPTHAI_DEVICE_MANAGER_SOURCES
+    src/device/DeviceBootloader.cpp
+    src/device/Platform.cpp
+    src/device/Version.cpp
+    src/xlink/XLinkConnection.cpp
+    src/xlink/XLinkStream.cpp
+    src/openvino/OpenVINO.cpp
+    src/openvino/BlobReader.cpp
+    src/utility/Resources.cpp
+    src/utility/Initialization.cpp
+    src/utility/XLinkGlobalProfilingLogger.cpp
+    src/utility/Logging.cpp
+    src/utility/Environment.cpp
+    src/utility/Platform.cpp
+    src/utility/ArchiveUtil.cpp
+    src/utility/Serialization.cpp
+    src/utility/Checksum.cpp
+    src/utility/Memory.cpp
+    src/utility/SharedMemory.cpp
+    src/utility/VectorMemory.cpp
+    src/utility/MemoryWrappers.cpp
+    src/bspatch/bspatch.c
+)
+
 set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
+    # sources shared with depthai::device-manager
+    "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
     src/common/ModelType.cpp
     src/device/CrashDump.cpp
     src/device/CrashDumpManager.cpp
     src/device/Device.cpp
     src/device/DeviceBase.cpp
-    src/device/DeviceBootloader.cpp
     src/device/HealthCheck.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
-    src/device/Platform.cpp
-    src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/PipelineStateApi.cpp
     src/pipeline/AssetManager.cpp
@@ -407,37 +431,19 @@ set(TARGET_CORE_SOURCES
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/ObjectTrackerImpl.cpp
-    src/utility/Memory.cpp
-    src/utility/VectorMemory.cpp
-    src/utility/SharedMemory.cpp
     src/utility/ProtoSerializable.cpp
-    src/utility/Initialization.cpp
-    src/utility/Resources.cpp
-    src/utility/Platform.cpp
     src/utility/PipelineEventDispatcher.cpp
     src/utility/PipelineImplHelper.cpp
     src/utility/RecordReplay.cpp
     src/utility/McapImpl.cpp
-    src/utility/Environment.cpp
     src/utility/Compression.cpp
     src/utility/Telemetry.cpp
     src/utility/Uuid.cpp
-    src/utility/XLinkGlobalProfilingLogger.cpp
-    src/utility/Logging.cpp
-    src/utility/Checksum.cpp
     src/utility/matrixOps.cpp
     src/utility/EepromDataParser.cpp
     src/utility/LogCollection.cpp
-    src/utility/MemoryWrappers.cpp
-    src/utility/Serialization.cpp
     src/utility/OCVPorts.cpp
-    src/xlink/XLinkConnection.cpp
-    src/xlink/XLinkStream.cpp
-    src/openvino/OpenVINO.cpp
-    src/openvino/BlobReader.cpp
-    src/bspatch/bspatch.c
     src/device/DeviceGate.cpp
-    src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
     src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/Zoo.cpp
@@ -611,6 +617,9 @@ if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
 endif()
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
+# depthai::core and depthai::device-manager define the same symbols; make CMake refuse a consumer that links both
+set_property(TARGET ${TARGET_CORE_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "core")
+set_property(TARGET ${TARGET_CORE_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
@@ -879,6 +888,15 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
     # Link to resource library
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
 
+    # Bootloader-only resource library for depthai::device-manager, so it does not embed device firmware it cannot use
+    if(DEPTHAI_BUILD_DEVICE_MANAGER)
+        set(DEPTHAI_BOOTLOADER_RESOURCE_LIBRARY_NAME "depthai-bootloader-resources")
+        cmrc_add_resource_library("${DEPTHAI_BOOTLOADER_RESOURCE_LIBRARY_NAME}" NAMESPACE depthai
+            WHENCE "${DEPTHAI_RESOURCES_OUTPUT_DIR}"
+            "${DEPTHAI_BOOTLOADER_RESOURCE_LIST}"
+        )
+    endif()
+
     # Set define that binaries are resource compiled
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_RESOURCE_COMPILED_BINARIES)
 
@@ -1044,9 +1062,9 @@ endif()
 
 # Helper function
 macro(add_runtime_dependencies depending_target dependency)
+    set(dlls "")
     if(TARGET ${dependency})
         get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-        set(dlls "")
         message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
         foreach(cfg ${imported_configs})
             message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
@@ -1057,15 +1075,16 @@ macro(add_runtime_dependencies depending_target dependency)
         message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
     endif()
     # Create a list of required dll files
-    set(required_dll_files ${dlls})
+    list(APPEND required_dll_files ${dlls})
+    list(REMOVE_DUPLICATES required_dll_files)
     # Copy the required dlls
     if(WIN32)
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
+            "$<$<BOOL:${dlls}>:${CMAKE_COMMAND};-E;copy_if_different;${dlls};$<TARGET_FILE_DIR:${depending_target}>>"
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
-        message(STATUS "Required dlls for core are: ${required_dll_files}")
+        message(STATUS "Required dlls for ${depending_target} are: ${dlls}")
     endif()
 endmacro()
 # Add libusb dll in build time when libusb is provided by vcpkg.
@@ -1075,6 +1094,103 @@ endif()
 # Add dynamic calibration dll in build time
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
+endif()
+
+########################
+# Device manager target
+########################
+# depthai::device-manager: DeviceBootloader + XLinkConnection + embedded bootloader firmware, without the
+# pipeline, nodes or datatypes. Used by device management tools (e.g. oakctl) that only flash and configure.
+if(DEPTHAI_BUILD_DEVICE_MANAGER)
+    set(TARGET_DEVICE_MANAGER_NAME ${PROJECT_NAME}-device-manager)
+    set(TARGET_DEVICE_MANAGER_ALIAS device-manager)
+
+    add_library(${TARGET_DEVICE_MANAGER_NAME}
+        "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
+        "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
+    )
+    add_library("${PROJECT_NAME}::${TARGET_DEVICE_MANAGER_ALIAS}" ALIAS ${TARGET_DEVICE_MANAGER_NAME})
+    set_target_properties(${TARGET_DEVICE_MANAGER_NAME} PROPERTIES EXPORT_NAME ${TARGET_DEVICE_MANAGER_ALIAS})
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "device-manager")
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
+    list(APPEND targets_to_export ${TARGET_DEVICE_MANAGER_NAME})
+
+    target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME}
+        PUBLIC
+            DEPTHAI_DEVICE_MANAGER_ONLY
+        PRIVATE
+            DEPTHAI_TARGET_CORE
+            DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_VERSION}"
+            DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
+            DEPTHAI_DEVICE_RVC3_VERSION="${DEPTHAI_DEVICE_RVC3_VERSION}"
+            DEPTHAI_DEVICE_RVC4_VERSION="${DEPTHAI_DEVICE_RVC4_VERSION}"
+    )
+    if(DEPTHAI_ENABLE_LIBUSB)
+        target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_ENABLE_LIBUSB DEPTHAI_HAVE_LIBUSB_SUPPORT)
+    endif()
+    if(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+        target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+    endif()
+    if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
+        target_link_libraries(${TARGET_DEVICE_MANAGER_NAME} PRIVATE "${DEPTHAI_BOOTLOADER_RESOURCE_LIBRARY_NAME}")
+        target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_RESOURCE_COMPILED_BINARIES)
+    endif()
+    if(DEPTHAI_ENABLE_BACKWARD)
+        target_compile_definitions(${TARGET_DEVICE_MANAGER_NAME} PRIVATE DEPTHAI_ENABLE_BACKWARD)
+        target_link_libraries(${TARGET_DEVICE_MANAGER_NAME} PRIVATE Backward::Backward)
+    endif()
+
+    target_include_directories(${TARGET_DEVICE_MANAGER_NAME}
+        PUBLIC
+            "$<INSTALL_INTERFACE:include>"
+            "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
+            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
+            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
+        PRIVATE
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/depthai>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
+            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
+            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+    )
+    target_include_directories(${TARGET_DEVICE_MANAGER_NAME} SYSTEM PUBLIC "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>")
+
+    target_link_libraries(${TARGET_DEVICE_MANAGER_NAME}
+        PUBLIC
+            nlohmann_json::nlohmann_json
+        INTERFACE
+            XLinkPublic
+        PRIVATE
+            libnop
+            fmt::fmt
+            spdlog::spdlog
+            XLink
+            Threads::Threads
+            BZip2::BZip2
+            LibArchive::LibArchive
+            liblzma::liblzma
+            semver::semver
+    )
+
+    add_default_flags(${TARGET_DEVICE_MANAGER_NAME})
+    if(DEPTHAI_VCPKG_INTERNAL_ONLY)
+        exclude_archive_libs_symbols(${TARGET_DEVICE_MANAGER_NAME})
+    endif()
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} PROPERTY CXX_STANDARD 17)
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${TARGET_DEVICE_MANAGER_NAME} PROPERTY CXX_EXTENSIONS OFF)
+    target_compile_features(${TARGET_DEVICE_MANAGER_NAME} INTERFACE cxx_std_17)
+
+    if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
+        add_runtime_dependencies(${TARGET_DEVICE_MANAGER_NAME} usb-1.0)
+    endif()
+    if(APPLE)
+        set_target_properties(${TARGET_DEVICE_MANAGER_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
+    elseif(UNIX)
+        set_target_properties(${TARGET_DEVICE_MANAGER_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
+    endif()
 endif()
 
 ########################
@@ -1262,6 +1378,9 @@ endif()
 if(DEPTHAI_SANITIZE)
     find_package(Sanitizers)
     add_sanitizers(${TARGET_CORE_NAME})
+    if(DEPTHAI_BUILD_DEVICE_MANAGER)
+        add_sanitizers(${TARGET_DEVICE_MANAGER_NAME})
+    endif()
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_OPENCV_NAME})
     endif()
@@ -1381,6 +1500,9 @@ if(NOT BUILD_SHARED_LIBS)
     list(APPEND targets_to_export XLink)
     if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
         list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+        if(DEPTHAI_BUILD_DEVICE_MANAGER)
+            list(APPEND targets_to_export ${DEPTHAI_BOOTLOADER_RESOURCE_LIBRARY_NAME})
+        endif()
     endif()
     if(DEPTHAI_ENABLE_PROTOBUF)
         list(APPEND targets_to_export messages)
