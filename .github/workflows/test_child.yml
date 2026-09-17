@@ -295,10 +295,10 @@ jobs:
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-fsync"
-          export HIL_TESTBED="slo605-ptp"
+          export HIL_TESTBED="sloptp1"
           export HIL_SCOPE="ptp"
-          exec hil_runner --platforms="rvc4 and rvc4" \
-              --scope $HIL_SCOPE --testbed $HIL_TESTBED \
+          exec hil_runner --platforms="rvc4 and rvc4 and rvc4 and rvc4" \
+              --scope $HIL_SCOPE --testbed $HIL_TESTBED --enable-ptp \
               --basic-sanity --reservation-name $RESERVATION_NAME --wait \
               --rvc4-os-version ${{ matrix.rvc4os }} \
               --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} \
