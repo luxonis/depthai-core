@@ -33,6 +33,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput);
 
     void buildInternal() override;
+    void postBuildStage() override;
 
     /**
      * Initial config to use for VPP.
@@ -48,6 +49,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 
     const std::string leftInputName = "left";
     const std::string rightInputName = "right";
+    const std::string depthName = "depth";
     const std::string disparityName = "disparity";
     const std::string confidenceName = "confidence";
 
@@ -62,13 +64,13 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
      */
     Input& right{sync->inputs["right"]};
 
-    /**
-     * Low resolution disparity in pixels (in integers - 16 times bigger)
-     */
+    /** Low resolution disparity in pixels, scaled by 16. Connect this or depth. */
     Input& disparity{sync->inputs["disparity"]};
+    /** Aligned RAW16 depth in millimeters. Uses stereo frame transformations for conversion. */
+    Input& depth{sync->inputs["depth"]};
 
     /**
-     * Confidence of the dispatiry (in integers - 16 times bigger).
+     * Optional confidence aligned with the depth/disparity input (in integers - 16 times bigger).
      */
     Input& confidence{sync->inputs["confidence"]};
 #endif
