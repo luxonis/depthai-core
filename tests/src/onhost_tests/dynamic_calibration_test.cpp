@@ -60,7 +60,7 @@ TEST_CASE("DynamicCalibration preserves DCL housing poses and factory links", "[
     current.updateCameraExtrinsics(Socket::CAM_A, Socket::CAM_B, dai::matrix::extractRotationMatrix(pose(-0.4f, 0, 0, 0)), {9, 8, 7});
     const std::vector<Socket> sockets = {Socket::CAM_A, Socket::CAM_B, Socket::CAM_C, Socket::CAM_D};
     const std::map<Socket, Transform> dclPoses = {{Socket::CAM_B, pose(0.4f, 0.02f, 0.03f, -0.01f)}, {Socket::CAM_C, pose(-0.3f, 0.09f, -0.02f, 0.04f)}};
-    const auto result = dai::node::detail::assembleDynamicCalibration(current, factory, sockets, dclPoses, true, stereoPairs);
+    const auto result = dai::node::detail::assembleDynamicCalibration(current, factory, sockets, dclPoses, true, stereoPairs, dai::Platform::RVC2);
     for(const auto& entry : dclPoses) {
         requireTransform(result.getHousingCalibration(entry.first, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER), inverse(entry.second));
     }
@@ -76,7 +76,7 @@ TEST_CASE("DynamicCalibration preserves DCL housing poses and factory links", "[
     REQUIRE(actualSpec.x == originalSpec.x);
     REQUIRE(actualSpec.y == originalSpec.y);
     REQUIRE(actualSpec.z == originalSpec.z);
-    const auto repeated = dai::node::detail::assembleDynamicCalibration(result, factory, sockets, dclPoses, true, stereoPairs);
+    const auto repeated = dai::node::detail::assembleDynamicCalibration(result, factory, sockets, dclPoses, true, stereoPairs, dai::Platform::RVC2);
     requireTransform(repeated.getHousingCalibration(Socket::CAM_A, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER),
                      result.getHousingCalibration(Socket::CAM_A, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER));
 }
@@ -87,7 +87,7 @@ TEST_CASE("DynamicCalibration factory link requirements", "[DynamicCalibrationTr
     std::map<Socket, Transform> poses;
     for(size_t i = 0; i < sockets.size(); ++i) poses[sockets[i]] = pose(0.1f * i, 0.02f * i, 0, 0);
     SECTION("Fully observed rig needs no factory calibration") {
-        const auto result = dai::node::detail::assembleDynamicCalibration(current, {}, sockets, poses, true, {});
+        const auto result = dai::node::detail::assembleDynamicCalibration(current, {}, sockets, poses, true, {}, dai::Platform::RVC2);
         for(const auto& entry : poses) {
             requireTransform(result.getHousingCalibration(entry.first, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER),
                              inverse(entry.second));
@@ -95,22 +95,22 @@ TEST_CASE("DynamicCalibration factory link requirements", "[DynamicCalibrationTr
     }
     SECTION("Unobserved cameras require a stereo pair") {
         poses.erase(Socket::CAM_A);
-        REQUIRE_THROWS_WITH(dai::node::detail::assembleDynamicCalibration(current, current, sockets, poses, true, {}),
+        REQUIRE_THROWS_WITH(dai::node::detail::assembleDynamicCalibration(current, current, sockets, poses, true, {}, dai::Platform::RVC2),
                             "DynamicCalibration requires a stereo pair to anchor unobserved cameras to factory extrinsics.");
     }
     SECTION("Missing factory links fail explicitly") {
         poses.erase(Socket::CAM_A);
-        REQUIRE_THROWS(dai::node::detail::assembleDynamicCalibration(current, {}, sockets, poses, true, stereoPairs));
+        REQUIRE_THROWS(dai::node::detail::assembleDynamicCalibration(current, {}, sockets, poses, true, stereoPairs, dai::Platform::RVC2));
     }
     SECTION("No housing preserves relative poses") {
         poses.erase(Socket::CAM_A);
-        const auto result = dai::node::detail::assembleDynamicCalibration(current, current, sockets, poses, false, stereoPairs);
+        const auto result = dai::node::detail::assembleDynamicCalibration(current, current, sockets, poses, false, stereoPairs, dai::Platform::RVC2);
         requireTransform(result.getCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, false, dai::LengthUnit::METER),
                          dai::matrix::matMul(poses.at(Socket::CAM_C), inverse(poses.at(Socket::CAM_B))));
     }
     SECTION("Unobserved cameras require the first stereo pair anchor to be calibrated") {
         poses.erase(Socket::CAM_B);
-        REQUIRE_THROWS_WITH(dai::node::detail::assembleDynamicCalibration(current, current, sockets, poses, true, stereoPairs),
+        REQUIRE_THROWS_WITH(dai::node::detail::assembleDynamicCalibration(current, current, sockets, poses, true, stereoPairs, dai::Platform::RVC2),
                             "DynamicCalibration requires the first stereo pair's default depth reference camera as a calibration input to anchor unobserved "
                             "cameras to factory extrinsics.");
     }
@@ -123,7 +123,7 @@ TEST_CASE("DynamicCalibration anchors ToF to B in the B-C-D-A device chain", "[D
     factory.setCameraExtrinsics(Socket::CAM_D, Socket::CAM_A, rotation, {2, 1, 3});
     const std::vector<Socket> sockets = {Socket::CAM_B, Socket::CAM_C, Socket::CAM_D, Socket::CAM_A};
     const std::map<Socket, Transform> poses = {{Socket::CAM_B, pose(0.4f, 0.02f, 0.03f, -0.01f)}, {Socket::CAM_C, pose(-0.3f, 0.09f, -0.02f, 0.04f)}};
-    const auto result = dai::node::detail::assembleDynamicCalibration(factory, factory, sockets, poses, true, stereoPairs);
+    const auto result = dai::node::detail::assembleDynamicCalibration(factory, factory, sockets, poses, true, stereoPairs, dai::Platform::RVC2);
     for(auto socket : {Socket::CAM_D, Socket::CAM_A}) {
         requireTransform(result.getCameraExtrinsics(Socket::CAM_B, socket), factory.getCameraExtrinsics(Socket::CAM_B, socket));
     }
@@ -133,7 +133,7 @@ TEST_CASE("DynamicCalibration anchors ToF to B in the B-C-D-A device chain", "[D
     requireTransform(result.getCameraExtrinsics(Socket::CAM_D, Socket::CAM_A), factory.getCameraExtrinsics(Socket::CAM_D, Socket::CAM_A));
 }
 
-TEST_CASE("Stereo depth wire configuration and calibration share the default reference", "[DynamicCalibrationTransforms]") {
+TEST_CASE("Stereo depth preserves requested alignment on the wire", "[DynamicCalibrationTransforms]") {
     using Align = dai::StereoDepthConfig::AlgorithmControl::DepthAlign;
     const auto alignment = GENERATE(Align::AUTO, Align::LEFT, Align::RIGHT, Align::RECTIFIED_LEFT, Align::RECTIFIED_RIGHT, Align::CENTER);
     dai::StereoDepthConfig config;
@@ -143,8 +143,7 @@ TEST_CASE("Stereo depth wire configuration and calibration share the default ref
     config.serialize(metadata, datatype);
     dai::StereoDepthConfig decoded;
     dai::utility::deserialize(metadata, decoded);
-    const auto resolved = dai::utility::resolveStereoDepthAlignment(alignment);
-    REQUIRE(decoded.algorithmControl.depthAlign == resolved);
+    REQUIRE(decoded.algorithmControl.depthAlign == alignment);
     REQUIRE(config.algorithmControl.depthAlign == alignment);
     REQUIRE(datatype == dai::DatatypeEnum::StereoDepthConfig);
     struct StereoDepthAccess : dai::node::StereoDepth {
@@ -153,15 +152,8 @@ TEST_CASE("Stereo depth wire configuration and calibration share the default ref
     };
     StereoDepthAccess stereo;
     stereo.initialConfig->algorithmControl.depthAlign = alignment;
-    REQUIRE(stereo.getProperties().initialConfig.algorithmControl.depthAlign == resolved);
+    REQUIRE(stereo.getProperties().initialConfig.algorithmControl.depthAlign == alignment);
     REQUIRE(stereo.initialConfig->algorithmControl.depthAlign == alignment);
-    const dai::StereoPair pair{Socket::CAM_C, Socket::CAM_D};
-    if(resolved == Align::CENTER) {
-        REQUIRE_THROWS(dai::utility::stereoDepthReferenceCamera(pair, alignment));
-    } else {
-        const auto expected = (resolved == Align::LEFT || resolved == Align::RECTIFIED_LEFT) ? pair.left : pair.right;
-        REQUIRE(dai::utility::stereoDepthReferenceCamera(pair, alignment) == expected);
-    }
 }
 
 TEST_CASE("DynamicCalibration - Commands", "[DynamicCalibrationControl]") {

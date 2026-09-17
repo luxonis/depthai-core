@@ -48,8 +48,11 @@ using measured factory extrinsics, rather than their previous housing poses.
 Every unobserved camera is anchored to the default stereo-depth reference camera of
 `device.getStereoPairs()[0]`: the
 result's transform from that anchor into the camera equals the measured factory
-transform. The anchor is selected by the same `AUTO`-resolution policy used for initial and
-runtime StereoDepth configuration. A stereo pair must exist and its reference camera must be a calibration
+transform. Anchor selection mirrors the firmware default: RVC4 selects the right camera when
+its measured distance to CAM_A is less than 80% of the left camera’s distance;
+otherwise it selects left, including when CAM_A extrinsics are unavailable.
+RVC2 selects left. StereoDepth keeps `AUTO` unchanged on the wire so firmware
+continues to resolve initial and runtime alignment. A stereo pair must exist and its reference camera must be a calibration
 input when any unobserved cameras are present; otherwise calibration fails
 explicitly. Fully observed rigs do not require a stereo pair.
 

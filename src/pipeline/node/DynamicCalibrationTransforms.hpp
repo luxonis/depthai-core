@@ -20,7 +20,8 @@ inline CalibrationHandler assembleDynamicCalibration(const CalibrationHandler& c
                                                      const std::vector<CameraBoardSocket>& sockets,
                                                      const std::map<CameraBoardSocket, std::vector<std::vector<float>>>& calibratedPoses,
                                                      bool housingBase,
-                                                     const std::vector<StereoPair>& stereoPairs) {
+                                                     const std::vector<StereoPair>& stereoPairs,
+                                                     Platform platform) {
     if(calibratedPoses.empty()) throw std::invalid_argument("DynamicCalibration has no calibrated camera poses.");
 
     auto poses = calibratedPoses;
@@ -29,7 +30,7 @@ inline CalibrationHandler assembleDynamicCalibration(const CalibrationHandler& c
             if(stereoPairs.empty()) {
                 throw std::invalid_argument("DynamicCalibration requires a stereo pair to anchor unobserved cameras to factory extrinsics.");
             }
-            const auto anchor = utility::stereoDepthReferenceCamera(stereoPairs.front());
+            const auto anchor = utility::stereoDepthReferenceCamera(stereoPairs.front(), current, platform);
             if(!calibratedPoses.count(anchor)) {
                 throw std::invalid_argument(
                     "DynamicCalibration requires the first stereo pair's default depth reference camera as a calibration input to anchor unobserved cameras to "
