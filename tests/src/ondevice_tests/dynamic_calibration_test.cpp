@@ -1,6 +1,8 @@
+#include <array>
 #include <atomic>
 #include <catch2/catch_all.hpp>
 #include <chrono>
+#include <cmath>
 #include <depthai/depthai.hpp>
 #include <exception>
 #include <iomanip>
@@ -27,7 +29,8 @@
 using namespace std::chrono_literals;
 
 namespace {
-constexpr int SYNTHETIC_CALIBRATION_IMAGE_COUNT = 7;
+constexpr int HOLISTIC_REPLAY_IMAGE_COUNT = 10;
+constexpr auto HOLISTIC_REPLAY_FRAME_INTERVAL = 150ms;
 
 dai::Pipeline makePipeline(const std::shared_ptr<dai::Device>& device, std::shared_ptr<dai::node::DynamicCalibration>& dynCalib, bool linkStreams = true) {
     // Construct pipeline bound to the device
@@ -228,129 +231,90 @@ static dai::CalibrationHandler getTwoCameraHandler(const std::array<double, 3>& 
     return handler;
 }
 
-struct SyntheticRecalibrationObservation {
-    std::array<std::optional<float>, SYNTHETIC_CALIBRATION_IMAGE_COUNT> coverageByImage;
+std::vector<float> rotationDifferenceVector(const std::vector<std::vector<float>>& rotation, const std::vector<std::vector<float>>& referenceRotation) {
+    const auto referenceRotationInverse = dai::matrix::invertSe3(referenceRotation, {0.0f, 0.0f, 0.0f}).first;
+    return dai::matrix::rotationMatrixToVector(dai::matrix::matMul(rotation, referenceRotationInverse));
+}
+
+struct HolisticCalibrationSetup {
+    dai::CalibrationHandler perturbedCalibration;
+    std::vector<std::vector<float>> groundTruthRotation;
+    std::vector<std::vector<float>> perturbedRotation;
+};
+
+HolisticCalibrationSetup makeHolisticCalibrationSetup(const dai::CalibrationHandler& replayCalibration) {
+    auto groundTruthEeprom = replayCalibration.getEepromData();
+    // This recording intentionally contains a synthetic housing transform to CAM_E
+    // for transformation tests. Dynamic calibration only needs a valid housing root.
+    groundTruthEeprom.housingExtrinsics.toCameraSocket = dai::CameraBoardSocket::CAM_A;
+    const dai::CalibrationHandler groundTruthCalibration(groundTruthEeprom);
+
+    constexpr auto CAM_LEFT = dai::CameraBoardSocket::CAM_B;
+    constexpr auto CAM_RIGHT = dai::CameraBoardSocket::CAM_C;
+    const auto groundTruthRotation = groundTruthCalibration.getCameraRotationMatrix(CAM_LEFT, CAM_RIGHT);
+    const auto groundTruthRvec = dai::matrix::rotationMatrixToVector(groundTruthRotation);
+    const std::array<double, 3> perturbedRvec = {groundTruthRvec[0] + 0.01, groundTruthRvec[1] + 0.01, groundTruthRvec[2] + 0.01};
+    const auto perturbedRotation = dai::matrix::rvecToRotationMatrix(perturbedRvec.data());
+    const auto cameraCenter = groundTruthCalibration.getCameraTranslationVector(CAM_LEFT, CAM_RIGHT, false);
+    const auto perturbedTranslation = dai::matrix::matVecMul(perturbedRotation, cameraCenter);
+
+    auto perturbedEeprom = groundTruthEeprom;
+    auto& perturbedExtrinsics = perturbedEeprom.cameraData.at(CAM_LEFT).extrinsics;
+    perturbedExtrinsics.rotationMatrix = perturbedRotation;
+    perturbedExtrinsics.translation = dai::Point3f(perturbedTranslation[0], perturbedTranslation[1], perturbedTranslation[2]);
+    return {dai::CalibrationHandler(perturbedEeprom), groundTruthRotation, perturbedRotation};
+}
+
+struct HolisticRecalibrationObservation {
+    std::array<std::optional<float>, HOLISTIC_REPLAY_IMAGE_COUNT> coverageByImage;
     std::shared_ptr<dai::DynamicCalibrationResult> result;
+    std::vector<std::vector<float>> groundTruthRotation;
+    std::vector<std::vector<float>> perturbedRotation;
     std::vector<float> cvecBaseToLeftBefore;
     std::vector<float> cvecBaseToRightBefore;
 };
 
-SyntheticRecalibrationObservation runSyntheticRecalibrationAttempt(TestHelper& helper, const dai::CalibrationHandler& calibration) {
+HolisticRecalibrationObservation runHolisticRecalibrationAttempt() {
+    constexpr auto CAM_LEFT = dai::CameraBoardSocket::CAM_B;
+    constexpr auto CAM_RIGHT = dai::CameraBoardSocket::CAM_C;
     auto device = std::make_shared<dai::Device>();
-    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
-    auto pipeline = makePipeline(device, dynCalib, false);
+    dai::Pipeline pipeline(device);
+    pipeline.enableHolisticReplay(HOLISTIC_RECORDING_PATH);
+    const auto setup = makeHolisticCalibrationSetup(device->getCalibration());
+    device->setCalibration(setup.perturbedCalibration);
+
+    auto camLeft = pipeline.create<dai::node::Camera>()->build(CAM_LEFT);
+    auto camRight = pipeline.create<dai::node::Camera>()->build(CAM_RIGHT);
+    auto* leftOut = camLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
+    auto* rightOut = camRight->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
+    auto dynCalib = pipeline.create<dai::node::DynamicCalibration>();
+    leftOut->link(dynCalib->left);
+    rightOut->link(dynCalib->right);
 
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+    HolisticRecalibrationObservation observation;
+    observation.groundTruthRotation = setup.groundTruthRotation;
+    observation.perturbedRotation = setup.perturbedRotation;
+    observation.cvecBaseToLeftBefore = setup.perturbedCalibration.getCameraTranslationVector(CAM_LEFT, dai::CameraBoardSocket::CAM_A, false);
+    observation.cvecBaseToRightBefore = setup.perturbedCalibration.getCameraTranslationVector(CAM_RIGHT, dai::CameraBoardSocket::CAM_A, false);
 
-    device->setCalibration(calibration);
-
-    SyntheticRecalibrationObservation observation;
-    // The default getter uses spec translations, which are a different quantity
-    // than the DCL/base-frame cvecs.
-    observation.cvecBaseToLeftBefore = calibration.getCameraTranslationVector(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_A, false);
-    observation.cvecBaseToRightBefore = calibration.getCameraTranslationVector(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_A, false);
-
-    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibration);
     pipeline.start();
-    dynCalib->syncInput.send(group);
     std::this_thread::sleep_for(0.5s);
-
-    for(int i = 0; i < SYNTHETIC_CALIBRATION_IMAGE_COUNT; ++i) {
-        group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibration);
-        dynCalib->syncInput.send(group);
+    for(int imageIndex = 0; imageIndex < HOLISTIC_REPLAY_IMAGE_COUNT; ++imageIndex) {
         commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
-        auto coverage = coverageOutput->get<dai::CoverageData>();
-        if(coverage != nullptr) observation.coverageByImage[i] = coverage->coverageAcquired;
+        const auto coverage = coverageOutput->get<dai::CoverageData>();
+        if(coverage != nullptr) observation.coverageByImage[imageIndex] = coverage->coverageAcquired;
+        std::this_thread::sleep_for(HOLISTIC_REPLAY_FRAME_INTERVAL);
     }
-
     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
     observation.result = calibrationOutput->get<dai::DynamicCalibrationResult>();
-
     pipeline.stop();
     pipeline.wait();
     return observation;
 }
 
-// Catch2 assertion failures cannot be undone when later attempts pass, so each
-// attempt records its checks without assertions and only the aggregate 2-of-3
-// result is asserted by the test case.
-struct SyntheticRecalibrationAttemptResult {
-    bool passed = true;
-    std::string details;
-};
-
-void checkAttempt(SyntheticRecalibrationAttemptResult& attemptResult, bool condition, const std::string& failure) {
-    if(condition) return;
-    if(!attemptResult.details.empty()) attemptResult.details += "; ";
-    attemptResult.passed = false;
-    attemptResult.details += failure;
-}
-
-void checkWithin(SyntheticRecalibrationAttemptResult& attemptResult, float value, double expected, float threshold, const char* name, std::size_t axis) {
-    if(std::fabs(value - expected) < threshold) return;
-    std::ostringstream failure;
-    failure << name << '[' << axis << "]=" << value << " (expected " << expected << " +/- " << threshold << ')';
-    checkAttempt(attemptResult, false, failure.str());
-}
-
-void evaluateSyntheticRecalibrationCoverage(const SyntheticRecalibrationObservation& observation, SyntheticRecalibrationAttemptResult& attemptResult) {
-    for(std::size_t imageIndex = 0; imageIndex < observation.coverageByImage.size(); ++imageIndex) {
-        const auto coverage = observation.coverageByImage[imageIndex];
-        if(coverage.has_value() && *coverage > 0.0f) continue;
-
-        std::ostringstream failure;
-        failure << "coverage[" << imageIndex << "]=";
-        if(coverage.has_value()) {
-            failure << *coverage << " (expected > 0)";
-        } else {
-            failure << "null";
-        }
-        checkAttempt(attemptResult, false, failure.str());
-    }
-}
-
-void evaluateSyntheticRecalibrationResult(const SyntheticRecalibrationObservation& observation, SyntheticRecalibrationAttemptResult& attemptResult) {
-    checkAttempt(attemptResult, observation.result != nullptr, "no calibration result");
-    if(observation.result == nullptr) return;
-
-    checkAttempt(attemptResult, observation.result->calibrationData != std::nullopt, "calibration result contains no calibration data");
-    if(observation.result->calibrationData == std::nullopt) return;
-
-    auto rotationMatrixOld =
-        observation.result->calibrationData->currentCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
-    auto rvecOld = dai::matrix::rotationMatrixToVector(rotationMatrixOld);
-    auto rotationMatrix =
-        observation.result->calibrationData->newCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
-    auto rvec = dai::matrix::rotationMatrixToVector(rotationMatrix);
-    auto cvecBaseToLeft =
-        observation.result->calibrationData->newCalibration.getCameraTranslationVector(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_A, false);
-    auto cvecBaseToRight =
-        observation.result->calibrationData->newCalibration.getCameraTranslationVector(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_A, false);
-
-    const bool vectorsHaveExpectedSize = rvecOld.size() >= 3 && rvec.size() >= 3 && cvecBaseToLeft.size() >= 3 && cvecBaseToRight.size() >= 3
-                                         && observation.cvecBaseToLeftBefore.size() >= 3 && observation.cvecBaseToRightBefore.size() >= 3;
-    checkAttempt(attemptResult, vectorsHaveExpectedSize, "calibration result contains an undersized vector");
-    if(!vectorsHaveExpectedSize) return;
-
-    constexpr float CURRENT_ROTATION_THRESHOLD = 1e-5f;
-    constexpr float NEW_ROTATION_THRESHOLD = 1e-3f;
-    constexpr float TRANSLATION_THRESHOLD = 1e-5f;
-    for(std::size_t axis = 0; axis < 3; ++axis) {
-        checkWithin(attemptResult, rvecOld[axis], 0.01, CURRENT_ROTATION_THRESHOLD, "current rotation", axis);
-        checkWithin(attemptResult, rvec[axis], 0.0, NEW_ROTATION_THRESHOLD, "new rotation", axis);
-        checkWithin(attemptResult, cvecBaseToLeft[axis], observation.cvecBaseToLeftBefore[axis], TRANSLATION_THRESHOLD, "base-to-left translation", axis);
-        checkWithin(attemptResult, cvecBaseToRight[axis], observation.cvecBaseToRightBefore[axis], TRANSLATION_THRESHOLD, "base-to-right translation", axis);
-    }
-}
-
-SyntheticRecalibrationAttemptResult evaluateSyntheticRecalibrationAttempt(const SyntheticRecalibrationObservation& observation) {
-    SyntheticRecalibrationAttemptResult attemptResult;
-    evaluateSyntheticRecalibrationCoverage(observation, attemptResult);
-    evaluateSyntheticRecalibrationResult(observation, attemptResult);
-    return attemptResult;
-}
 }  // namespace
 
 TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
@@ -595,31 +559,43 @@ TEST_CASE("DynamicCalibration: Empty command") {
     pipeline.wait();
 }
 
-TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
-    constexpr int NUM_ATTEMPTS = 3;
-    constexpr int REQUIRED_SUCCESSFUL_ATTEMPTS = 2;
-    TestHelper helper;
-    auto calibration = getHandler();
-    std::array<std::string, NUM_ATTEMPTS> attemptDetails{};
-    int successfulAttempts = 0;
-    for(int attempt = 0; attempt < NUM_ATTEMPTS; ++attempt) {
-        try {
-            auto attemptResult = evaluateSyntheticRecalibrationAttempt(runSyntheticRecalibrationAttempt(helper, calibration));
-            if(attemptResult.passed) {
-                attemptDetails[attempt] = "passed";
-                ++successfulAttempts;
-            } else {
-                attemptDetails[attempt] = std::move(attemptResult.details);
-            }
-        } catch(const std::exception& error) {
-            attemptDetails[attempt] = std::string("exception: ") + error.what();
-        } catch(...) {
-            attemptDetails[attempt] = "unknown exception";
-        }
+TEST_CASE("DynamicCalibration: Recalibration on holistic replay data.") {
+    constexpr auto CAM_LEFT = dai::CameraBoardSocket::CAM_B;
+    constexpr auto CAM_RIGHT = dai::CameraBoardSocket::CAM_C;
+    const auto observation = runHolisticRecalibrationAttempt();
+    for(const auto coverage : observation.coverageByImage) {
+        REQUIRE(coverage.has_value());
+        REQUIRE(*coverage > 0.0f);
     }
+    REQUIRE(observation.result != nullptr);
+    REQUIRE(observation.result->calibrationData.has_value());
 
-    CAPTURE(attemptDetails[0], attemptDetails[1], attemptDetails[2], successfulAttempts);
-    REQUIRE(successfulAttempts >= REQUIRED_SUCCESSFUL_ATTEMPTS);
+    const auto& calibrationData = *observation.result->calibrationData;
+    const auto currentRotation = calibrationData.currentCalibration.getCameraRotationMatrix(CAM_LEFT, CAM_RIGHT);
+    const auto newRotation = calibrationData.newCalibration.getCameraRotationMatrix(CAM_LEFT, CAM_RIGHT);
+    const auto currentRotationError = rotationDifferenceVector(currentRotation, observation.perturbedRotation);
+    const auto newRotationError = rotationDifferenceVector(newRotation, observation.groundTruthRotation);
+    const auto cvecBaseToLeft = calibrationData.newCalibration.getCameraTranslationVector(CAM_LEFT, dai::CameraBoardSocket::CAM_A, false);
+    const auto cvecBaseToRight = calibrationData.newCalibration.getCameraTranslationVector(CAM_RIGHT, dai::CameraBoardSocket::CAM_A, false);
+
+    REQUIRE(currentRotationError.size() >= 3);
+    REQUIRE(newRotationError.size() >= 3);
+    REQUIRE(cvecBaseToLeft.size() >= 3);
+    REQUIRE(cvecBaseToRight.size() >= 3);
+    REQUIRE(observation.cvecBaseToLeftBefore.size() >= 3);
+    REQUIRE(observation.cvecBaseToRightBefore.size() >= 3);
+
+    constexpr float CURRENT_ROTATION_THRESHOLD = 1e-5f;
+    constexpr float NEW_ROTATION_THRESHOLD = 1e-3f;
+    constexpr float TRANSLATION_THRESHOLD = 1e-4f;
+    CAPTURE(newRotationError[0], newRotationError[1], newRotationError[2]);
+    for(std::size_t axis = 0; axis < 3; ++axis) {
+        REQUIRE(std::fabs(currentRotationError[axis]) < CURRENT_ROTATION_THRESHOLD);
+        REQUIRE(std::fabs(newRotationError[axis]) < NEW_ROTATION_THRESHOLD);
+        REQUIRE(std::fabs(cvecBaseToLeft[axis] - observation.cvecBaseToLeftBefore[axis]) < TRANSLATION_THRESHOLD);
+        REQUIRE(std::fabs(cvecBaseToRight[axis] - observation.cvecBaseToRightBefore[axis]) < TRANSLATION_THRESHOLD);
+    }
+    REQUIRE(calibrationData.calibrationDifference.sampsonErrorNew < calibrationData.calibrationDifference.sampsonErrorCurrent);
 }
 
 TEST_CASE("DynamicCalibration: Rejects excessive translation direction change.") {
