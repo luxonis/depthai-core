@@ -40,6 +40,31 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
 
 ---
 
+## Extrinsics for cameras outside calibration
+
+The result preserves DCL-produced camera poses relative to housing, when housing
+calibration is available. Cameras that are not calibration inputs are positioned
+using measured factory extrinsics, rather than their previous housing poses.
+Every unobserved camera is anchored to the default stereo-depth reference camera of
+`device.getStereoPairs()[0]`: the
+result's transform from that anchor into the camera equals the measured factory
+transform. The anchor is selected by the same `AUTO`-resolution policy used for initial and
+runtime StereoDepth configuration. A stereo pair must exist and its reference camera must be a calibration
+input when any unobserved cameras are present; otherwise calibration fails
+explicitly. Fully observed rigs do not require a stereo pair.
+
+For the B–C–D–A chain with B as the default depth reference camera, calibrating B/C preserves factory B–D and B–A while keeping
+DCL's B/C poses. C–D is consequently recomputed; it is no longer constrained to
+its factory value. Housing–A is updated to represent the resulting poses.
+This behavior also applies through `AutoCalibration`.
+
+Factory calibration is required if any cameras in the handler are not calibration
+inputs. Missing factory data causes an explicit failure; current/user calibration
+is not used as a fallback. With no housing calibration, only relative camera poses
+can be represented. Intrinsics and design (`specTranslation`) values are retained.
+
+---
+
 ## 1) Real-time dynamic calibration (apply new calibration)
 
 **Script:** `calibration_dynamic.py`
