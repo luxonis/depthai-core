@@ -375,6 +375,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
+    src/pipeline/datatype/DetectionParserConfig.cpp
     src/pipeline/datatype/SegmentationParserConfig.cpp
     src/pipeline/datatype/AprilTags.cpp
     src/pipeline/datatype/AprilTagConfig.cpp

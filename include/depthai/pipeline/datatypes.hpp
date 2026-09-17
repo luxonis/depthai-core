@@ -26,6 +26,7 @@
 #include "datatype/PointCloudData.hpp"
 #include "datatype/RGBDData.hpp"
 #include "datatype/SegmentationMask.hpp"
+#include "datatype/DetectionParserConfig.hpp"
 #include "datatype/SegmentationParserConfig.hpp"
 #include "datatype/SpatialImgDetections.hpp"
 #include "datatype/SpatialLocationCalculatorConfig.hpp"
