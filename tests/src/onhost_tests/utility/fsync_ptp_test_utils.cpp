@@ -305,7 +305,27 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
+    auto isSensorAllowed = [&](dai::CameraBoardSocket socket) -> bool {
+        auto sensorNames = device->getCameraSensorNames();
+        for (auto &socketNamePair : sensorNames) {
+            if (socketNamePair.first != socket) {
+                continue;
+            }
+
+            if (socketNamePair.second.find("IMX586") != std::string::npos) {
+                return false;
+            }
+
+            return true;
+        }
+        std::cout << "Unexpected camera socket: " << socket << std::endl;
+        return true;
+    };
+
     for(auto socket : device->getConnectedCameras()) {
+        if(!isSensorAllowed(socket)) {
+            continue;
+        }
         setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets);
     }
 
