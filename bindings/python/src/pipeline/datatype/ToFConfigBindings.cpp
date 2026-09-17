@@ -77,8 +77,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("temporalNoiseReductionStdFactor", &ToFConfig::VD55H1::temporalNoiseReductionStdFactor)
         .def_readwrite("enableFlyingPixelFilter", &ToFConfig::VD55H1::enableFlyingPixelFilter)
         .def_readwrite("flyingPixelDepthThreshold", &ToFConfig::VD55H1::flyingPixelDepthThreshold)
-        .def_readwrite("flyingPixelMinDepthOccurrence", &ToFConfig::VD55H1::flyingPixelMinDepthOccurrence)
-        .def_readwrite("enableRadialToPerpendicularCorrection", &ToFConfig::VD55H1::enableRadialToPerpendicularCorrection);
+        .def_readwrite("flyingPixelMinDepthOccurrence", &ToFConfig::VD55H1::flyingPixelMinDepthOccurrence);
 
     // add aliases
     // m.attr("ToFConfig").attr("DepthParams") = m.attr("ToFConfig").attr("DepthParams");

@@ -38,9 +38,6 @@ class ToFConfig : public Buffer {
         std::optional<float> flyingPixelDepthThreshold;
         std::optional<float> flyingPixelMinDepthOccurrence;
 
-        /** Use the VD55H1 IPP radial-to-perpendicular correction instead of depthai-core's calibration correction. */
-        std::optional<bool> enableRadialToPerpendicularCorrection;
-
         DEPTHAI_SERIALIZE(VD55H1,
                           phaseUnwrapErrorThreshold,
                           enableBilateralFilter,
@@ -51,8 +48,7 @@ class ToFConfig : public Buffer {
                           temporalNoiseReductionStdFactor,
                           enableFlyingPixelFilter,
                           flyingPixelDepthThreshold,
-                          flyingPixelMinDepthOccurrence,
-                          enableRadialToPerpendicularCorrection);
+                          flyingPixelMinDepthOccurrence);
     };
 
     Profile profile = Profile::MID_RANGE;

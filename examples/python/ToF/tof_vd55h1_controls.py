@@ -26,7 +26,6 @@ def config_from_trackbars() -> dai.ToFConfig:
     vd55h1.enableFlyingPixelFilter = bool(cv2.getTrackbarPos("flying pixel", WINDOW))
     vd55h1.flyingPixelDepthThreshold = cv2.getTrackbarPos("FP depth threshold", WINDOW)
     vd55h1.flyingPixelMinDepthOccurrence = cv2.getTrackbarPos("FP min occurrence x100", WINDOW) / 100.0
-    vd55h1.enableRadialToPerpendicularCorrection = bool(cv2.getTrackbarPos("IPP radial-to-perp", WINDOW))
     return config
 
 
@@ -52,7 +51,6 @@ def main() -> None:
             ("flying pixel", 1, 1),
             ("FP depth threshold", 1000, 101),
             ("FP min occurrence x100", 5000, 1356),
-            ("IPP radial-to-perp", 1, 0),
         )
         for name, maximum, initial in controls:
             cv2.createTrackbar(name, WINDOW, initial, maximum, lambda _: None)
