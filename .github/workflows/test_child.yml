@@ -291,14 +291,14 @@ jobs:
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-fsync"
-          export HIL_TESTBED="slo605-ptp"
+          export HIL_TESTBED="sloptp1"
           export HIL_SCOPE="ptp"
-          exec hil_runner --platforms="rvc4 and rvc4" \
-              --scope $HIL_SCOPE --testbed $HIL_TESTBED \
+          exec hil_runner --platforms="rvc4 and rvc4 and rvc4 and rvc4" \
+              --scope $HIL_SCOPE --testbed $HIL_TESTBED --enable-ptp no-frame-sync \
               --basic-sanity --reservation-name $RESERVATION_NAME --wait \
               --rvc4-os-version ${{ matrix.rvc4os }} \
               --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} \
-              --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh fsync"
+              --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_multi_device_sync_tests_entrypoint.sh fsync"
 
  linux_rvc4_ptp_test:
       needs: [build_docker_container]
@@ -318,8 +318,8 @@ jobs:
           export HIL_TESTBED="slo603-cs"
           export HIL_SCOPE="ptp"
           exec hil_runner --platforms="rvc4 and rvc4 and rvc4" \
-              --scope $HIL_SCOPE --testbed $HIL_TESTBED --enable-ptp \
+              --scope $HIL_SCOPE --testbed $HIL_TESTBED --enable-ptp frame-sync \
               --basic-sanity --reservation-name $RESERVATION_NAME --wait \
               --rvc4-os-version ${{ matrix.rvc4os }} \
               --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} \
-              --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh ptp"
+              --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_multi_device_sync_tests_entrypoint.sh ptp"
