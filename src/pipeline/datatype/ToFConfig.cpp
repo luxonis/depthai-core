@@ -18,13 +18,13 @@ void ToFConfig::setProfilePreset(Profile prof) {
     profile = prof;
     switch(prof) {
         case Profile::LOW_RANGE: {
-            vd55h1 = {82.0f, true, 7.266f, 5, true, 1, 0.9039f, true, 191.3f, 14.95f, std::nullopt};
+            vd55h1 = {82.0f, true, 7.266f, 5, true, 1, 0.9039f, true, 191.3f, 14.95f};
         } break;
         case Profile::MID_RANGE: {
-            vd55h1 = {192.0f, true, 2.051f, 5, true, 27, 0.8205f, true, 100.9f, 13.56f, std::nullopt};
+            vd55h1 = {192.0f, true, 2.051f, 5, true, 27, 0.8205f, true, 100.9f, 13.56f};
         } break;
         case Profile::HIGH_RANGE: {
-            vd55h1 = {300.0f, true, 2.051f, 5, true, 27, 0.8205f, true, 100.9f, 13.56f, std::nullopt};
+            vd55h1 = {300.0f, true, 2.051f, 5, true, 27, 0.8205f, true, 100.9f, 13.56f};
         } break;
     }
 }
