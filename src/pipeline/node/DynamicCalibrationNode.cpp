@@ -567,7 +567,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                                                                    socketsInHandler,
                                                                    calibratedPoses,
                                                                    std::holds_alternative<HousingCoordinateSystem>(daiSocketBase),
-                                                                   stereoPairs);
+                                                                   stereoPairs,
+                                                                   device->getPlatform());
     } catch(const std::exception& ex) {
         calibrationOutput.send(std::make_shared<DynamicCalibrationResult>(std::string("Failed to assemble calibration from factory links: ") + ex.what()));
         auto& telemetryState = *pimplDCL->telemetryAggregateState;
@@ -792,12 +793,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
             return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
         }
 
-        connectedSensors.push_back({socket,
-                                    frameIntrinsics,
-                                    frameDistortion,
-                                    frameDistortionModel,
-                                    resolution,
-                                    nullptr});
+        connectedSensors.push_back({socket, frameIntrinsics, frameDistortion, frameDistortionModel, resolution, nullptr});
 
         if(name == leftInputName) {
             leftQueueSocket = socket;

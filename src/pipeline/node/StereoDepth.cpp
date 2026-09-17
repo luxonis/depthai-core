@@ -10,7 +10,6 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "utility/ErrorMacros.hpp"
-#include "utility/StereoDepthAlignment.hpp"
 
 namespace dai {
 namespace node {
@@ -44,7 +43,6 @@ StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = *initialConfig;
-    properties.initialConfig.algorithmControl.depthAlign = utility::resolveStereoDepthAlignment(initialConfig->algorithmControl.depthAlign);
     return properties;
 }
 
@@ -126,22 +124,18 @@ void StereoDepth::setRectification(bool enable) {
 void StereoDepth::setLeftRightCheck(bool enable) {
     initialConfig->setLeftRightCheck(enable);
     properties.initialConfig = *initialConfig;
-    properties.initialConfig.algorithmControl.depthAlign = utility::resolveStereoDepthAlignment(initialConfig->algorithmControl.depthAlign);
 }
 void StereoDepth::setSubpixel(bool enable) {
     initialConfig->setSubpixel(enable);
     properties.initialConfig = *initialConfig;
-    properties.initialConfig.algorithmControl.depthAlign = utility::resolveStereoDepthAlignment(initialConfig->algorithmControl.depthAlign);
 }
 void StereoDepth::setSubpixelFractionalBits(int subpixelFractionalBits) {
     initialConfig->setSubpixelFractionalBits(subpixelFractionalBits);
     properties.initialConfig = *initialConfig;
-    properties.initialConfig.algorithmControl.depthAlign = utility::resolveStereoDepthAlignment(initialConfig->algorithmControl.depthAlign);
 }
 void StereoDepth::setExtendedDisparity(bool enable) {
     initialConfig->setExtendedDisparity(enable);
     properties.initialConfig = *initialConfig;
-    properties.initialConfig.algorithmControl.depthAlign = utility::resolveStereoDepthAlignment(initialConfig->algorithmControl.depthAlign);
 }
 void StereoDepth::setRectifyEdgeFillColor(int color) {
     properties.rectifyEdgeFillColor = color;
