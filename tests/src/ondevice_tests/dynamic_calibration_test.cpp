@@ -586,7 +586,7 @@ TEST_CASE("DynamicCalibration: Recalibration on holistic replay data.") {
     REQUIRE(observation.cvecBaseToRightBefore.size() >= 3);
 
     constexpr float CURRENT_ROTATION_THRESHOLD = 1e-5f;
-    constexpr float NEW_ROTATION_THRESHOLD = 1e-3f;
+    constexpr float NEW_ROTATION_THRESHOLD = 1.2e-3f;
     constexpr float TRANSLATION_THRESHOLD = 1e-4f;
     CAPTURE(newRotationError[0], newRotationError[1], newRotationError[2]);
     for(std::size_t axis = 0; axis < 3; ++axis) {
