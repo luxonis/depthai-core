@@ -11,6 +11,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <optional>
 #include <string>
 #include <thread>
@@ -35,12 +36,20 @@
 
 namespace {
 
-    double calculate_mean(std::vector<std::uint64_t> values) {
-        std::uint64_t sum = std::accumulate(values.begin(), values.end(), 0);
+    struct Delta {
+        std::uint64_t delta_us;
+        std::string name;
+    };
+
+    double calculate_mean(std::vector<Delta> values) {
+        std::uint64_t sum = std::accumulate(values.begin(), values.end(), static_cast<std::uint64_t>(0),
+        [](std::uint64_t const &sum, Delta const &delta) -> std::uint64_t {
+            return sum + delta.delta_us;
+        });
         return double(sum) / double(values.size());
     }
 
-    double percentile_linear(std::vector<std::uint64_t> values, double q)
+    double percentile_linear(std::vector<Delta> values, double q)
     {
         if (values.empty()) {
             throw std::invalid_argument("percentile_linear: input vector must not be empty");
@@ -50,10 +59,13 @@ namespace {
             throw std::invalid_argument("percentile_linear: q must be a finite value in [0, 100]");
         }
 
-        std::sort(values.begin(), values.end());
+        std::sort(values.begin(), values.end(),
+        [](Delta const &a, Delta const &b) -> bool {
+            return a.delta_us < b.delta_us;
+        });
 
         if (values.size() == 1) {
-            return static_cast<double>(values[0]);
+            return static_cast<double>(values[0].delta_us);
         }
 
         const double pos = (q / 100.0) * static_cast<double>(values.size() - 1);
@@ -61,21 +73,24 @@ namespace {
         const std::size_t upper = static_cast<std::size_t>(std::ceil(pos));
         const double fraction = pos - static_cast<double>(lower);
 
-        const double lower_value = static_cast<double>(values[lower]);
-        const double upper_value = static_cast<double>(values[upper]);
+        const double lower_value = static_cast<double>(values[lower].delta_us);
+        const double upper_value = static_cast<double>(values[upper].delta_us);
 
         return lower_value + (upper_value - lower_value) * fraction;
     }
 
-    double calculate_max_outlier(std::vector<std::uint64_t>& values) {
-        auto max_itr = std::max_element(values.begin(), values.end());
+    Delta calculate_max_outlier(std::vector<Delta>& values) {
+        auto max_itr = std::max_element(values.begin(), values.end(),
+        [](Delta const &a, Delta const &b) -> bool {
+            return a.delta_us < b.delta_us;
+        });
         
         REQUIRE_MSG(max_itr != values.end(), "Outlier not found");
         return *max_itr;
     }
 
     void expect_percentile(
-        const std::vector<uint64_t>& values,
+        const std::vector<Delta>& values,
         double q,
         double expected)
     {
@@ -105,6 +120,17 @@ namespace {
         } else {
             throw std::runtime_error("Unknown sync type");
         }
+    }
+
+    std::optional<std::string> getCameraSensorName(std::shared_ptr<dai::Pipeline>& pipeline, dai::CameraBoardSocket socket) {
+        auto device = pipeline->getDefaultDevice();
+        auto cameraNames = device->getCameraSensorNames();
+        for(auto& name : cameraNames) {
+            if(name.first == socket) {
+                return name.second;
+            }
+        }
+        return std::nullopt;
     }
 }
 
@@ -188,18 +214,22 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
                        std::vector<std::string>& camSockets) {
     auto outNode = createPipeline(pipeline, socket, targetFps, syncType, role);
 
+    auto ccmName = getCameraSensorName(pipeline, socket);
+    REQUIRE_MSG(ccmName.has_value(), "Camera sensor name not found for socket " + dai::toString(socket));
+    std::string fullSocketName = dai::toString(socket) + "[" + ccmName.value() + "]";
+
     if(syncType == SyncType::EXTERNAL) {
         if(role == dai::ExternalFrameSyncRole::MASTER) {
             if(!masterNode.has_value()) {
                 masterNode.emplace();
             }
-            masterNode.value().emplace(dai::toString(socket), outNode);
+            masterNode.value().emplace(fullSocketName, outNode);
 
         } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
             if(slaveQueues.find(name) == slaveQueues.end()) {
                 slaveQueues.emplace(name, std::map<std::string, std::shared_ptr<dai::MessageQueue>>());
             }
-            slaveQueues[name].emplace(dai::toString(socket), outNode->createOutputQueue());
+            slaveQueues[name].emplace(fullSocketName, outNode->createOutputQueue());
 
         } else {
             throw std::runtime_error("Don't know how to handle role");
@@ -209,12 +239,12 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
         // Actual PTP master might be different, but it doesn't matter for this test.
         if(!masterNode.has_value()) {
             masterNode.emplace();
-            masterNode.value().emplace(dai::toString(socket), outNode);
+            masterNode.value().emplace(fullSocketName, outNode);
         } else {
             if(slaveQueues.find(name) == slaveQueues.end()) {
                 slaveQueues.emplace(name, std::map<std::string, std::shared_ptr<dai::MessageQueue>>());
             }
-            slaveQueues[name].emplace(dai::toString(socket), outNode->createOutputQueue());
+            slaveQueues[name].emplace(fullSocketName, outNode->createOutputQueue());
         }
     }
 
@@ -359,7 +389,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
 
     std::optional<std::chrono::time_point<std::chrono::steady_clock>> initialSyncTime;
 
-    std::vector<uint64_t> deltas;
+    std::vector<Delta> deltas;
 
     bool waitingForInitialSync = true;
     bool waitingForInitialTimeout = true;
@@ -460,7 +490,10 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
             }
 
             if (syncStatus && !waitingForInitialSync && !waitingForInitialTimeout) {
-                deltas.emplace_back(deltaUs);
+                Delta deltaStruct;
+                deltaStruct.delta_us = deltaUs;
+                deltaStruct.name = "[MIN=" + minElement->first + ", MAX=" + maxElement->first + "]";
+                deltas.emplace_back(deltaStruct);
             }
 
             if(!syncStatus && waitingForInitialSync) {
@@ -487,13 +520,13 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
 
     double meanDelta_us = calculate_mean(deltas);
     double p99Delta_us = percentile_linear(deltas, 99.0);
-    double maxDelta_us = calculate_max_outlier(deltas);
+    Delta maxDelta = calculate_max_outlier(deltas);
 
     std::cout << "=== Stats" << std::endl;
     std::cout << "   [FPS=" << targetFps << "] # of frames used for stats caluculation: " << deltas.size() << std::endl;
     std::cout << "   [FPS=" << targetFps << "] Mean frame delta: " << meanDelta_us/1e3 << " ms" << std::endl;
     std::cout << "   [FPS=" << targetFps << "] p99 frame delta: " << p99Delta_us/1e3 << " ms" << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] Max outlier frame delta: " << maxDelta_us/1e3 << " ms" << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] Max outlier frame delta: " << maxDelta.delta_us/1e3 << " ms, between " << maxDelta.name << std::endl;
 
     REQUIRE_MSG(meanDelta_us/1e6 < parameters.deltaMeanThreshold, "[FPS=" << targetFps << "] Mean value of frame deltas above " << parameters.deltaMeanThreshold*1e3 << " ms (" << meanDelta_us/1e3 << " ms)");
     REQUIRE_MSG(p99Delta_us/1e6 < parameters.deltaP99Threshold, "[FPS=" << targetFps << "] p99 metric does not meet " << parameters.deltaP99Threshold*1e3 << " ms (" << p99Delta_us/1e3 << " ms)");
