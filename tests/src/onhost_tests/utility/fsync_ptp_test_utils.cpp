@@ -24,6 +24,7 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/properties/SyncProperties.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 #define REQUIRE_MSG(x, msg)                                         \
@@ -157,6 +158,7 @@ std::shared_ptr<dai::node::Sync> createSyncNode(std::shared_ptr<dai::Pipeline>& 
     auto sync = masterPipeline->create<dai::node::Sync>();
     sync->setRunOnHost(true);
     sync->setSyncThreshold(syncThreshold);
+    sync->setTimestampSource(dai::SyncProperties::TimestampSource::SYSTEM);
     for(auto p : masterNode) {
         auto name = std::string("master_") + masterName + "_" + p.first;
         p.second->link(sync->inputs[name]);
@@ -429,14 +431,14 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
             REQUIRE_MSG(size_t(latestFrameGroup.value()->getNumMessages()) == outputNames.size(),
                         "Number of messages received doesn't match number of outputs");
 
-            using ts_type = std::chrono::time_point<std::chrono::steady_clock>;
+            using ts_type = std::chrono::time_point<std::chrono::system_clock>;
             std::map<std::string, ts_type> tsValues;
             for(auto name : outputNames) {
                 auto frame = latestFrameGroup.value()->get<dai::ImgFrame>(name);
                 REQUIRE_MSG(frame != nullptr, "Frame pointer is null");
                 REQUIRE_MSG(frame->getFsync() == convertSyncType(parameters.syncType),
                     "Frame sync type doesn't match: expected " << toString(convertSyncType(parameters.syncType)) << ", got " << toString(frame->getFsync()));
-                tsValues.emplace(name, frame->getTimestamp(dai::CameraExposureOffset::END));
+                tsValues.emplace(name, frame->getTimestampSystem(dai::CameraExposureOffset::END).value());
             }
 
             auto compFunct = [](const std::pair<std::string, ts_type>& p1, const std::pair<std::string, ts_type>& p2) -> bool { return p1.second < p2.second; };
