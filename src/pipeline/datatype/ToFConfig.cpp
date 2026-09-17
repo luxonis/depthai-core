@@ -18,13 +18,13 @@ void ToFConfig::setProfilePreset(Profile prof) {
     profile = prof;
     switch(prof) {
         case Profile::LOW_RANGE: {
-            this->phaseUnwrapErrorThreshold = 50;
+            vd55h1 = {82.0f, true, 7.266f, 5, true, 1, 0.9039f, true, 191.3f, 14.95f, std::nullopt};
         } break;
         case Profile::MID_RANGE: {
-            this->phaseUnwrapErrorThreshold = 75;
+            vd55h1 = {192.0f, true, 2.051f, 5, true, 27, 0.8205f, true, 100.9f, 13.56f, std::nullopt};
         } break;
         case Profile::HIGH_RANGE: {
-            this->phaseUnwrapErrorThreshold = 130;
+            vd55h1 = {300.0f, true, 2.051f, 5, true, 27, 0.8205f, true, 100.9f, 13.56f, std::nullopt};
         } break;
     }
 }

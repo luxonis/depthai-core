@@ -20,7 +20,7 @@ class ToFConfig : public Buffer {
     /**
      * Runtime controls specific to the VD55H1 IPP used by RVC4.
      *
-     * An unset value keeps the selected ToF profile's default. These controls
+     * An unset value leaves the corresponding device control unchanged. These controls
      * have no effect on RVC2.
      */
     struct VD55H1 {
@@ -70,7 +70,7 @@ class ToFConfig : public Buffer {
     int phaseUnwrappingLevel = 4;
 
     /*
-     * Phase unwrapping error threshold.
+     * RVC2 phase unwrapping error threshold. For VD55H1, use vd55h1.phaseUnwrapErrorThreshold.
      */
     uint16_t phaseUnwrapErrorThreshold = 100;
 
@@ -116,7 +116,9 @@ class ToFConfig : public Buffer {
     /**
      * Construct ToFConfig message.
      */
-    ToFConfig() = default;
+    ToFConfig() {
+        setProfilePreset(profile);
+    }
     virtual ~ToFConfig();
 
     /**
@@ -131,7 +133,7 @@ class ToFConfig : public Buffer {
     }
 
     /**
-     * Set preset mode for ToFConfig.
+     * Set preset mode for ToFConfig, including the VD55H1 processing parameters.
      * @param presetMode Preset mode for ToFConfig.
      */
     void setProfilePreset(Profile profile);
