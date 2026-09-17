@@ -1036,13 +1036,16 @@ std::shared_ptr<Device> PipelineImpl::registerDevice(std::shared_ptr<Device> dev
         throw std::runtime_error("Cannot add a device to a running pipeline");
     }
     // Two distinct Device instances connected to the same physical device would
-    // produce overlapping per-device schemas - reject early
+    // produce overlapping per-device schemas - reject early. The same holds for two
+    // devices without an id (e.g. local shared-memory): per-device schemas and tuning
+    // assets are keyed by device id, so at most one such device can be assigned.
     const auto deviceId = device->getDeviceInfo().getDeviceId();
-    if(!deviceId.empty()) {
-        auto sameId = [&deviceId](const std::shared_ptr<Device>& other) { return other != nullptr && other->getDeviceInfo().getDeviceId() == deviceId; };
-        if(sameId(defaultDevice) || std::any_of(devices.begin(), devices.end(), sameId)) {
-            throw std::invalid_argument(fmt::format("A different Device instance with id '{}' is already part of the pipeline", deviceId));
+    auto sameId = [&deviceId](const std::shared_ptr<Device>& other) { return other != nullptr && other->getDeviceInfo().getDeviceId() == deviceId; };
+    if(sameId(defaultDevice) || std::any_of(devices.begin(), devices.end(), sameId)) {
+        if(deviceId.empty()) {
+            throw std::invalid_argument("A Device without a device id is already part of the pipeline - at most one such device can be assigned");
         }
+        throw std::invalid_argument(fmt::format("A different Device instance with id '{}' is already part of the pipeline", deviceId));
     }
 
     // First device is promoted to master so getDefaultDevice() and nodes created
@@ -1679,10 +1682,11 @@ void PipelineImpl::start() {
                 failedDuringStart.push_back(device);
             }
         }
+        // Indicate that pipeline is running. Flipped under the same lock as the snapshot:
+        // a transition a monitor thread records from now on sees a running pipeline and
+        // gets the full handling in onDeviceStateChanged, instead of falling in between.
+        running = true;
     }
-
-    // Indicate that pipeline is running
-    running = true;
 
     // A device that died for good while the others were still starting gets the full
     // failure handling now (idle its streams, fatal/last-device stop decision)
@@ -1797,11 +1801,14 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
     }
     if(devicePtr == nullptr) return;
 
-    const bool pipelineRunning = running;
+    bool pipelineRunning = false;
     std::function<void(std::shared_ptr<Device>, DeviceState)> callback;
     {
         std::lock_guard<std::mutex> lock(deviceStateMtx);
         deviceStates[device] = state;
+        // Read under the lock: start() records its startup snapshot and flips 'running'
+        // under this same lock, so this transition is either in that snapshot or handled here
+        pipelineRunning = running;
         if(pipelineRunning) callback = deviceStateCallback;
     }
     if(state == DeviceState::FAILED) {
@@ -1938,7 +1945,17 @@ void PipelineImpl::stop() {
     }
     std::vector<std::thread> closeThreads;
     for(const auto& device : assignedDevices) {
-        closeThreads.emplace_back([device]() { device->close(); });
+        closeThreads.emplace_back([device]() {
+            // An exception escaping a std::thread terminates the process - one device
+            // failing to close must not take the application (or the other devices) down
+            try {
+                device->close();
+            } catch(const std::exception& ex) {
+                Logging::getInstance().logger.error("Failed to close device {}: {}", device->getDeviceInfo().getDeviceId(), ex.what());
+            } catch(...) {
+                Logging::getInstance().logger.error("Failed to close device {}: unknown exception", device->getDeviceInfo().getDeviceId());
+            }
+        });
     }
     for(auto& thread : closeThreads) {
         thread.join();

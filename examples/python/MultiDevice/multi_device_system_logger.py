@@ -36,7 +36,7 @@ def main():
         pipeline.start()
         print("Multi-device pipeline started")
 
-        while True:
+        while pipeline.isRunning():
             msg1 = q1.tryGet()
             if msg1 is not None:
                 print(f"{dev1.getDeviceId()}: {type(msg1).__name__}")

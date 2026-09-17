@@ -1310,8 +1310,10 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             hasMockedFeatures = false;  // Handle reconnection case
             mockCameraFeatures(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
         } catch(const std::exception&) {
-            // close device (cleanup)
-            close();
+            // Close device (cleanup). On a reconnection attempt the caller (monitor thread)
+            // rolls back and retries instead: close() would mark the device closed for good
+            // and join the monitor thread from itself.
+            if(!reconnect) close();
             // Rethrow original exception
             throw;
         }
@@ -1430,8 +1432,10 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             pimpl->rpcCallCheckedVoid("onInit");
             startTelemetryLifecycle(reconnect);
         } catch(const std::exception&) {
-            // close device (cleanup)
-            close();
+            // Close device (cleanup). On a reconnection attempt the caller (monitor thread)
+            // rolls back and retries instead: close() would mark the device closed for good
+            // and join the monitor thread from itself.
+            if(!reconnect) close();
             // Rethrow original exception
             throw;
         }
@@ -1543,6 +1547,28 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                 } while(std::chrono::steady_clock::now() - waitStart < timeout);
                 return false;
             };
+            // Roll back a failed attempt so the next one starts from a clean state. init2 may
+            // throw after it has started the watchdog/timesync/logging threads; assigning a new
+            // std::thread over a still-joinable one would terminate the process.
+            auto rollbackAttempt = [this]() {
+                if(connection) connection->close();
+                {
+                    std::lock_guard<std::mutex> lock(watchdogMtx);
+                    watchdogRunning = false;
+                    watchdogCondVar.notify_all();
+                }
+                timesyncRunning = false;
+                loggingRunning = false;
+                profilingRunning = false;
+                if(watchdogThread.joinable()) watchdogThread.join();
+                if(timesyncThread.joinable()) timesyncThread.join();
+                if(loggingThread.joinable()) loggingThread.join();
+                if(profilingThread.joinable()) profilingThread.join();
+                watchdogRunning = true;
+                timesyncRunning = true;
+                loggingRunning = true;
+                profilingRunning = true;
+            };
             for(attempts = 0; attempts < maxReconnectionAttempts; attempts++) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
                 notifyPipelineDeviceState(DeviceState::RECONNECTING);
@@ -1567,6 +1593,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                         // One failed attempt (e.g. device seen but not connectable yet)
                         // must not abort the remaining attempts
                         pimpl->logger.warn("Reconnection attempt failed: {}", ex.what());
+                        rollbackAttempt();
                     }
                 }
                 pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts - 1);
