@@ -3,11 +3,9 @@
 
 #include "fsync_ptp_test_utils.hpp"
 
-TEST_CASE("Test Multi-device PTP frame sync with different FPS values", "[ptp]") {
-    // auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f, 120.0f, 240.0f, 300.0f, 600.0f);
-    // 60 FPS does not work as of 1.30.1
-    auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 45.0f);
-    CAPTURE(fps);
+namespace {
+
+void runExternalSyncTest(float fps) {
     struct FsyncTestParameters parameters {};
     parameters.syncThresholdSec = 1 / (2 * fps);  // lower this limit when we have better accuracy for timestamps
     parameters.testDurationSec = 180;
@@ -18,4 +16,30 @@ TEST_CASE("Test Multi-device PTP frame sync with different FPS values", "[ptp]")
     parameters.deltaP99Threshold = 2e-3;
     parameters.syncType = SyncType::PTP;
     testFsync(fps, parameters);
+}
+
+}
+
+TEST_CASE("Test Multi-device PTP frame sync with at 10 FPS", "[ptp][fps-10]") {
+    runExternalSyncTest(10.0f);
+}
+
+TEST_CASE("Test Multi-device PTP frame sync with at 13 FPS", "[ptp][fps-13]") {
+    runExternalSyncTest(13.0f);
+}
+
+TEST_CASE("Test Multi-device PTP frame sync with at 18.5 FPS", "[ptp][fps-18.5]") {
+    runExternalSyncTest(18.5f);
+}
+
+TEST_CASE("Test Multi-device PTP frame sync with at 30 FPS", "[ptp][fps-30]") {
+    runExternalSyncTest(30.0f);
+}
+
+TEST_CASE("Test Multi-device PTP frame sync with at 45 FPS", "[ptp][fps-45]") {
+    runExternalSyncTest(45.0f);
+}
+
+TEST_CASE("Test Multi-device PTP frame sync with at 60 FPS", "[ptp][fps-60]") {
+    runExternalSyncTest(60.0f);
 }
