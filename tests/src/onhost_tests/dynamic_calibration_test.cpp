@@ -23,12 +23,12 @@ Transform inverse(Transform transform) {
     return transform;
 }
 
-void requireTransform(const Transform& actual, const Transform& expected) {
+void requireTransform(const Transform& actual, const Transform& expected, float translationTolerance = 1e-5f) {
     REQUIRE(actual.size() == expected.size());
     for(size_t row = 0; row < expected.size(); ++row) {
         REQUIRE(actual[row].size() == expected[row].size());
         for(size_t col = 0; col < expected[row].size(); ++col) {
-            REQUIRE(actual[row][col] == Catch::Approx(expected[row][col]).margin(1e-5));
+            REQUIRE(actual[row][col] == Catch::Approx(expected[row][col]).margin(col == 3 && row < 3 ? translationTolerance : 1e-5f));
         }
     }
 }
@@ -188,6 +188,88 @@ TEST_CASE("Stereo AUTO reference follows platform and measured CAM_A proximity",
     }
     for(const auto& entry : poses) {
         requireTransform(result.getHousingCalibration(entry.first, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER), inverse(entry.second));
+    }
+}
+
+TEST_CASE("Simulated DCL updates preserve factory calibration queries across reloads", "[DynamicCalibrationTransforms][SimulatedDcl]") {
+    const auto anchor = GENERATE(Socket::CAM_B, Socket::CAM_C);
+    const auto housingOrigin = GENERATE(Socket::CAM_A, Socket::CAM_B, Socket::CAM_C, Socket::CAM_D);
+    const auto chainIndex = GENERATE(0, 1, 2);
+    const std::vector<std::vector<Socket>> chains = {{Socket::CAM_B, Socket::CAM_C, Socket::CAM_D, Socket::CAM_A},
+                                                     {Socket::CAM_A, Socket::CAM_D, Socket::CAM_C, Socket::CAM_B},
+                                                     {Socket::CAM_C, Socket::CAM_A, Socket::CAM_B, Socket::CAM_D}};
+    const auto& chain = chains.at(chainIndex);
+    CAPTURE(anchor, housingOrigin, chainIndex);
+
+    // Define the physical rig in housing coordinates, independently of the EEPROM chain.
+    // CAM_A is close enough to the requested anchor to unambiguously select it on RVC4.
+    const std::map<Socket, Transform> factoryPoses = {{Socket::CAM_A, pose(0.12f, anchor == Socket::CAM_B ? 0.01f : 0.11f, 0.003f, -0.002f)},
+                                                      {Socket::CAM_B, pose(-0.08f, 0, 0, 0)},
+                                                      {Socket::CAM_C, pose(0.06f, 0.10f, 0.001f, 0.002f)},
+                                                      {Socket::CAM_D, pose(-0.15f, 0.04f, -0.025f, 0.018f)}};
+    dai::EepromData eeprom;
+    eeprom.housingExtrinsics.toCameraSocket = housingOrigin;
+    const auto& housingPose = factoryPoses.at(housingOrigin);
+    eeprom.housingExtrinsics.rotationMatrix = dai::matrix::extractRotationMatrix(housingPose);
+    eeprom.housingExtrinsics.translation = {100 * housingPose[0][3], 100 * housingPose[1][3], 100 * housingPose[2][3]};
+    dai::CalibrationHandler factory(eeprom);
+    for(auto socket : chain) factory.setCameraIntrinsics(socket, {{800, 0, 320}, {0, 810, 240}, {0, 0, 1}}, 640, 480);
+    for(size_t i = 0; i + 1 < chain.size(); ++i) {
+        const auto edge = dai::matrix::matMul(factoryPoses.at(chain[i + 1]), inverse(factoryPoses.at(chain[i])));
+        auto translation = dai::matrix::extractTranslationVector(edge);
+        for(auto& value : translation) value *= 100;
+        // Deliberately different design translations catch accidental useSpecTranslation=true.
+        factory.setCameraExtrinsics(chain[i], chain[i + 1], dai::matrix::extractRotationMatrix(edge), translation, {20, 30, 40});
+    }
+    const auto factoryJson = factory.eepromToJson();
+    auto current = dai::CalibrationHandler::fromJson(factoryJson);
+    // Simulate a previously modified user calibration, so copying its links cannot pass.
+    for(size_t i = 0; i + 1 < chain.size(); ++i) {
+        auto edge = current.getCameraExtrinsics(chain[i], chain[i + 1], false);
+        auto translation = dai::matrix::extractTranslationVector(edge);
+        translation[1] += 0.1f;
+        current.updateCameraExtrinsics(chain[i], chain[i + 1], dai::matrix::extractRotationMatrix(edge), translation);
+    }
+    for(auto socket : {Socket::CAM_A, Socket::CAM_D}) {
+        REQUIRE(current.getCameraExtrinsics(anchor, socket, false) != factory.getCameraExtrinsics(anchor, socket, false));
+    }
+
+    for(int cycle = 1; cycle <= 3; ++cycle) {
+        CAPTURE(cycle);
+        REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), current, dai::Platform::RVC4) == anchor);
+        // Mock DCL output with a new stereo transform and a changing housing pose.
+        // The expected B->C transform is specified directly, not derived from the result.
+        const auto expectedStereo = pose(0.02f * cycle, 0.10f + 0.001f * cycle, -0.002f, 0.003f);
+        const auto housingToB = pose(-0.04f * cycle, 0.002f * cycle, -0.003f, 0.004f);
+        const std::map<Socket, Transform> dclOutput = {{Socket::CAM_B, housingToB}, {Socket::CAM_C, dai::matrix::matMul(expectedStereo, housingToB)}};
+        REQUIRE(current.getCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, false, dai::LengthUnit::METER) != expectedStereo);
+        const auto updated = dai::node::detail::assembleDynamicCalibration(current, factory, chain, dclOutput, true, stereoPairs, dai::Platform::RVC4);
+        // Query a freshly loaded CalibrationHandler, as downstream calibration consumers do.
+        current = dai::CalibrationHandler::fromJson(updated.eepromToJson());
+        requireTransform(current.getCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, false, dai::LengthUnit::METER), expectedStereo);
+        requireTransform(current.getCameraExtrinsics(Socket::CAM_C, Socket::CAM_B, false, dai::LengthUnit::METER), inverse(expectedStereo));
+        for(auto socket : {Socket::CAM_A, Socket::CAM_D}) {
+            CAPTURE(socket);
+            for(auto unit : {dai::LengthUnit::METER, dai::LengthUnit::CENTIMETER}) {
+                // Allow 1 micrometer of translation roundoff in centimeter queries;
+                // rotation tolerance stays unchanged regardless of translation units.
+                const auto tolerance = unit == dai::LengthUnit::CENTIMETER ? 1e-4f : 1e-5f;
+                requireTransform(current.getCameraExtrinsics(anchor, socket, false, unit), factory.getCameraExtrinsics(anchor, socket, false, unit), tolerance);
+                requireTransform(current.getCameraExtrinsics(socket, anchor, false, unit), factory.getCameraExtrinsics(socket, anchor, false, unit), tolerance);
+            }
+            // The other stereo camera's links must follow the NEW stereo transform.
+            const auto other = anchor == Socket::CAM_B ? Socket::CAM_C : Socket::CAM_B;
+            const auto otherToAnchor = anchor == Socket::CAM_B ? inverse(expectedStereo) : expectedStereo;
+            requireTransform(current.getCameraExtrinsics(other, socket, false, dai::LengthUnit::METER),
+                             dai::matrix::matMul(factory.getCameraExtrinsics(anchor, socket, false, dai::LengthUnit::METER), otherToAnchor));
+        }
+        requireTransform(current.getCameraExtrinsics(Socket::CAM_A, Socket::CAM_D, false), factory.getCameraExtrinsics(Socket::CAM_A, Socket::CAM_D, false));
+        for(const auto& entry : dclOutput) {
+            requireTransform(current.getHousingCalibration(entry.first, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER),
+                             inverse(entry.second));
+        }
+        for(auto socket : chain) requireTransform(current.getCameraIntrinsics(socket), factory.getCameraIntrinsics(socket));
+        REQUIRE(factory.eepromToJson() == factoryJson);
     }
 }
 
