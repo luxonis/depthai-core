@@ -156,6 +156,41 @@ TEST_CASE("Stereo depth preserves requested alignment on the wire", "[DynamicCal
     REQUIRE(stereo.initialConfig->algorithmControl.depthAlign == alignment);
 }
 
+TEST_CASE("Stereo AUTO reference follows platform and measured CAM_A proximity", "[DynamicCalibrationTransforms]") {
+    // Left is 10 cm from CAM_A. These right distances cover both sides of
+    // the strict 80% boundary, including equal camera distances.
+    const auto rightDistance = GENERATE(7.0f, 8.0f, 9.0f, 10.0f, 12.0f);
+    auto calibration = factoryRig(Socket::CAM_A);
+    const auto identity = dai::matrix::extractRotationMatrix(pose(0, 0, 0, 0));
+    calibration.updateCameraExtrinsics(Socket::CAM_A, Socket::CAM_B, identity, {10, 0, 0});
+    calibration.updateCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, identity, {rightDistance - 10, 0, 0});
+    const auto expected = rightDistance == 7.0f ? Socket::CAM_C : Socket::CAM_B;
+    REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4) == expected);
+    REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC2) == Socket::CAM_B);
+
+    using Align = dai::StereoDepthConfig::AlgorithmControl::DepthAlign;
+    for(auto alignment : {Align::LEFT, Align::RECTIFIED_LEFT}) {
+        REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, alignment) == Socket::CAM_B);
+    }
+    for(auto alignment : {Align::RIGHT, Align::RECTIFIED_RIGHT}) {
+        REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, alignment) == Socket::CAM_C);
+    }
+    REQUIRE_THROWS(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, Align::CENTER));
+    REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), {}, dai::Platform::RVC4) == Socket::CAM_B);
+
+    // Selection uses active calibration, while passive-camera links use factory data.
+    const auto factory = factoryRig(Socket::CAM_A);
+    const std::vector<Socket> sockets = {Socket::CAM_A, Socket::CAM_B, Socket::CAM_C, Socket::CAM_D};
+    const std::map<Socket, Transform> poses = {{Socket::CAM_B, pose(0.4f, 0.02f, 0.03f, -0.01f)}, {Socket::CAM_C, pose(-0.3f, 0.09f, -0.02f, 0.04f)}};
+    const auto result = dai::node::detail::assembleDynamicCalibration(calibration, factory, sockets, poses, true, stereoPairs, dai::Platform::RVC4);
+    for(auto socket : {Socket::CAM_A, Socket::CAM_D}) {
+        requireTransform(result.getCameraExtrinsics(expected, socket), factory.getCameraExtrinsics(expected, socket));
+    }
+    for(const auto& entry : poses) {
+        requireTransform(result.getHousingCalibration(entry.first, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER), inverse(entry.second));
+    }
+}
+
 TEST_CASE("DynamicCalibration - Commands", "[DynamicCalibrationControl]") {
     using DCC = dai::DynamicCalibrationControl;
 
