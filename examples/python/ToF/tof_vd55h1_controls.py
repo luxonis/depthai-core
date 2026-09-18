@@ -32,8 +32,13 @@ def configFromTrackbars() -> dai.ToFConfig:
 
 def main() -> None:
     with dai.Pipeline() as pipeline:
+        cameras = pipeline.getDefaultDevice().getConnectedCameraFeatures()
+        boardSocket = next((camera.socket for camera in cameras if camera.sensorName == "VD55H1"), None)
+        if boardSocket is None:
+            sensorNames = ", ".join(camera.sensorName for camera in cameras) or "none"
+            raise RuntimeError(f"This example requires a VD55H1 ToF sensor. Found sensors: {sensorNames}")
         tof = pipeline.create(dai.node.ToF).build(
-            boardSocket=dai.CameraBoardSocket.AUTO,
+            boardSocket=boardSocket,
             profile=dai.ToFConfig.Profile.MID_RANGE,
             fps=FPS,
         )
