@@ -113,7 +113,10 @@ class ToFConfig : public Buffer {
      * Construct ToFConfig message.
      */
     ToFConfig() {
+        // Preserve the legacy RVC2 default while initializing the RVC4 preset.
+        const auto rvc2Threshold = phaseUnwrapErrorThreshold;
         setProfilePreset(profile);
+        phaseUnwrapErrorThreshold = rvc2Threshold;
     }
     virtual ~ToFConfig();
 
@@ -129,8 +132,8 @@ class ToFConfig : public Buffer {
     }
 
     /**
-     * Set preset mode for ToFConfig, including the VD55H1 processing parameters.
-     * @param presetMode Preset mode for ToFConfig.
+     * Set preset mode, including the RVC2 phase-unwrapping threshold and VD55H1 processing parameters.
+     * @param profile Preset mode for ToFConfig.
      */
     void setProfilePreset(Profile profile);
 
