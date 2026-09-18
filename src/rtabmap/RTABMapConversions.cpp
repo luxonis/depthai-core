@@ -11,8 +11,9 @@ std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transfo
     auto transform = std::make_shared<TransformData>();
 
     transform->transform.matrix = {{{transformRTABMap.r11(), transformRTABMap.r12(), transformRTABMap.r13(), transformRTABMap.o14()},
-                                    {transformRTABMap.r21(), transformRTABMap.r22(), transformRTABMap.r23(), transformRTABMap.o24()},
-                                    {transformRTABMap.r31(), transformRTABMap.r32(), transformRTABMap.r33(), transformRTABMap.o34()}}};
+                                   {transformRTABMap.r21(), transformRTABMap.r22(), transformRTABMap.r23(), transformRTABMap.o24()},
+                                   {transformRTABMap.r31(), transformRTABMap.r32(), transformRTABMap.r33(), transformRTABMap.o34()},
+                                   {0.0, 0.0, 0.0, 1.0}}};
     return transform;
 }
 
