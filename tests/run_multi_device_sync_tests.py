@@ -9,6 +9,7 @@ import subprocess
 
 def enablePTPonCamera(device: adbutils.AdbDevice, sync_frames: bool, is_master: bool, ptp_domain: int):
     devicename = device.serial
+    print(f"Enabling PTP on {devicename}")
 
     cmd = f"sed -i -E 's/^\\(domainNumber[[:space:]]+?\\)[0-9]+?$/\\\\1{ptp_domain}/' /etc/linuxptp/ptp4l.conf"
     ret = device.shell2(cmd, v2=True)
@@ -33,12 +34,16 @@ def enablePTPonCamera(device: adbutils.AdbDevice, sync_frames: bool, is_master: 
 
 def disablePTPonCamera(device: adbutils.AdbDevice):
     devicename = device.serial
+    print(f"Disabling PTP on {devicename}")
     cmd = "luxonis-ptp-config disable"
     ret = device.shell2(cmd, v2=True)
     if ret.returncode != 0:
         raise RuntimeError(f"{devicename} Failed to disable PTP: {ret.stderr}")
 
 def enablePTPonAllDevices(devices: list[adbutils.AdbDevice], sync_frames: bool, ptp_domain: int):
+    print(f"Found {len(devices)} devices")
+    print(f"PTP domain: {ptp_domain}")
+    print("Enabling PTP on all devices")
     for idx, device in enumerate(devices):
         if idx == 0:
             enablePTPonCamera(device, sync_frames, True, ptp_domain)
@@ -50,6 +55,8 @@ def enablePTPonAllDevices(devices: list[adbutils.AdbDevice], sync_frames: bool, 
             raise RuntimeError(f"Failed to reboot {device.serial}: {ret.stderr}")
 
 def disablePTPonAllDevices(devices: list[adbutils.AdbDevice]):
+    print(f"Found {len(devices)} devices")
+    print("Disabling PTP on all devices")
     for device in devices:
         try:
             disablePTPonCamera(device)
@@ -109,6 +116,9 @@ def main():
             time.sleep(1)
 
         print("All devices are online")
+        print("Sleeping 2 minutes for PTP to settle")
+        time.sleep(120)
+
         try:
             print("Running tests...")
             envvars = os.environ.copy()
