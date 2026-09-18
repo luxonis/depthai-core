@@ -20,7 +20,7 @@ def enablePTPonCamera(device: adbutils.AdbDevice, sync_frames: bool, is_master: 
     devicename = device.serial
     print(f"Enabling PTP on {devicename}")
 
-    cmd = f"sed -i -E 's/^\\(domainNumber[[:space:]]+?\\)[0-9]+?$/\\\\1{ptp_domain}/' /etc/linuxptp/ptp4l.conf"
+    cmd = f"sed -i -E 's/^(domainNumber[[:space:]]+?)[0-9]+?$/\\1{ptp_domain}/' /etc/linuxptp/ptp4l.conf"
     ret = device.shell2(cmd, v2=True)
     if ret.returncode != 0:
         raise RuntimeError(f"{devicename} Failed to set PTP domain to {ptp_domain}: {ret.stderr}")
