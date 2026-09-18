@@ -287,7 +287,8 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                  std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
                  std::vector<std::string>& camSockets,
                  float targetFps,
-                 SyncType syncType) {
+                 SyncType syncType,
+                 std::optional<std::set<std::string>> &allowedSensors) {
     auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
     auto device = pipeline->getDefaultDevice();
 
@@ -306,30 +307,20 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
     auto isSensorAllowed = [&](dai::CameraBoardSocket socket) -> bool {
-        auto sensorNames = device->getCameraSensorNames();
-        for (auto &socketNamePair : sensorNames) {
-            if (socketNamePair.first != socket) {
-                continue;
-            }
-
-            if (socketNamePair.second.find("IMX586") != std::string::npos) {
-                return false;
-            }
-
-            if (socketNamePair.second.find("OG05") != std::string::npos) {
-                return false;
-            }
-
+        if (!allowedSensors.has_value()) {
             return true;
         }
-        std::cout << "Unexpected camera socket: " << socket << std::endl;
-        return true;
+
+        auto sensorNames = device->getCameraSensorNames();
+        return sensorNames.find(socket) == sensorNames.end();
     };
 
     for(auto socket : device->getConnectedCameras()) {
         if(!isSensorAllowed(socket)) {
+            std::cout << "Skipping socket " << dai::toString(socket) << std::endl;
             continue;
         }
+        std::cout << "Setting up socker " << dai::toString(socket) << std::endl;
         setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets);
     }
 
@@ -371,6 +362,14 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     std::cout << "SYNC_THRESHOLD_SEC: " << parameters.syncThresholdSec << std::endl;
     std::cout << "RECV_ALL_TIMEOUT_SEC: " << parameters.recvAllTimeoutSec << std::endl;
     std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << parameters.initialSyncTimeoutSec << std::endl;
+
+    if (parameters.allowedSensors.has_value()) {
+        std::cout << "ALLOWED_SENSORS: " << std::endl;
+        for (const auto& sensor : parameters.allowedSensors.value()) {
+            std::cout << "\t" << sensor << std::endl;
+        }
+    }
+
     std::vector<dai::DeviceInfo> deviceInfos = dai::Device::getAllAvailableDevices();
 
     REQUIRE_MSG(deviceInfos.size() >= 2, "At least two devices are required for this test.");
@@ -387,7 +386,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     std::vector<std::string> camSockets;
 
     for(auto deviceInfo : deviceInfos) {
-        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps, parameters.syncType);
+        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps, parameters.syncType, parameters.allowedSensors);
     }
 
     if(masterPipeline == nullptr || !masterNode.has_value() || !masterName.has_value()) {

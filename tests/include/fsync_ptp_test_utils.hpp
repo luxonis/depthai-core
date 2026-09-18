@@ -7,6 +7,7 @@
 #include <map>
 #include <chrono>
 #include <cstdint>
+#include <set>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
@@ -32,6 +33,7 @@ struct FsyncTestParameters {
     double deltaMeanThreshold;
     double deltaP99Threshold;
     SyncType syncType;
+    std::optional<std::set<std::string>> allowedSensors;
 };
 
 dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline,
