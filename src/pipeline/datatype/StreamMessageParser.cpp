@@ -49,6 +49,7 @@
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "PacketizedData.hpp"
 #include "depthai/pipeline/datatype/AlignConfig.hpp"
+#include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
@@ -70,7 +71,6 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
-#include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
 #include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
