@@ -302,7 +302,7 @@ jobs:
               --basic-sanity --reservation-name $RESERVATION_NAME --wait \
               --rvc4-os-version ${{ matrix.rvc4os }} \
               --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} \
-              --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh fsync"
+              --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_multi_device_sync_tests_entrypoint.sh fsync"
 
  linux_rvc4_ptp_test:
       needs: [build_docker_container]
@@ -326,4 +326,4 @@ jobs:
               --basic-sanity --reservation-name $RESERVATION_NAME --wait \
               --rvc4-os-version ${{ matrix.rvc4os }} \
               --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} \
-              --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh ptp"
+              --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_multi_device_sync_tests_entrypoint.sh ptp"
