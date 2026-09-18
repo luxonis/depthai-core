@@ -20,6 +20,7 @@
 #include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"
+#include "pipeline/node/DynamicCalibrationTransforms.hpp"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
 #include "utility/Telemetry.hpp"
 
@@ -233,6 +234,7 @@ class DynamicCalibration::Impl {
      */
     std::shared_ptr<dcl::Device> device;
     dcl::DynamicCalibration dynCalibImpl;
+    std::optional<CalibrationHandler> factoryCalibration;
     std::shared_ptr<DynamicCalibrationTelemetryAggregateState> telemetryAggregateState = std::make_shared<DynamicCalibrationTelemetryAggregateState>();
     utility::Telemetry::AggregateMetricsHandle telemetryAggregateMetricsHandle = 0;
 };
@@ -449,12 +451,6 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
     }
     calibrationHandler = handler;
 
-    socketToSensorExtrinsics.clear();
-    socketToSensorExtrinsics.reserve(socketsInHandler.size());
-    for(const auto& socket : socketsInHandler) {
-        socketToSensorExtrinsics.push_back(DclUtils::computeBaseToSocketTransform(handler, daiSocketBase, socket));
-    }
-
     for(const auto& sensor : connectedSensors) {
         auto calibration =
             DclUtils::convertDaiCalibrationToDcl(handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel);
@@ -553,34 +549,33 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
     }
 
-    auto newCalibrationHandler = currentHandler;
-    auto candidateSocketToSensorExtrinsics = socketToSensorExtrinsics;
-
+    std::map<CameraBoardSocket, std::vector<std::vector<float>>> calibratedPoses;
     for(size_t idx = 0; idx < connectedSensors.size(); ++idx) {
-        const auto& calibration = dclResult.value.calibrations[idx];
-        const auto& sensor = connectedSensors[idx];
-        candidateSocketToSensorExtrinsics[sensor.connectionOrder] = DclUtils::calibrationHandleToTransform(calibration);
+        calibratedPoses.emplace(connectedSensors[idx].socket, DclUtils::calibrationHandleToTransform(dclResult.value.calibrations[idx]));
     }
 
-    for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
-        auto transformCurrentToBase = candidateSocketToSensorExtrinsics[idx];
-        matrix::invertSe3Matrix4x4InPlace(transformCurrentToBase);
-        const auto transformCurrentToNext = matrix::matMul(candidateSocketToSensorExtrinsics[idx + 1], transformCurrentToBase);
-        auto translationCurrentToNext = matrix::extractTranslationVector(transformCurrentToNext);
-        for(auto& val : translationCurrentToNext) {
-            val *= 100.0f;
+    CalibrationHandler newCalibrationHandler;
+    try {
+        // Cache factory data only when calibration needs an unobserved camera link.
+        // Metrics-only use and fully observed rigs do not require factory EEPROM.
+        if(calibratedPoses.size() < socketsInHandler.size() && !pimplDCL->factoryCalibration) {
+            pimplDCL->factoryCalibration = device->readFactoryCalibration();
         }
-        newCalibrationHandler.updateCameraExtrinsics(
-            socketsInHandler[idx], socketsInHandler[idx + 1], matrix::extractRotationMatrix(transformCurrentToNext), translationCurrentToNext);
-    }
-
-    if(std::holds_alternative<HousingCoordinateSystem>(daiSocketBase)) {
-        const auto housingOriginSocket = currentHandler.getEepromData().housingExtrinsics.toCameraSocket;
-        const auto housingOriginIt = std::find(socketsInHandler.begin(), socketsInHandler.end(), housingOriginSocket);
-        if(housingOriginIt != socketsInHandler.end()) {
-            const auto housingOriginIndex = static_cast<size_t>(std::distance(socketsInHandler.begin(), housingOriginIt));
-            DclUtils::setHousingToDai(newCalibrationHandler, candidateSocketToSensorExtrinsics[housingOriginIndex]);
-        }
+        const auto stereoPairs = calibratedPoses.size() < socketsInHandler.size() ? device->getStereoPairs() : std::vector<StereoPair>{};
+        newCalibrationHandler = detail::assembleDynamicCalibration(currentHandler,
+                                                                   pimplDCL->factoryCalibration.value_or(CalibrationHandler{}),
+                                                                   socketsInHandler,
+                                                                   calibratedPoses,
+                                                                   std::holds_alternative<HousingCoordinateSystem>(daiSocketBase),
+                                                                   stereoPairs,
+                                                                   device->getPlatform());
+    } catch(const std::exception& ex) {
+        calibrationOutput.send(std::make_shared<DynamicCalibrationResult>(std::string("Failed to assemble calibration from factory links: ") + ex.what()));
+        auto& telemetryState = *pimplDCL->telemetryAggregateState;
+        std::lock_guard<std::mutex> lock(telemetryState.mutex);
+        telemetryState.calibrationResultCallbacks += 1;
+        telemetryState.failedCalibrations += 1;
+        return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
     }
 
     CalibrationQuality::Data qualityData{};
@@ -742,7 +737,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     connectedSensors.reserve(names.size());
 
     socketsInHandler.clear();
-    socketToSensorExtrinsics.clear();
     leftQueueSocket.reset();
     rightQueueSocket.reset();
 
@@ -799,13 +793,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
             return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
         }
 
-        connectedSensors.push_back({socket,
-                                    frameIntrinsics,
-                                    frameDistortion,
-                                    frameDistortionModel,
-                                    static_cast<size_t>(std::distance(socketsInHandler.begin(), socketIt)),
-                                    resolution,
-                                    nullptr});
+        connectedSensors.push_back({socket, frameIntrinsics, frameDistortion, frameDistortionModel, resolution, nullptr});
 
         if(name == leftInputName) {
             leftQueueSocket = socket;
@@ -823,14 +811,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     }
     // set up the dynamic calibration
     pimplDCL->device = pimplDCL->dynCalibImpl.addDevice();
-    socketToSensorExtrinsics.clear();
-    socketToSensorExtrinsics.reserve(socketsInHandler.size());
-
-    for(const auto& socket : socketsInHandler) {
-        const auto baseToSocketTransform = DclUtils::computeBaseToSocketTransform(calibrationHandler, daiSocketBase, socket);
-        socketToSensorExtrinsics.push_back(baseToSocketTransform);
-    }
-
     for(auto& sensor : connectedSensors) {
         dcl::resolution_t resolutionDcl{static_cast<unsigned>(sensor.resolution.first), static_cast<unsigned>(sensor.resolution.second)};
         auto calibration = DclUtils::convertDaiCalibrationToDcl(
