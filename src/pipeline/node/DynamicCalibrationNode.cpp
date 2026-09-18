@@ -151,6 +151,29 @@ void addDynamicCalibrationResultTelemetry(DynamicCalibrationTelemetryAggregateSt
     }
 }
 
+// How far DynamicCalibrationLibrary swung the whole rig this round, and how consistently across cameras.
+void logRigTurn(spdlog::logger& logger,
+                const CalibrationHandler& orientationReference,
+                const std::variant<CameraBoardSocket, HousingCoordinateSystem>& base,
+                const std::map<CameraBoardSocket, std::vector<std::vector<float>>>& calibratedPoses) {
+    if(!logger.should_log(spdlog::level::debug)) return;
+    try {
+        std::map<CameraBoardSocket, detail::Pose3d> poses;
+        std::string perCamera;
+        for(const auto& [socket, calibratedPose] : calibratedPoses) {
+            const auto pose = detail::toPose(calibratedPose);
+            poses.emplace(socket, pose);
+            const auto before = detail::inverted(detail::toPose(detail::baseToCameraTransform(orientationReference, base, socket)));
+            perCamera += fmt::format(" {}={:.3f}deg", toString(socket), detail::rotationAngleDegrees(detail::rotationOf(detail::multiply(pose, before))));
+        }
+        logger.debug("DynamicCalibration undoing a {:.3f} deg common rig turn; per-camera turn:{}",
+                     detail::rotationAngleDegrees(detail::commonCameraRotation(orientationReference, base, poses)),
+                     perCamera);
+    } catch(const std::exception& ex) {
+        logger.debug("DynamicCalibration could not report the rig turn: {}", ex.what());
+    }
+}
+
 }  // namespace
 
 std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
@@ -210,21 +233,6 @@ std::vector<CameraBoardSocket> DclUtils::buildSocketConnection(const EepromData&
     }
 
     return connection;
-}
-
-std::vector<std::vector<float>> DclUtils::computeBaseToSocketTransform(const CalibrationHandler& currentCalibration,
-                                                                       const std::variant<CameraBoardSocket, HousingCoordinateSystem>& boardSocketBase,
-                                                                       CameraBoardSocket boardSocket) {
-    if(const auto* cameraBase = std::get_if<CameraBoardSocket>(&boardSocketBase)) {
-        if(*cameraBase == boardSocket) {
-            return {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
-        }
-        return currentCalibration.getCameraExtrinsics(*cameraBase, boardSocket, false, LengthUnit::METER);
-    }
-
-    auto socketToHousingTransform = currentCalibration.getHousingCalibration(boardSocket, HousingCoordinateSystem::AUTO, false, LengthUnit::METER);
-    matrix::invertSe3Matrix4x4InPlace(socketToHousingTransform);
-    return socketToHousingTransform;
 }
 
 class DynamicCalibration::Impl {
@@ -311,7 +319,7 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToD
                                                                                    const std::vector<std::vector<float>>& intrinsicsOverride,
                                                                                    const std::vector<float>& distortionOverride,
                                                                                    const CameraModel distortionModelOverride) {
-    const auto baseToSocketTransform = DclUtils::computeBaseToSocketTransform(currentCalibration, boardSocketBase, boardSocket);
+    const auto baseToSocketTransform = detail::baseToCameraTransform(currentCalibration, boardSocketBase, boardSocket);
 
     return DclUtils::createDclCalibration(matrix::vectorMatrixToMatrix3x3(intrinsicsOverride),
                                           distortionOverride,
@@ -556,19 +564,21 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
 
     CalibrationHandler newCalibrationHandler;
     try {
-        // Cache factory data only when calibration needs an unobserved camera link.
-        // Metrics-only use and fully observed rigs do not require factory EEPROM.
-        if(calibratedPoses.size() < socketsInHandler.size() && !pimplDCL->factoryCalibration) {
-            pimplDCL->factoryCalibration = device->readFactoryCalibration();
+        // Factory data is the fixed orientation reference the rig is re-anchored to, and also supplies the
+        // links for any camera the calibration did not observe.
+        if(!pimplDCL->factoryCalibration) {
+            try {
+                pimplDCL->factoryCalibration = device->readFactoryCalibration();
+            } catch(const std::exception& ex) {
+                // Without factory EEPROM the rig is anchored to the calibration in use instead.
+                logger->warn("DynamicCalibration could not read factory calibration, anchoring to the current calibration: {}", ex.what());
+            }
         }
         const auto stereoPairs = calibratedPoses.size() < socketsInHandler.size() ? device->getStereoPairs() : std::vector<StereoPair>{};
-        newCalibrationHandler = detail::assembleDynamicCalibration(currentHandler,
-                                                                   pimplDCL->factoryCalibration.value_or(CalibrationHandler{}),
-                                                                   socketsInHandler,
-                                                                   calibratedPoses,
-                                                                   std::holds_alternative<HousingCoordinateSystem>(daiSocketBase),
-                                                                   stereoPairs,
-                                                                   device->getPlatform());
+        const auto factoryCalibration = pimplDCL->factoryCalibration.value_or(CalibrationHandler{});
+        logRigTurn(*logger, factoryCalibration.getEepromData().cameraData.empty() ? currentHandler : factoryCalibration, daiSocketBase, calibratedPoses);
+        newCalibrationHandler = detail::assembleDynamicCalibration(
+            currentHandler, factoryCalibration, socketsInHandler, calibratedPoses, daiSocketBase, stereoPairs, device->getPlatform());
     } catch(const std::exception& ex) {
         calibrationOutput.send(std::make_shared<DynamicCalibrationResult>(std::string("Failed to assemble calibration from factory links: ") + ex.what()));
         auto& telemetryState = *pimplDCL->telemetryAggregateState;

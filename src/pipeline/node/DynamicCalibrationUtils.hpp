@@ -14,10 +14,6 @@ struct DclUtils {
 
     static std::vector<CameraBoardSocket> buildSocketConnection(const EepromData& eepromData);
 
-    static std::vector<std::vector<float>> computeBaseToSocketTransform(const CalibrationHandler& currentCalibration,
-                                                                        const std::variant<CameraBoardSocket, HousingCoordinateSystem>& boardSocketBase,
-                                                                        CameraBoardSocket boardSocket);
-
     static std::shared_ptr<dcl::CameraCalibrationHandle> convertDaiCalibrationToDcl(const CalibrationHandler& currentCalibration,
                                                                                     std::variant<CameraBoardSocket, HousingCoordinateSystem> boardSocketBase,
                                                                                     CameraBoardSocket boardSocket,
