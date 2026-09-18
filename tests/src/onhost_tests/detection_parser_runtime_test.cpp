@@ -1,7 +1,8 @@
+#include <fp16/fp16.h>
+
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cstring>
-#include <fp16/fp16.h>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
@@ -23,7 +24,7 @@ std::shared_ptr<dai::NNData> makeDetections(bool yolo) {
     info.dims = yolo ? std::vector<unsigned>{1, 6, 1, 2} : std::vector<unsigned>{1, 1, 2, 7};
     info.strides = yolo ? std::vector<unsigned>{24, 4, 4, 2} : std::vector<unsigned>{28, 28, 14, 2};
     const std::vector<float> values = yolo ? std::vector<float>{0.5f, 1, 0.5f, 0.5f, 1, 0.5f, 0.5f, 0.5f, 1, 1, 0.75f, 0.5f}
-                                         : std::vector<float>{0, 0, 0.75f, 0, 0, 0.75f, 1, 0, 0, 0.5f, 0.25f, 0, 1, 1};
+                                           : std::vector<float>{0, 0, 0.75f, 0, 0, 0.75f, 1, 0, 0, 0.5f, 0.25f, 0, 1, 1};
     auto bytes = data->emplaceTensor(info);
     for(size_t i = 0; i < values.size(); ++i) {
         const auto value = fp16_ieee_from_fp32_value(values[i]);

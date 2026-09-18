@@ -10,7 +10,8 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
-#include "pipeline/datatype/TransformData.hpp"
+#include "depthai/pipeline/datatype/Odometry.hpp"
+#include "depthai/pipeline/datatype/TransformData.hpp"
 #include "tbb/concurrent_queue.h"
 #include "tbb/global_control.h"
 namespace dai {
@@ -81,7 +82,9 @@ void BasaltVIO::run() {
         auto finalPose = pose * opticalTransform.inverse();
         auto trans = finalPose.translation();
         auto rot = finalPose.unit_quaternion();
-        auto out = std::make_shared<TransformData>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w());
+        const auto velocity = pimpl->localTransform->unit_quaternion() * data->vel_w_i;
+        auto out =
+            std::make_shared<Odometry>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w(), Point3d(velocity.x(), velocity.y(), velocity.z()));
         transform.send(out);
         std::lock_guard<std::mutex> lck(imgMtx);
         passthrough.send(leftImg);

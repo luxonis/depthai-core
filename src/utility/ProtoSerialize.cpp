@@ -344,6 +344,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::MapData:
         case DatatypeEnum::MessageGroup:
         case DatatypeEnum::TransformData:
+        case DatatypeEnum::Odometry:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::AlignConfig:
