@@ -27,24 +27,6 @@
 
 namespace {
 
-const char* algorithmName(dai::node::Depth::Algorithm algorithm) {
-    switch(algorithm) {
-        case dai::node::Depth::Algorithm::AUTO:
-            return "auto";
-        case dai::node::Depth::Algorithm::STEREO:
-            return "stereo";
-        case dai::node::Depth::Algorithm::NEURAL:
-            return "neural";
-        case dai::node::Depth::Algorithm::NEURAL_ASSISTED_STEREO:
-            return "neural_assisted_stereo";
-        case dai::node::Depth::Algorithm::TOF:
-            return "tof";
-        case dai::node::Depth::Algorithm::GPU_STEREO:
-            return "gpu_stereo";
-    }
-    return "unknown";
-}
-
 cv::Mat colorizeDepth(const cv::Mat& frameDepth) {
     if(frameDepth.empty() || frameDepth.channels() != 1) {
         return cv::Mat::zeros(frameDepth.size(), CV_8UC3);
@@ -136,7 +118,7 @@ int main(int argc, char** argv) {
         "focused depth map (full frame, only the detected regions filled) and a matching "
         "confidence map.");
     program.add_argument("--model").default_value(std::string("yolov6-nano")).help("Detection model description (default: yolov6-nano)");
-    program.add_argument("--fps").scan<'g', float>().help("Stereo camera FPS for the Depth node");
+    program.add_argument("--fps").scan<'g', float>().default_value(30.0f).help("Requested camera FPS");
 
     try {
         program.parse_args(argc, argv);
@@ -147,10 +129,7 @@ int main(int argc, char** argv) {
     }
 
     const std::string model = program.get<std::string>("--model");
-    std::optional<float> fps;
-    if(program.is_used("--fps")) {
-        fps = program.get<float>("--fps");
-    }
+    const float fps = program.get<float>("--fps");
 
     dai::Pipeline pipeline;
     const auto device = pipeline.getDefaultDevice();
@@ -171,18 +150,16 @@ int main(int argc, char** argv) {
     std::cout << "Running detection on color camera socket: " << static_cast<int>(*colorSocket) << std::endl;
 
     auto camRgb = pipeline.create<dai::node::Camera>();
-    camRgb->build(*colorSocket);
+    camRgb->build(*colorSocket, std::nullopt, fps);
 
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
     detectionNetwork->build(camRgb, dai::NNModelDescription{model});
-    detectionNetwork->setConfidenceThreshold(0.5f);
+    detectionNetwork->setConfidenceThreshold(0.25f);
 
     auto depthNode = pipeline.create<dai::node::Depth>();
-    if(fps.has_value()) {
-        depthNode->build(*fps);
-    } else {
-        depthNode->build();
-    }
+    depthNode->setFocusModels({dai::DeviceModelZoo::NEURAL_DEPTH_192X120});
+    depthNode->setFocusSelectionMode(dai::node::FocusController::SelectionMode::LARGEST);
+    depthNode->build(fps);
     detectionNetwork->out.link(depthNode->inputDetections);
 
     auto rgbQueue = detectionNetwork->passthrough.createOutputQueue(4, false);
@@ -192,17 +169,7 @@ int main(int argc, char** argv) {
 
     pipeline.build();
 
-    std::cout << "Resolved algorithm: " << algorithmName(depthNode->getResolvedAlgorithm()) << std::endl;
-    std::visit(
-        [](const auto& value) {
-            using T = std::decay_t<decltype(value)>;
-            if constexpr(std::is_same_v<T, std::monostate>) {
-                std::cout << "Resolved config: none" << std::endl;
-            } else {
-                std::cout << "Resolved config: " << static_cast<int>(value) << std::endl;
-            }
-        },
-        depthNode->getResolvedConfig());
+    std::cout << "Focused depth: largest object, neural model 192x120, requested FPS=" << fps << '\n';
 
     pipeline.start();
 

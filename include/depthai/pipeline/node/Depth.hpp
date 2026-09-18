@@ -130,8 +130,6 @@ class Depth : public DeviceNodeGroup {
      */
     Node::Output& confidence();
 
-
-
     /**
      * Align depth output to another image source.
      * Must be called before first depth() or confidence() access.
@@ -170,12 +168,14 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Configure the focused-depth backend models before focused outputs are wired.
-     * One to three models are accepted; a single model is used for all physical backend slots.
+     * One to three models are accepted; only the configured backends are created.
      */
     std::shared_ptr<Depth> setFocusModels(const std::vector<DeviceModelZoo>& models);
 
+    /** Select all detection regions or only the largest before wiring focused outputs. */
     std::shared_ptr<Depth> setFocusSelectionMode(FocusController::SelectionMode mode);
 
+    /** Select single-tier dispatch or a best-effort per-frame time budget before wiring. */
     std::shared_ptr<Depth> setFocusDispatchMode(FocusController::DispatchMode mode);
 
     /**

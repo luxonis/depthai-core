@@ -1,13 +1,13 @@
 #pragma once
 
+#include <array>
 #include <depthai/common/DeviceModelZoo.hpp>
 #include <depthai/pipeline/datatype/ImgDetections.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/pipeline/node/host/HostNode.hpp>
-
-#include <array>
+#include <deque>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -74,9 +74,12 @@ class FocusController : public CustomNode<FocusController> {
     Input depthCrop0{*this, {"depthCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Input depthCrop1{*this, {"depthCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Input depthCrop2{*this, {"depthCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-    Input confidenceCrop0{*this, {"confidenceCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-    Input confidenceCrop1{*this, {"confidenceCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-    Input confidenceCrop2{*this, {"confidenceCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input confidenceCrop0{*this,
+                          {"confidenceCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input confidenceCrop1{*this,
+                          {"confidenceCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input confidenceCrop2{*this,
+                          {"confidenceCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     Output leftConfig0{*this, {"leftConfig0", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
     Output leftConfig1{*this, {"leftConfig1", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
@@ -179,6 +182,14 @@ class FocusController : public CustomNode<FocusController> {
     constexpr static const char* NAME = "FocusController";
 
    private:
+    struct PendingFrame {
+        std::shared_ptr<ImgFrame> left;
+        std::vector<MergedCrop> crops;
+        std::size_t detections;
+        std::size_t boxes;
+    };
+    std::deque<PendingFrame> pendingFrames_;
+
     float targetFps_ = 30.0f;
     std::array<Tier, kNumTiers> tiers_ = kTiers;
     int tierCount_ = kNumTiers;

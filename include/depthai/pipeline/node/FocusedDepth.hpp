@@ -7,7 +7,6 @@
 #include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <depthai/pipeline/node/Rectification.hpp>
 #include <depthai/pipeline/node/host/FocusController.hpp>
-
 #include <vector>
 
 namespace dai {
@@ -39,19 +38,10 @@ class FocusedDepth : public DeviceNodeGroup {
     Subnode<FocusController> focusController{*this, "focusController"};
     Subnode<Rectification> rectification{*this, "rectification"};
 
-    // One left/right crop ImageManip pair and one NeuralDepth backend per size tier
-    // (FocusController::kNumTiers). Each backend has a fixed input size, so the left/right crops
-    // reaching any one backend always match in size, and small crops use the fast small model
-    // while large crops use a larger one. Crops are routed to a tier by FocusController::selectTier.
-    Subnode<ImageManip> leftManip0{*this, "leftManip0"};
-    Subnode<ImageManip> rightManip0{*this, "rightManip0"};
-    Subnode<ImageManip> leftManip1{*this, "leftManip1"};
-    Subnode<ImageManip> rightManip1{*this, "rightManip1"};
-    Subnode<ImageManip> leftManip2{*this, "leftManip2"};
-    Subnode<ImageManip> rightManip2{*this, "rightManip2"};
-    Subnode<NeuralDepth> neuralDepth0{*this, "neuralDepth0"};
-    Subnode<NeuralDepth> neuralDepth1{*this, "neuralDepth1"};
-    Subnode<NeuralDepth> neuralDepth2{*this, "neuralDepth2"};
+    // Allocate only the configured tiers; a single-model pipeline needs one backend.
+    std::vector<std::unique_ptr<Subnode<ImageManip>>> leftManips;
+    std::vector<std::unique_ptr<Subnode<ImageManip>>> rightManips;
+    std::vector<std::unique_ptr<Subnode<NeuralDepth>>> neuralDepths;
 
    public:
     Input& inputDetections;

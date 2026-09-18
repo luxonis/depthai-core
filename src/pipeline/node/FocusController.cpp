@@ -1,15 +1,14 @@
 #include "depthai/pipeline/node/host/FocusController.hpp"
 
-#include <depthai/pipeline/datatype/Buffer.hpp>
-#include <depthai/pipeline/datatype/ImageManipConfig.hpp>
-#include <depthai/pipeline/node/NeuralDepth.hpp>
-
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <depthai/pipeline/datatype/Buffer.hpp>
+#include <depthai/pipeline/datatype/ImageManipConfig.hpp>
+#include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
@@ -134,9 +133,7 @@ int FocusController::selectTierWithinBudget(const std::array<Tier, kNumTiers>& t
     return -1;
 }
 
-std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
-                                                                int frameHeight,
-                                                                const std::vector<std::array<float, 4>>& normalizedBoxes) {
+std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth, int frameHeight, const std::vector<std::array<float, 4>>& normalizedBoxes) {
     std::vector<Crop> crops;
     crops.reserve(normalizedBoxes.size());
     if(frameWidth <= 0 || frameHeight <= 0) {
@@ -217,9 +214,7 @@ std::vector<FocusController::MergedCrop> FocusController::mergeCrops(const std::
     }
 
     // Two rectangles overlap when they intersect on both axes.
-    auto overlaps = [](const MergedCrop& a, const MergedCrop& b) {
-        return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-    };
+    auto overlaps = [](const MergedCrop& a, const MergedCrop& b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; };
 
     // Repeatedly fold any crop that overlaps an earlier one into it (union rectangle, combined
     // detection list) until a full pass makes no change. Crop counts are small, so O(n^2) per pass
@@ -306,15 +301,15 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         return nullptr;
     }
 
-    const int frameWidth = static_cast<int>(leftImg->getWidth());
-    const int frameHeight = static_cast<int>(leftImg->getHeight());
+    int frameWidth = static_cast<int>(leftImg->getWidth());
+    int frameHeight = static_cast<int>(leftImg->getHeight());
     if(frameWidth <= 0 || frameHeight <= 0) {
         return nullptr;
     }
 
     // Horizontal focal length of the full rectified frame (in full-frame pixels). Used to
     // rescale each crop's depth to the crop's correct focal (see the per-crop correction below).
-    const float fxFull = leftImg->getTransformation().getIntrinsicMatrix()[0][0];
+    float fxFull = leftImg->getTransformation().getIntrinsicMatrix()[0][0];
 
     std::vector<ImgDetection> detections;
     if(auto dets = in->get<ImgDetections>("inputDetections")) {
@@ -323,7 +318,7 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
             detections = std::move(transformed.detections);
         } catch(...) {
             // If the source transformation is missing, assume detections are already in the left frame.
-            detections = std::move(dets->detections);
+            detections = dets->detections;
         }
     }
 
@@ -339,13 +334,6 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         frame->setData(std::move(data));
         return frame;
     };
-
-    if(detections.empty()) {
-        auto depth = makeZeroFrame(ImgFrame::Type::RAW16, 2);
-        auto conf = makeZeroFrame(ImgFrame::Type::RAW8, 1);
-        confidenceOut.send(conf);
-        return depth;
-    }
 
     std::vector<std::array<float, 4>> boxes;
     boxes.reserve(detections.size());
@@ -369,30 +357,16 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         merged.resize(kMaxCropsPerFrame);
     }
 
-    if(merged.empty()) {
-        auto depth = makeZeroFrame(ImgFrame::Type::RAW16, 2);
-        auto conf = makeZeroFrame(ImgFrame::Type::RAW8, 1);
-        confidenceOut.send(conf);
-        std::ostringstream dbg;
-        dbg << "dets=" << detections.size() << " boxes=" << boxes.size() << " crops=0 processed=0 (no regions)";
-        const std::string dbgStr = dbg.str();
-        auto dbgBuf = std::make_shared<Buffer>();
-        dbgBuf->setData(std::vector<std::uint8_t>(dbgStr.begin(), dbgStr.end()));
-        focusDebug.send(dbgBuf);
-        return depth;
-    }
-
-    cv::Mat fullDepth = cv::Mat::zeros(frameHeight, frameWidth, CV_16U);
-    cv::Mat fullConf = cv::Mat::zeros(frameHeight, frameWidth, CV_8U);
-
     const std::chrono::milliseconds timeout(5000);
 
     // Broadcast the synchronized pair to every tier's crop ImageManips once per group. The first
     // config sent to a tier consumes this frame (setReusePreviousImage(false)); later crops on the
     // same tier reuse it, so all of a tier's left/right crops share this timestamp and its backend
     // Sync can pair them. Tiers that get no crop this frame just hold the (non-blocking) latest.
-    leftImage.send(leftImg);
-    rightImage.send(rightImg);
+    if(!merged.empty()) {
+        leftImage.send(leftImg);
+        rightImage.send(rightImg);
+    }
 
     // Pick a single backend tier per frame: the smallest model that fits the largest crop this
     // frame. Every crop this frame uses that one model. This deliberately does NOT route each crop
@@ -407,6 +381,46 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         maxW = std::max(maxW, mc.w);
         maxH = std::max(maxH, mc.h);
     }
+    auto dispatchCrop = [&](const MergedCrop& crop, int tier, bool reusePrevious) {
+        auto config = std::make_shared<ImageManipConfig>();
+        config->setReusePreviousImage(reusePrevious);
+        config->setOutputSize(tiers_[tier].w, tiers_[tier].h, ImageManipConfig::ResizeMode::STRETCH);
+        config->base.center = false;
+        config->addCrop(dai::Rect(crop.x, crop.y, crop.w, crop.h), false);
+        leftConfigTier(tier).send(config);
+        rightConfigTier(tier).send(config);
+    };
+    std::size_t detectionCount = detections.size();
+    std::size_t boxCount = boxes.size();
+    const bool pipelineFrames = tierCount_ == 1 && selectionMode_ == SelectionMode::LARGEST && dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME;
+    if(pipelineFrames) {
+        // Keep three frames in flight to overlap transport, inference and reassembly.
+        // Each job retains its own geometry and source metadata; empty frames stay in order.
+        for(const auto& mc : merged) {
+            dispatchCrop(mc, 0, false);
+        }
+        pendingFrames_.push_back({leftImg, std::move(merged), detections.size(), boxes.size()});
+        if(pendingFrames_.size() < 3) {
+            return nullptr;
+        }
+        auto pending = std::move(pendingFrames_.front());
+        pendingFrames_.pop_front();
+        leftImg = std::move(pending.left);
+        merged = std::move(pending.crops);
+        detectionCount = pending.detections;
+        boxCount = pending.boxes;
+        frameWidth = static_cast<int>(leftImg->getWidth());
+        frameHeight = static_cast<int>(leftImg->getHeight());
+        fxFull = leftImg->getTransformation().getIntrinsicMatrix()[0][0];
+    }
+    if(merged.empty()) {
+        confidenceOut.send(makeZeroFrame(ImgFrame::Type::RAW8, 1));
+        return makeZeroFrame(ImgFrame::Type::RAW16, 2);
+    }
+
+    cv::Mat fullDepth = cv::Mat::zeros(frameHeight, frameWidth, CV_16U);
+    cv::Mat fullConf = cv::Mat::zeros(frameHeight, frameWidth, CV_8U);
+
     auto reassemble = [&](const MergedCrop& mc, const std::shared_ptr<ImgFrame>& depthMsg, const std::shared_ptr<ImgFrame>& confMsg, int outW) {
         if(!depthMsg || !confMsg) {
             return;
@@ -462,18 +476,16 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     };
 
     auto dispatchAndCollect = [&](const MergedCrop& mc, int selectedTier, bool reusePrevious) {
-        auto cfg = std::make_shared<ImageManipConfig>();
-        cfg->setReusePreviousImage(reusePrevious);
-        cfg->setOutputSize(static_cast<std::uint32_t>(tiers_[selectedTier].w),
-                           static_cast<std::uint32_t>(tiers_[selectedTier].h),
-                           ImageManipConfig::ResizeMode::STRETCH);
-        cfg->base.center = false;
-        cfg->addCrop(dai::Rect(static_cast<float>(mc.x), static_cast<float>(mc.y), static_cast<float>(mc.w), static_cast<float>(mc.h)), false);
-        leftConfigTier(selectedTier).send(cfg);
-        rightConfigTier(selectedTier).send(cfg);
+        dispatchCrop(mc, selectedTier, reusePrevious);
         bool hasTimedOut = false;
         auto depthMsg = depthCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
+        if(hasTimedOut || !depthMsg) {
+            throw std::runtime_error("Focused depth timed out waiting for a depth crop; stopping to avoid mismatched frames.");
+        }
         auto confMsg = confidenceCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
+        if(hasTimedOut || !confMsg) {
+            throw std::runtime_error("Focused depth timed out waiting for a confidence crop; stopping to avoid mismatched frames.");
+        }
         reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
     };
 
@@ -491,23 +503,21 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     if(dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME) {
         const int selectedTier = selectTier(tiers_, tierCount_, maxW, maxH);
         // Dispatch every crop first so the selected backend remains pipelined across the frame.
-        for(std::size_t idx = 0; idx < merged.size(); ++idx) {
+        for(std::size_t idx = 0; !pipelineFrames && idx < merged.size(); ++idx) {
             const auto& mc = merged[idx];
-            auto cfg = std::make_shared<ImageManipConfig>();
-            cfg->setReusePreviousImage(idx > 0);
-            cfg->setOutputSize(static_cast<std::uint32_t>(tiers_[selectedTier].w),
-                               static_cast<std::uint32_t>(tiers_[selectedTier].h),
-                               ImageManipConfig::ResizeMode::STRETCH);
-            cfg->base.center = false;
-            cfg->addCrop(dai::Rect(static_cast<float>(mc.x), static_cast<float>(mc.y), static_cast<float>(mc.w), static_cast<float>(mc.h)), false);
-            leftConfigTier(selectedTier).send(cfg);
-            rightConfigTier(selectedTier).send(cfg);
+            dispatchCrop(mc, selectedTier, idx > 0);
         }
         for(const auto& mc : merged) {
             const auto cropStart = std::chrono::steady_clock::now();
             bool hasTimedOut = false;
             auto depthMsg = depthCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
+            if(hasTimedOut || !depthMsg) {
+                throw std::runtime_error("Focused depth timed out waiting for a depth crop; stopping to avoid mismatched frames.");
+            }
             auto confMsg = confidenceCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
+            if(hasTimedOut || !confMsg) {
+                throw std::runtime_error("Focused depth timed out waiting for a confidence crop; stopping to avoid mismatched frames.");
+            }
             reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
             const double cropMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cropStart).count();
             trace.push_back({selectedTier, mc.w, mc.h, tiers_[selectedTier].w, tiers_[selectedTier].h, cropMs});
@@ -548,7 +558,7 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     {
         const double budgetMs = 1000.0 / std::max(0.1, static_cast<double>(targetFps_));
         std::ostringstream dbg;
-        dbg << "dets=" << detections.size() << " boxes=" << boxes.size() << " crops=" << merged.size() << " processed=" << trace.size()
+        dbg << "dets=" << detectionCount << " boxes=" << boxCount << " crops=" << merged.size() << " processed=" << trace.size()
             << " mode=" << (dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME ? "SINGLE_TIER" : "TIME_BUDGET")
             << " sel=" << (selectionMode_ == SelectionMode::LARGEST ? "LARGEST" : "ALL") << " fps=" << std::fixed << std::setprecision(1) << targetFps_
             << " budget_ms=" << std::setprecision(1) << budgetMs << " tiers=[";

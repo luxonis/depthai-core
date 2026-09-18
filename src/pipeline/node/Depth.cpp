@@ -449,8 +449,7 @@ StereoDepth::PresetMode resolveStereoPreset(float targetFps, std::optional<std::
 Depth::Depth()
     : DeviceNodeGroup(nullptr),
       focusedBackend_(std::make_unique<Subnode<FocusedDepth>>(*this, "focusedDepth")),
-      inputDetections((*focusedBackend_)->inputDetections)
-{}
+      inputDetections((*focusedBackend_)->inputDetections) {}
 
 // --- Build methods ---
 
@@ -501,26 +500,20 @@ Node::Output& Depth::confidence() {
 }
 
 Node::Output& Depth::focusedDepth() {
-    if(!graphBuilt_) {
-        buildInternal();
-    }
-    DAI_CHECK_V(focusedDepthOut_ != nullptr, "Depth focused backend output missing.");
+    Pipeline pipeline = getParentPipeline();
+    buildFocusedBackend(pipeline, getDevice());
     return *focusedDepthOut_;
 }
 
 Node::Output& Depth::focusedConfidence() {
-    if(!graphBuilt_) {
-        buildInternal();
-    }
-    DAI_CHECK_V(focusedConfidenceOut_ != nullptr, "Depth focused backend confidence output missing.");
+    Pipeline pipeline = getParentPipeline();
+    buildFocusedBackend(pipeline, getDevice());
     return *focusedConfidenceOut_;
 }
 
 Node::Output& Depth::focusDebug() {
-    if(!graphBuilt_) {
-        buildInternal();
-    }
-    DAI_CHECK_V(focusDebugOut_ != nullptr, "Depth focused backend debug output missing.");
+    Pipeline pipeline = getParentPipeline();
+    buildFocusedBackend(pipeline, getDevice());
     return *focusDebugOut_;
 }
 
@@ -565,7 +558,7 @@ std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
 // --- Internal ---
 
 void Depth::requireNotBuilt(const char* method) const {
-    DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first depth()/confidence() access).", method);
+    DAI_CHECK_V(!graphBuilt_ && focusedDepthOut_ == nullptr, "{} must be called before the graph is wired (before first depth()/confidence() access).", method);
 }
 
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device, const std::vector<DeviceModelZoo>& supportedModels) const {
@@ -772,7 +765,8 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
 }
 
 void Depth::buildFocusedBackend(Pipeline& pipeline, const std::shared_ptr<Device>& device) {
-    if(inputDetections.isConnected() || focusedDepthOut_ != nullptr || focusedConfidenceOut_ != nullptr) {
+    if(focusedDepthOut_ == nullptr) {
+        DAI_CHECK_V(device != nullptr, "Focused depth requires a device.");
         const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
         (*focusedBackend_)->build(*stereo.left, *stereo.right, stereo.maxCameraFps, std::nullopt);
         focusedDepthOut_ = &(*focusedBackend_)->depth;
@@ -915,7 +909,9 @@ void Depth::buildInternal() {
                             wiredResolution->second);
     }
 
-    buildFocusedBackend(pipeline, device);
+    if(inputDetections.isConnected()) {
+        buildFocusedBackend(pipeline, device);
+    }
 
     graphBuilt_ = true;
 }

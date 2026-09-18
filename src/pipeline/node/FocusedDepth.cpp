@@ -1,5 +1,8 @@
 #include "depthai/pipeline/node/FocusedDepth.hpp"
 
+#include <stdexcept>
+#include <string>
+
 namespace dai {
 namespace node {
 
@@ -11,16 +14,25 @@ FocusedDepth::FocusedDepth()
       focusDebug(focusController->focusDebug) {}
 
 std::shared_ptr<FocusedDepth> FocusedDepth::setFocusModels(const std::vector<DeviceModelZoo>& models) {
+    if(built_) {
+        throw std::logic_error("FocusedDepth configuration must be set before build().");
+    }
     focusController->setModels(models);
     return std::static_pointer_cast<FocusedDepth>(shared_from_this());
 }
 
 std::shared_ptr<FocusedDepth> FocusedDepth::setFocusSelectionMode(FocusController::SelectionMode mode) {
+    if(built_) {
+        throw std::logic_error("FocusedDepth configuration must be set before build().");
+    }
     focusController->setSelectionMode(mode);
     return std::static_pointer_cast<FocusedDepth>(shared_from_this());
 }
 
 std::shared_ptr<FocusedDepth> FocusedDepth::setFocusDispatchMode(FocusController::DispatchMode mode) {
+    if(built_) {
+        throw std::logic_error("FocusedDepth configuration must be set before build().");
+    }
     focusController->setDispatchMode(mode);
     return std::static_pointer_cast<FocusedDepth>(shared_from_this());
 }
@@ -49,14 +61,14 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
     rectification->output1.link(focusController->inputs["left"]);
     rectification->output2.link(focusController->inputs["right"]);
 
-    ImageManip* leftManips[FocusController::kNumTiers] = {&*leftManip0, &*leftManip1, &*leftManip2};
-    ImageManip* rightManips[FocusController::kNumTiers] = {&*rightManip0, &*rightManip1, &*rightManip2};
-    NeuralDepth* neurals[FocusController::kNumTiers] = {&*neuralDepth0, &*neuralDepth1, &*neuralDepth2};
-
-    for(int tier = 0; tier < FocusController::kNumTiers; ++tier) {
-        ImageManip* lm = leftManips[tier];
-        ImageManip* rm = rightManips[tier];
-        NeuralDepth* nd = neurals[tier];
+    for(int tier = 0; tier < focusController->getTierCount(); ++tier) {
+        const auto suffix = std::to_string(tier);
+        leftManips.push_back(std::make_unique<Subnode<ImageManip>>(*this, "leftManip" + suffix));
+        rightManips.push_back(std::make_unique<Subnode<ImageManip>>(*this, "rightManip" + suffix));
+        neuralDepths.push_back(std::make_unique<Subnode<NeuralDepth>>(*this, "neuralDepth" + suffix));
+        auto* lm = &**leftManips.back();
+        auto* rm = &**rightManips.back();
+        auto* nd = &**neuralDepths.back();
 
         // Crop the exact synchronized pair the controller emits (not the free-running rectification
         // stream), so a tier's left/right crops share a timestamp for its backend Sync. The first
@@ -70,11 +82,11 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
         // (one round-trip per crop was the old bottleneck; this lets the manips + backend pipeline).
         lm->inputConfig.setMaxSize(FocusController::kMaxCropsPerFrame);
         rm->inputConfig.setMaxSize(FocusController::kMaxCropsPerFrame);
-        // The image is broadcast once per frame and reused across the frame's crops; keep the latest.
-        lm->inputImage.setBlocking(false);
-        rm->inputImage.setBlocking(false);
-        lm->inputImage.setMaxSize(1);
-        rm->inputImage.setMaxSize(1);
+        // Single-model dispatch keeps frames in order; inactive multi-model tiers keep only the latest.
+        lm->inputImage.setBlocking(focusController->getTierCount() == 1);
+        rm->inputImage.setBlocking(focusController->getTierCount() == 1);
+        lm->inputImage.setMaxSize(focusController->getTierCount() == 1 ? 4 : 1);
+        rm->inputImage.setMaxSize(focusController->getTierCount() == 1 ? 4 : 1);
         lm->setMaxOutputFrameSize(8 * 1024 * 1024);
         rm->setMaxOutputFrameSize(8 * 1024 * 1024);
         lm->setNumFramesPool(4);
