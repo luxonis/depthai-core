@@ -8,6 +8,7 @@ import os
 import subprocess
 import signal
 from threading import Event
+import atexit
 
 interrupted = Event()
 
@@ -116,6 +117,7 @@ def main():
 
     print("All devices are online")
     try:
+        atexit.register(disablePTPonAllDevices, devices)
         enablePTPonAllDevices(devices, sync_frames, 111)
 
         print(f"Waiting for all {num_devices} devices to come online...")
@@ -145,6 +147,7 @@ def main():
             print(f"Failed to run tests: {e}")
             raise e
     finally:
+        atexit.unregister(disablePTPonAllDevices)
         disablePTPonAllDevices(devices)
 
 if __name__ == "__main__":
