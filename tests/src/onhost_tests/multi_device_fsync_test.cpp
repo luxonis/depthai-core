@@ -14,6 +14,7 @@ struct FsyncTestParameters getDefaultParameters() {
     parameters.deltaMeanThreshold = 1e-3;
     parameters.deltaP99Threshold = 2e-3;
     parameters.syncType = SyncType::EXTERNAL;
+    return parameters;
 }
 
 }
