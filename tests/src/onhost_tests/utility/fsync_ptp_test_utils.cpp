@@ -383,7 +383,8 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
 
     std::vector<dai::DeviceInfo> deviceInfos = dai::Device::getAllAvailableDevices();
 
-    REQUIRE_MSG(deviceInfos.size() >= 2, "At least two devices are required for this test.");
+    // REQUIRE_MSG(deviceInfos.size() >= 2, "At least two devices are required for this test.");
+    REQUIRE_MSG(deviceInfos.size() == parameters.expectedDevices, "Expected exactly " << parameters.expectedDevices << " devices, got " << deviceInfos.size());
 
     std::shared_ptr<dai::Pipeline> masterPipeline;
     std::optional<std::map<std::string, dai::Node::Output*>> masterNode;

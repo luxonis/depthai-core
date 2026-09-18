@@ -34,6 +34,7 @@ struct FsyncTestParameters {
     double deltaP99Threshold;
     SyncType syncType;
     std::optional<std::set<std::string>> allowedSensors;
+    int expectedDevices;
 };
 
 dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline,
