@@ -487,6 +487,7 @@ class PipelineEventHandler {
                 }
             }
             for(auto& [_, nodeState] : nodeStates) {
+                std::unique_lock lock(mutex);
                 nodeState.updateStats();
             }
         }
