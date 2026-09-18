@@ -234,9 +234,9 @@ TEST_CASE("MapOutput runtime Config drains to the newest value and persists", "[
     dai::Pipeline pipeline(false);
     auto parser = pipeline.create<dai::beta::node::MapOutputParser>();
     parser->setOutputLayerName("map");
+    parser->setMinMaxScaling(true);
 
     auto inputQueue = parser->input.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
 
     auto nnData = std::make_shared<dai::NNData>();
@@ -254,8 +254,9 @@ TEST_CASE("MapOutput runtime Config drains to the newest value and persists", "[
     staleConfig->minMaxScaling = true;
     auto newestConfig = std::make_shared<dai::beta::MapOutputParserConfig>();
     newestConfig->minMaxScaling = false;
-    configQueue->send(staleConfig);
-    configQueue->send(newestConfig);
+    // Enqueue directly into the host node's destination queue.
+    parser->inputConfig.send(staleConfig);
+    parser->inputConfig.send(newestConfig);
 
     pipeline.start();
     inputQueue->send(nnData);
@@ -263,7 +264,7 @@ TEST_CASE("MapOutput runtime Config drains to the newest value and persists", "[
 
     auto scalingConfig = std::make_shared<dai::beta::MapOutputParserConfig>();
     scalingConfig->minMaxScaling = true;
-    configQueue->send(scalingConfig);
+    parser->inputConfig.send(scalingConfig);
     inputQueue->send(nnData);
     getOutput();  // Wake a node that may already be blocked on its primary input.
 

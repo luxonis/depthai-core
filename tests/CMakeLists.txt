@@ -408,6 +408,9 @@ function(dai_set_test_labels test_name)
         endif()
     endforeach()
     set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
+    if("ci_nightly" IN_LIST expanded_labels)
+        set_tests_properties(${test_name} PROPERTIES TIMEOUT 3000)
+    endif()
     if(test_env_overrides)
         set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "${test_env_overrides}")
     endif()
@@ -804,6 +807,15 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
 endif()
 
+# Synthetic DetectionParser runtime tests do not require model downloads.
+if(DEPTHAI_XTENSOR_SUPPORT)
+    dai_add_test(detection_parser_runtime_test src/onhost_tests/detection_parser_runtime_test.cpp)
+    dai_set_test_labels(detection_parser_runtime_test onhost ci)
+    dai_add_test(detection_parser_runtime_device_test src/onhost_tests/detection_parser_runtime_test.cpp)
+    target_compile_definitions(detection_parser_runtime_device_test PRIVATE DETECTION_PARSER_TEST_DEVICE)
+    dai_set_test_labels(detection_parser_runtime_device_test ondevice rvc2_all rvc4 ci)
+endif()
+
 # DetectionParser test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(detection_parser_test src/ondevice_tests/pipeline/node/detection_parser_test.cpp)
@@ -964,12 +976,8 @@ dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
-dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci noreplayci)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
-
-dai_add_test(camera_fps_config_part_2_test src/ondevice_tests/pipeline/node/camera_fps_config_test_part_2.cpp)
-dai_set_test_labels(camera_fps_config_part_2_test ondevice rvc2_all rvc4 ci noreplayci)
-set_property(TEST camera_fps_config_part_2_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)

@@ -131,6 +131,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp
     src/pipeline/datatype/ImgDetectionsBindings.cpp
+    src/pipeline/datatype/DetectionParserConfigBindings.cpp
     src/pipeline/datatype/SegmentationParserConfigBindings.cpp
     src/pipeline/datatype/SegmentationMaskBindings.cpp
     src/pipeline/datatype/ImgFrameBindings.cpp
