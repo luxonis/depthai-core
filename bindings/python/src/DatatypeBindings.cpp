@@ -22,6 +22,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack);
 void bind_message_group(pybind11::module& m, void* pCallstack);
 void bind_nndata(pybind11::module& m, void* pCallstack);
 void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack);
+void bind_odometry(pybind11::module& m, void* pCallstack);
 void bind_gpustereoconfig(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
 void bind_detectionparserconfig(pybind11::module& m, void* pCallstack);
@@ -117,6 +118,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pipelineevent);
     callstack.push_front(bind_pipelinestate);
     callstack.push_front(bind_transformdata);
+    callstack.push_front(bind_odometry);
     callstack.push_front(bind_imagealignconfig);
     callstack.push_front(bind_alignconfig);
     callstack.push_front(bind_imageannotations);
@@ -205,6 +207,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("BenchmarkReport", DatatypeEnum::BenchmarkReport)
         .value("MessageGroup", DatatypeEnum::MessageGroup)
         .value("TransformData", DatatypeEnum::TransformData)
+        .value("Odometry", DatatypeEnum::Odometry)
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
