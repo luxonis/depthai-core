@@ -1,6 +1,9 @@
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <opencv2/opencv.hpp>
+#include <sstream>
+#include <stdexcept>
 
 #include "depthai/depthai.hpp"
 
@@ -29,7 +32,19 @@ std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 10>& v
 
 int main() {
     dai::Pipeline pipeline;
-    auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, dai::ToFConfig::Profile::MID_RANGE, FPS);
+    const auto cameras = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
+    const auto sensor = std::find_if(cameras.begin(), cameras.end(), [](const auto& camera) { return camera.sensorName == "VD55H1"; });
+    if(sensor == cameras.end()) {
+        std::ostringstream message;
+        message << "This example requires a VD55H1 ToF sensor. Found sensors: ";
+        for(std::size_t i = 0; i < cameras.size(); ++i) {
+            if(i != 0) message << ", ";
+            message << cameras[i].sensorName;
+        }
+        if(cameras.empty()) message << "none";
+        throw std::runtime_error(message.str());
+    }
+    auto tof = pipeline.create<dai::node::ToF>()->build(sensor->socket, dai::ToFConfig::Profile::MID_RANGE, FPS);
     auto depthQueue = tof->depth.createOutputQueue(1, false);
     auto configQueue = tof->tofBaseInputConfig.createInputQueue();
 
