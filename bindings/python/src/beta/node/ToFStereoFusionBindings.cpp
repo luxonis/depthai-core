@@ -29,11 +29,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
             "neuralDepth", [](ToFStereoFusion& n) -> dai::node::NeuralDepth& { return *n.neuralDepth; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "neuralNetwork", [](ToFStereoFusion& n) -> dai::node::NeuralNetwork& { return *n.neuralNetwork; }, py::return_value_policy::reference_internal)
-        .def("build",
-             py::overload_cast<const std::shared_ptr<dai::node::Camera>&, const std::shared_ptr<dai::node::Camera>&>(&ToFStereoFusion::build),
-             py::arg("left"),
-             py::arg("right"),
-             DOC(dai, beta, node, ToFStereoFusion, build));
+        .def("build", &ToFStereoFusion::build, py::arg("left"), py::arg("right"), py::arg("fps") = 30.0f, DOC(dai, beta, node, ToFStereoFusion, build));
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     node.def_property_readonly(
