@@ -312,7 +312,18 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
         }
 
         auto sensorNames = device->getCameraSensorNames();
-        return sensorNames.find(socket) == sensorNames.end();
+        if(sensorNames.find(socket) == sensorNames.end()) {
+            std::cout << "Skipping socket " << dai::toString(socket) << " because it does not have associated sensor name!" << std::endl;
+            return false;
+        }
+
+        auto sensorName = sensorNames.at(socket);
+        for (const auto& allowedSensor : allowedSensors.value()) {
+            if (sensorName == allowedSensor) {
+                return true;
+            }
+        }
+        return false;
     };
 
     for(auto socket : device->getConnectedCameras()) {
