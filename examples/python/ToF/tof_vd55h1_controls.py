@@ -13,7 +13,7 @@ FPS = 30.0
 WINDOW = "VD55H1 controls"
 
 
-def config_from_trackbars() -> dai.ToFConfig:
+def configFromTrackbars() -> dai.ToFConfig:
     config = dai.ToFConfig()
     vd55h1 = config.vd55h1
     vd55h1.phaseUnwrapErrorThreshold = cv2.getTrackbarPos("unwrap threshold", WINDOW)
@@ -36,8 +36,8 @@ def main() -> None:
             profile=dai.ToFConfig.Profile.MID_RANGE,
             fps=FPS,
         )
-        depth_queue = tof.depth.createOutputQueue(maxSize=1, blocking=False)
-        config_queue = tof.tofBaseInputConfig.createInputQueue()
+        depthQueue = tof.depth.createOutputQueue(maxSize=1, blocking=False)
+        configQueue = tof.tofBaseInputConfig.createInputQueue()
 
         cv2.namedWindow(WINDOW)
         controls = (
@@ -60,10 +60,10 @@ def main() -> None:
         while pipeline.isRunning():
             values = tuple(cv2.getTrackbarPos(name, WINDOW) for name, _, _ in controls)
             if values != previous:
-                config_queue.send(config_from_trackbars())
+                configQueue.send(configFromTrackbars())
                 previous = values
 
-            frame = depth_queue.tryGet()
+            frame = depthQueue.tryGet()
             if frame is not None:
                 cv2.imshow("ToF depth", dai.utility.colorizeDepthFrame(frame, useLog=True).getCvFrame())
 
