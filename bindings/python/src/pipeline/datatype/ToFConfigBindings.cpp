@@ -68,16 +68,21 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         ;
 
     vd55h1.def(py::init<>())
-        .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::VD55H1::phaseUnwrapErrorThreshold)
-        .def_readwrite("enableBilateralFilter", &ToFConfig::VD55H1::enableBilateralFilter)
-        .def_readwrite("bilateralStdFactor", &ToFConfig::VD55H1::bilateralStdFactor)
-        .def_readwrite("bilateralKernelSize", &ToFConfig::VD55H1::bilateralKernelSize)
-        .def_readwrite("enableTemporalNoiseReduction", &ToFConfig::VD55H1::enableTemporalNoiseReduction)
-        .def_readwrite("temporalNoiseReductionMaxGain", &ToFConfig::VD55H1::temporalNoiseReductionMaxGain)
-        .def_readwrite("temporalNoiseReductionStdFactor", &ToFConfig::VD55H1::temporalNoiseReductionStdFactor)
-        .def_readwrite("enableFlyingPixelFilter", &ToFConfig::VD55H1::enableFlyingPixelFilter)
-        .def_readwrite("flyingPixelDepthThreshold", &ToFConfig::VD55H1::flyingPixelDepthThreshold)
-        .def_readwrite("flyingPixelMinDepthOccurrence", &ToFConfig::VD55H1::flyingPixelMinDepthOccurrence);
+        .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::VD55H1::phaseUnwrapErrorThreshold, DOC(dai, ToFConfig, VD55H1, phaseUnwrapErrorThreshold))
+        .def_readwrite("enableBilateralFilter", &ToFConfig::VD55H1::enableBilateralFilter, DOC(dai, ToFConfig, VD55H1, enableBilateralFilter))
+        .def_readwrite("bilateralStdFactor", &ToFConfig::VD55H1::bilateralStdFactor, DOC(dai, ToFConfig, VD55H1, bilateralStdFactor))
+        .def_readwrite("bilateralKernelSize", &ToFConfig::VD55H1::bilateralKernelSize, DOC(dai, ToFConfig, VD55H1, bilateralKernelSize))
+        .def_readwrite(
+            "enableTemporalNoiseReduction", &ToFConfig::VD55H1::enableTemporalNoiseReduction, DOC(dai, ToFConfig, VD55H1, enableTemporalNoiseReduction))
+        .def_readwrite(
+            "temporalNoiseReductionMaxGain", &ToFConfig::VD55H1::temporalNoiseReductionMaxGain, DOC(dai, ToFConfig, VD55H1, temporalNoiseReductionMaxGain))
+        .def_readwrite("temporalNoiseReductionStdFactor",
+                       &ToFConfig::VD55H1::temporalNoiseReductionStdFactor,
+                       DOC(dai, ToFConfig, VD55H1, temporalNoiseReductionStdFactor))
+        .def_readwrite("enableFlyingPixelFilter", &ToFConfig::VD55H1::enableFlyingPixelFilter, DOC(dai, ToFConfig, VD55H1, enableFlyingPixelFilter))
+        .def_readwrite("flyingPixelDepthThreshold", &ToFConfig::VD55H1::flyingPixelDepthThreshold, DOC(dai, ToFConfig, VD55H1, flyingPixelDepthThreshold))
+        .def_readwrite(
+            "flyingPixelMinDepthOccurrence", &ToFConfig::VD55H1::flyingPixelMinDepthOccurrence, DOC(dai, ToFConfig, VD55H1, flyingPixelMinDepthOccurrence));
 
     // add aliases
     // m.attr("ToFConfig").attr("DepthParams") = m.attr("ToFConfig").attr("DepthParams");

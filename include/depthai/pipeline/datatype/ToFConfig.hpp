@@ -7,7 +7,7 @@
 namespace dai {
 
 /**
- * ToFConfig message. Carries config for feature tracking algorithm
+ * Configuration message for time-of-flight depth processing.
  */
 class ToFConfig : public Buffer {
    public:
@@ -21,21 +21,36 @@ class ToFConfig : public Buffer {
      * Runtime controls specific to the VD55H1 IPP used by RVC4.
      *
      * An unset value leaves the corresponding device control unchanged. These controls
-     * have no effect on RVC2.
+     * have no effect on RVC2. ToFConfig construction and setProfilePreset() populate
+     * all controls; assign VD55H1{} to vd55h1 before setting individual controls
+     * when sending a partial update. In Python, use ToFConfig.VD55H1() and None
+     * for unset controls.
+     *
+     * Unless stated otherwise, the IPP does not publish a supported numeric range.
      */
     struct VD55H1 {
+        /** Phase-unwrapping residual threshold in millimeters, from 0 to 10000. Lower values reject more pixels. */
         std::optional<float> phaseUnwrapErrorThreshold;
 
+        /** Enable the bilateral filter (true), or bypass it (false). */
         std::optional<bool> enableBilateralFilter;
+        /** Dimensionless standard-deviation multiplier used by the bilateral filter. */
         std::optional<float> bilateralStdFactor;
+        /** Bilateral filter kernel width in pixels. Supported values are odd integers from 3 to 15. */
         std::optional<std::uint32_t> bilateralKernelSize;
 
+        /** Enable temporal noise reduction (true), or bypass it (false). */
         std::optional<bool> enableTemporalNoiseReduction;
+        /** Maximum temporal noise reduction accumulation length, in frames. */
         std::optional<std::uint32_t> temporalNoiseReductionMaxGain;
+        /** Dimensionless standard-deviation multiplier for temporal noise rejection. */
         std::optional<float> temporalNoiseReductionStdFactor;
 
+        /** Enable the flying-pixel filter (true), or bypass it (false). */
         std::optional<bool> enableFlyingPixelFilter;
+        /** Maximum depth difference between supporting neighboring pixels, in millimeters. */
         std::optional<float> flyingPixelDepthThreshold;
+        /** Minimum number of neighboring depth samples supporting a pixel; passed to the IPP as a float. */
         std::optional<float> flyingPixelMinDepthOccurrence;
 
         DEPTHAI_SERIALIZE(VD55H1,
