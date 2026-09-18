@@ -68,8 +68,13 @@ namespace dai {
 namespace {
 
 std::shared_ptr<Device> getAssignedDevice(const std::shared_ptr<Node>& node) {
+    // A device node that runs on the host has no device-side presence: its device is not
+    // started, monitored or counted on its behalf (the schema side erases such nodes too)
+    if(node->runOnHost()) {
+        return nullptr;
+    }
     auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
-    if(!deviceNode) {
+    if(deviceNode == nullptr) {
         return nullptr;
     }
     return deviceNode->getDevice();
@@ -1051,11 +1056,57 @@ std::shared_ptr<Device> PipelineImpl::registerDevice(std::shared_ptr<Device> dev
     // First device is promoted to master so getDefaultDevice() and nodes created
     // without an explicit device keep working
     if(defaultDevice == nullptr) {
-        defaultDevice = device;
+        promoteToMaster(device);
     } else {
         devices.push_back(device);
     }
     return device;
+}
+
+void PipelineImpl::promoteToMaster(const std::shared_ptr<Device>& device) {
+    defaultDevice = device;
+
+    // Device nodes adopted before there was a master were left without a device; they are
+    // documented to run on the master, so bind them now
+    for(const auto& node : getAllNodes()) {
+        if(auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(node)) {
+            if(deviceNode->getDevice() == nullptr) {
+                deviceNode->setDevice(device);
+            }
+        }
+    }
+
+    // Settings made through the no-device setters before the promotion were parked in the
+    // host-side properties; every reader consults the master first from now on, so carry
+    // over what was explicitly set
+    if(hostProperties.has_value()) {
+        const DeviceProperties defaults{};
+        const auto& props = *hostProperties;
+        std::optional<EepromData> calibData;
+        {
+            std::lock_guard<std::mutex> lock(calibMtx);
+            calibData = props.calibData;
+        }
+        if(calibData.has_value()) {
+            device->setCalibration(calibData);
+        }
+        if(props.xlinkChunkSize != defaults.xlinkChunkSize) {
+            device->setXLinkChunkSize(props.xlinkChunkSize);
+        }
+        if(props.sippBufferSize != defaults.sippBufferSize) {
+            device->setSippBufferSize(props.sippBufferSize);
+        }
+        if(props.sippDmaBufferSize != defaults.sippDmaBufferSize) {
+            device->setSippDmaBufferSize(props.sippDmaBufferSize);
+        }
+        if(!props.cameraTuningBlobUri.empty()) {
+            device->setCameraTuningBlob(props.cameraTuningBlobUri, props.cameraTuningBlobSize.value_or(0));
+        }
+        for(const auto& socketUri : props.cameraSocketTuningBlobUri) {
+            auto sizeIt = props.cameraSocketTuningBlobSize.find(socketUri.first);
+            device->setCameraSocketTuningBlob(socketUri.first, socketUri.second, sizeIt != props.cameraSocketTuningBlobSize.end() ? sizeIt->second : 0);
+        }
+    }
 }
 
 std::vector<std::shared_ptr<Device>> PipelineImpl::getDevices() const {
@@ -1068,10 +1119,18 @@ std::vector<std::shared_ptr<Device>> PipelineImpl::getDevices() const {
 }
 
 std::shared_ptr<Device> PipelineImpl::getInputSourceDevice(const Node::Input* input) const {
-    auto throwIfAmbiguous = [input](std::size_t distinctSources) {
-        if(distinctSources > 1) {
-            throw std::runtime_error(fmt::format("Input '{}' receives data from sources on more than one device", input->toString()));
+    // The device among the sources (nullptr entries are host producers and do not make the
+    // input device-bound); sources on two different devices are an error
+    auto resolve = [input](const std::vector<std::shared_ptr<Device>>& sources) -> std::shared_ptr<Device> {
+        std::shared_ptr<Device> device;
+        for(const auto& source : sources) {
+            if(source == nullptr) continue;
+            if(device != nullptr && device != source) {
+                throw std::runtime_error(fmt::format("Input '{}' receives data from sources on more than one device", input->toString()));
+            }
+            device = source;
         }
+        return device;
     };
     if(isBuild) {
         // Resolved from the user graph at build(), before bridge insertion
@@ -1079,8 +1138,7 @@ std::shared_ptr<Device> PipelineImpl::getInputSourceDevice(const Node::Input* in
         if(it == inputSourceDevices.end()) {
             return nullptr;
         }
-        throwIfAmbiguous(it->second.size());
-        return it->second.front();
+        return resolve(it->second);
     }
     // Not built yet - resolve live; the graph still holds the direct user connections
     std::vector<std::shared_ptr<Device>> sources;
@@ -1095,11 +1153,7 @@ std::shared_ptr<Device> PipelineImpl::getInputSourceDevice(const Node::Input* in
             sources.push_back(device);
         }
     }
-    if(sources.empty()) {
-        return nullptr;
-    }
-    throwIfAmbiguous(sources.size());
-    return sources.front();
+    return resolve(sources);
 }
 
 PipelineStateApi PipelineImpl::getPipelineState() {
@@ -1122,38 +1176,51 @@ void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
         return;
     }
 
-    // Go through and modify nodes and its children
-    // that they are now part of this pipeline
-    std::queue<std::shared_ptr<Node>> search;
-    search.push(root);
-    while(!search.empty()) {
-        auto curNode = search.front();
-        search.pop();
+    // Pass 1 (no mutation): collect the subtree, validate membership and register the
+    // devices it brings along - a rejected node or device must not leave a node half-adopted
+    std::vector<std::shared_ptr<Node>> subtree;
+    {
+        std::queue<std::shared_ptr<Node>> search;
+        search.push(root);
+        while(!search.empty()) {
+            auto curNode = search.front();
+            search.pop();
+            auto owner = curNode->parent.lock();
+            if(owner != nullptr && owner != shared_from_this()) {
+                throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
+            }
+            subtree.push_back(curNode);
+            for(auto& n : curNode->nodeMap) {
+                search.push(n);
+            }
+        }
+    }
+    for(const auto& node : subtree) {
+        // Nodes arriving with an explicitly assigned device register it with the pipeline
+        if(auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(node)) {
+            if(deviceNode->getDevice() != nullptr) {
+                registerDevice(deviceNode->getDevice());
+            }
+        }
+    }
 
+    // Pass 2: the nodes are now part of this pipeline
+    for(const auto& curNode : subtree) {
         // Assign an ID to the node
         if(curNode->id == -1) {
             curNode->id = getNextUniqueId();
         }
-
         if(curNode->parent.lock() == nullptr) {
             curNode->parent = shared_from_this();
-        } else if(curNode->parent.lock() != shared_from_this()) {
-            throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
         }
-
         // In case we have a device node without an assigned device (usually subnodes in non-DeviceNode nodes), use the default device.
-        // Nodes arriving with an explicitly assigned device register it with the pipeline.
         if(auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(curNode)) {
             if(deviceNode->getDevice() == nullptr) {
                 deviceNode->setDevice(defaultDevice);
-            } else {
-                registerDevice(deviceNode->getDevice());
             }
         }
-
         for(auto& n : curNode->nodeMap) {
             n->parentId = curNode->id;  // Set node parent id
-            search.push(n);
         }
     }
 }
@@ -1457,15 +1524,17 @@ void PipelineImpl::build() {
                     inBridge.xLinkOutHost->setConnection(inDevice->getConnection());
                     inBridge.xLinkIn->out.link(*connection.in);
                     inBridge.xLinkOutHost->allowStreamResize(true);
-                    // Relay queue: drop rather than block when the consuming device lags
-                    inBridge.xLinkOutHost->in.setBlocking(false);
-                    inBridge.xLinkOutHost->in.setMaxSize(8);
                     bridgeHostDevices[inBridge.xLinkOutHost->id] = inDevice;
                     xlinkBridges.push_back({inBridge.xLinkOutHost->id, inBridge.xLinkIn->id});
                     connection.in->xLinkBridge = std::make_shared<dai::node::internal::XLinkInBridge>(inBridge);
                 }
                 auto outBridge = bridgesOut[connection.out];
                 auto inBridge = bridgesIn[connection.in];
+                // Relay queue policy, whether the bridge was created here or by a host producer
+                // into the same input (connection order must not matter): drop rather than
+                // block when the consuming device lags, so it never stalls the producing device
+                inBridge.xLinkOutHost->in.setBlocking(false);
+                inBridge.xLinkOutHost->in.setMaxSize(8);
                 connection.out->unlink(*connection.in);
                 outBridge.xLinkInHost->out.link(inBridge.xLinkOutHost->in);
                 // The consuming device depends on another device's stream - losing it
@@ -1602,6 +1671,9 @@ void PipelineImpl::build() {
 }
 
 void PipelineImpl::start() {
+    // A stop triggered by a device loss may still be finishing on its own thread - it must
+    // complete before the pipeline is started again (it takes stateMtx itself)
+    joinDeviceLossStop();
     std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
 
@@ -1625,13 +1697,21 @@ void PipelineImpl::start() {
     }
 
     const auto devices = getAllAssignedDevices();
+    // Every device that is part of the pipeline (master, added with addDevice, or assigned to
+    // a node) is monitored and closed with it, whether or not a node runs on it; only
+    // 'devices' get a device-side pipeline
+    std::vector<std::shared_ptr<Device>> pipelineDevices = getDevices();
+    for(const auto& device : devices) {
+        if(std::find(pipelineDevices.begin(), pipelineDevices.end(), device) == pipelineDevices.end()) {
+            pipelineDevices.push_back(device);
+        }
+    }
     // Add pointer to the pipeline to every device before device-side startup, so that
     // device-side telemetry can resolve the pipeline and a disconnect during another
     // device's (slow) startup still finds the pipeline for reconnection.
     {
         const auto weak = std::weak_ptr<PipelineImpl>(shared_from_this());
-        if(defaultDevice) defaultDevice->pipelinePtr = weak;
-        for(const auto& device : devices) {
+        for(const auto& device : pipelineDevices) {
             device->pipelinePtr = weak;
         }
     }
@@ -1674,7 +1754,7 @@ void PipelineImpl::start() {
     std::vector<std::shared_ptr<Device>> failedDuringStart;
     {
         std::lock_guard<std::mutex> stateLock(deviceStateMtx);
-        for(const auto& device : devices) {
+        for(const auto& device : pipelineDevices) {
             auto it = deviceStates.find(device.get());
             if(it == deviceStates.end()) {
                 deviceStates[device.get()] = DeviceState::RUNNING;
@@ -1783,33 +1863,29 @@ void PipelineImpl::disconnectXLinkHosts(DeviceBase* device) {
 }
 
 void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
-    // Find the shared_ptr of the reporting device among this pipeline's devices
+    // Find the shared_ptr of the reporting device among this pipeline's devices (every
+    // device carrying a node is registered as well, see adoptSubtree)
     std::shared_ptr<Device> devicePtr;
-    for(const auto& d : getAllAssignedDevices()) {
+    for(const auto& d : getDevices()) {
         if(static_cast<DeviceBase*>(d.get()) == device) {
             devicePtr = d;
             break;
         }
     }
     if(devicePtr == nullptr) {
-        for(const auto& d : getDevices()) {
-            if(static_cast<DeviceBase*>(d.get()) == device) {
-                devicePtr = d;
-                break;
-            }
-        }
+        return;
     }
-    if(devicePtr == nullptr) return;
 
-    bool pipelineRunning = false;
+    bool active = false;
     std::function<void(std::shared_ptr<Device>, DeviceState)> callback;
     {
         std::lock_guard<std::mutex> lock(deviceStateMtx);
         deviceStates[device] = state;
         // Read under the lock: start() records its startup snapshot and flips 'running'
-        // under this same lock, so this transition is either in that snapshot or handled here
-        pipelineRunning = running;
-        if(pipelineRunning) callback = deviceStateCallback;
+        // under this same lock, so this transition is either in that snapshot or handled here.
+        // While stop() is closing the devices their transitions are expected and ignored.
+        active = running && !stopping;
+        if(active) callback = deviceStateCallback;
     }
     if(state == DeviceState::FAILED) {
         // Idle this device's XLink host nodes - consumers see silence, not errors.
@@ -1817,24 +1893,28 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
         // waiting for a reconnect is only woken by disconnect(), and stop() joins it.
         disconnectXLinkHosts(device);
     }
-    if(!pipelineRunning) return;
+    if(!active) return;
 
     bool shouldStop = false;
+    const bool fatal = fatalDevices.count(devicePtr.get()) > 0;
     if(state == DeviceState::FAILED) {
-        // Fatal device (consumes other devices' streams) or last device alive -> stop
-        const bool fatal = fatalDevices.count(devicePtr.get()) > 0;
+        // Fatal device (consumes other devices' streams) or last device running any node ->
+        // stop. A device that carries no node (added with addDevice but unused, or the
+        // implicit device of a host-only pipeline) does not affect the streams.
+        const auto assignedDevices = getAllAssignedDevices();
+        bool carriesNodes = false;
         bool anyAlive = false;
         {
             std::lock_guard<std::mutex> lock(deviceStateMtx);
-            for(const auto& d : getAllAssignedDevices()) {
+            for(const auto& d : assignedDevices) {
+                if(d == devicePtr) carriesNodes = true;
                 auto it = deviceStates.find(static_cast<DeviceBase*>(d.get()));
                 if(it == deviceStates.end() || it->second != DeviceState::FAILED) {
                     anyAlive = true;
-                    break;
                 }
             }
         }
-        shouldStop = fatal || !anyAlive;
+        shouldStop = fatal || (carriesNodes && !anyAlive);
     }
     if(callback) {
         try {
@@ -1846,16 +1926,21 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
     if(shouldStop) {
         Logging::getInstance().logger.warn("Stopping pipeline - device {} is gone for good and was {}",
                                            devicePtr->getDeviceInfo().getDeviceId(),
-                                           fatalDevices.count(devicePtr.get()) > 0 ? "a fatal device" : "the last device alive");
-        // Stop from a detached thread: this runs on the device's monitor thread,
-        // which stop() joins indirectly when closing the devices
-        std::thread([pipeline = shared_from_this()]() {
-            try {
-                pipeline->stop();
-            } catch(const std::exception& ex) {
-                Logging::getInstance().logger.error("Failed to stop pipeline after device loss: {}", ex.what());
-            }
-        }).detach();
+                                           fatal ? "a fatal device" : "the last device alive");
+        // Stop from a separate thread: this runs on the device's monitor thread, which
+        // stop() joins indirectly when closing the devices. The thread owns no reference to
+        // the pipeline - wait(), start() and the destructor join it - so the pipeline can
+        // never be destroyed on it.
+        std::lock_guard<std::mutex> lock(deviceLossStopMtx);
+        if(!deviceLossStopThread.joinable()) {
+            deviceLossStopThread = std::thread([this]() {
+                try {
+                    stop();
+                } catch(const std::exception& ex) {
+                    Logging::getInstance().logger.error("Failed to stop pipeline after device loss: {}", ex.what());
+                }
+            });
+        }
     }
 }
 
@@ -1881,6 +1966,26 @@ void PipelineImpl::wait() {
             node->wait();
         }
     }
+    // A stop triggered by a device loss runs on its own thread - waiting for the pipeline
+    // includes waiting for that teardown (device close) to finish
+    joinDeviceLossStop();
+}
+
+void PipelineImpl::joinDeviceLossStop() {
+    std::thread thread;
+    {
+        std::lock_guard<std::mutex> lock(deviceLossStopMtx);
+        if(!deviceLossStopThread.joinable()) {
+            return;
+        }
+        if(deviceLossStopThread.get_id() == std::this_thread::get_id()) {
+            // Called on the loss-stop thread itself - it cannot join itself; let it run out
+            deviceLossStopThread.detach();
+            return;
+        }
+        thread = std::move(deviceLossStopThread);
+    }
+    thread.join();
 }
 
 void PipelineImpl::stop() {
@@ -1888,9 +1993,10 @@ void PipelineImpl::stop() {
     if(!running) {
         return;
     }
-    // Mark not running up front: device monitors report state changes while their
-    // devices are closed below, and those must not re-trigger stop or user callbacks
-    running = false;
+    // Device monitors report state changes while their devices are closed below - those must
+    // not re-trigger a stop or user callbacks. 'running' itself stays set until the teardown
+    // is complete, so isRunning()/run() only return once the devices are closed.
+    stopping = true;
 
     // Wake any XLink host node parked waiting for a reconnect - stopping joins the
     // node threads and a parked node would never exit on its own
@@ -1904,13 +2010,13 @@ void PipelineImpl::stop() {
             {"duration_ms", durationMs},
         };
         try {
-            if(auto self = weak_from_this().lock()) {
-                dai::utility::Telemetry::getInstance().event(Pipeline(std::move(self)), "depthai_pipeline_stop", std::move(properties));
-            } else if(defaultDevice) {
-                dai::utility::Telemetry::getInstance().event(*defaultDevice, "depthai_pipeline_stop", std::move(properties));
-            } else {
-                dai::utility::Telemetry::getInstance().event("depthai_pipeline_stop", std::move(properties));
+            // Emitted without taking ownership of this pipeline: stop() may run on the
+            // device-loss thread, and dropping the last reference there would destroy the
+            // pipeline on a thread its destructor joins
+            if(defaultDevice) {
+                properties["device_id"] = defaultDevice->getTemporaryTelemetryDeviceId();
             }
+            dai::utility::Telemetry::getInstance().event("depthai_pipeline_stop", std::move(properties));
         } catch(const std::exception& ex) {
             Logging::getInstance().logger.debug("Failed to emit pipeline stop telemetry: {}", ex.what());
         }
@@ -1932,19 +2038,17 @@ void PipelineImpl::stop() {
     // Close the task queue
     tasks.destruct();
 
-    // Close devices if present - a pipeline might be host only and still have a device
-    // For example, one only adds host nodes. Devices close in parallel - each close
-    // waits on its own watchdog/monitor threads.
-    auto assignedDevices = getAllAssignedDevices();
-    std::unordered_set<Device*> closedDevices;
-    for(const auto& device : assignedDevices) {
-        closedDevices.insert(device.get());
-    }
-    if(defaultDevice != nullptr && closedDevices.count(defaultDevice.get()) == 0) {
-        assignedDevices.push_back(defaultDevice);
+    // Close every device that is part of the pipeline (master, added with addDevice, or
+    // assigned to a node) - a pipeline might be host only and still have a device.
+    // Devices close in parallel - each close waits on its own watchdog/monitor threads.
+    auto devicesToClose = getDevices();
+    for(const auto& device : getAllAssignedDevices()) {
+        if(std::find(devicesToClose.begin(), devicesToClose.end(), device) == devicesToClose.end()) {
+            devicesToClose.push_back(device);
+        }
     }
     std::vector<std::thread> closeThreads;
-    for(const auto& device : assignedDevices) {
+    for(const auto& device : devicesToClose) {
         closeThreads.emplace_back([device]() {
             // An exception escaping a std::thread terminates the process - one device
             // failing to close must not take the application (or the other devices) down
@@ -1960,9 +2064,13 @@ void PipelineImpl::stop() {
     for(auto& thread : closeThreads) {
         thread.join();
     }
+
+    running = false;
+    stopping = false;
 }
 
 PipelineImpl::~PipelineImpl() {
+    joinDeviceLossStop();
     stop();
     wait();
 
@@ -1971,7 +2079,7 @@ PipelineImpl::~PipelineImpl() {
 
 void PipelineImpl::run() {
     start();
-    while(isRunning()) {
+    while(isRunning() && !stopping) {
         processTasks(true);
     }
     wait();

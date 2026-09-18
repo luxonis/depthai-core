@@ -15,7 +15,13 @@
 namespace dai {
 namespace node {
 namespace internal {
-// XLinkInHost::XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName) : conn(std::move(conn)), streamName(std::move(streamName)){};
+
+namespace {
+// A stream failure on a connection that nobody closes within this period is not a device
+// loss (the device monitor closes the connection a couple of watchdog periods after one)
+constexpr auto CONNECTION_LOSS_GRACE = std::chrono::seconds(10);
+constexpr auto PARK_POLL_INTERVAL = std::chrono::milliseconds(100);
+}  // namespace
 
 void XLinkInHost::setStreamName(const std::string& name) {
     streamName = name;
@@ -32,6 +38,33 @@ void XLinkInHost::disconnect() {
     std::lock_guard<std::mutex> lock(mtx);
     isDisconnected = true;
     isWaitingForReconnect.notify_all();
+}
+
+bool XLinkInHost::parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lostConn, bool streamOpenFailed) {
+    using namespace std::chrono;
+    const auto parkStart = steady_clock::now();
+    std::unique_lock<std::mutex> lck(mtx);
+    while(isRunning() && !isDisconnected && !connectionRefreshed) {
+        const bool connectionAlive = lostConn != nullptr && !lostConn->isClosed();
+        if(connectionAlive && steady_clock::now() - parkStart > CONNECTION_LOSS_GRACE) {
+            // Not a device loss: the connection is healthy but the stream failed (e.g. the
+            // device refused to open it). Surface the error instead of idling forever.
+            throw std::runtime_error(fmt::format(
+                "XLinkInHost '{}': stream {} although the device connection is healthy", streamName, streamOpenFailed ? "could not be opened" : "failed"));
+        }
+        isWaitingForReconnect.wait_for(lck, PARK_POLL_INTERVAL);
+    }
+    if(!isRunning()) {
+        return false;
+    }
+    if(isDisconnected) {
+        // Device is gone for good - exit quietly so downstream inputs go idle instead of
+        // tearing down the whole pipeline
+        logger::warn("XLinkInHost '{}' stopping - device connection was lost", streamName);
+        return false;
+    }
+    connectionRefreshed = false;
+    return true;
 }
 
 StreamPacketDesc XLinkInHost::readStreamMessage() const {
@@ -95,25 +128,21 @@ void XLinkInHost::run() {
     bool reconnect = true;
     while(reconnect) {
         reconnect = false;
+        // Copy under the lock - setConnection can rebind concurrently
+        std::shared_ptr<XLinkConnection> currentConn;
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            currentConn = conn;
+        }
         try {
-            // Copy under the lock - setConnection can rebind concurrently
-            std::shared_ptr<XLinkConnection> currentConn;
-            {
-                std::lock_guard<std::mutex> lock(mtx);
-                currentConn = conn;
-            }
-            stream = std::make_unique<XLinkStream>(std::move(currentConn), streamName, 1);
+            stream = std::make_unique<XLinkStream>(currentConn, streamName, 1);
         } catch(const std::exception& ex) {
             // Connection unusable (e.g. closed while waking up) - park until it is
             // refreshed or the device is declared gone
             logger::error("Cannot open stream '{}': {}", streamName, ex.what());
-            std::unique_lock<std::mutex> lck(mtx);
-            isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });
-            if(isDisconnected) {
-                logger::warn("XLinkInHost '{}' stopping - device connection was lost", streamName);
+            if(!parkUntilReconnect(currentConn, true)) {
                 return;
             }
-            connectionRefreshed = false;
             reconnect = true;
             continue;
         }
@@ -165,16 +194,10 @@ void XLinkInHost::run() {
                 if(isRunning()) {
                     auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                     logger::error(exceptionMessage);
-                    std::unique_lock<std::mutex> lck(mtx);
                     logger::info("Waiting for reconnect (XLINKINHOST)\n");
-                    isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });
-                    if(isDisconnected) {
-                        // Device is gone for good - exit quietly so downstream inputs
-                        // go idle instead of tearing down the whole pipeline
-                        logger::warn("XLinkInHost '{}' stopping - device connection was lost", streamName);
+                    if(!parkUntilReconnect(currentConn, false)) {
                         return;
                     }
-                    connectionRefreshed = false;
                     logger::info("Reconnected (XLINKINHOST)\n");
                     reconnect = true;
                     break;

@@ -28,7 +28,10 @@ struct DeviceInfo {
     DeviceInfo() = default;
     DeviceInfo(std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status);
     /**
-     * Creates a DeviceInfo by checking whether supplied parameter is a DeviceID or IP/USB name
+     * Creates a DeviceInfo by checking whether supplied parameter is a DeviceID or IP/USB name.
+     * A dotted-quad name ("10.12.234.143") sets protocol TCP_IP, any other name keeps ANY_PROTOCOL.
+     * See XLinkConnection::findFirstSuitableDevice for how a USB port path that looks like an
+     * IPv4 address ("1.2.1.4") is still found.
      * @param deviceIdOrName Either DeviceId, IP Address or USB port name
      */
     explicit DeviceInfo(std::string deviceIdOrName);
@@ -86,6 +89,20 @@ class XLinkConnection {
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getDeviceById(const std::string& deviceId, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
+
+    /**
+     * Finds the first device matching the given DeviceInfo (a single XLink search pass).
+     *
+     * A name-only DeviceInfo whose dotted-quad name was read as an IPv4 address
+     * (DeviceInfo(std::string) sets protocol TCP_IP) is retried as a USB port path
+     * ("<bus>.<port>...", e.g. "1.2.1.4") when no network device answers, so a device
+     * behind USB hubs stays reachable by its port path. Device ids, hostnames and any
+     * other protocol are searched exactly as given.
+     * @param deviceInfo Requirements the device has to match (name, deviceId, state, protocol, platform)
+     * @param foundDesc Description of the found device, valid on X_LINK_SUCCESS
+     * @returns X_LINK_SUCCESS if a device was found, X_LINK_DEVICE_NOT_FOUND otherwise
+     */
+    static XLinkError_t findFirstSuitableDevice(const DeviceInfo& deviceInfo, deviceDesc_t& foundDesc);
 
     /**
      * Tries booting the given device into bootloader state

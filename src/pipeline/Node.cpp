@@ -830,13 +830,28 @@ std::shared_ptr<Device> Node::Input::getSourceDevice() const {
     if(pipeline == nullptr) {
         return nullptr;
     }
-    return pipeline->getInputSourceDevice(this);
+    // Resolution is keyed by the address of the node's own Input object. getInputs() hands
+    // out copies, so map a copy back to the node's canonical input by group and name.
+    const Node::Input* canonical = this;
+    for(const Node::Input* input : static_cast<const Node&>(parent.get()).getInputRefs()) {
+        if(input == this) {
+            canonical = this;
+            break;
+        }
+        if(input->group == group && input->getName() == getName()) {
+            canonical = input;
+        }
+    }
+    return pipeline->getInputSourceDevice(canonical);
 }
 
 std::map<std::string, std::shared_ptr<Device>> Node::InputMap::getSourceDevices() const {
     std::map<std::string, std::shared_ptr<Device>> sourceDevices;
     for(const auto& entry : *this) {
-        sourceDevices[entry.first.second] = entry.second.getSourceDevice();
+        // Inputs created with a group are keyed "<group>/<name>" so they cannot collapse
+        // onto a same-named input of another group
+        const auto key = entry.first.first == name ? entry.first.second : entry.first.first + "/" + entry.first.second;
+        sourceDevices[key] = entry.second.getSourceDevice();
     }
     return sourceDevices;
 }

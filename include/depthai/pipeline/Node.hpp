@@ -536,6 +536,7 @@ class Node : public std::enable_shared_from_this<Node> {
          * @brief Get the source device of every input in this map, resolved at pipeline build.
          *
          * @return Map of input name to source device; nullptr when the source runs on the host.
+         *         Inputs created with a group are keyed "<group>/<name>".
          */
         std::map<std::string, std::shared_ptr<Device>> getSourceDevices() const;
     };

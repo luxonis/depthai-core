@@ -15,7 +15,13 @@
 namespace dai {
 namespace node {
 namespace internal {
-// XLinkInHost::XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName) : conn(std::move(conn)), streamName(std::move(streamName)){};
+
+namespace {
+// A stream failure on a connection that nobody closes within this period is not a device
+// loss (the device monitor closes the connection a couple of watchdog periods after one)
+constexpr auto CONNECTION_LOSS_GRACE = std::chrono::seconds(10);
+constexpr auto PARK_POLL_INTERVAL = std::chrono::milliseconds(100);
+}  // namespace
 
 void XLinkOutHost::setStreamName(const std::string& name) {
     streamName = name;
@@ -36,6 +42,50 @@ void XLinkOutHost::disconnect() {
 
 void XLinkOutHost::allowStreamResize(bool allow) {
     allowResize = allow;
+}
+
+bool XLinkOutHost::parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lostConn, bool streamOpenFailed) {
+    using namespace std::chrono;
+    const auto parkStart = steady_clock::now();
+    std::unique_lock<std::mutex> lck(mtx);
+    while(isRunning() && !isDisconnected && !connectionRefreshed) {
+        const bool connectionAlive = lostConn != nullptr && !lostConn->isClosed();
+        if(connectionAlive && steady_clock::now() - parkStart > CONNECTION_LOSS_GRACE) {
+            // Not a device loss: the connection is healthy but the stream failed (e.g. the
+            // device refused to open it). Surface the error instead of idling forever.
+            throw std::runtime_error(fmt::format(
+                "XLinkOutHost '{}': stream {} although the device connection is healthy", streamName, streamOpenFailed ? "could not be opened" : "failed"));
+        }
+        isWaitingForReconnect.wait_for(lck, PARK_POLL_INTERVAL);
+        // Discard whatever the producers sent meanwhile so they never block on this dead stream
+        lck.unlock();
+        in.tryGetAll();
+        lck.lock();
+    }
+    if(!isRunning()) {
+        return false;
+    }
+    if(isDisconnected) {
+        lck.unlock();
+        // Device is gone for good - keep the input flowing (and discarded) so the producers
+        // linked to it keep serving their other consumers, until the node is stopped
+        logger::warn("XLinkOutHost '{}' idling - device connection was lost", streamName);
+        drainUntilStopped();
+        return false;
+    }
+    connectionRefreshed = false;
+    return true;
+}
+
+void XLinkOutHost::drainUntilStopped() {
+    while(mainLoop()) {
+        try {
+            in.get();
+        } catch(const MessageQueue::QueueException&) {
+            // stop() closed the input
+            break;
+        }
+    }
 }
 
 void XLinkOutHost::run() {
@@ -63,13 +113,9 @@ void XLinkOutHost::run() {
             // Connection unusable (e.g. closed while waking up) - park until it is
             // refreshed or the device is declared gone
             logger::error("Cannot open stream '{}': {}", streamName, ex.what());
-            std::unique_lock<std::mutex> lck(mtx);
-            isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });
-            if(isDisconnected) {
-                logger::warn("XLinkOutHost '{}' stopping - device connection was lost", streamName);
+            if(!parkUntilReconnect(currentConn, true)) {
                 return;
             }
-            connectionRefreshed = false;
             reconnect = true;
             continue;
         }
@@ -141,16 +187,11 @@ void XLinkOutHost::run() {
             } catch(const std::exception& ex) {
                 if(isRunning()) {
                     logger::error("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
-                    std::unique_lock<std::mutex> lck(mtx);
                     logger::info("Waiting for reconnect (XLINKOUTHOST)\n");
-                    isWaitingForReconnect.wait(lck, [this]() { return isDisconnected || connectionRefreshed; });
-                    if(isDisconnected) {
-                        // Device is gone for good - exit quietly so this stream stops
-                        // instead of tearing down the whole pipeline
-                        logger::warn("XLinkOutHost '{}' stopping - device connection was lost", streamName);
+                    // Device gone for good: the stream stays idle instead of tearing down the pipeline
+                    if(!parkUntilReconnect(currentConn, false)) {
                         return;
                     }
-                    connectionRefreshed = false;
                     logger::info("Reconnected (XLINKOUTHOST)\n");
                     reconnect = true;
                     break;

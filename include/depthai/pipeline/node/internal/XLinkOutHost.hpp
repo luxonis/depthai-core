@@ -18,6 +18,14 @@ class XLinkOutHost : public NodeCRTP<ThreadedHostNode, XLinkOutHost> {
     bool connectionRefreshed = false;
     bool allowResize = false;
 
+    // Park until the connection is refreshed (returns true) or the device is gone for good
+    // (returns false, after idling until the node is stopped). Messages arriving meanwhile are
+    // discarded so host producers linked to 'in' never block on a dead stream. A stream failure
+    // on a connection nobody closes within a grace period is not a device loss and is rethrown.
+    bool parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lostConn, bool streamOpenFailed);
+    // Discard incoming messages until the node is stopped
+    void drainUntilStopped();
+
    public:
     constexpr static const char* NAME = "XLinkOutHost";
     // Input in{*this, "in", Input::Type::SReceiver, true, 4, {{DatatypeEnum::Buffer, true}}};

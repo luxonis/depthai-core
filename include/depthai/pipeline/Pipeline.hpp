@@ -5,6 +5,7 @@
 #include <chrono>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
@@ -198,8 +199,18 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
 
-    // is pipeline running
+    // is pipeline running - stays set until stop() has completed, so isRunning()/run()
+    // cover the whole teardown (device close included)
     AtomicBool running{false};
+    // set for the duration of stop(): device state transitions reported while the devices
+    // are being closed must not re-trigger a stop or user callbacks
+    AtomicBool stopping{false};
+    // Thread stopping the pipeline after a device loss. It is spawned from the device's
+    // monitor thread (which stop() joins indirectly) and owns no reference to the pipeline;
+    // wait(), start() and the destructor join it.
+    std::thread deviceLossStopThread;
+    std::mutex deviceLossStopMtx;
+    void joinDeviceLossStop();
     std::string telemetryPipelineId{createTelemetryPipelineId()};
     std::optional<std::chrono::steady_clock::time_point> telemetryPipelineStartedAt;
 
@@ -255,6 +266,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Register a device with this pipeline. The first registered device is promoted
     // to master (default device) if none exists. Registering the same device twice is a no-op.
     std::shared_ptr<Device> registerDevice(std::shared_ptr<Device> device);
+    // Make the device the master: binds the device nodes adopted without a device to it and
+    // carries over the settings parked in the host-side properties before there was a master
+    void promoteToMaster(const std::shared_ptr<Device>& device);
 
     // All devices that are part of this pipeline: master (default device) first,
     // then the rest in registration order.

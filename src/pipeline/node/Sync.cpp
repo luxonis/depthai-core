@@ -282,22 +282,21 @@ void Sync::run() {
     auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
-    // Resolve which device produces each input (nullptr = host); while any of those
-    // devices is not RUNNING the node drops instead of blocking on a dead stream.
-    // The pipeline is resolved weakly per check - holding a strong reference for the
-    // node's lifetime would let the pipeline destruct on this very thread.
-    std::unordered_map<std::string, std::shared_ptr<Device>> sourceDevices;
+    // Resolve which device produces each input (host producers are left out); while any of
+    // those devices is not RUNNING the node drops instead of blocking on a dead stream.
+    // The devices are held weakly and asked for their state directly: resolving the pipeline
+    // from this thread could make it the pipeline's last owner and destruct it here, on a
+    // thread the destructor joins.
+    std::vector<std::weak_ptr<Device>> sourceDevices;
     for(const auto& name : inputNames) {
-        sourceDevices[name] = inputs[name].getSourceDevice();
-    }
-    auto anySourceNotRunning = [this, &sourceDevices]() {
-        auto pipelineImpl = parent.lock();
-        if(pipelineImpl == nullptr) {
-            return false;
+        if(auto device = inputs[name].getSourceDevice()) {
+            sourceDevices.push_back(device);
         }
-        Pipeline pipeline(std::move(pipelineImpl));
-        for(const auto& entry : sourceDevices) {
-            if(entry.second != nullptr && pipeline.getDeviceState(entry.second) != DeviceState::RUNNING) {
+    }
+    auto anySourceNotRunning = [&sourceDevices]() {
+        for(const auto& weakDevice : sourceDevices) {
+            auto device = weakDevice.lock();
+            if(device == nullptr || device->getDeviceState() != DeviceState::RUNNING) {
                 return true;
             }
         }

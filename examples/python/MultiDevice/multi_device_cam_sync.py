@@ -6,7 +6,7 @@ dev1 = dai.Device()
 dev2 = dai.Device()
 with dai.Pipeline(createImplicitDevice=False) as pipeline:
     cam1 = pipeline.create(dai.node.Camera, dev1).build(dai.CameraBoardSocket.CAM_A)
-    cam2 = pipeline.create(dai.node.Camera, dev2).build(dai.CameraBoardSocket.CAM_A)
+    cam2 = pipeline.create(dai.node.Camera, dev2).build(dai.CameraBoardSocket.CAM_B)
 
     out1 = cam1.requestOutput((300, 300))
     out2 = cam2.requestOutput((300, 300))

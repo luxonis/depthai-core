@@ -59,6 +59,60 @@ std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_, const
     return nullptr;
 }
 
+// Fully qualified Python name of a type object, e.g. "depthai.node.Camera", "depthai.DeviceInfo" or "str"
+static std::string pyQualifiedTypeName(py::handle type) {
+    const auto attrAsString = [&](const char* name, const char* fallback) {
+        return static_cast<std::string>(py::str(py::getattr(type, name, py::str(fallback))));
+    };
+    const auto module = attrAsString("__module__", "");
+    const auto qualname = attrAsString("__qualname__", "?");
+    if(module.empty() || module == "builtins") return qualname;
+    return module + "." + qualname;
+}
+
+// Parses the arguments pipeline.create(NodeClass, ...) accepts for bound (C++) node classes: a single optional explicit device, either as
+// the positional argument after the node class or as the 'device' keyword argument. Only a depthai.Device instance (as returned by
+// pipeline.addDevice(...)) or None (no explicit device) is accepted. Anything else - a wrong type, extra positional arguments or unknown
+// keyword arguments - raises TypeError, so a mistake can never silently fall back to creating the node on the default device.
+static std::shared_ptr<dai::Device> parseBoundNodeCreateArgs(py::handle class_, const py::args& args, const py::kwargs& kwargs) {
+    const std::string context = "pipeline.create(" + pyQualifiedTypeName(class_) + ", ...)";
+    const std::string expected = "a depthai.Device (as returned by pipeline.addDevice(...), or a depthai.Device instance) or None";
+
+    if(args.size() > 1) {
+        throw py::type_error(context + " takes at most one positional argument after the node class (an optional depthai.Device), but "
+                             + std::to_string(args.size()) + " were given");
+    }
+    for(const auto& item : kwargs) {
+        const auto key = item.first.cast<std::string>();
+        if(key != "device") {
+            throw py::type_error(context + " got an unexpected keyword argument '" + key
+                                 + "'; the only keyword argument it accepts is 'device' (an optional depthai.Device)");
+        }
+    }
+    const bool hasPositional = args.size() == 1;
+    const bool hasKeyword = kwargs.contains("device");
+    if(hasPositional && hasKeyword) {
+        throw py::type_error(context + " got multiple values for argument 'device' (passed both positionally and as a keyword argument)");
+    }
+    if(!hasPositional && !hasKeyword) return nullptr;
+
+    const py::object deviceArg = hasPositional ? py::object(args[0]) : py::object(kwargs["device"]);
+    if(deviceArg.is_none()) return nullptr;
+    if(py::isinstance<dai::Device>(deviceArg)) return deviceArg.cast<std::shared_ptr<dai::Device>>();
+
+    std::string message = context + ": the 'device' argument must be " + expected + ", but got '" + pyQualifiedTypeName(py::type::of(deviceArg)) + "'.";
+    if(py::isinstance<dai::DeviceInfo>(deviceArg)) {
+        message +=
+            " A depthai.DeviceInfo only identifies a device: connect it first with 'device = pipeline.addDevice(deviceInfo)' and pass the returned"
+            " depthai.Device instead.";
+    } else if(py::isinstance<py::str>(deviceArg)) {
+        message +=
+            " A string only identifies a device (by id, IP or name): connect it first with 'device = pipeline.addDevice(\"...\")' and pass the returned"
+            " depthai.Device instead.";
+    }
+    throw py::type_error(message);
+}
+
 void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
@@ -426,24 +480,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     }
                     return hostNode;
                 }
-                std::shared_ptr<dai::Device> explicitDevice = nullptr;
-                if(args.size() > 0) {
-                    try {
-                        explicitDevice = args[0].cast<std::shared_ptr<dai::Device>>();
-                    } catch(const py::cast_error&) {
-                    }
-                    if(explicitDevice != nullptr) {
-                        if(args.size() > 1 || (kwargs && !kwargs.empty())) {
-                            throw std::invalid_argument("Bound device nodes support only an optional Device positional argument in pipeline.create(...)");
-                        }
-                    }
-                }
-                if(explicitDevice == nullptr && kwargs && kwargs.contains("device")) {
-                    explicitDevice = kwargs["device"].cast<std::shared_ptr<dai::Device>>();
-                    if(args.size() > 0 || kwargs.size() > 1) {
-                        throw std::invalid_argument("Bound device nodes support only the optional 'device' argument in pipeline.create(...)");
-                    }
-                }
+                // Bound (C++) node classes: the only argument accepted after the class is an optional explicit device (positional or
+                // 'device='), validated strictly so that a DeviceInfo, a string or any other mistake raises instead of being dropped
+                const auto explicitDevice = parseBoundNodeCreateArgs(class_, args, kwargs);
                 // Otherwise create the node with `pipeline.create()` method
                 auto node = createNode(p, class_, explicitDevice);
                 if(node == nullptr) {

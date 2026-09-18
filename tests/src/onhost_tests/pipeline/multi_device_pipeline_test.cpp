@@ -1,4 +1,8 @@
 #include <catch2/catch_all.hpp>
+#include <chrono>
+#include <string>
+#include <thread>
+#include <utility>
 
 #include "depthai/depthai.hpp"
 
@@ -46,6 +50,23 @@ TEST_CASE("DeviceInfo from a non-IP dotted name keeps ANY protocol") {
     REQUIRE(dai::DeviceInfo("2.1.usb").protocol == X_LINK_ANY_PROTOCOL);
 }
 
+TEST_CASE("DeviceInfo from a dotted quad with leading zeros keeps ANY protocol") {
+    // inet_pton semantics: "01.2.3.4" is not an IPv4 address
+    REQUIRE(dai::DeviceInfo("01.2.3.4").protocol == X_LINK_ANY_PROTOCOL);
+    REQUIRE(dai::DeviceInfo("1.2.3.04").protocol == X_LINK_ANY_PROTOCOL);
+    REQUIRE(dai::DeviceInfo("256.1.1.1").protocol == X_LINK_ANY_PROTOCOL);
+}
+
+TEST_CASE("DeviceInfo from a USB port path that looks like an IPv4 address is a name-only lookup") {
+    // XLink names a USB device on bus 1 behind two hubs "1.2.1.4"; it infers TCP_IP but stays
+    // reachable because XLinkConnection::findFirstSuitableDevice retries the name over USB
+    auto info = dai::DeviceInfo("1.2.1.4");
+    REQUIRE(info.protocol == X_LINK_TCP_IP);
+    REQUIRE(info.name == "1.2.1.4");
+    REQUIRE(info.getDeviceId().empty());
+    REQUIRE(info.state == X_LINK_ANY_STATE);
+}
+
 TEST_CASE("DeviceInfo from a device id keeps ANY protocol") {
     auto info = dai::DeviceInfo("14442C10D13EABCE00");
     REQUIRE(info.protocol == X_LINK_ANY_PROTOCOL);
@@ -90,4 +111,85 @@ TEST_CASE("MessageGroup interval uses the timestamp source the group was synced 
         group.setTimestampSource(Source::SYSTEM);
         REQUIRE(group.getIntervalNs() == 0);
     }
+}
+
+TEST_CASE("Input::getSourceDevice resolves through a copy handed out by getInputs()") {
+    dai::Pipeline p(false);
+    auto producer = p.create<dai::node::Sync>();
+    auto consumer = p.create<dai::node::Sync>();
+    producer->out.link(consumer->inputs["a"]);
+
+    // Host producer: nullptr, whether asked on the node's own input or on a copy
+    REQUIRE(consumer->inputs["a"].getSourceDevice() == nullptr);
+    bool found = false;
+    for(auto input : consumer->getInputs()) {
+        if(input.getName() == "a") {
+            found = true;
+            REQUIRE_NOTHROW(input.getSourceDevice());
+            REQUIRE(input.getSourceDevice() == nullptr);
+        }
+    }
+    REQUIRE(found);
+}
+
+TEST_CASE("InputMap::getSourceDevices keeps grouped inputs apart") {
+    dai::Pipeline p(false);
+    auto producer = p.create<dai::node::Sync>();
+    auto consumer = p.create<dai::node::Sync>();
+    producer->out.link(consumer->inputs["x"]);
+    producer->out.link(consumer->inputs[std::pair<std::string, std::string>{"grpA", "x"}]);
+    producer->out.link(consumer->inputs[std::pair<std::string, std::string>{"grpB", "x"}]);
+
+    auto sources = consumer->inputs.getSourceDevices();
+    REQUIRE(sources.size() == 3);
+    REQUIRE(sources.count("x") == 1);
+    REQUIRE(sources.count("grpA/x") == 1);
+    REQUIRE(sources.count("grpB/x") == 1);
+    for(const auto& entry : sources) {
+        REQUIRE(entry.second == nullptr);
+    }
+}
+
+namespace {
+class IdleHostNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, IdleHostNode> {
+   public:
+    constexpr static const char* NAME = "IdleHostNode";
+    void run() override {
+        while(mainLoop()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
+};
+}  // namespace
+
+TEST_CASE("Host-only pipeline reports running until stop has completed") {
+    dai::Pipeline p(false);
+    p.create<IdleHostNode>();
+    REQUIRE_FALSE(p.isRunning());
+    p.start();
+    REQUIRE(p.isRunning());
+    p.stop();
+    REQUIRE_FALSE(p.isRunning());
+    p.wait();
+
+    // Can be started again after a stop
+    p.start();
+    REQUIRE(p.isRunning());
+    p.stop();
+    p.wait();
+    REQUIRE_FALSE(p.isRunning());
+}
+
+TEST_CASE("Host-only pipeline run() returns once stopped from another thread") {
+    dai::Pipeline p(false);
+    p.create<IdleHostNode>();
+    std::thread stopper([&p]() {
+        while(!p.isRunning()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        p.stop();
+    });
+    p.run();
+    stopper.join();
+    REQUIRE_FALSE(p.isRunning());
 }

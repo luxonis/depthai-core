@@ -12,6 +12,7 @@
 // project
 #include "depthai/utility/Initialization.hpp"
 #include "utility/Environment.hpp"
+#include "utility/Platform.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // libraries
@@ -40,35 +41,17 @@ DeviceInfo::DeviceInfo(
     std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status)
     : name(std::move(name)), deviceId(std::move(deviceId)), state(state), protocol(protocol), platform(platform), status(status) {}
 
-// Strict dotted-quad IPv4 check (no inet_pton to stay platform independent)
-static bool isIpv4Address(const std::string& str) {
-    int octets = 0;
-    std::size_t pos = 0;
-    while(pos <= str.size()) {
-        auto dot = str.find('.', pos);
-        auto part = str.substr(pos, dot == std::string::npos ? std::string::npos : dot - pos);
-        if(part.empty() || part.size() > 3) return false;
-        int value = 0;
-        for(char c : part) {
-            if(c < '0' || c > '9') return false;
-            value = value * 10 + (c - '0');
-        }
-        if(value > 255) return false;
-        octets++;
-        if(dot == std::string::npos) break;
-        pos = dot + 1;
-    }
-    return octets == 4;
-}
-
 DeviceInfo::DeviceInfo(std::string deviceIdOrName) {
     // Parse parameter and set to ip if any dots found
     // deviceId doesn't have a dot in the name
     if(deviceIdOrName.find(".") != std::string::npos) {
         // An actual IP address always resolves to TCP_IP, so it can never silently land
         // on the local shared-memory socket (TCP_IP_OR_LOCAL_SHDMEM tries that first).
-        // USB paths and hostnames keep protocol ANY.
-        if(isIpv4Address(deviceIdOrName)) {
+        // USB paths and hostnames keep protocol ANY. A USB port path can look like an
+        // IPv4 address too ("1.2.1.4": bus 1, two hubs, port 4) - XLinkConnection::
+        // findFirstSuitableDevice retries such a name over USB when nothing answers on
+        // the network, so the device stays reachable by its port path.
+        if(platform::isIPv4Address(deviceIdOrName)) {
             protocol = X_LINK_TCP_IP;
         }
         // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
@@ -356,6 +339,32 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceById(const std::string& d
     return {false, {}};
 }
 
+// A dotted-quad name is ambiguous: DeviceInfo(std::string) reads it as an IPv4 address
+// (protocol TCP_IP, so it never matches the local shared-memory device), but XLink names
+// USB devices "<bus>.<port>.<port>..." as well, so an OAK on bus 1 behind two hubs is
+// "1.2.1.4". Only such a name-only lookup gets the USB retry: a device id, a hostname or
+// any other protocol is searched exactly as given.
+static bool isIpv4NameOnlyLookup(const DeviceInfo& deviceInfo) {
+    return deviceInfo.protocol == X_LINK_TCP_IP && deviceInfo.deviceId.empty() && platform::isIPv4Address(deviceInfo.name);
+}
+
+XLinkError_t XLinkConnection::findFirstSuitableDevice(const DeviceInfo& deviceInfo, deviceDesc_t& foundDesc) {
+    initialize();
+
+    auto rc = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+    if(rc == X_LINK_SUCCESS || !isIpv4NameOnlyLookup(deviceInfo)) {
+        return rc;
+    }
+
+    // Nothing answered on the network: retry the name as a USB port path. USB only, not
+    // ANY_PROTOCOL - ANY would also match the local shared-memory device regardless of
+    // name, which is exactly what inferring TCP_IP for an IP address prevents.
+    auto usbDesc = deviceInfo.getXLinkDeviceDesc();
+    usbDesc.protocol = X_LINK_USB_VSC;
+    logger::trace("No network device answered at \"{}\", retrying it as a USB port path", deviceInfo.name);
+    return XLinkFindFirstSuitableDevice(usbDesc, &foundDesc);
+}
+
 DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     initialize();
 
@@ -562,7 +571,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         // Wait for the device to be available
         auto tstart = steady_clock::now();
         do {
-            rc = XLinkFindFirstSuitableDevice(deviceToBoot.getXLinkDeviceDesc(), &foundDeviceDesc);
+            rc = findFirstSuitableDevice(deviceToBoot, foundDeviceDesc);
             if(rc == X_LINK_SUCCESS) break;
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < bootupTimeout);

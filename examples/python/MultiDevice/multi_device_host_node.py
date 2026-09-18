@@ -15,9 +15,8 @@ import depthai as dai
 
 
 class MosaicNode(dai.node.ThreadedHostNode):
-    def __init__(self, pipeline):
+    def __init__(self):
         super().__init__()
-        self.pipeline = pipeline
         self.inputsByName = {}
         self.output = self.createOutput()
 
@@ -46,7 +45,8 @@ class MosaicNode(dai.node.ThreadedHostNode):
                 tile = latest[name].copy()
                 device = sources.get(name)
                 label = name
-                if device is not None and self.pipeline.getDeviceState(device) != dai.DeviceState.RUNNING:
+                # The device reports its own state; asking the pipeline from a node thread is avoided
+                if device is not None and device.getDeviceState() != dai.DeviceState.RUNNING:
                     label += " [OFFLINE]"
                     tile = cv2.cvtColor(cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
                 cv2.putText(tile, label, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 127, 255), 2, cv2.LINE_AA)
@@ -67,7 +67,7 @@ if len(deviceInfos) < 2:
     raise SystemExit(0)
 
 with dai.Pipeline(False) as pipeline:
-    mosaic = MosaicNode(pipeline)
+    mosaic = pipeline.create(MosaicNode)
 
     for info in deviceInfos:
         device = pipeline.addDevice(info)
