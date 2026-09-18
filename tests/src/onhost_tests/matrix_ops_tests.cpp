@@ -72,6 +72,18 @@ void compareWithOpenCV(const std::array<dai::Point2f, 4>& srcPoints,
 
 }  // namespace
 
+TEST_CASE("Small rotation conversion preserves camera center", "[rotation]") {
+    const double originalVector[3] = {0, 0, 0.001};
+    const auto original = dai::matrix::rvecToRotationMatrix(originalVector);
+    const auto rotationVector = dai::matrix::rotationMatrixToVector(original);
+    const double convertedVector[3] = {rotationVector[0], rotationVector[1], rotationVector[2]};
+    const auto converted = dai::matrix::rvecToRotationMatrix(convertedVector);
+    // For t = (5.134, 0, 0) cm, the camera center's Y component is (-R^T t)[1].
+    const double originalCenter = -original[0][1] * 5.134;
+    const double convertedCenter = -converted[0][1] * 5.134;
+    REQUIRE_THAT(convertedCenter, Catch::Matchers::WithinAbs(originalCenter, 1e-7));
+}
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 TEST_CASE("Homography matches OpenCV for rectangular warp") {
     const std::array<dai::Point2f, 4> srcPoints = {
