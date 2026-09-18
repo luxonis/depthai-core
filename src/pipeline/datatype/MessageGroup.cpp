@@ -30,17 +30,41 @@ std::map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::end() 
 }
 
 int64_t MessageGroup::getIntervalNs() const {
-    if(!group.empty()) {
-        auto oldest = std::dynamic_pointer_cast<Buffer>(group.begin()->second)->getTimestampDevice();
-        auto latest = oldest;
-        for(const auto& entry : group) {
-            auto ts = std::dynamic_pointer_cast<Buffer>(entry.second)->getTimestampDevice();
-            if(ts < oldest) oldest = ts;
-            if(ts > latest) latest = ts;
+    // Measure with the timestamp source the group was synced with; entries that are
+    // not Buffers or lack the requested timestamp are skipped
+    using Source = SyncProperties::TimestampSource;
+    bool first = true;
+    std::chrono::nanoseconds oldest{};
+    std::chrono::nanoseconds latest{};
+    auto consider = [&](std::chrono::nanoseconds ts) {
+        if(first) {
+            oldest = latest = ts;
+            first = false;
+            return;
         }
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(latest - oldest).count();
+        if(ts < oldest) oldest = ts;
+        if(ts > latest) latest = ts;
+    };
+    for(const auto& entry : group) {
+        auto buffer = std::dynamic_pointer_cast<Buffer>(entry.second);
+        if(buffer == nullptr) continue;
+        switch(timestampSource) {
+            case Source::HOST:
+                consider(std::chrono::duration_cast<std::chrono::nanoseconds>(buffer->getTimestamp().time_since_epoch()));
+                break;
+            case Source::SYSTEM: {
+                auto ts = buffer->getTimestampSystem();
+                if(ts.has_value()) consider(std::chrono::duration_cast<std::chrono::nanoseconds>(ts->time_since_epoch()));
+                break;
+            }
+            case Source::DEFAULT:
+            case Source::DEVICE:
+                consider(std::chrono::duration_cast<std::chrono::nanoseconds>(buffer->getTimestampDevice().time_since_epoch()));
+                break;
+        }
     }
-    return {};
+    if(first) return {};
+    return (latest - oldest).count();
 }
 
 int64_t MessageGroup::getNumMessages() const {
