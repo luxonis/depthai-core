@@ -316,6 +316,10 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                 return false;
             }
 
+            if (socketNamePair.second.find("OG05") != std::string::npos) {
+                return false;
+            }
+
             return true;
         }
         std::cout << "Unexpected camera socket: " << socket << std::endl;
