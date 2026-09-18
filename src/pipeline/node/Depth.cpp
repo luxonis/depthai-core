@@ -810,12 +810,13 @@ void Depth::buildInternal() {
             break;
         case Algorithm::TOF_STEREO_FUSION: {
             const auto pair = requireFirstStereoPair(device);
+            const float fps = stereoOutputFps_.value_or(DEFAULT_TARGET_FPS);
             auto [left, right] = findCamerasForPair(pipeline, pair);
-            if(!left) left = pipeline.create<Camera>()->build(pair.left);
-            if(!right) right = pipeline.create<Camera>()->build(pair.right);
-            tofStereoFusionBackend_ = std::make_shared<beta::node::ToFStereoFusion>(device);
+            if(!left) left = pipeline.create<Camera>()->build(pair.left, std::nullopt, fps);
+            if(!right) right = pipeline.create<Camera>()->build(pair.right, std::nullopt, fps);
+            tofStereoFusionBackend_ = beta::node::ToFStereoFusion::create(device);
             add(tofStereoFusionBackend_);
-            tofStereoFusionBackend_->build(left, right);
+            tofStereoFusionBackend_->build(left, right, fps);
             depthOut_ = &tofStereoFusionBackend_->depth;
             confidenceOut_ = &tofStereoFusionBackend_->confidence;
             wiredResolution = {left->getMaxRequestedWidth(), left->getMaxRequestedHeight()};
