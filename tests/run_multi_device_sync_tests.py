@@ -6,6 +6,15 @@ import datetime
 import time
 import os
 import subprocess
+import signal
+from threading import Event
+
+interrupted = Event()
+
+def signal_handler(signal, frame):
+    interrupted.set()
+    print("Received SIGINT, exiting...")
+
 
 def enablePTPonCamera(device: adbutils.AdbDevice, sync_frames: bool, is_master: bool, ptp_domain: int):
     devicename = device.serial
@@ -89,11 +98,15 @@ def main():
     else:
         raise RuntimeError("Must specify either --fsync or --ptp")
 
+    signal.signal(signal.SIGINT, signal_handler)
+
     timeout_sec = 5*60 # 5 minutes
 
     print(f"Waiting for all {num_devices} devices to come online...")
     start_time = datetime.datetime.now()
     while True:
+        if interrupted.is_set():
+            raise RuntimeError("Interrupted by SIGINT")
         devices = adbutils.adb.device_list()
         if len(devices) == num_devices:
             break
@@ -108,6 +121,8 @@ def main():
         print(f"Waiting for all {num_devices} devices to come online...")
         start_time = datetime.datetime.now()
         while True:
+            if interrupted.is_set():
+                raise RuntimeError("Interrupted by SIGINT")
             devices = adbutils.adb.device_list()
             if len(devices) == num_devices:
                 break
