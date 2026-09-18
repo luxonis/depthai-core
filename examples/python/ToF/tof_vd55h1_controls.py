@@ -2,7 +2,8 @@
 """Tune every RVC4 VD55H1 ToF IPP control with OpenCV sliders.
 
 Trackbars ending in "x100" use a scale factor of 100. Toggle trackbars use
-0 for off and 1 for on. Press q to quit.
+0 for off and 1 for on. The bilateral kernel is 3 + 2 times its slider value.
+Press q to quit.
 """
 
 import cv2
@@ -19,7 +20,7 @@ def configFromTrackbars() -> dai.ToFConfig:
     vd55h1.phaseUnwrapErrorThreshold = cv2.getTrackbarPos("unwrap threshold", WINDOW)
     vd55h1.enableBilateralFilter = bool(cv2.getTrackbarPos("bilateral", WINDOW))
     vd55h1.bilateralStdFactor = cv2.getTrackbarPos("bilateral std x100", WINDOW) / 100.0
-    vd55h1.bilateralKernelSize = cv2.getTrackbarPos("bilateral kernel", WINDOW)
+    vd55h1.bilateralKernelSize = 3 + 2 * cv2.getTrackbarPos("bilateral kernel (3+2x)", WINDOW)
     vd55h1.enableTemporalNoiseReduction = bool(cv2.getTrackbarPos("temporal NR", WINDOW))
     vd55h1.temporalNoiseReductionMaxGain = cv2.getTrackbarPos("TNR max gain", WINDOW)
     vd55h1.temporalNoiseReductionStdFactor = cv2.getTrackbarPos("TNR std x100", WINDOW) / 100.0
@@ -44,7 +45,7 @@ def main() -> None:
             ("unwrap threshold", 500, 192),
             ("bilateral", 1, 1),
             ("bilateral std x100", 1000, 205),
-            ("bilateral kernel", 15, 5),
+            ("bilateral kernel (3+2x)", 6, 1),
             ("temporal NR", 1, 1),
             ("TNR max gain", 100, 27),
             ("TNR std x100", 500, 82),

@@ -15,7 +15,7 @@ std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 10>& v
     vd55h1.phaseUnwrapErrorThreshold = value[0];
     vd55h1.enableBilateralFilter = value[1] != 0;
     vd55h1.bilateralStdFactor = value[2] / 100.0f;
-    vd55h1.bilateralKernelSize = value[3];
+    vd55h1.bilateralKernelSize = 3 + 2 * value[3];
     vd55h1.enableTemporalNoiseReduction = value[4] != 0;
     vd55h1.temporalNoiseReductionMaxGain = value[5];
     vd55h1.temporalNoiseReductionStdFactor = value[6] / 100.0f;
@@ -34,11 +34,11 @@ int main() {
     auto configQueue = tof->tofBaseInputConfig.createInputQueue();
 
     cv::namedWindow(WINDOW);
-    std::array<int, 10> value = {192, 1, 205, 5, 1, 27, 82, 1, 101, 1356};
+    std::array<int, 10> value = {192, 1, 205, 1, 1, 27, 82, 1, 101, 1356};
     cv::createTrackbar("unwrap threshold", WINDOW, &value[0], 500);
     cv::createTrackbar("bilateral", WINDOW, &value[1], 1);
     cv::createTrackbar("bilateral std x100", WINDOW, &value[2], 1000);
-    cv::createTrackbar("bilateral kernel", WINDOW, &value[3], 15);
+    cv::createTrackbar("bilateral kernel (3+2x)", WINDOW, &value[3], 6);
     cv::createTrackbar("temporal NR", WINDOW, &value[4], 1);
     cv::createTrackbar("TNR max gain", WINDOW, &value[5], 100);
     cv::createTrackbar("TNR std x100", WINDOW, &value[6], 500);
