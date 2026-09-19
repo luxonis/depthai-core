@@ -1,7 +1,7 @@
 # DepthAI Library
 
 [![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
-[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://stg.docs.luxonis.com/software/v3/)
+[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://docs.luxonis.com/software-v3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
@@ -189,7 +189,7 @@ cmake --build build
 
 To integrate into a different build system than CMake, the preferred way is to compile as a dynamic library and set the correct build options.
 1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
-2. Then install: [Installing](#installing)
+2. Then install: [Installing](#installation-and-integration)
 
 In your non-CMake project (new Visual Studio project, ...)
 1. Set needed library directories:
