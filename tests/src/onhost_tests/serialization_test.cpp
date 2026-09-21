@@ -56,6 +56,24 @@ TEST_CASE("Roundtrip") {
     }
 }
 
+TEST_CASE("CameraInfo sensor type serialization is backward compatible") {
+    dai::CameraInfo cameraInfo;
+    cameraInfo.sensorType = dai::CameraSensorType::MONO;
+
+    const nlohmann::json json = cameraInfo;
+    REQUIRE(json.at("sensorType").get<dai::CameraSensorType>() == dai::CameraSensorType::MONO);
+    REQUIRE(json.get<dai::CameraInfo>().sensorType == dai::CameraSensorType::MONO);
+
+    nlohmann::json legacyJson = json;
+    legacyJson.erase("sensorType");
+    REQUIRE(legacyJson.get<dai::CameraInfo>().sensorType == dai::CameraSensorType::AUTO);
+
+    const auto binary = dai::utility::serialize(cameraInfo);
+    dai::CameraInfo binaryRoundtrip;
+    dai::utility::deserialize(binary, binaryRoundtrip);
+    REQUIRE(binaryRoundtrip.sensorType == dai::CameraSensorType::MONO);
+}
+
 TEST_CASE("AssetManager uses the current size of memory-backed assets") {
     dai::AssetManager assetManager;
     auto asset = assetManager.set("asset", std::vector<std::uint8_t>{1, 2});

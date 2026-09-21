@@ -135,7 +135,8 @@ static nlohmann::json loadCamDataCalibrationJson() {
 static bool compareCameraData(const dai::CameraInfo& first, const dai::CameraInfo& second) {
     return (first.width == second.width) && (first.height == second.height) && (first.lensPosition == second.lensPosition)
            && (first.intrinsicMatrix == second.intrinsicMatrix) && (first.distortionCoeff == second.distortionCoeff)
-           && (first.extrinsics.isEqualExtrinsics(second.extrinsics)) && (first.specHfovDeg == second.specHfovDeg) && (first.cameraType == second.cameraType);
+           && (first.extrinsics.isEqualExtrinsics(second.extrinsics)) && (first.specHfovDeg == second.specHfovDeg) && (first.cameraType == second.cameraType)
+           && (first.sensorType == second.sensorType);
 }
 
 TEST_CASE("CBA calibrations are merged with the main board's calibration") {

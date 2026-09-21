@@ -590,7 +590,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("distortionCoeff", &CameraInfo::distortionCoeff)
         .def_readwrite("extrinsics", &CameraInfo::extrinsics)
         .def_readwrite("cameraType", &CameraInfo::cameraType)
-        .def_readwrite("specHfovDeg", &CameraInfo::specHfovDeg);
+        .def_readwrite("specHfovDeg", &CameraInfo::specHfovDeg)
+        .def_readwrite("sensorType", &CameraInfo::sensorType);
 
     // AccelAxisNoiseParams
     accelAxisNoiseParams.def(py::init<>())

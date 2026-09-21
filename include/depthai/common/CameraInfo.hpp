@@ -1,6 +1,7 @@
 #pragma once
 
 #include "depthai/common/CameraModel.hpp"
+#include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/utility/Serialization.hpp"
 
@@ -15,7 +16,9 @@ struct CameraInfo {
     Extrinsics extrinsics;
     float specHfovDeg = 0.0f;  // fov in deg
     CameraModel cameraType = CameraModel::Perspective;
-    DEPTHAI_SERIALIZE(CameraInfo, cameraType, width, height, specHfovDeg, lensPosition, intrinsicMatrix, distortionCoeff, extrinsics);
+    CameraSensorType sensorType = CameraSensorType::AUTO;
+    DEPTHAI_SERIALIZE_OPTIONAL(CameraInfo, cameraType, width, height, specHfovDeg, lensPosition, intrinsicMatrix, distortionCoeff, extrinsics, sensorType);
+    DEPTHAI_DISPLAY(CameraInfo)
 };
 
 }  // namespace dai
