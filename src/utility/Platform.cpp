@@ -106,6 +106,25 @@ std::string getIPv4AddressAsString(std::uint32_t binary) {
     return {address};
 }
 
+bool isIPv4Address(const std::string& address) {
+    if(address.empty()) {
+        return false;
+    }
+
+    uint32_t binary = 0;
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    #if(_WIN32_WINNT <= 0x0501)
+    // for XP: inet_addr is the only parser available (it is not strict about leading zeros)
+    binary = inet_addr(address.c_str());
+    return binary != INADDR_NONE;
+    #else
+    return inet_pton(AF_INET, address.c_str(), &binary) == 1;  // for Vista or higher
+    #endif
+#else
+    return inet_pton(AF_INET, address.c_str(), &binary) == 1;
+#endif
+}
+
 std::string getLocalIpAddress() {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     std::string result = "127.0.0.1";

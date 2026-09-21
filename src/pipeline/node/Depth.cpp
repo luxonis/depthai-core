@@ -314,7 +314,9 @@ float targetFpsWithDefault(float targetFps) {
     return targetFps > 0.f ? targetFps : DEFAULT_TARGET_FPS;
 }
 
-std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
+std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline,
+                                                                               const StereoPair& pair,
+                                                                               const std::shared_ptr<Device>& device) {
     std::shared_ptr<Camera> left;
     std::shared_ptr<Camera> right;
     for(const auto& node : pipeline.getAllNodes()) {
@@ -322,6 +324,10 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
             continue;
         }
         auto cam = std::static_pointer_cast<Camera>(node);
+        // Only reuse cameras of the device this Depth node runs on; the same socket on another pipeline device is unrelated.
+        if(device != nullptr && cam->getDevice() != nullptr && cam->getDevice() != device) {
+            continue;
+        }
         const auto socket = cam->getBoardSocket();
         if(socket == pair.left) {
             left = std::move(cam);
@@ -618,7 +624,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         Config config = std::monostate{};
         if(chosen == Algorithm::STEREO) {
             const auto pair = requireFirstStereoPair(device);
-            const auto [left, right] = findCamerasForPair(pipeline, pair);
+            const auto [left, right] = findCamerasForPair(pipeline, pair, device);
             const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
             if(inputs.resolution) {
                 validateStereoDepthResolution(inputs.resolution->first, inputs.resolution->second);
@@ -630,7 +636,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 
     const auto pair = requireFirstStereoPair(device);
-    const auto [left, right] = findCamerasForPair(pipeline, pair);
+    const auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
     const float targetFps = inputs.targetFps;
     const auto& resolution = inputs.resolution;
@@ -687,15 +693,16 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
                                                const StereoPair& pair,
                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                const std::optional<float>& fps) {
-    auto [left, right] = findCamerasForPair(pipeline, pair);
+    auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const bool stereoCamerasPreexist = left && right;
 
-    // Create missing cameras on the sockets from the device's stereo pair.
+    // Create missing cameras on the sockets from the device's stereo pair, on the same device this node runs on
+    // (pipeline.create<Camera>() without a device would bind them to the master device).
     if(!left) {
-        left = pipeline.create<Camera>()->build(pair.left);
+        left = (device ? pipeline.create<Camera>(device) : pipeline.create<Camera>())->build(pair.left);
     }
     if(!right) {
-        right = pipeline.create<Camera>()->build(pair.right);
+        right = (device ? pipeline.create<Camera>(device) : pipeline.create<Camera>())->build(pair.right);
     }
 
     // When @p frameSize is unset and both stereo cameras already exist, match their sensor resolution.

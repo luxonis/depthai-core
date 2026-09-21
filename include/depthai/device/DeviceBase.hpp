@@ -23,6 +23,7 @@
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "depthai/device/DeviceState.hpp"
 #include "depthai/device/HealthCheck.hpp"
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
@@ -455,6 +456,14 @@ class DeviceBase {
      * @return DeviceInfo of the current device in execution
      */
     DeviceInfo getDeviceInfo() const;
+
+    /**
+     * State of this device from the point of view of the pipeline it belongs to: RUNNING while
+     * connected, DISCONNECTED / RECONNECTING while a lost connection is being re-established and
+     * FAILED once the device is gone for good. RUNNING for a device that is not part of a pipeline.
+     * Safe to call from any thread, including node threads.
+     */
+    DeviceState getDeviceState() const;
 
     /**
      * Get device name if available
@@ -1292,6 +1301,9 @@ class DeviceBase {
     void waitForRebootAndCollectCrashDump();
     void waitForGateAndCollectCrashDump();
     CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);
+    // Written by the constructing thread (search/boot) and by the monitor thread on
+    // reconnection, read by any thread through getDeviceInfo()
+    mutable std::mutex deviceInfoMtx;
     DeviceInfo deviceInfo;
     std::optional<Version> bootloaderVersion;
 
@@ -1363,9 +1375,14 @@ class DeviceBase {
     // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
+    // Last state reported to the pipeline (RUNNING while connected)
+    std::atomic<DeviceState> pipelineDeviceState{DeviceState::RUNNING};
     std::atomic<bool> crashDumpHandled{false};
-    bool isClosing = false;  // if true, don't attempt to reconnect
+    std::atomic<bool> isClosing{false};  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
+
+    // Report this device's pipeline-level state to the pipeline (no-op without a pipeline)
+    void notifyPipelineDeviceState(DeviceState state);
 
     // Mock features
     bool hasMockedFeatures = false;

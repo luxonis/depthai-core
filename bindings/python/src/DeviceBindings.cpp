@@ -741,6 +741,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getDeviceInfo();
             },
             DOC(dai, DeviceBase, getDeviceInfo))
+        .def("getDeviceState",
+             &DeviceBase::getDeviceState,
+             "State of this device from the point of view of the pipeline it belongs to: RUNNING while connected, "
+             "DISCONNECTED / RECONNECTING while a lost connection is being re-established and FAILED once it is gone for good. "
+             "RUNNING for a device that is not part of a pipeline. Safe to call from any thread, including node threads.")
         .def(
             "getMxId",
             [](DeviceBase& d) {

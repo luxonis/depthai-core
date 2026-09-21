@@ -47,16 +47,70 @@
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
-std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_) {
+std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_, const std::shared_ptr<dai::Device>& device = nullptr) {
     auto nodeCreateMap = NodeBindings::getNodeCreateMap();
     for(auto& kv : nodeCreateMap) {
         auto& node = kv.first;
         auto& create = kv.second;
         if(node.is(class_)) {
-            return create(p, class_);
+            return create(p, class_, device);
         }
     }
     return nullptr;
+}
+
+// Fully qualified Python name of a type object, e.g. "depthai.node.Camera", "depthai.DeviceInfo" or "str"
+static std::string pyQualifiedTypeName(py::handle type) {
+    const auto attrAsString = [&](const char* name, const char* fallback) {
+        return static_cast<std::string>(py::str(py::getattr(type, name, py::str(fallback))));
+    };
+    const auto module = attrAsString("__module__", "");
+    const auto qualname = attrAsString("__qualname__", "?");
+    if(module.empty() || module == "builtins") return qualname;
+    return module + "." + qualname;
+}
+
+// Parses the arguments pipeline.create(NodeClass, ...) accepts for bound (C++) node classes: a single optional explicit device, either as
+// the positional argument after the node class or as the 'device' keyword argument. Only a depthai.Device instance (as returned by
+// pipeline.addDevice(...)) or None (no explicit device) is accepted. Anything else - a wrong type, extra positional arguments or unknown
+// keyword arguments - raises TypeError, so a mistake can never silently fall back to creating the node on the default device.
+static std::shared_ptr<dai::Device> parseBoundNodeCreateArgs(py::handle class_, const py::args& args, const py::kwargs& kwargs) {
+    const std::string context = "pipeline.create(" + pyQualifiedTypeName(class_) + ", ...)";
+    const std::string expected = "a depthai.Device (as returned by pipeline.addDevice(...), or a depthai.Device instance) or None";
+
+    if(args.size() > 1) {
+        throw py::type_error(context + " takes at most one positional argument after the node class (an optional depthai.Device), but "
+                             + std::to_string(args.size()) + " were given");
+    }
+    for(const auto& item : kwargs) {
+        const auto key = item.first.cast<std::string>();
+        if(key != "device") {
+            throw py::type_error(context + " got an unexpected keyword argument '" + key
+                                 + "'; the only keyword argument it accepts is 'device' (an optional depthai.Device)");
+        }
+    }
+    const bool hasPositional = args.size() == 1;
+    const bool hasKeyword = kwargs.contains("device");
+    if(hasPositional && hasKeyword) {
+        throw py::type_error(context + " got multiple values for argument 'device' (passed both positionally and as a keyword argument)");
+    }
+    if(!hasPositional && !hasKeyword) return nullptr;
+
+    const py::object deviceArg = hasPositional ? py::object(args[0]) : py::object(kwargs["device"]);
+    if(deviceArg.is_none()) return nullptr;
+    if(py::isinstance<dai::Device>(deviceArg)) return deviceArg.cast<std::shared_ptr<dai::Device>>();
+
+    std::string message = context + ": the 'device' argument must be " + expected + ", but got '" + pyQualifiedTypeName(py::type::of(deviceArg)) + "'.";
+    if(py::isinstance<dai::DeviceInfo>(deviceArg)) {
+        message +=
+            " A depthai.DeviceInfo only identifies a device: connect it first with 'device = pipeline.addDevice(deviceInfo)' and pass the returned"
+            " depthai.Device instead.";
+    } else if(py::isinstance<py::str>(deviceArg)) {
+        message +=
+            " A string only identifies a device (by id, IP or name): connect it first with 'device = pipeline.addDevice(\"...\")' and pass the returned"
+            " depthai.Device instead.";
+    }
+    throw py::type_error(message);
 }
 
 void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -68,6 +122,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
     py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
     py::class_<PipelineStateApi> pipelineStateApi(m, "PipelineStateApi", DOC(dai, PipelineStateApi));
+    py::enum_<DeviceState>(m, "DeviceState", DOC(dai, DeviceState))
+        .value("RUNNING", DeviceState::RUNNING)
+        .value("DISCONNECTED", DeviceState::DISCONNECTED)
+        .value("RECONNECTING", DeviceState::RECONNECTING)
+        .value("FAILED", DeviceState::FAILED);
     py::class_<NodesStateApi> nodesStateApi(m, "NodesStateApi", DOC(dai, NodesStateApi));
     py::class_<NodeStateApi> nodeStateApi(m, "NodeStateApi", DOC(dai, NodeStateApi));
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
@@ -201,7 +260,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  d.wait();
              })
         //.def(py::init<const Pipeline&>())
-        .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         .def("setDefaultDeviceProperties",
              &Pipeline::setDefaultDeviceProperties,
@@ -242,18 +300,123 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("socket"),
              py::arg("path"),
              DOC(dai, Pipeline, setCameraTuningBlobPath, 2))
-        .def("setXLinkChunkSize", &Pipeline::setXLinkChunkSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setXLinkChunkSize))
-        .def("setSippBufferSize", &Pipeline::setSippBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippBufferSize))
-        .def("setSippDmaBufferSize", &Pipeline::setSippDmaBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippDmaBufferSize))
-        .def("setCalibrationData", &Pipeline::setCalibrationData, py::arg("calibrationDataHandler"), DOC(dai, Pipeline, setCalibrationData))
-        .def("getCalibrationData", &Pipeline::getCalibrationData, DOC(dai, Pipeline, getCalibrationData))
-        .def("getDeviceConfig", &Pipeline::getDeviceConfig, DOC(dai, Pipeline, getDeviceConfig))
+        .def("setCameraTuningBlobPath",
+             py::overload_cast<const std::shared_ptr<Device>&, const fs::path&>(&Pipeline::setCameraTuningBlobPath),
+             py::arg("device"),
+             py::arg("path"),
+             DOC(dai, Pipeline, setCameraTuningBlobPath, 3))
+        .def("setCameraTuningBlobPath",
+             py::overload_cast<const std::shared_ptr<Device>&, CameraBoardSocket, const fs::path&>(&Pipeline::setCameraTuningBlobPath),
+             py::arg("device"),
+             py::arg("socket"),
+             py::arg("path"),
+             DOC(dai, Pipeline, setCameraTuningBlobPath, 4))
+        .def("setXLinkChunkSize", py::overload_cast<int>(&Pipeline::setXLinkChunkSize), py::arg("sizeBytes"), DOC(dai, Pipeline, setXLinkChunkSize))
+        .def("setXLinkChunkSize",
+             py::overload_cast<const std::shared_ptr<Device>&, int>(&Pipeline::setXLinkChunkSize),
+             py::arg("device"),
+             py::arg("sizeBytes"),
+             DOC(dai, Pipeline, setXLinkChunkSize, 2))
+        .def("setSippBufferSize", py::overload_cast<int>(&Pipeline::setSippBufferSize), py::arg("sizeBytes"), DOC(dai, Pipeline, setSippBufferSize))
+        .def("setSippBufferSize",
+             py::overload_cast<const std::shared_ptr<Device>&, int>(&Pipeline::setSippBufferSize),
+             py::arg("device"),
+             py::arg("sizeBytes"),
+             DOC(dai, Pipeline, setSippBufferSize, 2))
+        .def("setSippDmaBufferSize", py::overload_cast<int>(&Pipeline::setSippDmaBufferSize), py::arg("sizeBytes"), DOC(dai, Pipeline, setSippDmaBufferSize))
+        .def("setSippDmaBufferSize",
+             py::overload_cast<const std::shared_ptr<Device>&, int>(&Pipeline::setSippDmaBufferSize),
+             py::arg("device"),
+             py::arg("sizeBytes"),
+             DOC(dai, Pipeline, setSippDmaBufferSize, 2))
+        .def("setCalibrationData",
+             py::overload_cast<CalibrationHandler>(&Pipeline::setCalibrationData),
+             py::arg("calibrationDataHandler"),
+             DOC(dai, Pipeline, setCalibrationData))
+        .def("setCalibrationData",
+             py::overload_cast<const std::shared_ptr<Device>&, const CalibrationHandler&>(&Pipeline::setCalibrationData),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             py::arg("calibrationDataHandler"),
+             DOC(dai, Pipeline, setCalibrationData, 2))
+        .def("getCalibrationData", py::overload_cast<>(&Pipeline::getCalibrationData, py::const_), DOC(dai, Pipeline, getCalibrationData))
+        .def("getCalibrationData",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getCalibrationData, py::const_),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, getCalibrationData, 2))
+        .def("isCalibrationDataAvailable",
+             py::overload_cast<>(&Pipeline::isCalibrationDataAvailable, py::const_),
+             DOC(dai, Pipeline, isCalibrationDataAvailable))
+        .def("isCalibrationDataAvailable",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::isCalibrationDataAvailable, py::const_),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, isCalibrationDataAvailable, 2))
+        .def("setEepromData", py::overload_cast<std::optional<EepromData>>(&Pipeline::setEepromData), py::arg("eepromData"), DOC(dai, Pipeline, setEepromData))
+        .def("setEepromData",
+             py::overload_cast<const std::shared_ptr<Device>&, const std::optional<EepromData>&>(&Pipeline::setEepromData),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             py::arg("eepromData"),
+             DOC(dai, Pipeline, setEepromData, 2))
+        .def("getEepromData", py::overload_cast<>(&Pipeline::getEepromData, py::const_), DOC(dai, Pipeline, getEepromData))
+        .def("getEepromData",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getEepromData, py::const_),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, getEepromData, 2))
+        .def("getEepromId", py::overload_cast<>(&Pipeline::getEepromId, py::const_), DOC(dai, Pipeline, getEepromId))
+        .def("getEepromId",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getEepromId, py::const_),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, getEepromId, 2))
+        .def("setDeviceProperties",
+             &Pipeline::setDeviceProperties,
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             py::arg("deviceProperties"),
+             DOC(dai, Pipeline, setDeviceProperties))
+        .def("getDeviceProperties",
+             &Pipeline::getDeviceProperties,
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("device"),
+             DOC(dai, Pipeline, getDeviceProperties))
+        .def("getDeviceConfig", py::overload_cast<>(&Pipeline::getDeviceConfig, py::const_), DOC(dai, Pipeline, getDeviceConfig))
+        .def("getDeviceConfig",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getDeviceConfig, py::const_),
+             py::arg("device"),
+             DOC(dai, Pipeline, getDeviceConfig, 2))
         .def("serializeToJson", &Pipeline::serializeToJson, DOC(dai, Pipeline, serializeToJson))
-        .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
-        .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
+        .def("setBoardConfig", py::overload_cast<BoardConfig>(&Pipeline::setBoardConfig), DOC(dai, Pipeline, setBoardConfig))
+        .def("setBoardConfig",
+             py::overload_cast<const std::shared_ptr<Device>&, const BoardConfig&>(&Pipeline::setBoardConfig),
+             py::arg("device"),
+             py::arg("board"),
+             DOC(dai, Pipeline, setBoardConfig, 2))
+        .def("getBoardConfig", py::overload_cast<>(&Pipeline::getBoardConfig, py::const_), DOC(dai, Pipeline, getBoardConfig))
+        .def("getBoardConfig",
+             py::overload_cast<const std::shared_ptr<Device>&>(&Pipeline::getBoardConfig, py::const_),
+             py::arg("device"),
+             DOC(dai, Pipeline, getBoardConfig, 2))
         .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
         .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
         .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
+        .def("addDevice", py::overload_cast<std::shared_ptr<Device>>(&Pipeline::addDevice), py::arg("device"), DOC(dai, Pipeline, addDevice))
+        .def("addDevice",
+             py::overload_cast<const DeviceInfo&>(&Pipeline::addDevice),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("deviceInfo"),
+             DOC(dai, Pipeline, addDevice, 2))
+        .def("addDevice",
+             py::overload_cast<const std::string&>(&Pipeline::addDevice),
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("idOrIpOrName"),
+             DOC(dai, Pipeline, addDevice, 3))
+        .def("getDevices", &Pipeline::getDevices, DOC(dai, Pipeline, getDevices))
+        .def("getDeviceState", &Pipeline::getDeviceState, py::arg("device"), DOC(dai, Pipeline, getDeviceState))
+        .def("setDeviceStateCallback", &Pipeline::setDeviceStateCallback, py::arg("callback"), DOC(dai, Pipeline, setDeviceStateCallback))
         // 'Template' create function
         .def(
             "add",
@@ -317,8 +480,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     }
                     return hostNode;
                 }
+                // Bound (C++) node classes: the only argument accepted after the class is an optional explicit device (positional or
+                // 'device='), validated strictly so that a DeviceInfo, a string or any other mistake raises instead of being dropped
+                const auto explicitDevice = parseBoundNodeCreateArgs(class_, args, kwargs);
                 // Otherwise create the node with `pipeline.create()` method
-                auto node = createNode(p, class_);
+                auto node = createNode(p, class_, explicitDevice);
                 if(node == nullptr) {
                     throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
                 }
