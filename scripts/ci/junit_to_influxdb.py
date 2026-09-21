@@ -49,6 +49,7 @@ def writeTestsuite(
     labels: str,
     protocol: str,
     platform: str,
+    testbed: str,
         
     tests: int,
     passed: int,
@@ -66,6 +67,7 @@ def writeTestsuite(
         .tag("GITHUB_REF", GITHUB_REF)
         .tag("GITHUB_HEAD_REF", GITHUB_HEAD_REF)
         .tag("GITHUB_RUN_ID", GITHUB_RUN_ID)
+        .tag("testbed", testbed)
         .tag("os", osGlobal)
         .tag("config", config)
         .tag("context", context)
@@ -101,6 +103,7 @@ def writeSingleTest(
     labels: str,
     protocol: str,
     platform: str,
+    testbed: str,
 
     testname: str,
     status: str,
@@ -114,6 +117,7 @@ def writeSingleTest(
         .tag("GITHUB_REF", GITHUB_REF)
         .tag("GITHUB_HEAD_REF", GITHUB_HEAD_REF)
         .tag("GITHUB_RUN_ID", GITHUB_RUN_ID)
+        .tag("testbed", testbed)
         .tag("os", osGlobal)
         .tag("config", config)
         .tag("context", context)
@@ -142,6 +146,7 @@ def parseTestSummary():
     osGlobal = sys.argv[2]
     junits = ET.parse(sys.argv[3])
     testsuites = junits.getroot()
+    testbedId = testsuites.get("testbedId") or ""
     for testsuite in testsuites:
         name = testsuite.get('name', '')
         [context, config] = name.split(' / ') if ' / ' in name else ['null', name]
@@ -190,25 +195,25 @@ def parseTestSummary():
                         logs += s+"\n\n"
                 if (len(logs) < 16): logs = "Could not find logs"
                 writeSingleTest(
-                    labels=labels, platform=platform, protocol=protocol, context=context, config=config,
+                    labels=labels, platform=platform, protocol=protocol, context=context, config=config, testbed=testbedId,
                     testname=testname, logs=logs, status="failed"
                 )
                 continue
             if testcase.find("success") is not None:
                 writeSingleTest(
-                    labels=labels, platform=platform, protocol=protocol, context=context, config=config,
+                    labels=labels, platform=platform, protocol=protocol, context=context, config=config, testbed=testbedId,
                     testname=testname, status="passed", logs=None
                 )
                 continue
             if testcase.find("skip") is not None:
                 writeSingleTest(
-                    labels=labels, platform=platform, protocol=protocol, context=context, config=config,
+                    labels=labels, platform=platform, protocol=protocol, context=context, config=config, testbed=testbedId,
                     testname=testname, status="skipped", logs=None
                 )
                 continue
         fixedCt = len(prevFailureList)
         writeTestsuite(
-            labels=labels, platform=platform, protocol=protocol, context=context, config=config,
+            labels=labels, platform=platform, protocol=protocol, context=context, config=config, testbed=testbedId,
             passed=passed, failed=failed, tests=total, fixed=fixedCt, broken=brokenCt, skipped=skipped
         )
 
