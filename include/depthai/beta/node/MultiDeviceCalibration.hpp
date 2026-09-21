@@ -3,14 +3,14 @@
 #include <depthai/utility/spimpl.h>
 
 #include <cstddef>
+#include <depthai/beta/datatype/MultiDeviceCalibrationControl.hpp>
+#include <depthai/beta/datatype/MultiDeviceCalibrationResult.hpp>
 #include <depthai/common/CameraBoardSocket.hpp>
 #include <depthai/common/DepthUnit.hpp>
 #include <depthai/common/Extrinsics.hpp>
 #include <depthai/device/CalibrationHandler.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/ThreadedHostNode.hpp>
-#include <depthai/pipeline/datatype/MultiDeviceCalibrationControl.hpp>
-#include <depthai/pipeline/datatype/MultiDeviceCalibrationResult.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <memory>
 #include <string>

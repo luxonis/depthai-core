@@ -182,6 +182,8 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/LinesBindings.cpp
         src/beta/datatype/Map2DBindings.cpp
         src/beta/datatype/PredictionsBindings.cpp
+        src/beta/datatype/MultiDeviceCalibrationControlBindings.cpp
+        src/beta/datatype/MultiDeviceCalibrationResultBindings.cpp
         src/beta/datatype/ClassificationSequenceParserConfigBindings.cpp
         src/beta/datatype/FastSAMParserConfigBindings.cpp
         src/beta/datatype/HRNetParserConfigBindings.cpp
@@ -254,11 +256,6 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         )
     endif()
 endif()
-
-list(APPEND SOURCE_LIST
-    src/pipeline/datatype/MultiDeviceCalibrationControlBindings.cpp
-    src/pipeline/datatype/MultiDeviceCalibrationResultBindings.cpp
-)
 
 # Add files for python module
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)

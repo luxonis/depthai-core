@@ -346,8 +346,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/Gate.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
-    src/pipeline/datatype/MultiDeviceCalibrationControl.cpp
-    src/pipeline/datatype/MultiDeviceCalibrationResult.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
     src/pipeline/node/Depth.cpp
@@ -454,6 +452,8 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/Clusters.cpp
         src/beta/datatype/ImgDetectionsFilterConfig.cpp
         src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/MultiDeviceCalibrationControl.cpp
+        src/beta/datatype/MultiDeviceCalibrationResult.cpp
         src/beta/datatype/Lines.cpp
         src/beta/datatype/Map2D.cpp
         src/beta/datatype/Predictions.cpp

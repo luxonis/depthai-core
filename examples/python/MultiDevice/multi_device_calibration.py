@@ -34,7 +34,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
     print("Point both devices at the same textured scene and keep them still.")
     pipeline.start()
-    control_queue.send(dai.MultiDeviceCalibrationControl.start())
+    control_queue.send(dai.beta.MultiDeviceCalibrationControl.start())
     result = result_queue.get(timedelta(minutes=3))
 
     if result is None or not result.passed or result.handler is None:

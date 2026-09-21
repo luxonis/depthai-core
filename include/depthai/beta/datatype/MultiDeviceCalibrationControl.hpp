@@ -14,6 +14,7 @@
 #include <vector>
 
 namespace dai {
+namespace beta {
 
 /**
  * @brief One-shot lifecycle commands for the MultiDeviceCalibration node.
@@ -59,4 +60,5 @@ class MultiDeviceCalibrationControl : public Buffer {
     }
 };
 
+}  // namespace beta
 }  // namespace dai

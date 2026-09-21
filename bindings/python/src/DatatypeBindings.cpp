@@ -45,8 +45,6 @@ void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
 void bind_alignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
 void bind_mapdata(pybind11::module& m, void* pCallstack);
-void bind_multi_device_calibration_control(pybind11::module& m, void* pCallstack);
-void bind_multi_device_calibration_result(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack);
 void bind_dynamic_calibration_control(pybind11::module& m, void* pCallstack);
@@ -75,6 +73,8 @@ void bind_beta_keypoints(pybind11::module& m, void* pCallstack);
 void bind_beta_lines(pybind11::module& m, void* pCallstack);
 void bind_beta_map2d(pybind11::module& m, void* pCallstack);
 void bind_beta_predictions(pybind11::module& m, void* pCallstack);
+void bind_beta_multidevicecalibrationcontrol(pybind11::module& m, void* pCallstack);
+void bind_beta_multidevicecalibrationresult(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_BETA
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
@@ -126,8 +126,6 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_mapdata);
     callstack.push_front(bind_vppconfig);
     callstack.push_front(bind_gate_control);
-    callstack.push_front(bind_multi_device_calibration_control);
-    callstack.push_front(bind_multi_device_calibration_result);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     callstack.push_front(bind_dynamic_calibration_results);
     callstack.push_front(bind_dynamic_calibration_control);
@@ -141,6 +139,8 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_lines);
     callstack.push_front(bind_beta_map2d);
     callstack.push_front(bind_beta_predictions);
+    callstack.push_front(bind_beta_multidevicecalibrationcontrol);
+    callstack.push_front(bind_beta_multidevicecalibrationresult);
     callstack.push_front(bind_beta_classificationsequenceparserconfig);
     callstack.push_front(bind_beta_fastsamparserconfig);
     callstack.push_front(bind_beta_hrnetparserconfig);
@@ -222,8 +222,6 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("ToFDepthConfidenceFilterConfig", DatatypeEnum::ToFDepthConfidenceFilterConfig)
         .value("DynamicCalibrationControl", DatatypeEnum::DynamicCalibrationControl)
         .value("DynamicCalibrationResult", DatatypeEnum::DynamicCalibrationResult)
-        .value("MultiDeviceCalibrationControl", DatatypeEnum::MultiDeviceCalibrationControl)
-        .value("MultiDeviceCalibrationResult", DatatypeEnum::MultiDeviceCalibrationResult)
         .value("AutoCalibrationConfig", DatatypeEnum::AutoCalibrationConfig)
         .value("AutoCalibrationResult", DatatypeEnum::AutoCalibrationResult)
         .value("CalibrationQuality", DatatypeEnum::CalibrationQuality);
@@ -248,6 +246,8 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
     datatypeEnum.value("MapOutputParserConfig", DatatypeEnum::MapOutputParserConfig);
     datatypeEnum.value("XFeatMonoParserConfig", DatatypeEnum::XFeatMonoParserConfig);
     datatypeEnum.value("XFeatStereoParserConfig", DatatypeEnum::XFeatStereoParserConfig);
+    datatypeEnum.value("MultiDeviceCalibrationControl", DatatypeEnum::MultiDeviceCalibrationControl);
+    datatypeEnum.value("MultiDeviceCalibrationResult", DatatypeEnum::MultiDeviceCalibrationResult);
 #endif  // DEPTHAI_HAVE_BETA
     datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

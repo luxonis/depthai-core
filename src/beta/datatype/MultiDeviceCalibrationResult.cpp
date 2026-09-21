@@ -1,6 +1,7 @@
-#include "depthai/pipeline/datatype/MultiDeviceCalibrationResult.hpp"
+#include "depthai/beta/datatype/MultiDeviceCalibrationResult.hpp"
 
 namespace dai {
+namespace beta {
 
 MultiDeviceCalibrationResult::~MultiDeviceCalibrationResult() = default;
 
@@ -9,4 +10,5 @@ void MultiDeviceCalibrationResult::serialize(std::vector<std::uint8_t>& metadata
     datatype = getDatatype();
 }
 
+}  // namespace beta
 }  // namespace dai

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <depthai/device/MultiDeviceCalibrationHandler.hpp>
+#include <depthai/beta/device/MultiDeviceCalibrationHandler.hpp>
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/Serialization.hpp>
 #include <optional>
@@ -10,6 +10,7 @@
 #include <vector>
 
 namespace dai {
+namespace beta {
 
 /**
  * @brief Pure data emitted by a MultiDeviceCalibration node.
@@ -37,4 +38,5 @@ struct MultiDeviceCalibrationResult : public Buffer {
     DEPTHAI_SERIALIZE(MultiDeviceCalibrationResult, handler, passed, dataConfidence, sampsonError, info);
 };
 
+}  // namespace beta
 }  // namespace dai

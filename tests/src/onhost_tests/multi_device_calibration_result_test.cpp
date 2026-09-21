@@ -5,6 +5,9 @@
 #include "beta/node/MultiDeviceCalibrationUtils.hpp"
 
 using namespace dai;
+using dai::beta::MultiDeviceCalibrationControl;
+using dai::beta::MultiDeviceCalibrationHandler;
+using dai::beta::MultiDeviceCalibrationResult;
 
 namespace {
 

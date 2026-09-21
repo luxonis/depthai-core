@@ -3,15 +3,17 @@
 #include <memory>
 
 #include "DatatypeBindings.hpp"
-#include "depthai/pipeline/datatype/MultiDeviceCalibrationControl.hpp"
+#include "depthai/beta/datatype/MultiDeviceCalibrationControl.hpp"
 
-void bind_multi_device_calibration_control(pybind11::module& m, void* pCallstack) {
+void bind_beta_multidevicecalibrationcontrol(pybind11::module& m, void* pCallstack) {
     namespace py = pybind11;
     using namespace dai;
-    using Control = MultiDeviceCalibrationControl;
+    using Control = beta::MultiDeviceCalibrationControl;
     using Commands = Control::Commands;
 
-    auto control = py::class_<Control, Buffer, std::shared_ptr<Control>>(m, "MultiDeviceCalibrationControl");
+    auto betaModule = m.def_submodule("beta", "Experimental APIs");
+    auto control =
+        py::class_<Control, Buffer, std::shared_ptr<Control>>(betaModule, "MultiDeviceCalibrationControl", DOC(dai, beta, MultiDeviceCalibrationControl));
     auto commands = py::class_<Commands>(control, "Commands");
     py::class_<Commands::Start>(commands, "Start").def(py::init<>());
     py::class_<Commands::Stop>(commands, "Stop").def(py::init<>());
