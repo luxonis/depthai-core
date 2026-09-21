@@ -536,7 +536,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
     };
 
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges);
+    // Have DCL fix the pair's otherwise unobservable orientation itself: the common optical axis is made
+    // perpendicular to the baseline, so the rectified frame does not swing between calibrations.
+    constexpr bool perpendicularOpticalAxis = true;
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges, perpendicularOpticalAxis);
     if(!dclResult.passed()) {
         if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
             logger->info("Calibration failed: {}", dclResult.errorMessage());
