@@ -47,7 +47,7 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
 **Flow:**
 1. Create mono cameras → request **full-res NV12** (unrectified) → link to:
    - `DynamicCalibration.left/right`
-   - `StereoDepth.left/right` (for live disparity view)
+   - `StereoDepth.left/right` (for live depth view)
 2. Start the pipeline, give AE a moment to settle.
 3. **Start calibration** with:
    ```python
@@ -56,7 +56,7 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
    )
    ```
 4. In the loop:
-   - Show `left`, `right`, and `disparity`.
+   - Show `left`, `right`, and `depth`.
    - Poll `coverageOutput` for progress (`meanCoverage`, `dataAcquired`).
    - Poll `calibrationOutput` for a result.
 5. When a result arrives:
@@ -110,7 +110,7 @@ Mean Sampson error current    = 0.38 px
 **Flow:**
 1. Same camera / StereoDepth / DynamicCalibration setup as above.
 2. In the loop:
-   - Show `left`, `right`, and `disparity`.
+   - Show `left`, `right`, and `depth`.
    - Ask for **coverage** on demand:
      ```python
      dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.LoadImage()))
@@ -144,10 +144,10 @@ Use this only if you need a legacy reference while migrating old code.
 **Script:** `calibration_integration.py`
 
 **What it does:**  
-Runs one loop that periodically refreshes coverage, executes calibration, and applies a new calibration automatically when the returned metrics indicate drift — while showing `left`, `right`, and colorized `disparity` previews.
+Runs one loop that periodically refreshes coverage, executes calibration, and applies a new calibration automatically when the returned metrics indicate drift — while showing `left`, `right`, and colorized `depth` previews.
 
 **Flow:**
-1. Create mono cameras → request **full-res NV12** → link to `DynamicCalibration` and `StereoDepth` for live disparity. Read the device’s current calibration as baseline.
+1. Create mono cameras → request **full-res NV12** → link to `DynamicCalibration` and `StereoDepth` for live depth. Read the device’s current calibration as baseline.
 2. On a fixed interval (for example, every ~3 seconds), send:
    - `LoadImage()` to compute coverage on the current frames, and
    - `dai.DynamicCalibrationControl.calibrate(True)` (or equivalent) to compute a new candidate calibration and return metrics on `calibrationOutput`.
@@ -159,7 +159,7 @@ Runs one loop that periodically refreshes coverage, executes calibration, and ap
 5. Press **`q`** to exit.
 
 **Notes & defaults:**
-- Disparity preview is auto-scaled to the observed maximum; **zero disparity appears black** for clarity.
+- Depth preview uses the shared colorization helper with a 500–12000 mm range and logarithmic scaling.
 - The 0.05 px Sampson threshold is a simple heuristic — adjust per your tolerance.
 
 **Example console output:**
@@ -181,7 +181,7 @@ Mono CAM_B ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibratio
 
 Mono CAM_C ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibration.right
                   │
-                  └───────────▶ StereoDepth.right ──▶ disparity
+                  └───────────▶ StereoDepth.right ──▶ depth
 ```
 
 ---
@@ -262,7 +262,7 @@ If you previously read fields from `CalibrationQuality.qualityData`, read the sa
 - **No quality data returned**  
   Ensure the pattern is visible, not motion-blurred, and covers diverse regions of the image. Increase lighting, adjust exposure, or hold the rig steady.
 
-- **Disparity looks worse after apply**  
+- **Depth preview looks worse after apply**
   Re-run to collect more diverse views (tilt/translate the target).
 
 - **Typos in prints**  

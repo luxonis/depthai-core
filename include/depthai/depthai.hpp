@@ -7,6 +7,12 @@
 // Include initialization utility
 #include "utility/Initialization.hpp"
 
+// Include experimental APIs
+#ifdef DEPTHAI_HAVE_BETA
+    #include "beta/datatypes.hpp"
+    #include "beta/nodes.hpp"
+#endif
+
 // Include some common device classes
 #include "device/CalibrationHandler.hpp"
 #include "device/Device.hpp"
@@ -20,6 +26,11 @@
 
 // Include common datatypes
 #include "pipeline/datatypes.hpp"
+
+// OpenCV-specific utilities
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "utility/ColorizeDepthFrame.hpp"
+#endif
 
 // Model zoo
 #include "modelzoo/Zoo.hpp"

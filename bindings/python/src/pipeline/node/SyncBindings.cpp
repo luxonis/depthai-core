@@ -47,9 +47,9 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
         .def("setSyncAttempts", &Sync::setSyncAttempts, py::arg("maxDataSize"), DOC(dai, node, Sync, setSyncAttempts))
         .def("getSyncThreshold", &Sync::getSyncThreshold, DOC(dai, node, Sync, getSyncThreshold))
         .def("getSyncAttempts", &Sync::getSyncAttempts, DOC(dai, node, Sync, getSyncAttempts))
-        .def("setProcessor", &Sync::setProcessor, DOC(dai, node, Sync, setProcessor))
+        .def("setProcessor", &Sync::setProcessor, py::arg("processorType"), DOC(dai, node, Sync, setProcessor))
         .def("getProcessor", &Sync::getProcessor, DOC(dai, node, Sync, getProcessor))
-        .def("setTimestampSource", &Sync::setTimestampSource, DOC(dai, node, Sync, setTimestampSource))
+        .def("setTimestampSource", &Sync::setTimestampSource, py::arg("source"), DOC(dai, node, Sync, setTimestampSource))
         .def("getTimestampSource", &Sync::getTimestampSource, DOC(dai, node, Sync, getTimestampSource))
         .def("setRunOnHost", &Sync::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Sync, setRunOnHost))
         .def("runOnHost", &Sync::runOnHost, DOC(dai, node, Sync, runOnHost));

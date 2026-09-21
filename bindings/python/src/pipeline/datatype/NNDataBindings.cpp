@@ -29,7 +29,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
     py::class_<TensorInfo> tensorInfo(m, "TensorInfo", DOC(dai, TensorInfo));
     py::enum_<TensorInfo::DataType> tensorInfoDataType(tensorInfo, "DataType");
     py::enum_<TensorInfo::StorageOrder> tensorInfoStorageOrder(tensorInfo, "StorageOrder");
-    py::class_<NNData, Py<NNData>, Buffer, std::shared_ptr<NNData>> nnData(m, "NNData", DOC(dai, NNData));
+    py::class_<NNData, Py<NNData>, Buffer, ProtoSerializable, std::shared_ptr<NNData>> nnData(m, "NNData", DOC(dai, NNData));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -177,16 +177,6 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         //     PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'getTensor()'
         //     instead", 1); return obj.getFirstLayerInt32();
         // }, DOC(dai, NNData, getFirstLayerInt32))
-        // TODO(Morato) - is this needed - doesn't get inherited from Buffer?
-        .def("getTimestamp", &NNData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &NNData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getTimestampSystem", &NNData::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
-        .def("getSequenceNum", &NNData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &NNData::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &NNData::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
-        .def("setTimestampSystem", &NNData::setTimestampSystem, py::arg("timestampSystem"), DOC(dai, Buffer, setTimestampSystem))
-        .def("setSequenceNum", &NNData::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum))
-
         .def("addTensor",
              static_cast<NNData& (NNData::*)(const std::string&, const std::vector<int>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
              py::arg("name"),

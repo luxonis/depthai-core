@@ -7,6 +7,7 @@ void bind_adatatype(pybind11::module& m, void* pCallstack);
 void bind_apriltagconfig(pybind11::module& m, void* pCallstack);
 void bind_apriltags(pybind11::module& m, void* pCallstack);
 void bind_buffer(pybind11::module& m, void* pCallstack);
+void bind_protoserializable(pybind11::module& m, void* pCallstack);
 void bind_transformable(pybind11::module& m, void* pCallstack);
 void bind_cameracontrol(pybind11::module& m, void* pCallstack);
 void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack);
@@ -23,6 +24,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack);
 void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack);
 void bind_gpustereoconfig(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
+void bind_detectionparserconfig(pybind11::module& m, void* pCallstack);
 void bind_segmentationparserconfig(pybind11::module& m, void* pCallstack);
 void bind_segmentationmask(pybind11::module& m, void* pCallstack);
 void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack);
@@ -40,6 +42,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
 void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
+void bind_alignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
 void bind_mapdata(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
@@ -50,6 +53,27 @@ void bind_auto_calibration_result(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_vppconfig(pybind11::module& m, void* pCallstack);
 void bind_gate_control(pybind11::module& m, void* pCallstack);
+#ifdef DEPTHAI_HAVE_BETA
+void bind_beta_classifications(pybind11::module& m, void* pCallstack);
+void bind_beta_classificationsequenceparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_fastsamparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_hrnetparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_mlsdparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_mppalmdetectionparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_mapoutputparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_pptextdetectionparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_rfdetrparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_scrfdparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_superanimalparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_xfeatmonoparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_xfeatstereoparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_yunetparserconfig(pybind11::module& m, void* pCallstack);
+void bind_beta_clusters(pybind11::module& m, void* pCallstack);
+void bind_beta_keypoints(pybind11::module& m, void* pCallstack);
+void bind_beta_lines(pybind11::module& m, void* pCallstack);
+void bind_beta_map2d(pybind11::module& m, void* pCallstack);
+void bind_beta_predictions(pybind11::module& m, void* pCallstack);
+#endif  // DEPTHAI_HAVE_BETA
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind common datatypebindings
@@ -58,6 +82,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind all datatypes (order matters)
     callstack.push_front(bind_adatatype);
     callstack.push_front(bind_buffer);
+    callstack.push_front(bind_protoserializable);
     callstack.push_front(bind_transformable);
     callstack.push_front(bind_apriltagconfig);
     callstack.push_front(bind_apriltags);
@@ -76,6 +101,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuraldepthconfig);
     callstack.push_front(bind_gpustereoconfig);
     callstack.push_front(bind_spatialimgdetections);
+    callstack.push_front(bind_detectionparserconfig);
     callstack.push_front(bind_segmentationparserconfig);
     callstack.push_front(bind_segmentationmask);
     callstack.push_front(bind_spatiallocationcalculatorconfig);
@@ -92,6 +118,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pipelinestate);
     callstack.push_front(bind_transformdata);
     callstack.push_front(bind_imagealignconfig);
+    callstack.push_front(bind_alignconfig);
     callstack.push_front(bind_imageannotations);
     callstack.push_front(bind_rgbddata);
     callstack.push_front(bind_mapdata);
@@ -103,6 +130,27 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_auto_calibration_config);
     callstack.push_front(bind_auto_calibration_result);
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+#ifdef DEPTHAI_HAVE_BETA
+    callstack.push_front(bind_beta_classifications);
+    callstack.push_front(bind_beta_clusters);
+    callstack.push_front(bind_beta_keypoints);
+    callstack.push_front(bind_beta_lines);
+    callstack.push_front(bind_beta_map2d);
+    callstack.push_front(bind_beta_predictions);
+    callstack.push_front(bind_beta_classificationsequenceparserconfig);
+    callstack.push_front(bind_beta_fastsamparserconfig);
+    callstack.push_front(bind_beta_hrnetparserconfig);
+    callstack.push_front(bind_beta_mlsdparserconfig);
+    callstack.push_front(bind_beta_mppalmdetectionparserconfig);
+    callstack.push_front(bind_beta_mapoutputparserconfig);
+    callstack.push_front(bind_beta_pptextdetectionparserconfig);
+    callstack.push_front(bind_beta_rfdetrparserconfig);
+    callstack.push_front(bind_beta_scrfdparserconfig);
+    callstack.push_front(bind_beta_superanimalparserconfig);
+    callstack.push_front(bind_beta_xfeatmonoparserconfig);
+    callstack.push_front(bind_beta_xfeatstereoparserconfig);
+    callstack.push_front(bind_beta_yunetparserconfig);
+#endif  // DEPTHAI_HAVE_BETA
 }
 
 void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -135,6 +183,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("CameraControl", DatatypeEnum::CameraControl)
         .value("ImgDetections", DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)
+        .value("DetectionParserConfig", DatatypeEnum::DetectionParserConfig)
         .value("SegmentationParserConfig", DatatypeEnum::SegmentationParserConfig)
         .value("SegmentationMask", DatatypeEnum::SegmentationMask)
         .value("SystemInformation", DatatypeEnum::SystemInformation)
@@ -159,6 +208,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
+        .value("AlignConfig", DatatypeEnum::AlignConfig)
         .value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
         .value("MapData", DatatypeEnum::MapData)
         .value("RGBDData", DatatypeEnum::RGBDData)
@@ -170,6 +220,28 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("DynamicCalibrationResult", DatatypeEnum::DynamicCalibrationResult)
         .value("AutoCalibrationConfig", DatatypeEnum::AutoCalibrationConfig)
         .value("AutoCalibrationResult", DatatypeEnum::AutoCalibrationResult)
-        .value("CalibrationQuality", DatatypeEnum::CalibrationQuality)
-        .value("CoverageData", DatatypeEnum::CoverageData);
+        .value("CalibrationQuality", DatatypeEnum::CalibrationQuality);
+#ifdef DEPTHAI_HAVE_BETA
+    datatypeEnum.value("ImgDetectionsFilterConfig", DatatypeEnum::ImgDetectionsFilterConfig);
+    datatypeEnum.value("Classifications", DatatypeEnum::Classifications);
+    datatypeEnum.value("Keypoints", DatatypeEnum::Keypoints);
+    datatypeEnum.value("Clusters", DatatypeEnum::Clusters);
+    datatypeEnum.value("Map2D", DatatypeEnum::Map2D);
+    datatypeEnum.value("Lines", DatatypeEnum::Lines);
+    datatypeEnum.value("Predictions", DatatypeEnum::Predictions);
+    datatypeEnum.value("FastSAMParserConfig", DatatypeEnum::FastSAMParserConfig);
+    datatypeEnum.value("HRNetParserConfig", DatatypeEnum::HRNetParserConfig);
+    datatypeEnum.value("MLSDParserConfig", DatatypeEnum::MLSDParserConfig);
+    datatypeEnum.value("MPPalmDetectionParserConfig", DatatypeEnum::MPPalmDetectionParserConfig);
+    datatypeEnum.value("PPTextDetectionParserConfig", DatatypeEnum::PPTextDetectionParserConfig);
+    datatypeEnum.value("RFDETRParserConfig", DatatypeEnum::RFDETRParserConfig);
+    datatypeEnum.value("SCRFDParserConfig", DatatypeEnum::SCRFDParserConfig);
+    datatypeEnum.value("SuperAnimalParserConfig", DatatypeEnum::SuperAnimalParserConfig);
+    datatypeEnum.value("YuNetParserConfig", DatatypeEnum::YuNetParserConfig);
+    datatypeEnum.value("ClassificationSequenceParserConfig", DatatypeEnum::ClassificationSequenceParserConfig);
+    datatypeEnum.value("MapOutputParserConfig", DatatypeEnum::MapOutputParserConfig);
+    datatypeEnum.value("XFeatMonoParserConfig", DatatypeEnum::XFeatMonoParserConfig);
+    datatypeEnum.value("XFeatStereoParserConfig", DatatypeEnum::XFeatStereoParserConfig);
+#endif  // DEPTHAI_HAVE_BETA
+    datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

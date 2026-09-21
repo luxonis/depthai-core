@@ -1,28 +1,10 @@
 #!/usr/bin/env python3
 
-import argparse
-from pathlib import Path
 import cv2
 import depthai as dai
-import numpy as np
 
-NEURAL_FPS = 8
-STEREO_DEFAULT_FPS = 20
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
-)
-args = parser.parse_args()
-# For better results on OAK4, use a segmentation model like "luxonis/yolov8-instance-segmentation-large:coco-640x480"
-# for depth estimation over the objects mask instead of the full bounding box.
+fps = 20
 modelDescription = dai.NNModelDescription("yolov6-nano")
-size = (640, 400)
-
-if args.depthSource == "stereo":
-    fps = STEREO_DEFAULT_FPS
-else:
-    fps = NEURAL_FPS
 
 class SpatialVisualizer(dai.node.HostNode):
     def __init__(self):
@@ -32,20 +14,12 @@ class SpatialVisualizer(dai.node.HostNode):
         self.link_args(depth, detections, rgb) # Must match the inputs to the process method
 
     def process(self, depthPreview, detections, rgbPreview):
-        depthPreview = depthPreview.getCvFrame()
         rgbPreview = rgbPreview.getCvFrame()
         depthFrameColor = self.processDepthFrame(depthPreview)
         self.displayResults(rgbPreview, depthFrameColor, detections.detections)
 
     def processDepthFrame(self, depthFrame):
-        depthDownscaled = depthFrame[::4]
-        if np.all(depthDownscaled == 0):
-            minDepth = 0
-        else:
-            minDepth = np.percentile(depthDownscaled[depthDownscaled != 0], 1)
-        maxDepth = np.percentile(depthDownscaled, 99)
-        depthFrameColor = np.interp(depthFrame, (minDepth, maxDepth), (0, 255)).astype(np.uint8)
-        return cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
+        return dai.utility.colorizeDepthFrame(depthFrame, colormap=cv2.COLORMAP_HOT).getCvFrame()
 
     def displayResults(self, rgbFrame, depthFrameColor, detections):
         height, width, _ = rgbFrame.shape
@@ -83,27 +57,13 @@ class SpatialVisualizer(dai.node.HostNode):
 # Creates the pipeline and a default device implicitly
 with dai.Pipeline() as p:
     # Define sources and outputs
-    platform = p.getDefaultDevice().getPlatform()
-
-    camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A, sensorFps=fps)
-    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
-    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
-    if args.depthSource == "stereo":
-        depthSource = p.create(dai.node.StereoDepth)
-        depthSource.setExtendedDisparity(True)
-        monoLeft.requestOutput(size).link(depthSource.left)
-        monoRight.requestOutput(size).link(depthSource.right)
-    elif args.depthSource == "neural":
-        depthSource = p.create(dai.node.NeuralDepth).build(
-            monoLeft.requestFullResolutionOutput(),
-            monoRight.requestFullResolutionOutput(),
-            dai.DeviceModelZoo.NEURAL_DEPTH_LARGE,
-        )
-    else:
-        raise ValueError(f"Invalid depth source: {args.depthSource}")
+    colorSockets = p.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
+    camRgb = p.create(dai.node.Camera).build(colorSocket, sensorFps=fps)
+    depth = p.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
 
     spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
-        camRgb, depthSource, modelDescription
+        camRgb, depth, modelDescription
     )
     visualizer = p.create(SpatialVisualizer)
 
@@ -118,6 +78,6 @@ with dai.Pipeline() as p:
         spatialDetectionNetwork.passthrough,
     )
 
-    print("Starting pipeline with depth source: ", args.depthSource)
+    print("Starting pipeline")
 
     p.run()

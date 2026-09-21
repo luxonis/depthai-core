@@ -65,7 +65,7 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     /**
      * Specify the timestamp source
      */
-    void setTimestampSource(TimestampSource type);
+    void setTimestampSource(TimestampSource source);
 
     /**
      * Get the timestamp source
@@ -92,6 +92,11 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
      * Check if the node is set to run on host
      */
     bool runOnHost() const override;
+
+    /**
+     * Validates the timestamp source when inputs come from more than one device.
+     */
+    void buildStage1() override;
 
     void run() override;
 };

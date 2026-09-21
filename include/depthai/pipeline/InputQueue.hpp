@@ -16,6 +16,14 @@ class InputQueue {
      */
     void send(const std::shared_ptr<ADatatype>& msg);
 
+    /**
+     * @brief Try to send a message to the connected input, without waiting for space in the queue
+     *
+     * @param msg: Message to send
+     * @returns True if the message was queued, false if the queue was full
+     */
+    bool trySend(const std::shared_ptr<ADatatype>& msg);
+
    private:
     /**
      * @brief Construct a new Input Queue object. The constructor is private as we only want to expose the relevant methods - only send for now
@@ -32,6 +40,9 @@ class InputQueue {
 
         /** Send message from host*/
         void send(const std::shared_ptr<ADatatype>& msg);
+
+        /** Try to send message from host, without waiting for space in the queue*/
+        bool trySend(const std::shared_ptr<ADatatype>& msg);
 
         void run() override;
         const char* getName() const override;

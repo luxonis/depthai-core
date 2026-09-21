@@ -148,6 +148,27 @@ void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser,
     if(parser.decodingFamily == YoloDecodingFamily::YOLO26) {
         parser.strides = {1};
     }
+    if(metadata.strides) {
+        size_t numYoloOutputs = 0;
+        if(metadata.yoloOutputs)
+            numYoloOutputs = metadata.yoloOutputs->size();
+        else if(head.outputs.has_value()) {
+            for(const auto& name : *head.outputs)
+                if(name.find("_yolo") != std::string::npos) numYoloOutputs++;
+        }
+        DAI_CHECK_V(!metadata.strides->empty(), "`strides` must not be empty.");
+        DAI_CHECK_V(numYoloOutputs > 0, "YOLO outputs must be defined when `strides` is provided.");
+        DAI_CHECK_V(metadata.strides->size() == numYoloOutputs,
+                    "Number of `strides` must match number of YOLO outputs. Got {} strides for {} outputs.",
+                    metadata.strides->size(),
+                    numYoloOutputs);
+        parser.strides.clear();
+        parser.strides.reserve(metadata.strides->size());
+        for(const auto stride : *metadata.strides) {
+            DAI_CHECK_V(stride > 0, "All `strides` values must be positive.");
+            parser.strides.push_back(static_cast<int>(stride));
+        }
+    }
 
     parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
 
@@ -206,6 +227,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 void DetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
     auto& parser = properties.parser;
     resetParser(parser);
+    initialConfig->setConfidenceThreshold(parser.confidenceThreshold);
 
     if(head.parser == "YOLO" || head.parser == "YOLOExtendedParser") {
         configureYOLONetworkParser(parser, head);
@@ -226,7 +248,7 @@ void DetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
         setNumClasses(static_cast<int>(*head.metadata.nClasses));
     }
     if(head.metadata.iouThreshold) {
-        properties.parser.iouThreshold = static_cast<float>(*head.metadata.iouThreshold);
+        setIouThreshold(static_cast<float>(*head.metadata.iouThreshold));
     }
     if(head.metadata.confThreshold) {
         setConfidenceThreshold(static_cast<float>(*head.metadata.confThreshold));
@@ -259,9 +281,9 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
     std::string subtypeStr = name;
     std::transform(subtypeStr.begin(), subtypeStr.end(), subtypeStr.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-    if(subtypeStr == "yolov6r1") return YoloDecodingFamily::R1AF;
-    if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov6" || subtypeStr == "yolov8" || subtypeStr == "yolov10"
-       || subtypeStr == "yolov11" || subtypeStr == "yolov12")
+    if(subtypeStr == "yolov6r1" || subtypeStr == "yolov6") return YoloDecodingFamily::R1AF;
+    if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov8" || subtypeStr == "yolov10" || subtypeStr == "yolov11"
+       || subtypeStr == "yolov12")
         return YoloDecodingFamily::TLBR;
     if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
     if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
@@ -340,11 +362,12 @@ DetectionNetworkType DetectionParser::getNNFamily() const {
 }
 
 void DetectionParser::setConfidenceThreshold(float thresh) {
+    initialConfig->setConfidenceThreshold(thresh);
     properties.parser.confidenceThreshold = thresh;
 }
 
 float DetectionParser::getConfidenceThreshold() const {
-    return properties.parser.confidenceThreshold;
+    return initialConfig->getConfidenceThreshold();
 }
 
 void DetectionParser::setNumClasses(const int numClasses) {
@@ -368,6 +391,7 @@ void DetectionParser::setAnchors(const std::vector<std::vector<std::vector<float
 }
 
 void DetectionParser::setIouThreshold(float thresh) {
+    initialConfig->setIouThreshold(thresh);
     properties.parser.iouThreshold = thresh;
 }
 
@@ -431,7 +455,7 @@ std::map<std::string, std::vector<int>> DetectionParser::getAnchorMasks() const 
 
 /// Get Iou threshold
 float DetectionParser::getIouThreshold() const {
-    return properties.parser.iouThreshold;
+    return initialConfig->getIouThreshold();
 }
 
 std::string DetectionParser::getSubtype() const {
@@ -469,9 +493,20 @@ bool DetectionParser::runOnHost() const {
     return runOnHostVar;
 }
 
+DetectionParser::Properties& DetectionParser::getProperties() {
+    properties.parser.confidenceThreshold = initialConfig->getConfidenceThreshold();
+    properties.parser.iouThreshold = initialConfig->getIouThreshold();
+    return properties;
+}
+
 void DetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     logger->info("Detection parser running on host.");
+
+    auto runtimeProperties = properties;
+    runtimeProperties.parser.confidenceThreshold = initialConfig->getConfidenceThreshold();
+    runtimeProperties.parser.iouThreshold = initialConfig->getIouThreshold();
+    const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     using namespace std::chrono;
     while(mainLoop()) {
@@ -479,6 +514,13 @@ void DetectionParser::run() {
         std::shared_ptr<dai::NNData> sharedInputData;
         {
             auto blockEvent = this->inputBlockEvent();
+            auto config = inputConfigSync ? inputConfig.get<dai::DetectionParserConfig>() : inputConfig.tryGet<dai::DetectionParserConfig>();
+            if(config) {
+                runtimeProperties.parser.confidenceThreshold = config->getConfidenceThreshold();
+                runtimeProperties.parser.iouThreshold = config->getIouThreshold();
+            } else if(inputConfigSync) {
+                logger->error("Invalid input config.");
+            }
             sharedInputData = input.get<dai::NNData>();
         }
         auto outDetections = std::make_shared<dai::ImgDetections>();
@@ -505,11 +547,11 @@ void DetectionParser::run() {
         // Parse detections
         switch(properties.parser.nnFamily) {
             case DetectionNetworkType::YOLO: {
-                decodeYolo(inputData, *outDetections);
+                decodeYolo(inputData, *outDetections, runtimeProperties);
                 break;
             }
             case DetectionNetworkType::MOBILENET: {
-                decodeMobilenet(inputData, *outDetections, properties.parser.confidenceThreshold);
+                decodeMobilenet(inputData, *outDetections, runtimeProperties.parser.confidenceThreshold);
                 break;
             }
             default: {
@@ -652,23 +694,23 @@ void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& o
 #endif
 }
 
-void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections) {
+void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections, DetectionParserProperties& runtimeProperties) {
     std::shared_ptr<spdlog::async_logger>& logger = ThreadedNode::pimpl->logger;
     switch(properties.parser.decodingFamily) {
-        case YoloDecodingFamily::R1AF:  // anchor free: yolo v6r1
-            utilities::DetectionParserUtils::decodeR1AF(nnData, outDetections, properties, logger);
+        case YoloDecodingFamily::R1AF:  // anchor free center/size: yolo v6, v6r1
+            utilities::DetectionParserUtils::decodeR1AF(nnData, outDetections, runtimeProperties, logger);
             break;
         case YoloDecodingFamily::v3AB:  // anchor based yolo v3 v3-Tiny
-            utilities::DetectionParserUtils::decodeV3AB(nnData, outDetections, properties, logger);
+            utilities::DetectionParserUtils::decodeV3AB(nnData, outDetections, runtimeProperties, logger);
             break;
         case YoloDecodingFamily::v5AB:  // anchor based yolo v5, v7, P
-            utilities::DetectionParserUtils::decodeV5AB(nnData, outDetections, properties, logger);
+            utilities::DetectionParserUtils::decodeV5AB(nnData, outDetections, runtimeProperties, logger);
             break;
-        case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8 v10 v11
-            utilities::DetectionParserUtils::decodeTLBR(nnData, outDetections, properties, logger);
+        case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8, v10, v11
+            utilities::DetectionParserUtils::decodeTLBR(nnData, outDetections, runtimeProperties, logger);
             break;
         case YoloDecodingFamily::YOLO26:  // already decoded TLBR model
-            utilities::DetectionParserUtils::decodeEndToEnd(nnData, outDetections, properties, logger);
+            utilities::DetectionParserUtils::decodeEndToEnd(nnData, outDetections, runtimeProperties, logger);
             break;
         default:
             logger->error("Unknown Yolo decoding family. 'R1AF', 'v3AB', 'v5AB', 'TLBR' and 'YOLO26' are supported.");

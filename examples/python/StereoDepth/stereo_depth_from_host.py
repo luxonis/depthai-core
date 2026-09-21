@@ -1125,9 +1125,6 @@ stereo.setFocalLength(focal)
 def convertToCv2Frame(name, image, config):
 
     maxDisp = config.getMaxDisparity()
-    subpixelLevels = pow(2, config.algorithmControl.subpixelFractionalBits)
-    subpixel = config.algorithmControl.enableSubpixel
-    dispIntegerLevels = maxDisp if not subpixel else maxDisp / subpixelLevels
 
     frame = image.getFrame()
 
@@ -1140,8 +1137,9 @@ def convertToCv2Frame(name, image, config):
             if np.isnan(frame).any() or np.isinf(frame).any():
                 frame = np.nan_to_num(frame, nan=0, posinf=0, neginf=0)
 
-        frame = np.clip(frame * 255. / dispIntegerLevels, 0, 255).astype(np.uint8)
-        frame = cv2.applyColorMap(frame, cv2.COLORMAP_HOT)
+        depthImg = dai.ImgFrame()
+        depthImg.setCvFrame(frame.astype(np.float32), dai.ImgFrame.Type.GRAYF16)
+        frame = dai.utility.colorizeDepthFrame(depthImg,colormap=cv2.COLORMAP_HOT).getCvFrame()
     elif "confidence_map" in name:
         pass
     elif name == "disparity_cost_dump":

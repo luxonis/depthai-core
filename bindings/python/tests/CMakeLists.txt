@@ -22,7 +22,16 @@ set(PYBIND11_TEST_FILES
     "dynamic_calibration_test.py"
     "auto_calibration_config_test.py"
     "host_node_create_deprecation_test.py"
+    "pipeline_create_device_arg_test.py"
 )
+
+if(DEPTHAI_BUILD_BETA)
+    list(APPEND PYBIND11_TEST_FILES
+        "beta_img_detections_filter_test.py"
+        "beta_parser_config_test.py"
+        "beta_stitching_test.py"
+    )
+endif()
 
 string(REPLACE ".cpp" ".py" PYBIND11_PYTEST_FILES "${PYBIND11_TEST_FILES}")
 

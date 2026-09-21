@@ -25,6 +25,7 @@ namespace {
 constexpr int kPort = 8955;
 constexpr char kTelemetryUrl[] = "http://localhost:8955";
 constexpr char kTelemetryApiKey[] = "phc_depthai_telemetry_test";
+constexpr char kTelemetryCorrelationId[] = "depthai-telemetry-test-correlation-id";
 constexpr auto kRequestTimeout = std::chrono::seconds(20);
 
 using Json = nlohmann::json;
@@ -151,6 +152,7 @@ subprocess::env_map_t makeChildEnv(const std::filesystem::path& tempHome) {
         {makeEnvString("DEPTHAI_TELEMETRY_URL"), makeEnvString(kTelemetryUrl)},
         {makeEnvString("DEPTHAI_TELEMETRY_API_KEY"), makeEnvString(kTelemetryApiKey)},
         {makeEnvString("OAKAGENT_PRIVATE_HTTP_PWD"), makeEnvString("telemetry-test")},
+        {makeEnvString("LUXONIS_TELEMETRY_CORRELATION_ID"), makeEnvString(kTelemetryCorrelationId)},
         {makeEnvString("HOME"), makeEnvString(tempHome.string())},
     };
 }
@@ -390,6 +392,9 @@ void validateRequests(const std::vector<ReceivedRequest>& requests) {
     REQUIRE_FALSE(depthaiLoadProperties.value("host_os_version", std::string{}).empty());
     REQUIRE(depthaiLoadProperties.value("is_oak_app", false));
     REQUIRE_FALSE(depthaiLoadProperties.value("uses_python", true));
+    REQUIRE(depthaiLoadProperties.contains("correlation_id"));
+    REQUIRE(depthaiLoadProperties["correlation_id"].is_string());
+    REQUIRE(depthaiLoadProperties["correlation_id"].get<std::string>() == kTelemetryCorrelationId);
     const auto deviceConstructorProperties = deviceConstructor.body["properties"];
     REQUIRE_FALSE(deviceConstructorProperties.value("$session_id", std::string{}).empty());
     REQUIRE(deviceConstructorProperties.find("session_id") == deviceConstructorProperties.end());

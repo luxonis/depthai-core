@@ -38,30 +38,22 @@ int main() {
     const auto size = std::make_pair(640, 400);
 
     // ── Cameras ──────────────────────────────────────────────────────
-    auto left = pipeline.create<dai::node::Camera>();
-    auto right = pipeline.create<dai::node::Camera>();
+    auto colorSockets = device->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
     auto color = pipeline.create<dai::node::Camera>();
-
-    left->build(dai::CameraBoardSocket::CAM_B);
-    right->build(dai::CameraBoardSocket::CAM_C);
-    color->build(dai::CameraBoardSocket::CAM_A);
-
-    // ── StereoDepth ──────────────────────────────────────────────────
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-    left->requestOutput(size)->link(stereo->left);
-    right->requestOutput(size)->link(stereo->right);
+    color->build(colorSocket);
 
     // ── Align depth to color camera ──────────────────────────────────
     auto colorOut = color->requestOutput(size, dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
 
-    auto align = pipeline.create<dai::node::ImageAlign>();
-    stereo->depth.link(align->input);
-    colorOut->link(align->inputAlignTo);
+    auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
+    depth->setAlignTo(*colorOut);
 
     // ── PointCloud node ──────────────────────────────────────────────
     auto pc = pipeline.create<dai::node::PointCloud>();
     pc->setRunOnHost(true);
-    align->outputAligned.link(pc->inputDepth);
+    depth->depth().link(pc->inputDepth);
     colorOut->link(pc->getColorInput());
 
     // Publish the point cloud to the remote visualizer

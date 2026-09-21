@@ -63,13 +63,6 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     std::shared_ptr<SegmentationParser> build(Node::Output& nnInput, const Model& model);
 
     /**
-     * @brief Build SegmentationParser node
-     * @param nnInput: Output to link
-     * @param nnArchive: Neural network archive
-     */
-    std::shared_ptr<SegmentationParser> build(Node::Output& nnInput, const NNArchive& nnArchive);
-
-    /**
      * @brief Build SegmentationParser node with the specific head from NNArchive. Useful when model outputs multiple segmentation heads.
      * @param nnInput: Output to link
      * @param head: Specific head from NNArchive to use for this parser

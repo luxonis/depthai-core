@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.7.1" LANGUAGES CXX C)
+project(depthai VERSION "3.10.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -202,6 +202,9 @@ set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
+    if(DEPTHAI_BUILD_BETA)
+        list(APPEND REQUIRED_OPENCV_LIBRARIES "opencv_features2d" "opencv_stitching")
+    endif()
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -212,6 +215,9 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+        if(DEPTHAI_BUILD_BETA AND "opencv_stitching" IN_LIST OpenCV_LIBS)
+            set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
+        endif()
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
     else()
@@ -320,6 +326,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/Align.cpp
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
@@ -346,6 +353,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/FocusController.cpp
     src/pipeline/node/GPUStereo.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
+    src/beta/node/ToFStereoFusion.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/Transformable.cpp
@@ -357,6 +365,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageFiltersConfig.cpp
     src/pipeline/datatype/ImageAlignConfig.cpp
+    src/pipeline/datatype/AlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetectionsT.cpp
@@ -368,6 +377,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
+    src/pipeline/datatype/DetectionParserConfig.cpp
     src/pipeline/datatype/SegmentationParserConfig.cpp
     src/pipeline/datatype/AprilTags.cpp
     src/pipeline/datatype/AprilTagConfig.cpp
@@ -436,6 +446,67 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+if(DEPTHAI_BUILD_BETA)
+    list(APPEND TARGET_CORE_SOURCES
+        src/beta/BetaNode.cpp
+        src/beta/datatype/Classifications.cpp
+        src/beta/datatype/Clusters.cpp
+        src/beta/datatype/ImgDetectionsFilterConfig.cpp
+        src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/Lines.cpp
+        src/beta/datatype/Map2D.cpp
+        src/beta/datatype/Predictions.cpp
+        src/beta/datatype/ClassificationSequenceParserConfig.cpp
+        src/beta/datatype/FastSAMParserConfig.cpp
+        src/beta/datatype/HRNetParserConfig.cpp
+        src/beta/datatype/MLSDParserConfig.cpp
+        src/beta/datatype/MPPalmDetectionParserConfig.cpp
+        src/beta/datatype/MapOutputParserConfig.cpp
+        src/beta/datatype/PPTextDetectionParserConfig.cpp
+        src/beta/datatype/RFDETRParserConfig.cpp
+        src/beta/datatype/SCRFDParserConfig.cpp
+        src/beta/datatype/SuperAnimalParserConfig.cpp
+        src/beta/datatype/XFeatMonoParserConfig.cpp
+        src/beta/datatype/XFeatStereoParserConfig.cpp
+        src/beta/datatype/YuNetParserConfig.cpp
+        src/beta/node/ClassificationParser.cpp
+        src/beta/node/ClassificationSequenceParser.cpp
+        src/beta/node/EmbeddingsParser.cpp
+        src/beta/node/FastSAMParser.cpp
+        src/beta/node/HRNetParser.cpp
+        src/beta/node/ImageOutputParser.cpp
+        src/beta/node/ImgDetectionsFilter.cpp
+        src/beta/node/KeypointParser.cpp
+        src/beta/node/LaneDetectionParser.cpp
+        src/beta/node/MapOutputParser.cpp
+        src/beta/node/MLSDParser.cpp
+        src/beta/node/MPPalmDetectionParser.cpp
+        src/beta/node/PPTextDetectionParser.cpp
+        src/beta/node/RegressionParser.cpp
+        src/beta/node/RFDETRParser.cpp
+        src/beta/node/SCRFDParser.cpp
+        src/beta/node/SuperAnimalParser.cpp
+        src/beta/node/Stitching.cpp
+        src/beta/node/XFeatMonoParser.cpp
+        src/beta/node/XFeatStereoParser.cpp
+        src/beta/node/YuNetParser.cpp
+        src/beta/properties/ImgDetectionsFilterProperties.cpp
+        src/beta/utilities/Classification/ClassificationUtils.cpp
+        src/beta/utilities/Detection/DetectionUtils.cpp
+        src/beta/utilities/Detection/MaskUtils.cpp
+        src/beta/utilities/FastSAM/FastSAMUtils.cpp
+        src/beta/utilities/Keypoints/KeypointsUtils.cpp
+        src/beta/utilities/LaneDetection/LaneDetectionUtils.cpp
+        src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
+        src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/PPText/PPTextUtils.cpp
+        src/beta/utilities/RFDETR/RFDETRUtils.cpp
+        src/beta/utilities/SCRFD/SCRFDUtils.cpp
+        src/beta/utilities/XFeat/XFeatUtils.cpp
+        src/beta/utilities/YuNet/YuNetUtils.cpp
+    )
+endif()
+
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
     list(APPEND TARGET_CORE_SOURCES
         src/utility/EventsManager.cpp
@@ -467,6 +538,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 set(TARGET_OPENCV_SOURCES
+    src/opencv/ColorizeDepthFrame.cpp
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/HostCamera.cpp
@@ -476,6 +548,14 @@ set(TARGET_OPENCV_SOURCES
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
+
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_SUPPORT)
+    list(APPEND TARGET_OPENCV_SOURCES
+        src/beta/utilities/Stitching/Stitching.cpp
+        src/beta/utilities/Stitching/FixedPanoramaCompositor.cpp
+        src/beta/utilities/Stitching/PlanarStitcher.cpp
+    )
+endif()
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 
@@ -526,6 +606,12 @@ add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
+if(DEPTHAI_BUILD_BETA)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BETA)
+endif()
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAVE_OPENCV_STITCHING)
+endif()
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install
@@ -1015,6 +1101,9 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_STITCHING)
+    endif()
     # Add public dependency to depthai::core library
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
 

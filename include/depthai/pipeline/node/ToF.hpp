@@ -28,6 +28,12 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
    protected:
     Properties& getProperties();
+    /**
+     * Input for raw sensor frames used by the RVC4 host implementation.
+     * This stays internal to the node group API, but must remain on the base
+     * node so the auto-created ToF camera can be linked in the pipeline schema.
+     */
+    Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
    public:
     ToFBase() = default;
@@ -66,14 +72,17 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
      */
     CameraBoardSocket getBoardSocket() const;
 
+    /**
+     * Enable or disable undistortion for depth and auxiliary outputs.
+     *
+     * @param enable Whether to undistort the outputs.
+     * @note Undistortion is supported on RVC4. RVC2 logs a warning and leaves outputs unchanged.
+     * @return This ToF base node.
+     */
+    std::shared_ptr<ToFBase> setOutputUndistortion(bool enable);
+
    private:
     friend class ToF;
-    /**
-     * Input for raw sensor frames used by the RVC4 host implementation.
-     * This stays internal to the node group API, but must remain on the base
-     * node so the auto-created ToF camera can be linked in the pipeline schema.
-     */
-    Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     bool isBuilt = false;
     uint32_t maxWidth = 0;
@@ -82,6 +91,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
 class ToF : public DeviceNodeGroup {
    public:
+    ToF() : ToF(nullptr) {}
     ToF(const std::shared_ptr<Device>& device);
 
     ~ToF() override;
@@ -113,6 +123,15 @@ class ToF : public DeviceNodeGroup {
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ToFConfig::Profile presetMode = dai::ToFConfig::Profile::MID_RANGE,
                                std::optional<float> fps = std::nullopt);
+
+    /**
+     * Enable or disable undistortion for depth and auxiliary outputs.
+     *
+     * @param enable Whether to undistort the outputs.
+     * @note Undistortion is supported on RVC4. RVC2 logs a warning and leaves outputs unchanged.
+     * @return This ToF node.
+     */
+    std::shared_ptr<ToF> setOutputUndistortion(bool enable);
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
     void postBuildStage() override;

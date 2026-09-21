@@ -28,6 +28,12 @@ namespace node {
 
 namespace {
 
+bool isExpectedCalibrationInfoMessage(const std::string& message) {
+    return message == "Not enough coverage" || message == "Not enough data" || message == "No data"
+           || message == "Requested sensors are not connected by measurement pairs"
+           || message == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more";
+}
+
 struct DynamicCalibrationTelemetryAggregateState {
     std::mutex mutex;
     std::string telemetryDeviceId;
@@ -527,7 +533,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges);
     if(!dclResult.passed()) {
         auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
-        logger->warn("Calibration failed: {}", dclResult.errorMessage());
+        if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
+            logger->info("Calibration failed: {}", dclResult.errorMessage());
+        } else {
+            logger->warn("Calibration failed: {}", dclResult.errorMessage());
+        }
 
         calibrationOutput.send(result);
         auto& telemetryState = *pimplDCL->telemetryAggregateState;

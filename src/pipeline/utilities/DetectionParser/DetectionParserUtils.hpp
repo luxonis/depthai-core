@@ -19,7 +19,7 @@ struct DetectionCandidate {
     std::optional<std::string> labelName;
 };
 /**
-Decode anchor free yolo v6r1 with sigmoid assisted center detection
+Decode YOLOv6 R1 raw center/size predictions.
 */
 void decodeR1AF(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,

@@ -110,3 +110,23 @@ TEST_CASE("Normalized point outputs stay normalized outside unit range") {
         REQUIRE(projected.isNormalized());
     }
 }
+
+TEST_CASE("RotatedRect getPoints keeps the normalization flag") {
+    SECTION("normalized rect produces normalized corner points") {
+        dai::RotatedRect rect(dai::Point2f(0.5, 0.5, true), dai::Size2f(0.4, 0.2, true), 30);
+        REQUIRE(rect.isNormalized());
+        for(const auto& point : rect.getPoints()) {
+            REQUIRE(point.hasNormalized);
+            REQUIRE(point.isNormalized());
+        }
+    }
+
+    SECTION("denormalized rect produces denormalized corner points") {
+        dai::RotatedRect rect(dai::Point2f(320, 240, false), dai::Size2f(200, 100, false), 30);
+        REQUIRE_FALSE(rect.isNormalized());
+        for(const auto& point : rect.getPoints()) {
+            REQUIRE(point.hasNormalized);
+            REQUIRE_FALSE(point.isNormalized());
+        }
+    }
+}

@@ -40,6 +40,33 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             [](SpatialDetectionNetwork& self,
                const std::shared_ptr<Camera>& input,
                const node::DepthSource& depthSource,
+               const SpatialDetectionNetwork::Model& model,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, depthSource, model, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("depthSource"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg("resizeMode") = std::nullopt,
+            DOC(dai, node, SpatialDetectionNetwork, build))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               const SpatialDetectionNetwork::Model& model,
+               const ImgFrameCapability& capability) { return self.build(input, depthSource, model, capability); },
+            py::arg("input"),
+            py::arg("depthSource"),
+            py::arg("model"),
+            py::arg("capability"),
+            DOC(dai, node, SpatialDetectionNetwork, build, 2))
+        // Backwards-compatible build methods forwarding to the consolidated Model path
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
                NNModelDescription modelDesc,
                std::optional<float> fps,
                std::optional<dai::ImgResizeMode> resizeMode) {

@@ -234,6 +234,26 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     )
 
     private_data(
+        URL "https://artifacts.luxonis.com/api/v1/repositories/luxonis-depthai-data-local/download/misc/parser_testing/images/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f/nnData.bin"
+        SHA1 "298b0b69a22cc1fbd89ec95e9de5f2865a6c3f77"
+        FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_data.bin"
+        LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_data
+    )
+
+    private_data(
+        URL "https://artifacts.luxonis.com/api/v1/repositories/luxonis-depthai-data-local/download/misc/parser_testing/images/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f/metadata.bin"
+        SHA1 "ebb04c34eaae80e5009c8fb2f4b78d09d64314d5"
+        FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_nn_metadata.bin"
+        LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_nn_metadata
+    )
+    private_data(
+        URL "https://artifacts.luxonis.com/api/v1/repositories/luxonis-depthai-data-local/download/yolo_v8_seg_640x352_kitchen.dai"
+        SHA1 "40b3973f3a6c87d256211a05f8c23abd1d11982a"
+        FILE "yolo_v8_seg_640x352_kitchen.dai"
+        LOCATION yolo_v8_seg_640x352_kitchen_dai
+    )
+
+    private_data(
         URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
         SHA1 "cf947acf1c210efba34c363fe6d8fd8d02293601"
         FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
@@ -245,6 +265,13 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         SHA1 "5f93fba780c07ab858c8d5bef3a591078e021ff5"
         FILE "test_recording.tar"
         LOCATION test_recording
+    )
+
+        private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/neural_depth_recording.tar"
+        SHA1 "fa2248c56fc16f3ced3d4a4d39b3ce32a889a494"
+        FILE "neural_depth_recording.tar"
+        LOCATION neural_depth_recording
     )
 
     private_data(
@@ -265,6 +292,13 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         SHA1 "3b48c23684ef22a6a0cebd16594afa69ceaed2d5"
         FILE "img_transformations_test_data.tar.xz"
         LOCATION img_transformations_test_data
+    )
+
+        private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/depthai-beta-parser-test-data.tar.xz"
+        SHA1 "a49bd64e4d2066f2a3d70b93e5b5d1c48ac9ceef"
+        FILE "depthai-beta-parser-test-data.tar.xz"
+        LOCATION beta_parser_test_nndata
     )
 endif()
 
@@ -318,7 +352,7 @@ function(dai_add_test test_name test_src)
 
     # Link to core and Catch2 testing framework
     set(DEPTHAI_TARGET depthai::core)
-    if(NOT DEPTHAI_MERGED_TARGET)
+    if(NOT DEPTHAI_MERGED_TARGET AND TARGET depthai::opencv)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
     target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
@@ -374,6 +408,9 @@ function(dai_set_test_labels test_name)
         endif()
     endforeach()
     set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
+    if("ci_nightly" IN_LIST expanded_labels)
+        set_tests_properties(${test_name} PROPERTIES TIMEOUT 3000)
+    endif()
     if(test_env_overrides)
         set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "${test_env_overrides}")
     endif()
@@ -397,6 +434,7 @@ endfunction()
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
 target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
 target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+target_compile_definitions(test_wrapper PRIVATE DEVICE_SEARCH_TIMEOUT_SECONDS=${DEPTHAI_TEST_DEVICE_SEARCH_TIMEOUT})
 
 add_executable(telemetry_test_child src/ondevice_tests/telemetry_test_child.cpp)
 add_default_flags(telemetry_test_child LEAN)
@@ -424,9 +462,13 @@ dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_t
 dai_set_test_labels(calibration_cba_merge_test onhost)
 set_property(TEST calibration_cba_merge_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_ALLOW_FACTORY_FLASHING=868632271")
 
-# XLInkInHost test 
+# XLInkInHost test
 dai_add_test(xlink_in_host_test src/onhost_tests/pipeline/node/internal/XLinkInHostTest.cpp)
 dai_set_test_labels(xlink_in_host_test onhost ci)
+
+# Multi-device pipeline API test (host only)
+dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
+dai_set_test_labels(multi_device_pipeline_test onhost)
 
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -445,6 +487,14 @@ dai_set_test_labels(naming_test onhost ci)
 
 # Image transformations test
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # The protobuf round trip uses generated message types directly and includes
+    # src/utility/ProtoSerialize.hpp, which resolves depthai headers relative to
+    # include/depthai. Keep protobuf private to depthai::core, but link this
+    # consumer to the generated messages.
+    target_include_directories(image_transformations_test PRIVATE ${CMAKE_SOURCE_DIR}/include/depthai)
+    target_link_libraries(image_transformations_test PRIVATE messages)
+endif()
 dai_set_test_labels(image_transformations_test onhost ci)
 
 # Matrix operations tests
@@ -466,6 +516,10 @@ dai_set_test_labels(message_queue_test onhost ci)
 # StreamMessageParser tests
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 dai_set_test_labels(stream_message_parser_test onhost ci)
+
+# Datatype hierarchy completeness
+dai_add_test(datatype_enum_test src/onhost_tests/pipeline/datatype/datatype_enum_test.cpp)
+dai_set_test_labels(datatype_enum_test onhost ci)
 
 # Bootloader version tests
 dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
@@ -489,6 +543,10 @@ dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
 dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
+
+# Telemetry fork safety test
+dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
+dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
 
 # Circular buffer test
 dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
@@ -535,6 +593,23 @@ dai_set_test_labels(gpu_stereo_node_test onhost ci)
 # FocusController crop-geometry tests (host-only)
 dai_add_test(focus_controller_test src/onhost_tests/pipeline/node/focus_controller_test.cpp)
 dai_set_test_labels(focus_controller_test onhost ci)
+
+if(DEPTHAI_BUILD_BETA)
+    # Stitching device-node configuration tests (must not require host OpenCV support)
+    dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+    dai_set_test_labels(stitching_device_node_test onhost ci)
+
+    if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
+        dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+        target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+        dai_set_test_labels(stitching_node_test onhost ci)
+    endif()
+
+    if(DEPTHAI_HAVE_OPENCV_STITCHING)
+        dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+        dai_set_test_labels(planar_stitching_node_test onhost ci)
+    endif()
+endif()
 
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
@@ -595,7 +670,11 @@ dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
     dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
-    target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
+    target_compile_definitions(
+        dynamic_calibration_test
+        PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}"
+                HOLISTIC_RECORDING_PATH="${holistic_recording}"
+    )
 endif()
 
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
@@ -687,6 +766,29 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # ProtoSerializable save/load test
+    dai_add_test(proto_serializable_test src/onhost_tests/proto_serializable_test.cpp)
+    # The test directly uses generated protobuf message types.  Keep protobuf
+    # private to depthai::core, but link this consumer to the generated messages.
+    target_link_libraries(proto_serializable_test PRIVATE messages)
+    dai_set_test_labels(proto_serializable_test ci)
+endif()
+
+if(DEPTHAI_BUILD_BETA)
+    dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
+    dai_set_test_labels(beta_parser_config_test onhost ci)
+
+    dai_add_test(beta_parser_properties_test src/onhost_tests/beta_parser_properties_test.cpp)
+    dai_set_test_labels(beta_parser_properties_test onhost ci)
+
+    dai_add_test(beta_parser_test src/onhost_tests/beta_parser_test.cpp)
+    dai_set_test_labels(beta_parser_test onhost ci)
+    target_compile_definitions(beta_parser_test PRIVATE
+        BETA_PARSER_TEST_DATA_PATH="${beta_parser_test_nndata}"
+    )
+endif()
+
 # GPU availability test
 dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)
 dai_set_test_labels(gpu_availability_test ondevice rvc4)
@@ -713,6 +815,15 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
 endif()
 
+# Synthetic DetectionParser runtime tests do not require model downloads.
+if(DEPTHAI_XTENSOR_SUPPORT)
+    dai_add_test(detection_parser_runtime_test src/onhost_tests/detection_parser_runtime_test.cpp)
+    dai_set_test_labels(detection_parser_runtime_test onhost ci)
+    dai_add_test(detection_parser_runtime_device_test src/onhost_tests/detection_parser_runtime_test.cpp)
+    target_compile_definitions(detection_parser_runtime_device_test PRIVATE DETECTION_PARSER_TEST_DEVICE)
+    dai_set_test_labels(detection_parser_runtime_device_test ondevice rvc2_all rvc4 ci)
+endif()
+
 # DetectionParser test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(detection_parser_test src/ondevice_tests/pipeline/node/detection_parser_test.cpp)
@@ -730,6 +841,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FIRE_VIDEO="${fire_video}"
         KITCHEN_IMAGE_PATH="${kitchen_image}"
         YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2}"
+        YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_NN_DATA="${yolo_v8_seg_640x352_kitchen_dai}"
     )
     dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
 endif()
@@ -798,6 +910,14 @@ dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
+# Align test
+dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
+dai_set_test_labels(align_node_test ondevice rvc4 ci)
+
+# Align device execution test (device-side Align is only available on RVC4)
+dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)
+dai_set_test_labels(align_node_device_test ondevice rvc4 ci)
+
 # Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
 dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
@@ -852,6 +972,11 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
     dai_set_test_labels(replay_test onhost ci)
     target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
+    target_include_directories(replay_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include/depthai)
+    if(DEPTHAI_ENABLE_PROTOBUF)
+        # The RGBD replay case directly instantiates a generated protobuf message.
+        target_link_libraries(replay_test PRIVATE messages)
+    endif()
 endif()
 
 # Camera tests
@@ -859,12 +984,8 @@ dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
-dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci noreplayci)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
-
-dai_add_test(camera_fps_config_part_2_test src/ondevice_tests/pipeline/node/camera_fps_config_test_part_2.cpp)
-dai_set_test_labels(camera_fps_config_part_2_test ondevice rvc2_all rvc4 ci noreplayci)
-set_property(TEST camera_fps_config_part_2_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -872,6 +993,9 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
     target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 endif()
+
+dai_add_test(video_encoder_latency_test src/ondevice_tests/video_encoder_latency_test.cpp)
+dai_set_test_labels(video_encoder_latency_test ondevice rvc4 rvc4rgb ci noreplayci)
 
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_test.cpp)
@@ -886,7 +1010,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_depth_node_test src/ondevice_tests/neural_depth_node_test.cpp)
     dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci noreplayci)
     target_compile_definitions(neural_depth_node_test PRIVATE
-        NEURAL_REPLAY_PATH="${test_recording}"
+        NEURAL_REPLAY_PATH="${neural_depth_recording}"
         NEURAL_CALIBRATION_PATH="${test_calib}"
     )
     # TODO(Morato) - shouldn't be needed, but AUTOCALIBRATION seems to impact the FPS a bit at the beginning

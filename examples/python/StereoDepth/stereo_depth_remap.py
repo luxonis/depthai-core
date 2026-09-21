@@ -1,6 +1,7 @@
 import depthai as dai
 import cv2
 import numpy as np
+import time
 
 def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
     """
@@ -24,15 +25,8 @@ def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
     # Draw the rectangle on the frame
     cv2.polylines(frame, [box], isClosed=True, color=color, thickness=thickness)
 
-def processDepthFrame(depthFrame):
-    depth_downscaled = depthFrame[::4]
-    if np.all(depth_downscaled == 0):
-        min_depth = 0
-    else:
-        min_depth = np.percentile(depth_downscaled[depth_downscaled != 0], 1)
-    max_depth = np.percentile(depth_downscaled, 99)
-    depthFrameColor = np.interp(depthFrame, (min_depth, max_depth), (0, 255)).astype(np.uint8)
-    return cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
+def processDepthFrame(depthFrame: dai.ImgFrame):
+    return dai.utility.colorizeDepthFrame(depthFrame, colormap=cv2.COLORMAP_HOT).getCvFrame()
 
 with dai.Pipeline() as pipeline:
     color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
@@ -57,6 +51,7 @@ with dai.Pipeline() as pipeline:
     stereoOut = stereo.depth.createOutputQueue()
 
     pipeline.start()
+    lastPrintTime = 0.0
     while pipeline.isRunning():
         colorFrame = colorOut.get()
         stereoFrame = stereoOut.get()
@@ -65,13 +60,16 @@ with dai.Pipeline() as pipeline:
         assert stereoFrame.validateTransformations()
 
         clr = colorFrame.getCvFrame()
-        depth = processDepthFrame(stereoFrame.getCvFrame())
+        depth = processDepthFrame(stereoFrame)
 
         rect = dai.RotatedRect(dai.Point2f(300, 200), dai.Size2f(200, 100), 10)
         remappedRect = colorFrame.getTransformation().remapRectTo(stereoFrame.getTransformation(), rect)
 
-        print(f"Original rect x: {rect.center.x} y: {rect.center.y} width: {rect.size.width} height: {rect.size.height} angle: {rect.angle}")
-        print(f"Remapped rect x: {remappedRect.center.x} y: {remappedRect.center.y} width: {remappedRect.size.width} height: {remappedRect.size.height} angle: {remappedRect.angle}")
+        now = time.monotonic()
+        if now - lastPrintTime >= 1.0:
+            print(f"Original rect x: {rect.center.x} y: {rect.center.y} width: {rect.size.width} height: {rect.size.height} angle: {rect.angle}")
+            print(f"Remapped rect x: {remappedRect.center.x} y: {remappedRect.center.y} width: {remappedRect.size.width} height: {remappedRect.size.height} angle: {remappedRect.angle}")
+            lastPrintTime = now
 
         draw_rotated_rectangle(clr, (rect.center.x, rect.center.y), (rect.size.width, rect.size.height), rect.angle, (255, 0, 0))
         draw_rotated_rectangle(depth, (remappedRect.center.x, remappedRect.center.y), (remappedRect.size.width, remappedRect.size.height), remappedRect.angle, (255, 0, 0))

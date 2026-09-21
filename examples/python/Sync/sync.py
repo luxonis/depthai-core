@@ -1,3 +1,5 @@
+import time
+
 import depthai as dai
 
 pipeline = dai.Pipeline()
@@ -13,9 +15,13 @@ right.requestFullResolutionOutput().link(sync.inputs["right"])
 outQueue = sync.out.createOutputQueue()
 pipeline.start()
 
+lastPrintTime = 0.0
 
 while pipeline.isRunning():
     messageGroup : dai.MessageGroup = outQueue.get()
     left = messageGroup["left"]
     right = messageGroup["right"]
-    print(f"Timestamps, message group {messageGroup.getTimestamp()}, left {left.getTimestamp()}, right {right.getTimestamp()}")
+    now = time.monotonic()
+    if now - lastPrintTime >= 1.0:
+        print(f"Timestamps, message group {messageGroup.getTimestamp()}, left {left.getTimestamp()}, right {right.getTimestamp()}")
+        lastPrintTime = now

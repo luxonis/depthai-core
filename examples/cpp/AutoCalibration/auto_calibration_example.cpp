@@ -9,25 +9,6 @@
 
 #include "depthai/depthai.hpp"
 
-// Visualization helper
-void showDepth(const cv::Mat& depthFrame, const std::string& windowName = "Depth", int minDistance = 500, int maxDistance = 5000) {
-    if(maxDistance <= minDistance) return;
-
-    cv::Mat clipped = depthFrame.clone();
-    clipped.setTo(minDistance, depthFrame < minDistance);
-    clipped.setTo(maxDistance, depthFrame > maxDistance);
-
-    cv::Mat displayFrame;
-    double scale = 255.0 / (maxDistance - minDistance);
-    double offset = -minDistance * scale;
-    clipped.convertTo(displayFrame, CV_8UC1, scale, offset);
-
-    cv::Mat colorMap;
-    cv::applyColorMap(displayFrame, colorMap, cv::COLORMAP_TURBO);
-
-    cv::imshow(windowName, colorMap);
-}
-
 std::tuple<double, double, double> rotationMatrixToEulerAngles(const cv::Matx33d& rotationMatrix) {
     constexpr double kPi = 3.14159265358979323846;
     const double sy = std::sqrt(rotationMatrix(0, 0) * rotationMatrix(0, 0) + rotationMatrix(1, 0) * rotationMatrix(1, 0));
@@ -111,7 +92,7 @@ int main() {
     // Nodes
     auto camLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto camRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto depth = pipeline.create<dai::node::Depth>();
 
     // AutoCalibration node
     auto dcWorker = pipeline.create<dai::node::AutoCalibration>();
@@ -125,13 +106,9 @@ int main() {
     config->validationSetSize = 5;
     config->dataConfidenceThreshold = 0.3;
 
-    // Links
-    camLeft->requestOutput({1280, 800})->link(stereo->left);
-    camRight->requestOutput({1280, 800})->link(stereo->right);
-
     // Queues
     auto workerOutputQueue = dcWorker->output.createOutputQueue();
-    auto stereoOut = stereo->depth.createOutputQueue();
+    auto stereoOut = depth->depth().createOutputQueue();
 
     pipeline.start();
 
@@ -148,7 +125,7 @@ int main() {
         }
 
         auto depth = stereoOut->get<dai::ImgFrame>();
-        showDepth(depth->getCvFrame(), "Depth", 500, 5000);
+        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*depth, 500.0f, 12000.0f, cv::COLORMAP_TURBO, true).getCvFrame());
 
         if(cv::waitKey(1) == 'q') break;
     }

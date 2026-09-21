@@ -25,8 +25,6 @@ pipeline.start()
 with pipeline:
     while pipeline.isRunning():
         message = dai.ImgFrame()
-        print("Sending a message")
         inputQueue.send(message)
         output = outputQueue.get()
-        print("Received a message")
         time.sleep(1)

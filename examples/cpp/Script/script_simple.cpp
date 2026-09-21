@@ -50,12 +50,10 @@ int main() {
         while(pipeline.isRunning() && !quitEvent) {
             // Create and send a message
             auto message = std::make_shared<dai::ImgFrame>();
-            std::cout << "Sending a message" << std::endl;
             inputQueue->send(message);
 
             // Receive the message
             auto output = outputQueue->get<dai::ImgFrame>();
-            std::cout << "Received a message" << std::endl;
 
             // Sleep for 1 second
             std::this_thread::sleep_for(std::chrono::seconds(1));

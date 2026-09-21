@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <csignal>
 #include <depthai/remote_connection/RemoteConnection.hpp>
 #include <iostream>
@@ -56,7 +57,13 @@ int main() {
     dai::RemoteConnection remoteConnector(dai::RemoteConnection::DEFAULT_ADDRESS, webSocketPort, true, httpPort);
     // Create pipeline
     dai::Pipeline pipeline;
-    auto rgbd = pipeline.create<dai::node::RGBD>()->build(true, dai::node::StereoDepth::PresetMode::DEFAULT);
+    auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
+    auto color = pipeline.create<dai::node::Camera>();
+    color->build(colorSocket);
+    auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
+    auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth);
     auto customNode = pipeline.create<CustomPCLProcessingNode>();
 
     rgbd->pcl.link(customNode->inputPCL);

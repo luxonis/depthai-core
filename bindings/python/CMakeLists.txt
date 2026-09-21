@@ -107,6 +107,7 @@ set(SOURCE_LIST
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
+    src/pipeline/node/AlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
     src/pipeline/node/RectificationBindings.cpp
@@ -120,6 +121,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/AprilTagConfigBindings.cpp
     src/pipeline/datatype/AprilTagsBindings.cpp
     src/pipeline/datatype/BufferBindings.cpp
+    src/pipeline/datatype/ProtoSerializableBindings.cpp
     src/pipeline/datatype/TransformableBindings.cpp
     src/pipeline/datatype/CameraControlBindings.cpp
     src/pipeline/datatype/EdgeDetectorConfigBindings.cpp
@@ -129,6 +131,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp
     src/pipeline/datatype/ImgDetectionsBindings.cpp
+    src/pipeline/datatype/DetectionParserConfigBindings.cpp
     src/pipeline/datatype/SegmentationParserConfigBindings.cpp
     src/pipeline/datatype/SegmentationMaskBindings.cpp
     src/pipeline/datatype/ImgFrameBindings.cpp
@@ -155,6 +158,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/PipelineStateBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
+    src/pipeline/datatype/AlignConfigBindings.cpp
     src/pipeline/datatype/ImgAnnotationsBindings.cpp
     src/pipeline/datatype/VppConfigBindings.cpp
     src/remote_connection/RemoteConnectionBindings.cpp
@@ -168,6 +172,53 @@ set(SOURCE_LIST
     src/remote_connection/RemoteConnectionBindings.cpp
     src/utility/EventsManagerBindings.cpp
 )
+
+if(DEPTHAI_BUILD_BETA)
+    list(APPEND SOURCE_LIST
+        src/beta/datatype/ClassificationsBindings.cpp
+        src/beta/datatype/ClustersBindings.cpp
+        src/beta/datatype/KeypointsBindings.cpp
+        src/beta/datatype/LinesBindings.cpp
+        src/beta/datatype/Map2DBindings.cpp
+        src/beta/datatype/PredictionsBindings.cpp
+        src/beta/datatype/ClassificationSequenceParserConfigBindings.cpp
+        src/beta/datatype/FastSAMParserConfigBindings.cpp
+        src/beta/datatype/HRNetParserConfigBindings.cpp
+        src/beta/datatype/MLSDParserConfigBindings.cpp
+        src/beta/datatype/MPPalmDetectionParserConfigBindings.cpp
+        src/beta/datatype/MapOutputParserConfigBindings.cpp
+        src/beta/datatype/PPTextDetectionParserConfigBindings.cpp
+        src/beta/datatype/RFDETRParserConfigBindings.cpp
+        src/beta/datatype/SCRFDParserConfigBindings.cpp
+        src/beta/datatype/SuperAnimalParserConfigBindings.cpp
+        src/beta/datatype/XFeatMonoParserConfigBindings.cpp
+        src/beta/datatype/XFeatStereoParserConfigBindings.cpp
+        src/beta/datatype/YuNetParserConfigBindings.cpp
+        src/beta/node/ClassificationParserBindings.cpp
+        src/beta/node/ClassificationSequenceParserBindings.cpp
+        src/beta/node/EmbeddingsParserBindings.cpp
+        src/beta/node/FastSAMParserBindings.cpp
+        src/beta/node/HRNetParserBindings.cpp
+        src/beta/node/ImageOutputParserBindings.cpp
+        src/beta/node/ImgDetectionsFilterBindings.cpp
+        src/beta/node/KeypointParserBindings.cpp
+        src/beta/node/LaneDetectionParserBindings.cpp
+        src/beta/node/MapOutputParserBindings.cpp
+        src/beta/node/MLSDParserBindings.cpp
+        src/beta/node/MPPalmDetectionParserBindings.cpp
+        src/beta/node/PPTextDetectionParserBindings.cpp
+        src/beta/node/RegressionParserBindings.cpp
+        src/beta/node/RFDETRParserBindings.cpp
+        src/beta/node/SCRFDParserBindings.cpp
+        src/beta/node/SuperAnimalParserBindings.cpp
+        src/beta/node/StitchingBindings.cpp
+        src/beta/node/ToFStereoFusionBindings.cpp
+        src/beta/node/XFeatMonoParserBindings.cpp
+        src/beta/node/XFeatStereoParserBindings.cpp
+        src/beta/node/YuNetParserBindings.cpp
+    )
+endif()
+
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
         external/pybind11_opencv_numpy/ndarray_converter.cpp

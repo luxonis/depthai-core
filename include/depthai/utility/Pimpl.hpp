@@ -17,7 +17,9 @@ class Pimpl {
     Pimpl(Args&&...);
     ~Pimpl();
     T* operator->();
+    const T* operator->() const;
     T& operator*();
+    const T& operator*() const;
 };
 
 }  // namespace dai

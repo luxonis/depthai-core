@@ -183,7 +183,8 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
     void setBlob(const std::filesystem::path& path);
 
     /**
-     * Load network file into assets.
+     * Load a network model into assets. DLC and other custom model files are loaded lazily and must remain available and unchanged until the
+     * pipeline has been built.
      * @param modelPath Path to the model file.
      */
     void setModelPath(const std::filesystem::path& modelPath);

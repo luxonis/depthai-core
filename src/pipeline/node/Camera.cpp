@@ -232,7 +232,8 @@ Node::Output* Camera::requestOutput(const std::pair<uint32_t, uint32_t>& size,
                                     std::optional<ImgFrame::Type> type,
                                     ImgResizeMode resizeMode,
                                     std::optional<float> fps,
-                                    std::optional<bool> enableUndistortion) {
+                                    std::optional<bool> enableUndistortion,
+                                    std::optional<float> alphaScaling) {
     ImgFrameCapability cap;
     cap.size.fixed(size);
 
@@ -242,7 +243,16 @@ Node::Output* Camera::requestOutput(const std::pair<uint32_t, uint32_t>& size,
 
     cap.type = type;
     cap.resizeMode = resizeMode;
-    cap.enableUndistortion = enableUndistortion;
+    if(alphaScaling.has_value()) {
+        if(alphaScaling.value() < 0.0f || alphaScaling.value() > 1.0f) {
+            throw std::runtime_error("alphaScaling must be between 0.0 and 1.0");
+        }
+        cap.enableUndistortion = true;
+
+    } else {
+        cap.enableUndistortion = enableUndistortion;
+    }
+    cap.alphaScaling = alphaScaling;
     return pimpl->requestOutput(*this, cap, false);
 }
 
@@ -278,9 +288,10 @@ Camera& Camera::setMockIsp(ReplayVideo& replay) {
         properties.mockIspHeight = height;
         properties.mockIspFps = fps;
 
-        auto device = getParentPipeline().getDefaultDevice();
-        if(device) {
-            if(device->getPlatform() == Platform::RVC2) {
+        // Pick the frame type for the platform of the device this camera runs on (falls back to the pipeline default device when the node has none)
+        auto mockDevice = device ? device : getParentPipeline().getDefaultDevice();
+        if(mockDevice) {
+            if(mockDevice->getPlatform() == Platform::RVC2) {
                 replay.setOutFrameType(ImgFrame::Type::YUV420p);
             } else {
                 replay.setOutFrameType(ImgFrame::Type::NV12);

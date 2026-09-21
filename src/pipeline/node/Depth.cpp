@@ -146,6 +146,8 @@ const char* deviceModelZooName(DeviceModelZoo model) {
             return "NEURAL_DEPTH_288X180";
         case DeviceModelZoo::NEURAL_DEPTH_192X120:
             return "NEURAL_DEPTH_192X120";
+        case DeviceModelZoo::TOF_NEURAL_FUSION_672X804:
+            return "TOF_NEURAL_FUSION_672X804";
     }
     return "UNKNOWN";
 }
@@ -312,7 +314,9 @@ float targetFpsWithDefault(float targetFps) {
     return targetFps > 0.f ? targetFps : DEFAULT_TARGET_FPS;
 }
 
-std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
+std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline,
+                                                                               const StereoPair& pair,
+                                                                               const std::shared_ptr<Device>& device) {
     std::shared_ptr<Camera> left;
     std::shared_ptr<Camera> right;
     for(const auto& node : pipeline.getAllNodes()) {
@@ -320,6 +324,10 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
             continue;
         }
         auto cam = std::static_pointer_cast<Camera>(node);
+        // Only reuse cameras of the device this Depth node runs on; the same socket on another pipeline device is unrelated.
+        if(device != nullptr && cam->getDevice() != nullptr && cam->getDevice() != device) {
+            continue;
+        }
         const auto socket = cam->getBoardSocket();
         if(socket == pair.left) {
             left = std::move(cam);
@@ -655,7 +663,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         Config config = std::monostate{};
         if(chosen == Algorithm::STEREO) {
             const auto pair = requireFirstStereoPair(device);
-            const auto [left, right] = findCamerasForPair(pipeline, pair);
+            const auto [left, right] = findCamerasForPair(pipeline, pair, device);
             const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
             if(inputs.resolution) {
                 validateStereoDepthResolution(inputs.resolution->first, inputs.resolution->second);
@@ -667,7 +675,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 
     const auto pair = requireFirstStereoPair(device);
-    const auto [left, right] = findCamerasForPair(pipeline, pair);
+    const auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
     const float targetFps = inputs.targetFps;
     const auto& resolution = inputs.resolution;
@@ -724,15 +732,16 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
                                                const StereoPair& pair,
                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                const std::optional<float>& fps) {
-    auto [left, right] = findCamerasForPair(pipeline, pair);
+    auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const bool stereoCamerasPreexist = left && right;
 
-    // Create missing cameras on the sockets from the device's stereo pair.
+    // Create missing cameras on the sockets from the device's stereo pair, on the same device this node runs on
+    // (pipeline.create<Camera>() without a device would bind them to the master device).
     if(!left) {
-        left = pipeline.create<Camera>()->build(pair.left);
+        left = (device ? pipeline.create<Camera>(device) : pipeline.create<Camera>())->build(pair.left);
     }
     if(!right) {
-        right = pipeline.create<Camera>()->build(pair.right);
+        right = (device ? pipeline.create<Camera>(device) : pipeline.create<Camera>())->build(pair.right);
     }
 
     // When @p frameSize is unset and both stereo cameras already exist, match their sensor resolution.
@@ -829,16 +838,25 @@ void Depth::buildInternal() {
         case Algorithm::TOF:
             tofBackend_ = ToF::create(device);
             add(tofBackend_);
-            tofBackend_->build(CameraBoardSocket::AUTO, ImageFiltersPresetMode::TOF_MID_RANGE, stereoOutputFps_);
+            tofBackend_->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, stereoOutputFps_);
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+            depthOut_ = &tofBackend_->tofBaseNode.depth;
+            confidenceOut_ = &tofBackend_->tofBaseNode.confidence;
+#else
             depthOut_ = &tofBackend_->depth;
             confidenceOut_ = &tofBackend_->confidence;
+#endif
             break;
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
             const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
             nasBackend_->build(*stereo.left, *stereo.right, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+            depthOut_ = &(*nasBackend_->stereoDepth).depth;
+#else
             depthOut_ = &nasBackend_->depth;
+#endif
             confidenceOut_ = &(*nasBackend_->stereoDepth).confidenceMap;
             wiredResolution = stereo.resolution;
             if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {

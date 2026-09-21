@@ -7,21 +7,18 @@ import time
 
 fullFrameTracking = False
 useSpatialAssociation = False
+fps = 20
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
-    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    colorSockets = pipeline.getDefaultDevice().getConnectedCameras(dai.CameraSensorType.COLOR)
+    colorSocket = colorSockets[0] if colorSockets else dai.CameraBoardSocket.CAM_A
+    camRgb = pipeline.create(dai.node.Camera).build(colorSocket, sensorFps=fps)
 
-    stereo = pipeline.create(dai.node.StereoDepth)
-    leftOutput = monoLeft.requestOutput((640, 400))
-    rightOutput = monoRight.requestOutput((640, 400))
-    leftOutput.link(stereo.left)
-    rightOutput.link(stereo.right)
+    depth = pipeline.create(dai.node.Depth).build(dai.node.Depth.Algorithm.AUTO, fps, (640, 400))
 
-    spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, stereo, "yolov6-nano")
+    spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, depth, "yolov6-nano")
     objectTracker = pipeline.create(dai.node.ObjectTracker)
 
     spatialDetectionNetwork.setConfidenceThreshold(0.6)

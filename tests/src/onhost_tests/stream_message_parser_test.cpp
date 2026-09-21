@@ -131,3 +131,27 @@ TEST_CASE("Raw - Incorrect message too small size 2") {
 
     REQUIRE_THROWS(dai::StreamMessageParser::parseMessage(&packet));
 }
+
+#ifndef DEPTHAI_HAVE_BETA
+TEST_CASE("Beta parser Config has a clear error when beta support is disabled") {
+    dai::Buffer buffer;
+    auto serialized = dai::StreamMessageParser::serializeMetadata(buffer);
+
+    constexpr std::size_t TRAILER_SIZE = 8 + MARKER_SIZE;
+    REQUIRE(serialized.size() >= TRAILER_SIZE);
+    const auto datatype = static_cast<std::uint32_t>(dai::DatatypeEnum::FastSAMParserConfig);
+    const auto datatypeOffset = serialized.size() - TRAILER_SIZE;
+    serialized[datatypeOffset] = static_cast<std::uint8_t>(datatype);
+    serialized[datatypeOffset + 1] = static_cast<std::uint8_t>(datatype >> 8U);
+    serialized[datatypeOffset + 2] = static_cast<std::uint8_t>(datatype >> 16U);
+    serialized[datatypeOffset + 3] = static_cast<std::uint8_t>(datatype >> 24U);
+
+    streamPacketDesc_t packet{};
+    packet.data = serialized.data();
+    packet.length = serialized.size();
+    packet.fd = -1;
+
+    REQUIRE_THROWS_WITH(dai::StreamMessageParser::parseMessage(&packet),
+                        Catch::Matchers::ContainsSubstring("Cannot parse beta datatype: depthai-core was built without beta support"));
+}
+#endif

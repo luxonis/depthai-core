@@ -6,7 +6,7 @@ Open http://localhost:8082 in a browser after starting this script.
 
 import depthai as dai
 
-FPS = 10.0
+FPS = 30.0
 SIZE = (640, 400)
 
 with dai.Pipeline() as p:
@@ -18,7 +18,7 @@ with dai.Pipeline() as p:
         RGB_SOCKET = dai.CameraBoardSocket.CAM_A
 
     color = p.create(dai.node.Camera).build(RGB_SOCKET, sensorFps=FPS)
-    colorOut = color.requestOutput(SIZE, fps=FPS, type=dai.ImgFrame.Type.RGB888i, enableUndistortion =True)
+    colorOut = color.requestOutput(SIZE, fps=FPS, type=dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
 
     tof = p.create(dai.node.ToF)
     tof.build(
@@ -27,7 +27,6 @@ with dai.Pipeline() as p:
         fps=FPS
     )
 
-    # Align depth into colour frame so both inputs to PointCloud share the same dimensions
     align = p.create(dai.node.ImageAlign)
     align.setRunOnHost(True)
     tof.depth.link(align.input)

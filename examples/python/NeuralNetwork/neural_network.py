@@ -17,9 +17,12 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
 
-
+    lastPrintTime = 0.0
     while pipeline.isRunning():
         inNNData: dai.NNData = qNNData.get()
         tensor = inNNData.getFirstTensor()
         assert(isinstance(tensor, np.ndarray))
-        print(f"Received NN data: {tensor.shape}")
+        now = time.monotonic()
+        if now - lastPrintTime >= 1.0:
+            print(f"Received NN data: {tensor.shape}")
+            lastPrintTime = now

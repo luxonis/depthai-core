@@ -40,6 +40,8 @@ if(error_variable MATCHES "timeout" OR error_variable EQUAL 128 OR error_variabl
     # Okay
 elseif(NOT error_variable)
     # return code == 0, also okay
+elseif(error_variable EQUAL 125)
+    message(STATUS "No device available, ${PATH_TO_TEST_EXECUTABLE} skipped")
 elseif(error_variable EQUAL 133 OR error_variable MATCHES "Child killed")
     # sigkill, return fatal error but mark the issue
     message(FATAL_ERROR "${PATH_TO_TEST_EXECUTABLE} had to be forcefully killed after 5 additional seconds after SIGINT")

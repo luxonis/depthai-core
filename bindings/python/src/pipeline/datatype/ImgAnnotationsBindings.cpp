@@ -24,7 +24,8 @@ PYBIND11_MAKE_OPAQUE(std::vector<dai::ImgAnnotation>);
 void bind_imageannotations(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<ImgAnnotations, Py<ImgAnnotations>, Buffer, std::shared_ptr<ImgAnnotations>> imageAnnotations(m, "ImgAnnotations", DOC(dai, ImgAnnotations));
+    py::class_<ImgAnnotations, Py<ImgAnnotations>, Buffer, ProtoSerializable, std::shared_ptr<ImgAnnotations>> imageAnnotations(
+        m, "ImgAnnotations", DOC(dai, ImgAnnotations));
     py::class_<CircleAnnotation> circleAnnotation(m, "CircleAnnotation", DOC(dai, CircleAnnotation));
     py::enum_<PointsAnnotationType> pointsAnnotationType(m, "PointsAnnotationType", DOC(dai, PointsAnnotationType));
     py::class_<PointsAnnotation> pointsAnnotation(m, "PointsAnnotation", DOC(dai, PointsAnnotation));
@@ -95,10 +96,6 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack) {
     imageAnnotations.def(py::init<>(), DOC(dai, ImgAnnotations, ImgAnnotations))
         .def(py::init<const std::vector<ImgAnnotation>&>(), DOC(dai, ImgAnnotations, ImgAnnotations, 2))
         .def_readwrite("annotations", &ImgAnnotations::annotations)
-        .def("getTimestamp", &ImgAnnotations::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &ImgAnnotations::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getTimestampSystem", &ImgAnnotations::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
-        .def("getSequenceNum", &ImgAnnotations::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](ImgAnnotations& msg) { return msg.transformation; })
         .def("setTransformation", [](ImgAnnotations& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; });
 }

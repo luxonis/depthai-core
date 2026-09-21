@@ -95,6 +95,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * Note: It will allocate resources for worst cases scenario,
      * should be enabled only if dynamic mode switch is required.
      * Default value: false.
+     * RVC2 only.
      */
     bool enableRuntimeStereoModeSwitch = false;
 
@@ -109,6 +110,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * For optimal performance it's recommended to allocate more than 0,
      * so post processing will run in parallel with main stereo algorithm.
      * Minimum 1, maximum 10.
+     * RVC2 only.
      */
     std::int32_t numPostProcessingShaves = AUTO;
 
@@ -119,6 +121,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * For optimal performance it's recommended to allocate more than 0,
      * so post processing will run in parallel with main stereo algorithm.
      * Minimum 1, maximum 6.
+     * RVC2 only.
      */
     std::int32_t numPostProcessingMemorySlices = AUTO;
 
@@ -143,6 +146,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
 
     /**
      * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
+     * RVC3 only.
      */
     bool enableFrameSync = true;
 
@@ -184,6 +188,9 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * and 1 (when all the source image pixels are retained in the undistorted image).
      * On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0,
      * in these cases alpha < 0.0 helps removing invalid areas.
+     *
+     * @warning On RVC4 the DEFAULT, DENSITY, and FAST_DENSITY presets can produce inaccurate depth in black padded regions, as they prioritize coverage.
+     *
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
     std::optional<float> alphaScaling;

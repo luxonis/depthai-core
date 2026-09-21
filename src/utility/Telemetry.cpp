@@ -25,6 +25,12 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+    #include <process.h>
+#else
+    #include <unistd.h>
+#endif
+
 #include "build/version.hpp"
 #include "depthai/device/DeviceBase.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -59,6 +65,14 @@ constexpr auto TMP_ID_TTL = std::chrono::hours(24);
 constexpr std::int64_t RATE_LIMIT_MAX_EVENTS = 30000;
 
 std::atomic_bool telemetryUsesPython{false};
+
+std::uint64_t currentProcessId() {
+#ifdef _WIN32
+    return static_cast<std::uint64_t>(_getpid());
+#else
+    return static_cast<std::uint64_t>(getpid());
+#endif
+}
 
 std::string readEnv(const char* name) {
     const char* value = std::getenv(name);
@@ -463,9 +477,45 @@ struct TelemetrySharedState {
     void applyAggregateMetrics(nlohmann::json& properties);
 };
 
+struct ProcessTelemetryState {
+    explicit ProcessTelemetryState(std::uint64_t processId) : processId(processId) {}
+
+    std::uint64_t processId;
+    TelemetrySharedState telemetry;
+};
+
+struct TelemetryStateHolder {
+    TelemetryStateHolder() : current(new ProcessTelemetryState(currentProcessId())) {}
+
+    ~TelemetryStateHolder() {
+        auto* state = current.load();
+        if(state != nullptr && state->processId == currentProcessId()) {
+            delete state;
+        }
+    }
+
+    std::atomic<ProcessTelemetryState*> current;
+};
+
 TelemetrySharedState& telemetrySharedState() {
-    static TelemetrySharedState state;
-    return state;
+    static TelemetryStateHolder holder;
+    const auto processId = currentProcessId();
+
+    while(true) {
+        auto* state = holder.current.load(std::memory_order_acquire);
+        if(state->processId == processId) {
+            return state->telemetry;
+        }
+
+        // fork() copies the parent telemetry state but not its worker threads.
+        // Leave that inherited state untouched and install a fresh state for
+        // the child process on its first telemetry call.
+        auto* childState = new ProcessTelemetryState(processId);
+        if(holder.current.compare_exchange_strong(state, childState, std::memory_order_acq_rel, std::memory_order_acquire)) {
+            return childState->telemetry;
+        }
+        delete childState;
+    }
 }
 
 class Telemetry::Impl {
@@ -560,6 +610,7 @@ void TelemetrySharedState::init() {
                   {"host_os_version", getTelemetryHostOSVersion()},
                   {"is_oak_app", !readEnv("OAKAGENT_PRIVATE_HTTP_PWD").empty()},
                   {"uses_python", telemetryUsesPython.load()},
+                  {"correlation_id", readEnv("LUXONIS_TELEMETRY_CORRELATION_ID")},
               });
     }
 }

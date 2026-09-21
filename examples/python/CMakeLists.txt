@@ -15,8 +15,9 @@ endif()
 set(TARGET_NAME "depthai")
 
 # Regexes for example test failure
-set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
-set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
+set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\\\[warning\\\\];\\\\[error\\\\];\\\\[critical\\\\]")
+set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
+set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\\\[error\\\\];\\\\[critical\\\\]")
 
 # Add a target to install_requirements (added to ALL)
 # For windows we don't install open3d-cpu
@@ -93,6 +94,8 @@ function(add_python_example example_name python_script_path)
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION ${STRICT_EXAMPLE_TEST_FAIL_REGEX})
 
+        set_tests_properties (${example_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX}")
+
     endif()
 
 endfunction()
@@ -148,6 +151,24 @@ function(dai_example_test_relax_fail_regex example_name)
         set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
     endif()
 endfunction()
+
+if(DEPTHAI_BUILD_BETA)
+    add_python_example(beta_classification_parser Beta/classification_parser.py)
+    add_python_example(beta_classification_sequence_parser Beta/classification_sequence_parser.py)
+    add_python_example(beta_embeddings_parser Beta/embeddings_parser.py)
+    add_python_example(beta_fastsam_parser Beta/fastsam_parser.py)
+    add_python_example(beta_hrnet_parser Beta/hrnet_parser.py)
+    add_python_example(beta_image_output_parser Beta/image_output_parser.py)
+    add_python_example(beta_keypoint_parser Beta/keypoint_parser.py)
+    add_python_example(beta_lane_detection_parser Beta/lane_detection_parser.py)
+    add_python_example(beta_map_output_parser Beta/map_output_parser.py)
+    add_python_example(beta_mlsd_parser Beta/mlsd_parser.py)
+    add_python_example(beta_mp_palm_detection_parser Beta/mp_palm_detection_parser.py)
+    add_python_example(beta_pp_text_detection_parser Beta/pp_text_detection_parser.py)
+    add_python_example(beta_scrfd_parser Beta/scrfd_parser.py)
+    add_python_example(beta_superanimal_parser Beta/superanimal_parser.py)
+    add_python_example(beta_yunet_parser Beta/yunet_parser.py)
+endif()
 
 
 ## Camera output
@@ -308,6 +329,12 @@ dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 c
 add_python_example(depth_align ImageAlign/depth_align.py)
 dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
 
+## Align
+add_python_example(img_detections_align Align/img_detections_align.py)
+dai_set_example_test_labels(img_detections_align ondevice rvc4 ci)
+add_python_example(custom_message_align Align/custom_message_align.py)
+dai_set_example_test_labels(custom_message_align ondevice rvc2_all rvc4 ci)
+
 ## Visualizer
 
 # Split into two examples for RVC2 and RVC4 since the tests are run concurrently, to avoid port conflicts
@@ -406,3 +433,11 @@ dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
 
 add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
 dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
+
+# Multi-device examples: registered without labels so they never run in CI
+# (they need at least two devices; the CI test wrapper pins to a single device)
+add_python_example(multi_device_cam_sync MultiDevice/multi_device_cam_sync.py)
+add_python_example(multi_device_frame_sync MultiDevice/multi_device_frame_sync.py --ptp-sync)
+add_python_example(multi_device_host_node MultiDevice/multi_device_host_node.py)
+add_python_example(device_to_device_relay MultiDevice/device_to_device_relay.py)
+add_python_example(multi_device_system_logger MultiDevice/multi_device_system_logger.py)
