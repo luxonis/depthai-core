@@ -568,3 +568,205 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
 
     return 0;
 }
+
+int testFsync2(float targetFps, struct FsyncTestParameters parameters) {
+
+    std::cout << "=================================\x1B[1;32mTest started\x1B[0m================================" << std::endl;
+    std::cout << "Sync type: " << toString(parameters.syncType) << std::endl;
+    std::cout << "FPS: " << targetFps << std::endl;
+    std::cout << "SYNC_THRESHOLD_SEC: " << parameters.syncThresholdSec << std::endl;
+    std::cout << "RECV_ALL_TIMEOUT_SEC: " << parameters.recvAllTimeoutSec << std::endl;
+    std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << parameters.initialSyncTimeoutSec << std::endl;
+
+    if (parameters.allowedSensors.has_value()) {
+        std::cout << "ALLOWED_SENSORS: " << std::endl;
+        for (const auto& sensor : parameters.allowedSensors.value()) {
+            std::cout << "\t" << sensor << std::endl;
+        }
+    }
+
+    std::vector<dai::DeviceInfo> deviceInfos = dai::Device::getAllAvailableDevices();
+
+    // REQUIRE_MSG(deviceInfos.size() >= 2, "At least two devices are required for this test.");
+    REQUIRE_MSG(deviceInfos.size() == parameters.expectedDevices, "Expected exactly " << parameters.expectedDevices << " devices, got " << deviceInfos.size());
+
+    std::shared_ptr<dai::Pipeline> masterPipeline;
+    std::optional<std::map<std::string, dai::Node::Output*>> masterNode;
+    std::optional<std::string> masterName;
+
+    std::map<std::string, std::shared_ptr<dai::Pipeline>> slavePipelines;
+    std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>> slaveQueues;
+
+    std::map<std::string, std::shared_ptr<dai::InputQueue>> inputQueues;
+    std::vector<std::string> outputNames;
+    std::vector<std::string> camSockets;
+
+    for(auto deviceInfo : deviceInfos) {
+        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps, parameters.syncType, parameters.allowedSensors);
+    }
+
+    if(masterPipeline == nullptr || !masterNode.has_value() || !masterName.has_value()) {
+        throw std::runtime_error("No master detected!");
+    }
+    if(slavePipelines.size() < 1) {
+        throw std::runtime_error("No slaves detected!");
+    }
+
+    auto sync =
+        createSyncNode(masterPipeline, *masterNode, *masterName, std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))), outputNames, slaveQueues, inputQueues);
+    auto queue = sync->out.createOutputQueue();
+
+    masterPipeline->start();
+    for(auto p : slavePipelines) {
+        p.second->start();
+    }
+
+    std::optional<std::shared_ptr<dai::MessageGroup>> latestFrameGroup;
+    bool firstReceived = false;
+    auto startTime = std::chrono::steady_clock::now();
+    auto prevReceived = std::chrono::steady_clock::now();
+
+    std::optional<std::chrono::time_point<std::chrono::steady_clock>> initialSyncTime;
+
+    std::vector<Delta> deltas;
+
+    bool waitingForInitialSync = true;
+    bool waitingForInitialTimeout = true;
+    if (parameters.initialTimeoutSec == 0) {
+        waitingForInitialTimeout = false;
+    }
+    std::atomic_bool running{true};
+
+    auto dataCollector = [&](const std::string& deviceName, const std::string& socketName) {
+        const auto queueName = std::string("slave_") + deviceName + "_" + socketName;
+        auto camOutputQueue = slaveQueues.at(deviceName).at(socketName);
+        auto inputQueue = inputQueues.at(queueName);
+        while(running.load()) {
+            if(camOutputQueue->has()) {
+                inputQueue->send(camOutputQueue->get());
+            } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+    };
+
+    std::vector<std::thread> threads;
+    for(const auto& slaveEntry : slaveQueues) {
+        for(const auto& socketEntry : slaveEntry.second) {
+            threads.emplace_back(dataCollector, slaveEntry.first, socketEntry.first);
+        }
+    }
+
+    struct ThreadsGuard {
+        std::atomic_bool& running;
+        std::vector<std::thread>& threads;
+        ~ThreadsGuard() {
+            running.store(false);
+            for(auto& thread : threads) {
+                if(thread.joinable()) {
+                    thread.join();
+                }
+            }
+        }
+    } threadsGuard{running, threads};
+
+    while(true) {
+        while(queue->has()) {
+            auto syncData = queue->get();
+            REQUIRE_MSG(syncData != nullptr, "Sync node failed to receive message");
+            latestFrameGroup = std::dynamic_pointer_cast<dai::MessageGroup>(syncData);
+            if(!firstReceived) {
+                firstReceived = true;
+                initialSyncTime = std::chrono::steady_clock::now();
+            }
+            prevReceived = std::chrono::steady_clock::now();
+        }
+
+        if(!firstReceived) {
+            auto endTime = std::chrono::steady_clock::now();
+            auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
+            REQUIRE_MSG(elapsedSec < parameters.recvAllTimeoutSec, "Timeout: Didn't receive all frames in time");
+        }
+
+        if(deltas.size() >= 5) {
+            std::cout << "Timeout: Test finished after " << deltas.size() << " frames" << std::endl;
+            running.store(false);
+            break;
+        }
+
+        if(latestFrameGroup.has_value()) {
+            REQUIRE_MSG(size_t(latestFrameGroup.value()->getNumMessages()) == outputNames.size(),
+                        "Number of messages received doesn't match number of outputs");
+
+            using ts_type = std::chrono::time_point<std::chrono::system_clock>;
+            std::map<std::string, ts_type> tsValues;
+            for(auto name : outputNames) {
+                auto frame = latestFrameGroup.value()->get<dai::ImgFrame>(name);
+                REQUIRE_MSG(frame != nullptr, "Frame pointer is null");
+                REQUIRE_MSG(frame->getFsync() == convertSyncType(parameters.syncType),
+                    "Frame sync type doesn't match: expected " << toString(convertSyncType(parameters.syncType)) << ", got " << toString(frame->getFsync()));
+                tsValues.emplace(name, frame->getTimestampSystem(dai::CameraExposureOffset::END).value());
+            }
+
+            auto compFunct = [](const std::pair<std::string, ts_type>& p1, const std::pair<std::string, ts_type>& p2) -> bool { return p1.second < p2.second; };
+
+            auto maxElement = std::max_element(tsValues.begin(), tsValues.end(), compFunct);
+            auto minElement = std::min_element(tsValues.begin(), tsValues.end(), compFunct);
+
+            auto delta = maxElement->second - minElement->second;
+            auto deltaUs = std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
+
+            bool syncStatus = abs(deltaUs) < parameters.syncThresholdSec * 1e6;
+
+            if (waitingForInitialTimeout) {
+                auto endTime = std::chrono::steady_clock::now();
+                auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
+                if (elapsedSec >= parameters.initialTimeoutSec) {
+                    waitingForInitialTimeout = false;
+                }
+            }
+
+            if (syncStatus && !waitingForInitialSync && !waitingForInitialTimeout) {
+                Delta deltaStruct;
+                deltaStruct.delta_us = deltaUs;
+                deltaStruct.name = "[MIN=" + minElement->first + ", MAX=" + maxElement->first + "]";
+                deltas.emplace_back(deltaStruct);
+            }
+
+            if(!syncStatus && waitingForInitialSync) {
+                auto endTime = std::chrono::steady_clock::now();
+                auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
+                REQUIRE_MSG(elapsedSec < parameters.initialSyncTimeoutSec, "Timeout: Didn't sync frames in time");
+            }
+
+            if(syncStatus && waitingForInitialSync) {
+                std::cout << "Sync status: in sync" << std::endl;
+                waitingForInitialSync = false;
+            }
+
+            // Enable this once we have better accuracy for timestamps
+            // if (thresholds.syncType == SyncType::EXTERNAL) {
+            //     REQUIRE_MSG(waitingForInitialSync || syncStatus, "Sync error: Sync lost, threshold exceeded: " << deltaUs << " us");
+            // }
+
+            latestFrameGroup.reset();
+        }
+    }
+
+    // REQUIRE_MSG(deltas.size() > 100, "[FPS=" << targetFps << "] Not enough frames left after stabilization period (expected at least 100, got " << deltas.size() << ").");
+
+    double meanDelta_us = calculate_mean(deltas);
+    double p99Delta_us = percentile_linear(deltas, 99.0);
+    Delta maxDelta = calculate_max_outlier(deltas);
+
+    std::cout << "=== Stats" << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] # of frames used for stats caluculation: " << deltas.size() << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] Mean frame delta: " << meanDelta_us/1e3 << " ms" << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] p99 frame delta: " << p99Delta_us/1e3 << " ms" << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] Max outlier frame delta: " << maxDelta.delta_us/1e3 << " ms, between " << maxDelta.name << std::endl;
+
+    REQUIRE_MSG(meanDelta_us/1e6 < parameters.deltaMeanThreshold, "[FPS=" << targetFps << "] Mean value of frame deltas above " << parameters.deltaMeanThreshold*1e3 << " ms (" << meanDelta_us/1e3 << " ms)");
+    REQUIRE_MSG(p99Delta_us/1e6 < parameters.deltaP99Threshold, "[FPS=" << targetFps << "] p99 metric does not meet " << parameters.deltaP99Threshold*1e3 << " ms (" << p99Delta_us/1e3 << " ms)");
+
+    return 0;
+}

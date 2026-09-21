@@ -74,3 +74,4 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                  SyncType syncType);
 
 int testFsync(float targetFps, struct FsyncTestParameters parameters);
+int testFsync2(float targetFps, struct FsyncTestParameters parameters);
