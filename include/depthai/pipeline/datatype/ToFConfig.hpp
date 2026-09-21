@@ -7,7 +7,7 @@
 namespace dai {
 
 /**
- * ToFConfig message. Carries config for feature tracking algorithm
+ * Configuration message for time-of-flight depth processing.
  */
 class ToFConfig : public Buffer {
    public:
@@ -17,7 +17,59 @@ class ToFConfig : public Buffer {
         HIGH_RANGE,
     };
 
+    /**
+     * Runtime controls specific to the VD55H1 IPP used by RVC4.
+     *
+     * An unset value leaves the corresponding device control unchanged. These controls
+     * have no effect on RVC2. ToFConfig construction and setProfilePreset() populate
+     * all controls; assign VD55H1{} to vd55h1 before setting individual controls
+     * when sending a partial update. In Python, use ToFConfig.VD55H1() and None
+     * for unset controls.
+     *
+     * Unless stated otherwise, the IPP does not publish a supported numeric range.
+     */
+    struct VD55H1 {
+        /** Phase-unwrapping residual threshold in millimeters, from 0 to 10000. Lower values reject more pixels. */
+        std::optional<float> phaseUnwrapErrorThreshold;
+
+        /** Enable the bilateral filter (true), or bypass it (false). */
+        std::optional<bool> enableBilateralFilter;
+        /** Dimensionless standard-deviation multiplier used by the bilateral filter. */
+        std::optional<float> bilateralStdFactor;
+        /** Bilateral filter kernel width in pixels. Supported values are odd integers from 3 to 15. */
+        std::optional<std::uint32_t> bilateralKernelSize;
+
+        /** Enable temporal noise reduction (true), or bypass it (false). */
+        std::optional<bool> enableTemporalNoiseReduction;
+        /** Maximum temporal noise reduction accumulation length, in frames. */
+        std::optional<std::uint32_t> temporalNoiseReductionMaxGain;
+        /** Dimensionless standard-deviation multiplier for temporal noise rejection. */
+        std::optional<float> temporalNoiseReductionStdFactor;
+
+        /** Enable the flying-pixel filter (true), or bypass it (false). */
+        std::optional<bool> enableFlyingPixelFilter;
+        /** Maximum depth difference between supporting neighboring pixels, in millimeters. */
+        std::optional<float> flyingPixelDepthThreshold;
+        /** Minimum number of neighboring depth samples supporting a pixel; passed to the IPP as a float. */
+        std::optional<float> flyingPixelMinDepthOccurrence;
+
+        DEPTHAI_SERIALIZE(VD55H1,
+                          phaseUnwrapErrorThreshold,
+                          enableBilateralFilter,
+                          bilateralStdFactor,
+                          bilateralKernelSize,
+                          enableTemporalNoiseReduction,
+                          temporalNoiseReductionMaxGain,
+                          temporalNoiseReductionStdFactor,
+                          enableFlyingPixelFilter,
+                          flyingPixelDepthThreshold,
+                          flyingPixelMinDepthOccurrence);
+    };
+
     Profile profile = Profile::MID_RANGE;
+
+    /** Controls for the RVC4 VD55H1 IPP. */
+    VD55H1 vd55h1;
     /**
      * Set kernel size for depth median filtering, or disable
      */
@@ -29,7 +81,7 @@ class ToFConfig : public Buffer {
     int phaseUnwrappingLevel = 4;
 
     /*
-     * Phase unwrapping error threshold.
+     * RVC2 phase unwrapping error threshold. For VD55H1, use vd55h1.phaseUnwrapErrorThreshold.
      */
     uint16_t phaseUnwrapErrorThreshold = 100;
 
@@ -75,7 +127,12 @@ class ToFConfig : public Buffer {
     /**
      * Construct ToFConfig message.
      */
-    ToFConfig() = default;
+    ToFConfig() {
+        // Preserve the legacy RVC2 default while initializing the RVC4 preset.
+        const auto rvc2Threshold = phaseUnwrapErrorThreshold;
+        setProfilePreset(profile);
+        phaseUnwrapErrorThreshold = rvc2Threshold;
+    }
     virtual ~ToFConfig();
 
     /**
@@ -90,13 +147,14 @@ class ToFConfig : public Buffer {
     }
 
     /**
-     * Set preset mode for ToFConfig.
-     * @param presetMode Preset mode for ToFConfig.
+     * Set preset mode, including the RVC2 phase-unwrapping threshold and VD55H1 processing parameters.
+     * @param profile Preset mode for ToFConfig.
      */
     void setProfilePreset(Profile profile);
 
     DEPTHAI_SERIALIZE(ToFConfig,
                       profile,
+                      vd55h1,
                       median,
                       enablePhaseShuffleTemporalFilter,
                       enableBurstMode,

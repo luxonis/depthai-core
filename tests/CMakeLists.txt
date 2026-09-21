@@ -517,6 +517,9 @@ dai_set_test_labels(stream_message_parser_test onhost ci)
 dai_add_test(datatype_enum_test src/onhost_tests/pipeline/datatype/datatype_enum_test.cpp)
 dai_set_test_labels(datatype_enum_test onhost ci)
 
+dai_add_test(tof_config_test src/onhost_tests/pipeline/datatype/tof_config_test.cpp)
+dai_set_test_labels(tof_config_test onhost ci)
+
 # Bootloader version tests
 dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
 dai_set_test_labels(bootloader_version_test onhost ci)
