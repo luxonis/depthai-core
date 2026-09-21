@@ -662,7 +662,11 @@ dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
     dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
-    target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
+    target_compile_definitions(
+        dynamic_calibration_test
+        PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}"
+                HOLISTIC_RECORDING_PATH="${holistic_recording}"
+    )
 endif()
 
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
