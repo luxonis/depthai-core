@@ -4,7 +4,6 @@
 #include <pybind11/pybind11.h>
 
 #include <array>
-#include <filesystem>
 #include <vector>
 
 // Libraries
@@ -32,6 +31,7 @@
 #include "depthai/common/Interpolation.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/MemoryInfo.hpp"
+#include "depthai/common/MultiDeviceExtrinsics.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3d.hpp"
 #include "depthai/common/Point3f.hpp"
@@ -46,7 +46,6 @@
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/common/YoloDecodingFamily.hpp"
-#include "depthai/device/MultiDeviceCalibrationHandler.hpp"
 
 // depthai
 #include "depthai/common/CameraExposureOffset.hpp"
@@ -80,7 +79,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<StereoRectification> stereoRectification(m, "StereoRectification", DOC(dai, StereoRectification));
     py::class_<Extrinsics> extrinsics(m, "Extrinsics", DOC(dai, Extrinsics));
     py::class_<MultiDeviceExtrinsics> multiDeviceExtrinsics(m, "MultiDeviceExtrinsics", DOC(dai, MultiDeviceExtrinsics));
-    py::class_<MultiDeviceCalibrationHandler> multiDeviceCalibrationHandler(m, "MultiDeviceCalibrationHandler", DOC(dai, MultiDeviceCalibrationHandler));
     py::class_<CameraInfo> cameraInfo(m, "CameraInfo", DOC(dai, CameraInfo));
     py::class_<EepromData> eepromData(m, "EepromData", DOC(dai, EepromData));
     py::class_<ImuNoiseParameters> imuNoiseParameters(m, "ImuNoiseParameters", DOC(dai, ImuNoiseParameters));
@@ -591,27 +589,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("fromDeviceId", &MultiDeviceExtrinsics::fromDeviceId)
         .def_readwrite("fromSocket", &MultiDeviceExtrinsics::fromSocket)
         .def_readwrite("extrinsics", &MultiDeviceExtrinsics::extrinsics);
-
-    // MultiDeviceCalibrationHandler
-    multiDeviceCalibrationHandler.def(py::init<>())
-        .def(py::init<std::vector<MultiDeviceExtrinsics>>(), py::arg("graph"))
-        .def(py::init<std::filesystem::path>(),
-             py::arg("calibrationDataPath"),
-             DOC(dai, MultiDeviceCalibrationHandler, MultiDeviceCalibrationHandler, 3))
-        .def_static("fromJson",
-                    &MultiDeviceCalibrationHandler::fromJson,
-                    py::arg("calibrationDataJson"),
-                    DOC(dai, MultiDeviceCalibrationHandler, fromJson))
-        .def("toJson", &MultiDeviceCalibrationHandler::toJson, DOC(dai, MultiDeviceCalibrationHandler, toJson))
-        .def("toJsonFile",
-             &MultiDeviceCalibrationHandler::toJsonFile,
-             py::arg("destPath"),
-             DOC(dai, MultiDeviceCalibrationHandler, toJsonFile))
-        .def("getDeviceSocket", &MultiDeviceCalibrationHandler::getDeviceSocket, py::arg("deviceId"))
-        .def("getExtrinsicsToOrigin",
-             &MultiDeviceCalibrationHandler::getExtrinsicsToOrigin,
-             py::arg("deviceId"),
-             py::arg("localOriginSocket"));
 
     // CameraInfo
     cameraInfo.def(py::init<>())

@@ -8,24 +8,14 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/MultiDeviceExtrinsics.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
 
-/**
- * A directed cross-device calibration edge.
- *
- * The source coordinate system is identified by fromDeviceId/fromSocket. The
- * destination coordinate system is identified by extrinsics.toDeviceId and
- * extrinsics.toCameraSocket.
- */
-struct MultiDeviceExtrinsics {
-    std::string fromDeviceId;
-    CameraBoardSocket fromSocket = CameraBoardSocket::AUTO;
-    Extrinsics extrinsics;
-};
+class Pipeline;
 
-DEPTHAI_SERIALIZE_EXT(MultiDeviceExtrinsics, fromDeviceId, fromSocket, extrinsics);
+namespace beta {
 
 /**
  * Resolves cross-device calibration edges into a common origin for each
@@ -47,11 +37,33 @@ class MultiDeviceCalibrationHandler {
     /** Construct and validate a handler from its JSON representation. */
     static MultiDeviceCalibrationHandler fromJson(const nlohmann::json& calibrationDataJson);
 
+    /**
+     * Construct a handler from the multi-device calibration graph stored in
+     * the pipeline's global properties.
+     *
+     * @return The handler when the pipeline carries a multi-device calibration
+     * graph, or std::nullopt when it does not.
+     * @throws std::invalid_argument when the stored graph is invalid.
+     */
+    static std::optional<MultiDeviceCalibrationHandler> fromPipeline(const Pipeline& pipeline);
+
+    /**
+     * Store this handler's calibration graph in the pipeline's global
+     * properties so that every device in the pipeline receives it.
+     */
+    void applyTo(Pipeline& pipeline) const;
+
+    /** Remove any multi-device calibration graph from the pipeline's global properties. */
+    static void clearFrom(Pipeline& pipeline);
+
     /** Return the handler's JSON representation with translations in centimeters. */
     nlohmann::json toJson() const;
 
     /** Write the handler's centimeter-normalized JSON representation to a file. */
     bool toJsonFile(std::filesystem::path destPath) const;
+
+    /** Return the validated, meter-normalized calibration edges. */
+    const std::vector<MultiDeviceExtrinsics>& getGraph() const;
 
     /**
      * Get the local calibration-origin socket used by a device in the graph.
@@ -90,4 +102,5 @@ class MultiDeviceCalibrationHandler {
     NOP_STRUCTURE(MultiDeviceCalibrationHandler, graph);
 };
 
+}  // namespace beta
 }  // namespace dai

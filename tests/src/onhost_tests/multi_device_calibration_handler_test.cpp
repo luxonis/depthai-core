@@ -1,13 +1,15 @@
 #include <catch2/catch_all.hpp>
+#include <depthai/pipeline/Pipeline.hpp>
 #include <depthai/properties/GlobalProperties.hpp>
 #include <depthai/utility/Serialization.hpp>
 #include <filesystem>
 #include <limits>
 #include <stdexcept>
 
-#include "depthai/device/MultiDeviceCalibrationHandler.hpp"
+#include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 
 using namespace dai;
+using dai::beta::MultiDeviceCalibrationHandler;
 
 namespace {
 
@@ -109,17 +111,33 @@ TEST_CASE("Multi-device calibration handles chains, components, units, and seria
     REQUIRE(fileBridge->translation.x == Catch::Approx(3.0f));
     REQUIRE(std::filesystem::remove(jsonPath));
 
+    // The pipeline carries only the plain edge list; the handler is rebuilt from it.
     GlobalProperties properties;
-    properties.multiDeviceCalibration = handler;
+    properties.multiDeviceCalibration = handler.getGraph();
     for(const auto serializationType : {SerializationType::LIBNOP, SerializationType::JSON}) {
         const auto propertiesData = utility::serialize(properties, serializationType);
         GlobalProperties propertiesRoundTrip;
         REQUIRE(utility::deserialize(propertiesData, propertiesRoundTrip, serializationType));
         REQUIRE(propertiesRoundTrip.multiDeviceCalibration.has_value());
-        const auto propertiesBridge = propertiesRoundTrip.multiDeviceCalibration->getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
+        const MultiDeviceCalibrationHandler propertiesHandler(*propertiesRoundTrip.multiDeviceCalibration);
+        const auto propertiesBridge = propertiesHandler.getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
         REQUIRE(propertiesBridge.has_value());
         REQUIRE(propertiesBridge->translation.x == Catch::Approx(3.0f));
     }
+
+    Pipeline pipeline(false);
+    REQUIRE_FALSE(MultiDeviceCalibrationHandler::fromPipeline(pipeline).has_value());
+    handler.applyTo(pipeline);
+    REQUIRE(pipeline.getGlobalProperties().multiDeviceCalibration.has_value());
+    REQUIRE(pipeline.getGlobalProperties().multiDeviceCalibration->size() == 3);
+    const auto pipelineHandler = MultiDeviceCalibrationHandler::fromPipeline(pipeline);
+    REQUIRE(pipelineHandler.has_value());
+    const auto pipelineBridge = pipelineHandler->getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
+    REQUIRE(pipelineBridge.has_value());
+    REQUIRE(pipelineBridge->toDeviceId == "device-a");
+    REQUIRE(pipelineBridge->translation.x == Catch::Approx(3.0f));
+    MultiDeviceCalibrationHandler::clearFrom(pipeline);
+    REQUIRE_FALSE(MultiDeviceCalibrationHandler::fromPipeline(pipeline).has_value());
 }
 
 TEST_CASE("Multi-device calibration rejects invalid graph structure") {

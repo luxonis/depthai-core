@@ -1,4 +1,4 @@
-#include "depthai/device/MultiDeviceCalibrationHandler.hpp"
+#include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,9 +10,11 @@
 #include <stdexcept>
 #include <utility>
 
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
+namespace beta {
 namespace {
 
 using Transform = std::array<std::array<float, 4>, 4>;
@@ -305,4 +307,29 @@ std::optional<Extrinsics> MultiDeviceCalibrationHandler::getExtrinsicsToOrigin(c
     return resolved->built.bridges.at(coordinate);
 }
 
+std::optional<MultiDeviceCalibrationHandler> MultiDeviceCalibrationHandler::fromPipeline(const Pipeline& pipeline) {
+    const auto& graph = pipeline.getGlobalProperties().multiDeviceCalibration;
+    if(!graph.has_value()) {
+        return std::nullopt;
+    }
+    return MultiDeviceCalibrationHandler(*graph);
+}
+
+void MultiDeviceCalibrationHandler::applyTo(Pipeline& pipeline) const {
+    auto globalProperties = pipeline.getGlobalProperties();
+    globalProperties.multiDeviceCalibration = graph;
+    pipeline.setGlobalProperties(std::move(globalProperties));
+}
+
+void MultiDeviceCalibrationHandler::clearFrom(Pipeline& pipeline) {
+    auto globalProperties = pipeline.getGlobalProperties();
+    globalProperties.multiDeviceCalibration.reset();
+    pipeline.setGlobalProperties(std::move(globalProperties));
+}
+
+const std::vector<MultiDeviceExtrinsics>& MultiDeviceCalibrationHandler::getGraph() const {
+    return graph;
+}
+
+}  // namespace beta
 }  // namespace dai

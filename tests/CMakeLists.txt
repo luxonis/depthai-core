@@ -366,7 +366,6 @@ function(dai_add_test test_name test_src)
     add_test(NAME ${test_name} COMMAND ${test_name})
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
 
-
     # Copy over required DLLs (Windows)
     if(WIN32)
         # Copy DLLs to target directory - Windows only
@@ -456,8 +455,6 @@ endif()
 # CalibrationHandler test
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
-dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
-dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
 
 # Calibration CBA merge test
 dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_test.cpp)
@@ -776,6 +773,9 @@ if(DEPTHAI_ENABLE_PROTOBUF)
 endif()
 
 if(DEPTHAI_BUILD_BETA)
+    dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
+    dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 
@@ -867,7 +867,6 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     target_compile_definitions(img_transformation_test PRIVATE TRANSFORMATION_TEST_DATA="${img_transformations_test_data}")
     dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
 endif()
-
 
 # EEPROM undistortion test (RVC2 only)
 dai_add_test(eeprom_undistortion_test src/ondevice_tests/eeprom_undistortion_test.cpp)

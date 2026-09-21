@@ -1,8 +1,11 @@
 #pragma once
 
+#include <optional>
+#include <vector>
+
 #include "depthai/common/EepromData.hpp"
+#include "depthai/common/MultiDeviceExtrinsics.hpp"
 #include "depthai/common/optional.hpp"
-#include "depthai/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/properties/Properties.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
 
@@ -14,7 +17,12 @@ namespace dai {
 struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
     std::optional<std::string> pipelineName;
     std::optional<std::string> pipelineVersion;
-    std::optional<MultiDeviceCalibrationHandler> multiDeviceCalibration;
+    /**
+     * Optional cross-device calibration graph shared by all devices in a
+     * multi-device pipeline. Use beta::MultiDeviceCalibrationHandler to
+     * build, validate and resolve it.
+     */
+    std::optional<std::vector<MultiDeviceExtrinsics>> multiDeviceCalibration;
     ~GlobalProperties() override;
 };
 
