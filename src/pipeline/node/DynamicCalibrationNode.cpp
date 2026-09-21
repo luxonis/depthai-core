@@ -5,6 +5,7 @@
 #endif
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -151,6 +152,16 @@ void addDynamicCalibrationResultTelemetry(DynamicCalibrationTelemetryAggregateSt
     }
 }
 
+// Modular boards (OAK FFC and similar) carry user-mounted cameras, so the baseline is not designed to be
+// perpendicular to the optical axes and DCL must not force it to be. Names come from the EEPROM.
+bool isModularCameraBoard(const std::string& productName, const std::string& boardName) {
+    const auto containsFfc = [](std::string name) {
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+        return name.find("FFC") != std::string::npos;
+    };
+    return containsFfc(productName) || containsFfc(boardName);
+}
+
 }  // namespace
 
 std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
@@ -235,6 +246,7 @@ class DynamicCalibration::Impl {
     std::shared_ptr<dcl::Device> device;
     dcl::DynamicCalibration dynCalibImpl;
     std::optional<CalibrationHandler> factoryCalibration;
+    std::optional<bool> perpendicularOpticalAxis;
     std::shared_ptr<DynamicCalibrationTelemetryAggregateState> telemetryAggregateState = std::make_shared<DynamicCalibrationTelemetryAggregateState>();
     utility::Telemetry::AggregateMetricsHandle telemetryAggregateMetricsHandle = 0;
 };
@@ -537,9 +549,24 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     };
 
     // Have DCL fix the pair's otherwise unobservable orientation itself: the common optical axis is made
-    // perpendicular to the baseline, so the rectified frame does not swing between calibrations.
-    constexpr bool perpendicularOpticalAxis = true;
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges, perpendicularOpticalAxis);
+    // perpendicular to the baseline, so the rectified frame does not swing between calibrations. Modular
+    // boards are exempt, since nothing guarantees their baseline is perpendicular to begin with.
+    if(!pimplDCL->perpendicularOpticalAxis) {
+        std::string productName;
+        std::string boardName;
+        try {
+            productName = device->getProductName();
+            boardName = device->readCalibrationOrDefault().getEepromData().boardName;
+        } catch(const std::exception& ex) {
+            logger->warn("DynamicCalibration could not read the device name, assuming a non-modular board: {}", ex.what());
+        }
+        pimplDCL->perpendicularOpticalAxis = !isModularCameraBoard(productName, boardName);
+        logger->debug("DynamicCalibration perpendicular optical axis {} (product '{}', board '{}')",
+                      *pimplDCL->perpendicularOpticalAxis ? "enabled" : "disabled",
+                      productName,
+                      boardName);
+    }
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges, *pimplDCL->perpendicularOpticalAxis);
     if(!dclResult.passed()) {
         if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
             logger->info("Calibration failed: {}", dclResult.errorMessage());
