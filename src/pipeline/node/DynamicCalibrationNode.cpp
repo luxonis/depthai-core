@@ -526,21 +526,24 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
             }
         }
     }
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges);
-    if(!dclResult.passed()) {
-        auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
-        if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
-            logger->info("Calibration failed: {}", dclResult.errorMessage());
-        } else {
-            logger->warn("Calibration failed: {}", dclResult.errorMessage());
-        }
-
-        calibrationOutput.send(result);
+    // Publishes a failed calibration result and records it in telemetry.
+    const auto reportCalibrationFailure = [this](const std::string& message) {
+        calibrationOutput.send(std::make_shared<DynamicCalibrationResult>(message));
         auto& telemetryState = *pimplDCL->telemetryAggregateState;
         std::lock_guard<std::mutex> lock(telemetryState.mutex);
         telemetryState.calibrationResultCallbacks += 1;
         telemetryState.failedCalibrations += 1;
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
+    };
+
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges);
+    if(!dclResult.passed()) {
+        if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
+            logger->info("Calibration failed: {}", dclResult.errorMessage());
+        } else {
+            logger->warn("Calibration failed: {}", dclResult.errorMessage());
+        }
+        return reportCalibrationFailure(dclResult.errorMessage());
     }
 
     if(dclResult.value.calibrations.size() != syncedSensors.size()) {
@@ -554,14 +557,25 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         calibratedPoses.emplace(connectedSensors[idx].socket, DclUtils::calibrationHandleToTransform(dclResult.value.calibrations[idx]));
     }
 
+    // Factory data is only needed to place cameras that DCL did not observe.
+    // Metrics-only use and fully observed rigs do not require factory EEPROM.
+    const bool hasUnobservedCameras = calibratedPoses.size() < socketsInHandler.size();
+    std::vector<StereoPair> stereoPairs;
+    if(hasUnobservedCameras) {
+        if(!pimplDCL->factoryCalibration) {
+            try {
+                pimplDCL->factoryCalibration = device->readFactoryCalibration();
+            } catch(const std::exception& ex) {
+                return reportCalibrationFailure(std::string("Failed to read factory calibration from EEPROM: ") + ex.what());
+            }
+        }
+        // getStereoPairs() never throws; it returns an empty list when no calibration is available,
+        // which assembleDynamicCalibration() reports explicitly.
+        stereoPairs = device->getStereoPairs();
+    }
+
     CalibrationHandler newCalibrationHandler;
     try {
-        // Cache factory data only when calibration needs an unobserved camera link.
-        // Metrics-only use and fully observed rigs do not require factory EEPROM.
-        if(calibratedPoses.size() < socketsInHandler.size() && !pimplDCL->factoryCalibration) {
-            pimplDCL->factoryCalibration = device->readFactoryCalibration();
-        }
-        const auto stereoPairs = calibratedPoses.size() < socketsInHandler.size() ? device->getStereoPairs() : std::vector<StereoPair>{};
         newCalibrationHandler = detail::assembleDynamicCalibration(currentHandler,
                                                                    pimplDCL->factoryCalibration.value_or(CalibrationHandler{}),
                                                                    socketsInHandler,
@@ -570,12 +584,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                                                                    stereoPairs,
                                                                    device->getPlatform());
     } catch(const std::exception& ex) {
-        calibrationOutput.send(std::make_shared<DynamicCalibrationResult>(std::string("Failed to assemble calibration from factory links: ") + ex.what()));
-        auto& telemetryState = *pimplDCL->telemetryAggregateState;
-        std::lock_guard<std::mutex> lock(telemetryState.mutex);
-        telemetryState.calibrationResultCallbacks += 1;
-        telemetryState.failedCalibrations += 1;
-        return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
+        return reportCalibrationFailure(std::string("Failed to assemble calibration: ") + ex.what());
     }
 
     CalibrationQuality::Data qualityData{};
