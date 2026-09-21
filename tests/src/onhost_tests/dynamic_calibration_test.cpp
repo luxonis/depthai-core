@@ -176,18 +176,18 @@ TEST_CASE("Stereo AUTO reference follows platform and measured CAM_A proximity",
     calibration.updateCameraExtrinsics(Socket::CAM_A, Socket::CAM_B, identity, {10, 0, 0});
     calibration.updateCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, identity, {rightDistance - 10, 0, 0});
     const auto expected = rightDistance == 7.0f ? Socket::CAM_C : Socket::CAM_B;
-    REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4) == expected);
-    REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC2) == Socket::CAM_B);
+    REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4) == expected);
+    REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC2) == Socket::CAM_B);
 
     using Align = dai::StereoDepthConfig::AlgorithmControl::DepthAlign;
     for(auto alignment : {Align::LEFT, Align::RECTIFIED_LEFT}) {
-        REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, alignment) == Socket::CAM_B);
+        REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, alignment) == Socket::CAM_B);
     }
     for(auto alignment : {Align::RIGHT, Align::RECTIFIED_RIGHT}) {
-        REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, alignment) == Socket::CAM_C);
+        REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, alignment) == Socket::CAM_C);
     }
-    REQUIRE_THROWS(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, Align::CENTER));
-    REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), {}, dai::Platform::RVC4) == Socket::CAM_B);
+    REQUIRE_THROWS(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), calibration, dai::Platform::RVC4, Align::CENTER));
+    REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), {}, dai::Platform::RVC4) == Socket::CAM_B);
 
     // Selection uses active calibration, while passive-camera links use factory data.
     const auto factory = factoryRig(Socket::CAM_A);
@@ -247,7 +247,7 @@ TEST_CASE("Simulated DCL updates preserve factory calibration queries across rel
 
     for(int cycle = 1; cycle <= 3; ++cycle) {
         CAPTURE(cycle);
-        REQUIRE(dai::utility::stereoDepthReferenceCamera(stereoPairs.front(), current, dai::Platform::RVC4) == anchor);
+        REQUIRE(dai::node::detail::stereoDepthReferenceCamera(stereoPairs.front(), current, dai::Platform::RVC4) == anchor);
         // Mock DCL output with a new stereo transform and a changing housing pose.
         // The expected B->C transform is specified directly, not derived from the result.
         const auto expectedStereo = pose(0.02f * cycle, 0.10f + 0.001f * cycle, -0.002f, 0.003f);
