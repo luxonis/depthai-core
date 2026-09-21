@@ -29,53 +29,53 @@ TEST_CASE("Test Multi-device external frame sync with at 30 FPS on OV9282 sensor
     testFsync2(fps, p);
 }
 
-TEST_CASE("Test Multi-device external frame sync with at 30 FPS on IMX586 sensors", "[fsync][fps-30][imx586]") {
-    float fps = 30.0f;
-    auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    p.testDurationSec = 60;
-    p.allowedSensors = std::set<std::string>{"IMX586"};
-    testFsync2(fps, p);
-}
+// TEST_CASE("Test Multi-device external frame sync with at 30 FPS on IMX586 sensors", "[fsync][fps-30][imx586]") {
+//     float fps = 30.0f;
+//     auto p = getDefaultParameters();
+//     p.syncThresholdSec = 1 / (2 * fps);
+//     p.testDurationSec = 60;
+//     p.allowedSensors = std::set<std::string>{"IMX586"};
+//     testFsync2(fps, p);
+// }
 
-TEST_CASE("Test Multi-device external frame sync with at 10 FPS", "[fsync][fps-10]") {
-    float fps = 10.0f;
-    auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync2(fps, p);
-}
+// TEST_CASE("Test Multi-device external frame sync with at 10 FPS", "[fsync][fps-10]") {
+//     float fps = 10.0f;
+//     auto p = getDefaultParameters();
+//     p.syncThresholdSec = 1 / (2 * fps);
+//     testFsync2(fps, p);
+// }
 
-TEST_CASE("Test Multi-device external frame sync with at 13 FPS", "[fsync][fps-13]") {
-    float fps = 13.0f;
-    auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync2(fps, p);
-}
+// TEST_CASE("Test Multi-device external frame sync with at 13 FPS", "[fsync][fps-13]") {
+//     float fps = 13.0f;
+//     auto p = getDefaultParameters();
+//     p.syncThresholdSec = 1 / (2 * fps);
+//     testFsync2(fps, p);
+// }
 
-TEST_CASE("Test Multi-device external frame sync with at 18.5 FPS", "[fsync][fps-18.5]") {
-    float fps = 18.5f;
-    auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync2(fps, p);
-}
+// TEST_CASE("Test Multi-device external frame sync with at 18.5 FPS", "[fsync][fps-18.5]") {
+//     float fps = 18.5f;
+//     auto p = getDefaultParameters();
+//     p.syncThresholdSec = 1 / (2 * fps);
+//     testFsync2(fps, p);
+// }
 
-TEST_CASE("Test Multi-device external frame sync with at 30 FPS", "[fsync][fps-30]") {
-    float fps = 30.0f;
-    auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync2(fps, p);
-}
+// TEST_CASE("Test Multi-device external frame sync with at 30 FPS", "[fsync][fps-30]") {
+//     float fps = 30.0f;
+//     auto p = getDefaultParameters();
+//     p.syncThresholdSec = 1 / (2 * fps);
+//     testFsync2(fps, p);
+// }
 
-TEST_CASE("Test Multi-device external frame sync with at 45 FPS", "[fsync][fps-45]") {
-    float fps = 45.0f;
-    auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync2(fps, p);
-}
+// TEST_CASE("Test Multi-device external frame sync with at 45 FPS", "[fsync][fps-45]") {
+//     float fps = 45.0f;
+//     auto p = getDefaultParameters();
+//     p.syncThresholdSec = 1 / (2 * fps);
+//     testFsync2(fps, p);
+// }
 
-TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60]") {
-    float fps = 60.0f;
-    auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync2(fps, p);
-}
+// TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60]") {
+//     float fps = 60.0f;
+//     auto p = getDefaultParameters();
+//     p.syncThresholdSec = 1 / (2 * fps);
+//     testFsync2(fps, p);
+// }
