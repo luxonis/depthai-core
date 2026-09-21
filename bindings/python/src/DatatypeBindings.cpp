@@ -7,6 +7,7 @@ void bind_adatatype(pybind11::module& m, void* pCallstack);
 void bind_apriltagconfig(pybind11::module& m, void* pCallstack);
 void bind_apriltags(pybind11::module& m, void* pCallstack);
 void bind_buffer(pybind11::module& m, void* pCallstack);
+void bind_protoserializable(pybind11::module& m, void* pCallstack);
 void bind_transformable(pybind11::module& m, void* pCallstack);
 void bind_cameracontrol(pybind11::module& m, void* pCallstack);
 void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack);
@@ -23,6 +24,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack);
 void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack);
 void bind_gpustereoconfig(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
+void bind_detectionparserconfig(pybind11::module& m, void* pCallstack);
 void bind_segmentationparserconfig(pybind11::module& m, void* pCallstack);
 void bind_segmentationmask(pybind11::module& m, void* pCallstack);
 void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack);
@@ -40,6 +42,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
 void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
+void bind_alignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
 void bind_mapdata(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
@@ -79,6 +82,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind all datatypes (order matters)
     callstack.push_front(bind_adatatype);
     callstack.push_front(bind_buffer);
+    callstack.push_front(bind_protoserializable);
     callstack.push_front(bind_transformable);
     callstack.push_front(bind_apriltagconfig);
     callstack.push_front(bind_apriltags);
@@ -97,6 +101,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuraldepthconfig);
     callstack.push_front(bind_gpustereoconfig);
     callstack.push_front(bind_spatialimgdetections);
+    callstack.push_front(bind_detectionparserconfig);
     callstack.push_front(bind_segmentationparserconfig);
     callstack.push_front(bind_segmentationmask);
     callstack.push_front(bind_spatiallocationcalculatorconfig);
@@ -113,6 +118,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pipelinestate);
     callstack.push_front(bind_transformdata);
     callstack.push_front(bind_imagealignconfig);
+    callstack.push_front(bind_alignconfig);
     callstack.push_front(bind_imageannotations);
     callstack.push_front(bind_rgbddata);
     callstack.push_front(bind_mapdata);
@@ -177,6 +183,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("CameraControl", DatatypeEnum::CameraControl)
         .value("ImgDetections", DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)
+        .value("DetectionParserConfig", DatatypeEnum::DetectionParserConfig)
         .value("SegmentationParserConfig", DatatypeEnum::SegmentationParserConfig)
         .value("SegmentationMask", DatatypeEnum::SegmentationMask)
         .value("SystemInformation", DatatypeEnum::SystemInformation)
@@ -201,6 +208,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
+        .value("AlignConfig", DatatypeEnum::AlignConfig)
         .value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
         .value("MapData", DatatypeEnum::MapData)
         .value("RGBDData", DatatypeEnum::RGBDData)

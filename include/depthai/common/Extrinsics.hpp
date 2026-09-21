@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -44,6 +45,12 @@ struct Extrinsics {
      * The destination camera socket for which these extrinsics are defined.
      */
     CameraBoardSocket toCameraSocket = CameraBoardSocket::AUTO;
+
+    /**
+     * The device containing the destination camera socket for which these extrinsics are defined.
+     * An empty value means that the device is unknown.
+     */
+    std::string toDeviceId;
 
     /**
      * The distance unit for the translation vector.
@@ -141,6 +148,14 @@ struct Extrinsics {
     bool isEqualExtrinsics(const Extrinsics& other, float epsilon = 1e-6f) const;
 
     /**
+     * Check whether these extrinsics can be expressed relative to the same target coordinate system as another Extrinsics object.
+     * Unknown device IDs and AUTO camera sockets are treated as compatible for backwards compatibility.
+     * @param to The target Extrinsics object to compare with
+     * @return true if no known part of the target coordinate system differs, false otherwise
+     */
+    bool hasCompatibleCoordinateSystem(const Extrinsics& to) const;
+
+    /**
      * Get the extrinsic transformation matrix from this Extrinsics to the target Extrinsics.
      * @param to The target Extrinsics to get the transformation matrix to
      * @param useSpecTranslation Set to true to force using spec translation
@@ -151,7 +166,7 @@ struct Extrinsics {
                                                                       bool useSpecTranslation = false,
                                                                       LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
-    DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit);
+    DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit, toDeviceId);
 };
 
 }  // namespace dai

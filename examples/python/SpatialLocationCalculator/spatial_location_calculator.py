@@ -45,13 +45,10 @@ with pipeline:
         print("Use WASD keys to move ROI!")
         outputDepthIMage : dai.ImgFrame = outputDepthQueue.get()
 
-        frameDepth = outputDepthIMage.getCvFrame()
         frameDepth = outputDepthIMage.getFrame()
         print("Median depth value: ", np.median(frameDepth))
 
-        depthFrameColor = cv2.normalize(frameDepth, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1)
-        depthFrameColor = cv2.equalizeHist(depthFrameColor)
-        depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
+        depthFrameColor = dai.utility.colorizeDepthFrame(outputDepthIMage).getCvFrame()
         for depthData in spatialData:
             roi = depthData.config.roi
             roi = roi.denormalize(width=depthFrameColor.shape[1], height=depthFrameColor.shape[0])

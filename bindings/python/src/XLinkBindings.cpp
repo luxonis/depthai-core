@@ -123,14 +123,32 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
     xLinkConnection.def(py::init<const DeviceInfo&, std::vector<std::uint8_t> >())
         .def(py::init<const DeviceInfo&, std::string>())
         .def(py::init<const DeviceInfo&>())
-        .def_static("getAllConnectedDevices",
-                    &XLinkConnection::getAllConnectedDevices,
-                    py::arg("state") = X_LINK_ANY_STATE,
-                    py::arg("skipInvalidDevices") = true,
-                    py::arg("timeoutMs") = XLINK_DEVICE_DEFAULT_SEARCH_TIMEOUT_MS)
-        .def_static("getFirstDevice", &XLinkConnection::getFirstDevice, py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
         .def_static(
-            "getDeviceById", &XLinkConnection::getDeviceById, py::arg("deviceId"), py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
+            "getAllConnectedDevices",
+            [](XLinkDeviceState_t state, bool skipInvalidDevices, int timeoutMs) {
+                py::gil_scoped_release release;
+                return XLinkConnection::getAllConnectedDevices(state, skipInvalidDevices, timeoutMs);
+            },
+            py::arg("state") = X_LINK_ANY_STATE,
+            py::arg("skipInvalidDevices") = true,
+            py::arg("timeoutMs") = XLINK_DEVICE_DEFAULT_SEARCH_TIMEOUT_MS)
+        .def_static(
+            "getFirstDevice",
+            [](XLinkDeviceState_t state, bool skipInvalidDevice) {
+                py::gil_scoped_release release;
+                return XLinkConnection::getFirstDevice(state, skipInvalidDevice);
+            },
+            py::arg("state") = X_LINK_ANY_STATE,
+            py::arg("skipInvalidDevice") = true)
+        .def_static(
+            "getDeviceById",
+            [](const std::string& deviceId, XLinkDeviceState_t state, bool skipInvalidDevice) {
+                py::gil_scoped_release release;
+                return XLinkConnection::getDeviceById(deviceId, state, skipInvalidDevice);
+            },
+            py::arg("deviceId"),
+            py::arg("state") = X_LINK_ANY_STATE,
+            py::arg("skipInvalidDevice") = true)
         .def_static("bootBootloader", &XLinkConnection::bootBootloader, py::arg("devInfo"))
         .def_static("getGlobalProfilingData", &XLinkConnection::getGlobalProfilingData, DOC(dai, XLinkConnection, getGlobalProfilingData));
 

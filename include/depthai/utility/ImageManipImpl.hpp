@@ -121,7 +121,7 @@ void loop(N& node,
         if(outputSize == 0) {
             node.out.send(inImage);
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
-            auto outImage = getFrame(node.properties.outputFrameSize);
+            auto outImage = getFrame(outputSize);
 
             bool success = true;
             {

@@ -9,25 +9,6 @@
 
 #include "depthai/depthai.hpp"
 
-// Visualization helper
-void showDepth(const cv::Mat& depthFrame, const std::string& windowName = "Depth", int minDistance = 500, int maxDistance = 5000) {
-    if(maxDistance <= minDistance) return;
-
-    cv::Mat clipped = depthFrame.clone();
-    clipped.setTo(minDistance, depthFrame < minDistance);
-    clipped.setTo(maxDistance, depthFrame > maxDistance);
-
-    cv::Mat displayFrame;
-    double scale = 255.0 / (maxDistance - minDistance);
-    double offset = -minDistance * scale;
-    clipped.convertTo(displayFrame, CV_8UC1, scale, offset);
-
-    cv::Mat colorMap;
-    cv::applyColorMap(displayFrame, colorMap, cv::COLORMAP_TURBO);
-
-    cv::imshow(windowName, colorMap);
-}
-
 std::tuple<double, double, double> rotationMatrixToEulerAngles(const cv::Matx33d& rotationMatrix) {
     constexpr double kPi = 3.14159265358979323846;
     const double sy = std::sqrt(rotationMatrix(0, 0) * rotationMatrix(0, 0) + rotationMatrix(1, 0) * rotationMatrix(1, 0));
@@ -143,8 +124,8 @@ int main() {
             }
         }
 
-        auto depthFrame = stereoOut->get<dai::ImgFrame>();
-        showDepth(depthFrame->getCvFrame(), "Depth", 500, 5000);
+        auto depth = stereoOut->get<dai::ImgFrame>();
+        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*depth, 500.0f, 12000.0f, cv::COLORMAP_TURBO, true).getCvFrame());
 
         if(cv::waitKey(1) == 'q') break;
     }

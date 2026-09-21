@@ -21,7 +21,17 @@ T* Pimpl<T>::operator->() {
 }
 
 template <typename T>
+const T* Pimpl<T>::operator->() const {
+    return m.get();
+}
+
+template <typename T>
 T& Pimpl<T>::operator*() {
+    return *m.get();
+}
+
+template <typename T>
+const T& Pimpl<T>::operator*() const {
     return *m.get();
 }
 

@@ -128,3 +128,4 @@ set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootl
 option(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4 "This build is part of the rvc4 firmware build" OFF)
 option(DEPTHAI_GENERATE_HOUSING_COORDS "Generate housing coordinate system data from JSON files" ON)
 option(DEPTHAI_TESTS_ENABLE_REPLAY "Set DEPTHAI_REPLAY for all tests" OFF)
+set(DEPTHAI_TEST_DEVICE_SEARCH_TIMEOUT 30 CACHE STRING "Seconds test_wrapper waits for a device before giving up")

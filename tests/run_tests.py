@@ -2,6 +2,7 @@ import os
 import subprocess
 import threading
 import argparse
+import re
 from functools import reduce
 import pathlib
 import atexit
@@ -22,24 +23,16 @@ class ResultThread(threading.Thread):
             self.cmd,
             env=self.env,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
         )
-        # Capture stdout in real-time
-        while True:
-            output = process.stdout.readline()
-            if output == "" and process.poll() is not None:
-                break
-            if output:
-                print(f"[{self.name}] {output.strip()}")
-                self.stdout_lines.append(output.strip())
 
-        # Capture stderr in real-time
-        stderr_output, _ = process.communicate()
-        if stderr_output:
-            print(f"[{self.name} ERROR] {stderr_output.strip()}")
-            self.stderr_lines.append(stderr_output.strip())
+        for output in process.stdout:
+            line = output.rstrip()
+            print(f"[{self.name}] {line}", flush=True)
+            self.stdout_lines.append(line)
 
+        process.wait()
         self.result = process
 
 def enableUARTonAllDevices(enable):
@@ -69,7 +62,7 @@ def enableUARTonAllDevices(enable):
             dev.shell(f"devmem {reg} 32 {val}")
 
 # Function to run ctest with specific environment variables and labels
-def run_ctest(env_vars, labels, excluded_labels=None, blocking=True, name=""):
+def run_ctest(env_vars, labels, test_label="ci", timeout=1000, excluded_labels=None, blocking=True, name=""):
     env = os.environ.copy()
     env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
     
@@ -89,9 +82,9 @@ def run_ctest(env_vars, labels, excluded_labels=None, blocking=True, name=""):
         "--no-tests=error",
         "-VV",
         "-L",
-        "^ci$",
+        f"^({test_label})$",
         "--timeout",
-        "1000",
+        str(timeout),
         "-C",
         "Release",
         "--test-output-size-failed",
@@ -173,6 +166,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--rvc2-protocol",
+        choices=["all", "usb", "tcpip"],
+        default="all",
+    )
+
+    parser.add_argument(
         "--rvc4replay",
         action="store_true",
         required=False,
@@ -184,7 +183,20 @@ if __name__ == "__main__":
         required=False,
     )
 
+    parser.add_argument(
+        "--test-label",
+        default="ci",
+    )
+
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=1000,
+    )
+
     args = parser.parse_args()
+    if args.rvc2_protocol != "all" and not (args.rvc2 or args.rvc2replay):
+        parser.error("--rvc2-protocol requires --rvc2 or --rvc2replay")
     test_dir = args.test_dir
     print("Going to run tests in directory:", test_dir)
     # cd to the test directory
@@ -243,7 +255,11 @@ if __name__ == "__main__":
     elif args.rvc4usb:
         test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "usb"]
     elif args.rvc2:
-        test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
+        test_configs = [
+            config
+            for config in all_configs
+            if "rvc2" in config.get("labels", []) or (re.fullmatch(args.test_label, "ci") and "onhost" in config.get("labels", []))
+        ]
     elif args.rvc4replay:
         test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "tcpip"]
     elif args.rvc2replay:
@@ -259,6 +275,13 @@ if __name__ == "__main__":
     else:
         parser.error("One test target argument is required.")
 
+    if args.rvc2_protocol != "all":
+        test_configs = [
+            config
+            for config in test_configs
+            if config["env"].get("DEPTHAI_PROTOCOL") == args.rvc2_protocol
+            or (args.rvc2_protocol == "usb" and "onhost" in config["labels"])
+        ]
 
     for config in test_configs:
         name = config["name"]
@@ -266,8 +289,8 @@ if __name__ == "__main__":
         labels = config.get("labels")
         excluded_labels = replay_excluded_labels if args.rvc4replay or args.rvc2replay else []
 
-        print(f"Running tests for configuration: {name}")
-        resultThread = run_ctest(env_vars, labels, excluded_labels=excluded_labels, blocking=False, name=name)
+        print(f"Running tests for configuration: {name}, on platform: {env_vars['DEPTHAI_PLATFORM'] if 'DEPTHAI_PLATFORM' in env_vars else 'HOST'}, on protocol: {env_vars['DEPTHAI_PROTOCOL'] if 'DEPTHAI_PROTOCOL' in env_vars else 'HOST'}, with labels: {",".join(labels) if labels is not None else ""}")
+        resultThread = run_ctest(env_vars, labels, args.test_label, args.timeout, excluded_labels=excluded_labels, blocking=False, name=name)
         resultThreads.append((name, resultThread))
 
     # Process the results

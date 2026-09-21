@@ -32,44 +32,8 @@ void drawRotatedRectangle(cv::Mat& frame, const cv::Point2f& center, const cv::S
 }
 
 // Helper function to process depth frame
-cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
-    cv::Mat depth_downscaled;
-    cv::resize(depthFrame, depth_downscaled, cv::Size(), 0.25, 0.25);
-
-    double min_depth = 0;
-    if(!cv::countNonZero(depth_downscaled == 0)) {
-        std::vector<uint16_t> nonZeroDepth;
-        nonZeroDepth.reserve(depth_downscaled.rows * depth_downscaled.cols);
-
-        for(int i = 0; i < depth_downscaled.rows; i++) {
-            for(int j = 0; j < depth_downscaled.cols; j++) {
-                uint16_t depth = depth_downscaled.at<uint16_t>(i, j);
-                if(depth > 0) nonZeroDepth.push_back(depth);
-            }
-        }
-
-        if(!nonZeroDepth.empty()) {
-            std::sort(nonZeroDepth.begin(), nonZeroDepth.end());
-            min_depth = nonZeroDepth[static_cast<int>(nonZeroDepth.size() * 0.01)];  // 1st percentile
-        }
-    }
-
-    std::vector<uint16_t> allDepth;
-    allDepth.reserve(depth_downscaled.rows * depth_downscaled.cols);
-    for(int i = 0; i < depth_downscaled.rows; i++) {
-        for(int j = 0; j < depth_downscaled.cols; j++) {
-            allDepth.push_back(depth_downscaled.at<uint16_t>(i, j));
-        }
-    }
-    std::sort(allDepth.begin(), allDepth.end());
-    double max_depth = allDepth[static_cast<int>(allDepth.size() * 0.99)];  // 99th percentile
-
-    // Normalize and colorize
-    cv::Mat normalized;
-    cv::normalize(depthFrame, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1, depthFrame > min_depth);
-    cv::Mat colorized;
-    cv::applyColorMap(normalized, colorized, cv::COLORMAP_HOT);
-    return colorized;
+cv::Mat processDepthFrame(const dai::ImgFrame& depthFrame) {
+    return dai::utility::colorizeDepthFrame(depthFrame, 500.0f, 12000.0f, cv::COLORMAP_HOT, true).getCvFrame();
 }
 
 int main() {
@@ -123,12 +87,13 @@ int main() {
         // Validate transformations
         if(!colorFrame->validateTransformations() || !stereoFrame->validateTransformations()) {
             std::cerr << "Invalid transformations!" << std::endl;
+            throw std::runtime_error("Invalid transformations!");
             continue;
         }
 
         // Get frames
         cv::Mat clr = colorFrame->getCvFrame();
-        cv::Mat depth = processDepthFrame(stereoFrame->getCvFrame());
+        cv::Mat depth = processDepthFrame(*stereoFrame);
 
         // Create and remap rectangle
         dai::RotatedRect rect(dai::Point2f(300, 200), dai::Size2f(200, 100), 10);

@@ -34,6 +34,8 @@ namespace Response = bootloader::response;
 
 // constants
 constexpr const DeviceBootloader::Type DeviceBootloader::DEFAULT_TYPE;
+constexpr const char* NETWORK_BOOTLOADER_FLASH_UTILITY_PATH = "depthai-core/utilities/flash_network_bootloader.py";
+constexpr const char* NETWORK_BOOTLOADER_DOCS_URL = "https://docs.luxonis.com/software-v3/depthai/depthai-components/bootloader";
 
 // static api
 
@@ -522,8 +524,15 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
 
         // Bootloader device ready, check for version
         logger::debug("Connected bootloader version {}", version.toString());
-        if(getEmbeddedBootloaderVersion() > version) {
-            logger::info("New bootloader version available. Device has: {}, available: {}", version.toString(), getEmbeddedBootloaderVersion().toString());
+        if(getType() == Type::NETWORK && getEmbeddedBootloaderVersion() > version) {
+            logger::warn(
+                "An optional NETWORK bootloader update is available (installed: {}, available: {}). "
+                "Updating is recommended to improve device discoverability. Run 'depthai --flash' or '{}', "
+                "or see {} for more information.",
+                version.toString(),
+                getEmbeddedBootloaderVersion().toString(),
+                NETWORK_BOOTLOADER_FLASH_UTILITY_PATH,
+                NETWORK_BOOTLOADER_DOCS_URL);
         }
 
     } catch(...) {
@@ -979,6 +988,12 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
         }
 
     } while(true);
+
+    // Do not register a user bootloader that the device failed to write or
+    // verify. The factory bootloader remains selected as the safe fallback.
+    if(!result.success) {
+        return {false, result.errorMsg};
+    }
 
     // Calculate checksum and update config
     // Try reading existing config, or create a new one

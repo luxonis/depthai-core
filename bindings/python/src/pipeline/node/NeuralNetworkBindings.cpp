@@ -92,6 +92,43 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("model"),
             py::arg("capability"),
             DOC(dai, node, NeuralNetwork, build, 3))
+        // Backwards-compatible Camera build methods forwarding to the consolidated Model path
+        .def(
+            "build",
+            [](NeuralNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               NNModelDescription modelDesc,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, NeuralNetwork::Model{std::move(modelDesc)}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("modelDesc"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, NeuralNetwork, build, 2))
+        .def(
+            "build",
+            [](NeuralNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const NNArchive& nnArchive,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, NeuralNetwork::Model{nnArchive}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, NeuralNetwork, build, 2))
+        .def(
+            "build",
+            [](NeuralNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const std::string& model,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, NeuralNetwork::Model{model}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, NeuralNetwork, build, 2))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
             "build",
@@ -100,6 +137,34 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             },
             py::arg("input"),
             py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, NeuralNetwork, build, 4))
+        // Backwards-compatible ReplayVideo build methods forwarding to the consolidated Model path
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
+                return self.build(input, NeuralNetwork::Model{std::move(modelDesc)}, fps);
+            },
+            py::arg("input"),
+            py::arg("modelDesc"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, NeuralNetwork, build, 4))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, const std::string& model, std::optional<float> fps) {
+                return self.build(input, NeuralNetwork::Model{model}, fps);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, NeuralNetwork, build, 4))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
+                return self.build(input, NeuralNetwork::Model{nnArchive}, fps);
+            },
+            py::arg("input"),
+            py::arg("nnArchive"),
             py::arg("fps") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 4))
 #endif

@@ -121,9 +121,10 @@ int main(int argc, char* argv[]) {
             auto videoIn = queues[i]->tryGet<dai::ImgFrame>();
             if(videoIn != nullptr) {
                 fpsCounters[i].tick();
-                std::cout << "frame " << videoIn->getWidth() << "x" << videoIn->getHeight() << " | " << videoIn->getSequenceNum()
-                          << ": exposure=" << videoIn->getExposureTime().count()
-                          << "us, timestamp: " << videoIn->getTimestampDevice().time_since_epoch().count() << std::endl;
+                if(!(videoIn->getSequenceNum() % 60))
+                    std::cout << "frame " << videoIn->getWidth() << "x" << videoIn->getHeight() << " | " << videoIn->getSequenceNum()
+                              << ": exposure=" << videoIn->getExposureTime().count()
+                              << "us, timestamp: " << videoIn->getTimestampDevice().time_since_epoch().count() << std::endl;
 
                 cv::Mat cvFrame = videoIn->getCvFrame();
 

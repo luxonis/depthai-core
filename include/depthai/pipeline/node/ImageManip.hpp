@@ -66,6 +66,12 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     void setMaxOutputFrameSize(int maxFrameSize);
 
     /**
+     * Specify maximum size of output image pool.
+     * @param maxPoolSize Maximum pool size in bytes
+     */
+    void setMaxPoolSize(unsigned int maxPoolSize);
+
+    /**
      * Specify whether to run on host or device
      * @param runOnHost Run node on host
      */

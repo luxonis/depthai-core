@@ -17,9 +17,10 @@ class InputQueue {
     void send(const std::shared_ptr<ADatatype>& msg);
 
     /**
-     * @brief Try to send a message to the connected input without waiting for queue space.
+     * @brief Try to send a message to the connected input, without waiting for space in the queue
      *
-     * @returns True if the message was accepted by the host-side input queue.
+     * @param msg: Message to send
+     * @returns True if the message was queued, false if the queue was full
      */
     bool trySend(const std::shared_ptr<ADatatype>& msg);
 
@@ -40,7 +41,8 @@ class InputQueue {
         /** Send message from host*/
         void send(const std::shared_ptr<ADatatype>& msg);
 
-        /** Try to send a message from host without waiting for queue space */
+
+        /** Try to send message from host, without waiting for space in the queue*/
         bool trySend(const std::shared_ptr<ADatatype>& msg);
 
         void run() override;

@@ -44,6 +44,10 @@ def assert_images_close(expected, recovered, tolerance, msg):
     assert max_diff <= tolerance, f"{msg} max abs diff too high: {max_diff} > {tolerance}"
 
 
+def test_colorize_depth_frame_is_in_utility_namespace():
+    assert callable(dai.utility.colorizeDepthFrame)
+    assert not hasattr(dai, "colorizeDepthFrame")
+
 
 COLOR_TYPES = [
     pytest.param(dai.ImgFrame.Type.BGR888p, 0.5, id="BGR888p"),

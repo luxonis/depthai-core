@@ -48,6 +48,8 @@
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "PacketizedData.hpp"
+#include "depthai/pipeline/datatype/AlignConfig.hpp"
+#include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
@@ -220,6 +222,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ImageAlignConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::AlignConfig:
+            return parseDatatype<AlignConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::CameraControl:
             return parseDatatype<CameraControl>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -252,6 +258,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<SpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::DetectionParserConfig:
+            return parseDatatype<DetectionParserConfig>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::SegmentationParserConfig:
             return parseDatatype<SegmentationParserConfig>(metadataStart, serializedObjectSize, data, fd);
             break;

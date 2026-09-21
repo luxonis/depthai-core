@@ -29,6 +29,8 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
     detectionParserProperties.def_readwrite("parser", &DetectionParserProperties::parser, DOC(dai, DetectionParserProperties, parser));
     // Node
     detectionParser.def_readonly("input", &DetectionParser::input, DOC(dai, node, DetectionParser, input))
+        .def_readonly("inputConfig", &DetectionParser::inputConfig, DOC(dai, node, DetectionParser, inputConfig))
+        .def_readonly("initialConfig", &DetectionParser::initialConfig, DOC(dai, node, DetectionParser, initialConfig))
         .def_readonly("out", &DetectionParser::out, DOC(dai, node, DetectionParser, out))
         .def("setBlobPath", &DetectionParser::setBlobPath, py::arg("path"), DOC(dai, node, DetectionParser, setBlobPath))
         .def("setNumFramesPool", &DetectionParser::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, DetectionParser, setNumFramesPool))
