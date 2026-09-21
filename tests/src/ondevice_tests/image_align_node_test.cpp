@@ -125,7 +125,6 @@ std::shared_ptr<dai::ImgFrame> makeRuntimeTransformationFrame(const dai::ImgTran
     REQUIRE(frame->validateTransformations());
     return frame;
 }
-}  // namespace
 
 TEST_CASE("Test ImageAlign node image to image alignment") {
     bool useDepth = false;
@@ -159,7 +158,7 @@ TEST_CASE("Test ImageAlign node depth to image alignment on host") {
     }
 }
 
-TEST_CASE("Test ImageAlign device runtime input transformations") {
+void runImageAlignRuntimeTransformationTest(bool runOnHost) {
     constexpr size_t width = 64;
     constexpr size_t height = 48;
     const std::array<std::array<float, 3>, 3> intrinsics = {{{100.0f, 0.0f, width / 2.0f}, {0.0f, 100.0f, height / 2.0f}, {0.0f, 0.0f, 1.0f}}};
@@ -179,7 +178,7 @@ TEST_CASE("Test ImageAlign device runtime input transformations") {
 
     dai::Pipeline pipeline;
     auto align = pipeline.create<dai::node::ImageAlign>();
-    align->setRunOnHost(false);
+    align->setRunOnHost(runOnHost);
     auto inputQueue = align->input.createInputQueue();
     auto alignToQueue = align->inputAlignTo.createInputQueue();
     auto outputQueue = align->outputAligned.createOutputQueue();
@@ -219,4 +218,13 @@ TEST_CASE("Test ImageAlign device runtime input transformations") {
     REQUIRE(changedInputOutput != changedAlignToOutput);
 
     pipeline.stop();
+}
+}  // namespace
+
+TEST_CASE("Test ImageAlign runtime input transformations on host") {
+    runImageAlignRuntimeTransformationTest(true);
+}
+
+TEST_CASE("Test ImageAlign runtime input transformations") {
+    runImageAlignRuntimeTransformationTest(false);
 }

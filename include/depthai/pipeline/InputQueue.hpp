@@ -41,7 +41,6 @@ class InputQueue {
         /** Send message from host*/
         void send(const std::shared_ptr<ADatatype>& msg);
 
-
         /** Try to send message from host, without waiting for space in the queue*/
         bool trySend(const std::shared_ptr<ADatatype>& msg);
 

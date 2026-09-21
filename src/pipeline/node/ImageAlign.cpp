@@ -330,7 +330,7 @@ void ImageAlign::run() {
     ImgTransformation inputAlignToTransform;
     ImgTransformation previousInputTransformation;
     ImgTransformation previousInputAlignToTransformation;
-    std::shared_ptr<ImgFrame> inputAlignToImg = inputAlignTo.get<ImgFrame>();
+    std::shared_ptr<ImgFrame> inputAlignToImg = nullptr;
     while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputImg = nullptr;
         std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
@@ -339,15 +339,20 @@ void ImageAlign::run() {
             auto blockEvent = this->inputBlockEvent();
 
             inputImg = input.get<ImgFrame>();
+            // Non-blocking, so that a lower inputAlignTo frequency doesn't stall the main input. The queue holds a single,
+            // non-blocking slot, so this always yields the most recent alignTo frame. Only the very first frame is awaited.
             auto newInputAlignToImg = inputAlignTo.tryGet<ImgFrame>();
             if(newInputAlignToImg) {
                 inputAlignToImg = newInputAlignToImg;
+            } else if(inputAlignToImg == nullptr) {
+                inputAlignToImg = inputAlignTo.get<ImgFrame>();
             }
 
             if(!previousInputTransformation.isEqualTransformation(inputImg->transformation)
                || !previousInputAlignToTransformation.isEqualTransformation(inputAlignToImg->transformation)) {
                 initialized = false;
                 calibrationSet = false;
+                allocated = false;
                 previousShiftFactor = 0;
             }
 
@@ -363,6 +368,9 @@ void ImageAlign::run() {
                 }
 
                 alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
+                // Re-derive on every (re)initialization, the alignTo frame may have changed resolution.
+                alignWidth = properties.alignWidth;
+                alignHeight = properties.alignHeight;
                 if(alignWidth == 0 || alignHeight == 0) {
                     alignWidth = inputAlignToImg->getWidth();
                     alignHeight = inputAlignToImg->getHeight();
