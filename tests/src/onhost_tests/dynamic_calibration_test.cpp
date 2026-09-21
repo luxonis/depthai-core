@@ -108,11 +108,22 @@ TEST_CASE("DynamicCalibration factory link requirements", "[DynamicCalibrationTr
         requireTransform(result.getCameraExtrinsics(Socket::CAM_B, Socket::CAM_C, false, dai::LengthUnit::METER),
                          dai::matrix::matMul(poses.at(Socket::CAM_C), inverse(poses.at(Socket::CAM_B))));
     }
-    SECTION("Unobserved cameras require the first stereo pair anchor to be calibrated") {
+    SECTION("Unobserved cameras require a stereo pair whose reference camera is calibrated") {
         poses.erase(Socket::CAM_B);
         REQUIRE_THROWS_WITH(dai::node::detail::assembleDynamicCalibration(current, current, sockets, poses, true, stereoPairs, dai::Platform::RVC2),
-                            "DynamicCalibration requires the first stereo pair's default depth reference camera as a calibration input to anchor unobserved "
+                            "DynamicCalibration requires a stereo pair whose default depth reference camera is a calibration input to anchor unobserved "
                             "cameras to factory extrinsics.");
+    }
+    SECTION("Anchor falls back to a later stereo pair whose reference camera is calibrated") {
+        // The device's first pair (B, C) references CAM_B, which is not a calibration input; (A, D) references CAM_A, which is.
+        poses.erase(Socket::CAM_B);
+        const std::vector<dai::StereoPair> devicePairs = {{Socket::CAM_B, Socket::CAM_C}, {Socket::CAM_A, Socket::CAM_D}};
+        const auto result = dai::node::detail::assembleDynamicCalibration(current, current, sockets, poses, true, devicePairs, dai::Platform::RVC2);
+        // CAM_B follows the CAM_A anchor through its factory transform, while the calibrated links keep the DCL poses.
+        requireTransform(result.getCameraExtrinsics(Socket::CAM_A, Socket::CAM_B, false, dai::LengthUnit::METER),
+                         current.getCameraExtrinsics(Socket::CAM_A, Socket::CAM_B, false, dai::LengthUnit::METER));
+        requireTransform(result.getCameraExtrinsics(Socket::CAM_C, Socket::CAM_D, false, dai::LengthUnit::METER),
+                         dai::matrix::matMul(poses.at(Socket::CAM_D), inverse(poses.at(Socket::CAM_C))));
     }
 }
 

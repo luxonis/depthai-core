@@ -4,6 +4,7 @@
 #include <depthai/device/CalibrationHandler.hpp>
 #include <depthai/utility/matrixOps.hpp>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -14,7 +15,8 @@ namespace node {
 namespace detail {
 
 // All input poses transform the common base (housing, when available) into a camera.
-// Every unobserved camera follows the first stereo pair's default depth reference camera through its factory transform.
+// Every unobserved camera follows an anchor camera through its factory transform. The anchor is the default depth
+// reference camera of the first stereo pair (in device order) whose reference camera is a calibration input.
 inline CalibrationHandler assembleDynamicCalibration(const CalibrationHandler& current,
                                                      const CalibrationHandler& factory,
                                                      const std::vector<CameraBoardSocket>& sockets,
@@ -25,20 +27,26 @@ inline CalibrationHandler assembleDynamicCalibration(const CalibrationHandler& c
     if(calibratedPoses.empty()) throw std::invalid_argument("DynamicCalibration has no calibrated camera poses.");
 
     auto poses = calibratedPoses;
+    std::optional<CameraBoardSocket> anchor;
+    for(const auto& stereoPair : stereoPairs) {
+        const auto candidate = utility::stereoDepthReferenceCamera(stereoPair, current, platform);
+        if(calibratedPoses.count(candidate)) {
+            anchor = candidate;
+            break;
+        }
+    }
     for(auto socket : sockets) {
         if(!calibratedPoses.count(socket)) {
             if(stereoPairs.empty()) {
                 throw std::invalid_argument("DynamicCalibration requires a stereo pair to anchor unobserved cameras to factory extrinsics.");
             }
-            const auto anchor = utility::stereoDepthReferenceCamera(stereoPairs.front(), current, platform);
-            if(!calibratedPoses.count(anchor)) {
+            if(!anchor) {
                 throw std::invalid_argument(
-                    "DynamicCalibration requires the first stereo pair's default depth reference camera as a calibration input to anchor unobserved cameras to "
-                    "factory "
-                    "extrinsics.");
+                    "DynamicCalibration requires a stereo pair whose default depth reference camera is a calibration input to anchor unobserved cameras to "
+                    "factory extrinsics.");
             }
             // Use measured factory translations, in the same units as DCL (meters).
-            poses[socket] = matrix::matMul(factory.getCameraExtrinsics(anchor, socket, false, LengthUnit::METER), calibratedPoses.at(anchor));
+            poses[socket] = matrix::matMul(factory.getCameraExtrinsics(*anchor, socket, false, LengthUnit::METER), calibratedPoses.at(*anchor));
         }
     }
 

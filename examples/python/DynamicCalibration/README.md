@@ -45,16 +45,19 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
 The result preserves DCL-produced camera poses relative to housing, when housing
 calibration is available. Cameras that are not calibration inputs are positioned
 using measured factory extrinsics, rather than their previous housing poses.
-Every unobserved camera is anchored to the default stereo-depth reference camera of
-`device.getStereoPairs()[0]`: the
+Every unobserved camera is anchored to a default stereo-depth reference camera: the
 result's transform from that anchor into the camera equals the measured factory
-transform. Anchor selection mirrors the firmware default: RVC4 selects the right camera when
+transform. The anchor is taken from the first pair in `device.getStereoPairs()`
+whose reference camera is a calibration input, so calibrating a pair other than
+the device default still anchors to that pair's reference camera. Reference
+selection mirrors the firmware default: RVC4 selects the right camera when
 its measured distance to CAM_A is less than 80% of the left camera’s distance;
 otherwise it selects left, including when CAM_A extrinsics are unavailable.
 RVC2 selects left. StereoDepth keeps `AUTO` unchanged on the wire so firmware
-continues to resolve initial and runtime alignment. A stereo pair must exist and its reference camera must be a calibration
-input when any unobserved cameras are present; otherwise calibration fails
-explicitly. Fully observed rigs do not require a stereo pair.
+continues to resolve initial and runtime alignment. When any unobserved cameras
+are present, a stereo pair whose reference camera is a calibration input must
+exist; otherwise calibration fails explicitly. Fully observed rigs do not require
+a stereo pair.
 
 For the B–C–D–A chain with B as the default depth reference camera, calibrating B/C preserves factory B–D and B–A while keeping
 DCL's B/C poses. C–D is consequently recomputed; it is no longer constrained to
