@@ -8,7 +8,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
     py::class_<beta::ToFStereoFusionConfig, std::shared_ptr<beta::ToFStereoFusionConfig>>(m, "ToFStereoFusionConfig")
         .def(py::init<>())
         .def_readwrite("cropToOverlap", &beta::ToFStereoFusionConfig::cropToOverlap)
-        .def("setCropToOverlap", &beta::ToFStereoFusionConfig::setCropToOverlap, py::arg("enabled"))
+        .def("setCropToOverlap", &beta::ToFStereoFusionConfig::setCropToOverlap, py::arg("enabled"), DOC(dai, beta, ToFStereoFusionConfig, setCropToOverlap))
         .def_readwrite("confidenceThreshold", &beta::ToFStereoFusionConfig::confidenceThreshold)
         .def("setConfidenceThreshold", &beta::ToFStereoFusionConfig::setConfidenceThreshold, py::arg("threshold"));
 
