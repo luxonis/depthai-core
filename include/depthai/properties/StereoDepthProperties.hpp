@@ -195,6 +195,15 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     std::optional<float> alphaScaling;
 
+    /**
+     * On RVC2, override automatic vertical stereo detection. When unset, the
+     * calibrated translation between the stereo cameras determines whether the pair
+     * is horizontal or vertical.
+     *
+     * Vertical stereo requires rectification to be enabled.
+     */
+    std::optional<bool> verticalStereo;
+
     ~StereoDepthProperties() override;
 };
 
@@ -221,5 +230,6 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       disparityToDepthUseSpecTranslation,
                       rectificationUseSpecTranslation,
                       depthAlignmentUseSpecTranslation,
-                      alphaScaling);
+                      alphaScaling,
+                      verticalStereo);
 }  // namespace dai

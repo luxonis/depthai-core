@@ -186,6 +186,10 @@ void StereoDepth::setAlphaScaling(float alpha) {
     properties.alphaScaling = alpha;
 }
 
+void StereoDepth::setVerticalStereo(bool verticalStereo) {
+    properties.verticalStereo = verticalStereo;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     auto device = getDevice();
     DAI_CHECK_V(device, "Device is not set, cannot set default profile preset");

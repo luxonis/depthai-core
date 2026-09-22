@@ -378,6 +378,15 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
     void setAlphaScaling(float alpha);
+
+    /**
+     * On RVC2, override automatic vertical stereo detection.
+     *
+     * By default, StereoDepth determines the orientation from calibrated camera
+     * extrinsics. Set this only when the calibration cannot describe the intended
+     * orientation. Vertical stereo requires rectification to be enabled.
+     */
+    void setVerticalStereo(bool verticalStereo);
 };
 
 }  // namespace node
