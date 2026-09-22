@@ -7,6 +7,17 @@
 namespace dai::beta {
 
 struct ToFStereoFusionConfig {
+    /** Crop depth and confidence to the largest rectangle in the geometric overlap.
+     * Uses viewing directions (projection at infinity), independent of measured depth.
+     * Recomputed when input transformations or dimensions change; empty overlap throws.
+     */
+    bool cropToOverlap = false;
+
+    ToFStereoFusionConfig& setCropToOverlap(bool enabled) {
+        cropToOverlap = enabled;
+        return *this;
+    }
+
     float confidenceThreshold = 0.5f;
 
     ToFStereoFusionConfig& setConfidenceThreshold(float threshold) {
@@ -16,6 +27,6 @@ struct ToFStereoFusionConfig {
     }
 };
 
-DEPTHAI_SERIALIZE_EXT(ToFStereoFusionConfig, confidenceThreshold);
+DEPTHAI_SERIALIZE_EXT(ToFStereoFusionConfig, confidenceThreshold, cropToOverlap);
 
 }  // namespace dai::beta
