@@ -7,6 +7,7 @@
 #include "depthai/depthai.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "utility/Environment.hpp"
+#include "utility/Logging.hpp"
 
 #define VIDEO_DURATION_SECONDS 5
 
@@ -64,9 +65,10 @@ TEST_CASE("Object Tracker Pipeline Debugging") {
         if(!node->getInputs().empty()) REQUIRE(nodeState.inputsGetTiming.isValid());
         if(node->getOutputs().size() > 1) REQUIRE(nodeState.outputsSendTiming.isValid());
         for(const auto& [inputName, inputState] : nodeState.inputStates) {
-            if(std::string(node->getName()) == "ObjectTracker" && inputName == "inputConfig") continue;  // This example does not use inputConfig
-            if(std::string(node->getName()) == "ObjectTracker" && inputName == "inputDetectionFrame")
-                continue;  // This example does not use inputDetectionFrame
+            std::string nodeName = std::string(node->getName());
+            if(nodeName == "ObjectTracker" && (inputName == "inputConfig" || inputName == "inputDetectionFrame"))
+                continue;                                                              // This example does not use inputConfig or inputDetectionFrame
+            if(nodeName == "DetectionParser" && inputName == "inputConfig") continue;  // This example does not use inputConfig for detection parser
             REQUIRE(inputState.timing.isValid());
         }
         for(const auto& [outputName, outputState] : nodeState.outputStates) {
