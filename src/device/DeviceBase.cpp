@@ -408,7 +408,7 @@ class DeviceBase::Impl {
     // RPC
     std::mutex rpcMutex;
     std::shared_ptr<XLinkStream> rpcStream;
-    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
+    std::shared_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
 
     void setLogLevel(LogLevel level);
     LogLevel getLogLevel();
@@ -421,7 +421,7 @@ class DeviceBase::Impl {
     auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name),
                                                                                                                   std::forward<Args>(args)...)) {
         ScopedRpcTimeout guard(timeout);
-        return rpcClient->call(name, std::forward<Args>(args)...);
+        return rpcCall(std::move(name), std::forward<Args>(args)...);
     }
 
     /*
@@ -430,7 +430,9 @@ class DeviceBase::Impl {
     template <typename... Args>
     auto rpcCall(std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name), std::forward<Args>(args)...)) {
         // ScopedRpcTimeout guard(std::nullopt);
-        return rpcClient->call(name, std::forward<Args>(args)...);
+        auto client = std::atomic_load(&rpcClient);
+        if(!client) throw std::system_error(std::make_error_code(std::errc::not_connected), "Device already closed or disconnected");
+        return client->call(name, std::forward<Args>(args)...);
     }
 
     template <typename Ret, typename... Args>
@@ -943,7 +945,7 @@ void DeviceBase::closeImpl() {
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
-    pimpl->rpcClient = nullptr;
+    std::atomic_store(&pimpl->rpcClient, decltype(pimpl->rpcClient){});
     {
         std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
         telemetryEventStream = nullptr;
@@ -1236,7 +1238,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     }
     auto rpcStream = pimpl->rpcStream;
 
-    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
+    auto rpcClient = std::make_shared<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
         // Lock for time of the RPC call, to not mix the responses between calling threads.
         // Note: might cause issues on Windows on incorrect shutdown. To be investigated
         std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
@@ -1271,6 +1273,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
         }
     });
+    std::atomic_store(&pimpl->rpcClient, std::move(rpcClient));
 
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
@@ -1616,7 +1619,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                         break;
                     }
                     auto shared = pipelinePtr.lock();
-                    if(!shared) throw std::runtime_error("Pipeline was destroyed");
                     const DeviceGate* gateBefore = gate.get();
                     try {
                         init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
@@ -1626,7 +1628,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                                 collectAndLogCrashDump();
                             }
                         }
-                        shared->resetConnections(this);
+                        if(shared) shared->resetConnections(this);
                         reconnected = true;
                         break;
                     } catch(const std::exception& ex) {
