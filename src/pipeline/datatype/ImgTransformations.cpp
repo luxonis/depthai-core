@@ -389,20 +389,21 @@ dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, da
 }
 
 dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const {
-    bool normalized = rect.isNormalized();
-    if(normalized) {
-        rect = rect.denormalize(width, height);
+    const bool normalized = rect.isNormalized();
+    if(normalized && (width == 0 || height == 0 || to.width == 0 || to.height == 0)) {
+        throw std::runtime_error("Cannot remap a normalized rectangle with zero image dimensions");
     }
     const auto points = rect.getPoints();
     std::vector<std::array<float, 2>> vPoints(points.size());
     for(auto i = 0U; i < points.size(); ++i) {
-        auto point = remapPointTo(to, points[i]);
+        // Remap corners in the requested coordinate space before fitting. Scaling the
+        // fitted rectangle's local axes is incorrect for non-square image dimensions.
+        const auto point = remapPointTo(to, points[i]);
         vPoints[i] = {point.x, point.y};
     }
     auto transformed = impl::getOuterRotatedRect(vPoints);
-    if(normalized) {
-        transformed = transformed.normalize(to.width, to.height);
-    }
+    transformed.center = Point2f(transformed.center.x, transformed.center.y, normalized);
+    transformed.size = Size2f(transformed.size.width, transformed.size.height, normalized);
     return transformed;
 }
 dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, const dai::RotatedRect& rect) const {
