@@ -282,7 +282,6 @@ TEST_CASE("Synchronized MapOutput runtime Config is consumed before its frame", 
     parser->inputConfig.setWaitForMessage(true);
 
     auto inputQueue = parser->input.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
 
     auto nnData = std::make_shared<dai::NNData>();
@@ -292,7 +291,7 @@ TEST_CASE("Synchronized MapOutput runtime Config is consumed before its frame", 
 
     pipeline.start();
     inputQueue->send(nnData);
-    configQueue->send(config);
+    parser->inputConfig.send(config);
 
     bool timedOut = false;
     auto output = outputQueue->get<dai::beta::Map2D>(std::chrono::seconds(1), timedOut);
@@ -309,7 +308,6 @@ TEST_CASE("Invalid ClassificationSequence Config does not partially replace acti
     parser->setSoftmax(true);
 
     auto inputQueue = parser->input.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
 
     auto nnData = std::make_shared<dai::NNData>();
@@ -337,7 +335,7 @@ TEST_CASE("Invalid ClassificationSequence Config does not partially replace acti
 
     auto validConfig = std::make_shared<dai::beta::ClassificationSequenceParserConfig>();
     validConfig->removeDuplicates = true;
-    configQueue->send(validConfig);
+    parser->inputConfig.send(validConfig);
     inputQueue->send(nnData);
     getClasses();  // Wake a node that may already be blocked on its primary input.
 
@@ -347,7 +345,7 @@ TEST_CASE("Invalid ClassificationSequence Config does not partially replace acti
     auto invalidConfig = std::make_shared<dai::beta::ClassificationSequenceParserConfig>();
     invalidConfig->ignoredIndexes = {-1};
     invalidConfig->removeDuplicates = false;
-    configQueue->send(invalidConfig);
+    parser->inputConfig.send(invalidConfig);
     inputQueue->send(nnData);
     CHECK(getClasses() == std::vector<std::string>{"b"});
 
@@ -361,7 +359,6 @@ TEST_CASE("RFDETR runtime Config changes the maximum detection count", "[beta][c
     parser->inputConfig.setWaitForMessage(true);
 
     auto inputQueue = parser->input.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
 
     auto nnData = std::make_shared<dai::NNData>();
@@ -379,13 +376,13 @@ TEST_CASE("RFDETR runtime Config changes the maximum detection count", "[beta][c
     pipeline.start();
 
     auto initial = std::make_shared<dai::beta::RFDETRParserConfig>(*parser->initialConfig);
-    configQueue->send(initial);
+    parser->inputConfig.send(initial);
     inputQueue->send(nnData);
     CHECK(getOutput()->detections.size() == 2);
 
     auto limited = std::make_shared<dai::beta::RFDETRParserConfig>(*initial);
     limited->maxDetections = 1;
-    configQueue->send(limited);
+    parser->inputConfig.send(limited);
     inputQueue->send(nnData);
     CHECK(getOutput()->detections.size() == 1);
 }
@@ -400,7 +397,6 @@ TEST_CASE("SCRFD runtime Config changes the maximum detection count", "[beta][co
     parser->inputConfig.setWaitForMessage(true);
 
     auto inputQueue = parser->input.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
 
     auto nnData = std::make_shared<dai::NNData>();
@@ -419,13 +415,13 @@ TEST_CASE("SCRFD runtime Config changes the maximum detection count", "[beta][co
     pipeline.start();
 
     auto initial = std::make_shared<dai::beta::SCRFDParserConfig>(*parser->initialConfig);
-    configQueue->send(initial);
+    parser->inputConfig.send(initial);
     inputQueue->send(nnData);
     CHECK(getOutput()->detections.size() == 2);
 
     auto limited = std::make_shared<dai::beta::SCRFDParserConfig>(*initial);
     limited->maxDetections = 1;
-    configQueue->send(limited);
+    parser->inputConfig.send(limited);
     inputQueue->send(nnData);
     CHECK(getOutput()->detections.size() == 1);
 }
@@ -441,7 +437,6 @@ TEST_CASE("XFeatMono runtime Config changes the feature count", "[beta][config][
     parser->inputConfig.setWaitForMessage(true);
 
     auto inputQueue = parser->input.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
     auto nnData = makeXFeatData();
 
@@ -457,17 +452,17 @@ TEST_CASE("XFeatMono runtime Config changes the feature count", "[beta][config][
     pipeline.start();
 
     parser->setTrigger();
-    configQueue->send(initial);
+    parser->inputConfig.send(initial);
     inputQueue->send(nnData);
     CHECK(getOutput()->trackedFeatures.empty());
 
-    configQueue->send(initial);
+    parser->inputConfig.send(initial);
     inputQueue->send(nnData);
     CHECK(getOutput()->trackedFeatures.size() == 4);
 
     auto limited = std::make_shared<dai::beta::XFeatMonoParserConfig>(*initial);
     limited->maxKeypoints = 1;
-    configQueue->send(limited);
+    parser->inputConfig.send(limited);
     inputQueue->send(nnData);
     CHECK(getOutput()->trackedFeatures.size() == 2);
 }
@@ -484,7 +479,6 @@ TEST_CASE("XFeatStereo applies one runtime Config snapshot to a frame pair", "[b
 
     auto referenceQueue = parser->referenceInput.createInputQueue();
     auto targetQueue = parser->targetInput.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
     auto nnData = makeXFeatData();
 
@@ -499,14 +493,14 @@ TEST_CASE("XFeatStereo applies one runtime Config snapshot to a frame pair", "[b
     pipeline.start();
 
     auto initial = std::make_shared<dai::beta::XFeatStereoParserConfig>(*parser->initialConfig);
-    configQueue->send(initial);
+    parser->inputConfig.send(initial);
     referenceQueue->send(nnData);
     targetQueue->send(nnData);
     CHECK(getOutput()->trackedFeatures.size() == 4);
 
     auto limited = std::make_shared<dai::beta::XFeatStereoParserConfig>(*initial);
     limited->maxKeypoints = 1;
-    configQueue->send(limited);
+    parser->inputConfig.send(limited);
     referenceQueue->send(nnData);
     targetQueue->send(nnData);
     CHECK(getOutput()->trackedFeatures.size() == 2);
