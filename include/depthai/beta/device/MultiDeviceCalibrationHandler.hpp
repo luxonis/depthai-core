@@ -8,13 +8,9 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/Extrinsics.hpp"
-#include "depthai/common/MultiDeviceExtrinsics.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
-
-class Pipeline;
-
 namespace beta {
 
 /**
@@ -36,25 +32,6 @@ class MultiDeviceCalibrationHandler {
 
     /** Construct and validate a handler from its JSON representation. */
     static MultiDeviceCalibrationHandler fromJson(const nlohmann::json& calibrationDataJson);
-
-    /**
-     * Construct a handler from the multi-device calibration graph stored in
-     * the pipeline's global properties.
-     *
-     * @return The handler when the pipeline carries a multi-device calibration
-     * graph, or std::nullopt when it does not.
-     * @throws std::invalid_argument when the stored graph is invalid.
-     */
-    static std::optional<MultiDeviceCalibrationHandler> fromPipeline(const Pipeline& pipeline);
-
-    /**
-     * Store this handler's calibration graph in the pipeline's global
-     * properties so that every device in the pipeline receives it.
-     */
-    void applyTo(Pipeline& pipeline) const;
-
-    /** Remove any multi-device calibration graph from the pipeline's global properties. */
-    static void clearFrom(Pipeline& pipeline);
 
     /** Return the handler's JSON representation with translations in centimeters. */
     nlohmann::json toJson() const;

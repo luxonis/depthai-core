@@ -161,6 +161,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setEepromData(const std::optional<EepromData>& eepromData);
     std::optional<EepromData> getEepromData() const;
     uint32_t getEepromId() const;
+    void setMultiDeviceCalibration(const std::vector<MultiDeviceExtrinsics>& graph);
+    std::optional<std::vector<MultiDeviceExtrinsics>> getMultiDeviceCalibration() const;
+    void clearMultiDeviceCalibration();
     bool isHostOnly() const;
     bool isDeviceOnly() const;
     std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const;
@@ -642,6 +645,34 @@ class Pipeline {
      */
     void setEepromData(std::optional<EepromData> eepromData) {
         impl()->setEepromData(eepromData);
+    }
+
+    /**
+     * Sets the cross-device calibration graph shared by all devices in the pipeline.
+     *
+     * The graph is stored as-is. Use beta::MultiDeviceCalibrationHandler to validate
+     * it before setting and to resolve it after reading it back.
+     *
+     * @param graph Directed cross-device calibration edges.
+     */
+    void setMultiDeviceCalibration(std::vector<MultiDeviceExtrinsics> graph) {
+        impl()->setMultiDeviceCalibration(graph);
+    }
+
+    /**
+     * Gets the cross-device calibration graph from the pipeline
+     *
+     * @return the graph when one is set, std::nullopt otherwise
+     */
+    std::optional<std::vector<MultiDeviceExtrinsics>> getMultiDeviceCalibration() const {
+        return impl()->getMultiDeviceCalibration();
+    }
+
+    /**
+     * Removes any cross-device calibration graph from the pipeline
+     */
+    void clearMultiDeviceCalibration() {
+        impl()->clearMultiDeviceCalibration();
     }
 
     /**

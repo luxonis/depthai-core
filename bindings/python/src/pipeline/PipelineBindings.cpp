@@ -263,6 +263,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              })
         //.def(py::init<const Pipeline&>())
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
+        .def("setMultiDeviceCalibration", &Pipeline::setMultiDeviceCalibration, py::arg("graph"), DOC(dai, Pipeline, setMultiDeviceCalibration))
+        .def("getMultiDeviceCalibration", &Pipeline::getMultiDeviceCalibration, DOC(dai, Pipeline, getMultiDeviceCalibration))
+        .def("clearMultiDeviceCalibration", &Pipeline::clearMultiDeviceCalibration, DOC(dai, Pipeline, clearMultiDeviceCalibration))
         .def("setDefaultDeviceProperties",
              &Pipeline::setDefaultDeviceProperties,
              py::call_guard<py::gil_scoped_release>(),

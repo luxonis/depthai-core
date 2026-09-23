@@ -126,18 +126,19 @@ TEST_CASE("Multi-device calibration handles chains, components, units, and seria
     }
 
     Pipeline pipeline(false);
-    REQUIRE_FALSE(MultiDeviceCalibrationHandler::fromPipeline(pipeline).has_value());
-    handler.applyTo(pipeline);
+    REQUIRE_FALSE(pipeline.getMultiDeviceCalibration().has_value());
+    pipeline.setMultiDeviceCalibration(handler.getGraph());
     REQUIRE(pipeline.getGlobalProperties().multiDeviceCalibration.has_value());
     REQUIRE(pipeline.getGlobalProperties().multiDeviceCalibration->size() == 3);
-    const auto pipelineHandler = MultiDeviceCalibrationHandler::fromPipeline(pipeline);
-    REQUIRE(pipelineHandler.has_value());
-    const auto pipelineBridge = pipelineHandler->getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
+    const auto pipelineGraph = pipeline.getMultiDeviceCalibration();
+    REQUIRE(pipelineGraph.has_value());
+    const MultiDeviceCalibrationHandler pipelineHandler(*pipelineGraph);
+    const auto pipelineBridge = pipelineHandler.getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
     REQUIRE(pipelineBridge.has_value());
     REQUIRE(pipelineBridge->toDeviceId == "device-a");
     REQUIRE(pipelineBridge->translation.x == Catch::Approx(3.0f));
-    MultiDeviceCalibrationHandler::clearFrom(pipeline);
-    REQUIRE_FALSE(MultiDeviceCalibrationHandler::fromPipeline(pipeline).has_value());
+    pipeline.clearMultiDeviceCalibration();
+    REQUIRE_FALSE(pipeline.getMultiDeviceCalibration().has_value());
 }
 
 TEST_CASE("Multi-device calibration rejects invalid graph structure") {

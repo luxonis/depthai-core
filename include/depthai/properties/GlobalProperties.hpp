@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "depthai/common/EepromData.hpp"
-#include "depthai/common/MultiDeviceExtrinsics.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"

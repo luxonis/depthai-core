@@ -169,4 +169,19 @@ struct Extrinsics {
     DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit, toDeviceId);
 };
 
+/**
+ * A directed cross-device calibration edge.
+ *
+ * The source coordinate system is identified by fromDeviceId/fromSocket. The
+ * destination coordinate system is identified by extrinsics.toDeviceId and
+ * extrinsics.toCameraSocket.
+ */
+struct MultiDeviceExtrinsics {
+    std::string fromDeviceId;
+    CameraBoardSocket fromSocket = CameraBoardSocket::AUTO;
+    Extrinsics extrinsics;
+};
+
+DEPTHAI_SERIALIZE_EXT(MultiDeviceExtrinsics, fromDeviceId, fromSocket, extrinsics);
+
 }  // namespace dai

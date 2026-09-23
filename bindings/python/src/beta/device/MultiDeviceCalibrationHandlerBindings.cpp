@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 #include "pybind11_common.hpp"
 
 void bind_beta_multidevicecalibrationhandler(pybind11::module& m, void* pCallstack) {
@@ -29,10 +28,6 @@ void bind_beta_multidevicecalibrationhandler(pybind11::module& m, void* pCallsta
         .def(py::init<std::filesystem::path>(), py::arg("calibrationDataPath"), DOC(dai, beta, MultiDeviceCalibrationHandler, MultiDeviceCalibrationHandler, 3))
         .def_static(
             "fromJson", &MultiDeviceCalibrationHandler::fromJson, py::arg("calibrationDataJson"), DOC(dai, beta, MultiDeviceCalibrationHandler, fromJson))
-        .def_static(
-            "fromPipeline", &MultiDeviceCalibrationHandler::fromPipeline, py::arg("pipeline"), DOC(dai, beta, MultiDeviceCalibrationHandler, fromPipeline))
-        .def("applyTo", &MultiDeviceCalibrationHandler::applyTo, py::arg("pipeline"), DOC(dai, beta, MultiDeviceCalibrationHandler, applyTo))
-        .def_static("clearFrom", &MultiDeviceCalibrationHandler::clearFrom, py::arg("pipeline"), DOC(dai, beta, MultiDeviceCalibrationHandler, clearFrom))
         .def("toJson", &MultiDeviceCalibrationHandler::toJson, DOC(dai, beta, MultiDeviceCalibrationHandler, toJson))
         .def("toJsonFile", &MultiDeviceCalibrationHandler::toJsonFile, py::arg("destPath"), DOC(dai, beta, MultiDeviceCalibrationHandler, toJsonFile))
         .def("getGraph", &MultiDeviceCalibrationHandler::getGraph, DOC(dai, beta, MultiDeviceCalibrationHandler, getGraph))

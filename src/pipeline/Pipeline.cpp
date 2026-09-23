@@ -330,6 +330,18 @@ void PipelineImpl::setGlobalProperties(const GlobalProperties& globalProperties)
     this->globalProperties = globalProperties;
 }
 
+void PipelineImpl::setMultiDeviceCalibration(const std::vector<MultiDeviceExtrinsics>& graph) {
+    globalProperties.multiDeviceCalibration = graph;
+}
+
+std::optional<std::vector<MultiDeviceExtrinsics>> PipelineImpl::getMultiDeviceCalibration() const {
+    return globalProperties.multiDeviceCalibration;
+}
+
+void PipelineImpl::clearMultiDeviceCalibration() {
+    globalProperties.multiDeviceCalibration.reset();
+}
+
 void PipelineImpl::setDefaultDeviceProperties(const DeviceProperties& deviceProperties) {
     if(defaultDevice) {
         defaultDevice->setProperties(deviceProperties);

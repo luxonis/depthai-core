@@ -10,7 +10,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
@@ -305,26 +304,6 @@ std::optional<Extrinsics> MultiDeviceCalibrationHandler::getExtrinsicsToOrigin(c
 
     const CoordinateKey coordinate{deviceId, localOriginSocket};
     return resolved->built.bridges.at(coordinate);
-}
-
-std::optional<MultiDeviceCalibrationHandler> MultiDeviceCalibrationHandler::fromPipeline(const Pipeline& pipeline) {
-    const auto& graph = pipeline.getGlobalProperties().multiDeviceCalibration;
-    if(!graph.has_value()) {
-        return std::nullopt;
-    }
-    return MultiDeviceCalibrationHandler(*graph);
-}
-
-void MultiDeviceCalibrationHandler::applyTo(Pipeline& pipeline) const {
-    auto globalProperties = pipeline.getGlobalProperties();
-    globalProperties.multiDeviceCalibration = graph;
-    pipeline.setGlobalProperties(std::move(globalProperties));
-}
-
-void MultiDeviceCalibrationHandler::clearFrom(Pipeline& pipeline) {
-    auto globalProperties = pipeline.getGlobalProperties();
-    globalProperties.multiDeviceCalibration.reset();
-    pipeline.setGlobalProperties(std::move(globalProperties));
 }
 
 const std::vector<MultiDeviceExtrinsics>& MultiDeviceCalibrationHandler::getGraph() const {

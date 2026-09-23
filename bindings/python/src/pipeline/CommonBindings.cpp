@@ -31,7 +31,7 @@
 #include "depthai/common/Interpolation.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/MemoryInfo.hpp"
-#include "depthai/common/MultiDeviceExtrinsics.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3d.hpp"
 #include "depthai/common/Point3f.hpp"
