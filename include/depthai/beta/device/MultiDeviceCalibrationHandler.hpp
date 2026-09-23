@@ -79,7 +79,7 @@ class MultiDeviceCalibrationHandler {
      *
      * @return A meter-normalized transform when the device participates in the
      * graph, or std::nullopt when it does not.
-     * @throws std::runtime_error when the graph is invalid or the supplied
+     * @throws std::invalid_argument when the graph is invalid or the supplied
      * local socket does not match the graph.
      */
     std::optional<Extrinsics> getExtrinsicsToOrigin(const std::string& deviceId, CameraBoardSocket localOriginSocket) const;
@@ -99,7 +99,6 @@ class MultiDeviceCalibrationHandler {
     }
 
     DEPTHAI_DISPLAY(MultiDeviceCalibrationHandler)
-    NOP_STRUCTURE(MultiDeviceCalibrationHandler, graph);
 };
 
 }  // namespace beta

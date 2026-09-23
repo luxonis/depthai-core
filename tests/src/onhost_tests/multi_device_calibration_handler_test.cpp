@@ -81,9 +81,9 @@ TEST_CASE("Multi-device calibration handles chains, components, units, and seria
     REQUIRE(separateBridge->toDeviceId == "device-y");
     REQUIRE(separateBridge->translation.x == Catch::Approx(1.0f));
 
-    const auto serialized = utility::serialize(handler, SerializationType::JSON);
+    const auto serialized = utility::serialize<SerializationType::JSON>(handler);
     MultiDeviceCalibrationHandler roundTrip;
-    REQUIRE(utility::deserialize(serialized, roundTrip, SerializationType::JSON));
+    REQUIRE(utility::deserialize<SerializationType::JSON>(serialized, roundTrip));
     const auto roundTripBridge = roundTrip.getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
     REQUIRE(roundTripBridge.has_value());
     REQUIRE(roundTripBridge->toDeviceId == "device-a");
