@@ -29,14 +29,14 @@ TEST_CASE("Multi-device calibration control exposes only lifecycle commands") {
     REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(reset->command));
 }
 
-TEST_CASE("Multi-device calibration result round-trips handler and aggregate quality") {
+TEST_CASE("Multi-device calibration result round-trips calibration graph and aggregate quality") {
     MultiDeviceExtrinsics edge;
     edge.fromDeviceId = "device-b";
     edge.fromSocket = CameraBoardSocket::CAM_A;
     edge.extrinsics = makeExtrinsics("device-a", CameraBoardSocket::CAM_A, {1.0f, 2.0f, 3.0f});
 
     MultiDeviceCalibrationResult source;
-    source.handler = MultiDeviceCalibrationHandler({edge});
+    source.graph = MultiDeviceCalibrationHandler({edge}).getGraph();
     source.passed = true;
     source.dataConfidence = 0.75;
     source.sampsonError = 0.125;
@@ -46,13 +46,16 @@ TEST_CASE("Multi-device calibration result round-trips handler and aggregate qua
         const auto serialized = utility::serialize(source, serializationType);
         MultiDeviceCalibrationResult roundTrip;
         REQUIRE(utility::deserialize(serialized, roundTrip, serializationType));
-        REQUIRE(roundTrip.handler.has_value());
+        REQUIRE(roundTrip.graph.has_value());
+        REQUIRE(roundTrip.graph->size() == 1);
         REQUIRE(roundTrip.passed);
         REQUIRE(roundTrip.dataConfidence == Catch::Approx(source.dataConfidence));
         REQUIRE(roundTrip.sampsonError == Catch::Approx(source.sampsonError));
         REQUIRE(roundTrip.info == source.info);
 
-        const auto resolved = roundTrip.handler->getExtrinsicsToOrigin("device-b", CameraBoardSocket::CAM_A);
+        const auto handler = roundTrip.getHandler();
+        REQUIRE(handler.has_value());
+        const auto resolved = handler->getExtrinsicsToOrigin("device-b", CameraBoardSocket::CAM_A);
         REQUIRE(resolved.has_value());
         REQUIRE(resolved->translation.x == Catch::Approx(1.0f));
     }

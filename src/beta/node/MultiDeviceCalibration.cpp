@@ -444,7 +444,7 @@ namespace {
 
 void sendFailure(MultiDeviceCalibration& node, const std::string& info) {
     auto result = std::make_shared<MultiDeviceCalibrationResult>();
-    result->handler.reset();
+    result->graph.reset();
     result->passed = false;
     result->info = info;
     node.calibrationOutput.send(std::move(result));
@@ -577,7 +577,7 @@ void MultiDeviceCalibration::estimateAndEmit() {
     result->dataConfidence = calibrated.value.dataConfidence;
     result->sampsonError = calibrated.value.sampsonError;
     if(graph.size() + 1 == pimpl->dclDevices.size()) {
-        result->handler.emplace(std::move(graph));
+        result->graph = MultiDeviceCalibrationHandler(std::move(graph)).getGraph();
         result->passed = true;
     } else {
         result->info = "DynamicCalibration returned an incomplete device pose set";
