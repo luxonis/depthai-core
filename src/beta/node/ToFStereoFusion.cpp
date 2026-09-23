@@ -1,6 +1,7 @@
 #include "depthai/beta/node/ToFStereoFusion.hpp"
 
 #include <chrono>
+#include <cmath>
 #include <stdexcept>
 
 namespace dai::beta {
@@ -38,7 +39,12 @@ void ToFStereoFusion::buildInternal() {
     neuralNetwork->setModelFromDeviceZoo(DeviceModelZoo::TOF_NEURAL_FUSION_672X804);
 }
 
-std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right) {
+std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<dai::node::Camera>& left,
+                                                        const std::shared_ptr<dai::node::Camera>& right,
+                                                        float fps) {
+    if(!std::isfinite(fps) || fps <= 0.0f) {
+        throw std::invalid_argument("ToFStereoFusion FPS must be finite and positive");
+    }
     if(!left || !right) {
         throw std::invalid_argument("ToFStereoFusion requires two camera nodes");
     }
@@ -51,15 +57,15 @@ std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<da
 
     constexpr auto neuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_MEDIUM;
     const auto neuralDepthInputSize = dai::node::NeuralDepth::getInputSize(neuralDepthModel);
-    auto* leftOutput = left->requestOutput(neuralDepthInputSize, ImgFrame::Type::GRAY8, ImgResizeMode::STRETCH, std::nullopt, true, 0.0f);
-    auto* rightOutput = right->requestOutput(neuralDepthInputSize, ImgFrame::Type::GRAY8, ImgResizeMode::STRETCH, std::nullopt, true, 0.0f);
+    auto* leftOutput = left->requestOutput(neuralDepthInputSize, ImgFrame::Type::GRAY8, ImgResizeMode::STRETCH, fps, true, 0.0f);
+    auto* rightOutput = right->requestOutput(neuralDepthInputSize, ImgFrame::Type::GRAY8, ImgResizeMode::STRETCH, fps, true, 0.0f);
     neuralDepth->build(*leftOutput, *rightOutput, neuralDepthModel);
     neuralDepth->initialConfig->setConfidenceThreshold(209);
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     leftOutput->link(neuralDepth->sync->inputs["left"]);
     rightOutput->link(neuralDepth->sync->inputs["right"]);
 #endif
-    tof->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, 30.0f);
+    tof->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, fps);
     tof->setOutputUndistortion(true);
     neuralDepth->depth.link(sync->inputs["neuralDepth"]);
     neuralDepth->confidence.link(sync->inputs["neuralConfidence"]);

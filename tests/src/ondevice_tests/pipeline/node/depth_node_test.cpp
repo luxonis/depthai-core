@@ -2,10 +2,12 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <optional>
 #include <utility>
 #include <variant>
 
+#include "depthai/beta/node/ToFStereoFusion.hpp"
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/depthai.hpp"
@@ -297,6 +299,33 @@ void requireReceiveFpsInRange(const std::shared_ptr<MessageQueue>& queue, float 
     const float fps = measureReceiveFps(queue, window);
     REQUIRE(fps >= minFps);
     REQUIRE(fps <= maxFps);
+}
+
+TEST_CASE("ToFStereoFusion: FPS configures neural depth and ToF subnodes", "[fusion-control]") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4 || !deviceReportsTofSensor(device) || device->getStereoPairs().empty()) {
+        SKIP("Requires RVC4 with stereo and ToF.");
+    }
+    const auto pair = requireFirstStereoPairForTest(device);
+    auto left = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 15.f);
+    auto right = pipeline.create<node::Camera>()->build(pair.right, std::nullopt, 15.f);
+    auto fusion = pipeline.create<beta::node::ToFStereoFusion>();
+    for(const float fps : {0.f, -1.f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
+        REQUIRE_THROWS_WITH(fusion->build(left, right, fps), "ToFStereoFusion FPS must be finite and positive");
+    }
+    fusion->build(left, right, 15.f);
+    auto depthQueue = fusion->depth.createOutputQueue(4, false);
+    auto confidenceQueue = fusion->confidence.createOutputQueue(4, false);
+    auto neuralQueue = fusion->neuralDepth->depth.createOutputQueue(4, false);
+    auto tofQueue = fusion->tof->depth.createOutputQueue(4, false);
+    PipelineStopGuard guard(pipeline);
+    pipeline.start();
+    REQUIRE_FALSE(requireStreamFrame(depthQueue, kDepthFrameTimeout)->getData().empty());
+    REQUIRE_FALSE(requireStreamFrame(confidenceQueue, kDepthFrameTimeout)->getData().empty());
+    requireReceiveFpsInRange(neuralQueue, 12.f, 18.f);
+    requireReceiveFpsInRange(tofQueue, 12.f, 18.f);
+    requireReceiveFpsInRange(depthQueue, 12.f, 18.f);
 }
 
 struct UserDepthCameraSetup {

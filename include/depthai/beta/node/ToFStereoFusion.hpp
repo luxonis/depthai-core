@@ -52,9 +52,10 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
      * @note This node is supported on RVC4 devices only.
      * @param left Left camera node.
      * @param right Right camera node.
+     * @param fps Frame rate for the neural-depth camera inputs and ToF subnode. Must be finite and positive. Defaults to 30 FPS.
      * @return This node.
      */
-    std::shared_ptr<ToFStereoFusion> build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right);
+    std::shared_ptr<ToFStereoFusion> build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right, float fps = 30.0f);
 
     /** Initial fusion configuration. Depth pixels below this confidence are returned as zero. */
     std::shared_ptr<ToFStereoFusionConfig> initialConfig;
