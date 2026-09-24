@@ -19,6 +19,8 @@
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 namespace {
 
@@ -467,4 +469,65 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         REQUIRE(cv::countNonZero(allBackground) == missingClass.rows * missingClass.cols);
     }
 #endif
+}
+
+TEST_CASE("Transformed detection coordinates enclose the physical rotated box", "[ImgDetections][Transformations]") {
+    const auto size = GENERATE(std::make_pair(800U, 500U), std::make_pair(500U, 800U));
+    const auto angle = GENERATE(0.0f, 30.0f, 89.0f, 91.0f);
+    const bool normalized = GENERATE(false, true);
+    const bool swapSides = GENERATE(false, true);
+    CAPTURE(size.first, size.second, angle, normalized, swapSides);
+
+    dai::ImgTransformation source(size.first, size.second);
+    source.setExtrinsics(dai::Extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A});
+    auto target = source;
+    target.addScale(0.5f, 0.5f);
+    target.addCrop(20, 10, 300, 200);
+    const dai::Point2f center{size.first / 2.0f, size.second / 2.0f, false};
+    const dai::RotatedRect physical{center, dai::Size2f{200, 100, false}, angle};
+    const dai::RotatedRect equivalent{center, dai::Size2f{100, 200, false}, angle + 90};
+    auto box = swapSides ? equivalent : physical;
+    if(normalized) box = box.normalize(size.first, size.second);
+
+    auto expected = physical.getOuterRect();
+    // Uniform scale followed by a crop preserves the rectangle and its angle.
+    expected[0] = expected[0] * 0.5f - 20;
+    expected[1] = expected[1] * 0.5f - 10;
+    expected[2] = expected[2] * 0.5f - 20;
+    expected[3] = expected[3] * 0.5f - 10;
+    const auto checkBounds = [&](const auto& detection) {
+        const std::array<float, 4> bounds{detection.xmin, detection.ymin, detection.xmax, detection.ymax};
+        for(std::size_t i = 0; i < bounds.size(); ++i) {
+            const float scale = normalized ? (i % 2 == 0 ? 300.0f : 200.0f) : 1.0f;
+            REQUIRE_THAT(bounds[i] * scale, Catch::Matchers::WithinAbs(expected[i], 1e-3f));
+        }
+        // Crop consumers must still receive the same physical rotated rectangle.
+        const auto result = detection.getBoundingBox();
+        REQUIRE(result.isNormalized() == normalized);
+        const auto pixels = result.denormalize(300, 200);
+        REQUIRE_THAT(pixels.size.width * pixels.size.height, Catch::Matchers::WithinAbs(5000.0f, 0.02f));
+        const auto outer = pixels.getOuterRect();
+        for(std::size_t i = 0; i < outer.size(); ++i) {
+            REQUIRE_THAT(outer[i], Catch::Matchers::WithinAbs(expected[i], 1e-3f));
+        }
+    };
+
+    dai::ImgDetections detections;
+    detections.setTransformation(source);
+    detections.detections.emplace_back(box);
+    const auto transformed = detections.transformTo(target);
+    checkBounds(transformed.detections.front());
+    dai::ImgDetections restored;
+    dai::utility::deserialize(dai::utility::serialize(transformed), restored);
+    checkBounds(restored.detections.front());
+
+    for(const float depth : {0.0f, 1000.0f}) {
+        dai::SpatialImgDetection spatial(box, dai::Point3f{0, 0, depth});
+        spatial.transform(source, target, dai::LengthUnit::MILLIMETER);
+        checkBounds(spatial);
+        checkBounds(spatial.getImgDetection());
+        dai::SpatialImgDetection restoredSpatial;
+        dai::utility::deserialize(dai::utility::serialize(spatial), restoredSpatial);
+        checkBounds(restoredSpatial.getImgDetection());
+    }
 }
