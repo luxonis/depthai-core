@@ -366,6 +366,7 @@ function(dai_add_test test_name test_src)
     add_test(NAME ${test_name} COMMAND ${test_name})
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
 
+
     # Copy over required DLLs (Windows)
     if(WIN32)
         # Copy DLLs to target directory - Windows only
@@ -867,6 +868,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     target_compile_definitions(img_transformation_test PRIVATE TRANSFORMATION_TEST_DATA="${img_transformations_test_data}")
     dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
 endif()
+
 
 # EEPROM undistortion test (RVC2 only)
 dai_add_test(eeprom_undistortion_test src/ondevice_tests/eeprom_undistortion_test.cpp)
