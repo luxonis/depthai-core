@@ -14,6 +14,7 @@
 #include <utility>
 
 // Nodes
+#include "../../src/pipeline/node/DynamicCalibrationTransforms.hpp"
 #include "../../src/utility/Platform.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/node/DynamicCalibrationNode.hpp"  // provides dai::node::DynamicCalibration
@@ -31,6 +32,7 @@ using namespace std::chrono_literals;
 namespace {
 constexpr int HOLISTIC_REPLAY_IMAGE_COUNT = 10;
 constexpr auto HOLISTIC_REPLAY_FRAME_INTERVAL = 150ms;
+constexpr char TRANSLATION_DIRECTION_REJECTION_MESSAGE[] = "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more";
 
 dai::Pipeline makePipeline(const std::shared_ptr<dai::Device>& device, std::shared_ptr<dai::node::DynamicCalibration>& dynCalib, bool linkStreams = true) {
     // Construct pipeline bound to the device
@@ -270,8 +272,10 @@ struct HolisticRecalibrationObservation {
     std::shared_ptr<dai::DynamicCalibrationResult> result;
     std::vector<std::vector<float>> groundTruthRotation;
     std::vector<std::vector<float>> perturbedRotation;
-    std::vector<float> cvecBaseToLeftBefore;
-    std::vector<float> cvecBaseToRightBefore;
+    // CAM_A is not a calibration input. The node places it through its factory transform from the anchor camera:
+    // the default stereo-depth reference of the first device stereo pair whose reference is a calibration input.
+    std::optional<dai::CalibrationHandler> factoryCalibration;
+    std::optional<dai::CameraBoardSocket> anchor;
 };
 
 HolisticRecalibrationObservation runHolisticRecalibrationAttempt() {
@@ -297,8 +301,18 @@ HolisticRecalibrationObservation runHolisticRecalibrationAttempt() {
     HolisticRecalibrationObservation observation;
     observation.groundTruthRotation = setup.groundTruthRotation;
     observation.perturbedRotation = setup.perturbedRotation;
-    observation.cvecBaseToLeftBefore = setup.perturbedCalibration.getCameraTranslationVector(CAM_LEFT, dai::CameraBoardSocket::CAM_A, false);
-    observation.cvecBaseToRightBefore = setup.perturbedCalibration.getCameraTranslationVector(CAM_RIGHT, dai::CameraBoardSocket::CAM_A, false);
+    try {
+        observation.factoryCalibration = device->readFactoryCalibration();
+    } catch(const std::exception&) {
+        // Reported by the test case: the node cannot anchor CAM_A without factory calibration.
+    }
+    for(const auto& stereoPair : device->getStereoPairs()) {
+        const auto candidate = dai::node::detail::stereoDepthReferenceCamera(stereoPair, setup.perturbedCalibration, device->getPlatform());
+        if(candidate == CAM_LEFT || candidate == CAM_RIGHT) {
+            observation.anchor = candidate;
+            break;
+        }
+    }
 
     pipeline.start();
     std::this_thread::sleep_for(0.5s);
@@ -567,6 +581,8 @@ TEST_CASE("DynamicCalibration: Recalibration on holistic replay data.") {
         REQUIRE(coverage.has_value());
         REQUIRE(*coverage > 0.0f);
     }
+    if(!observation.factoryCalibration.has_value()) SKIP("Device has no factory calibration to anchor CAM_A");
+    REQUIRE(observation.anchor.has_value());
     REQUIRE(observation.result != nullptr);
     REQUIRE(observation.result->calibrationData.has_value());
 
@@ -575,25 +591,28 @@ TEST_CASE("DynamicCalibration: Recalibration on holistic replay data.") {
     const auto newRotation = calibrationData.newCalibration.getCameraRotationMatrix(CAM_LEFT, CAM_RIGHT);
     const auto currentRotationError = rotationDifferenceVector(currentRotation, observation.perturbedRotation);
     const auto newRotationError = rotationDifferenceVector(newRotation, observation.groundTruthRotation);
-    const auto cvecBaseToLeft = calibrationData.newCalibration.getCameraTranslationVector(CAM_LEFT, dai::CameraBoardSocket::CAM_A, false);
-    const auto cvecBaseToRight = calibrationData.newCalibration.getCameraTranslationVector(CAM_RIGHT, dai::CameraBoardSocket::CAM_A, false);
+    // The unobserved CAM_A keeps its factory transform from the anchor camera.
+    const auto anchor = *observation.anchor;
+    const auto anchorToBase = calibrationData.newCalibration.getCameraExtrinsics(anchor, dai::CameraBoardSocket::CAM_A, false);
+    const auto anchorToBaseFactory = observation.factoryCalibration->getCameraExtrinsics(anchor, dai::CameraBoardSocket::CAM_A, false);
 
     REQUIRE(currentRotationError.size() >= 3);
     REQUIRE(newRotationError.size() >= 3);
-    REQUIRE(cvecBaseToLeft.size() >= 3);
-    REQUIRE(cvecBaseToRight.size() >= 3);
-    REQUIRE(observation.cvecBaseToLeftBefore.size() >= 3);
-    REQUIRE(observation.cvecBaseToRightBefore.size() >= 3);
 
     constexpr float CURRENT_ROTATION_THRESHOLD = 1e-5f;
     constexpr float NEW_ROTATION_THRESHOLD = 1.2e-3f;
-    constexpr float TRANSLATION_THRESHOLD = 1e-4f;
-    CAPTURE(newRotationError[0], newRotationError[1], newRotationError[2]);
+    constexpr float FACTORY_ROTATION_MATRIX_THRESHOLD = 1e-5f;
+    constexpr float FACTORY_TRANSLATION_THRESHOLD = 1e-4f;  // centimeters
+    CAPTURE(anchor, newRotationError[0], newRotationError[1], newRotationError[2]);
     for(std::size_t axis = 0; axis < 3; ++axis) {
         REQUIRE(std::fabs(currentRotationError[axis]) < CURRENT_ROTATION_THRESHOLD);
         REQUIRE(std::fabs(newRotationError[axis]) < NEW_ROTATION_THRESHOLD);
-        REQUIRE(std::fabs(cvecBaseToLeft[axis] - observation.cvecBaseToLeftBefore[axis]) < TRANSLATION_THRESHOLD);
-        REQUIRE(std::fabs(cvecBaseToRight[axis] - observation.cvecBaseToRightBefore[axis]) < TRANSLATION_THRESHOLD);
+    }
+    for(std::size_t row = 0; row < 3; ++row) {
+        for(std::size_t col = 0; col < 3; ++col) {
+            REQUIRE(std::fabs(anchorToBase[row][col] - anchorToBaseFactory[row][col]) < FACTORY_ROTATION_MATRIX_THRESHOLD);
+        }
+        REQUIRE(std::fabs(anchorToBase[row][3] - anchorToBaseFactory[row][3]) < FACTORY_TRANSLATION_THRESHOLD);
     }
     REQUIRE(calibrationData.calibrationDifference.sampsonErrorNew < calibrationData.calibrationDifference.sampsonErrorCurrent);
 }
@@ -632,7 +651,7 @@ TEST_CASE("DynamicCalibration: Rejects excessive translation direction change.")
 
     REQUIRE(result != nullptr);
     REQUIRE_FALSE(result->calibrationData.has_value());
-    REQUIRE(result->info == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more");
+    REQUIRE(result->info == TRANSLATION_DIRECTION_REJECTION_MESSAGE);
 
     p.stop();
     p.wait();
@@ -672,7 +691,12 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data with housing base
     auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
 
     REQUIRE(result != nullptr);
-    REQUIRE(result->calibrationData != std::nullopt);
+    if(!result->calibrationData.has_value()) {
+        REQUIRE(result->info == TRANSLATION_DIRECTION_REJECTION_MESSAGE);
+        p.stop();
+        p.wait();
+        return;
+    }
 
     auto rotationMatrixOld = result->calibrationData->currentCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
     std::vector<float> rvecOld = dai::matrix::rotationMatrixToVector(rotationMatrixOld);

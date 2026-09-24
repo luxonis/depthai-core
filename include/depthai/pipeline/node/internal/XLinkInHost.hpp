@@ -21,7 +21,13 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     std::condition_variable isWaitingForReconnect;
     std::mutex mtx;
     bool isDisconnected = false;
+    bool connectionRefreshed = false;
     std::unique_ptr<XLinkStream> stream;
+
+    // Park until the connection is refreshed (returns true) or the device is gone for good
+    // (returns false). A stream failure on a connection nobody closes within a grace period
+    // is not a device loss and is rethrown instead of parking forever.
+    bool parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lostConn, bool streamOpenFailed);
 
     virtual StreamPacketDesc readStreamMessage() const;
 
