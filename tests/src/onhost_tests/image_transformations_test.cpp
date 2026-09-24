@@ -48,6 +48,39 @@ inline std::array<float, 2> matvecmul(std::array<std::array<float, 3>, 3> M, std
     return {x / z, y / z};
 }
 
+TEST_CASE("ImgTransformation equality detects every alignment-relevant change") {
+    constexpr size_t width = 640;
+    constexpr size_t height = 480;
+    const std::array<std::array<float, 3>, 3> intrinsics = {{{400.0f, 0.0f, width / 2.0f}, {0.0f, 400.0f, height / 2.0f}, {0.0f, 0.0f, 1.0f}}};
+    const std::vector<std::vector<float>> identityRotation = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const dai::Extrinsics extrinsics(identityRotation, {1.0f, 2.0f, 3.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+    const dai::ImgTransformation base(width, height, intrinsics, dai::CameraModel::Perspective, {0.1f}, extrinsics);
+
+    REQUIRE(base.isEqualTransformation(base));
+
+    auto requireDifferent = [&](auto mutate) {
+        auto changed = base;
+        mutate(changed);
+        REQUIRE_FALSE(base.isEqualTransformation(changed));
+    };
+
+    requireDifferent([](auto& transformation) { transformation.addRotation(1.0f, {width / 2.0f, height / 2.0f}); });
+    requireDifferent([](auto& transformation) {
+        auto changedIntrinsics = transformation.getSourceIntrinsicMatrix();
+        changedIntrinsics[0][0] += 1.0f;
+        transformation.setIntrinsicMatrix(changedIntrinsics);
+    });
+    requireDifferent([](auto& transformation) { transformation.setDistortionModel(dai::CameraModel::Fisheye); });
+    requireDifferent([](auto& transformation) { transformation.setDistortionCoefficients({0.2f}); });
+    requireDifferent([](auto& transformation) {
+        auto changedExtrinsics = transformation.getExtrinsics();
+        changedExtrinsics.setTranslationVector({2.0f, 2.0f, 3.0f}, dai::LengthUnit::MILLIMETER);
+        transformation.setExtrinsics(changedExtrinsics);
+    });
+    requireDifferent([](auto& transformation) { transformation.setSize(width - 1, height); });
+    requireDifferent([](auto& transformation) { transformation.setSourceSize(width - 1, height); });
+}
+
 int testPadding() {
     auto sourceImageFrame = std::make_shared<dai::ImgFrame>();
     sourceImageFrame->setWidth(1920);

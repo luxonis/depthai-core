@@ -1,15 +1,12 @@
 #include <algorithm>
 #include <array>
 #include <catch2/catch_all.hpp>
-#include <chrono>
 #include <cmath>
-#include <thread>
+#include <vector>
 
 #include "depthai/depthai.hpp"
 
 using namespace std;
-using namespace std::chrono;
-using namespace std::chrono_literals;
 
 namespace {
 void requireInputMetadata(const dai::ImgFrame& aligned, const dai::ImgFrame& inputFrame) {
@@ -193,77 +190,61 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
     }
     auto align = pipeline.create<dai::node::ImageAlign>();
     align->setRunOnHost(runOnHost);
+    align->input.setMaxSize(3);
+    align->inputAlignTo.setMaxSize(3);
     if(frameType != dai::ImgFrame::Type::RAW16) {
         // Non-depth input: align with a static depth plane, same as the camera based tests above.
         align->initialConfig->staticDepthPlane = 0x5AB1;
     }
-    auto inputQueue = align->input.createInputQueue();
-    auto alignToQueue = align->inputAlignTo.createInputQueue();
-    auto outputQueue = align->outputAligned.createOutputQueue();
+    auto inputQueue = align->input.createInputQueue(3, true);
+    auto alignToQueue = align->inputAlignTo.createInputQueue(3, true);
+    auto outputQueue = align->outputAligned.createOutputQueue(3, true);
+
+    auto enqueue =
+        [&](const dai::ImgTransformation& currentInputTransformation, const dai::ImgTransformation& currentAlignToTransformation, int64_t sequenceNum) {
+            alignToQueue->send(makeRuntimeTransformationFrame(currentAlignToTransformation, dai::CameraBoardSocket::CAM_A, frameType, sequenceNum));
+            inputQueue->send(makeRuntimeTransformationFrame(currentInputTransformation, dai::CameraBoardSocket::CAM_B, frameType, sequenceNum));
+        };
+    enqueue(inputTransformation, alignToTransformation, 1);
+    enqueue(inputTransformation, changedAlignToTransformation, 2);
+    enqueue(changedInputTransformation, changedAlignToTransformation, 3);
     pipeline.start();
 
-    int64_t sequenceNum = 0;
-    // ImageAlign reads inputAlignTo non-blocking, so right after a change an input frame can still be paired with the
-    // previous alignTo frame. Keep feeding the same pair until the output describes the current alignTo frame, then
-    // assert on that converged output.
-    auto sendAndRequireAligned = [&](const dai::ImgTransformation& currentInputTransformation, const dai::ImgTransformation& currentAlignToTransformation) {
-        constexpr int maxFrames = 10;
+    auto requireAligned = [&](const dai::ImgTransformation& currentAlignToTransformation, int64_t sequenceNum) {
         const auto [alignWidth, alignHeight] = currentAlignToTransformation.getSize();
-        for(int frame = 0; frame < maxFrames; ++frame) {
-            ++sequenceNum;
-            CAPTURE(sequenceNum, frame);
+        CAPTURE(sequenceNum);
+        auto aligned = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(aligned != nullptr);
+        REQUIRE(aligned->getSequenceNum() == sequenceNum);
+        REQUIRE(aligned->getInstanceNum() == static_cast<uint32_t>(dai::CameraBoardSocket::CAM_A));
+        REQUIRE(aligned->getType() == frameType);
+        REQUIRE(aligned->validateTransformations());
+        REQUIRE(aligned->getWidth() == alignWidth);
+        REQUIRE(aligned->getHeight() == alignHeight);
+        REQUIRE(aligned->transformation.isAlignedTo(currentAlignToTransformation));
 
-            constexpr int maxSendAttempts = 100;
-            int attempts = 0;
-            bool alignQueueStatus = false;
-            while(!alignQueueStatus) {
-                alignQueueStatus =
-                    alignToQueue->trySend(makeRuntimeTransformationFrame(currentAlignToTransformation, dai::CameraBoardSocket::CAM_A, frameType, sequenceNum));
-                if(!alignQueueStatus) {
-                    if(++attempts >= maxSendAttempts) {
-                        CAPTURE(attempts);
-                        FAIL("Timed out sending alignTo frame: the host-side input queue remained full");
-                    }
-                    std::this_thread::sleep_for(1ms);
-                }
-            }
-            inputQueue->send(makeRuntimeTransformationFrame(currentInputTransformation, dai::CameraBoardSocket::CAM_B, frameType, sequenceNum));
-
-            auto aligned = outputQueue->get<dai::ImgFrame>();
-            REQUIRE(aligned != nullptr);
-            REQUIRE(aligned->getSequenceNum() == sequenceNum);
-            REQUIRE(aligned->getInstanceNum() == static_cast<uint32_t>(dai::CameraBoardSocket::CAM_A));
-            REQUIRE(aligned->getType() == frameType);
-            REQUIRE(aligned->validateTransformations());
-            const bool reconfigured =
-                aligned->getWidth() == alignWidth && aligned->getHeight() == alignHeight && aligned->transformation.isAlignedTo(currentAlignToTransformation);
-            if(!reconfigured) continue;
-
-            const auto data = aligned->getData();
-            const size_t imageSize = alignWidth * alignHeight * static_cast<size_t>(aligned->getBytesPerPixel());
-            REQUIRE(data.size() >= imageSize);
-            // Compare image bytes only: a pool buffer may be larger than the frame (row-aligned warp output on the device).
-            std::vector<uint8_t> image(data.begin(), data.begin() + imageSize);
-            // The warp has to produce pixels, not an empty frame.
-            REQUIRE(std::any_of(image.begin(), image.end(), [](uint8_t value) { return value != 0; }));
-            return image;
-        }
-        FAIL("ImageAlign did not reconfigure to the new transformation");
-        return std::vector<uint8_t>{};
+        const auto data = aligned->getData();
+        const size_t imageSize = alignWidth * alignHeight * static_cast<size_t>(aligned->getBytesPerPixel());
+        REQUIRE(data.size() >= imageSize);
+        // Compare image bytes only: a pool buffer may be larger than the frame (row-aligned warp output on the device).
+        std::vector<uint8_t> image(data.begin(), data.begin() + imageSize);
+        REQUIRE(std::any_of(image.begin(), image.end(), [](uint8_t value) { return value != 0; }));
+        return image;
     };
 
-    const auto originalOutput = sendAndRequireAligned(inputTransformation, alignToTransformation);
-    const auto changedAlignToOutput = sendAndRequireAligned(inputTransformation, changedAlignToTransformation);
-    const auto changedInputOutput = sendAndRequireAligned(changedInputTransformation, changedAlignToTransformation);
+    const auto originalOutput = requireAligned(alignToTransformation, 1);
+    const auto changedAlignToOutput = requireAligned(changedAlignToTransformation, 2);
+    const auto changedInputOutput = requireAligned(changedAlignToTransformation, 3);
     REQUIRE(changedAlignToOutput != originalOutput);
     REQUIRE(changedInputOutput != changedAlignToOutput);
 
-    // Output resolution follows the alignTo frame (checked inside sendAndRequireAligned).
-    sendAndRequireAligned(inputTransformation, halfAlignToTransformation);
+    enqueue(inputTransformation, halfAlignToTransformation, 4);
+    requireAligned(halfAlignToTransformation, 4);
 
     // Back to the original transformations: nothing from the intermediate configurations (meshes, shift factor, pools)
     // may leak into the result, so the output must be identical to the very first one.
-    const auto restoredOutput = sendAndRequireAligned(inputTransformation, alignToTransformation);
+    enqueue(inputTransformation, alignToTransformation, 5);
+    const auto restoredOutput = requireAligned(alignToTransformation, 5);
     REQUIRE(restoredOutput == originalOutput);
 
     pipeline.stop();
