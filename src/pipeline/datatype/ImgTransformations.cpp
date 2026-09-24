@@ -42,7 +42,7 @@ void validateRebaseExtrinsics(const Extrinsics& extrinsics, const char* name) {
     } catch(const std::runtime_error&) {
         throw std::invalid_argument(std::string("ImgTransformation ") + name + " rotation matrix is invalid.");
     }
-    if(!std::isfinite(extrinsics.translation.x) || !std::isfinite(extrinsics.translation.y) || !std::isfinite(extrinsics.translation.z)) {
+    if(!matrix::isFinitePoint3f(extrinsics.translation)) {
         throw std::invalid_argument(std::string("ImgTransformation ") + name + " translation must be finite.");
     }
 }

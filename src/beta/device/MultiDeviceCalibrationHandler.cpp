@@ -52,10 +52,6 @@ bool isConcreteSocket(CameraBoardSocket socket) {
            && static_cast<int32_t>(socket) <= static_cast<int32_t>(CameraBoardSocket::CBA);
 }
 
-bool isFiniteTranslation(const Point3f& translation) {
-    return std::isfinite(translation.x) && std::isfinite(translation.y) && std::isfinite(translation.z);
-}
-
 Extrinsics normalizeExtrinsics(const Extrinsics& input) {
     if(input.toDeviceId.empty()) {
         throw std::invalid_argument("Multi-device extrinsics destination device ID cannot be empty.");
@@ -71,10 +67,10 @@ Extrinsics normalizeExtrinsics(const Extrinsics& input) {
     } catch(const std::runtime_error&) {
         throw std::invalid_argument("Multi-device extrinsics rotation matrix must be a finite proper 3x3 rotation.");
     }
-    if(!isFiniteTranslation(input.translation)) {
+    if(!matrix::isFinitePoint3f(input.translation)) {
         throw std::invalid_argument("Multi-device extrinsics translation must be finite.");
     }
-    if(!isFiniteTranslation(input.specTranslation)) {
+    if(!matrix::isFinitePoint3f(input.specTranslation)) {
         throw std::invalid_argument("Multi-device extrinsics specification translation must be finite.");
     }
 

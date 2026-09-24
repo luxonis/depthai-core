@@ -345,6 +345,10 @@ dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix,
     return {dehomogenized[0], dehomogenized[1], dehomogenized[2]};
 }
 
+bool isFinitePoint3f(const dai::Point3f& point) {
+    return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+}
+
 std::array<float, 4> dehomogenizePoint4(const std::array<float, 4>& point) {
     if(std::abs(point[3]) < 1e-6f) {
         throw std::runtime_error("Cannot dehomogenize point with w close to zero.");

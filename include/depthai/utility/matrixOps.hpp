@@ -39,6 +39,8 @@ std::vector<std::vector<float>> createTranslationMatrix(float dx, float dy);
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const dai::Point3f& translation);
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::array<std::array<float, 3>, 3>& rotation, const dai::Point3f& translation);
 dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix, const dai::Point3f& point);
+/** True when every component of the point is finite (no NaN or infinity). */
+bool isFinitePoint3f(const dai::Point3f& point);
 std::array<float, 4> dehomogenizePoint4(const std::array<float, 4>& point);
 std::array<float, 3> dehomogenizePoint3(const std::array<float, 3>& point);
 
