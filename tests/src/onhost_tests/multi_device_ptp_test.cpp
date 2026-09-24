@@ -14,7 +14,7 @@ struct FsyncTestParameters getDefaultParameters() {
     parameters.deltaMeanThreshold = 1e-3;
     parameters.deltaP99Threshold = 2e-3;
     parameters.syncType = SyncType::PTP;
-    parameters.expectedDevices = 3;
+    parameters.expectedDevices = 4;
     return parameters;
 }
 
