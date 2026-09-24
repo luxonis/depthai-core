@@ -40,6 +40,11 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("TOF", Depth::Algorithm::TOF)
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
+    py::enum_<FocusController::Mode>(node, "FocusMode")
+        .value("ROI", FocusController::Mode::ROI)
+        .value("HOLD", FocusController::Mode::HOLD)
+        .value("HYBRID", FocusController::Mode::HYBRID);
+
     py::enum_<FocusController::SelectionMode>(node, "FocusSelectionMode")
         .value("ALL", FocusController::SelectionMode::ALL)
         .value("LARGEST", FocusController::SelectionMode::LARGEST);
@@ -62,6 +67,9 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, Depth, setConfig))
         .def(
             "setConfig", [](Depth& self, py::none) { return self.setConfig(std::monostate{}); }, py::arg("config"), DOC(dai, node, Depth, setConfig))
+        .def("setFocusMode", &Depth::setFocusMode, py::arg("mode"), DOC(dai, node, Depth, setFocusMode))
+        .def("setFocusHoldFrames", &Depth::setFocusHoldFrames, py::arg("frames"), DOC(dai, node, Depth, setFocusHoldFrames))
+        .def("setFocusStereoSize", &Depth::setFocusStereoSize, py::arg("width"), py::arg("height"), DOC(dai, node, Depth, setFocusStereoSize))
         .def("setFocusModels", &Depth::setFocusModels, py::arg("models"))
         .def("setFocusSelectionMode", &Depth::setFocusSelectionMode, py::arg("mode"))
         .def("setFocusDispatchMode", &Depth::setFocusDispatchMode, py::arg("mode"))

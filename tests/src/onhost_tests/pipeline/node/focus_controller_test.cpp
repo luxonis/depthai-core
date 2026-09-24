@@ -178,11 +178,11 @@ TEST_CASE("FocusController::computeCopyRegion: fractional height rounding is cla
 
 TEST_CASE("FocusController::computeCopyRegion: edge-touching detection stays inside both buffers", "[FocusController]") {
     const std::vector<std::array<float, 4>> boxes = {
-        box(0.0f, 0.0f, 0.12f, 0.12f),     // top-left corner
-        box(0.90f, 0.0f, 1.0f, 0.13f),     // top-right corner
-        box(0.0f, 0.88f, 0.11f, 1.0f),     // bottom-left corner
-        box(0.88f, 0.87f, 1.0f, 1.0f),     // bottom-right corner
-        box(0.0f, 0.0f, 1.0f, 1.0f),       // whole frame
+        box(0.0f, 0.0f, 0.12f, 0.12f),  // top-left corner
+        box(0.90f, 0.0f, 1.0f, 0.13f),  // top-right corner
+        box(0.0f, 0.88f, 0.11f, 1.0f),  // bottom-left corner
+        box(0.88f, 0.87f, 1.0f, 1.0f),  // bottom-right corner
+        box(0.0f, 0.0f, 1.0f, 1.0f),    // whole frame
     };
     const auto crops = FocusController::computeCrops(kW, kH, boxes);
     REQUIRE(crops.size() == boxes.size());
@@ -259,10 +259,10 @@ TEST_CASE("FocusController::mergeCrops: overlapping crops become one inference, 
     SECTION("no detection is ever dropped and the result has no overlaps") {
         const std::vector<FocusController::Crop> crops = {
             cropRect(10, 10, 100, 100),
-            cropRect(80, 40, 100, 100),   // overlaps the first
-            cropRect(400, 300, 50, 50),   // isolated
-            cropRect(420, 320, 60, 60),   // overlaps the previous
-            cropRect(900, 700, 40, 40),   // isolated
+            cropRect(80, 40, 100, 100),  // overlaps the first
+            cropRect(400, 300, 50, 50),  // isolated
+            cropRect(420, 320, 60, 60),  // overlaps the previous
+            cropRect(900, 700, 40, 40),  // isolated
         };
         const auto merged = FocusController::mergeCrops(crops);
         REQUIRE(totalDets(merged) == static_cast<int>(crops.size()));
@@ -424,4 +424,30 @@ TEST_CASE("FocusController::depthFocalScale: makes depth crop-size invariant", "
         REQUIRE(FocusController::depthFocalScale(fxFull, 475.0f, outW, 0) == Catch::Approx(1.0f));
         REQUIRE(FocusController::depthFocalScale(-1.0f, 475.0f, outW, 576) == Catch::Approx(1.0f));
     }
+}
+
+TEST_CASE("Focus region history expires after the configured number of empty messages") {
+    FocusController::RegionHistory history;
+    const std::vector<std::array<float, 4>> a{box(0.1f, 0.2f, 0.3f, 0.7f)};
+    const std::vector<std::array<float, 4>> b{box(0.6f, 0.2f, 0.9f, 0.7f)};
+    REQUIRE(history.update({}, 2).empty());
+    REQUIRE(history.update(a, 2) == a);
+    REQUIRE(history.update({}, 2) == a);
+    REQUIRE(history.update({}, 2) == a);
+    REQUIRE(history.update({}, 2).empty());
+    REQUIRE(history.update({}, 2).empty());
+    REQUIRE(history.update(b, 2) == b);
+    REQUIRE(history.update({}, 2) == b);
+    REQUIRE(history.update(a, 2) == a);
+    REQUIRE(history.update({}, 2) == a);
+    REQUIRE(history.update({}, 2) == a);
+    REQUIRE(history.update({}, 2).empty());
+}
+
+TEST_CASE("Zero focus hold frames disables history without suppressing current detections") {
+    FocusController::RegionHistory history;
+    const std::vector<std::array<float, 4>> boxes{box(0.2f, 0.2f, 0.8f, 0.8f)};
+    REQUIRE(history.update(boxes, 0) == boxes);
+    REQUIRE(history.update({}, 0).empty());
+    REQUIRE(history.update(boxes, 0) == boxes);
 }

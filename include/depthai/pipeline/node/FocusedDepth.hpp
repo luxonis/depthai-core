@@ -6,6 +6,7 @@
 #include <depthai/pipeline/node/ImageManip.hpp>
 #include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <depthai/pipeline/node/Rectification.hpp>
+#include <depthai/pipeline/node/StereoDepth.hpp>
 #include <depthai/pipeline/node/host/FocusController.hpp>
 #include <vector>
 
@@ -22,6 +23,19 @@ class FocusedDepth : public DeviceNodeGroup {
                                         std::optional<float> fps = std::nullopt,
                                         std::optional<std::pair<uint32_t, uint32_t>> resolution = std::nullopt);
 
+    /**
+     * Select ROI-only, bounded ROI holding, or full-frame EVA stereo with neural ROI enhancement.
+     * Must be called before focused outputs are wired. Default: ROI. HYBRID requires RVC4.
+     * All modes wait for detection messages; HOLD bridges empty messages, not a stalled detector.
+     */
+    std::shared_ptr<FocusedDepth> setFocusMode(FocusController::Mode mode);
+
+    /** Maximum consecutive empty detection messages to bridge in HOLD mode. Default: 2; zero disables holding. */
+    std::shared_ptr<FocusedDepth> setFocusHoldFrames(unsigned int frames);
+
+    /** EVA input size in HYBRID mode (default 384x240). Must be positive, width divisible by 128, and at most 1280x800. */
+    std::shared_ptr<FocusedDepth> setFocusStereoSize(unsigned int width, unsigned int height);
+
     std::shared_ptr<FocusedDepth> setFocusModels(const std::vector<DeviceModelZoo>& models);
     std::shared_ptr<FocusedDepth> setFocusSelectionMode(FocusController::SelectionMode mode);
     std::shared_ptr<FocusedDepth> setFocusDispatchMode(FocusController::DispatchMode mode);
@@ -30,6 +44,11 @@ class FocusedDepth : public DeviceNodeGroup {
 
    private:
     bool built_ = false;
+    FocusController::Mode mode_ = FocusController::Mode::ROI;
+    std::pair<unsigned int, unsigned int> stereoSize_{384, 240};
+    std::unique_ptr<Subnode<ImageManip>> stereoLeft_;
+    std::unique_ptr<Subnode<ImageManip>> stereoRight_;
+    std::unique_ptr<Subnode<StereoDepth>> stereoBase_;
 
     // NOTE: the Subnodes must be declared before the Input&/Output& reference
     // members below, because the constructor initializes those references from

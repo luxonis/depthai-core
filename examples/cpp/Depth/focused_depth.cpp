@@ -3,8 +3,8 @@
  *
  * Runs an object-detection network on the color camera and feeds the resulting
  * ImgDetections into the Depth node's inputDetections. The Depth node computes a
- * focused depth map (full frame, only the detected regions filled) and a matching
- * confidence map.
+ * focused depth map: ROI only, ROI held through brief detection gaps, or full EVA
+ * stereo depth enhanced by neural depth inside the ROI.
  *
  * Works on RVC4 devices. The ImgDetections are automatically remapped to the left
  * stereo frame using the ImgDetections transformation when available.
@@ -115,9 +115,10 @@ int main(int argc, char** argv) {
         "Focused Depth demo.\n\n"
         "Runs an object-detection network on the color camera and feeds the resulting "
         "ImgDetections into the Depth node's inputDetections. The Depth node computes a "
-        "focused depth map (full frame, only the detected regions filled) and a matching "
-        "confidence map.");
+        "focused depth map: ROI only, temporal ROI hold, or full EVA depth enhanced inside the ROI.");
     program.add_argument("--model").default_value(std::string("yolov6-nano")).help("Detection model description (default: yolov6-nano)");
+    program.add_argument("--depth-mode").default_value(std::string("roi")).help("roi, hold, or hybrid (full EVA depth enhanced inside the ROI)");
+    program.add_argument("--hold-frames").scan<'i', int>().default_value(2).help("Empty detection frames to bridge in hold mode");
     program.add_argument("--fps").scan<'g', float>().default_value(30.0f).help("Requested camera FPS");
 
     try {
@@ -130,6 +131,12 @@ int main(int argc, char** argv) {
 
     const std::string model = program.get<std::string>("--model");
     const float fps = program.get<float>("--fps");
+    const auto mode = program.get<std::string>("--depth-mode");
+    const int holdFrames = program.get<int>("--hold-frames");
+    if((mode != "roi" && mode != "hold" && mode != "hybrid") || holdFrames < 0) {
+        std::cerr << "Use --depth-mode roi|hold|hybrid and nonnegative --hold-frames\n";
+        return EXIT_FAILURE;
+    }
 
     dai::Pipeline pipeline;
     const auto device = pipeline.getDefaultDevice();
@@ -157,7 +164,11 @@ int main(int argc, char** argv) {
     detectionNetwork->setConfidenceThreshold(0.25f);
 
     auto depthNode = pipeline.create<dai::node::Depth>();
-    depthNode->setFocusModels({dai::DeviceModelZoo::NEURAL_DEPTH_192X120});
+    depthNode->setFocusModels({dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM});
+    depthNode->setFocusMode(mode == "hybrid" ? dai::node::FocusController::Mode::HYBRID
+                            : mode == "hold" ? dai::node::FocusController::Mode::HOLD
+                                             : dai::node::FocusController::Mode::ROI);
+    depthNode->setFocusHoldFrames(static_cast<unsigned int>(holdFrames));
     depthNode->setFocusSelectionMode(dai::node::FocusController::SelectionMode::LARGEST);
     depthNode->build(fps);
     detectionNetwork->out.link(depthNode->inputDetections);
@@ -169,7 +180,7 @@ int main(int argc, char** argv) {
 
     pipeline.build();
 
-    std::cout << "Focused depth: largest object, neural model 192x120, requested FPS=" << fps << '\n';
+    std::cout << "Focused depth: largest object, neural model 576x360, requested FPS=" << fps << '\n';
 
     pipeline.start();
 

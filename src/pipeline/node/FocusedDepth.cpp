@@ -13,6 +13,31 @@ FocusedDepth::FocusedDepth()
       confidence(focusController->confidenceOut),
       focusDebug(focusController->focusDebug) {}
 
+std::shared_ptr<FocusedDepth> FocusedDepth::setFocusMode(FocusController::Mode mode) {
+    if(built_) throw std::logic_error("FocusedDepth configuration must be set before build().");
+    if(mode != FocusController::Mode::ROI && mode != FocusController::Mode::HOLD && mode != FocusController::Mode::HYBRID) {
+        throw std::invalid_argument("Unknown focused depth mode");
+    }
+    mode_ = mode;
+    focusController->setMode(mode);
+    return std::static_pointer_cast<FocusedDepth>(shared_from_this());
+}
+
+std::shared_ptr<FocusedDepth> FocusedDepth::setFocusHoldFrames(unsigned int frames) {
+    if(built_) throw std::logic_error("FocusedDepth configuration must be set before build().");
+    focusController->setHoldFrames(frames);
+    return std::static_pointer_cast<FocusedDepth>(shared_from_this());
+}
+
+std::shared_ptr<FocusedDepth> FocusedDepth::setFocusStereoSize(unsigned int width, unsigned int height) {
+    if(built_) throw std::logic_error("FocusedDepth configuration must be set before build().");
+    if(width == 0 || height == 0 || width % 128 != 0 || width > 1280 || height > 800) {
+        throw std::invalid_argument("Focused EVA size must be positive, width divisible by 128, and at most 1280x800");
+    }
+    stereoSize_ = {width, height};
+    return std::static_pointer_cast<FocusedDepth>(shared_from_this());
+}
+
 std::shared_ptr<FocusedDepth> FocusedDepth::setFocusModels(const std::vector<DeviceModelZoo>& models) {
     if(built_) {
         throw std::logic_error("FocusedDepth configuration must be set before build().");
@@ -44,6 +69,9 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
     if(built_) {
         return std::static_pointer_cast<FocusedDepth>(shared_from_this());
     }
+    if(mode_ == FocusController::Mode::HYBRID && (!getDevice() || getDevice()->getPlatform() != Platform::RVC4)) {
+        throw std::runtime_error("Hybrid focused depth requires an RVC4 device with EVA stereo");
+    }
     built_ = true;
 
     // Synchronize detections with the left/right rectified streams.
@@ -60,6 +88,31 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
 
     rectification->output1.link(focusController->inputs["left"]);
     rectification->output2.link(focusController->inputs["right"]);
+
+    if(mode_ == FocusController::Mode::HYBRID) {
+        stereoLeft_ = std::make_unique<Subnode<ImageManip>>(*this, "stereoLeft");
+        stereoRight_ = std::make_unique<Subnode<ImageManip>>(*this, "stereoRight");
+        stereoBase_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoBase");
+        for(auto* manip : {&**stereoLeft_, &**stereoRight_}) {
+            manip->initialConfig->setOutputSize(stereoSize_.first, stereoSize_.second, ImageManipConfig::ResizeMode::STRETCH);
+            manip->initialConfig->setFrameType(ImgFrame::Type::GRAY8);
+            // Allow device stride/plane padding for all supported input sizes.
+            manip->setMaxOutputFrameSize(2 * 1024 * 1024);
+            manip->setNumFramesPool(4);
+        }
+        rectification->output1.link((*stereoLeft_)->inputImage);
+        rectification->output2.link((*stereoRight_)->inputImage);
+        (*stereoLeft_)->out.link((*stereoBase_)->left);
+        (*stereoRight_)->out.link((*stereoBase_)->right);
+        // RVC4 StereoDepth uses EVA. Both backends share rectification, so fusion only needs resizing.
+        (*stereoBase_)->setDefaultProfilePreset(StereoDepth::PresetMode::FAST_ACCURACY);
+        (*stereoBase_)->setRectification(false);
+        (*stereoBase_)->setDepthAlign(StereoDepthConfig::AlgorithmControl::DepthAlign::RECTIFIED_LEFT);
+        (*stereoBase_)->depth.link(focusController->inputs["baseDepth"]);
+        (*stereoBase_)->confidenceMap.link(focusController->inputs["baseConfidence"]);
+        focusController->inputs["baseDepth"].setWaitForMessage(true);
+        focusController->inputs["baseConfidence"].setWaitForMessage(true);
+    }
 
     for(int tier = 0; tier < focusController->getTierCount(); ++tier) {
         const auto suffix = std::to_string(tier);

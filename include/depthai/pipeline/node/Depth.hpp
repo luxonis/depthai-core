@@ -167,6 +167,19 @@ class Depth : public DeviceNodeGroup {
     std::shared_ptr<Depth> setConfig(Config config);
 
     /**
+     * Select ROI-only, bounded ROI holding, or full-frame EVA stereo with neural ROI enhancement.
+     * Must be called before focused outputs are wired. Default: ROI. HYBRID requires RVC4.
+     * All modes wait for detection messages; HOLD bridges empty messages, not a stalled detector.
+     */
+    std::shared_ptr<Depth> setFocusMode(FocusController::Mode mode);
+
+    /** Maximum consecutive empty detection messages to bridge in HOLD mode. Default: 2; zero disables holding. */
+    std::shared_ptr<Depth> setFocusHoldFrames(unsigned int frames);
+
+    /** EVA input size in HYBRID mode (default 384x240). Must be positive, width divisible by 128, and at most 1280x800. */
+    std::shared_ptr<Depth> setFocusStereoSize(unsigned int width, unsigned int height);
+
+    /**
      * Configure the focused-depth backend models before focused outputs are wired.
      * One to three models are accepted; only the configured backends are created.
      */
@@ -254,12 +267,15 @@ class Depth : public DeviceNodeGroup {
     Input& inputDetections;
 
     /**
-     * Output focused depth map: a full-frame RAW16 depth map with focused regions filled and the rest zero.
+     * Output full-frame RAW16 depth in millimeters. ROI/HOLD leave pixels outside focused regions zero.
+     * HYBRID fills the background from downscaled EVA stereo and overwrites selected regions with neural depth.
+     * Output remains in the rectified left-camera frame in all modes.
      */
     Node::Output& focusedDepth();
 
     /**
      * Output focused confidence map matching the focused depth map.
+     * HYBRID preserves each backend's native confidence values in its respective regions; they are not cross-calibrated.
      */
     Node::Output& focusedConfidence();
 

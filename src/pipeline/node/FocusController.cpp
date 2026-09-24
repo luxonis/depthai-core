@@ -18,6 +18,18 @@
 namespace dai {
 namespace node {
 
+std::vector<std::array<float, 4>> FocusController::RegionHistory::update(const std::vector<std::array<float, 4>>& current, unsigned int holdFrames) {
+    if(!current.empty()) {
+        boxes = current;
+        missedFrames = 0;
+    } else if(!boxes.empty() && missedFrames < holdFrames) {
+        ++missedFrames;
+    } else {
+        boxes.clear();
+    }
+    return boxes;
+}
+
 std::shared_ptr<FocusController> FocusController::build(float targetFps) {
     setTargetFps(targetFps);
     return std::static_pointer_cast<FocusController>(shared_from_this());
@@ -348,6 +360,21 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         boxes = selectLargest(boxes);
     }
 
+    if(mode_ == Mode::HOLD) {
+        const auto geometry = leftImg->getTransformation();
+        if(!previousGeometry_ || previousInstance_ != leftImg->getInstanceNum() || !previousGeometry_->isEqualTransformation(geometry)) {
+            regionHistory_ = {};
+        }
+        previousGeometry_ = geometry;
+        previousInstance_ = leftImg->getInstanceNum();
+        boxes = regionHistory_.update(boxes, holdFrames_);
+    }
+
+    auto baseDepth = in->get<ImgFrame>("baseDepth");
+    auto baseConfidence = in->get<ImgFrame>("baseConfidence");
+    if(mode_ == Mode::HYBRID && (!baseDepth || !baseConfidence)) {
+        throw std::runtime_error("Hybrid focused depth requires a synchronized EVA depth/confidence pair");
+    }
     const std::vector<Crop> crops = computeCrops(frameWidth, frameHeight, boxes);
 
     // Fold overlapping crops (disparity padding makes neighbouring detections overlap) into their
@@ -399,13 +426,15 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         for(const auto& mc : merged) {
             dispatchCrop(mc, 0, false);
         }
-        pendingFrames_.push_back({leftImg, std::move(merged), detections.size(), boxes.size()});
+        pendingFrames_.push_back({leftImg, baseDepth, baseConfidence, std::move(merged), detections.size(), boxes.size()});
         if(pendingFrames_.size() < 3) {
             return nullptr;
         }
         auto pending = std::move(pendingFrames_.front());
         pendingFrames_.pop_front();
         leftImg = std::move(pending.left);
+        baseDepth = std::move(pending.baseDepth);
+        baseConfidence = std::move(pending.baseConfidence);
         merged = std::move(pending.crops);
         detectionCount = pending.detections;
         boxCount = pending.boxes;
@@ -413,13 +442,18 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         frameHeight = static_cast<int>(leftImg->getHeight());
         fxFull = leftImg->getTransformation().getIntrinsicMatrix()[0][0];
     }
-    if(merged.empty()) {
+    if(merged.empty() && !baseDepth) {
         confidenceOut.send(makeZeroFrame(ImgFrame::Type::RAW8, 1));
         return makeZeroFrame(ImgFrame::Type::RAW16, 2);
     }
 
     cv::Mat fullDepth = cv::Mat::zeros(frameHeight, frameWidth, CV_16U);
     cv::Mat fullConf = cv::Mat::zeros(frameHeight, frameWidth, CV_8U);
+    if(baseDepth) {
+        // Metric depth stays in millimeters when resizing; do not scale its values.
+        cv::resize(baseDepth->getFrame(), fullDepth, cv::Size(frameWidth, frameHeight), 0, 0, cv::INTER_NEAREST);
+        cv::resize(baseConfidence->getFrame(), fullConf, cv::Size(frameWidth, frameHeight), 0, 0, cv::INTER_NEAREST);
+    }
 
     auto reassemble = [&](const MergedCrop& mc, const std::shared_ptr<ImgFrame>& depthMsg, const std::shared_ptr<ImgFrame>& confMsg, int outW) {
         if(!depthMsg || !confMsg) {

@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <map>
 #include <thread>
 #include <vector>
 
@@ -360,4 +361,113 @@ while True:
     REQUIRE(phases[1] > 10);
     REQUIRE(phases[2] > 10);
     REQUIRE(filled > 30);
+}
+
+TEST_CASE("FocusedDepth modes preserve fresh frames and fuse only the selected region") {
+    using Mode = node::FocusController::Mode;
+    const auto mode = GENERATE(Mode::ROI, Mode::HOLD, Mode::HYBRID);
+    CAPTURE(static_cast<int>(mode));
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    skipUnlessFocusedDepthSupported(device);
+    const auto pair = device->getStereoPairs().front();
+    auto camera = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 30.0f);
+    auto script = pipeline.create<node::Script>();
+    camera->requestOutput({64, 40}, ImgFrame::Type::GRAY8, ImgResizeMode::CROP, 30.0f)->link(script->inputs["frame"]);
+    // Synthetic detection gaps are deterministic. The production example has no Script node.
+    script->setScript(R"(
+while True:
+    frame = node.io["frame"].get()
+    message = ImgDetections()
+    if frame.getSequenceNum() % 8 < 2:
+        detection = ImgDetection()
+        detection.xmin, detection.ymin, detection.xmax, detection.ymax = 0.35, 0.3, 0.65, 0.7
+        detection.confidence = 1.0
+        message.detections = [detection]
+    message.setTimestamp(frame.getTimestamp())
+    message.setTimestampDevice(frame.getTimestampDevice())
+    message.setSequenceNum(frame.getSequenceNum())
+    node.io["detections"].send(message)
+)");
+    auto depth = pipeline.create<node::Depth>();
+    depth->setFocusMode(mode);
+    depth->setFocusHoldFrames(2);
+    depth->setFocusModels({DeviceModelZoo::NEURAL_DEPTH_MEDIUM});
+    depth->setFocusSelectionMode(node::FocusController::SelectionMode::LARGEST);
+    depth->build(30.0f);
+    REQUIRE_THROWS(depth->setFocusStereoSize(0, 400));
+    REQUIRE_THROWS(depth->setFocusStereoSize(639, 400));
+    REQUIRE_THROWS(depth->setFocusStereoSize(480, 300));
+    script->outputs["detections"].link(depth->inputDetections);
+    auto output = depth->focusedDepth().createOutputQueue(8, false);
+    std::shared_ptr<MessageQueue> baseline;
+    int stereoCount = 0;
+    for(const auto& child : depth->getAllNodes()) {
+        if(auto stereo = std::dynamic_pointer_cast<node::StereoDepth>(child)) {
+            ++stereoCount;
+            baseline = stereo->depth.createOutputQueue(16, false);
+        }
+    }
+    REQUIRE(stereoCount == (mode == Mode::HYBRID ? 1 : 0));
+    REQUIRE_THROWS(depth->setFocusMode(Mode::ROI));
+    REQUIRE_THROWS(depth->setFocusHoldFrames(3));
+    REQUIRE_THROWS(depth->setFocusStereoSize(640, 400));
+    struct PipelineStopGuard {
+        Pipeline& pipeline;
+        ~PipelineStopGuard() {
+            pipeline.stop();
+        }
+    } guard{pipeline};
+    pipeline.start();
+    std::map<int64_t, std::shared_ptr<ImgFrame>> baseFrames;
+    int filled = 0;
+    int empty = 0;
+    int held = 0;
+    int64_t previous = -1;
+    auto previousTimestamp = std::chrono::steady_clock::time_point{};
+    for(int i = 0; i < 96; ++i) {
+        bool timedOut = false;
+        auto frame = output->get<ImgFrame>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(frame != nullptr);
+        REQUIRE(frame->getSequenceNum() > previous);
+        REQUIRE(frame->getTimestamp() > previousTimestamp);
+        previous = frame->getSequenceNum();
+        previousTimestamp = frame->getTimestamp();
+        // Skip initial partial cycle, where no prior detection may have been seen.
+        if(previous < 8) continue;
+        const int phase = previous % 8;
+        const bool enhanced = phase < 2 || (mode == Mode::HOLD && phase < 4);
+        const auto pixels = frame->getFrame();
+        if(mode == Mode::HYBRID) {
+            for(const auto& base : baseline->tryGetAll<ImgFrame>()) baseFrames[base->getSequenceNum()] = base;
+            const auto found = baseFrames.find(previous);
+            REQUIRE(found != baseFrames.end());
+            const auto base = found->second;
+            REQUIRE(base->getTimestamp() == frame->getTimestamp());
+            cv::Mat expected;
+            cv::resize(base->getFrame(), expected, pixels.size(), 0, 0, cv::INTER_NEAREST);
+            cv::Mat difference;
+            cv::compare(expected, pixels, difference, cv::CMP_NE);
+            const auto mask = boxMask({Box{0.35f, 0.3f, 0.65f, 0.7f}}, pixels.cols, pixels.rows, 1);
+            cv::Mat outside;
+            cv::bitwise_and(difference, ~mask, outside);
+            REQUIRE(cv::countNonZero(outside) == 0);
+            if(!enhanced) REQUIRE(cv::countNonZero(difference) == 0);
+            if(enhanced) filled += cv::countNonZero(difference) > 0;
+            REQUIRE(cv::countNonZero(pixels) > 0);
+            baseFrames.erase(baseFrames.begin(), baseFrames.upper_bound(previous));
+        } else if(enhanced) {
+            const auto result = analyzeFocused(pixels, {Box{0.35f, 0.3f, 0.65f, 0.7f}});
+            REQUIRE(result.outsideFill == 0);
+            filled += result.totalFill > 0;
+            if(phase >= 2) held += result.totalFill > 0;
+        } else {
+            REQUIRE(cv::countNonZero(pixels) == 0);
+            ++empty;
+        }
+    }
+    REQUIRE(filled > 10);
+    if(mode != Mode::HYBRID) REQUIRE(empty > 10);
+    if(mode == Mode::HOLD) REQUIRE(held > 10);
 }

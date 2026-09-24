@@ -20,6 +20,25 @@ class FocusController : public CustomNode<FocusController> {
    public:
     FocusController() = default;
 
+    /** Focused output policy. ROI is the backward-compatible default. */
+    enum class Mode { ROI, HOLD, HYBRID };
+
+    /** Bounded history of selected regions; only geometry is retained, never image data. */
+    struct RegionHistory {
+        std::vector<std::array<float, 4>> boxes;
+        unsigned int missedFrames = 0;
+        std::vector<std::array<float, 4>> update(const std::vector<std::array<float, 4>>& current, unsigned int holdFrames);
+    };
+
+    /** Configure before starting the pipeline. HOLD reuses regions for consecutive empty messages. */
+    void setMode(Mode mode) {
+        mode_ = mode;
+    }
+    /** Maximum empty detection messages to bridge in HOLD mode; zero disables holding. */
+    void setHoldFrames(unsigned int frames) {
+        holdFrames_ = frames;
+    }
+
     enum class SelectionMode { ALL, LARGEST };
     enum class DispatchMode { SINGLE_TIER_PER_FRAME, TIME_BUDGET };
 
@@ -184,12 +203,19 @@ class FocusController : public CustomNode<FocusController> {
    private:
     struct PendingFrame {
         std::shared_ptr<ImgFrame> left;
+        std::shared_ptr<ImgFrame> baseDepth;
+        std::shared_ptr<ImgFrame> baseConfidence;
         std::vector<MergedCrop> crops;
         std::size_t detections;
         std::size_t boxes;
     };
     std::deque<PendingFrame> pendingFrames_;
 
+    Mode mode_ = Mode::ROI;
+    unsigned int holdFrames_ = 2;
+    RegionHistory regionHistory_;
+    std::optional<ImgTransformation> previousGeometry_;
+    unsigned int previousInstance_ = 0;
     float targetFps_ = 30.0f;
     std::array<Tier, kNumTiers> tiers_ = kTiers;
     int tierCount_ = kNumTiers;

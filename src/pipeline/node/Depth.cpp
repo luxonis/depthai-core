@@ -539,6 +539,24 @@ std::shared_ptr<Depth> Depth::setConfig(Config config) {
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
+std::shared_ptr<Depth> Depth::setFocusMode(FocusController::Mode mode) {
+    requireNotBuilt("Depth::setFocusMode");
+    (*focusedBackend_)->setFocusMode(mode);
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
+std::shared_ptr<Depth> Depth::setFocusHoldFrames(unsigned int frames) {
+    requireNotBuilt("Depth::setFocusHoldFrames");
+    (*focusedBackend_)->setFocusHoldFrames(frames);
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
+std::shared_ptr<Depth> Depth::setFocusStereoSize(unsigned int width, unsigned int height) {
+    requireNotBuilt("Depth::setFocusStereoSize");
+    (*focusedBackend_)->setFocusStereoSize(width, height);
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
 std::shared_ptr<Depth> Depth::setFocusModels(const std::vector<DeviceModelZoo>& models) {
     requireNotBuilt("Depth::setFocusModels");
     (*focusedBackend_)->setFocusModels(models);
