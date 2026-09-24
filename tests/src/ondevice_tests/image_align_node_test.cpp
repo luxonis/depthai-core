@@ -185,9 +185,6 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
 
     // The host variant needs no device: run it host-only so it does not depend on (re)connecting to one between cases.
     dai::Pipeline pipeline(!runOnHost);
-    if(!runOnHost && pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) {
-        SKIP("The RVC2 ImageAlign does not reconfigure from runtime ImgTransformation changes");
-    }
     auto align = pipeline.create<dai::node::ImageAlign>();
     align->setRunOnHost(runOnHost);
     align->input.setMaxSize(3);
