@@ -27,7 +27,7 @@ TEST_CASE("Multi-device calibration resolves a cross-device edge to the determin
     edge.fromSocket = CameraBoardSocket::CAM_A;
     edge.extrinsics = makeExtrinsics("device-a", CameraBoardSocket::CAM_A, {1.0f, 2.0f, 3.0f});
 
-    const MultiDeviceCalibrationHandler handler({edge});
+    const MultiDeviceCalibrationHandler handler(std::vector<MultiDeviceExtrinsics>{edge});
 
     REQUIRE(handler.getDeviceSocket("device-a") == CameraBoardSocket::CAM_A);
     REQUIRE(handler.getDeviceSocket("device-b") == CameraBoardSocket::CAM_A);
@@ -68,7 +68,7 @@ TEST_CASE("Multi-device calibration handles chains, components, units, and seria
     separate.fromSocket = CameraBoardSocket::CAM_B;
     separate.extrinsics = makeExtrinsics("device-y", CameraBoardSocket::CAM_B, {1.0f, 0.0f, 0.0f}, LengthUnit::METER);
 
-    const MultiDeviceCalibrationHandler handler({first, second, separate});
+    const MultiDeviceCalibrationHandler handler(std::vector<MultiDeviceExtrinsics>{first, second, separate});
 
     const auto chainBridge = handler.getExtrinsicsToOrigin("device-c", CameraBoardSocket::CAM_A);
     REQUIRE(chainBridge.has_value());
@@ -160,33 +160,33 @@ TEST_CASE("Multi-device calibration rejects invalid graph structure") {
 
     auto invalidSource = edge;
     invalidSource.fromDeviceId.clear();
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({invalidSource}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{invalidSource}), std::invalid_argument);
 
     auto invalidSocket = edge;
     invalidSocket.fromSocket = CameraBoardSocket::AUTO;
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({invalidSocket}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{invalidSocket}), std::invalid_argument);
 
     auto nonFiniteTranslation = edge;
     nonFiniteTranslation.extrinsics.translation.x = std::numeric_limits<float>::quiet_NaN();
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({nonFiniteTranslation}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{nonFiniteTranslation}), std::invalid_argument);
 
     auto nonFiniteSpecTranslation = edge;
     nonFiniteSpecTranslation.extrinsics.specTranslation.x = std::numeric_limits<float>::quiet_NaN();
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({nonFiniteSpecTranslation}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{nonFiniteSpecTranslation}), std::invalid_argument);
 
     auto invalidRotation = edge;
     invalidRotation.extrinsics.rotationMatrix[0][0] = 2.0f;
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({invalidRotation}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{invalidRotation}), std::invalid_argument);
 
     auto sameDevice = edge;
     sameDevice.extrinsics.toDeviceId = "device-a";
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({sameDevice}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{sameDevice}), std::invalid_argument);
 
     auto conflictingSocket = edge;
     conflictingSocket.fromDeviceId = "device-b";
     conflictingSocket.fromSocket = CameraBoardSocket::CAM_B;
     conflictingSocket.extrinsics = makeExtrinsics("device-c", CameraBoardSocket::CAM_A, {});
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({edge, conflictingSocket}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{edge, conflictingSocket}), std::invalid_argument);
 
     MultiDeviceExtrinsics second;
     second.fromDeviceId = "device-b";
@@ -196,15 +196,15 @@ TEST_CASE("Multi-device calibration rejects invalid graph structure") {
     cycle.fromDeviceId = "device-c";
     cycle.fromSocket = CameraBoardSocket::CAM_A;
     cycle.extrinsics = makeExtrinsics("device-a", CameraBoardSocket::CAM_A, {});
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({edge, second, cycle}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{edge, second, cycle}), std::invalid_argument);
 
     auto reverseDuplicate = edge;
     reverseDuplicate.fromDeviceId = "device-b";
     reverseDuplicate.fromSocket = CameraBoardSocket::CAM_A;
     reverseDuplicate.extrinsics = makeExtrinsics("device-a", CameraBoardSocket::CAM_A, {});
-    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler({edge, reverseDuplicate}), std::invalid_argument);
+    REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{edge, reverseDuplicate}), std::invalid_argument);
 
-    const MultiDeviceCalibrationHandler handler({edge});
+    const MultiDeviceCalibrationHandler handler(std::vector<MultiDeviceExtrinsics>{edge});
     REQUIRE_THROWS_AS(handler.getExtrinsicsToOrigin("device-a", CameraBoardSocket::CAM_B), std::invalid_argument);
     REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler::fromJson(nlohmann::json::object()), nlohmann::json::out_of_range);
     REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::filesystem::path("/path/that/does/not/exist.json")), std::runtime_error);
