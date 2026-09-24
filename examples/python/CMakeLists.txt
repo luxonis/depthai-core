@@ -246,6 +246,8 @@ add_python_example(image_manip_remap ImageManip/image_manip_remap.py)
 dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## Misc
+add_python_example(save_load Misc/save_load.py)
+
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
 dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 rvc4rgb ci)
 
