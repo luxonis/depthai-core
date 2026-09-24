@@ -140,6 +140,13 @@ struct Extrinsics {
     std::vector<float> getTranslationVector(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
+     * Get a copy of these extrinsics with the translation and specification translation expressed in another unit.
+     * @param unit Length unit of the returned copy
+     * @return Copy of these extrinsics in the given unit
+     */
+    Extrinsics withLengthUnit(LengthUnit unit) const;
+
+    /**
      * Two Extrinsics objects are equal if their rotation matrices and translation vectors are equal (within a small epsilon).
      * @param other The other Extrinsics object to compare with
      * @param epsilon The tolerance for comparing floating-point values

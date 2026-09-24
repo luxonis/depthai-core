@@ -209,3 +209,26 @@ TEST_CASE("Multi-device calibration rejects invalid graph structure") {
     REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler::fromJson(nlohmann::json::object()), nlohmann::json::out_of_range);
     REQUIRE_THROWS_AS(MultiDeviceCalibrationHandler(std::filesystem::path("/path/that/does/not/exist.json")), std::runtime_error);
 }
+
+TEST_CASE("Extrinsics::withLengthUnit converts both translations and keeps everything else") {
+    auto source = makeExtrinsics("device-b", CameraBoardSocket::CAM_C, {1.0f, 2.0f, 3.0f});
+    source.lengthUnit = LengthUnit::METER;
+    source.specTranslation = Point3f(0.5f, 0.25f, 0.125f);
+
+    const auto centimeters = source.withLengthUnit(LengthUnit::CENTIMETER);
+    REQUIRE(centimeters.lengthUnit == LengthUnit::CENTIMETER);
+    REQUIRE(centimeters.translation.x == Catch::Approx(100.0f));
+    REQUIRE(centimeters.translation.y == Catch::Approx(200.0f));
+    REQUIRE(centimeters.translation.z == Catch::Approx(300.0f));
+    REQUIRE(centimeters.specTranslation.x == Catch::Approx(50.0f));
+    REQUIRE(centimeters.specTranslation.y == Catch::Approx(25.0f));
+    REQUIRE(centimeters.specTranslation.z == Catch::Approx(12.5f));
+    REQUIRE(centimeters.rotationMatrix == source.rotationMatrix);
+    REQUIRE(centimeters.toCameraSocket == source.toCameraSocket);
+    REQUIRE(centimeters.toDeviceId == source.toDeviceId);
+
+    const auto roundTrip = centimeters.withLengthUnit(LengthUnit::METER);
+    REQUIRE(roundTrip.translation.x == Catch::Approx(source.translation.x));
+    REQUIRE(roundTrip.specTranslation.z == Catch::Approx(source.specTranslation.z));
+    REQUIRE(source.withLengthUnit(LengthUnit::METER).isEqualExtrinsics(source));
+}
