@@ -380,8 +380,8 @@ void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<M
             }
             const auto calibration = getCalibrationData(devices[i]);
             if(!calibration.hasCameraCalibration(*localSocket)) {
-                throw std::runtime_error(fmt::format(
-                    "Multi-device calibration requires local calibration socket {} on device '{}'.", toString(*localSocket), deviceId));
+                throw std::runtime_error(
+                    fmt::format("Multi-device calibration requires local calibration socket {} on device '{}'.", toString(*localSocket), deviceId));
             }
             CameraBoardSocket discoveredOrigin = CameraBoardSocket::AUTO;
             calibration.getExtrinsicsToOrigin(*localSocket, false, discoveredOrigin);

@@ -1,7 +1,5 @@
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 
-#include "depthai/common/DepthUnit.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -12,6 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
