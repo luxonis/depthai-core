@@ -1,5 +1,7 @@
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 
+#include "depthai/common/DepthUnit.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -50,20 +52,6 @@ bool isConcreteSocket(CameraBoardSocket socket) {
            && static_cast<int32_t>(socket) <= static_cast<int32_t>(CameraBoardSocket::CBA);
 }
 
-bool isSupportedLengthUnit(LengthUnit unit) {
-    switch(unit) {
-        case LengthUnit::METER:
-        case LengthUnit::CENTIMETER:
-        case LengthUnit::MILLIMETER:
-        case LengthUnit::INCH:
-        case LengthUnit::FOOT:
-            return true;
-        case LengthUnit::CUSTOM:
-        default:
-            return false;
-    }
-}
-
 bool isFiniteTranslation(const Point3f& translation) {
     return std::isfinite(translation.x) && std::isfinite(translation.y) && std::isfinite(translation.z);
 }
@@ -75,7 +63,7 @@ Extrinsics normalizeExtrinsics(const Extrinsics& input) {
     if(!isConcreteSocket(input.toCameraSocket)) {
         throw std::invalid_argument("Multi-device extrinsics destination socket must be concrete.");
     }
-    if(!isSupportedLengthUnit(input.lengthUnit)) {
+    if(!isConvertibleLengthUnit(input.lengthUnit)) {
         throw std::invalid_argument("Multi-device extrinsics length unit is not supported.");
     }
     try {

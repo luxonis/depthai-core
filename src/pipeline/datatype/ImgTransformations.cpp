@@ -13,6 +13,7 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraModel.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
@@ -20,20 +21,6 @@
 namespace dai {
 
 namespace {
-
-bool isSupportedRebaseLengthUnit(LengthUnit unit) {
-    switch(unit) {
-        case LengthUnit::METER:
-        case LengthUnit::CENTIMETER:
-        case LengthUnit::MILLIMETER:
-        case LengthUnit::INCH:
-        case LengthUnit::FOOT:
-            return true;
-        case LengthUnit::CUSTOM:
-        default:
-            return false;
-    }
-}
 
 bool isConcreteRebaseSocket(CameraBoardSocket socket) {
     return socket != CameraBoardSocket::AUTO && static_cast<int32_t>(socket) >= static_cast<int32_t>(CameraBoardSocket::CAM_A)
@@ -47,7 +34,7 @@ void validateRebaseExtrinsics(const Extrinsics& extrinsics, const char* name) {
     if(!isConcreteRebaseSocket(extrinsics.toCameraSocket)) {
         throw std::invalid_argument(std::string("ImgTransformation ") + name + " socket must be concrete.");
     }
-    if(!isSupportedRebaseLengthUnit(extrinsics.lengthUnit)) {
+    if(!isConvertibleLengthUnit(extrinsics.lengthUnit)) {
         throw std::invalid_argument(std::string("ImgTransformation ") + name + " length unit is not supported.");
     }
     try {
