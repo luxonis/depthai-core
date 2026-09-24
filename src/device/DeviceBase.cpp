@@ -1627,6 +1627,13 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                             if(crashed && !crashDumpHandled.load()) {
                                 collectAndLogCrashDump();
                             }
+                            // Finish crash dump bookkeeping before exposing the recovered connection:
+                            // a reconnection callback can immediately crash or disconnect the device again.
+                            const bool hasPendingCrashDump = hasCrashDump();
+                            crashed = hasPendingCrashDump;
+                            if(!hasPendingCrashDump) {
+                                crashDumpHandled.store(false);
+                            }
                         }
                         if(shared) shared->resetConnections(this);
                         reconnected = true;
@@ -1648,13 +1655,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
             if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
             notifyPipelineDeviceState(DeviceState::RUNNING);
             pimpl->logger.warn("Reconnection successful\n");
-            if(isCrashDumpCollectionEnabled()) {
-                const bool hasPendingCrashDump = hasCrashDump();
-                crashed = hasPendingCrashDump;
-                if(!hasPendingCrashDump) {
-                    crashDumpHandled.store(false);
-                }
-            }
         }
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
