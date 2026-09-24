@@ -396,23 +396,26 @@ void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<M
     }
 
     const auto previous = globalProperties.multiDeviceCalibration;
-    std::vector<std::shared_ptr<Device>> updated;
-    updated.reserve(devices.size());
     for(size_t i = 0; i < devices.size(); ++i) {
         try {
             devices[i]->setMultiDeviceCalibration(graph);
         } catch(const std::exception& ex) {
-            // Best-effort rollback so that all devices keep sharing one graph.
-            for(const auto& device : updated) {
+            // Best-effort rollback so that all devices keep sharing one graph. The failing device is
+            // included because the RPC may have failed after the device already applied the graph.
+            std::string rollbackNote;
+            for(size_t j = 0; j <= i; ++j) {
                 try {
-                    device->setMultiDeviceCalibration(previous);
+                    devices[j]->setMultiDeviceCalibration(previous);
                 } catch(const std::exception& rollbackEx) {
-                    Logging::getInstance().logger.warn("Failed to restore previous multi-device calibration on device '{}': {}", device->getDeviceId(), rollbackEx.what());
+                    Logging::getInstance().logger.warn(
+                        "Failed to restore previous multi-device calibration on device '{}': {}", deviceIds[j], rollbackEx.what());
+                    if(j == i) {
+                        rollbackNote = " (its multi-device calibration state could not be confirmed)";
+                    }
                 }
             }
-            throw std::runtime_error(fmt::format("Failed to set multi-device calibration on device '{}': {}", deviceIds[i], ex.what()));
+            throw std::runtime_error(fmt::format("Failed to set multi-device calibration on device '{}': {}{}", deviceIds[i], ex.what(), rollbackNote));
         }
-        updated.push_back(devices[i]);
     }
     globalProperties.multiDeviceCalibration = graph;
 }
