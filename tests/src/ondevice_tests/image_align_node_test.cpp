@@ -210,10 +210,11 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
     enqueue(changedInputTransformation, changedAlignToTransformation, 3);
     pipeline.start();
 
-    auto requireAligned = [&](const dai::ImgTransformation& currentAlignToTransformation, int64_t sequenceNum) {
+    auto requireAligned = [&](const std::shared_ptr<dai::ImgFrame>& aligned,
+                              const dai::ImgTransformation& currentAlignToTransformation,
+                              int64_t sequenceNum) {
         const auto [alignWidth, alignHeight] = currentAlignToTransformation.getSize();
         CAPTURE(sequenceNum);
-        auto aligned = outputQueue->get<dai::ImgFrame>();
         REQUIRE(aligned != nullptr);
         REQUIRE(aligned->getSequenceNum() == sequenceNum);
         REQUIRE(aligned->getInstanceNum() == static_cast<uint32_t>(dai::CameraBoardSocket::CAM_A));
@@ -232,19 +233,37 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
         return image;
     };
 
-    const auto originalOutput = requireAligned(alignToTransformation, 1);
-    const auto changedAlignToOutput = requireAligned(changedAlignToTransformation, 2);
-    const auto changedInputOutput = requireAligned(changedAlignToTransformation, 3);
+    const auto originalOutput = requireAligned(outputQueue->get<dai::ImgFrame>(), alignToTransformation, 1);
+    const auto changedAlignToOutput = requireAligned(outputQueue->get<dai::ImgFrame>(), changedAlignToTransformation, 2);
+    const auto changedInputOutput = requireAligned(outputQueue->get<dai::ImgFrame>(), changedAlignToTransformation, 3);
     REQUIRE(changedAlignToOutput != originalOutput);
     REQUIRE(changedInputOutput != changedAlignToOutput);
 
-    enqueue(inputTransformation, halfAlignToTransformation, 4);
-    requireAligned(halfAlignToTransformation, 4);
+    int64_t sequenceNum = 3;
+    auto sendAndRequireAligned = [&](const dai::ImgTransformation& currentInputTransformation,
+                                     const dai::ImgTransformation& currentAlignToTransformation) {
+        const auto [alignWidth, alignHeight] = currentAlignToTransformation.getSize();
+        for(int attempt = 0; attempt < 10; ++attempt) {
+            ++sequenceNum;
+            CAPTURE(sequenceNum, attempt);
+            enqueue(currentInputTransformation, currentAlignToTransformation, sequenceNum);
+            auto aligned = outputQueue->get<dai::ImgFrame>();
+            REQUIRE(aligned != nullptr);
+            REQUIRE(aligned->getSequenceNum() == sequenceNum);
+            if(aligned->getWidth() == alignWidth && aligned->getHeight() == alignHeight
+               && aligned->transformation.isAlignedTo(currentAlignToTransformation)) {
+                return requireAligned(aligned, currentAlignToTransformation, sequenceNum);
+            }
+        }
+        FAIL("ImageAlign did not reconfigure to the new transformation");
+        return std::vector<uint8_t>{};
+    };
+
+    sendAndRequireAligned(inputTransformation, halfAlignToTransformation);
 
     // Back to the original transformations: nothing from the intermediate configurations (meshes, shift factor, pools)
     // may leak into the result, so the output must be identical to the very first one.
-    enqueue(inputTransformation, alignToTransformation, 5);
-    const auto restoredOutput = requireAligned(alignToTransformation, 5);
+    const auto restoredOutput = sendAndRequireAligned(inputTransformation, alignToTransformation);
     REQUIRE(restoredOutput == originalOutput);
 
     pipeline.stop();
