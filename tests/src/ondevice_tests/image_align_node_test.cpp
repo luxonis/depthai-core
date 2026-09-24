@@ -126,6 +126,42 @@ std::shared_ptr<dai::ImgFrame> makeRuntimeTransformationFrame(const dai::ImgTran
     return frame;
 }
 
+std::shared_ptr<dai::ImgFrame> alignSyntheticDepth(bool runOnHost,
+                                                   const dai::ImgTransformation& depthTransformation,
+                                                   const dai::ImgTransformation& imageTransformation) {
+    dai::Pipeline pipeline(!runOnHost);
+    auto align = pipeline.create<dai::node::ImageAlign>();
+    align->setRunOnHost(runOnHost);
+    auto depthQueue = align->input.createInputQueue();
+    auto imageQueue = align->inputAlignTo.createInputQueue();
+    auto outputQueue = align->outputAligned.createOutputQueue();
+
+    auto depth = makeRuntimeTransformationFrame(depthTransformation, dai::CameraBoardSocket::CAM_B, dai::ImgFrame::Type::RAW16, 1);
+    auto image = makeRuntimeTransformationFrame(imageTransformation, dai::CameraBoardSocket::CAM_A, dai::ImgFrame::Type::GRAY8, 1);
+    const auto [width, height] = depthTransformation.getSize();
+    std::vector<uint8_t> depthPixels(width * height * 2);
+    for(size_t y = 0; y < height; ++y) {
+        for(size_t x = 0; x < width; ++x) {
+            const uint16_t millimeters = static_cast<uint16_t>(1000 + 7 * x + 11 * y);
+            const size_t offset = 2 * (y * width + x);
+            depthPixels[offset] = static_cast<uint8_t>(millimeters);
+            depthPixels[offset + 1] = static_cast<uint8_t>(millimeters >> 8);
+        }
+    }
+    depth->setData(std::move(depthPixels));
+
+    pipeline.start();
+    imageQueue->send(image);
+    depthQueue->send(depth);
+    auto output = outputQueue->get<dai::ImgFrame>();
+    REQUIRE(output != nullptr);
+    requireAlignedFrameMetadata(*output, *image);
+    requireInputMetadata(*output, *depth);
+    REQUIRE(output->transformation.isAlignedTo(imageTransformation));
+    pipeline.stop();
+    return output;
+}
+
 TEST_CASE("Test ImageAlign node image to image alignment") {
     bool useDepth = false;
     bool runOnHost = false;
@@ -156,6 +192,27 @@ TEST_CASE("Test ImageAlign node depth to image alignment on host") {
     for(const auto resizeMode : {dai::ImgResizeMode::CROP, dai::ImgResizeMode::LETTERBOX, dai::ImgResizeMode::STRETCH}) {
         runImageAlignTest(useDepth, runOnHost, resizeMode);
     }
+}
+
+TEST_CASE("Test ImageAlign synthetic depth to image host device parity") {
+    constexpr size_t width = 64;
+    constexpr size_t height = 48;
+    const std::array<std::array<float, 3>, 3> intrinsics = {{{64.0f, 0.0f, 32.0f}, {0.0f, 64.0f, 24.0f}, {0.0f, 0.0f, 1.0f}}};
+    const std::vector<std::vector<float>> identityRotation = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const dai::Extrinsics depthExtrinsics(identityRotation, {70.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+    const dai::Extrinsics imageExtrinsics(identityRotation, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+    const dai::ImgTransformation depthTransformation(width, height, intrinsics, dai::CameraModel::Perspective, {}, depthExtrinsics);
+    const dai::ImgTransformation imageTransformation(width, height, intrinsics, dai::CameraModel::Perspective, {}, imageExtrinsics);
+
+    const auto host = alignSyntheticDepth(true, depthTransformation, imageTransformation);
+    const auto device = alignSyntheticDepth(false, depthTransformation, imageTransformation);
+    const size_t imageBytes = width * height * 2;
+    const auto hostData = host->getData();
+    const auto deviceData = device->getData();
+    REQUIRE(hostData.size() >= imageBytes);
+    REQUIRE(deviceData.size() >= imageBytes);
+    REQUIRE(std::any_of(hostData.begin(), hostData.begin() + imageBytes, [](uint8_t pixel) { return pixel != 0; }));
+    REQUIRE(std::equal(hostData.begin(), hostData.begin() + imageBytes, deviceData.begin()));
 }
 
 // Feeds synthetic frames with hand-made ImgTransformations through ImageAlign and checks that a transformation change on
@@ -202,9 +259,6 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
             alignToQueue->send(makeRuntimeTransformationFrame(currentAlignToTransformation, dai::CameraBoardSocket::CAM_A, frameType, sequenceNum));
             inputQueue->send(makeRuntimeTransformationFrame(currentInputTransformation, dai::CameraBoardSocket::CAM_B, frameType, sequenceNum));
         };
-    enqueue(inputTransformation, alignToTransformation, 1);
-    enqueue(inputTransformation, changedAlignToTransformation, 2);
-    enqueue(changedInputTransformation, changedAlignToTransformation, 3);
     pipeline.start();
 
     auto requireAligned = [&](const std::shared_ptr<dai::ImgFrame>& aligned,
@@ -216,6 +270,8 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
         REQUIRE(aligned->getSequenceNum() == sequenceNum);
         REQUIRE(aligned->getInstanceNum() == static_cast<uint32_t>(dai::CameraBoardSocket::CAM_A));
         REQUIRE(aligned->getType() == frameType);
+        CAPTURE(aligned->getWidth(), aligned->getHeight(), aligned->getSourceWidth(), aligned->getSourceHeight());
+        CAPTURE(aligned->transformation.getSize(), aligned->transformation.getSourceSize(), aligned->transformation.isValid());
         REQUIRE(aligned->validateTransformations());
         REQUIRE(aligned->getWidth() == alignWidth);
         REQUIRE(aligned->getHeight() == alignHeight);
@@ -230,13 +286,7 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
         return image;
     };
 
-    const auto originalOutput = requireAligned(outputQueue->get<dai::ImgFrame>(), alignToTransformation, 1);
-    const auto changedAlignToOutput = requireAligned(outputQueue->get<dai::ImgFrame>(), changedAlignToTransformation, 2);
-    const auto changedInputOutput = requireAligned(outputQueue->get<dai::ImgFrame>(), changedAlignToTransformation, 3);
-    REQUIRE(changedAlignToOutput != originalOutput);
-    REQUIRE(changedInputOutput != changedAlignToOutput);
-
-    int64_t sequenceNum = 3;
+    int64_t sequenceNum = 0;
     auto sendAndRequireAligned = [&](const dai::ImgTransformation& currentInputTransformation,
                                      const dai::ImgTransformation& currentAlignToTransformation) {
         const auto [alignWidth, alignHeight] = currentAlignToTransformation.getSize();
@@ -255,6 +305,12 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
         FAIL("ImageAlign did not reconfigure to the new transformation");
         return std::vector<uint8_t>{};
     };
+
+    const auto originalOutput = sendAndRequireAligned(inputTransformation, alignToTransformation);
+    const auto changedAlignToOutput = sendAndRequireAligned(inputTransformation, changedAlignToTransformation);
+    const auto changedInputOutput = sendAndRequireAligned(changedInputTransformation, changedAlignToTransformation);
+    REQUIRE(changedAlignToOutput != originalOutput);
+    REQUIRE(changedInputOutput != changedAlignToOutput);
 
     sendAndRequireAligned(inputTransformation, halfAlignToTransformation);
 
