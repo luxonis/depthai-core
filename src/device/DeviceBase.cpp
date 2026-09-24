@@ -1481,7 +1481,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                         "Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.deviceId, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
-                } else if(!watchdogRunning)
+                } else if(!watchdogRunning && !isClosing)
                     pimpl->logger.warn("Monitor thread (device: {} [{}]) - Watchdog stopped, closing device connection", deviceInfo.deviceId, deviceInfo.name);
             }
             connection->close();
