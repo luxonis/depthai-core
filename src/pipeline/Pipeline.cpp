@@ -336,6 +336,7 @@ void PipelineImpl::setMultiDeviceCalibration(const std::vector<MultiDeviceExtrin
 }
 
 std::optional<std::vector<MultiDeviceExtrinsics>> PipelineImpl::getMultiDeviceCalibration() const {
+    std::lock_guard<std::mutex> lock(multiDeviceCalibMtx);
     return globalProperties.multiDeviceCalibration;
 }
 
@@ -349,6 +350,9 @@ void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<M
     if(graph.has_value()) {
         handler.emplace(*graph);
     }
+
+    // Hold the lock across the whole update so concurrent callers cannot interleave pushes across devices.
+    std::lock_guard<std::mutex> lock(multiDeviceCalibMtx);
 
     if(!isBuilt()) {
         globalProperties.multiDeviceCalibration = graph;

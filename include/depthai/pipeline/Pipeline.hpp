@@ -226,6 +226,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Calibration mutex
     mutable std::mutex calibMtx;
+    // Serializes multi-device calibration updates (read previous, push to devices, rollback, store).
+    mutable std::mutex multiDeviceCalibMtx;
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
