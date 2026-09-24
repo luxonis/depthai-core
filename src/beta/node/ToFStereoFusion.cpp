@@ -4,6 +4,8 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "utility/Logging.hpp"
+
 namespace dai::beta {
 
 ToFStereoFusionProperties::~ToFStereoFusionProperties() = default;
@@ -53,6 +55,14 @@ std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<da
     const auto rightSize = std::make_pair(right->getMaxWidth(), right->getMaxHeight());
     if(leftSize != rightSize) {
         throw std::invalid_argument("ToFStereoFusion camera nodes must have matching maximum resolutions");
+    }
+    const auto leftFps = left->properties.fps;
+    const auto rightFps = right->properties.fps;
+    if(leftFps < fps || rightFps < fps) {
+        throw std::invalid_argument("ToFStereoFusion camera FPS must not be below fusion FPS");
+    }
+    if(leftFps != rightFps) {
+        logger::warn("ToFStereoFusion camera FPS values differ (left: {}, right: {}); outputs may not synchronize", leftFps, rightFps);
     }
 
     constexpr auto neuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_MEDIUM;
