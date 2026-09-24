@@ -139,6 +139,15 @@ TEST_CASE("Multi-device calibration handles chains, components, units, and seria
     REQUIRE(pipelineBridge->translation.x == Catch::Approx(3.0f));
     pipeline.clearMultiDeviceCalibration();
     REQUIRE_FALSE(pipeline.getMultiDeviceCalibration().has_value());
+
+    // The pipeline validates the graph structure on every set, so an invalid graph never reaches the devices.
+    auto invalidEdge = handler.getGraph().front();
+    invalidEdge.fromDeviceId.clear();
+    REQUIRE_THROWS_AS(pipeline.setMultiDeviceCalibration({invalidEdge}), std::invalid_argument);
+    REQUIRE_FALSE(pipeline.getMultiDeviceCalibration().has_value());
+    REQUIRE_NOTHROW(pipeline.setMultiDeviceCalibration({}));
+    REQUIRE(pipeline.getMultiDeviceCalibration().has_value());
+    REQUIRE(pipeline.getMultiDeviceCalibration()->empty());
 }
 
 TEST_CASE("Multi-device calibration rejects invalid graph structure") {

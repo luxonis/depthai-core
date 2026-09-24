@@ -164,6 +164,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setMultiDeviceCalibration(const std::vector<MultiDeviceExtrinsics>& graph);
     std::optional<std::vector<MultiDeviceExtrinsics>> getMultiDeviceCalibration() const;
     void clearMultiDeviceCalibration();
+    void applyMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph);
     bool isHostOnly() const;
     bool isDeviceOnly() const;
     std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const;
@@ -650,9 +651,16 @@ class Pipeline {
     /**
      * Sets the cross-device calibration graph shared by all devices in the pipeline.
      *
-     * The graph is stored as-is. Use beta::MultiDeviceCalibrationHandler to validate
-     * it before setting and to resolve it after reading it back.
+     * The graph is validated with beta::MultiDeviceCalibrationHandler. Before the
+     * pipeline is built it is only stored and travels to the devices with the
+     * pipeline schema. On a built pipeline it is additionally checked against every
+     * assigned device's local calibration and pushed to all assigned devices at
+     * runtime, so already streaming Camera and ToF nodes switch to the new graph.
      *
+     * @throws std::invalid_argument when the graph structure is invalid
+     * @throws std::runtime_error when a device's local calibration does not match
+     * the graph or a device rejects the update; devices updated before the failure
+     * are restored to the previous graph and the pipeline keeps the previous graph
      * @param graph Directed cross-device calibration edges.
      */
     void setMultiDeviceCalibration(std::vector<MultiDeviceExtrinsics> graph) {
@@ -669,7 +677,12 @@ class Pipeline {
     }
 
     /**
-     * Removes any cross-device calibration graph from the pipeline
+     * Removes any cross-device calibration graph from the pipeline.
+     *
+     * On a built pipeline the removal is pushed to all assigned devices, which then
+     * publish their local calibration metadata again.
+     *
+     * @throws std::runtime_error when a device rejects the update
      */
     void clearMultiDeviceCalibration() {
         impl()->clearMultiDeviceCalibration();

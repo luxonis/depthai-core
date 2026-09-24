@@ -2258,6 +2258,15 @@ void DeviceBase::setCalibration(const CalibrationHandler& calibrationDataHandler
     setCalibration(calibrationDataHandler.getEepromData());
 }
 
+void DeviceBase::setMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph) {
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcCall("setMultiDeviceCalibration", graph).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
 std::shared_ptr<CalibrationHandler> DeviceBase::tryGetCalibration() {
     try {
         bool success;
