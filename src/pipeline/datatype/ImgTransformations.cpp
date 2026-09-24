@@ -393,16 +393,11 @@ ImgTransformation& ImgTransformation::rebaseExtrinsics(const Extrinsics& localOr
     validateRebaseExtrinsics(extrinsics, "current extrinsics");
     validateRebaseExtrinsics(localOriginToTarget, "rebase extrinsics");
 
-    const auto sourceToLocal = extrinsics.getTransformationMatrix(false, LengthUnit::METER);
-    const auto localToTarget = localOriginToTarget.getTransformationMatrix(false, LengthUnit::METER);
-    const auto sourceToTarget = matrix::matMul(localToTarget, sourceToLocal);
+    const auto sourceToLocal = extrinsics.getTransformationMatrix(false, LengthUnit::CENTIMETER);
+    const auto localToTarget = localOriginToTarget.getTransformationMatrix(false, LengthUnit::CENTIMETER);
+    auto sourceToTarget = matrix::matMul(localToTarget, sourceToLocal);
 
-    auto rebasedMatrix = sourceToTarget;
-    constexpr auto meterToCentimeter = getDistanceUnitScale(LengthUnit::CENTIMETER, LengthUnit::METER);
-    for(std::size_t axis = 0; axis < 3; ++axis) {
-        rebasedMatrix[axis][3] *= meterToCentimeter;
-    }
-    Extrinsics rebased(rebasedMatrix, localOriginToTarget.toCameraSocket, LengthUnit::CENTIMETER);
+    Extrinsics rebased(sourceToTarget, localOriginToTarget.toCameraSocket, LengthUnit::CENTIMETER);
     rebased.toDeviceId = localOriginToTarget.toDeviceId;
     this->extrinsics = std::move(rebased);
     return *this;
