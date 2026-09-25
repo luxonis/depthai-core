@@ -923,6 +923,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, setCalibration))
         .def(
+            "setMultiDeviceCalibration",
+            [](DeviceBase& d, std::optional<std::vector<MultiDeviceExtrinsics>> graph) {
+                py::gil_scoped_release release;
+                return d.setMultiDeviceCalibration(graph);
+            },
+            py::arg("graph"),
+            DOC(dai, DeviceBase, setMultiDeviceCalibration))
+        .def(
             "getCalibration",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;

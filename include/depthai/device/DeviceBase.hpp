@@ -20,6 +20,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
@@ -827,6 +828,15 @@ class DeviceBase {
      *
      */
     void setCalibration(const std::optional<EepromData>& eepromData);
+
+    /**
+     * Sets the cross-device calibration graph at runtime. This is not persistent and will be lost after device reset.
+     * The device re-validates the graph against its local calibration before applying it.
+     *
+     * @throws std::runtime_error if the device rejects the graph
+     * @param graph Cross-device calibration edges, or std::nullopt to remove the graph
+     */
+    void setMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph);
 
     /**
      * Retrieves the CalibrationHandler shared pointer; If can not get calibration returns nullptr

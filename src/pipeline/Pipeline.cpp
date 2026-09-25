@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
@@ -328,6 +329,95 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
 
 void PipelineImpl::setGlobalProperties(const GlobalProperties& globalProperties) {
     this->globalProperties = globalProperties;
+}
+
+void PipelineImpl::setMultiDeviceCalibration(const std::vector<MultiDeviceExtrinsics>& graph) {
+    applyMultiDeviceCalibration(graph);
+}
+
+std::optional<std::vector<MultiDeviceExtrinsics>> PipelineImpl::getMultiDeviceCalibration() const {
+    std::lock_guard<std::mutex> lock(multiDeviceCalibMtx);
+    return globalProperties.multiDeviceCalibration;
+}
+
+void PipelineImpl::clearMultiDeviceCalibration() {
+    applyMultiDeviceCalibration(std::nullopt);
+}
+
+void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph) {
+    // Structural validation happens on the host for every graph, built or not.
+    std::optional<beta::MultiDeviceCalibrationHandler> handler;
+    if(graph.has_value()) {
+        handler.emplace(*graph);
+    }
+
+    // Hold the lock across the whole update so concurrent callers cannot interleave pushes across devices.
+    std::lock_guard<std::mutex> lock(multiDeviceCalibMtx);
+
+    if(!isBuilt()) {
+        globalProperties.multiDeviceCalibration = graph;
+        return;
+    }
+
+    // The devices already received the schema, so the change has to be pushed at runtime.
+    const auto devices = getAllAssignedDevices();
+    std::vector<std::string> deviceIds;
+    deviceIds.reserve(devices.size());
+    for(const auto& device : devices) {
+        deviceIds.push_back(device->getDeviceId());
+    }
+
+    // Mirror the device-side check up front so that no device is touched when any would reject the graph.
+    if(handler.has_value()) {
+        for(size_t i = 0; i < devices.size(); ++i) {
+            const auto& deviceId = deviceIds[i];
+            const auto localSocket = handler->getDeviceSocket(deviceId);
+            if(!localSocket.has_value()) {
+                continue;
+            }
+            if(!isCalibrationDataAvailable(devices[i])) {
+                throw std::runtime_error(fmt::format("Multi-device calibration requires local calibration data for device '{}'.", deviceId));
+            }
+            const auto calibration = getCalibrationData(devices[i]);
+            if(!calibration.hasCameraCalibration(*localSocket)) {
+                throw std::runtime_error(
+                    fmt::format("Multi-device calibration requires local calibration socket {} on device '{}'.", toString(*localSocket), deviceId));
+            }
+            CameraBoardSocket discoveredOrigin = CameraBoardSocket::AUTO;
+            calibration.getExtrinsicsToOrigin(*localSocket, false, discoveredOrigin);
+            if(discoveredOrigin != *localSocket) {
+                throw std::runtime_error(
+                    fmt::format("Multi-device calibration local origin mismatch for device '{}': graph expects socket {}, local calibration resolves to {}.",
+                                deviceId,
+                                toString(*localSocket),
+                                toString(discoveredOrigin)));
+            }
+        }
+    }
+
+    const auto previous = globalProperties.multiDeviceCalibration;
+    for(size_t i = 0; i < devices.size(); ++i) {
+        try {
+            devices[i]->setMultiDeviceCalibration(graph);
+        } catch(const std::exception& ex) {
+            // Best-effort rollback so that all devices keep sharing one graph. The failing device is
+            // included because the RPC may have failed after the device already applied the graph.
+            std::string rollbackNote;
+            for(size_t j = 0; j <= i; ++j) {
+                try {
+                    devices[j]->setMultiDeviceCalibration(previous);
+                } catch(const std::exception& rollbackEx) {
+                    Logging::getInstance().logger.warn(
+                        "Failed to restore previous multi-device calibration on device '{}': {}", deviceIds[j], rollbackEx.what());
+                    if(j == i) {
+                        rollbackNote = " (its multi-device calibration state could not be confirmed)";
+                    }
+                }
+            }
+            throw std::runtime_error(fmt::format("Failed to set multi-device calibration on device '{}': {}{}", deviceIds[i], ex.what(), rollbackNote));
+        }
+    }
+    globalProperties.multiDeviceCalibration = graph;
 }
 
 void PipelineImpl::setDefaultDeviceProperties(const DeviceProperties& deviceProperties) {

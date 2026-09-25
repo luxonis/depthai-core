@@ -1481,10 +1481,10 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                         "Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.deviceId, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
-                    // close the underlying connection
-                    connection->close();
-                }
+                } else if(!watchdogRunning && !isClosing)
+                    pimpl->logger.warn("Monitor thread (device: {} [{}]) - Watchdog stopped, closing device connection", deviceInfo.deviceId, deviceInfo.name);
             }
+            connection->close();
             // The watchdog stopped: either a missed ping (above), the watchdog writer
             // failing, or a deliberate close. The first two are a device loss.
             if(!isClosing) {
@@ -1627,6 +1627,13 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                             if(crashed && !crashDumpHandled.load()) {
                                 collectAndLogCrashDump();
                             }
+                            // Finish crash dump bookkeeping before exposing the recovered connection:
+                            // a reconnection callback can immediately crash or disconnect the device again.
+                            const bool hasPendingCrashDump = hasCrashDump();
+                            crashed = hasPendingCrashDump;
+                            if(!hasPendingCrashDump) {
+                                crashDumpHandled.store(false);
+                            }
                         }
                         if(shared) shared->resetConnections(this);
                         reconnected = true;
@@ -1648,13 +1655,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
             if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
             notifyPipelineDeviceState(DeviceState::RUNNING);
             pimpl->logger.warn("Reconnection successful\n");
-            if(isCrashDumpCollectionEnabled()) {
-                const bool hasPendingCrashDump = hasCrashDump();
-                crashed = hasPendingCrashDump;
-                if(!hasPendingCrashDump) {
-                    crashDumpHandled.store(false);
-                }
-            }
         }
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
@@ -2256,6 +2256,15 @@ void DeviceBase::setCalibration(const std::optional<EepromData>& eepromData) {
 
 void DeviceBase::setCalibration(const CalibrationHandler& calibrationDataHandler) {
     setCalibration(calibrationDataHandler.getEepromData());
+}
+
+void DeviceBase::setMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph) {
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcCall("setMultiDeviceCalibration", graph).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
 }
 
 std::shared_ptr<CalibrationHandler> DeviceBase::tryGetCalibration() {

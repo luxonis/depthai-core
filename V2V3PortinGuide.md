@@ -114,7 +114,7 @@ monoOut = mono.requestOutput((1280, 720), type=dai.ImgFrame.Type.GRAY8)
 ## Porting the old `ImageManip` to the new API
 
 The new API tracks every transformation in sequence and separates *how* the final image is resized.
-See the [official documentation](https://docs.luxonis.com/software/v3/depthai-components/nodes/image_manip/) for full details.
+See the [official documentation](https://docs.luxonis.com/software-v3/depthai/depthai-components/nodes/image_manip/) for full details.
 
 ### v2 example
 

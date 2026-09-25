@@ -56,7 +56,7 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
      */
     std::shared_ptr<ToFStereoFusion> build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right);
 
-    /** Initial fusion configuration. Depth pixels below this confidence are returned as zero. */
+    /** Initial confidence threshold and optional geometric-overlap crop configuration. */
     std::shared_ptr<ToFStereoFusionConfig> initialConfig;
 
    public:
@@ -71,9 +71,9 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     Subnode<dai::node::Sync> sync{*this, "sync"};
 
    public:
-    /** Fused depth output, aligned to the ToF sensor. */
+    /** Fused depth output, aligned to the ToF sensor. Optional cropping updates intrinsics and preserves the ToF camera pose. */
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-    /** Confidence output produced by the ToF-neural fusion network. */
+    /** Confidence output produced by the ToF-neural fusion network, with the same optional crop and transformation as depth. */
     Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4

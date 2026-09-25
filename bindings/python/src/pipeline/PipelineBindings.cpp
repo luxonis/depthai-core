@@ -150,7 +150,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("CONTINUOUS", Pipeline::AutoCalibrationMode::CONTINUOUS);
 
     // Bind global properties
-    globalProperties.def_readwrite("pipelineName", &GlobalProperties::pipelineName).def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion);
+    globalProperties.def_readwrite("pipelineName", &GlobalProperties::pipelineName)
+        .def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion)
+        .def_readwrite("multiDeviceCalibration", &GlobalProperties::multiDeviceCalibration);
 
     deviceProperties.def(py::init<>())
         .def_readwrite("leonCssFrequencyHz", &DeviceProperties::leonCssFrequencyHz)
@@ -261,6 +263,22 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              })
         //.def(py::init<const Pipeline&>())
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
+        .def(
+            "setMultiDeviceCalibration",
+            [](Pipeline& p, std::vector<MultiDeviceExtrinsics> graph) {
+                py::gil_scoped_release release;
+                p.setMultiDeviceCalibration(std::move(graph));
+            },
+            py::arg("graph"),
+            DOC(dai, Pipeline, setMultiDeviceCalibration))
+        .def("getMultiDeviceCalibration", &Pipeline::getMultiDeviceCalibration, DOC(dai, Pipeline, getMultiDeviceCalibration))
+        .def(
+            "clearMultiDeviceCalibration",
+            [](Pipeline& p) {
+                py::gil_scoped_release release;
+                p.clearMultiDeviceCalibration();
+            },
+            DOC(dai, Pipeline, clearMultiDeviceCalibration))
         .def("setDefaultDeviceProperties",
              &Pipeline::setDefaultDeviceProperties,
              py::call_guard<py::gil_scoped_release>(),
