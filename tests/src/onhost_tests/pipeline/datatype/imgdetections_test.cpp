@@ -76,6 +76,14 @@ TEST_CASE("ImgDetection bounding box operations", "[ImgDetections][ImgDetection]
     SECTION("getBoundingBox throws when no geometry was set") {
         ImgDetection detection;
         REQUIRE_THROWS_AS(detection.getBoundingBox(), std::runtime_error);
+        REQUIRE_THROWS_AS(detection.getOuterBoundingBox(), std::runtime_error);
+    }
+
+    SECTION("getOuterBoundingBox accepts explicitly set zero bounds") {
+        ImgDetection detection;
+        detection.setOuterBoundingBox(0.f, 0.f, 0.f, 0.f);
+        const std::array<float, 4> expected{0.f, 0.f, 0.f, 0.f};
+        REQUIRE(detection.getOuterBoundingBox() == expected);
     }
 }
 
@@ -512,22 +520,31 @@ TEST_CASE("Transformed detection coordinates enclose the physical rotated box", 
         }
     };
 
+    const auto checkImgBounds = [&](const dai::ImgDetection& detection) {
+        checkBounds(detection);
+        const auto outer = detection.getOuterBoundingBox();
+        for(std::size_t i = 0; i < outer.size(); ++i) {
+            const float scale = normalized ? (i % 2 == 0 ? 300.0f : 200.0f) : 1.0f;
+            REQUIRE_THAT(outer[i] * scale, Catch::Matchers::WithinAbs(expected[i], 1e-3f));
+        }
+    };
+
     dai::ImgDetections detections;
     detections.setTransformation(source);
     detections.detections.emplace_back(box);
     const auto transformed = detections.transformTo(target);
-    checkBounds(transformed.detections.front());
+    checkImgBounds(transformed.detections.front());
     dai::ImgDetections restored;
     dai::utility::deserialize(dai::utility::serialize(transformed), restored);
-    checkBounds(restored.detections.front());
+    checkImgBounds(restored.detections.front());
 
     for(const float depth : {0.0f, 1000.0f}) {
         dai::SpatialImgDetection spatial(box, dai::Point3f{0, 0, depth});
         spatial.transform(source, target, dai::LengthUnit::MILLIMETER);
         checkBounds(spatial);
-        checkBounds(spatial.getImgDetection());
+        checkImgBounds(spatial.getImgDetection());
         dai::SpatialImgDetection restoredSpatial;
         dai::utility::deserialize(dai::utility::serialize(spatial), restoredSpatial);
-        checkBounds(restoredSpatial.getImgDetection());
+        checkImgBounds(restoredSpatial.getImgDetection());
     }
 }

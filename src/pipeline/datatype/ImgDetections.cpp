@@ -78,10 +78,7 @@ void ImgDetection::setOuterBoundingBox(const float xmin, const float ymin, const
 }
 
 std::array<float, 4> ImgDetection::getOuterBoundingBox() const {
-    if(boundingBox.has_value()) {
-        return boundingBox->getOuterRect();
-    }
-    if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
+    if(!boundingBox.has_value() && xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
         throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
     }
     return {xmin, ymin, xmax, ymax};
