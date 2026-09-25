@@ -444,3 +444,6 @@ add_python_example(multi_device_system_logger MultiDevice/multi_device_system_lo
 if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_python_example(multi_device_calibration MultiDevice/multi_device_calibration.py)
 endif()
+if(DEPTHAI_BUILD_BETA)
+    add_python_example(multi_device_point_cloud MultiDevice/multi_device_point_cloud.py)
+endif()
