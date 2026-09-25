@@ -452,6 +452,8 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/Clusters.cpp
         src/beta/datatype/ImgDetectionsFilterConfig.cpp
         src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/MultiDeviceCalibrationControl.cpp
+        src/beta/datatype/MultiDeviceCalibrationResult.cpp
         src/beta/datatype/Lines.cpp
         src/beta/datatype/Map2D.cpp
         src/beta/datatype/Predictions.cpp
@@ -534,6 +536,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/AutoCalibrationResult.cpp
         src/pipeline/datatype/AutoCalibrationConfig.cpp
     )
+    if(DEPTHAI_BUILD_BETA)
+        list(APPEND TARGET_CORE_SOURCES
+            src/beta/node/MultiDeviceCalibration.cpp
+        )
+    endif()
 endif()
 
 set(TARGET_OPENCV_SOURCES

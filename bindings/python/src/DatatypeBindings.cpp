@@ -73,6 +73,8 @@ void bind_beta_keypoints(pybind11::module& m, void* pCallstack);
 void bind_beta_lines(pybind11::module& m, void* pCallstack);
 void bind_beta_map2d(pybind11::module& m, void* pCallstack);
 void bind_beta_predictions(pybind11::module& m, void* pCallstack);
+void bind_beta_multidevicecalibrationcontrol(pybind11::module& m, void* pCallstack);
+void bind_beta_multidevicecalibrationresult(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_BETA
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
@@ -137,6 +139,8 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_lines);
     callstack.push_front(bind_beta_map2d);
     callstack.push_front(bind_beta_predictions);
+    callstack.push_front(bind_beta_multidevicecalibrationcontrol);
+    callstack.push_front(bind_beta_multidevicecalibrationresult);
     callstack.push_front(bind_beta_classificationsequenceparserconfig);
     callstack.push_front(bind_beta_fastsamparserconfig);
     callstack.push_front(bind_beta_hrnetparserconfig);
@@ -242,6 +246,8 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
     datatypeEnum.value("MapOutputParserConfig", DatatypeEnum::MapOutputParserConfig);
     datatypeEnum.value("XFeatMonoParserConfig", DatatypeEnum::XFeatMonoParserConfig);
     datatypeEnum.value("XFeatStereoParserConfig", DatatypeEnum::XFeatStereoParserConfig);
+    datatypeEnum.value("MultiDeviceCalibrationControl", DatatypeEnum::MultiDeviceCalibrationControl);
+    datatypeEnum.value("MultiDeviceCalibrationResult", DatatypeEnum::MultiDeviceCalibrationResult);
 #endif  // DEPTHAI_HAVE_BETA
     datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

@@ -281,3 +281,23 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_INTRUSIVE(Type, __VA_ARGS__)) \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_DISPLAY(Type))                                     \
     DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(Type, __VA_ARGS__))
+
+// Makes a struct without data members serializable (e.g. tag types used as
+// std::variant alternatives). It is encoded as an empty JSON object and as a
+// libnop structure with zero members.
+#define DEPTHAI_SERIALIZE_EMPTY(Type)                                                                                                                   \
+    friend void to_json(nlohmann::json& nlohmann_json_j, const Type&) {                                                                                 \
+        nlohmann_json_j = nlohmann::json::object();                                                                                                     \
+    }                                                                                                                                                   \
+    friend void from_json(const nlohmann::json& nlohmann_json_j, Type&) {                                                                               \
+        if(!nlohmann_json_j.is_object()) {                                                                                                              \
+            throw nlohmann::json::type_error::create(302, "type must be object, but is " + std::string(nlohmann_json_j.type_name()), &nlohmann_json_j); \
+        }                                                                                                                                               \
+    }                                                                                                                                                   \
+    template <typename, typename>                                                                                                                       \
+    friend struct ::nop::Encoding;                                                                                                                      \
+    template <typename, typename>                                                                                                                       \
+    friend struct ::nop::HasInternalMemberList;                                                                                                         \
+    template <typename, typename>                                                                                                                       \
+    friend struct ::nop::MemberListTraits;                                                                                                              \
+    using NOP__MEMBERS = ::nop::MemberList<>
