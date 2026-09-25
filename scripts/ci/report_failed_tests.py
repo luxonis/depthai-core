@@ -64,7 +64,7 @@ statuses = from(bucket: "{bucket}")
     |> filter(fn: (r) =>
         r._measurement == "test" and
         r._field == "status" and
-        r.GITHUB_REF == "{ref}"
+        r.GITHUB_REF == "{ref}" and
         r.workflow == "{GITHUB_WORKFLOW}"
     )
 
@@ -188,12 +188,12 @@ def writeTestHistory(history):
             "text": f'''ref: <https://github.com/luxonis/depthai-core/{getGithubRefUrl(GITHUB_REF)}|{GITHUB_REF}> {f"({GITHUB_HEAD_REF})" if GITHUB_HEAD_REF != '' else ''}
 Commit: <https://github.com/luxonis/depthai-core/commit/{GITHUB_SHA}|{GITHUB_SHA[0:8]}>
 Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITHUB_RUN_ID}>
-{":alert: Has failures <!channel>!!! :alert:" if not allPassed else ""}
+{':alert: Has failures <!channel>!!! :alert:' if not allPassed else ''}
 '''
         }
     }
     ret = {
-        "text": f"{GITHUB_SHA[0:8]} test run summary {"<!channel>" if not allPassed else ""}",
+        "text": f"{GITHUB_SHA[0:8]} test run summary {'<!channel>' if not allPassed else ''}",
         "channel": os.getenv("SLACK_BOT_CHANNEL_ID", ""),
         "blocks": [titleBlock, topBlock, tableBlock]
     }
