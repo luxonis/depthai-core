@@ -1,9 +1,97 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <opencv2/opencv.hpp>
+#include <vector>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Gate.hpp"
+
+TEST_CASE("ImgFrame metadata survives a device round trip") {
+    dai::Pipeline pipeline;
+    auto gate = pipeline.create<dai::node::Gate>();
+    gate->initialConfig->open = true;
+    auto input = gate->input.createInputQueue();
+    auto output = gate->output.createOutputQueue();
+
+    auto sent = std::make_shared<dai::ImgFrame>();
+    sent->setSourceSize(64, 48);
+    sent->setSize(32, 24);
+    sent->setType(dai::ImgFrame::Type::GRAY8);
+    sent->setStride(32);
+    sent->sourceFb.bytesPP = 1;
+    auto transformation = dai::ImgTransformation(64, 48);
+    transformation.setDistortionCoefficients(std::vector<float>(14, 0.0f));
+    transformation.addScale(0.5f, 0.5f);
+    sent->setTransformation(transformation);
+    sent->setData(std::vector<uint8_t>(32 * 24, 0x5a));
+    sent->setSequenceNum(42);
+    sent->setInstanceNum(7);
+    sent->setCategory(3);
+    sent->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(123456789)));
+    sent->setTimestampDevice(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(234567890)));
+    sent->setTimestampSystem(std::chrono::system_clock::time_point(std::chrono::nanoseconds(345678901)));
+    sent->cam.exposureTimeUs = 1234;
+    sent->cam.sensitivityIso = 321;
+    sent->cam.lensPosition = 12;
+    sent->cam.lensPositionRaw = 1.25f;
+    sent->cam.wbColorTemp = 4500;
+    sent->cam.fsync = dai::ImgFrame::Fsync::INPUT;
+    sent->cam.sensorMode = 2;
+    sent->cam.fps = 30.0f;
+    REQUIRE(sent->validateTransformations());
+
+    pipeline.start();
+    input->send(sent);
+    bool timedOut = false;
+    auto received = output->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(received != nullptr);
+    REQUIRE(received->getData().size() == sent->getData().size());
+    REQUIRE(std::equal(received->getData().begin(), received->getData().end(), sent->getData().begin()));
+    REQUIRE(received->getType() == sent->getType());
+    REQUIRE(received->getWidth() == sent->getWidth());
+    REQUIRE(received->getHeight() == sent->getHeight());
+    REQUIRE(received->getStride() == sent->getStride());
+    REQUIRE(received->getBytesPerPixel() == sent->getBytesPerPixel());
+    REQUIRE(received->fb.p1Offset == sent->fb.p1Offset);
+    REQUIRE(received->fb.p2Offset == sent->fb.p2Offset);
+    REQUIRE(received->fb.p3Offset == sent->fb.p3Offset);
+    REQUIRE(received->getSourceWidth() == sent->getSourceWidth());
+    REQUIRE(received->getSourceHeight() == sent->getSourceHeight());
+    REQUIRE(received->sourceFb.type == sent->sourceFb.type);
+    REQUIRE(received->sourceFb.stride == sent->sourceFb.stride);
+    REQUIRE(received->sourceFb.bytesPP == sent->sourceFb.bytesPP);
+    REQUIRE(received->sourceFb.p1Offset == sent->sourceFb.p1Offset);
+    REQUIRE(received->sourceFb.p2Offset == sent->sourceFb.p2Offset);
+    REQUIRE(received->sourceFb.p3Offset == sent->sourceFb.p3Offset);
+    REQUIRE(received->transformation.getSize() == sent->transformation.getSize());
+    REQUIRE(received->transformation.getSourceSize() == sent->transformation.getSourceSize());
+    REQUIRE(received->transformation.getMatrix() == sent->transformation.getMatrix());
+    REQUIRE(received->transformation.getSourceIntrinsicMatrix() == sent->transformation.getSourceIntrinsicMatrix());
+    REQUIRE(received->transformation.getDistortionModel() == sent->transformation.getDistortionModel());
+    REQUIRE(received->transformation.getDistortionCoefficients() == sent->transformation.getDistortionCoefficients());
+    REQUIRE(received->transformation.getExtrinsics().isEqualExtrinsics(sent->transformation.getExtrinsics()));
+    REQUIRE(received->validateTransformations());
+    REQUIRE(received->getSequenceNum() == sent->getSequenceNum());
+    REQUIRE(received->getInstanceNum() == sent->getInstanceNum());
+    REQUIRE(received->category == sent->category);
+    REQUIRE(received->event == sent->event);
+    REQUIRE(received->getTimestamp() == sent->getTimestamp());
+    REQUIRE(received->getTimestampDevice() == sent->getTimestampDevice());
+    REQUIRE(received->getTimestampSystem() == sent->getTimestampSystem());
+    REQUIRE(received->cam.exposureTimeUs == sent->cam.exposureTimeUs);
+    REQUIRE(received->cam.sensitivityIso == sent->cam.sensitivityIso);
+    REQUIRE(received->cam.lensPosition == sent->cam.lensPosition);
+    REQUIRE(received->cam.lensPositionRaw == sent->cam.lensPositionRaw);
+    REQUIRE(received->cam.wbColorTemp == sent->cam.wbColorTemp);
+    REQUIRE(received->cam.fsync == sent->cam.fsync);
+    REQUIRE(received->cam.sensorMode == sent->cam.sensorMode);
+    REQUIRE(received->cam.fps == sent->cam.fps);
+    REQUIRE(received->cam.sensorTemperatureC == sent->cam.sensorTemperatureC);
+    pipeline.stop();
+}
 
 TEST_CASE("Test Gate Timing and Data Flow") {
     dai::Pipeline pipeline;
