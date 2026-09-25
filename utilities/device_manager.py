@@ -468,6 +468,10 @@ deviceConfigLayout = [
 appLayout = [
     [sg.Text("Application settings", size=(20, 1), font=('Arial', 30, 'bold'), text_color="black")],
     [sg.HSeparator()],
+    [sg.Text(
+        "RVC2 standalone applications (.dap) are deprecated and unsupported in DepthAI v3.\nUse RVC2 in peripheral mode or OAK Apps on RVC4 instead.",
+        text_color="red",
+    )],
     [
         sg.Button("About device", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_aboutBtn"),
         sg.Button("Config", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_configBtn"),
