@@ -185,20 +185,7 @@ std::vector<FocusController::Crop> FocusController::computeCrops(int frameWidth,
             continue;
         }
 
-        constexpr int aspectWidth = 8;
-        constexpr int aspectHeight = 5;
-        if(cropW * aspectHeight > cropH * aspectWidth) {
-            const int targetHeight = std::min(frameHeight, (cropW * aspectHeight + aspectWidth - 1) / aspectWidth);
-            const int centerY = static_cast<int>(std::round((fy + fy2) * 0.5f));
-            cropY = std::clamp(centerY - targetHeight / 2, 0, frameHeight - targetHeight);
-            cropH = targetHeight;
-        } else if(cropH * aspectWidth > cropW * aspectHeight) {
-            const int targetWidth = std::min(frameWidth, (cropH * aspectWidth + aspectHeight - 1) / aspectHeight);
-            const int centerX = cropX + cropW / 2;
-            cropX = std::clamp(centerX - targetWidth / 2, 0, frameWidth - targetWidth);
-            cropW = targetWidth;
-        }
-
+        // Keep only disparity padding; ImageManip stretches this crop to the model input size.
         crops.push_back({cropX, cropY, cropW, cropH, fx, fy, fw, fh});
     }
 

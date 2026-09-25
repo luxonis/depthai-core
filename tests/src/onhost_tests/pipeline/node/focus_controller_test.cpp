@@ -62,7 +62,7 @@ TEST_CASE("FocusController::computeCrops: multiple regions map to one crop each"
         REQUIRE(crops[i].detH == Catch::Approx((boxes[i][3] - boxes[i][1]) * kH));
         // The backend crop is padded horizontally for disparity, so it is wider than the detection.
         REQUIRE(static_cast<float>(crops[i].w) >= crops[i].detW);
-        REQUIRE(std::abs(crops[i].w * 5 - crops[i].h * 8) <= 7);
+        REQUIRE(crops[i].h == static_cast<int>(std::ceil(crops[i].detH)));
     }
 }
 
@@ -450,4 +450,23 @@ TEST_CASE("Zero focus hold frames disables history without suppressing current d
     REQUIRE(history.update(boxes, 0) == boxes);
     REQUIRE(history.update({}, 0).empty());
     REQUIRE(history.update(boxes, 0) == boxes);
+}
+
+TEST_CASE("FocusController::computeCrops: retain disparity padding without expanding aspect ratio", "[FocusController]") {
+    SECTION("Tall bin ROI uses its full height without expanding its width to 8:5") {
+        const auto crops = FocusController::computeCrops(2592, 1944, {box(0.34f, 0.0f, 0.77f, 0.80f)});
+        REQUIRE(crops.size() == 1);
+        REQUIRE(crops[0].x == 492);
+        REQUIRE(crops[0].y == 0);
+        REQUIRE(crops[0].w == 1893);
+        REQUIRE(crops[0].h == 1556);
+    }
+    SECTION("Wide padded ROI does not acquire vertical padding") {
+        const auto crops = FocusController::computeCrops(1280, 800, {box(0.25f, 0.375f, 0.5f, 0.625f)});
+        REQUIRE(crops.size() == 1);
+        REQUIRE(crops[0].x == 128);
+        REQUIRE(crops[0].y == 300);
+        REQUIRE(crops[0].w == 704);
+        REQUIRE(crops[0].h == 200);
+    }
 }
