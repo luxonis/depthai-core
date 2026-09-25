@@ -25,9 +25,15 @@ namespace beta {
 class MultiDeviceCalibrationControl : public Buffer {
    public:
     struct Commands {
-        struct Start {};
-        struct Stop {};
-        struct Reset {};
+        struct Start {
+            DEPTHAI_SERIALIZE_EMPTY(Start);
+        };
+        struct Stop {
+            DEPTHAI_SERIALIZE_EMPTY(Stop);
+        };
+        struct Reset {
+            DEPTHAI_SERIALIZE_EMPTY(Reset);
+        };
     };
 
     using Command = std::variant<std::monostate, Commands::Start, Commands::Stop, Commands::Reset>;
@@ -58,6 +64,8 @@ class MultiDeviceCalibrationControl : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::MultiDeviceCalibrationControl;
     }
+
+    DEPTHAI_SERIALIZE(MultiDeviceCalibrationControl, command);
 };
 
 }  // namespace beta
