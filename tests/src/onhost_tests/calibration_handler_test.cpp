@@ -761,10 +761,23 @@ TEST_CASE("Dangling extrinsic reference throws", "[setCameraExtrinsics]") {
     REQUIRE_THROWS_WITH(handler.validateCalibrationHandler(), Catch::Matchers::ContainsSubstring("Dangling extrinsic reference"));
 }
 
+TEST_CASE("CalibrationHandler exposes transform to local calibration origin", "[getExtrinsicsToOrigin]") {
+    const auto handler = loadValidHandler();
+    CameraBoardSocket originSocket = CameraBoardSocket::AUTO;
+
+    const auto transform = handler.getExtrinsicsToOrigin(CameraBoardSocket::CAM_A, false, originSocket);
+
+    REQUIRE(originSocket == CameraBoardSocket::CAM_D);
+    REQUIRE(transform.size() == 4);
+    for(const auto& row : transform) {
+        REQUIRE(row.size() == 4);
+    }
+}
+
 TEST_CASE("Long chain extrinsics composition", "[getCameraExtrinsics]") {
     dai::CalibrationHandler handler = loadValidHandler();
 
-    auto R3 = std::vector<std::vector<float>>{{0.4f, 0.0f, 0.0f}, {0.0f, 0.3f, 0.0f}, {0.0f, 0.0f, 1.1f}};
+    auto R3 = std::vector<std::vector<float>>{{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
 
     auto zeros3 = std::vector<float>{0.0f, 0.0f, 0.0f};
 
@@ -776,8 +789,7 @@ TEST_CASE("Long chain extrinsics composition", "[getCameraExtrinsics]") {
 
     auto M = handler.getCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_D, false);
 
-    std::vector<std::vector<float>> expected = {
-        {0.064000003f, 0.0f, 0.0f, 0.400000006f}, {0.0f, 0.027000003f, 0.0f, 4.879999638f}, {0.0f, 0.0f, 1.33100009f, 3.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    std::vector<std::vector<float>> expected = {{0.0f, 1.0f, 0.0f, 1.0f}, {-1.0f, 0.0f, 0.0f, 4.0f}, {0.0f, 0.0f, 1.0f, 3.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
 
     REQUIRE(M == expected);
 }

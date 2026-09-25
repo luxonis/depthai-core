@@ -496,6 +496,8 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     target_link_libraries(image_transformations_test PRIVATE messages)
 endif()
 dai_set_test_labels(image_transformations_test onhost ci)
+dai_add_test(img_transformation_rebase_test src/onhost_tests/img_transformation_rebase_test.cpp)
+dai_set_test_labels(img_transformation_rebase_test onhost ci)
 
 # Matrix operations tests
 dai_add_test(matrix_ops_tests src/onhost_tests/matrix_ops_tests.cpp)
@@ -772,6 +774,9 @@ if(DEPTHAI_ENABLE_PROTOBUF)
 endif()
 
 if(DEPTHAI_BUILD_BETA)
+    dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
+    dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 
