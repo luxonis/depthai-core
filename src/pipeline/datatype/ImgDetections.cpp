@@ -78,10 +78,7 @@ void ImgDetection::setOuterBoundingBox(const float xmin, const float ymin, const
 }
 
 std::array<float, 4> ImgDetection::getOuterBoundingBox() const {
-    if(boundingBox.has_value()) {
-        return boundingBox->getOuterRect();
-    }
-    if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
+    if(!boundingBox.has_value() && xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
         throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
     }
     return {xmin, ymin, xmax, ymax};
@@ -166,6 +163,16 @@ float ImgDetection::getAngle() const {
 
 void ImgDetection::transform(const ImgTransformation& source, const ImgTransformation& target) {
     setBoundingBox(source.remapRectTo(target, getBoundingBox()));
+    // Expand rotated boxes in pixels before normalizing their axis-aligned bounds.
+    const auto transformedBox = getBoundingBox();
+    if(transformedBox.isNormalized()) {
+        const auto size = target.getSize();
+        const auto bounds = transformedBox.denormalize(size.first, size.second).getOuterRect();
+        xmin = bounds[0] / size.first;
+        ymin = bounds[1] / size.second;
+        xmax = bounds[2] / size.first;
+        ymax = bounds[3] / size.second;
+    }
     if(keypoints.has_value()) {
         keypoints = keypoints->transformTo(source, target);
     }
