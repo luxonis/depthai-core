@@ -175,6 +175,7 @@ set(SOURCE_LIST
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND SOURCE_LIST
+        src/beta/device/MultiDeviceCalibrationHandlerBindings.cpp
         src/beta/datatype/ClassificationsBindings.cpp
         src/beta/datatype/ClustersBindings.cpp
         src/beta/datatype/KeypointsBindings.cpp

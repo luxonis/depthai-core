@@ -26,6 +26,7 @@
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Interpolation.hpp"
@@ -77,6 +78,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<CameraModel> cameraModel(m, "CameraModel", DOC(dai, CameraModel));
     py::class_<StereoRectification> stereoRectification(m, "StereoRectification", DOC(dai, StereoRectification));
     py::class_<Extrinsics> extrinsics(m, "Extrinsics", DOC(dai, Extrinsics));
+    py::class_<MultiDeviceExtrinsics> multiDeviceExtrinsics(m, "MultiDeviceExtrinsics", DOC(dai, MultiDeviceExtrinsics));
     py::class_<CameraInfo> cameraInfo(m, "CameraInfo", DOC(dai, CameraInfo));
     py::class_<EepromData> eepromData(m, "EepromData", DOC(dai, EepromData));
     py::class_<ImuNoiseParameters> imuNoiseParameters(m, "ImuNoiseParameters", DOC(dai, ImuNoiseParameters));
@@ -581,6 +583,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("useSpecTranslation") = false,
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getExtrinsicsTransformationTo));
+
+    // MultiDeviceExtrinsics
+    multiDeviceExtrinsics.def(py::init<>())
+        .def_readwrite("fromDeviceId", &MultiDeviceExtrinsics::fromDeviceId)
+        .def_readwrite("fromSocket", &MultiDeviceExtrinsics::fromSocket)
+        .def_readwrite("extrinsics", &MultiDeviceExtrinsics::extrinsics);
 
     // CameraInfo
     cameraInfo.def(py::init<>())
