@@ -1,6 +1,8 @@
 #include "depthai/pipeline/node/internal/PipelineEventAggregation.hpp"
 
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <optional>
 #include <shared_mutex>
 #include <thread>
@@ -26,6 +28,8 @@ class NodeEventAggregation {
     uint32_t windowSize;
     uint32_t statsUpdateIntervalMs;
     uint32_t eventWaitWindow;
+
+    std::shared_mutex mutex;
 
    public:
     NodeEventAggregation(uint32_t windowSize, uint32_t statsUpdateIntervalMs, uint32_t eventWaitWindow, const std::shared_ptr<spdlog::async_logger>& logger)
@@ -255,9 +259,7 @@ class NodeEventAggregation {
     inline void updateTimingStats(NodeState::DurationStats& stats, const utility::CircularBuffer<uint64_t>& buffer) {
         if(buffer.size() == 0) return;
 
-        // Reset stats
-        stats.minMicros = std::min(stats.minMicros, buffer.last());
-        stats.maxMicros = std::max(stats.maxMicros, buffer.last());
+        // Reset recent stats
         stats.averageMicrosRecent = 0;
         stats.stdDevMicrosRecent = 0;
 
@@ -278,6 +280,8 @@ class NodeEventAggregation {
         stats.stdDevMicrosRecent = (uint64_t)(std::sqrt(variance));
 
         std::sort(bufferByType.begin(), bufferByType.end());
+        stats.minMicros = std::min(stats.minMicros, bufferByType.front());
+        stats.maxMicros = std::max(stats.maxMicros, bufferByType.back());
         stats.minMicrosRecent = bufferByType.front();
         stats.maxMicrosRecent = bufferByType.back();
         stats.medianMicrosRecent = bufferByType[bufferByType.size() / 2];
@@ -332,6 +336,7 @@ class NodeEventAggregation {
    public:
     void add(PipelineEvent& event) {
         using namespace std::chrono;
+        std::unique_lock lock(mutex);
         // For event ts offset calculation (to determine if fps is late)
         eventOffsetBuffer.add(duration_cast<milliseconds>(steady_clock::now() - event.getTimestamp()));
         // Update states and queue sizes
@@ -385,6 +390,7 @@ class NodeEventAggregation {
     }
 
     bool updateStats() {
+        std::unique_lock lock(mutex);
         if(std::chrono::steady_clock::now() - lastUpdated >= std::chrono::milliseconds(statsUpdateIntervalMs)) {
             lastUpdated = std::chrono::steady_clock::now();
             // Update stats for all event types and sources
@@ -405,10 +411,9 @@ class NodeEventAggregation {
                         for(auto& [source, _] : inputTimingsBuffers) {
                             updateFpsStats(state.inputStates[source].timing, *inputFpsBuffers[source]);
                             updateTimingStats(state.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
-                            // Update queue size stats
-                            if(inputQueueSizesBuffers.find(source) != inputQueueSizesBuffers.end() && inputQueueSizesBuffers[source] != nullptr) {
-                                updateQueueStats(state.inputStates[source].queueStats, *inputQueueSizesBuffers[source]);
-                            }
+                        }
+                        for(auto& [source, queueSizes] : inputQueueSizesBuffers) {
+                            updateQueueStats(state.inputStates[source].queueStats, *queueSizes);
                         }
                         break;
                     case PipelineEvent::Type::OUTPUT:
@@ -431,6 +436,10 @@ class NodeEventAggregation {
             return true;
         }
         return false;
+    }
+
+    std::shared_lock<std::shared_mutex> getReadLock() {
+        return std::shared_lock(mutex);
     }
 };
 
@@ -499,14 +508,17 @@ class PipelineEventHandler {
         running = false;
         if(thread.joinable()) thread.join();
     }
-    bool getState(const std::shared_ptr<PipelineState>& outState, bool sendEvents) {
+    bool getState(const std::shared_ptr<PipelineState>& outState, bool sendEvents, bool reset) {
         // Copy over node states and return if any were recently updated
-        std::shared_lock lock(mutex);
+        std::shared_lock pipelineLock(mutex);
         bool updated = false;
         for(auto& [nodeId, nodeState] : nodeStates) {
-            outState->nodeStates[nodeId] = nodeState.state;
-            if(sendEvents) outState->nodeStates[nodeId].events = nodeState.eventsBuffer.getBuffer();
-            if(nodeState.updated.exchange(false)) updated = true;
+            {
+                auto nodeLock = nodeState.getReadLock();
+                outState->nodeStates[nodeId] = nodeState.state;
+                if(sendEvents) outState->nodeStates[nodeId].events = nodeState.eventsBuffer.getBuffer();
+            }
+            if(reset && nodeState.updated.exchange(false)) updated = true;
         }
         return updated;
     }
@@ -516,18 +528,18 @@ class PipelineEventHandler {
     }
 };
 
-std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHandler& handler,
-                                                                 std::optional<PipelineEventAggregationConfig>& currentConfig,
-                                                                 const uint32_t sequenceNum,
-                                                                 bool sendEvents);
+std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(
+    PipelineEventHandler& handler, std::optional<PipelineEventAggregationConfig>& currentConfig, const uint32_t sequenceNum, bool sendEvents, bool reset);
 
 // Handles sending trace output state at configured intervals (if DEPTHAI_PIPELINE_DEBUGGING is enabled)
 class TraceOutputHandler {
-    std::atomic<bool> running;
+    std::atomic<bool> running{false};
     std::thread thread;
     Node::Output& outTrace;
     PipelineEventHandler& handler;
     std::shared_ptr<spdlog::async_logger> logger;
+    std::mutex waitMutex;
+    std::condition_variable waitCondition;
 
    public:
     TraceOutputHandler(Node::Output& outTrace, PipelineEventHandler& handler, const std::shared_ptr<spdlog::async_logger>& logger)
@@ -541,18 +553,19 @@ class TraceOutputHandler {
             std::optional<PipelineEventAggregationConfig> config = traceOutputConfig;
             while(this->running) {
                 auto start = std::chrono::steady_clock::now();
-                auto [outState, updated] = makeOutputState(traceHandler, config, traceSequenceNum++, false);
+                auto [outState, _] = makeOutputState(traceHandler, config, traceSequenceNum++, false, false);
                 try {
                     this->outTrace.send(outState);
                 } catch(const dai::MessageQueue::QueueException&) {
                 }
-                auto duration = std::chrono::steady_clock::now() - start;
-                std::this_thread::sleep_for(std::chrono::seconds(config->repeatIntervalSeconds.value()) - duration);
+                std::unique_lock<std::mutex> lock(waitMutex);
+                waitCondition.wait_until(lock, start + std::chrono::seconds(config->repeatIntervalSeconds.value()), [this]() { return !running; });
             }
         });
     }
     void stop() {
         running = false;
+        waitCondition.notify_all();
         if(thread.joinable()) thread.join();
     }
 
@@ -577,12 +590,10 @@ PipelineEventAggregation& PipelineEventAggregation::setTraceOutput(bool enable) 
     return *this;
 }
 
-std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHandler& handler,
-                                                                 std::optional<PipelineEventAggregationConfig>& currentConfig,
-                                                                 const uint32_t sequenceNum,
-                                                                 bool sendEvents) {
+std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(
+    PipelineEventHandler& handler, std::optional<PipelineEventAggregationConfig>& currentConfig, const uint32_t sequenceNum, bool sendEvents, bool reset) {
     auto outState = std::make_shared<PipelineState>();
-    bool updated = handler.getState(outState, sendEvents);
+    bool updated = handler.getState(outState, sendEvents, reset);
     outState->sequenceNum = sequenceNum;
     outState->configSequenceNum = currentConfig.has_value() ? currentConfig->sequenceNum : 0;
     outState->setTimestamp(std::chrono::steady_clock::now());
@@ -662,7 +673,7 @@ void PipelineEventAggregation::run() {
             } else {
                 auto now = std::chrono::steady_clock::now();
                 auto waitUntil = lastSentTime + std::chrono::seconds(currentConfig->repeatIntervalSeconds.value());
-                req = request.get<PipelineEventAggregationConfig>(waitUntil > now ? waitUntil - now : std::chrono::seconds(0), timedOut);
+                req = request.get<PipelineEventAggregationConfig>(waitUntil > now ? waitUntil - now : std::chrono::milliseconds(100), timedOut);
             }
             if(req != nullptr) {
                 currentConfig = *req;
@@ -690,7 +701,7 @@ void PipelineEventAggregation::run() {
                     }
                 }
             }
-            auto [outState, updated] = makeOutputState(handler, currentConfig, sequenceNum++, sendEvents);
+            auto [outState, updated] = makeOutputState(handler, currentConfig, sequenceNum++, sendEvents, true);
             // If the state is the same as before, do not send for a repeating config
             if(gotConfig
                || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value() && updated
