@@ -50,6 +50,18 @@ TEST_CASE("Multi-device calibration control round-trips its command") {
     }
 }
 
+TEST_CASE("Multi-device calibration control rejects non-object payloads for empty commands") {
+    const auto toBytes = [](const std::string& text) { return std::vector<std::uint8_t>(text.begin(), text.end()); };
+    MultiDeviceCalibrationControl control;
+
+    REQUIRE(utility::deserialize(toBytes(R"({"command":{"index":1,"value":{}}})"), control, SerializationType::JSON));
+    REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Start>(control.command));
+
+    REQUIRE_THROWS(utility::deserialize(toBytes(R"({"command":{"index":1,"value":null}})"), control, SerializationType::JSON));
+    REQUIRE_THROWS(utility::deserialize(toBytes(R"({"command":{"index":2,"value":5}})"), control, SerializationType::JSON));
+    REQUIRE_THROWS(utility::deserialize(toBytes(R"({"command":{"index":3,"value":"reset"}})"), control, SerializationType::JSON));
+}
+
 TEST_CASE("Multi-device calibration result round-trips calibration graph and aggregate quality") {
     MultiDeviceExtrinsics edge;
     edge.fromDeviceId = "device-b";
