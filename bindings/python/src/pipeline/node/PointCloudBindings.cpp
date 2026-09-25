@@ -36,7 +36,24 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
             "inputDepth", [](PointCloud& node) -> Node::Input* { return &node.inputDepth; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "inputColor", [](PointCloud& node) -> Node::Input* { return &node.getColorInput(); }, py::return_value_policy::reference_internal)
+        .def(
+            "getDepthInput",
+            [](PointCloud& node, const std::string& name) -> Node::Input* { return &node.getDepthInput(name); },
+            py::arg("name"),
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, PointCloud, getDepthInput))
+        .def(
+            "getColorInput",
+            [](PointCloud& node, const std::string& name) -> Node::Input* { return &node.getColorInput(name); },
+            py::arg("name") = std::string(),
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, PointCloud, getColorInput, 2))
+        .def("getDepthInputNames", &PointCloud::getDepthInputNames, DOC(dai, node, PointCloud, getDepthInputNames))
 #endif
+        .def_static("getDepthInputKey", &PointCloud::getDepthInputKey, py::arg("name"), DOC(dai, node, PointCloud, getDepthInputKey))
+        .def_static("getColorInputKey", &PointCloud::getColorInputKey, py::arg("name"), DOC(dai, node, PointCloud, getColorInputKey))
+        .def_property_readonly(
+            "sync", [](PointCloud& node) { return &(*node.sync); }, py::return_value_policy::reference_internal, DOC(dai, node, PointCloud, sync))
         .def_readonly(
             "outputPointCloud", &PointCloud::outputPointCloud, DOC(dai, node, PointCloud, outputPointCloud), DOC(dai, node, PointCloud, outputPointCloud))
         .def_readonly(
