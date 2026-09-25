@@ -1,5 +1,7 @@
 #include <pybind11/eval.h>
+#include <pyerrors.h>
 
+#include <cstdio>
 #include <string>
 #include <utility>
 
@@ -19,6 +21,9 @@ using namespace dai::node;
     py::gil_scoped_acquire gil;  // matches() and what() need the GIL
     if(e.matches(messageQueueException)) {
         throw dai::MessageQueue::QueueException(e.what());
+    }
+    if (e.matches(PyExc_KeyboardInterrupt)) {
+        throw;
     }
     throw std::runtime_error(e.what());
 }
