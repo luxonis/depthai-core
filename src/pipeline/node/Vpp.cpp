@@ -40,8 +40,10 @@ void Vpp::buildInternal() {
 void Vpp::postBuildStage() {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     auto isConnected = [&](const std::string& name) { return sync->inputs.has(name) && sync->inputs[name].isConnected(); };
-    if(isConnected(disparityName) && isConnected(depthName)) {
-        throw std::invalid_argument("VPP expects either depth or disparity, not both");
+    const bool hasDisparity = isConnected(disparityName);
+    const bool hasDepth = isConnected(depthName);
+    if(hasDisparity == hasDepth) {
+        throw std::invalid_argument("VPP expects exactly one of depth or disparity to be linked");
     }
 
     // Sync waits for every declared input, so drop the optional ones that are not linked.

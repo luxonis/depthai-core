@@ -262,6 +262,16 @@ TEST_CASE("DepthAI VPP rejects depth and disparity together") {
     REQUIRE_THROWS_AS(vpp->postBuildStage(), std::invalid_argument);
 }
 
+TEST_CASE("DepthAI VPP rejects neither depth nor disparity") {
+    Pipeline pipeline;
+    auto source = pipeline.create<node::ImageManip>();
+    auto vpp = pipeline.create<node::Vpp>();
+    source->out.link(vpp->left);
+    source->out.link(vpp->right);
+
+    REQUIRE_THROWS_AS(vpp->postBuildStage(), std::invalid_argument);
+}
+
 TEST_CASE("DepthAI VPP drops unlinked optional sync inputs") {
     Pipeline pipeline;
     auto source = pipeline.create<node::ImageManip>();
