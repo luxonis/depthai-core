@@ -101,25 +101,6 @@ join(
     return history
 
 def writeTestHistory(history):
-    titleBlock = {
-        "type": "header",
-        "text": {
-            "type": "plain_text",
-            "text": GITHUB_WORKFLOW
-        }
-    }
-    topBlock = {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": f'''ref: <https://github.com/luxonis/depthai-core/{getGithubRefUrl(GITHUB_REF)}|{GITHUB_REF}> {f"({GITHUB_HEAD_REF})" if GITHUB_HEAD_REF != '' else ''}
-Commit: <https://github.com/luxonis/depthai-core/commit/{GITHUB_SHA}|{GITHUB_SHA[0:8]}>
-Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITHUB_RUN_ID}>
-
-'''
-        }
-    }
-
     tableBlock = {
         "type": "section",
         "text": {
@@ -127,7 +108,9 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
             "text": "All test passed! :white_check_mark:"
         }
     }
+    allPassed = True
     if len(history) > 0:
+        allPassed = False
         tableRows = []
         headerRow: list[dict] = []
         columnsDict = {}
@@ -191,8 +174,26 @@ Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITH
             "type": "table",
             "rows": tableRows
         }
+    titleBlock = {
+        "type": "header",
+        "text": {
+            "type": "plain_text",
+            "text": GITHUB_WORKFLOW
+        }
+    }
+    topBlock = {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": f'''ref: <https://github.com/luxonis/depthai-core/{getGithubRefUrl(GITHUB_REF)}|{GITHUB_REF}> {f"({GITHUB_HEAD_REF})" if GITHUB_HEAD_REF != '' else ''}
+Commit: <https://github.com/luxonis/depthai-core/commit/{GITHUB_SHA}|{GITHUB_SHA[0:8]}>
+Run: <https://github.com/luxonis/depthai-core/actions/runs/{GITHUB_RUN_ID}|{GITHUB_RUN_ID}>
+{":alert: Has failures <!channel>!!! :alert:" if not allPassed else ""}
+'''
+        }
+    }
     ret = {
-        "text": f"{GITHUB_SHA[0:8]} test run summary",
+        "text": f"{GITHUB_SHA[0:8]} test run summary {"<!channel>" if not allPassed else ""}",
         "channel": os.getenv("SLACK_BOT_CHANNEL_ID", ""),
         "blocks": [titleBlock, topBlock, tableBlock]
     }
