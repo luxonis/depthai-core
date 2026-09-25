@@ -13,7 +13,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief Vpp node. Apply Virtual Projection Pattern algorithm to stereo images based on disparity.
+ * @brief Vpp node. Apply Virtual Projection Pattern algorithm to stereo images based on disparity or depth.
  */
 class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
    protected:
@@ -33,6 +33,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput);
 
     void buildInternal() override;
+    void postBuildStage() override;
 
     /**
      * Initial config to use for VPP.
@@ -42,13 +43,14 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     Subnode<node::Sync> sync{*this, "sync"};
 
     /**
-     *"Synchronised Left Img, Right Img, Dispatiy and confidence input."
+     * Synchronised left and right images with either disparity or depth, and optional confidence.
      */
     Input syncedInputs{*this, {"syncedInputs", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::MessageGroup, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     const std::string leftInputName = "left";
     const std::string rightInputName = "right";
     const std::string disparityName = "disparity";
+    const std::string depthName = "depth";
     const std::string confidenceName = "confidence";
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -66,6 +68,11 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
      * Low resolution disparity in pixels (in integers - 16 times bigger)
      */
     Input& disparity{sync->inputs["disparity"]};
+
+    /**
+     * Depth input, used instead of disparity.
+     */
+    Input& depth{sync->inputs["depth"]};
 
     /**
      * Confidence of the dispatiry (in integers - 16 times bigger).

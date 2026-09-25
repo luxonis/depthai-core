@@ -247,3 +247,70 @@ TEST_CASE("DepthAI VPP multiple configs without recreating pipeline") {
     pipeline.stop();
     pipeline.wait();
 }
+
+TEST_CASE("DepthAI VPP rejects depth and disparity together") {
+    Pipeline pipeline;
+    auto source = pipeline.create<node::ImageManip>();
+    auto vpp = pipeline.create<node::Vpp>();
+    source->out.link(vpp->left);
+    source->out.link(vpp->right);
+    source->out.link(vpp->depth);
+    REQUIRE(vpp->depth.isConnected());
+    REQUIRE_FALSE(vpp->disparity.isConnected());
+
+    source->out.link(vpp->disparity);
+    REQUIRE_THROWS_AS(vpp->postBuildStage(), std::invalid_argument);
+}
+
+TEST_CASE("DepthAI VPP rejects neither depth nor disparity") {
+    Pipeline pipeline;
+    auto source = pipeline.create<node::ImageManip>();
+    auto vpp = pipeline.create<node::Vpp>();
+    source->out.link(vpp->left);
+    source->out.link(vpp->right);
+
+    REQUIRE_THROWS_AS(vpp->postBuildStage(), std::invalid_argument);
+}
+
+TEST_CASE("DepthAI VPP drops unlinked optional sync inputs") {
+    Pipeline pipeline;
+    auto source = pipeline.create<node::ImageManip>();
+    auto vpp = pipeline.create<node::Vpp>();
+    source->out.link(vpp->left);
+    source->out.link(vpp->right);
+    source->out.link(vpp->depth);
+    vpp->postBuildStage();
+    REQUIRE(vpp->sync->inputs.has("depth"));
+    REQUIRE_FALSE(vpp->sync->inputs.has("disparity"));
+    REQUIRE_FALSE(vpp->sync->inputs.has("confidence"));
+}
+
+TEST_CASE("DepthAI VPP accepts depth input", "[.depth-fw]") {
+    Pipeline pipeline;
+    auto vpp = pipeline.create<node::Vpp>();
+    auto syncQueue = vpp->syncedInputs.createInputQueue();
+    auto outLeftQueue = vpp->leftOut.createOutputQueue();
+    auto outRightQueue = vpp->rightOut.createOutputQueue();
+
+    cv::Mat image(1280, 800, CV_8UC1, cv::Scalar(0));
+    cv::Mat depth(16, 16, CV_16UC1, cv::Scalar(1000));
+    auto leftFrame = std::make_shared<ImgFrame>();
+    leftFrame->setCvFrame(image, ImgFrame::Type::GRAY8);
+    auto rightFrame = std::make_shared<ImgFrame>();
+    rightFrame->setCvFrame(image, ImgFrame::Type::GRAY8);
+    auto depthFrame = std::make_shared<ImgFrame>();
+    depthFrame->setCvFrame(depth, ImgFrame::Type::RAW16);
+
+    pipeline.start();
+    auto group = std::make_shared<MessageGroup>();
+    group->add("left", leftFrame);
+    group->add("right", rightFrame);
+    group->add("depth", depthFrame);
+    syncQueue->send(group);
+
+    REQUIRE(outLeftQueue->get<ImgFrame>() != nullptr);
+    REQUIRE(outRightQueue->get<ImgFrame>() != nullptr);
+
+    pipeline.stop();
+    pipeline.wait();
+}

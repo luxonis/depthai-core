@@ -37,5 +37,24 @@ void Vpp::buildInternal() {
     sync->out.link(syncedInputs);
 }
 
+void Vpp::postBuildStage() {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    auto isConnected = [&](const std::string& name) { return sync->inputs.has(name) && sync->inputs[name].isConnected(); };
+    const bool hasDisparity = isConnected(disparityName);
+    const bool hasDepth = isConnected(depthName);
+    if(hasDisparity == hasDepth) {
+        throw std::invalid_argument("VPP expects exactly one of depth or disparity to be linked");
+    }
+
+    // Sync waits for every declared input, so drop the optional ones that are not linked.
+    for(const auto& name : {disparityName, depthName, confidenceName}) {
+        auto it = sync->inputs.find({sync->inputs.name, name});
+        if(it != sync->inputs.end() && !it->second.isConnected()) {
+            sync->inputs.erase(it);
+        }
+    }
+#endif
+}
+
 }  // namespace node
 }  // namespace dai

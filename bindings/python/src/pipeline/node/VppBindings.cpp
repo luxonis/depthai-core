@@ -34,13 +34,15 @@ void bind_vpp(pybind11::module& m, void* pCallstack) {
     vpp.def_readonly("inputConfig", &Vpp::inputConfig, DOC(dai, node, Vpp, inputConfig))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         .def_property_readonly(
-            "left", [](Vpp& node) { return node.left; }, py::return_value_policy::reference_internal)
+            "left", [](Vpp& node) -> Node::Input& { return node.left; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
-            "right", [](Vpp& node) { return node.right; }, py::return_value_policy::reference_internal)
+            "right", [](Vpp& node) -> Node::Input& { return node.right; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
-            "disparity", [](Vpp& node) { return node.disparity; }, py::return_value_policy::reference_internal)
+            "disparity", [](Vpp& node) -> Node::Input& { return node.disparity; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
-            "confidence", [](Vpp& node) { return node.confidence; }, py::return_value_policy::reference_internal)
+            "depth", [](Vpp& node) -> Node::Input& { return node.depth; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "confidence", [](Vpp& node) -> Node::Input& { return node.confidence; }, py::return_value_policy::reference_internal)
         .def("build", &Vpp::build, py::arg("leftInput"), py::arg("rightInput"), py::arg("disparity"), py::arg("confidence"), DOC(dai, node, Vpp, build))
 #endif
         .def_readonly("syncedInputs", &Vpp::syncedInputs, DOC(dai, node, Vpp, syncedInputs))
