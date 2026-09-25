@@ -83,6 +83,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::MapOutputParserConfig,
          DatatypeEnum::XFeatMonoParserConfig,
          DatatypeEnum::XFeatStereoParserConfig,
+         DatatypeEnum::Odometry,
      }},
     {DatatypeEnum::Buffer,
      {
@@ -159,6 +160,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::MapOutputParserConfig,
          DatatypeEnum::XFeatMonoParserConfig,
          DatatypeEnum::XFeatStereoParserConfig,
+         DatatypeEnum::Odometry,
      }},
     {DatatypeEnum::Transformable,
      {
@@ -211,7 +213,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::PointCloudConfig, {}},
     {DatatypeEnum::PointCloudData, {}},
     {DatatypeEnum::RGBDData, {}},
-    {DatatypeEnum::TransformData, {}},
+    {DatatypeEnum::TransformData, {DatatypeEnum::Odometry}},
+    {DatatypeEnum::Odometry, {}},
     {DatatypeEnum::ImgAnnotations, {}},
     {DatatypeEnum::VppConfig, {}},
     {DatatypeEnum::GateControl, {}},

@@ -8,6 +8,7 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
@@ -48,9 +49,9 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
      */
     Input imu{*this, {"imu", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::IMUData, true}}}}};
     /**
-     * Output transform.
+     * Output odometry.
      */
-    Output transform{*this, {"transform", DEFAULT_GROUP, {{{DatatypeEnum::TransformData, true}}}}};
+    Output transform{*this, {"transform", DEFAULT_GROUP, {{{DatatypeEnum::Odometry, true}}}}};
     /**
      * Passthrough rectified frame.
      */
