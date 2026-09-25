@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <catch2/catch_all.hpp>
+#include <chrono>
 #include <cmath>
 #include <vector>
 
@@ -138,6 +139,9 @@ std::shared_ptr<dai::ImgFrame> alignSyntheticDepth(bool runOnHost,
 
     auto depth = makeRuntimeTransformationFrame(depthTransformation, dai::CameraBoardSocket::CAM_B, dai::ImgFrame::Type::RAW16, 1);
     auto image = makeRuntimeTransformationFrame(imageTransformation, dai::CameraBoardSocket::CAM_A, dai::ImgFrame::Type::GRAY8, 1);
+    depth->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(1100000000)));
+    depth->setTimestampDevice(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(1200000000)));
+    depth->setTimestampSystem(std::chrono::system_clock::time_point(std::chrono::nanoseconds(1300000000)));
     const auto [width, height] = depthTransformation.getSize();
     std::vector<uint8_t> depthPixels(width * height * 2);
     for(size_t y = 0; y < height; ++y) {
