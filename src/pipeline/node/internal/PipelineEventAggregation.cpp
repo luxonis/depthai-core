@@ -4,6 +4,7 @@
 #include <optional>
 #include <shared_mutex>
 #include <thread>
+#include <utility>
 
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
 #include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
@@ -384,50 +385,58 @@ class NodeEventAggregation {
         }
     }
 
-    bool updateStats() {
+    bool updateStats(std::shared_mutex& mutex) {
         if(std::chrono::steady_clock::now() - lastUpdated >= std::chrono::milliseconds(statsUpdateIntervalMs)) {
             lastUpdated = std::chrono::steady_clock::now();
+            // Only the event thread writes state and the measurement buffers. Readers
+            // can keep reading state while we copy it and calculate the next snapshot.
+            NodeState nextState = state;
             // Update stats for all event types and sources
             for(int i = (int)PipelineEvent::Type::CUSTOM; i <= (int)PipelineEvent::Type::OUTPUT_BLOCK; ++i) {
                 // By instance
                 switch((PipelineEvent::Type)i) {
                     case PipelineEvent::Type::CUSTOM:
                         for(auto& [source, _] : otherTimingsBuffers) {
-                            updateFpsStats(state.otherTimings[source], *otherFpsBuffers[source]);
-                            updateTimingStats(state.otherTimings[source].durationStats, *otherTimingsBuffers[source]);
+                            updateFpsStats(nextState.otherTimings[source], *otherFpsBuffers[source]);
+                            updateTimingStats(nextState.otherTimings[source].durationStats, *otherTimingsBuffers[source]);
                         }
                         break;
                     case PipelineEvent::Type::LOOP:
-                        updateFpsStats(state.mainLoopTiming, *mainLoopFpsBuffer);
-                        updateTimingStats(state.mainLoopTiming.durationStats, *mainLoopTimingsBuffer);
+                        updateFpsStats(nextState.mainLoopTiming, *mainLoopFpsBuffer);
+                        updateTimingStats(nextState.mainLoopTiming.durationStats, *mainLoopTimingsBuffer);
                         break;
                     case PipelineEvent::Type::INPUT:
                         for(auto& [source, _] : inputTimingsBuffers) {
-                            updateFpsStats(state.inputStates[source].timing, *inputFpsBuffers[source]);
-                            updateTimingStats(state.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
+                            updateFpsStats(nextState.inputStates[source].timing, *inputFpsBuffers[source]);
+                            updateTimingStats(nextState.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
                             // Update queue size stats
                             if(inputQueueSizesBuffers.find(source) != inputQueueSizesBuffers.end() && inputQueueSizesBuffers[source] != nullptr) {
-                                updateQueueStats(state.inputStates[source].queueStats, *inputQueueSizesBuffers[source]);
+                                updateQueueStats(nextState.inputStates[source].queueStats, *inputQueueSizesBuffers[source]);
                             }
                         }
                         break;
                     case PipelineEvent::Type::OUTPUT:
                         for(auto& [source, _] : outputTimingsBuffers) {
-                            updateFpsStats(state.outputStates[source].timing, *outputFpsBuffers[source]);
-                            updateTimingStats(state.outputStates[source].timing.durationStats, *outputTimingsBuffers[source]);
+                            updateFpsStats(nextState.outputStates[source].timing, *outputFpsBuffers[source]);
+                            updateTimingStats(nextState.outputStates[source].timing.durationStats, *outputTimingsBuffers[source]);
                         }
                         break;
                     case PipelineEvent::Type::INPUT_BLOCK:
-                        updateFpsStats(state.inputsGetTiming, *inputsGetFpsBuffer);
-                        updateTimingStats(state.inputsGetTiming.durationStats, *inputsGetTimingsBuffer);
+                        updateFpsStats(nextState.inputsGetTiming, *inputsGetFpsBuffer);
+                        updateTimingStats(nextState.inputsGetTiming.durationStats, *inputsGetTimingsBuffer);
                         break;
                     case PipelineEvent::Type::OUTPUT_BLOCK:
-                        updateFpsStats(state.outputsSendTiming, *outputsSendFpsBuffer);
-                        updateTimingStats(state.outputsSendTiming.durationStats, *outputsSendTimingsBuffer);
+                        updateFpsStats(nextState.outputsSendTiming, *outputsSendFpsBuffer);
+                        updateTimingStats(nextState.outputsSendTiming.durationStats, *outputsSendTimingsBuffer);
                         break;
                 }
             }
-            updated = true;
+            {
+                std::unique_lock lock(mutex);
+                std::swap(state, nextState);
+                updated = true;
+            }
+            // Destroy the old snapshot after releasing the lock.
             return true;
         }
         return false;
@@ -487,7 +496,7 @@ class PipelineEventHandler {
                 }
             }
             for(auto& [_, nodeState] : nodeStates) {
-                nodeState.updateStats();
+                nodeState.updateStats(mutex);
             }
         }
     }
