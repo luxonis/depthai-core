@@ -328,8 +328,7 @@ void ImageAlign::run() {
     int previousShiftFactor = 0;
 
     ImgTransformation inputAlignToTransform;
-    ImgTransformation previousInputTransformation;
-    ImgTransformation previousInputAlignToTransformation;
+    ImageAlignInputState previousInputs;
     std::shared_ptr<ImgFrame> inputAlignToImg = nullptr;
     while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputImg = nullptr;
@@ -348,8 +347,12 @@ void ImageAlign::run() {
                 inputAlignToImg = inputAlignTo.get<ImgFrame>();
             }
 
-            if(!previousInputTransformation.isEqualTransformation(inputImg->transformation)
-               || !previousInputAlignToTransformation.isEqualTransformation(inputAlignToImg->transformation)) {
+            const ImageAlignInputState currentInputs{inputImg->transformation,
+                                                     inputAlignToImg->transformation,
+                                                     {inputImg->getWidth(), inputImg->getHeight()},
+                                                     {inputAlignToImg->getWidth(), inputAlignToImg->getHeight()},
+                                                     inputImg->getType()};
+            if(currentInputs.differsFrom(previousInputs)) {
                 initialized = false;
                 calibrationSet = false;
                 allocated = false;
@@ -388,8 +391,7 @@ void ImageAlign::run() {
                 alignSourceIntrinsics = alignTransformForIntrinsics.getIntrinsicMatrix();
                 inputAlignToTransform = alignTransformForIntrinsics;
 
-                previousInputTransformation = inputImg->transformation;
-                previousInputAlignToTransformation = inputAlignToImg->transformation;
+                previousInputs = currentInputs;
                 initialized = true;
             }
 
