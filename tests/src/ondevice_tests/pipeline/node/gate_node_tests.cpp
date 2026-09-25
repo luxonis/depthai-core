@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <opencv2/opencv.hpp>
+#include <vector>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Gate.hpp"
@@ -32,6 +34,12 @@ TEST_CASE("ImgFrame metadata survives a device round trip") {
     sent->setTimestampSystem(std::chrono::system_clock::time_point(std::chrono::nanoseconds(345678901)));
     sent->cam.exposureTimeUs = 1234;
     sent->cam.sensitivityIso = 321;
+    sent->cam.lensPosition = 12;
+    sent->cam.lensPositionRaw = 1.25f;
+    sent->cam.wbColorTemp = 4500;
+    sent->cam.fsync = dai::ImgFrame::Fsync::INPUT;
+    sent->cam.sensorMode = 2;
+    sent->cam.fps = 30.0f;
     REQUIRE(sent->validateTransformations());
 
     pipeline.start();
@@ -47,10 +55,17 @@ TEST_CASE("ImgFrame metadata survives a device round trip") {
     REQUIRE(received->getHeight() == sent->getHeight());
     REQUIRE(received->getStride() == sent->getStride());
     REQUIRE(received->getBytesPerPixel() == sent->getBytesPerPixel());
+    REQUIRE(received->fb.p1Offset == sent->fb.p1Offset);
+    REQUIRE(received->fb.p2Offset == sent->fb.p2Offset);
+    REQUIRE(received->fb.p3Offset == sent->fb.p3Offset);
     REQUIRE(received->getSourceWidth() == sent->getSourceWidth());
     REQUIRE(received->getSourceHeight() == sent->getSourceHeight());
+    REQUIRE(received->sourceFb.type == sent->sourceFb.type);
     REQUIRE(received->sourceFb.stride == sent->sourceFb.stride);
     REQUIRE(received->sourceFb.bytesPP == sent->sourceFb.bytesPP);
+    REQUIRE(received->sourceFb.p1Offset == sent->sourceFb.p1Offset);
+    REQUIRE(received->sourceFb.p2Offset == sent->sourceFb.p2Offset);
+    REQUIRE(received->sourceFb.p3Offset == sent->sourceFb.p3Offset);
     REQUIRE(received->transformation.getSize() == sent->transformation.getSize());
     REQUIRE(received->transformation.getSourceSize() == sent->transformation.getSourceSize());
     REQUIRE(received->transformation.getMatrix() == sent->transformation.getMatrix());
@@ -62,11 +77,19 @@ TEST_CASE("ImgFrame metadata survives a device round trip") {
     REQUIRE(received->getSequenceNum() == sent->getSequenceNum());
     REQUIRE(received->getInstanceNum() == sent->getInstanceNum());
     REQUIRE(received->category == sent->category);
+    REQUIRE(received->event == sent->event);
     REQUIRE(received->getTimestamp() == sent->getTimestamp());
     REQUIRE(received->getTimestampDevice() == sent->getTimestampDevice());
     REQUIRE(received->getTimestampSystem() == sent->getTimestampSystem());
     REQUIRE(received->cam.exposureTimeUs == sent->cam.exposureTimeUs);
     REQUIRE(received->cam.sensitivityIso == sent->cam.sensitivityIso);
+    REQUIRE(received->cam.lensPosition == sent->cam.lensPosition);
+    REQUIRE(received->cam.lensPositionRaw == sent->cam.lensPositionRaw);
+    REQUIRE(received->cam.wbColorTemp == sent->cam.wbColorTemp);
+    REQUIRE(received->cam.fsync == sent->cam.fsync);
+    REQUIRE(received->cam.sensorMode == sent->cam.sensorMode);
+    REQUIRE(received->cam.fps == sent->cam.fps);
+    REQUIRE(received->cam.sensorTemperatureC == sent->cam.sensorTemperatureC);
     pipeline.stop();
 }
 
