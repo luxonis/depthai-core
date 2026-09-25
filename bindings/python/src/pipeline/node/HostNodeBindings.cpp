@@ -22,10 +22,7 @@ using namespace dai::node;
     if(e.matches(messageQueueException)) {
         throw dai::MessageQueue::QueueException(e.what());
     }
-    if (e.matches(PyExc_KeyboardInterrupt)) {
-        throw;
-    }
-    throw std::runtime_error(e.what());
+    throw;
 }
 
 class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode, false> {
