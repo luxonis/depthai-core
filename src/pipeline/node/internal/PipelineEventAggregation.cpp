@@ -517,8 +517,8 @@ class PipelineEventHandler {
                 auto nodeLock = nodeState.getReadLock();
                 outState->nodeStates[nodeId] = nodeState.state;
                 if(sendEvents) outState->nodeStates[nodeId].events = nodeState.eventsBuffer.getBuffer();
+                if(reset && nodeState.updated.exchange(false)) updated = true;
             }
-            if(reset && nodeState.updated.exchange(false)) updated = true;
         }
         return updated;
     }
@@ -564,7 +564,10 @@ class TraceOutputHandler {
         });
     }
     void stop() {
-        running = false;
+        {
+            std::unique_lock lock(waitMutex);
+            running = false;
+        }
         waitCondition.notify_all();
         if(thread.joinable()) thread.join();
     }
