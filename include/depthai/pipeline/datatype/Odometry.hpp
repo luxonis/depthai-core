@@ -13,6 +13,11 @@ namespace dai {
  */
 class Odometry : public TransformData {
    public:
+    using Buffer::sequenceNum;
+    using Buffer::ts;
+    using Buffer::tsDevice;
+    using Buffer::tsSystem;
+
     /**
      * Construct an Odometry message with an identity pose and zero velocity.
      */
@@ -49,7 +54,7 @@ class Odometry : public TransformData {
         return DatatypeEnum::Odometry;
     }
 
-    DEPTHAI_SERIALIZE(Odometry, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, transform, velocity);
+    DEPTHAI_SERIALIZE(Odometry, sequenceNum, ts, tsDevice, tsSystem, transform, velocity);
 };
 
 }  // namespace dai
