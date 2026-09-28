@@ -17,6 +17,7 @@ class Odometry : public TransformData {
     using Buffer::ts;
     using Buffer::tsDevice;
     using Buffer::tsSystem;
+    using TransformData::transform;
 
     /**
      * Construct an Odometry message with an identity pose and zero velocity.
