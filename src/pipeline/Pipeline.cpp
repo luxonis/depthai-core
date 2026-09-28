@@ -573,7 +573,9 @@ PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, boo
                                                 if(node1 == schema.nodes.end() && node2 == schema.nodes.end()) {
                                                     return true;
                                                 } else if(node1 == schema.nodes.end() || node2 == schema.nodes.end()) {
-                                                    throw std::invalid_argument("Connection from host node to device node should not exist here");
+                                                    std::string n1 = node1->second.name + "(" + node1->second.deviceId + ")";
+                                                    std::string n2 = node2->second.name + "(" + node2->second.deviceId + ")";
+                                                    throw std::invalid_argument("Connection from host node " + n1 + " to device node " + n2 + " should not exist here");
                                                 }
                                                 return false;
                                             }),
