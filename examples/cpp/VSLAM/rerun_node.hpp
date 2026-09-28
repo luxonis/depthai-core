@@ -7,6 +7,7 @@
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MapData.hpp"
+#include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
@@ -21,6 +22,8 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
    public:
     void build() {}
 
+    // BasaltVIO emits Odometry; RTABMapSLAM emits TransformData.
+    Input inputOdom{*this, {.name = "inOdom", .types = {{dai::DatatypeEnum::Odometry, true}}}};
     Input inputTrans{*this, {.name = "inTrans", .types = {{dai::DatatypeEnum::TransformData, true}}}};
     Input inputImg{*this, {.name = "inImg", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
     Input inputObstaclePCL{*this, {.name = "inObstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
@@ -43,7 +46,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
         rec.log_static("world", rerun::ViewCoordinates::FLU);
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
         while(mainLoop()) {
-            std::shared_ptr<dai::TransformData> transData = inputTrans.get<dai::TransformData>();
+            std::shared_ptr<dai::TransformData> poseData = inputOdom.isConnected() ? inputOdom.get<dai::Odometry>() : inputTrans.get<dai::TransformData>();
             auto imgFrame = inputImg.get<dai::ImgFrame>();
             if(!intrinsicsSet) {
                 getFocalLengthFromImage(imgFrame);
@@ -51,9 +54,9 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
             auto pclObstData = inputObstaclePCL.tryGet<dai::PointCloudData>();
             auto pclGrndData = inputGroundPCL.tryGet<dai::PointCloudData>();
             auto mapData = inputMap.tryGet<dai::MapData>();
-            if(transData != nullptr) {
-                auto trans = transData->getTranslation();
-                auto quat = transData->getQuaternion();
+            if(poseData != nullptr) {
+                auto trans = poseData->getTranslation();
+                auto quat = poseData->getQuaternion();
 
                 auto position = rerun::Vec3D(trans.x, trans.y, trans.z);
 
