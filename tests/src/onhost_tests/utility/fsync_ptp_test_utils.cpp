@@ -211,7 +211,8 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
                        std::optional<dai::ExternalFrameSyncRole> role,
                        std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
                        std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                       std::vector<std::string>& camSockets) {
+                       std::vector<std::string>& camSockets,
+                       bool masterCandidate) {
     auto outNode = createPipeline(pipeline, socket, targetFps, syncType, role);
 
     auto ccmName = getCameraSensorName(pipeline, socket);
@@ -237,7 +238,7 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
     } else if(syncType == SyncType::PTP) {
         // For PTP just put the first camera in master.
         // Actual PTP master might be different, but it doesn't matter for this test.
-        if(!masterNode.has_value()) {
+        if(!masterNode.has_value() && masterCandidate) {
             masterNode.emplace();
             masterNode.value().emplace(fullSocketName, outNode);
         } else {
@@ -326,13 +327,14 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
         return false;
     };
 
+    bool masterCandidate = device->getConnectedCameras().size() == 1;
     for(auto socket : device->getConnectedCameras()) {
         if(!isSensorAllowed(socket)) {
             std::cout << "Skipping socket " << dai::toString(socket) << std::endl;
             continue;
         }
         std::cout << "Setting up socker " << dai::toString(socket) << std::endl;
-        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets);
+        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets, masterCandidate);
     }
 
     setUpIrLeds(device);
@@ -356,7 +358,7 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     } else if(syncType == SyncType::PTP) {
         // For PTP just put the first camera in master.
         // Actual PTP master might be different, but it doesn't matter for this test.
-        if(masterPipeline == nullptr) {
+        if(masterPipeline == nullptr && masterCandidate) {
             masterPipeline = pipeline;
             masterName = name;
         } else {
