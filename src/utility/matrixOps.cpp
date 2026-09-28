@@ -151,6 +151,8 @@ bool isValidIntrinsicsMatrix(const std::vector<std::vector<float>>& intrinsics) 
 }
 
 void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix) {
+    constexpr float rotationTolerance = 1e-3f;
+
     if(rotationMatrix.size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
@@ -158,6 +160,34 @@ void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMa
         if(row.size() != 3) {
             throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
         }
+    }
+
+    for(const auto& row : rotationMatrix) {
+        for(const auto value : row) {
+            if(!std::isfinite(value)) {
+                throw std::runtime_error("Rotation Matrix values should be finite.");
+            }
+        }
+    }
+
+    for(size_t row = 0; row < 3; ++row) {
+        for(size_t column = 0; column < 3; ++column) {
+            float dot = 0.0f;
+            for(size_t index = 0; index < 3; ++index) {
+                dot += rotationMatrix[index][row] * rotationMatrix[index][column];
+            }
+            const float expected = row == column ? 1.0f : 0.0f;
+            if(std::abs(dot - expected) > rotationTolerance) {
+                throw std::runtime_error("Rotation Matrix must be orthonormal.");
+            }
+        }
+    }
+
+    const float determinant = rotationMatrix[0][0] * (rotationMatrix[1][1] * rotationMatrix[2][2] - rotationMatrix[1][2] * rotationMatrix[2][1])
+                              - rotationMatrix[0][1] * (rotationMatrix[1][0] * rotationMatrix[2][2] - rotationMatrix[1][2] * rotationMatrix[2][0])
+                              + rotationMatrix[0][2] * (rotationMatrix[1][0] * rotationMatrix[2][1] - rotationMatrix[1][1] * rotationMatrix[2][0]);
+    if(std::abs(determinant - 1.0f) > rotationTolerance) {
+        throw std::runtime_error("Rotation Matrix determinant should be 1.");
     }
 }
 
@@ -315,6 +345,10 @@ dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix,
     return {dehomogenized[0], dehomogenized[1], dehomogenized[2]};
 }
 
+bool isFinitePoint3f(const dai::Point3f& point) {
+    return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+}
+
 std::array<float, 4> dehomogenizePoint4(const std::array<float, 4>& point) {
     if(std::abs(point[3]) < 1e-6f) {
         throw std::runtime_error("Cannot dehomogenize point with w close to zero.");
@@ -347,34 +381,17 @@ std::vector<float> matrixToVector(const std::vector<std::vector<float>>& R) {
         throw std::invalid_argument("Expected a 3x3 rotation matrix.");
     }
 
-    float angle, x, y, z;
-
-    float trace = R[0][0] + R[1][1] + R[2][2];
-    float cos_angle = (trace - 1.0f) * 0.5f;
-
-    // Clamp cos_angle to [-1, 1] to avoid NaN due to float precision
-    cos_angle = std::fmax(-1.0f, std::fmin(1.0f, cos_angle));
-    angle = std::acos(cos_angle);
-
-    if(std::fabs(angle) < 1e-6f) {
-        // Angle is ~0 → zero rotation vector
-        return {0.0f, 0.0f, 0.0f};
+    Eigen::Matrix3d rotation;
+    for(size_t row = 0; row < 3; ++row) {
+        for(size_t col = 0; col < 3; ++col) {
+            rotation(row, col) = R[row][col];
+        }
     }
-
-    float rx = R[2][1] - R[1][2];
-    float ry = R[0][2] - R[2][0];
-    float rz = R[1][0] - R[0][1];
-
-    float sin_angle = std::sqrt(rx * rx + ry * ry + rz * rz) * 0.5f;
-
-    // Normalize axis
-    float k = 1.0f / (2.0f * sin_angle);
-    x = k * rx;
-    y = k * ry;
-    z = k * rz;
-
-    // Rotation vector = axis * angle
-    return {x * angle, y * angle, z * angle};
+    // Eigen's quaternion-based conversion is stable near both zero and pi;
+    // acos(trace) loses small rotations when the input matrix contains floats.
+    const Eigen::AngleAxisd angleAxis(rotation);
+    const Eigen::Vector3d rotationVector = angleAxis.angle() * angleAxis.axis();
+    return {static_cast<float>(rotationVector.x()), static_cast<float>(rotationVector.y()), static_cast<float>(rotationVector.z())};
 }
 std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::array<float, 3>, 3>& R) {
     std::vector<std::vector<float>> vectorR;

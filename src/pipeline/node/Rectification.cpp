@@ -109,8 +109,9 @@ void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
     if(runOnHost()) {
-        auto device = getParentPipeline().getDefaultDevice();
-        if(device && device->getPlatform() != Platform::RVC4) {
+        // Check the platform of the device this node runs on (falls back to the pipeline default device when the node has none)
+        auto platformDevice = device ? device : getParentPipeline().getDefaultDevice();
+        if(platformDevice && platformDevice->getPlatform() != Platform::RVC4) {
             throw std::runtime_error("Rectification node is only supported on RVC4 platform");
         }
     }

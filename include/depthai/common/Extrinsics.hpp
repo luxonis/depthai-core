@@ -140,6 +140,13 @@ struct Extrinsics {
     std::vector<float> getTranslationVector(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
+     * Get a copy of these extrinsics with the translation and specification translation expressed in another unit.
+     * @param unit Length unit of the returned copy
+     * @return Copy of these extrinsics in the given unit
+     */
+    Extrinsics withLengthUnit(LengthUnit unit) const;
+
+    /**
      * Two Extrinsics objects are equal if their rotation matrices and translation vectors are equal (within a small epsilon).
      * @param other The other Extrinsics object to compare with
      * @param epsilon The tolerance for comparing floating-point values
@@ -168,5 +175,20 @@ struct Extrinsics {
 
     DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit, toDeviceId);
 };
+
+/**
+ * A directed cross-device calibration edge.
+ *
+ * The source coordinate system is identified by fromDeviceId/fromSocket. The
+ * destination coordinate system is identified by extrinsics.toDeviceId and
+ * extrinsics.toCameraSocket.
+ */
+struct MultiDeviceExtrinsics {
+    std::string fromDeviceId;
+    CameraBoardSocket fromSocket = CameraBoardSocket::AUTO;
+    Extrinsics extrinsics;
+};
+
+DEPTHAI_SERIALIZE_EXT(MultiDeviceExtrinsics, fromDeviceId, fromSocket, extrinsics);
 
 }  // namespace dai

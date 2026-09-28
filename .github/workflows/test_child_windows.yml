@@ -21,11 +21,14 @@ on:
 
 jobs:
   build_windows_tests:
-    runs-on: windows-2022
+    runs-on: windows-2025
     outputs:
         artifact_id: ${{ steps.reuse.outputs.artifact_id || steps.artifact-upload-step.outputs.artifact-id }}
     env:
       BUILD_TYPE: Release
+      CMAKE_GENERATOR: Visual Studio 18 2026
+      CMAKE_GENERATOR_PLATFORM: x64
+      CMAKE_GENERATOR_TOOLSET: v143
       VCPKG_ROOT: C:\vcpkg
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
       VCPKG_DEFAULT_TRIPLET: x64-windows
@@ -98,13 +101,19 @@ jobs:
         Write-Host "Copying source from $env:GITHUB_WORKSPACE to C:\depthai-core ..."
         Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
 
+    - name: Setup cmake
+      if: steps.reuse.outputs.skip_build != 'true'
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '4.2.x'
+
     - name: Restore vcpkg cache
       if: steps.reuse.outputs.skip_build != 'true'
       uses: actions/cache/restore@v4
       id: vcpkg-restore
       with:
         path: C:\vcpkg_binaries
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        key: vcpkg-archives-windows-2025-v143-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
       if: steps.reuse.outputs.skip_build != 'true'
@@ -161,7 +170,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: C:\vcpkg_binaries
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        key: vcpkg-archives-windows-2025-v143-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Upload artifact
       if: steps.reuse.outputs.skip_build != 'true'

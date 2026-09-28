@@ -462,9 +462,13 @@ dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_t
 dai_set_test_labels(calibration_cba_merge_test onhost)
 set_property(TEST calibration_cba_merge_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_ALLOW_FACTORY_FLASHING=868632271")
 
-# XLInkInHost test 
+# XLInkInHost test
 dai_add_test(xlink_in_host_test src/onhost_tests/pipeline/node/internal/XLinkInHostTest.cpp)
 dai_set_test_labels(xlink_in_host_test onhost ci)
+
+# Multi-device pipeline API test (host only)
+dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
+dai_set_test_labels(multi_device_pipeline_test onhost)
 
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -492,6 +496,8 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     target_link_libraries(image_transformations_test PRIVATE messages)
 endif()
 dai_set_test_labels(image_transformations_test onhost ci)
+dai_add_test(img_transformation_rebase_test src/onhost_tests/img_transformation_rebase_test.cpp)
+dai_set_test_labels(img_transformation_rebase_test onhost ci)
 
 # Matrix operations tests
 dai_add_test(matrix_ops_tests src/onhost_tests/matrix_ops_tests.cpp)
@@ -662,7 +668,11 @@ dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
     dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
-    target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
+    target_compile_definitions(
+        dynamic_calibration_test
+        PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}"
+                HOLISTIC_RECORDING_PATH="${holistic_recording}"
+    )
 endif()
 
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
@@ -764,6 +774,9 @@ if(DEPTHAI_ENABLE_PROTOBUF)
 endif()
 
 if(DEPTHAI_BUILD_BETA)
+    dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
+    dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 

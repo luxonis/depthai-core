@@ -15,6 +15,14 @@ extern py::object messageQueueException;  // Needed to be able to catch in C++ a
 using namespace dai;
 using namespace dai::node;
 
+[[noreturn]] void rethrowAsCpp(py::error_already_set& e) {
+    py::gil_scoped_acquire gil;  // matches() and what() need the GIL
+    if(e.matches(messageQueueException)) {
+        throw dai::MessageQueue::QueueException(e.what());
+    }
+    throw std::runtime_error(e.what());
+}
+
 class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode, false> {
     std::string nodeName = ThreadedHostNode::NAME;
 
@@ -31,11 +39,7 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode,
         try {
             PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
         } catch(py::error_already_set& e) {
-            if(e.matches(messageQueueException)) {
-                pimpl->logger->trace("Caught MessageQueue exception in ThreadedHostNode::run");
-            } else {
-                throw;
-            }
+            rethrowAsCpp(e);
         }
     }
     void onStart() override {
@@ -59,7 +63,11 @@ class PyHostNode : public NodeCRTP<HostNode, PyHostNode, false> {
     }
 
     std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
-        PYBIND11_OVERRIDE_PURE(std::shared_ptr<Buffer>, HostNode, processGroup, in);
+        try {
+            PYBIND11_OVERRIDE_PURE(std::shared_ptr<Buffer>, HostNode, processGroup, in);
+        } catch(py::error_already_set& e) {
+            rethrowAsCpp(e);
+        }
     }
     void onStart() override {
         PYBIND11_OVERRIDE(void, HostNode, onStart);

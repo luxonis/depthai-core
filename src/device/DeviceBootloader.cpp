@@ -66,6 +66,12 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
 
 std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
     const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
+    // A flashed application boots on a single device - a pipeline spanning several devices
+    // (with host relays between them) cannot be packaged
+    if(pipeline.getDevices().size() > 1) {
+        throw std::invalid_argument("Cannot create an application package from a pipeline that spans multiple devices");
+    }
+
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
@@ -358,7 +364,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), but id or name is - try finding it first
     if((deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) && (!deviceInfo.deviceId.empty() || !deviceInfo.name.empty())) {
         deviceDesc_t foundDesc;
-        auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+        auto ret = XLinkConnection::findFirstSuitableDevice(deviceInfo, foundDesc);
         if(ret == X_LINK_SUCCESS) {
             deviceInfo = DeviceInfo(foundDesc);
             logger::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());

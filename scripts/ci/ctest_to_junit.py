@@ -29,6 +29,10 @@ TESTSUITE_RE = re.compile(
     # print(f"Running tests for configuration: linux_rvc2_test / RVC2 - POE, on platform: RVC4, on protocol: POE, with labels: {labels if labels is not None else ""}")
     r"^(Running tests for configuration: )(?P<name>.+?), on platform: (?P<platform>.+?), on protocol: (?P<protocol>.+?), with labels: (?P<labels>.+?)$"
 )
+TESTBED_RE = re.compile(
+    # [INFO] Using testbed: slo304-4d
+    r"^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[INFO\]\s+Using\s+testbed:\s+(?P<name>.+?)\s*$"
+)
 
 def normalize_name(name: str) -> str:
     return " ".join(name.strip().split())
@@ -51,6 +55,7 @@ def parse_log(log_path: Path):
     skips = {}
     test_outputs = {}
     descriptions = {}
+    testbedId = None
 
     def ensure_config(config: str) -> None:
         if config not in summaries:
@@ -128,7 +133,12 @@ def parse_log(log_path: Path):
                 name = normalize_name(skipped_match.group("name"))
                 seconds = float(skipped_match.group('seconds'))
                 skips[config][num] = (name, seconds)
-    return order, summaries, failures, passes, skips, test_outputs, descriptions
+
+            if testbedId is None:
+                testbedMatch = TESTBED_RE.search(line)
+                if testbedMatch:
+                    testbedId = testbedMatch.group("name")
+    return order, summaries, failures, passes, skips, test_outputs, descriptions, testbedId
 
 
 def iter_configs(order, summaries, failures):
@@ -165,7 +175,8 @@ def write_junit(
     passes,
     skips,
     test_outputs,
-    descriptions
+    descriptions,
+    testbedId
 ):
     root = ET.Element("testsuites")
     all_tests = 0
@@ -307,6 +318,7 @@ def write_junit(
     root.set("failures", str(all_failures))
     root.set("errors", "0")
     root.set("time", "0")
+    root.set("testbedId", testbedId if testbedId is not None else "")
 
     tree = ET.ElementTree(root)
     if hasattr(ET, "indent"):
@@ -325,7 +337,7 @@ def main() -> int:
         print(f"Log file not found: {log_path}")
         return 0
 
-    order, summaries, failures, passes, skips, test_outputs, descriptions = parse_log(log_path)
+    order, summaries, failures, passes, skips, test_outputs, descriptions, testbedId = parse_log(log_path)
     write_junit(
         junit_path=junit_path,
         context=context,
@@ -335,7 +347,8 @@ def main() -> int:
         passes=passes,
         skips=skips,
         test_outputs=test_outputs,
-        descriptions=descriptions
+        descriptions=descriptions,
+        testbedId=testbedId
     )
     print(f"Wrote JUnit report: {junit_path}")
     return 0

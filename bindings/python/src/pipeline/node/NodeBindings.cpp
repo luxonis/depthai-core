@@ -62,12 +62,14 @@ bool isCreatingNodeFromPipelineCreate() {
 }
 
 // Map of python node classes and call to pipeline to create it
-std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
+std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const std::shared_ptr<dai::Device>& device)>>>
+    pyNodeCreateMap;
 py::handle daiNodeModule;
 py::handle daiNodeInternalModule;
 py::handle daiBetaNodeModule;
 
-std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
+std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const std::shared_ptr<dai::Device>& device)>>>
+NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
 }
 
@@ -350,7 +352,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     // Node::Connection bindings
     py::class_<Node::Connection> nodeConnection(pyNode, "Connection", DOC(dai, Node, Connection));
     // Node::InputMap bindings
-    bindNodeMap<Node::InputMap>(pyNode, "InputMap");
+    bindNodeMap<Node::InputMap>(pyNode, "InputMap").def("getSourceDevices", &Node::InputMap::getSourceDevices, DOC(dai, Node, InputMap, getSourceDevices));
     // Node::OutputMap bindings
     bindNodeMap<Node::OutputMap>(pyNode, "OutputMap");
 
@@ -494,7 +496,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("maxSize") = Node::Input::INPUT_QUEUE_DEFAULT_MAX_SIZE,
              py::arg("blocking") = Node::Input::INPUT_QUEUE_DEFAULT_BLOCKING,
              DOC(dai, Node, Input, createInputQueue))
-        .def("getXLinkBridge", &Node::Input::getXLinkBridge, DOC(dai, Node, Input, getXLinkBridge));
+        .def("getXLinkBridge", &Node::Input::getXLinkBridge, DOC(dai, Node, Input, getXLinkBridge))
+        .def("getSourceDevice", &Node::Input::getSourceDevice, DOC(dai, Node, Input, getSourceDevice));
 
     // Node::Output bindings
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
@@ -613,6 +616,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("type"),
             py::arg("source"),
             DOC(dai, ThreadedNode, blockEvent));
+
+    pyDeviceNode.def("getDevice", &DeviceNode::getDevice, DOC(dai, DeviceNode, getDevice));
 
     pyBlockEvent.def("cancel", &BlockPipelineEvent::cancel, DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent, cancel))
         .def("setQueueSize",

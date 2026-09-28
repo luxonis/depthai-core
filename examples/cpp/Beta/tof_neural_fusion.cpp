@@ -9,6 +9,7 @@ int main() {
     auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, 30.0f);
     auto fusion = pipeline.create<dai::beta::node::ToFStereoFusion>()->build(left, right);
     fusion->initialConfig->confidenceThreshold = 0.3f;
+    fusion->initialConfig->setCropToOverlap(true);
 
     auto depthQueue = fusion->depth.createOutputQueue();
 

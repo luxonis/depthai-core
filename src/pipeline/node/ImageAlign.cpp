@@ -338,8 +338,13 @@ void ImageAlign::run() {
 
     auto pipeline = getParentPipeline();
 
+    // Read calibration / EEPROM id from the device this node runs on (falls back to the pipeline default device when
+    // the node has none), so a node created on a non-master device does not align with the master's calibration.
+    auto readCalibration = [&]() { return device ? device->getCalibration() : pipeline.getCalibrationData(); };
+    auto readEepromId = [&]() -> uint32_t { return device ? device->getProperties().eepromId : pipeline.getEepromId(); };
+
     try {
-        calibHandler = pipeline.getDefaultDevice()->getCalibration();
+        calibHandler = readCalibration();
     } catch(const std::exception& e) {
         logger->error("Failed to get calibration data: {}", e.what());
     }
@@ -356,7 +361,7 @@ void ImageAlign::run() {
 
     ImgTransformation inputAlignToTransform;
     ImgFrame inputAlignToImgFrame;
-    uint32_t currentEepromId = getParentPipeline().getEepromId();
+    uint32_t currentEepromId = readEepromId();
 
     while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputImg = nullptr;
@@ -446,12 +451,12 @@ void ImageAlign::run() {
             throw std::runtime_error(msg);
         }
 
-        uint32_t latestEepromId = getParentPipeline().getEepromId();
+        uint32_t latestEepromId = readEepromId();
 
         if(latestEepromId > currentEepromId) {
             logger->debug("EEPROM data changed (ID: {} -> {}), reconfiguring ...", currentEepromId, latestEepromId);
             calibrationSet = false;
-            calibHandler = pipeline.getCalibrationData();
+            calibHandler = readCalibration();
             currentEepromId = latestEepromId;
         }
 
