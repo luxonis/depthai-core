@@ -557,6 +557,12 @@ std::shared_ptr<Depth> Depth::setFocusStereoSize(unsigned int width, unsigned in
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
+std::shared_ptr<Depth> Depth::setFocusCropThroughput(float fps) {
+    requireNotBuilt("Depth::setFocusCropThroughput");
+    (*focusedBackend_)->setFocusCropThroughput(fps);
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
 std::shared_ptr<Depth> Depth::setFocusModels(const std::vector<DeviceModelZoo>& models) {
     requireNotBuilt("Depth::setFocusModels");
     (*focusedBackend_)->setFocusModels(models);

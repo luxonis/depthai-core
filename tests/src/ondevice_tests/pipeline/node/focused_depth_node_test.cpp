@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <map>
 #include <thread>
 #include <vector>
@@ -470,4 +471,92 @@ while True:
     REQUIRE(filled > 10);
     if(mode != Mode::HYBRID) REQUIRE(empty > 10);
     if(mode == Mode::HOLD) REQUIRE(held > 10);
+}
+
+TEST_CASE("FocusedDepth: budget pipelines two separate S crops and preserves frame geometry") {
+    const char* address = std::getenv("DEPTHAI_TEST_DEVICE");
+    Pipeline pipeline = address ? Pipeline(std::make_shared<Device>(DeviceInfo(address))) : Pipeline();
+    auto device = requireDefaultDevice(pipeline);
+    skipUnlessFocusedDepthSupported(device);
+    const auto pair = device->getStereoPairs().front();
+    auto camera = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 30.0f);
+    auto script = pipeline.create<node::Script>();
+    camera->requestOutput({64, 40}, ImgFrame::Type::GRAY8, ImgResizeMode::CROP, 30.0f)->link(script->inputs["frame"]);
+    script->setScript(R"(
+while True:
+    frame = node.io["frame"].get()
+    message = ImgDetections()
+    phase = frame.getSequenceNum() % 3
+    if phase != 0:
+        big = ImgDetection()
+        big.xmin, big.ymin, big.xmax, big.ymax = (0.1, 0.55, 0.3, 0.8) if phase == 1 else (0.6, 0.55, 0.9, 0.8)
+        big.confidence = 1.0
+        small = ImgDetection()
+        small.xmin, small.ymin, small.xmax, small.ymax = (0.45, 0.1, 0.55, 0.25)
+        small.confidence = 1.0
+        message.detections = [small, big]
+    message.setTimestamp(frame.getTimestamp())
+    message.setTimestampDevice(frame.getTimestampDevice())
+    message.setSequenceNum(frame.getSequenceNum())
+    node.io["detections"].send(message)
+)");
+    auto depth = pipeline.create<node::Depth>();
+    depth->setFocusModels({DeviceModelZoo::NEURAL_DEPTH_SMALL});
+    depth->setFocusSelectionMode(node::FocusController::SelectionMode::ALL);
+    depth->setFocusDispatchMode(node::FocusController::DispatchMode::TIME_BUDGET);
+    depth->build(30.0f);
+    script->outputs["detections"].link(depth->inputDetections);
+    auto output = depth->focusedDepth().createOutputQueue(4, false);
+    auto confidence = depth->focusedConfidence().createOutputQueue(4, false);
+
+    int backends = 0;
+    for(const auto& child : depth->getAllNodes()) {
+        if(std::dynamic_pointer_cast<node::NeuralDepth>(child)) ++backends;
+        if(auto focused = std::dynamic_pointer_cast<node::FocusedDepth>(child)) {
+            REQUIRE_THROWS(focused->setFocusModels({DeviceModelZoo::NEURAL_DEPTH_288X180}));
+            REQUIRE_THROWS(focused->setFocusSelectionMode(node::FocusController::SelectionMode::ALL));
+            REQUIRE_THROWS(focused->setFocusDispatchMode(node::FocusController::DispatchMode::TIME_BUDGET));
+        }
+    }
+    REQUIRE(backends == 1);
+    REQUIRE_THROWS(depth->setFocusModels({DeviceModelZoo::NEURAL_DEPTH_288X180}));
+
+    struct StopGuard {
+        Pipeline& pipeline;
+        ~StopGuard() {
+            pipeline.stop();
+        }
+    } guard{pipeline};
+    pipeline.start();
+    int phases[3] = {0, 0, 0};
+    int filled = 0;
+    int64_t previous = -1;
+    for(int i = 0; i < 90; ++i) {
+        bool timedOut = false;
+        auto frame = output->get<ImgFrame>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(frame != nullptr);
+        REQUIRE(frame->getSequenceNum() > previous);
+        previous = frame->getSequenceNum();
+        const int phase = previous % 3;
+        ++phases[phase];
+        const auto pixels = frame->getFrame();
+        if(phase == 0) {
+            REQUIRE(cv::countNonZero(pixels) == 0);
+        } else {
+            const Box box = phase == 1 ? Box{0.1f, 0.55f, 0.3f, 0.8f} : Box{0.6f, 0.55f, 0.9f, 0.8f};
+            const Box small{0.45f, 0.1f, 0.55f, 0.25f};
+            const auto result = analyzeFocused(pixels, {box, small});
+            REQUIRE(result.outsideFill == 0);
+            filled += cv::countNonZero(pixels(cv::Rect(pixels.cols * 0.45, pixels.rows * 0.1, pixels.cols * 0.1, pixels.rows * 0.15))) > 0
+                      && cv::countNonZero(pixels(cv::Rect(
+                             pixels.cols * box.xmin, pixels.rows * box.ymin, pixels.cols * (box.xmax - box.xmin), pixels.rows * (box.ymax - box.ymin))))
+                             > 0;
+        }
+        (void)confidence->tryGetAll<ImgFrame>();
+    }
+    REQUIRE(phases[0] > 10);
+    REQUIRE(phases[1] > 10);
+    REQUIRE(phases[2] > 10);
+    REQUIRE(filled > 30);
 }

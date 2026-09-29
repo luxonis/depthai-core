@@ -36,6 +36,7 @@ std::shared_ptr<FocusController> FocusController::build(float targetFps) {
 }
 
 void FocusController::setTargetFps(float targetFps) {
+    if(!std::isfinite(targetFps) || targetFps <= 0) throw std::invalid_argument("Target FPS must be finite and positive");
     targetFps_ = targetFps;
 }
 
@@ -125,10 +126,17 @@ float FocusController::estimateInferenceCostMs(int w, int h) {
     if(w <= 0 || h <= 0) {
         return 0.0f;
     }
-    // Fitted to luxonis/depthai-core#1912 on-device NeuralDepth latencies (see header).
-    constexpr float kBaseMs = 31.7f;
-    constexpr float kMsPerPixel = 1.88e-4f;
-    return kBaseMs + kMsPerPixel * static_cast<float>(w) * static_cast<float>(h);
+    // Output intervals, not end-to-end latency. Small models are camera-capped at 60 FPS.
+    // https://docs.luxonis.com/overview/toplevel-features/depth
+    const int pixels = w * h;
+    const float fps = pixels <= 480 * 300    ? 60.0f
+                      : pixels <= 576 * 360  ? 43.0f
+                      : pixels <= 768 * 480  ? 25.0f
+                      : pixels <= 864 * 540  ? 21.0f
+                      : pixels <= 960 * 600  ? 16.0f
+                      : pixels <= 1056 * 660 ? 14.0f
+                                             : 9.4f;
+    return 1000.0f / fps;
 }
 
 int FocusController::selectTierWithinBudget(const std::array<Tier, kNumTiers>& tiers, int tierCount, int cropW, int cropH, double remainingMs) {
@@ -138,7 +146,7 @@ int FocusController::selectTierWithinBudget(const std::array<Tier, kNumTiers>& t
     // it (with per-crop focal correction keeping depth metric) - trading resolution for time.
     const int ideal = selectTier(tiers, tierCount, cropW, cropH);
     for(int tier = ideal; tier >= 0; --tier) {
-        if(static_cast<double>(estimateInferenceCostMs(tiers[tier].w, tiers[tier].h)) <= remainingMs) {
+        if(static_cast<double>(estimateInferenceCostMs(tiers[tier].w, tiers[tier].h)) <= remainingMs + 1e-4) {
             return tier;
         }
     }
@@ -289,7 +297,6 @@ float FocusController::depthFocalScale(float fxFull, float fxUsed, int outW, int
 }
 
 std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGroup> in) {
-    const auto processStart = std::chrono::steady_clock::now();
     if(!in) {
         return nullptr;
     }
@@ -373,6 +380,25 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
 
     const std::chrono::milliseconds timeout(5000);
 
+    std::vector<int> budgetTiers;
+    if(dispatchMode_ == DispatchMode::TIME_BUDGET) {
+        auto ordered = orderCropsByArea(merged);
+        merged.clear();
+        double remainingMs = 1000.0 / static_cast<double>(targetFps_);
+        for(const auto& crop : ordered) {
+            const int tier = cropThroughput_ > 0 ? (1000.0 / static_cast<double>(cropThroughput_) <= remainingMs + 1e-4 ? 0 : -1)
+                                                 : selectTierWithinBudget(tiers_, tierCount_, crop.w, crop.h, remainingMs);
+            if(tier < 0 && !merged.empty()) break;
+            const int selected = std::max(0, tier);  // Always admit one available region.
+            merged.push_back(crop);
+            budgetTiers.push_back(selected);
+            remainingMs -= cropThroughput_ > 0 ? 1000.0 / static_cast<double>(cropThroughput_)
+                                               : static_cast<double>(estimateInferenceCostMs(tiers_[selected].w, tiers_[selected].h));
+            // Three frames in flight must fit the depth/confidence result queues.
+            if(tierCount_ == 1 && merged.size() >= kMaxCropsPerFrame / 3) break;
+        }
+    }
+
     // Broadcast the synchronized pair to every tier's crop ImageManips once per group. The first
     // config sent to a tier consumes this frame (setReusePreviousImage(false)); later crops on the
     // same tier reuse it, so all of a tier's left/right crops share this timestamp and its backend
@@ -406,12 +432,12 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     };
     std::size_t detectionCount = detections.size();
     std::size_t boxCount = boxes.size();
-    const bool pipelineFrames = tierCount_ == 1 && selectionMode_ == SelectionMode::LARGEST && dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME;
+    const bool pipelineFrames = tierCount_ == 1 && (dispatchMode_ == DispatchMode::TIME_BUDGET || selectionMode_ == SelectionMode::LARGEST);
     if(pipelineFrames) {
         // Keep three frames in flight to overlap transport, inference and reassembly.
         // Each job retains its own geometry and source metadata; empty frames stay in order.
-        for(const auto& mc : merged) {
-            dispatchCrop(mc, 0, false);
+        for(std::size_t i = 0; i < merged.size(); ++i) {
+            dispatchCrop(merged[i], 0, i > 0);
         }
         pendingFrames_.push_back({leftImg, baseDepth, baseConfidence, std::move(merged), detections.size(), boxes.size()});
         if(pendingFrames_.size() < 3) {
@@ -496,20 +522,6 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         }
     };
 
-    auto dispatchAndCollect = [&](const MergedCrop& mc, int selectedTier, bool reusePrevious) {
-        dispatchCrop(mc, selectedTier, reusePrevious);
-        bool hasTimedOut = false;
-        auto depthMsg = depthCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
-        if(hasTimedOut || !depthMsg) {
-            throw std::runtime_error("Focused depth timed out waiting for a depth crop; stopping to avoid mismatched frames.");
-        }
-        auto confMsg = confidenceCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
-        if(hasTimedOut || !confMsg) {
-            throw std::runtime_error("Focused depth timed out waiting for a confidence crop; stopping to avoid mismatched frames.");
-        }
-        reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
-    };
-
     // Per-crop dispatch trace filled below and formatted into the focusDebug output.
     struct CropTrace {
         int tier;
@@ -521,59 +533,27 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     };
     std::vector<CropTrace> trace;
 
-    if(dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME) {
-        const int selectedTier = selectTier(tiers_, tierCount_, maxW, maxH);
-        // Dispatch every crop first so the selected backend remains pipelined across the frame.
-        for(std::size_t idx = 0; !pipelineFrames && idx < merged.size(); ++idx) {
-            const auto& mc = merged[idx];
-            dispatchCrop(mc, selectedTier, idx > 0);
-        }
-        for(const auto& mc : merged) {
-            const auto cropStart = std::chrono::steady_clock::now();
-            bool hasTimedOut = false;
-            auto depthMsg = depthCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
-            if(hasTimedOut || !depthMsg) {
-                throw std::runtime_error("Focused depth timed out waiting for a depth crop; stopping to avoid mismatched frames.");
-            }
-            auto confMsg = confidenceCropTier(selectedTier).get<ImgFrame>(timeout, hasTimedOut);
-            if(hasTimedOut || !confMsg) {
-                throw std::runtime_error("Focused depth timed out waiting for a confidence crop; stopping to avoid mismatched frames.");
-            }
-            reassemble(mc, depthMsg, confMsg, tiers_[selectedTier].w);
-            const double cropMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cropStart).count();
-            trace.push_back({selectedTier, mc.w, mc.h, tiers_[selectedTier].w, tiers_[selectedTier].h, cropMs});
-        }
-    } else {
-        // Process crops largest-first within a per-frame time budget of one frame period. For each
-        // crop, pick the smallest model that fits both the crop size and the remaining budget
-        // (measured elapsed vs the #1912-derived per-model cost estimate), downgrading toward the
-        // fastest model when time runs short, and stop once even the fastest model would overrun.
-        // Elapsed time is measured (so model-reload cost between differently sized models is
-        // accounted for); only the next crop's cost is estimated.
-        const auto ordered = orderCropsByArea(merged);
-        const double budgetMs = 1000.0 / std::max(0.1, static_cast<double>(targetFps_));
-        std::size_t processed = 0;
-        std::array<bool, kNumTiers> consumed{};
-        for(const auto& mc : ordered) {
-            const auto now = std::chrono::steady_clock::now();
-            const double remainingMs = budgetMs - std::chrono::duration<double, std::milli>(now - processStart).count();
-            int selectedTier = selectTierWithinBudget(tiers_, tierCount_, mc.w, mc.h, remainingMs);
-            if(selectedTier < 0) {
-                // Nothing fits the remaining budget: always process at least one crop (the fastest
-                // model) so a frame is never left completely empty, then stop.
-                if(processed == 0) {
-                    selectedTier = 0;
-                } else {
-                    break;
-                }
-            }
-            const auto cropStart = std::chrono::steady_clock::now();
-            dispatchAndCollect(mc, selectedTier, consumed[selectedTier]);
-            consumed[selectedTier] = true;
-            const double cropMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cropStart).count();
-            trace.push_back({selectedTier, mc.w, mc.h, tiers_[selectedTier].w, tiers_[selectedTier].h, cropMs});
-            ++processed;
-        }
+    const int frameTier = selectTier(tiers_, tierCount_, maxW, maxH);
+    std::array<bool, kNumTiers> consumed{};
+    const auto tierForCrop = [&](std::size_t i) { return tierCount_ == 1 ? 0 : dispatchMode_ == DispatchMode::TIME_BUDGET ? budgetTiers[i] : frameTier; };
+    // Submit the entire admitted batch before collecting results, allowing backend overlap.
+    for(std::size_t i = 0; !pipelineFrames && i < merged.size(); ++i) {
+        const int tier = tierForCrop(i);
+        dispatchCrop(merged[i], tier, consumed[tier]);
+        consumed[tier] = true;
+    }
+    for(std::size_t i = 0; i < merged.size(); ++i) {
+        const auto& mc = merged[i];
+        const int tier = tierForCrop(i);
+        const auto cropStart = std::chrono::steady_clock::now();
+        bool hasTimedOut = false;
+        auto depthMsg = depthCropTier(tier).get<ImgFrame>(timeout, hasTimedOut);
+        if(hasTimedOut || !depthMsg) throw std::runtime_error("Focused depth timed out waiting for a depth crop");
+        auto confMsg = confidenceCropTier(tier).get<ImgFrame>(timeout, hasTimedOut);
+        if(hasTimedOut || !confMsg) throw std::runtime_error("Focused depth timed out waiting for a confidence crop");
+        reassemble(mc, depthMsg, confMsg, tiers_[tier].w);
+        const double cropMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cropStart).count();
+        trace.push_back({tier, mc.w, mc.h, tiers_[tier].w, tiers_[tier].h, cropMs});
     }
 
     {
@@ -582,7 +562,7 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         dbg << "dets=" << detectionCount << " boxes=" << boxCount << " crops=" << merged.size() << " processed=" << trace.size()
             << " mode=" << (dispatchMode_ == DispatchMode::SINGLE_TIER_PER_FRAME ? "SINGLE_TIER" : "TIME_BUDGET")
             << " sel=" << (selectionMode_ == SelectionMode::LARGEST ? "LARGEST" : "ALL") << " fps=" << std::fixed << std::setprecision(1) << targetFps_
-            << " budget_ms=" << std::setprecision(1) << budgetMs << " tiers=[";
+            << " budget_ms=" << std::setprecision(1) << budgetMs << " crop_fps_override=" << cropThroughput_ << " tiers=[";
         for(int t = 0; t < tierCount_; ++t) {
             dbg << tiers_[t].w << "x" << tiers_[t].h << (t + 1 < tierCount_ ? "," : "");
         }

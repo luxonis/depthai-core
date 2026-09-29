@@ -179,6 +179,11 @@ class Depth : public DeviceNodeGroup {
     /** EVA input size in HYBRID mode (default 384x240). Must be positive, width divisible by 128, and at most 1280x800. */
     std::shared_ptr<Depth> setFocusStereoSize(unsigned int width, unsigned int height);
 
+    /** Override the measured steady-state crops/second for a single-model budget. Set before wiring.
+     * @param fps Positive finite crop throughput; this does not change camera FPS or guarantee output FPS.
+     */
+    std::shared_ptr<Depth> setFocusCropThroughput(float fps);
+
     /**
      * Configure the focused-depth backend models before focused outputs are wired.
      * One to three models are accepted; only the configured backends are created.

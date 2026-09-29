@@ -38,6 +38,12 @@ std::shared_ptr<FocusedDepth> FocusedDepth::setFocusStereoSize(unsigned int widt
     return std::static_pointer_cast<FocusedDepth>(shared_from_this());
 }
 
+std::shared_ptr<FocusedDepth> FocusedDepth::setFocusCropThroughput(float fps) {
+    if(built_) throw std::logic_error("FocusedDepth configuration must be set before build().");
+    focusController->setCropThroughput(fps);
+    return std::static_pointer_cast<FocusedDepth>(shared_from_this());
+}
+
 std::shared_ptr<FocusedDepth> FocusedDepth::setFocusModels(const std::vector<DeviceModelZoo>& models) {
     if(built_) {
         throw std::logic_error("FocusedDepth configuration must be set before build().");
@@ -71,6 +77,9 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
     }
     if(mode_ == FocusController::Mode::HYBRID && (!getDevice() || getDevice()->getPlatform() != Platform::RVC4)) {
         throw std::runtime_error("Hybrid focused depth requires an RVC4 device with EVA stereo");
+    }
+    if(focusController->getCropThroughput() > 0 && focusController->getTierCount() != 1) {
+        throw std::invalid_argument("Crop throughput override requires exactly one focus model");
     }
     built_ = true;
 

@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <depthai/pipeline/node/host/FocusController.hpp>
+#include <limits>
 #include <vector>
 
 using dai::node::FocusController;
@@ -362,31 +363,30 @@ TEST_CASE("FocusController::orderCropsByArea: largest crops are dispatched first
     REQUIRE(ordered[2].w * ordered[2].h == 400);
 }
 
-TEST_CASE("FocusController::estimateInferenceCostMs: reproduces the #1912 benchmark latencies", "[FocusController]") {
-    // Fitted so Nano/S/M/L land near their measured on-device single-inference latencies.
-    REQUIRE(FocusController::estimateInferenceCostMs(384, 240) == Catch::Approx(49.0).margin(3.0));
-    REQUIRE(FocusController::estimateInferenceCostMs(480, 300) == Catch::Approx(57.0).margin(3.0));
-    REQUIRE(FocusController::estimateInferenceCostMs(576, 360) == Catch::Approx(68.0).margin(4.0));
-    REQUIRE(FocusController::estimateInferenceCostMs(768, 480) == Catch::Approx(101.0).margin(4.0));
-    // Larger input costs more; invalid input costs nothing.
-    REQUIRE(FocusController::estimateInferenceCostMs(576, 360) > FocusController::estimateInferenceCostMs(384, 240));
-    REQUIRE(FocusController::estimateInferenceCostMs(0, 0) == Catch::Approx(0.0));
-}
-
-TEST_CASE("FocusController::selectTierWithinBudget: fits crop size and downgrades under a tight budget", "[FocusController]") {
+TEST_CASE("FocusController budgets output intervals rather than inference latency", "[FocusController]") {
     const std::array<FocusController::Tier, FocusController::kNumTiers> tiers{{
-        {dai::DeviceModelZoo::NEURAL_DEPTH_NANO, 384, 240},
         {dai::DeviceModelZoo::NEURAL_DEPTH_SMALL, 480, 300},
         {dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM, 576, 360},
+        {dai::DeviceModelZoo::NEURAL_DEPTH_LARGE, 768, 480},
     }};
-    // Ample budget: use the crop-appropriate tier (M fits a 576x360 crop).
-    REQUIRE(FocusController::selectTierWithinBudget(tiers, 3, 576, 360, 1000.0) == 2);
-    // Budget fits S (~57 ms) but not M (~68 ms): downgrade the M-sized crop to S.
-    REQUIRE(FocusController::selectTierWithinBudget(tiers, 3, 576, 360, 60.0) == 1);
-    // Budget fits only Nano (~49 ms): downgrade further.
-    REQUIRE(FocusController::selectTierWithinBudget(tiers, 3, 576, 360, 50.0) == 0);
-    // Not even Nano fits: caller must decide whether to force one crop or stop.
-    REQUIRE(FocusController::selectTierWithinBudget(tiers, 3, 576, 360, 10.0) == -1);
+    double remaining = 1000.0 / 30.0;
+    REQUIRE(FocusController::selectTierWithinBudget(tiers, 1, 800, 600, remaining) == 0);
+    remaining -= FocusController::estimateInferenceCostMs(480, 300);
+    REQUIRE(FocusController::selectTierWithinBudget(tiers, 1, 800, 600, remaining) == 0);
+    remaining -= FocusController::estimateInferenceCostMs(480, 300);
+    REQUIRE(FocusController::selectTierWithinBudget(tiers, 1, 800, 600, remaining) == -1);
+    REQUIRE(FocusController::estimateInferenceCostMs(576, 360) == Catch::Approx(1000.0 / 43));
+    REQUIRE(FocusController::selectTierWithinBudget(tiers, 3, 768, 480, 25.0) == 1);
+    REQUIRE(FocusController::selectTierWithinBudget(tiers, 3, 768, 480, 20.0) == 0);
+    REQUIRE(FocusController::selectTierWithinBudget(tiers, 3, 768, 480, 10.0) == -1);
+    REQUIRE(FocusController::estimateInferenceCostMs(0, 0) == 0);
+    FocusController controller;
+    REQUIRE_THROWS(controller.setCropThroughput(0));
+    REQUIRE_THROWS(controller.setCropThroughput(-1));
+    REQUIRE_THROWS(controller.setCropThroughput(std::numeric_limits<float>::infinity()));
+    REQUIRE_THROWS(controller.setCropThroughput(std::numeric_limits<float>::quiet_NaN()));
+    controller.setCropThroughput(120);
+    REQUIRE(controller.getCropThroughput() == 120);
 }
 
 TEST_CASE("FocusController::depthFocalScale: makes depth crop-size invariant", "[FocusController]") {

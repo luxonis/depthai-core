@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <depthai/common/DeviceModelZoo.hpp>
 #include <depthai/pipeline/datatype/ImgDetections.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
@@ -10,6 +11,7 @@
 #include <deque>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -165,10 +167,8 @@ class FocusController : public CustomNode<FocusController> {
     // Return crops in descending area order. Pure so dispatch ordering can be tested without a device.
     static std::vector<MergedCrop> orderCropsByArea(const std::vector<MergedCrop>& crops);
 
-    // Estimated single-inference latency (ms) for a NeuralDepth model of w x h input, used to
-    // budget TIME_BUDGET dispatch. Linear in pixel count: 31.7 + 1.88e-4 * (w*h), fitted to the
-    // on-device benchmark in luxonis/depthai-core#1912 (Nano 384x240 ~49 ms, S 480x300 ~57 ms,
-    // M 576x360 ~68 ms, L 768x480 ~101 ms). Pure and host-testable.
+    // Estimated steady-state output interval (ms), using published model throughput.
+    // The 60 FPS camera cap is a conservative default, not the small models' maximum capacity.
     static float estimateInferenceCostMs(int w, int h);
 
     // Smallest tier that fits a cropW x cropH crop AND whose estimated inference cost fits within
@@ -197,6 +197,13 @@ class FocusController : public CustomNode<FocusController> {
     static float depthFocalScale(float fxFull, float fxUsed, int outW, int cropW);
 
     void setTargetFps(float targetFps);
+    void setCropThroughput(float fps) {
+        if(!std::isfinite(fps) || fps <= 0) throw std::invalid_argument("Crop throughput must be finite and positive");
+        cropThroughput_ = fps;
+    }
+    float getCropThroughput() const {
+        return cropThroughput_;
+    }
 
     constexpr static const char* NAME = "FocusController";
 
@@ -217,6 +224,7 @@ class FocusController : public CustomNode<FocusController> {
     std::optional<ImgTransformation> previousGeometry_;
     unsigned int previousInstance_ = 0;
     float targetFps_ = 30.0f;
+    float cropThroughput_ = 0.0f;
     std::array<Tier, kNumTiers> tiers_ = kTiers;
     int tierCount_ = kNumTiers;
     SelectionMode selectionMode_ = SelectionMode::ALL;

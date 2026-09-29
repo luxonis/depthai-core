@@ -70,6 +70,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .def("setFocusMode", &Depth::setFocusMode, py::arg("mode"), DOC(dai, node, Depth, setFocusMode))
         .def("setFocusHoldFrames", &Depth::setFocusHoldFrames, py::arg("frames"), DOC(dai, node, Depth, setFocusHoldFrames))
         .def("setFocusStereoSize", &Depth::setFocusStereoSize, py::arg("width"), py::arg("height"), DOC(dai, node, Depth, setFocusStereoSize))
+        .def("setFocusCropThroughput", &Depth::setFocusCropThroughput, py::arg("fps"), DOC(dai, node, Depth, setFocusCropThroughput))
         .def("setFocusModels", &Depth::setFocusModels, py::arg("models"))
         .def("setFocusSelectionMode", &Depth::setFocusSelectionMode, py::arg("mode"))
         .def("setFocusDispatchMode", &Depth::setFocusDispatchMode, py::arg("mode"))
