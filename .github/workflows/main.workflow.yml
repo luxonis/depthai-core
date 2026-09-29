@@ -1,8 +1,7 @@
 name: DepthAI Core CI/CD
 
 concurrency:
-  # Review notifications must not cancel PR builds or approved-review builds.
-  group: depthai-core-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.review.state || 'none' }}
+  group: depthai-core-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 on:
@@ -18,7 +17,7 @@ on:
     branches:
       - main
       - develop
-    types: [opened, synchronize, reopened, labeled]
+    types: [labeled]
   pull_request_review:
     types: [submitted]
 
