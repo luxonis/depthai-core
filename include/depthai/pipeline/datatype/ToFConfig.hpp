@@ -26,29 +26,31 @@ class ToFConfig : public Buffer {
      * when sending a partial update. In Python, use ToFConfig.VD55H1() and None
      * for unset controls.
      *
-     * Unless stated otherwise, the IPP does not publish a supported numeric range.
+     * Only phaseUnwrapErrorThreshold has a range declared by the IPP. The limits
+     * below for other numeric controls describe their useful input domain; ST does
+     * not publish a supported maximum for them.
      */
     struct VD55H1 {
-        /** Phase-unwrapping residual threshold in millimeters, from 0 to 10000. Applied at pipeline startup; runtime updates have no effect. */
+        /** Phase-unwrapping residual threshold in millimeters, in [0, 10000] (IPP range, step 1). Applied at pipeline startup; runtime updates have no effect. */
         std::optional<float> phaseUnwrapErrorThreshold;
 
-        /** Enable the bilateral filter (true), or bypass it (false). */
+        /** Enable the bilateral filter (true), or bypass it (false); values are true and false. */
         std::optional<bool> enableBilateralFilter;
-        /** Dimensionless standard-deviation multiplier used by the bilateral filter. */
+        /** Dimensionless standard-deviation multiplier for the bilateral filter; must be > 0 to avoid division by zero. No published maximum. */
         std::optional<float> bilateralStdFactor;
 
-        /** Enable temporal noise reduction (true), or bypass it (false). */
+        /** Enable temporal noise reduction (true), or bypass it (false); values are true and false. */
         std::optional<bool> enableTemporalNoiseReduction;
-        /** Maximum temporal noise reduction accumulation length, in frames. */
+        /** Maximum temporal noise reduction accumulation length, in frames; use >= 1. No published maximum. */
         std::optional<std::uint32_t> temporalNoiseReductionMaxGain;
-        /** Dimensionless standard-deviation multiplier for temporal noise rejection. */
+        /** Dimensionless standard-deviation multiplier for temporal noise rejection; use >= 0. No published maximum. */
         std::optional<float> temporalNoiseReductionStdFactor;
 
-        /** Enable the flying-pixel filter (true), or bypass it (false). */
+        /** Enable the flying-pixel filter (true), or bypass it (false); values are true and false. */
         std::optional<bool> enableFlyingPixelFilter;
-        /** Maximum depth difference between supporting neighboring pixels, in millimeters. */
+        /** Maximum depth difference between supporting neighboring pixels, in millimeters; use > 0. No published maximum. */
         std::optional<float> flyingPixelDepthThreshold;
-        /** Minimum number of neighboring depth samples supporting a pixel; passed to the IPP as a float. */
+        /** Minimum supporting depth-sample count, passed as a float. With the fixed 5x5 neighborhood, use [0, 25); 25 or more rejects every pixel. */
         std::optional<float> flyingPixelMinDepthOccurrence;
 
         DEPTHAI_SERIALIZE(VD55H1,

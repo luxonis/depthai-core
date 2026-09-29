@@ -11,20 +11,22 @@ namespace {
 
 constexpr float FPS = 30.0f;
 constexpr const char* WINDOW = "VD55H1 controls";
+constexpr float UNWRAP_THRESHOLD_MM = 192.0f;  // IPP range [0, 10000]; startup only.
 
-std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 9>& value) {
+// Example slider ranges, not IPP-supported limits: bilateral std 0.01-10,
+// TNR gain 1-100 frames, TNR std 0-5, FP depth 1-1000 mm, FP occurrence 0-24.99.
+std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 8>& value) {
     auto config = std::make_shared<dai::ToFConfig>();
+    config->vd55h1 = {};  // Send only runtime controls.
     auto& vd55h1 = config->vd55h1;
-    // The IPP applies this threshold at startup; changing it at runtime has no effect.
-    vd55h1.phaseUnwrapErrorThreshold = value[0];
-    vd55h1.enableBilateralFilter = value[1] != 0;
-    vd55h1.bilateralStdFactor = value[2] / 100.0f;
-    vd55h1.enableTemporalNoiseReduction = value[3] != 0;
-    vd55h1.temporalNoiseReductionMaxGain = value[4];
-    vd55h1.temporalNoiseReductionStdFactor = value[5] / 100.0f;
-    vd55h1.enableFlyingPixelFilter = value[6] != 0;
-    vd55h1.flyingPixelDepthThreshold = value[7];
-    vd55h1.flyingPixelMinDepthOccurrence = value[8] / 100.0f;
+    vd55h1.enableBilateralFilter = value[0] != 0;
+    vd55h1.bilateralStdFactor = std::max(1, value[1]) / 100.0f;
+    vd55h1.enableTemporalNoiseReduction = value[2] != 0;
+    vd55h1.temporalNoiseReductionMaxGain = std::max(1, value[3]);
+    vd55h1.temporalNoiseReductionStdFactor = value[4] / 100.0f;
+    vd55h1.enableFlyingPixelFilter = value[5] != 0;
+    vd55h1.flyingPixelDepthThreshold = std::max(1, value[6]);
+    vd55h1.flyingPixelMinDepthOccurrence = value[7] / 100.0f;
     return config;
 }
 
@@ -45,23 +47,23 @@ int main() {
         throw std::runtime_error(message.str());
     }
     auto tof = pipeline.create<dai::node::ToF>()->build(sensor->socket, dai::ToFConfig::Profile::MID_RANGE, FPS);
+    tof->tofBaseNode.initialConfig->vd55h1.phaseUnwrapErrorThreshold = UNWRAP_THRESHOLD_MM;
     auto depthQueue = tof->depth.createOutputQueue(1, false);
     auto configQueue = tof->tofBaseInputConfig.createInputQueue();
 
     cv::namedWindow(WINDOW);
-    std::array<int, 9> value = {192, 1, 205, 1, 27, 82, 1, 101, 1356};
-    cv::createTrackbar("unwrap threshold", WINDOW, &value[0], 500);
-    cv::createTrackbar("bilateral", WINDOW, &value[1], 1);
-    cv::createTrackbar("bilateral std x100", WINDOW, &value[2], 1000);
-    cv::createTrackbar("temporal NR", WINDOW, &value[3], 1);
-    cv::createTrackbar("TNR max gain", WINDOW, &value[4], 100);
-    cv::createTrackbar("TNR std x100", WINDOW, &value[5], 500);
-    cv::createTrackbar("flying pixel", WINDOW, &value[6], 1);
-    cv::createTrackbar("FP depth threshold", WINDOW, &value[7], 1000);
-    cv::createTrackbar("FP min occurrence x100", WINDOW, &value[8], 5000);
+    std::array<int, 8> value = {1, 205, 1, 27, 82, 1, 101, 1356};
+    cv::createTrackbar("bilateral", WINDOW, &value[0], 1);
+    cv::createTrackbar("bilateral std x100", WINDOW, &value[1], 1000);
+    cv::createTrackbar("temporal NR", WINDOW, &value[2], 1);
+    cv::createTrackbar("TNR max gain", WINDOW, &value[3], 100);
+    cv::createTrackbar("TNR std x100", WINDOW, &value[4], 500);
+    cv::createTrackbar("flying pixel", WINDOW, &value[5], 1);
+    cv::createTrackbar("FP depth threshold", WINDOW, &value[6], 1000);
+    cv::createTrackbar("FP min occurrence x100", WINDOW, &value[7], 2499);
 
     pipeline.start();
-    std::array<int, 9> previous{};
+    std::array<int, 8> previous{};
     previous.fill(-1);
     while(pipeline.isRunning()) {
         if(value != previous) {
