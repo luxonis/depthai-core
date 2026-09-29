@@ -9,7 +9,7 @@
 // project
 #include "CallbackHandler.hpp"
 #include "depthai/common/UsbSpeed.hpp"
-#include "depthai/device/Version.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
