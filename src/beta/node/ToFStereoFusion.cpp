@@ -58,10 +58,10 @@ std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<da
     }
     const auto leftFps = left->properties.fps;
     const auto rightFps = right->properties.fps;
-    if(leftFps < fps || rightFps < fps) {
+    if((leftFps != CameraProperties::AUTO && leftFps < fps) || (rightFps != CameraProperties::AUTO && rightFps < fps)) {
         throw std::invalid_argument("ToFStereoFusion camera FPS must not be below fusion FPS");
     }
-    if(leftFps != rightFps) {
+    if(leftFps != CameraProperties::AUTO && rightFps != CameraProperties::AUTO && leftFps != rightFps) {
         logger::warn("ToFStereoFusion camera FPS values differ (left: {}, right: {}); outputs may not synchronize", leftFps, rightFps);
     }
 

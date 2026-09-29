@@ -314,6 +314,9 @@ TEST_CASE("ToFStereoFusion: FPS configures neural depth and ToF subnodes", "[fus
     for(const float fps : {0.f, -1.f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
         REQUIRE_THROWS_WITH(fusion->build(left, right, fps), "ToFStereoFusion FPS must be finite and positive");
     }
+    REQUIRE_THROWS_WITH(fusion->build(left, right, 16.f), "ToFStereoFusion camera FPS must not be below fusion FPS");
+    left->properties.fps = CameraProperties::AUTO;
+    right->properties.fps = CameraProperties::AUTO;
     fusion->build(left, right, 15.f);
     auto depthQueue = fusion->depth.createOutputQueue(4, false);
     auto confidenceQueue = fusion->confidence.createOutputQueue(4, false);
