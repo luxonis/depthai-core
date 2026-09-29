@@ -152,6 +152,7 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REF: ${{ github.ref }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
         run: |
           SUMMARY=$(jq -r '
             def job_label:
@@ -234,9 +235,11 @@ jobs:
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-type: application/json" \
             --data @payload.json
-          
-          python3 scripts/ci/report_failed_tests.py "slackNotificationPayload.json"
-          curl -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-            -H "Content-type: application/json" \
-            --data @slackNotificationPayload.json 
+
+          if [[ "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            python3 scripts/ci/report_failed_tests.py "slackNotificationPayload.json"
+            curl -X POST https://slack.com/api/chat.postMessage \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-type: application/json" \
+              --data @slackNotificationPayload.json 
+          fi
