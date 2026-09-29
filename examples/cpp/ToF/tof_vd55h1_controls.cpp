@@ -15,6 +15,7 @@ constexpr const char* WINDOW = "VD55H1 controls";
 std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 9>& value) {
     auto config = std::make_shared<dai::ToFConfig>();
     auto& vd55h1 = config->vd55h1;
+    // The IPP applies this threshold at startup; changing it at runtime has no effect.
     vd55h1.phaseUnwrapErrorThreshold = value[0];
     vd55h1.enableBilateralFilter = value[1] != 0;
     vd55h1.bilateralStdFactor = value[2] / 100.0f;

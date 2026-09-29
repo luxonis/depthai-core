@@ -29,7 +29,7 @@ class ToFConfig : public Buffer {
      * Unless stated otherwise, the IPP does not publish a supported numeric range.
      */
     struct VD55H1 {
-        /** Phase-unwrapping residual threshold in millimeters, from 0 to 10000. Lower values reject more pixels. */
+        /** Phase-unwrapping residual threshold in millimeters, from 0 to 10000. Applied at pipeline startup; runtime updates have no effect. */
         std::optional<float> phaseUnwrapErrorThreshold;
 
         /** Enable the bilateral filter (true), or bypass it (false). */

@@ -17,6 +17,7 @@ WINDOW = "VD55H1 controls"
 def configFromTrackbars() -> dai.ToFConfig:
     config = dai.ToFConfig()
     vd55h1 = config.vd55h1
+    # The IPP applies this threshold at startup; changing it at runtime has no effect.
     vd55h1.phaseUnwrapErrorThreshold = cv2.getTrackbarPos("unwrap threshold", WINDOW)
     vd55h1.enableBilateralFilter = bool(cv2.getTrackbarPos("bilateral", WINDOW))
     vd55h1.bilateralStdFactor = cv2.getTrackbarPos("bilateral std x100", WINDOW) / 100.0
