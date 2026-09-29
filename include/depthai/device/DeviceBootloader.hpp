@@ -122,54 +122,6 @@ class DeviceBootloader {
     static std::vector<DeviceInfo> getAllAvailableDevices();
 
     /**
-     * Creates application package which can be flashed to depthai device.
-     * @param pipeline Pipeline from which to create the application package
-     * @param pathToCmd Optional path to custom device firmware
-     * @param compress Optional boolean which specifies if contents should be compressed
-     * @param applicationName Optional name the application that is flashed
-     * @returns Depthai application package
-     */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(
-        const Pipeline& pipeline, const fs::path& pathToCmd = {}, bool compress = false, std::string applicationName = "", bool checkChecksum = false);
-
-    /**
-     * Creates application package which can be flashed to depthai device.
-     * @param pipeline Pipeline from which to create the application package
-     * @param compress Specifies if contents should be compressed
-     * @param applicationName Name the application that is flashed
-     * @returns Depthai application package
-     */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline,
-                                                                bool compress,
-                                                                const std::string& applicationName = "",
-                                                                bool checkChecksum = false);
-
-    /**
-     * Saves application package to a file which can be flashed to depthai device.
-     * @param path Path where to save the application package
-     * @param pipeline Pipeline from which to create the application package
-     * @param pathToCmd Optional path to custom device firmware
-     * @param compress Optional boolean which specifies if contents should be compressed
-     * @param applicationName Optional name the application that is flashed
-     */
-    static void saveDepthaiApplicationPackage(const fs::path& path,
-                                              const Pipeline& pipeline,
-                                              const fs::path& pathToCmd = {},
-                                              bool compress = false,
-                                              const std::string& applicationName = "",
-                                              bool checkChecksum = false);
-
-    /**
-     * Saves application package to a file which can be flashed to depthai device.
-     * @param path Path where to save the application package
-     * @param pipeline Pipeline from which to create the application package
-     * @param compress Specifies if contents should be compressed
-     * @param applicationName Optional name the application that is flashed
-     */
-    static void saveDepthaiApplicationPackage(
-        const fs::path& path, const Pipeline& pipeline, bool compress, const std::string& applicationName = "", bool checkChecksum = false);
-
-    /**
      * @returns Embedded bootloader version
      */
     static Version getEmbeddedBootloaderVersion();
@@ -227,48 +179,10 @@ class DeviceBootloader {
     ~DeviceBootloader();
 
     /**
-     * Flashes a given pipeline to the device.
-     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
-     * @param pipeline Pipeline to flash to the board
-     * @param compress Compresses application to reduce needed memory size
-     * @param applicationName Name the application that is flashed
-     */
-    std::tuple<bool, std::string> flash(const std::function<void(float)>& progressCallback,
-                                        const Pipeline& pipeline,
-                                        bool compress = false,
-                                        const std::string& applicationName = "",
-                                        Memory memory = Memory::AUTO,
-                                        bool checkChecksum = false);
-
-    /**
-     * Flashes a given pipeline to the device.
-     * @param pipeline Pipeline to flash to the board
-     * @param compress Compresses application to reduce needed memory size
-     * @param applicationName Optional name the application that is flashed
-     */
-    std::tuple<bool, std::string> flash(
-        const Pipeline& pipeline, bool compress = false, const std::string& applicationName = "", Memory memory = Memory::AUTO, bool checkChecksum = false);
-
-    /**
      * Reads information about flashed application in specified memory from device
      * @param memory Specifies which memory to query
      */
     ApplicationInfo readApplicationInfo(Memory memory);
-
-    /**
-     * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
-     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
-     * @param package Depthai application package to flash to the board
-     */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(const std::function<void(float)>& progressCallback,
-                                                                 const std::vector<uint8_t>& package,
-                                                                 Memory memory = Memory::AUTO);
-
-    /**
-     * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
-     * @param package Depthai application package to flash to the board
-     */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(const std::vector<uint8_t>& package, Memory memory = Memory::AUTO);
 
     /**
      * Clears flashed application on the device, by removing SBR boot structure
