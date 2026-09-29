@@ -36,8 +36,6 @@ class ToFConfig : public Buffer {
         std::optional<bool> enableBilateralFilter;
         /** Dimensionless standard-deviation multiplier used by the bilateral filter. */
         std::optional<float> bilateralStdFactor;
-        /** Bilateral filter kernel width in pixels. Supported values are odd integers from 3 to 15. */
-        std::optional<std::uint32_t> bilateralKernelSize;
 
         /** Enable temporal noise reduction (true), or bypass it (false). */
         std::optional<bool> enableTemporalNoiseReduction;
@@ -57,7 +55,6 @@ class ToFConfig : public Buffer {
                           phaseUnwrapErrorThreshold,
                           enableBilateralFilter,
                           bilateralStdFactor,
-                          bilateralKernelSize,
                           enableTemporalNoiseReduction,
                           temporalNoiseReductionMaxGain,
                           temporalNoiseReductionStdFactor,

@@ -23,7 +23,6 @@ TEST_CASE("ToF standard presets populate VD55H1 controls independently of phase 
             REQUIRE(params.phaseUnwrapErrorThreshold == (low ? 82.0f : high ? 300.0f : 192.0f));
             REQUIRE(params.enableBilateralFilter == true);
             REQUIRE(params.bilateralStdFactor == (low ? 7.266f : 2.051f));
-            REQUIRE(params.bilateralKernelSize == 5);
             REQUIRE(params.enableTemporalNoiseReduction == true);
             REQUIRE(params.temporalNoiseReductionMaxGain == (low ? 1 : 27));
             REQUIRE(params.temporalNoiseReductionStdFactor == (low ? 0.9039f : 0.8205f));
