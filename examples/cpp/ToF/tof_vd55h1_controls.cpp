@@ -12,19 +12,18 @@ namespace {
 constexpr float FPS = 30.0f;
 constexpr const char* WINDOW = "VD55H1 controls";
 
-std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 10>& value) {
+std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 9>& value) {
     auto config = std::make_shared<dai::ToFConfig>();
     auto& vd55h1 = config->vd55h1;
     vd55h1.phaseUnwrapErrorThreshold = value[0];
     vd55h1.enableBilateralFilter = value[1] != 0;
     vd55h1.bilateralStdFactor = value[2] / 100.0f;
-    vd55h1.bilateralKernelSize = 3 + 2 * value[3];
-    vd55h1.enableTemporalNoiseReduction = value[4] != 0;
-    vd55h1.temporalNoiseReductionMaxGain = value[5];
-    vd55h1.temporalNoiseReductionStdFactor = value[6] / 100.0f;
-    vd55h1.enableFlyingPixelFilter = value[7] != 0;
-    vd55h1.flyingPixelDepthThreshold = value[8];
-    vd55h1.flyingPixelMinDepthOccurrence = value[9] / 100.0f;
+    vd55h1.enableTemporalNoiseReduction = value[3] != 0;
+    vd55h1.temporalNoiseReductionMaxGain = value[4];
+    vd55h1.temporalNoiseReductionStdFactor = value[5] / 100.0f;
+    vd55h1.enableFlyingPixelFilter = value[6] != 0;
+    vd55h1.flyingPixelDepthThreshold = value[7];
+    vd55h1.flyingPixelMinDepthOccurrence = value[8] / 100.0f;
     return config;
 }
 
@@ -49,20 +48,19 @@ int main() {
     auto configQueue = tof->tofBaseInputConfig.createInputQueue();
 
     cv::namedWindow(WINDOW);
-    std::array<int, 10> value = {192, 1, 205, 1, 1, 27, 82, 1, 101, 1356};
+    std::array<int, 9> value = {192, 1, 205, 1, 27, 82, 1, 101, 1356};
     cv::createTrackbar("unwrap threshold", WINDOW, &value[0], 500);
     cv::createTrackbar("bilateral", WINDOW, &value[1], 1);
     cv::createTrackbar("bilateral std x100", WINDOW, &value[2], 1000);
-    cv::createTrackbar("bilateral kernel (3+2x)", WINDOW, &value[3], 6);
-    cv::createTrackbar("temporal NR", WINDOW, &value[4], 1);
-    cv::createTrackbar("TNR max gain", WINDOW, &value[5], 100);
-    cv::createTrackbar("TNR std x100", WINDOW, &value[6], 500);
-    cv::createTrackbar("flying pixel", WINDOW, &value[7], 1);
-    cv::createTrackbar("FP depth threshold", WINDOW, &value[8], 1000);
-    cv::createTrackbar("FP min occurrence x100", WINDOW, &value[9], 5000);
+    cv::createTrackbar("temporal NR", WINDOW, &value[3], 1);
+    cv::createTrackbar("TNR max gain", WINDOW, &value[4], 100);
+    cv::createTrackbar("TNR std x100", WINDOW, &value[5], 500);
+    cv::createTrackbar("flying pixel", WINDOW, &value[6], 1);
+    cv::createTrackbar("FP depth threshold", WINDOW, &value[7], 1000);
+    cv::createTrackbar("FP min occurrence x100", WINDOW, &value[8], 5000);
 
     pipeline.start();
-    std::array<int, 10> previous{};
+    std::array<int, 9> previous{};
     previous.fill(-1);
     while(pipeline.isRunning()) {
         if(value != previous) {
