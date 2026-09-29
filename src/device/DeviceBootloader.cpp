@@ -444,7 +444,7 @@ DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory m
     Request::GetApplicationDetails appDetails;
     appDetails.memory = mem;
 
-    sendRequestThrow(Request::GetApplicationDetails{});
+    sendRequestThrow(appDetails);
 
     // Receive response
     Response::ApplicationDetails details;

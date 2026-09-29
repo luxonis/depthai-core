@@ -629,10 +629,13 @@ class DeviceManager:
 
             elif event == "Remove application":
                 try:
-                    self.bl.flashClear()
-                    Popup(f'Successfully removed application', self.window)
+                    success, msg = self.bl.flashClear()
+                    if success:
+                        Popup('Successfully removed application', self.window)
+                    else:
+                        Popup(f"Couldn't remove application ({msg})", self.window)
                 except Exception as ex:
-                    sg.popup(f"Couldn't remove application ({ex})", self.window)
+                    Popup(f"Couldn't remove application ({ex})", self.window)
 
             elif event.startswith("_unique_configBtn"):
                 self.window['-COL1-'].update(visible=False)
