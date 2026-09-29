@@ -30,6 +30,12 @@ This document describes the changes between the v2 and v3 APIs of DepthAI and ho
 * Replace any `.getOutputQueue()` calls with `output.createOutputQueue()`.
 * Replace any `.getInputQueue()` calls with `input.createInputQueue()`.
 
+## RVC2 standalone applications
+
+RVC2 standalone application packages (`.dap`) are unsupported in v3. The `DeviceBootloader.createDepthaiApplicationPackage`, `saveDepthaiApplicationPackage`, `flashDepthaiApplicationPackage`, and `flash` APIs have been removed from C++ and Python, along with application flashing in the device manager. Use RVC2 in peripheral mode or OAK Apps on RVC4 instead.
+
+`DeviceBootloader.readApplicationInfo` and `flashClear` remain available to inspect and remove applications already flashed on a device.
+
 ---
 
 ## Quick port: simple RGB stream example

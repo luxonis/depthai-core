@@ -305,22 +305,6 @@ def factoryReset(device: dai.DeviceInfo, type: dai.DeviceBootloader.Type):
         PrintException()
         sg.Popup(f'{ex}')
 
-def flashFromFile(file, bl: dai.DeviceBootloader):
-    try:
-        if str(file)[-3:] == "dap":
-            pr = Progress('Flashing application...')
-            progress = lambda p : pr.update(p)
-            with open(file, mode = 'rb') as f:
-                dap = list(f.read())
-                success, msg = bl.flashDepthaiApplicationPackage(progress, dap)
-                msg = "Flashing application was successful." if success else f"Flashing application failed. Error: {msg}"
-                pr.finish(msg)
-        else:
-            sg.Popup("Selected file is not .dap!")
-    except Exception as ex:
-        PrintException()
-        sg.Popup(f'{ex}')
-
 def recoveryMode(bl: dai.DeviceBootloader):
     try:
         bl.bootUsbRomBootloader()
@@ -352,7 +336,6 @@ aboutDeviceLayout = [
     [
         sg.Button("About device", size=(15, 1), font=('Arial', 10, 'bold'), disabled=True, key="_unique_aboutBtn"),
         sg.Button("Config", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_configBtn"),
-        sg.Button("Application", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_appBtn"),
         sg.Button("Danger Zone", size=(15, 1), font=('Arial', 10, 'bold'), button_color='#FF0500', disabled=False,  key="_unique_dangerBtn"),
     ],
     [sg.HSeparator()],
@@ -407,7 +390,6 @@ deviceConfigLayout = [
     [
         sg.Button("About device", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_aboutBtn"),
         sg.Button("Config", size=(15, 1), font=('Arial', 10, 'bold'), disabled=True, key="_unique_configBtn"),
-        sg.Button("Application", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False,  key="_unique_appBtn"),
         sg.Button("Danger Zone", size=(15, 1), font=('Arial', 10, 'bold'), button_color='#FF0500', disabled=False,  key="_unique_dangerBtn"),
 
     ],
@@ -464,38 +446,13 @@ deviceConfigLayout = [
     ],
 ]
 
-# layout for app tab
-appLayout = [
-    [sg.Text("Application settings", size=(20, 1), font=('Arial', 30, 'bold'), text_color="black")],
-    [sg.HSeparator()],
-    [sg.Text(
-        "RVC2 standalone applications (.dap) are deprecated and unsupported in DepthAI v3.\nUse RVC2 in peripheral mode or OAK Apps on RVC4 instead.",
-        text_color="red",
-    )],
-    [
-        sg.Button("About device", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_aboutBtn"),
-        sg.Button("Config", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_configBtn"),
-        sg.Button("Application", size=(15, 1), font=('Arial', 10, 'bold'), disabled=True,  key="_unique_appBtn"),
-        sg.Button("Danger Zone", size=(15, 1), font=('Arial', 10, 'bold'), button_color='#FF0500', disabled=False,  key="_unique_dangerBtn"),
-    ],
-    [sg.HSeparator()],
-    [
-        sg.Button("Flash application", size=(15, 2), font=('Arial', 10, 'bold'), disabled=True,
-                  button_color='#FFA500'),
-        sg.Button("Remove application", size=(15, 2), font=('Arial', 10, 'bold'), disabled=True,
-                button_color='#FFA500'),
-    ],
-]
-
-
-# layout for app tab
+# layout for danger tab
 dangerLayout = [
     [sg.Text("Danger Zone", size=(20, 1), font=('Arial', 30, 'bold'), text_color="black")],
     [sg.HSeparator()],
     [
         sg.Button("About device", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_aboutBtn"),
         sg.Button("Config", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False, key="_unique_configBtn"),
-        sg.Button("Application", size=(15, 1), font=('Arial', 10, 'bold'), disabled=False,  key="_unique_appBtn"),
         sg.Button("Danger Zone", size=(15, 1), font=('Arial', 10, 'bold'), button_color='#FF0500', disabled=True,  key="_unique_dangerBtn"),
     ],
     [sg.HSeparator()],
@@ -508,6 +465,7 @@ dangerLayout = [
     [sg.HSeparator()],
     [
         sg.Button("Factory reset",  size=(17, 2), font=('Arial', 10, 'bold'), disabled=True, button_color='#FFA500'),
+        sg.Button("Remove application", size=(17, 2), font=('Arial', 10, 'bold'), disabled=True, button_color='#FFA500'),
         sg.Button("Boot into USB\nRecovery mode", size=(20, 2), font=('Arial', 10, 'bold'), disabled=True,
                   key='recoveryMode', button_color='#FFA500')
     ]
@@ -519,7 +477,6 @@ layout = [
     [
         sg.Column(aboutDeviceLayout, key='-COL1-'),
         sg.Column(deviceConfigLayout, visible=False, key='-COL2-'),
-        sg.Column(appLayout, visible=False, key='-COL3-'),
         sg.Column(dangerLayout, visible=False, key='-COL4-'),
     ]
 ]
@@ -670,9 +627,6 @@ class DeviceManager:
                 except Exception as ex:
                     Popup(f'No existing config to view ({ex})', self.window)
 
-            elif event == "Flash application":
-                file = sg.popup_get_file("Select .dap file", file_types=(('DepthAI Application Package', '*.dap'), ('All Files', '*.* *')))
-                flashFromFile(file, self.bl)
             elif event == "Remove application":
                 try:
                     self.bl.flashClear()
@@ -683,22 +637,14 @@ class DeviceManager:
             elif event.startswith("_unique_configBtn"):
                 self.window['-COL1-'].update(visible=False)
                 self.window['-COL2-'].update(visible=True)
-                self.window['-COL3-'].update(visible=False)
                 self.window['-COL4-'].update(visible=False)
             elif event.startswith("_unique_aboutBtn"):
                 self.window['-COL1-'].update(visible=True)
                 self.window['-COL2-'].update(visible=False)
-                self.window['-COL3-'].update(visible=False)
-                self.window['-COL4-'].update(visible=False)
-            elif event.startswith("_unique_appBtn"):
-                self.window['-COL1-'].update(visible=False)
-                self.window['-COL2-'].update(visible=False)
-                self.window['-COL3-'].update(visible=True)
                 self.window['-COL4-'].update(visible=False)
             elif event.startswith("_unique_dangerBtn"):
                 self.window['-COL1-'].update(visible=False)
                 self.window['-COL2-'].update(visible=False)
-                self.window['-COL3-'].update(visible=False)
                 self.window['-COL4-'].update(visible=True)
 
 
@@ -826,7 +772,6 @@ class DeviceManager:
         self.window['View configuration'].update(disabled=False)
         self.window['Factory reset'].update(disabled=False)
 
-        self.window['Flash application'].update(disabled=False)
         self.window['Remove application'].update(disabled=False)
 
         self.window['recoveryMode'].update(disabled=False)
@@ -849,7 +794,6 @@ class DeviceManager:
         self.window['Clear configuration'].update(disabled=True)
         self.window['View configuration'].update(disabled=True)
         self.window['Factory reset'].update(disabled=True)
-        self.window['Flash application'].update(disabled=True)
         self.window['Remove application'].update(disabled=True)
 
         self.window['recoveryMode'].update(disabled=True)
@@ -865,7 +809,6 @@ class DeviceManager:
         # Move back to 'About' page
         self.window['-COL1-'].update(visible=True)
         self.window['-COL2-'].update(visible=False)
-        self.window['-COL3-'].update(visible=False)
         self.window['-COL4-'].update(visible=False)
 
     def closeDevice(self):
