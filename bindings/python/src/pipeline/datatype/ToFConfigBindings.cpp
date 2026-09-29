@@ -71,7 +71,6 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::VD55H1::phaseUnwrapErrorThreshold, DOC(dai, ToFConfig, VD55H1, phaseUnwrapErrorThreshold))
         .def_readwrite("enableBilateralFilter", &ToFConfig::VD55H1::enableBilateralFilter, DOC(dai, ToFConfig, VD55H1, enableBilateralFilter))
         .def_readwrite("bilateralStdFactor", &ToFConfig::VD55H1::bilateralStdFactor, DOC(dai, ToFConfig, VD55H1, bilateralStdFactor))
-        .def_readwrite("bilateralKernelSize", &ToFConfig::VD55H1::bilateralKernelSize, DOC(dai, ToFConfig, VD55H1, bilateralKernelSize))
         .def_readwrite(
             "enableTemporalNoiseReduction", &ToFConfig::VD55H1::enableTemporalNoiseReduction, DOC(dai, ToFConfig, VD55H1, enableTemporalNoiseReduction))
         .def_readwrite(
