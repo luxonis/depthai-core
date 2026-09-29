@@ -39,6 +39,9 @@ def main(defaultMode="detector", budget=False):
     parser.add_argument("--roi", type=parseRoi, default=parseRoi("0.35,0.30,0.65,0.70"))
     parser.add_argument("--model", default="yolov6-nano", help="Object detection model")
     parser.add_argument("--depth-model", choices=("192X120", "288X180", "384X240", "480X300", "576X360"), default="576X360")
+    if budget:
+        parser.add_argument("--rois-per-frame", type=int, choices=range(1, 9), default=2,
+                            help="Number of separate regions to process per frame when available (default: 2)")
     parser.add_argument("--confidence", type=float, default=0.5, help="Detection confidence threshold")
     parser.add_argument("--fps", type=float, default=30.0, help="Requested camera FPS")
     parser.add_argument("--frames", type=int, default=0, help="Stop after N depth frames, including empty frames")
@@ -69,6 +72,9 @@ def main(defaultMode="detector", budget=False):
         depth.setFocusMode(getattr(dai.node.Depth.FocusMode, args.depth_mode.upper()))
         depth.setFocusHoldFrames(args.hold_frames)
         depth.setFocusStereoSize(*args.stereo_size)
+        if budget:
+            # Convert the explicit per-frame count to the scheduler's crop-rate units.
+            depth.setFocusCropThroughput(args.rois_per_frame * args.fps)
         depth.setFocusModels([getattr(dai.DeviceModelZoo, "NEURAL_DEPTH_" + args.depth_model)])
         depth.setFocusSelectionMode(dai.node.Depth.FocusSelectionMode.ALL if budget else dai.node.Depth.FocusSelectionMode.LARGEST)
         depth.setFocusDispatchMode(dai.node.Depth.FocusDispatchMode.TIME_BUDGET if budget else dai.node.Depth.FocusDispatchMode.SINGLE_TIER_PER_FRAME)
@@ -118,7 +124,8 @@ while True:
             print(f"Visualizer: http://localhost:{args.httpPort}?ws_url={wsUrl}", flush=True)
         print(f"Mode={args.mode}/{args.depth_mode}, depth model={args.depth_model}, requested camera FPS={args.fps:g}", flush=True)
         if budget:
-            print("Time budget is best effort; one crop may exceed the frame period.", flush=True)
+            print(f"Processing {args.rois_per_frame} regions per frame when available, largest first; "
+                  "overlapping regions are merged. Requested FPS is not guaranteed.", flush=True)
         start = time.monotonic()
         first = last = None
         frames = measured = nonempty = 0

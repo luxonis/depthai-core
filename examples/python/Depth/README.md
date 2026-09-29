@@ -1,33 +1,112 @@
-# Focused depth on RVC4
+# Focused depth examples (RVC4)
 
-Use Python bindings built from this branch. From the repository root, run one mode at a time:
-
-```sh
-python examples/python/Depth/focused_depth.py --mode roi --roi 0.35,0.30,0.65,0.70 --fps 30
-python examples/python/Depth/focused_depth.py --mode detector --confidence 0.25 --fps 30
-```
-
-Open the Visualizer URL printed by the command. Press Ctrl+C to stop. Use
-`--webSocketPort 8767 --httpPort 8084` if the default ports are occupied.
-
-The ROI coordinates refer to the rectified left camera. Detector mode selects
-only the largest bounding box after mapping detections to that camera. Color
-and detection views use the color-camera coordinates; the focused depth view
-uses the left-camera coordinates. Pixels outside the selected box are zero.
-
-The default neural model is **192x120 per crop**, reassembled into the full-size
-left image. `--depth-model` selects a larger model at a potential throughput cost.
-The single-model, largest-region path overlaps three frames; this adds two frames
-of buffering. It is intended for continuous camera streams, not finite batches.
-
-`--fps` requests the camera rate. Actual depth FPS and the number of nonempty
-frames are reported after five seconds of warm-up. To measure without rendering:
+Use Python bindings built from this branch. Run from the repository root with
+`depthai` and `numpy` available. For our local checkout:
 
 ```sh
-python examples/python/Depth/focused_depth.py --mode roi --fps 30 --headless --seconds 30
-python examples/python/Depth/focused_depth.py --mode detector --confidence 0.25 --fps 30 --headless --seconds 30
+cd /home/vincek/dev/depthai-core/.focused-depth-worktree
+export PYTHONPATH="$PWD/build-focused-current/bindings/python"
+source ../.venv/bin/activate
+export DEPTHAI_DEVICE_NAME_LIST=192.168.88.61
 ```
 
-No detection produces an empty depth frame. The `--confidence` threshold may need
-adjustment for the scene. The ROI and detection wrapper scripts call the same
-implementation. The budget wrapper is best effort and cannot guarantee an FPS.
+Change the device address as needed, or omit that export to use device discovery.
+Run one example at a time. Open the printed Visualizer URL; stop with **Ctrl+C**.
+
+## Three examples
+
+- `focused_depth_roi.py`: one fixed rectangle in rectified-left coordinates.
+- `focused_depth_detection.py`: the largest detected bounding box, transformed into
+  rectified-left coordinates.
+- `focused_depth_budget.py`: N available regions per frame, largest first, using one
+  selected neural model. Overlapping padded regions merge before selection, so N
+  counts separate inference regions, not necessarily individual detections.
+
+All three call `focused_depth.py`. Its `--mode roi|detector` chooses the ROI source;
+`--depth-mode roi|hold|hybrid` independently chooses the depth behavior:
+
+- `roi`: depth inside selected boxes; zero elsewhere. Missing detections give empty depth.
+- `hold`: preserve the previous selection through X empty detection messages and compute
+  fresh depth there. It does not track motion or handle a stalled detector.
+- `hybrid`: full-image EVA depth, overwritten by neural depth inside selected boxes.
+  Missing detections leave EVA depth; hybrid does not preserve previous ROIs.
+
+Crops retain disparity padding, then resize to the chosen neural model. Output is
+full-size rectified-left depth, not RGB-aligned depth. The color/detection preview
+uses its own camera coordinates.
+
+## Common commands
+
+Fixed ROI, Medium model, 30 FPS requested:
+
+```sh
+python examples/python/Depth/focused_depth_roi.py --roi 0.35,0.30,0.65,0.70 --depth-model 576X360 --fps 30
+```
+
+Largest detected object, Medium model:
+
+```sh
+python examples/python/Depth/focused_depth_detection.py --depth-model 576X360 --confidence 0.25 --fps 30
+```
+
+Keep the largest object's ROI through two missed detection frames:
+
+```sh
+python examples/python/Depth/focused_depth_detection.py --depth-mode hold --hold-frames 2 --depth-model 576X360 --confidence 0.25 --fps 30
+```
+
+Full EVA depth at 640×480, enhanced inside the largest object's ROI:
+
+```sh
+python examples/python/Depth/focused_depth_detection.py --depth-mode hybrid --stereo-size 640 480 --depth-model 576X360 --confidence 0.25 --fps 30
+```
+
+Two S regions per frame, or four Nano regions per frame:
+
+```sh
+python examples/python/Depth/focused_depth_budget.py --depth-model 480X300 --rois-per-frame 2 --fps 30
+python examples/python/Depth/focused_depth_budget.py --depth-model 384X240 --rois-per-frame 4 --fps 30
+```
+
+The count is independent of model and camera FPS. Fewer available regions produce
+fewer crops. The scheduler does not reduce the requested count to maintain FPS.
+The default budget configuration is **two Medium regions**, not two S regions;
+select `480X300` explicitly for S.
+
+To measure without visualization, append `--headless --seconds 30`. Add `--debug`
+for dispatch details. For the browser ports used in our sessions, append
+`--webSocketPort 8767 --httpPort 8084`.
+
+## Arguments
+
+- `--mode roi|detector`: ROI source; ROI wrapper defaults to `roi`, others to `detector`.
+- `--depth-mode roi|hold|hybrid`: depth behavior, default `roi`.
+- `--roi xmin,ymin,xmax,ymax`: normalized fixed rectangle, default `0.35,0.30,0.65,0.70`;
+  used only with `--mode roi`.
+- `--depth-model`: `192X120`, `288X180`, `384X240` (Nano), `480X300` (S),
+  `576X360` (M, **default**). Every admitted crop uses this model.
+- `--rois-per-frame N`: budget wrapper only; integer 1–8, default 2.
+  Replaces the former `--crop-fps` example argument.
+- `--model`: detection model, default `yolov6-nano`.
+- `--confidence`: detection threshold in [0, 1], default 0.5; we often use 0.25.
+- `--hold-frames X`: consecutive empty messages to bridge in hold mode, default 2;
+  0 disables preservation.
+- `--stereo-size WIDTH HEIGHT`: EVA input size in hybrid mode, default `384 240`.
+  Width must be divisible by 128; positive dimensions, at most `1280 800`.
+- `--fps`: requested camera rate, default 30; not guaranteed output FPS.
+- `--headless`: disable the browser visualizer.
+- `--seconds N`: stop N seconds after pipeline startup, including warm-up; default 0 (unlimited).
+- `--frames N`: stop after N received depth frames, including empty frames; default 0 (unlimited).
+- `--debug`: print crop counts, model sizes and collection timings.
+- `--webSocketPort` / `--httpPort`: visualizer ports, default 8765 / 8082.
+
+## Measured performance
+
+The console reports output FPS and nonempty-frame counts after five seconds of
+warm-up. Single-model processing overlaps three frames, adding two frames of buffering.
+
+On the local RVC4 at `192.168.88.61`, over 20-second measurement windows: two fixed
+S regions reached **30.00 FPS**, or **29.92 FPS** with YOLO also running. Four fixed
+Nano regions reached **27.45 FPS**. The actual detection example reached **30.00 FPS**
+with one region in the scene. These measurements are specific to that setup;
+ROI count, input resolution, model and host/device traffic affect performance.

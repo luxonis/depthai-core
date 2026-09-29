@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Best-effort crop budget; this does not guarantee the requested FPS."""
+"""Process a requested number of available regions per frame, using one selected model."""
 from focused_depth import main
 
 if __name__ == "__main__":
