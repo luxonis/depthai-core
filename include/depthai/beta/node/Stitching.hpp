@@ -32,6 +32,17 @@ namespace node {
  *  - `Mode::PLANAR_PROJECTION` projects the images onto a plane given in the common origin frame of the inputs
  *    (bird's-eye view), driven purely by the calibration carried in the messages, so it also works without overlap.
  *    All input transformations must have the same origin camera socket.
+ *
+ * The stitched frame carries an ImgTransformation describing the virtual camera that rendered it, so that the image can
+ * be placed in space, e.g. wrapped onto a cylinder next to a point cloud. In `Mode::PLANAR_PROJECTION` that is the
+ * pinhole view of `setView()`, relative to the common origin of the inputs. In `Mode::PANORAMA` the camera model follows
+ * `setCameraModel()`: dai::CameraModel::Perspective, Cylindrical or Equirectangular (see dai::CameraModel for their
+ * projection formulas), the focal length is the radius of the projection surface in pixels and the principal point is the
+ * pixel the panorama Z axis projects to. A panorama composed from the input calibration is expressed in the destination
+ * coordinate system of the inputs, centered at the mean of their camera centers. A visually registered panorama is only
+ * known relative to its inputs, so it is expressed through the first contributing input: in the destination coordinate
+ * system of that input's extrinsics when it carries some, and relative to that input's camera, with an AUTO socket,
+ * otherwise.
  */
 class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties> {
    public:
@@ -90,7 +101,8 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     InputMap& inputs = configuredInputs ? *configuredInputs : sync->inputs;
 
     /**
-     * Stitched image, ImgFrame of type BGR888i.
+     * Stitched image, ImgFrame of type BGR888i. Its transformation describes the virtual camera that rendered it, see the
+     * class documentation.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 

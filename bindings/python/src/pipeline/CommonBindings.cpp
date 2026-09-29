@@ -521,7 +521,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     cameraModel.value("Perspective", CameraModel::Perspective)
         .value("Fisheye", CameraModel::Fisheye)
         .value("Equirectangular", CameraModel::Equirectangular)
-        .value("RadialDivision", CameraModel::RadialDivision);
+        .value("RadialDivision", CameraModel::RadialDivision)
+        .value("Cylindrical", CameraModel::Cylindrical);
 
     // StereoRectification
     stereoRectification.def(py::init<>())
