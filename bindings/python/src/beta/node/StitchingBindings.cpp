@@ -78,7 +78,12 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maxRange", &StitchingProperties::maxRange)
         .def_readwrite("minIncidenceAngle", &StitchingProperties::minIncidenceAngle);
 
-    stitchingNode.def_readonly("sync", &Stitching::sync, DOC(dai, beta, node, Stitching, sync))
+    stitchingNode
+        .def_property_readonly(
+            "sync",
+            // Subnode<Sync> has no Python type; hand out the Sync node it wraps
+            [](Stitching& node) { return std::static_pointer_cast<dai::node::Sync>(node.sync->shared_from_this()); },
+            DOC(dai, beta, node, Stitching, sync))
         .def_property_readonly(
             "inputs", [](Stitching& node) { return &node.inputs; }, py::return_value_policy::reference_internal, DOC(dai, beta, node, Stitching, inputs))
         .def_readonly("out", &Stitching::out, DOC(dai, beta, node, Stitching, out))
