@@ -473,15 +473,17 @@ while True:
     if(mode == Mode::HOLD) REQUIRE(held > 10);
 }
 
-TEST_CASE("FocusedDepth: budget pipelines two separate S crops and preserves frame geometry") {
+TEST_CASE("FocusedDepth: pipelines active and idle model tiers and preserves frame geometry") {
+    const int scenario = GENERATE(0, 1, 2);  // Single model, mixed budget, mixed single-tier.
+    CAPTURE(scenario);
     const char* address = std::getenv("DEPTHAI_TEST_DEVICE");
     Pipeline pipeline = address ? Pipeline(std::make_shared<Device>(DeviceInfo(address))) : Pipeline();
     auto device = requireDefaultDevice(pipeline);
     skipUnlessFocusedDepthSupported(device);
     const auto pair = device->getStereoPairs().front();
-    auto camera = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 30.0f);
+    auto camera = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 25.0f);
     auto script = pipeline.create<node::Script>();
-    camera->requestOutput({64, 40}, ImgFrame::Type::GRAY8, ImgResizeMode::CROP, 30.0f)->link(script->inputs["frame"]);
+    camera->requestOutput({64, 40}, ImgFrame::Type::GRAY8, ImgResizeMode::CROP, 25.0f)->link(script->inputs["frame"]);
     script->setScript(R"(
 while True:
     frame = node.io["frame"].get()
@@ -494,17 +496,18 @@ while True:
         small = ImgDetection()
         small.xmin, small.ymin, small.xmax, small.ymax = (0.45, 0.1, 0.55, 0.25)
         small.confidence = 1.0
-        message.detections = [small, big]
+        message.detections = [big] if phase == 1 else [small, big]
     message.setTimestamp(frame.getTimestamp())
     message.setTimestampDevice(frame.getTimestampDevice())
     message.setSequenceNum(frame.getSequenceNum())
     node.io["detections"].send(message)
 )");
     auto depth = pipeline.create<node::Depth>();
-    depth->setFocusModels({DeviceModelZoo::NEURAL_DEPTH_SMALL});
+    depth->setFocusModels(scenario == 0 ? std::vector<DeviceModelZoo>{DeviceModelZoo::NEURAL_DEPTH_SMALL}
+                                        : std::vector<DeviceModelZoo>{DeviceModelZoo::NEURAL_DEPTH_NANO, DeviceModelZoo::NEURAL_DEPTH_MEDIUM});
     depth->setFocusSelectionMode(node::FocusController::SelectionMode::ALL);
-    depth->setFocusDispatchMode(node::FocusController::DispatchMode::TIME_BUDGET);
-    depth->build(30.0f);
+    depth->setFocusDispatchMode(scenario == 2 ? node::FocusController::DispatchMode::SINGLE_TIER_PER_FRAME : node::FocusController::DispatchMode::TIME_BUDGET);
+    depth->build(25.0f);
     script->outputs["detections"].link(depth->inputDetections);
     auto output = depth->focusedDepth().createOutputQueue(4, false);
     auto confidence = depth->focusedConfidence().createOutputQueue(4, false);
@@ -518,7 +521,7 @@ while True:
             REQUIRE_THROWS(focused->setFocusDispatchMode(node::FocusController::DispatchMode::TIME_BUDGET));
         }
     }
-    REQUIRE(backends == 1);
+    REQUIRE(backends == (scenario == 0 ? 1 : 2));
     REQUIRE_THROWS(depth->setFocusModels({DeviceModelZoo::NEURAL_DEPTH_288X180}));
 
     struct StopGuard {
@@ -546,9 +549,9 @@ while True:
         } else {
             const Box box = phase == 1 ? Box{0.1f, 0.55f, 0.3f, 0.8f} : Box{0.6f, 0.55f, 0.9f, 0.8f};
             const Box small{0.45f, 0.1f, 0.55f, 0.25f};
-            const auto result = analyzeFocused(pixels, {box, small});
+            const auto result = analyzeFocused(pixels, phase == 1 ? std::vector<Box>{box} : std::vector<Box>{box, small});
             REQUIRE(result.outsideFill == 0);
-            filled += cv::countNonZero(pixels(cv::Rect(pixels.cols * 0.45, pixels.rows * 0.1, pixels.cols * 0.1, pixels.rows * 0.15))) > 0
+            filled += (phase == 1 || cv::countNonZero(pixels(cv::Rect(pixels.cols * 0.45, pixels.rows * 0.1, pixels.cols * 0.1, pixels.rows * 0.15))) > 0)
                       && cv::countNonZero(pixels(cv::Rect(
                              pixels.cols * box.xmin, pixels.rows * box.ymin, pixels.cols * (box.xmax - box.xmin), pixels.rows * (box.ymax - box.ymin))))
                              > 0;

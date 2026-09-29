@@ -84,23 +84,23 @@ class FocusController : public CustomNode<FocusController> {
         return dispatchMode_;
     }
 
-    // Upper bound on merged crops processed per frame. Also the depth/confidence crop input queue
-    // depth, so every crop dispatched in a frame can be buffered before it is collected (the
-    // dispatch-all-then-collect pipeline would otherwise deadlock if a tier's results piled up).
+    // Bound queues for all crops from three outstanding frames.
     static constexpr int kMaxCropsPerFrame = 24;
+    static constexpr int FRAMES_IN_FLIGHT = 3;
+    static constexpr int MAX_PENDING_CROPS = FRAMES_IN_FLIGHT * kMaxCropsPerFrame;
 
     // One depth/confidence crop input and one left/right config output per tier. Each tier has its
     // own fixed-size crop ImageManips and NeuralDepth backend, so left/right crops always match in
     // size (no backend size-mismatch crash) and different sizes never share a manip.
-    Input depthCrop0{*this, {"depthCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-    Input depthCrop1{*this, {"depthCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-    Input depthCrop2{*this, {"depthCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input depthCrop0{*this, {"depthCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, MAX_PENDING_CROPS, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input depthCrop1{*this, {"depthCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, MAX_PENDING_CROPS, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input depthCrop2{*this, {"depthCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, MAX_PENDING_CROPS, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Input confidenceCrop0{*this,
-                          {"confidenceCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+                          {"confidenceCrop0", DEFAULT_GROUP, DEFAULT_BLOCKING, MAX_PENDING_CROPS, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Input confidenceCrop1{*this,
-                          {"confidenceCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+                          {"confidenceCrop1", DEFAULT_GROUP, DEFAULT_BLOCKING, MAX_PENDING_CROPS, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Input confidenceCrop2{*this,
-                          {"confidenceCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, kMaxCropsPerFrame, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+                          {"confidenceCrop2", DEFAULT_GROUP, DEFAULT_BLOCKING, MAX_PENDING_CROPS, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     Output leftConfig0{*this, {"leftConfig0", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
     Output leftConfig1{*this, {"leftConfig1", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
@@ -109,11 +109,13 @@ class FocusController : public CustomNode<FocusController> {
     Output rightConfig1{*this, {"rightConfig1", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
     Output rightConfig2{*this, {"rightConfig2", DEFAULT_GROUP, {{{DatatypeEnum::ImageManipConfig, true}}}}};
 
-    // The synchronized frames the crops are computed from. Broadcast to every tier's crop
-    // ImageManips (instead of the free-running rectification stream) so the left and right crops
-    // stay on the same timestamp and each backend's left/right Sync can pair them.
+    // Send synchronized frames only to tiers receiving crops, preserving per-tier FIFO order.
     Output leftImage{*this, {"leftImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output rightImage{*this, {"rightImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output leftImage1{*this, {"leftImage1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output rightImage1{*this, {"rightImage1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output leftImage2{*this, {"leftImage2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output rightImage2{*this, {"rightImage2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     Output confidenceOut{*this, {"confidenceOut", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
@@ -125,6 +127,8 @@ class FocusController : public CustomNode<FocusController> {
     // Per-tier port accessors (tier in [0, kNumTiers)).
     Input& depthCropTier(int tier);
     Input& confidenceCropTier(int tier);
+    Output& leftImageTier(int tier);
+    Output& rightImageTier(int tier);
     Output& leftConfigTier(int tier);
     Output& rightConfigTier(int tier);
 
@@ -213,6 +217,7 @@ class FocusController : public CustomNode<FocusController> {
         std::shared_ptr<ImgFrame> baseDepth;
         std::shared_ptr<ImgFrame> baseConfidence;
         std::vector<MergedCrop> crops;
+        std::vector<int> tiers;
         std::size_t detections;
         std::size_t boxes;
     };

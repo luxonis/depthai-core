@@ -84,6 +84,14 @@ Node::Output& FocusController::rightConfigTier(int tier) {
     }
 }
 
+Node::Output& FocusController::leftImageTier(int tier) {
+    return tier == 0 ? leftImage : tier == 1 ? leftImage1 : leftImage2;
+}
+
+Node::Output& FocusController::rightImageTier(int tier) {
+    return tier == 0 ? rightImage : tier == 1 ? rightImage1 : rightImage2;
+}
+
 void FocusController::setModels(const std::vector<DeviceModelZoo>& models) {
     if(models.empty() || static_cast<int>(models.size()) > kNumTiers) {
         throw std::invalid_argument("FocusController requires between one and three models");
@@ -394,27 +402,10 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
             budgetTiers.push_back(selected);
             remainingMs -= cropThroughput_ > 0 ? 1000.0 / static_cast<double>(cropThroughput_)
                                                : static_cast<double>(estimateInferenceCostMs(tiers_[selected].w, tiers_[selected].h));
-            // Three frames in flight must fit the depth/confidence result queues.
-            if(tierCount_ == 1 && merged.size() >= kMaxCropsPerFrame / 3) break;
         }
     }
 
-    // Broadcast the synchronized pair to every tier's crop ImageManips once per group. The first
-    // config sent to a tier consumes this frame (setReusePreviousImage(false)); later crops on the
-    // same tier reuse it, so all of a tier's left/right crops share this timestamp and its backend
-    // Sync can pair them. Tiers that get no crop this frame just hold the (non-blocking) latest.
-    if(!merged.empty()) {
-        leftImage.send(leftImg);
-        rightImage.send(rightImg);
-    }
-
-    // Pick a single backend tier per frame: the smallest model that fits the largest crop this
-    // frame. Every crop this frame uses that one model. This deliberately does NOT route each crop
-    // to its own best-fit tier: RVC4 has a single NN engine, and alternating between differently
-    // sized depth models within a frame forces an expensive model reload per crop (measured ~2.5x
-    // slower for mixed-size scenes, and far worse alongside a detection network). Using one model
-    // per frame keeps the model resident across the frame's crops while still using a smaller, faster
-    // model when the whole scene is small and a larger one only when a crop needs the resolution.
+    // SINGLE_TIER_PER_FRAME uses one size-appropriate backend for the whole frame.
     int maxW = 0;
     int maxH = 0;
     for(const auto& mc : merged) {
@@ -430,31 +421,36 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
         leftConfigTier(tier).send(config);
         rightConfigTier(tier).send(config);
     };
-    std::size_t detectionCount = detections.size();
-    std::size_t boxCount = boxes.size();
-    const bool pipelineFrames = tierCount_ == 1 && (dispatchMode_ == DispatchMode::TIME_BUDGET || selectionMode_ == SelectionMode::LARGEST);
-    if(pipelineFrames) {
-        // Keep three frames in flight to overlap transport, inference and reassembly.
-        // Each job retains its own geometry and source metadata; empty frames stay in order.
-        for(std::size_t i = 0; i < merged.size(); ++i) {
-            dispatchCrop(merged[i], 0, i > 0);
+    const int frameTier = selectTier(tiers_, tierCount_, maxW, maxH);
+    std::vector<int> cropTiers;
+    cropTiers.reserve(merged.size());
+    std::array<bool, kNumTiers> consumed{};
+    for(std::size_t i = 0; i < merged.size(); ++i) {
+        const int tier = dispatchMode_ == DispatchMode::TIME_BUDGET ? budgetTiers[i] : frameTier;
+        cropTiers.push_back(tier);
+        if(!consumed[tier]) {
+            leftImageTier(tier).send(leftImg);
+            rightImageTier(tier).send(rightImg);
         }
-        pendingFrames_.push_back({leftImg, baseDepth, baseConfidence, std::move(merged), detections.size(), boxes.size()});
-        if(pendingFrames_.size() < 3) {
-            return nullptr;
-        }
-        auto pending = std::move(pendingFrames_.front());
-        pendingFrames_.pop_front();
-        leftImg = std::move(pending.left);
-        baseDepth = std::move(pending.baseDepth);
-        baseConfidence = std::move(pending.baseConfidence);
-        merged = std::move(pending.crops);
-        detectionCount = pending.detections;
-        boxCount = pending.boxes;
-        frameWidth = static_cast<int>(leftImg->getWidth());
-        frameHeight = static_cast<int>(leftImg->getHeight());
-        fxFull = leftImg->getTransformation().getIntrinsicMatrix()[0][0];
+        dispatchCrop(merged[i], tier, consumed[tier]);
+        consumed[tier] = true;
     }
+    // Always overlap frames, retaining each job's own crop-to-backend assignments.
+    // Empty jobs stay in order but do not send images to any backend.
+    pendingFrames_.push_back({leftImg, baseDepth, baseConfidence, std::move(merged), std::move(cropTiers), detections.size(), boxes.size()});
+    if(pendingFrames_.size() < FRAMES_IN_FLIGHT) return nullptr;
+    auto pending = std::move(pendingFrames_.front());
+    pendingFrames_.pop_front();
+    leftImg = std::move(pending.left);
+    baseDepth = std::move(pending.baseDepth);
+    baseConfidence = std::move(pending.baseConfidence);
+    merged = std::move(pending.crops);
+    cropTiers = std::move(pending.tiers);
+    const std::size_t detectionCount = pending.detections;
+    const std::size_t boxCount = pending.boxes;
+    frameWidth = static_cast<int>(leftImg->getWidth());
+    frameHeight = static_cast<int>(leftImg->getHeight());
+    fxFull = leftImg->getTransformation().getIntrinsicMatrix()[0][0];
     if(merged.empty() && !baseDepth) {
         confidenceOut.send(makeZeroFrame(ImgFrame::Type::RAW8, 1));
         return makeZeroFrame(ImgFrame::Type::RAW16, 2);
@@ -533,18 +529,9 @@ std::shared_ptr<Buffer> FocusController::processGroup(std::shared_ptr<MessageGro
     };
     std::vector<CropTrace> trace;
 
-    const int frameTier = selectTier(tiers_, tierCount_, maxW, maxH);
-    std::array<bool, kNumTiers> consumed{};
-    const auto tierForCrop = [&](std::size_t i) { return tierCount_ == 1 ? 0 : dispatchMode_ == DispatchMode::TIME_BUDGET ? budgetTiers[i] : frameTier; };
-    // Submit the entire admitted batch before collecting results, allowing backend overlap.
-    for(std::size_t i = 0; !pipelineFrames && i < merged.size(); ++i) {
-        const int tier = tierForCrop(i);
-        dispatchCrop(merged[i], tier, consumed[tier]);
-        consumed[tier] = true;
-    }
     for(std::size_t i = 0; i < merged.size(); ++i) {
         const auto& mc = merged[i];
-        const int tier = tierForCrop(i);
+        const int tier = cropTiers[i];
         const auto cropStart = std::chrono::steady_clock::now();
         bool hasTimedOut = false;
         auto depthMsg = depthCropTier(tier).get<ImgFrame>(timeout, hasTimedOut);

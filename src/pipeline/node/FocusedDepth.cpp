@@ -135,20 +135,20 @@ std::shared_ptr<FocusedDepth> FocusedDepth::build(Node::Output& left,
         // Crop the exact synchronized pair the controller emits (not the free-running rectification
         // stream), so a tier's left/right crops share a timestamp for its backend Sync. The first
         // config each frame consumes the image; later crops on the tier reuse it.
-        focusController->leftImage.link(lm->inputImage);
-        focusController->rightImage.link(rm->inputImage);
+        focusController->leftImageTier(tier).link(lm->inputImage);
+        focusController->rightImageTier(tier).link(rm->inputImage);
 
         lm->inputConfig.setWaitForMessage(true);
         rm->inputConfig.setWaitForMessage(true);
         // All of a frame's crop configs are dispatched up front, so the config queue must hold them
         // (one round-trip per crop was the old bottleneck; this lets the manips + backend pipeline).
-        lm->inputConfig.setMaxSize(FocusController::kMaxCropsPerFrame);
-        rm->inputConfig.setMaxSize(FocusController::kMaxCropsPerFrame);
-        // Single-model dispatch keeps frames in order; inactive multi-model tiers keep only the latest.
-        lm->inputImage.setBlocking(focusController->getTierCount() == 1);
-        rm->inputImage.setBlocking(focusController->getTierCount() == 1);
-        lm->inputImage.setMaxSize(focusController->getTierCount() == 1 ? 4 : 1);
-        rm->inputImage.setMaxSize(focusController->getTierCount() == 1 ? 4 : 1);
+        lm->inputConfig.setMaxSize(FocusController::MAX_PENDING_CROPS);
+        rm->inputConfig.setMaxSize(FocusController::MAX_PENDING_CROPS);
+        // Only active tiers receive frames; blocking queues retain their exact FIFO order.
+        lm->inputImage.setBlocking(true);
+        rm->inputImage.setBlocking(true);
+        lm->inputImage.setMaxSize(FocusController::FRAMES_IN_FLIGHT + 1);
+        rm->inputImage.setMaxSize(FocusController::FRAMES_IN_FLIGHT + 1);
         lm->setMaxOutputFrameSize(8 * 1024 * 1024);
         rm->setMaxOutputFrameSize(8 * 1024 * 1024);
         lm->setNumFramesPool(4);
