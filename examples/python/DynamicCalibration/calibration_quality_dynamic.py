@@ -75,6 +75,11 @@ with dai.Pipeline() as pipeline:
             if dynCalibrationResult.calibrationData:
                 print("Successfully evaluated metrics from calibration output")
                 print_metrics(dynCalibrationResult.calibrationData.calibrationDifference)
+            invalidTranslation = (
+                dynCalibrationResult.info
+                == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more"
+            )
+            if dynCalibrationResult.calibrationData or invalidTranslation:
                 dynCalibInputControl.send(dai.DynamicCalibrationControl.resetData())
 
         key = cv2.waitKey(1)

@@ -38,7 +38,7 @@ void displayFrame(const std::string& name,
     for(const auto& detection : imgDetections->detections) {
         auto normShape = sourceTransform.getSize();
 
-        dai::Rect rect(dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax));
+        dai::Rect rect(dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax), true);
         rect = rect.denormalize(static_cast<float>(normShape.first), static_cast<float>(normShape.second));
         dai::RotatedRect rotRect(rect, 0);
 

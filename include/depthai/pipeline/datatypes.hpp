@@ -8,6 +8,7 @@
 #include "datatype/BenchmarkReport.hpp"
 #include "datatype/Buffer.hpp"
 #include "datatype/CameraControl.hpp"
+#include "datatype/DetectionParserConfig.hpp"
 #include "datatype/EdgeDetectorConfig.hpp"
 #include "datatype/EncodedFrame.hpp"
 #include "datatype/FeatureTrackerConfig.hpp"

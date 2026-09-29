@@ -39,7 +39,7 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
 
 void DetectionNetwork::buildInternal() {
     // Default confidence threshold
-    detectionParser->properties.parser.confidenceThreshold = 0.5;
+    detectionParser->setConfidenceThreshold(0.5f);
     neuralNetwork->out.link(detectionParser->input);
 
     // No "internal" buffering to keep interface similar to monolithic nodes

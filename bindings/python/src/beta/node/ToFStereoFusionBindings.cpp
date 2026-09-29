@@ -7,6 +7,8 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
 
     py::class_<beta::ToFStereoFusionConfig, std::shared_ptr<beta::ToFStereoFusionConfig>>(m, "ToFStereoFusionConfig")
         .def(py::init<>())
+        .def_readwrite("cropToOverlap", &beta::ToFStereoFusionConfig::cropToOverlap)
+        .def("setCropToOverlap", &beta::ToFStereoFusionConfig::setCropToOverlap, py::arg("enabled"), DOC(dai, beta, ToFStereoFusionConfig, setCropToOverlap))
         .def_readwrite("confidenceThreshold", &beta::ToFStereoFusionConfig::confidenceThreshold)
         .def("setConfidenceThreshold", &beta::ToFStereoFusionConfig::setConfidenceThreshold, py::arg("threshold"));
 
@@ -22,7 +24,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
             "depth", [](ToFStereoFusion& n) -> Node::Output& { return n.depth; }, DOC(dai, beta, node, ToFStereoFusion, depth))
         .def_readonly("initialConfig", &ToFStereoFusion::initialConfig)
         .def_property_readonly(
-            "neuralConfidence", [](ToFStereoFusion& n) -> Node::Output& { return n.neuralConfidence; }, DOC(dai, beta, node, ToFStereoFusion, neuralConfidence))
+            "confidence", [](ToFStereoFusion& n) -> Node::Output& { return n.confidence; }, DOC(dai, beta, node, ToFStereoFusion, confidence))
         .def_property_readonly(
             "tof", [](ToFStereoFusion& n) -> dai::node::ToF& { return *n.tof; }, py::return_value_policy::reference_internal)
         .def_property_readonly(

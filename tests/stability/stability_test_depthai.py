@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import depthai as dai
+import argparse
 import time
 from typing import List, Dict
 import datetime
-import sys
 import math
 
 MEMORY_LEAK_DETECTION_THRESHOLD = 1.05
@@ -20,7 +20,7 @@ def calculate_latency_jitter(latencies: List[float]) -> float:
     return math.sqrt(variance)
 
 
-def stability_test(fps):
+def stability_test(fps, timeoutHours=None):
     # Creates the pipeline and a default device implicitly
     with dai.Pipeline() as p:
         # Define sources and outputs
@@ -142,7 +142,8 @@ def stability_test(fps):
         time.sleep(10)
         initialProcessMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
         print(f"Initial depthai-device process memory usage is: {initialProcessMemoryUsage} kB")
-        while True:
+        loopStart = time.monotonic()
+        while timeoutHours is None or time.monotonic() - loopStart < timeoutHours * 60 * 60:
             for name, queue in benchmarkReportQueues.items():
                 report = queue.get(timeout=datetime.timedelta(minutes=1)) # 1 minute timeout
                 if report is None:
@@ -173,10 +174,15 @@ def stability_test(fps):
 
             # Detect memory leaks
             processMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
-            #if processMemoryUsage > MEMORY_LEAK_DETECTION_THRESHOLD * initialProcessMemoryUsage:
-            #    raise RuntimeError("Memory used by depthai-device process increased above the given threshold - potential memory leak detected")
+            if processMemoryUsage > MEMORY_LEAK_DETECTION_THRESHOLD * initialProcessMemoryUsage:
+                raise RuntimeError("Memory used by depthai-device process increased above the given threshold - potential memory leak detected")
             print(f"Memory used by depthai-device process: {processMemoryUsage} kB. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
             print(f"Running for {datetime.timedelta(seconds=time.time() - tStart)}", flush=True)
 
 if __name__ == "__main__":
-    stability_test(30)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--timeout", type=float, help="Stop the stability-test loop after this many hours")
+    args = parser.parse_args()
+    if args.timeout is not None and (not math.isfinite(args.timeout) or args.timeout <= 0):
+        parser.error("--timeout must be a positive finite number")
+    stability_test(30, args.timeout)

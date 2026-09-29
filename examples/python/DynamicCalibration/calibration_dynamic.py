@@ -79,7 +79,7 @@ with dai.Pipeline() as pipeline:
         if dynCalibrationResult is not None:
             print(f"Dynamic calibration status: {dynCalibrationResult.info}")
 
-        # --- Apply calibration if available, print quality deltas, then reset+continue ---
+        # --- Apply calibration if available, then reset+continue after a terminal result ---
         if calibrationData:
             print("Successfully calibrated")
             # Apply to device
@@ -95,7 +95,12 @@ with dai.Pipeline() as pipeline:
             print(f"Mean Sampson error achievable = {q.sampsonErrorNew:.3f} px")
             print(f"Mean Sampson error current    = {q.sampsonErrorCurrent:.3f} px")
 
-            # Reset accumulators and continue periodic calibration
+        invalidTranslation = (
+            dynCalibrationResult is not None
+            and dynCalibrationResult.info
+            == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more"
+        )
+        if calibrationData or invalidTranslation:
             dynCalibInputControl.send(
                 dai.DynamicCalibrationControl.resetData()
             )

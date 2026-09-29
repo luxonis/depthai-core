@@ -771,7 +771,10 @@ void PointCloud::run() {
 
     pimpl->logger->info("PointCloud node started (colorMode={})", colorMode);
 
-    uint32_t currentEepromId = getParentPipeline().getEepromId();
+    // EEPROM id of the device this node runs on (falls back to the pipeline default device when the node has none),
+    // so calibration changes are tracked on the node's own device rather than the master's.
+    auto readEepromId = [&]() -> uint32_t { return device ? device->getProperties().eepromId : getParentPipeline().getEepromId(); };
+    uint32_t currentEepromId = readEepromId();
     auto latestConfig = initialConfig;
 
     while(mainLoop()) {
@@ -806,7 +809,7 @@ void PointCloud::run() {
         // Read organized mode from config
         const bool organized = latestConfig->getOrganized();
 
-        const uint32_t latestEepromId = getParentPipeline().getEepromId();
+        const uint32_t latestEepromId = readEepromId();
         if(latestEepromId > currentEepromId) {
             pimpl->logger->debug("Calibration data changed (ID: {} -> {}), reinitializing...", currentEepromId, latestEepromId);
             initialized = false;

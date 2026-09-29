@@ -17,16 +17,19 @@ using node::Stitching;
 /**
  * Composes a panorama whose registered camera geometry does not change.
  *
- * Projection maps, image regions, validity and seam masks, and exposure parameters are prepared from the first image
- * group and reused. Later groups only resize (when requested), remap, compensate and blend.
+ * Projection maps and image regions are prepared once and reused. The compositor can either perform the full seam,
+ * exposure, and blending pipeline or directly copy warped inputs into the panorama.
  */
 class FixedPanoramaCompositor {
    public:
+    enum class Composition { BLENDED, DIRECT };
+
     struct Config {
         Stitching::CameraModel cameraModel = Stitching::CameraModel::SPHERICAL;
         Stitching::SeamFinder seamFinder = Stitching::SeamFinder::GRAPHCUT_COLOR;
         double compositingResolution = -1.0;
         double seamEstimationResolution = 0.1;
+        Composition composition = Composition::BLENDED;
     };
 
     void setConfig(const Config& config);

@@ -183,6 +183,24 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     CameraModel getCameraModel() const;
 
     /**
+     * Use the intrinsics and rotations carried by the input ImgTransformations to compose a panorama.
+     *
+     * All inputs must be expressed relative to exactly the same destination device ID and camera socket. Translation
+     * is ignored, so all camera centers are treated as coincident. Cylindrical panoramas use the normalized mean input
+     * camera Y axis as the cylinder axis. When enabled, panorama composition starts from the first synchronized group
+     * without feature matching or bundle adjustment. With `SeamFinder::NONE`, warped inputs are copied in order and
+     * later inputs replace earlier ones in overlapping regions. Other seam finders enable seam estimation, exposure
+     * compensation, and multiband blending. The prepared composition is reused for subsequent groups. Only undistorted
+     * inputs are accepted. Only used in `Mode::PANORAMA`.
+     */
+    void setUseInputCalibration(bool useInputCalibration);
+
+    /**
+     * Return whether panorama composition uses the calibration carried by the input ImgTransformations.
+     */
+    bool getUseInputCalibration() const;
+
+    /**
      * Re-estimate the camera parameters on every frame. Only used in `Mode::PANORAMA`.
      *
      * When true, registration runs for every synced group, which is slow but tolerates cameras that
@@ -220,6 +238,10 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     void setPanoConfidenceThreshold(double threshold);
     double getPanoConfidenceThreshold() const;
 
+    /**
+     * Set the panorama seam finder. In calibrated panorama mode, `NONE` selects direct composition; other values also
+     * enable exposure compensation and multiband blending.
+     */
     void setSeamFinder(SeamFinder finder);
     SeamFinder getSeamFinder() const;
 

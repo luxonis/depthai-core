@@ -78,6 +78,8 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
     /// Maximum planar projection range, stored in centimeters.
     float maxRange = 1000.0f;
     float minIncidenceAngle = 5.0f;
+    /// Use the rotations and intrinsics carried by the input frames instead of visually registering a panorama.
+    bool useInputCalibration = false;
 
     ~StitchingProperties() override;
 };
@@ -99,7 +101,8 @@ DEPTHAI_SERIALIZE_EXT(StitchingProperties,
                       maxViewHeight,
                       maxRange,
                       minIncidenceAngle,
-                      numInputs);
+                      numInputs,
+                      useInputCalibration);
 
 }  // namespace beta
 }  // namespace dai

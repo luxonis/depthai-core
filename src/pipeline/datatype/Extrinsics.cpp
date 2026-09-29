@@ -101,6 +101,16 @@ std::vector<float> Extrinsics::getTranslationVector(bool useSpecTranslation, Len
     return translationVector;
 }
 
+Extrinsics Extrinsics::withLengthUnit(LengthUnit unit) const {
+    Extrinsics result = *this;
+    const auto convertedTranslation = getTranslationVector(false, unit);
+    const auto convertedSpecTranslation = getTranslationVector(true, unit);
+    result.translation = Point3f(convertedTranslation[0], convertedTranslation[1], convertedTranslation[2]);
+    result.specTranslation = Point3f(convertedSpecTranslation[0], convertedSpecTranslation[1], convertedSpecTranslation[2]);
+    result.lengthUnit = unit;
+    return result;
+}
+
 bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const {
     if(!matrix::mateq(rotationMatrix, other.rotationMatrix, epsilon)) {
         return false;

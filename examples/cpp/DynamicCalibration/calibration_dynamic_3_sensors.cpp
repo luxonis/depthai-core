@@ -90,6 +90,11 @@ int main() {
             if(calibration->calibrationData) {
                 inputControl->send(DCC::applyCalibration(calibration->calibrationData->newCalibration));
             }
+            const bool invalidTranslation = calibration->info == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more";
+            if(calibration->calibrationData || invalidTranslation) {
+                inputControl->send(DCC::resetData());
+                inputControl->send(DCC::startCalibration());
+            }
         }
 
         if(cv::waitKey(1) == 'q') break;

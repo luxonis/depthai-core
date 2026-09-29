@@ -97,6 +97,10 @@ int main() {
                     std::cout << "Applying new calibration" << std::endl;
                     dynCalibInputControl->send(DCC::applyCalibration(dynCalibrationResult->calibrationData->newCalibration));
                 }
+            }
+            const bool invalidTranslation =
+                dynCalibrationResult->info == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more";
+            if(dynCalibrationResult->calibrationData || invalidTranslation) {
                 dynCalibInputControl->send(DCC::resetData());
             }
         }
