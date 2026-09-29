@@ -34,6 +34,9 @@ struct BoardConfig {
 
     /// Network configuration
     struct Network {
+        /// Initialize Ethernet hardware while the device communicates over USB.
+        /// Used by production tests to inspect the physical link.
+        bool forceEnable = false;
         /// Network MTU, 0 is auto (usually 1500 for Ethernet) or forwarded
         /// from bootloader (not yet implemented there).
         /// Note: not advised to increase past 1500 for now
@@ -157,7 +160,7 @@ struct BoardConfig {
 };
 
 DEPTHAI_SERIALIZE_EXT(BoardConfig::USB, vid, pid, flashBootedVid, flashBootedPid, maxSpeed, productName, manufacturer);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::Network, mtu, xlinkTcpNoDelay);
+DEPTHAI_SERIALIZE_EXT(BoardConfig::Network, mtu, xlinkTcpNoDelay, forceEnable);
 DEPTHAI_SERIALIZE_EXT(BoardConfig::GPIO, mode, direction, level, pull, drive, schmitt, slewFast);
 DEPTHAI_SERIALIZE_EXT(BoardConfig::UART, tmp);
 DEPTHAI_SERIALIZE_EXT(BoardConfig::Camera, name, sensorType, orientation);

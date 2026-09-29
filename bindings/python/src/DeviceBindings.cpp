@@ -192,7 +192,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     // Bind BoardConfig::Network
     boardConfigNetwork.def(py::init<>())
         .def_readwrite("mtu", &BoardConfig::Network::mtu)
-        .def_readwrite("xlinkTcpNoDelay", &BoardConfig::Network::xlinkTcpNoDelay);
+        .def_readwrite("xlinkTcpNoDelay", &BoardConfig::Network::xlinkTcpNoDelay)
+        .def_readwrite("forceEnable", &BoardConfig::Network::forceEnable);
 
     // GPIO Mode
     boardConfigGpioMode.value("ALT_MODE_0", BoardConfig::GPIO::ALT_MODE_0, DOC(dai, BoardConfig, GPIO, Mode, ALT_MODE_0))
@@ -817,6 +818,20 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getXLinkChunkSize();
             },
             DOC(dai, DeviceBase, getXLinkChunkSize))
+        .def(
+            "getEthernetLinkSpeed",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getEthernetLinkSpeed();
+            },
+            "Get the current Ethernet link speed in Mbps")
+        .def(
+            "getEthernetLinkDuplex",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getEthernetLinkDuplex();
+            },
+            "Get whether the Ethernet link is full duplex")
         .def(
             "setProperties",
             [](DeviceBase& d, const DeviceProperties& properties) {

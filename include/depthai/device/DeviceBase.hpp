@@ -428,6 +428,20 @@ class DeviceBase {
     int getXLinkChunkSize();
 
     /**
+     * Gets the current Ethernet link speed in Mbps.
+     *
+     * @returns Ethernet link speed in Mbps
+     */
+    int getEthernetLinkSpeed();
+
+    /**
+     * Gets whether the current Ethernet link is full duplex.
+     *
+     * @returns 1 for full duplex, 0 otherwise
+     */
+    int getEthernetLinkDuplex();
+
+    /**
      * Sets the size of the SIPP buffer on the device.
      *
      * @param sizeBytes SIPP buffer size in bytes. Device default is 18 * 1024 bytes

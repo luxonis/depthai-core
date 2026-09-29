@@ -2005,6 +2005,14 @@ int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcCallChecked<int>("getXLinkChunkSize");
 }
 
+int DeviceBase::getEthernetLinkSpeed() {
+    return pimpl->rpcCall("getEthernetLinkSpeed").as<int>();
+}
+
+int DeviceBase::getEthernetLinkDuplex() {
+    return pimpl->rpcCall("getEthernetLinkDuplex").as<int>();
+}
+
 void DeviceBase::setSippBufferSize(int sizeBytes) {
     pimpl->rpcCall("setSippBufferSize", sizeBytes);
 }
