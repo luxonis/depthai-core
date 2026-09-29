@@ -108,4 +108,4 @@ Rules of the merged output:
   synchronization.
 
 A single depth stream behaves exactly as before. See
-`examples/python/MultiDevice/multi_device_point_cloud.py` for a two-device merged point cloud.
+`examples/python/PointCloud/multi_device_point_cloud.py` for a merged point cloud from several devices.

@@ -435,6 +435,11 @@ dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
 add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
 dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
 
+# Needs at least two devices and a multi-device calibration: registered without labels so it never runs in CI
+if(DEPTHAI_BUILD_BETA)
+    add_python_example(multi_device_point_cloud PointCloud/multi_device_point_cloud.py)
+endif()
+
 # Multi-device examples: registered without labels so they never run in CI
 # (they need at least two devices; the CI test wrapper pins to a single device)
 add_python_example(multi_device_cam_sync MultiDevice/multi_device_cam_sync.py)
@@ -447,7 +452,4 @@ add_python_example(multi_device_system_logger MultiDevice/multi_device_system_lo
 if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_python_example(multi_device_calibration MultiDeviceCalibration/multi_device_calibration.py)
     add_python_example(multi_device_calibration_constraints MultiDeviceCalibration/multi_device_calibration_constraints.py)
-endif()
-if(DEPTHAI_BUILD_BETA)
-    add_python_example(multi_device_point_cloud MultiDevice/multi_device_point_cloud.py)
 endif()
