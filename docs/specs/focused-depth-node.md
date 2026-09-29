@@ -3,7 +3,8 @@
 Focused depth runs NeuralDepth on selected regions of a stereo pair, then places
 those results in a full-size depth image in **rectified-left coordinates**. It is
 exposed through `Depth`; the internal `FocusedDepth` graph reuses its stereo cameras.
-The Python examples require RVC4 and select one neural model per run.
+The Python examples require RVC4. They use one neural model by default; the budget
+example also supports two or three models via `--depth-models`.
 
 ## Data flow
 
@@ -30,6 +31,8 @@ flowchart TD
 ```
 
 Rectification, cropping, neural inference and EVA run on the device.
+Each configured model has its own NeuralDepth node and crop ImageManip pair.
+The controller selects a backend by sending its crop configs to that pair.
 Synchronization, crop scheduling and reassembly run on the host, so stereo frames
 and crop results cross the host/device connection. Host OpenCV is required.
 
@@ -44,8 +47,10 @@ and crop results cross the host/device connection. Host OpenCV is required.
    clamp to the image, and merge overlapping padded crops.
 4. Crop at the source resolution, then **stretch-resize** to the selected model's
    input size. There is no additional expansion to the model size or aspect ratio.
-5. Dispatch the admitted crops together. Single-model largest-object and budget paths
-   keep three frames in flight, adding two frames of buffering.
+5. Dispatch the admitted crops together. All dispatch modes keep three frames in flight,
+   adding two frames of buffering. Each queued frame retains its crop-to-model assignments.
+   Only active model backends receive stereo frames, through blocking FIFO queues; inactive
+   models cannot drop or retain unrelated frames. Result queues accommodate all three batches.
 6. Correct metric depth for crop scaling, resize results back, and copy only the
    original ROI pixels—not the disparity padding or gaps between merged ROIs.
 
@@ -60,7 +65,7 @@ and crop results cross the host/device connection. Host OpenCV is required.
 
 Configure `Depth` and link `inputDetections` before accessing the lazy focused outputs:
 
-- `setFocusModels(...)`: one to three models; the examples use one, default **M / 576×360**.
+- `setFocusModels(...)`: one to three models; default example model is **M / 576×360**; `--depth-models` enables automatic budgeting across multiple models.
 - `setFocusSelectionMode(...)`: `LARGEST` or `ALL`.
 - `setFocusMode(...)`: `ROI`, `HOLD` or `HYBRID`; `setFocusHoldFrames(X)` defaults to 2.
 - `setFocusStereoSize(width, height)`: EVA input size; positive, width divisible by 128,
@@ -70,7 +75,8 @@ Configure `Depth` and link `inputDetections` before accessing the lazy focused o
   throughput estimates and can choose different configured tiers per crop.
 - `setFocusCropThroughput(rate)`: single-model budget override. The budget example
   converts `--rois-per-frame N` to `N * fps`, so it admits N available merged regions
-  independently of model speed (1–8). It does not lower N to maintain FPS.
+  independently of model speed (1–8). It does not lower N to maintain FPS. Mixed-model
+  example runs omit this override and cannot set `--rois-per-frame`.
 
 Outputs are `focusedDepth` (RAW16 millimeters), `focusedConfidence` (RAW8), and
 `focusDebug` (dispatch counts, model sizes and collection timings). Depth and

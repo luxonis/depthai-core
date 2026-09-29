@@ -38,9 +38,13 @@ def main(defaultMode="detector", budget=False):
                         help="Downscaled EVA input size in hybrid mode (default: 384 240)")
     parser.add_argument("--roi", type=parseRoi, default=parseRoi("0.35,0.30,0.65,0.70"))
     parser.add_argument("--model", default="yolov6-nano", help="Object detection model")
-    parser.add_argument("--depth-model", choices=("192X120", "288X180", "384X240", "480X300", "576X360"), default="576X360")
+    modelSizes = ("192X120", "288X180", "384X240", "480X300", "576X360")
+    models = parser.add_mutually_exclusive_group()
+    models.add_argument("--depth-model", choices=modelSizes, help="Single depth model (default: 576X360)")
     if budget:
-        parser.add_argument("--rois-per-frame", type=int, choices=range(1, 9), default=2,
+        models.add_argument("--depth-models", choices=modelSizes, nargs="+",
+                            help="Two or three models for automatic throughput budgeting; sorted smallest first")
+        parser.add_argument("--rois-per-frame", type=int, choices=range(1, 9),
                             help="Number of separate regions to process per frame when available (default: 2)")
     parser.add_argument("--confidence", type=float, default=0.5, help="Detection confidence threshold")
     parser.add_argument("--fps", type=float, default=30.0, help="Requested camera FPS")
@@ -51,6 +55,17 @@ def main(defaultMode="detector", budget=False):
     parser.add_argument("--webSocketPort", type=int, default=8765)
     parser.add_argument("--httpPort", type=int, default=8082)
     args = parser.parse_args()
+    mixedModels = budget and args.depth_models is not None
+    if mixedModels:
+        if not 2 <= len(args.depth_models) <= 3 or len(set(args.depth_models)) != len(args.depth_models):
+            parser.error("--depth-models requires two or three distinct models")
+        if args.rois_per_frame is not None:
+            parser.error("--rois-per-frame is only supported with a single --depth-model")
+        depthModels = sorted(args.depth_models, key=modelSizes.index)
+    else:
+        depthModels = [args.depth_model or "576X360"]
+        if budget and args.rois_per_frame is None:
+            args.rois_per_frame = 2
     if not np.isfinite(args.fps) or args.fps <= 0 or args.frames < 0 or not np.isfinite(args.seconds) or args.seconds < 0:
         parser.error("FPS must be positive; frames and seconds must be nonnegative")
 
@@ -72,10 +87,10 @@ def main(defaultMode="detector", budget=False):
         depth.setFocusMode(getattr(dai.node.Depth.FocusMode, args.depth_mode.upper()))
         depth.setFocusHoldFrames(args.hold_frames)
         depth.setFocusStereoSize(*args.stereo_size)
-        if budget:
+        if budget and not mixedModels:
             # Convert the explicit per-frame count to the scheduler's crop-rate units.
             depth.setFocusCropThroughput(args.rois_per_frame * args.fps)
-        depth.setFocusModels([getattr(dai.DeviceModelZoo, "NEURAL_DEPTH_" + args.depth_model)])
+        depth.setFocusModels([getattr(dai.DeviceModelZoo, "NEURAL_DEPTH_" + model) for model in depthModels])
         depth.setFocusSelectionMode(dai.node.Depth.FocusSelectionMode.ALL if budget else dai.node.Depth.FocusSelectionMode.LARGEST)
         depth.setFocusDispatchMode(dai.node.Depth.FocusDispatchMode.TIME_BUDGET if budget else dai.node.Depth.FocusDispatchMode.SINGLE_TIER_PER_FRAME)
         depth.build(args.fps)
@@ -122,8 +137,11 @@ while True:
             remote.registerPipeline(pipeline)
             wsUrl = quote(f"ws://localhost:{args.webSocketPort}", safe="")
             print(f"Visualizer: http://localhost:{args.httpPort}?ws_url={wsUrl}", flush=True)
-        print(f"Mode={args.mode}/{args.depth_mode}, depth model={args.depth_model}, requested camera FPS={args.fps:g}", flush=True)
-        if budget:
+        print(f"Mode={args.mode}/{args.depth_mode}, depth models={','.join(depthModels)}, requested camera FPS={args.fps:g}", flush=True)
+        if mixedModels:
+            print(f"Automatic model selection within {1000 / args.fps:.1f} ms per frame; "
+                  "crop size and remaining throughput budget choose the model. Requested FPS is not guaranteed.", flush=True)
+        elif budget:
             print(f"Processing {args.rois_per_frame} regions per frame when available, largest first; "
                   "overlapping regions are merged. Requested FPS is not guaranteed.", flush=True)
         start = time.monotonic()

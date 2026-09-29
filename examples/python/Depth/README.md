@@ -19,7 +19,7 @@ Run one example at a time. Open the printed Visualizer URL; stop with **Ctrl+C**
 - `focused_depth_detection.py`: the largest detected bounding box, transformed into
   rectified-left coordinates.
 - `focused_depth_budget.py`: N available regions per frame, largest first, using one
-  selected neural model. Overlapping padded regions merge before selection, so N
+  selected neural model, or automatic budgeting across two or three models. Overlapping padded regions merge before selection, so N
   counts separate inference regions, not necessarily individual detections.
 
 All three call `focused_depth.py`. Its `--mode roi|detector` chooses the ROI source;
@@ -68,7 +68,23 @@ python examples/python/Depth/focused_depth_budget.py --depth-model 480X300 --roi
 python examples/python/Depth/focused_depth_budget.py --depth-model 384X240 --rois-per-frame 4 --fps 30
 ```
 
-The count is independent of model and camera FPS. Fewer available regions produce
+For automatic Nano + Medium selection, use `--depth-models` instead of the single-model
+and ROI-count arguments:
+
+```sh
+python examples/python/Depth/focused_depth_budget.py --depth-models 384X240 576X360 --confidence 0.25 --fps 25 --debug
+```
+
+Two or three distinct models are accepted and sorted smallest-first. For each merged
+crop, largest-first, the scheduler selects the smallest model that fits its dimensions
+and downgrades if needed to fit the remaining throughput budget. It does not assign
+models by detection rank or guarantee that every configured model is used.
+Nano + Medium cost about 39.9 ms in the estimate, fitting a 25 FPS budget but not 30 FPS.
+Both single-model and mixed-model runs overlap three frames. Model switching
+and detector contention can still reduce achieved FPS. `--debug` shows the
+model selected for each crop. `--rois-per-frame` cannot be combined with `--depth-models`.
+
+For single-model runs, the count is independent of model and camera FPS. Fewer available regions produce
 fewer crops. The scheduler does not reduce the requested count to maintain FPS.
 The default budget configuration is **two Medium regions**, not two S regions;
 select `480X300` explicitly for S.
@@ -84,8 +100,11 @@ for dispatch details. For the browser ports used in our sessions, append
 - `--roi xmin,ymin,xmax,ymax`: normalized fixed rectangle, default `0.35,0.30,0.65,0.70`;
   used only with `--mode roi`.
 - `--depth-model`: `192X120`, `288X180`, `384X240` (Nano), `480X300` (S),
-  `576X360` (M, **default**). Every admitted crop uses this model.
-- `--rois-per-frame N`: budget wrapper only; integer 1–8, default 2.
+  `576X360` (M, **default**). Every admitted crop uses this model in single-model runs.
+- `--depth-models SIZE SIZE [SIZE]`: budget wrapper only; two or three distinct sizes
+  from the same choices, with automatic per-crop selection. Mutually exclusive with
+  `--depth-model` and `--rois-per-frame`.
+- `--rois-per-frame N`: single-model budget only; integer 1–8, default 2.
   Replaces the former `--crop-fps` example argument.
 - `--model`: detection model, default `yolov6-nano`.
 - `--confidence`: detection threshold in [0, 1], default 0.5; we often use 0.25.
@@ -103,10 +122,15 @@ for dispatch details. For the browser ports used in our sessions, append
 ## Measured performance
 
 The console reports output FPS and nonempty-frame counts after five seconds of
-warm-up. Single-model processing overlaps three frames, adding two frames of buffering.
+warm-up. All focused-depth dispatch modes overlap three frames, adding two frames of buffering.
 
 On the local RVC4 at `192.168.88.61`, over 20-second measurement windows: two fixed
 S regions reached **30.00 FPS**, or **29.92 FPS** with YOLO also running. Four fixed
 Nano regions reached **27.45 FPS**. The actual detection example reached **30.00 FPS**
 with one region in the scene. These measurements are specific to that setup;
 ROI count, input resolution, model and host/device traffic affect performance.
+
+With Nano + Medium configured at 25 requested FPS, enabling mixed-model pipelining
+improved the detector scene (one merged Medium crop) from **12.50 to 25.00 FPS**.
+A controlled two-region run, dispatching one crop to each model, improved from
+**12.50 to 24.90 FPS**. The budget controls admission, not achieved FPS.
