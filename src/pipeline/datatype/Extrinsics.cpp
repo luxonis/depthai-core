@@ -23,7 +23,7 @@ Extrinsics::Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, 
     setTransformationMatrix(extrinsicsMatrix, lengthUnit);
 }
 
-Extrinsics::Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
+Extrinsics::Extrinsics(const std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
     : toCameraSocket(toCameraSocket) {
     setTransformationMatrix(extrinsicsMatrix, lengthUnit);
 }

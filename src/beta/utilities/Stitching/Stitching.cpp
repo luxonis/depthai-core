@@ -106,9 +106,7 @@ std::array<std::array<float, 4>, 4> toPose(const cv::Matx33d& rotation, const cv
 }
 
 Extrinsics toExtrinsics(const std::array<std::array<float, 4>, 4>& pose, CameraBoardSocket toCameraSocket, const std::string& toDeviceId) {
-    Extrinsics extrinsics;
-    extrinsics.setTransformationMatrix(pose, LengthUnit::CENTIMETER);
-    extrinsics.toCameraSocket = toCameraSocket;
+    Extrinsics extrinsics(pose, toCameraSocket, LengthUnit::CENTIMETER);
     extrinsics.toDeviceId = toDeviceId;
     return extrinsics;
 }
