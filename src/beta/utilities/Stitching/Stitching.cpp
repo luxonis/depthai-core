@@ -100,12 +100,9 @@ cv::Matx33d alignCamerasToMeanYAxis(std::vector<cv::detail::CameraParams>& camer
 
 /// 4x4 pose of a camera in a reference frame: `rotation` maps camera directions to reference directions, `center` is the camera position.
 std::array<std::array<float, 4>, 4> toPose(const cv::Matx33d& rotation, const cv::Vec3d& center) {
-    std::array<std::array<float, 4>, 4> pose = {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 1}}};
-    for(int row = 0; row < 3; ++row) {
-        for(int column = 0; column < 3; ++column) pose[row][column] = static_cast<float>(rotation(row, column));
-        pose[row][3] = static_cast<float>(center[row]);
-    }
-    return pose;
+    const cv::Matx33f rotation32 = rotation;
+    const Point3f translation(static_cast<float>(center[0]), static_cast<float>(center[1]), static_cast<float>(center[2]));
+    return matrix::createTransformationMatrix(matrix::cvMatToMatrix3x3(cv::Mat(rotation32)), translation);
 }
 
 Extrinsics toExtrinsics(const std::array<std::array<float, 4>, 4>& pose, CameraBoardSocket toCameraSocket, const std::string& toDeviceId) {
