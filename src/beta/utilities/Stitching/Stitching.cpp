@@ -111,15 +111,6 @@ Extrinsics toExtrinsics(const std::array<std::array<float, 4>, 4>& pose, CameraB
     return extrinsics;
 }
 
-bool hasRotation(const Extrinsics& extrinsics) {
-    try {
-        matrix::validateRotationMatrix3x3(extrinsics.rotationMatrix);
-    } catch(const std::exception&) {
-        return false;
-    }
-    return true;
-}
-
 /**
  * Extrinsics of the virtual camera of a panorama composed from the input calibration. The panorama frame is the destination frame of the inputs rotated
  * by `alignment`, and since the composition ignores the input translations, the camera is placed at the mean of the input camera centers.
@@ -148,7 +139,7 @@ Extrinsics estimatedPanoramaExtrinsics(const cv::detail::CameraParams& reference
     const auto panoramaToCamera = toPose(cameraToPanorama.t(), cv::Vec3d(0.0, 0.0, 0.0));
 
     const auto inputExtrinsics = referenceInput.getExtrinsics();
-    if(!referenceInput.isValid() || !hasRotation(inputExtrinsics)) {
+    if(!referenceInput.isValid() || !inputExtrinsics.hasValidRotationMatrix()) {
         return toExtrinsics(panoramaToCamera, CameraBoardSocket::AUTO, "");
     }
     const auto cameraToDestination = inputExtrinsics.getTransformationMatrix(false, LengthUnit::CENTIMETER);

@@ -187,6 +187,15 @@ Point3f Extrinsics::getTranslationInUnit(bool useSpec, LengthUnit targetUnit) co
     return translationToUse;
 }
 
+bool Extrinsics::hasValidRotationMatrix() const {
+    try {
+        matrix::validateRotationMatrix3x3(rotationMatrix);
+    } catch(const std::exception&) {
+        return false;
+    }
+    return true;
+}
+
 bool Extrinsics::validRotationMatrix() const {
     return rotationMatrix.size() == 3 && rotationMatrix[0].size() == 3 && rotationMatrix[1].size() == 3 && rotationMatrix[2].size() == 3;
 };

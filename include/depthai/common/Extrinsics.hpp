@@ -155,6 +155,12 @@ struct Extrinsics {
     bool isEqualExtrinsics(const Extrinsics& other, float epsilon = 1e-6f) const;
 
     /**
+     * Check whether the rotation matrix is a finite, proper 3x3 rotation matrix.
+     * @return true if the rotation matrix is valid, false otherwise
+     */
+    bool hasValidRotationMatrix() const;
+
+    /**
      * Check whether these extrinsics can be expressed relative to the same target coordinate system as another Extrinsics object.
      * Unknown device IDs and AUTO camera sockets are treated as compatible for backwards compatibility.
      * @param to The target Extrinsics object to compare with
