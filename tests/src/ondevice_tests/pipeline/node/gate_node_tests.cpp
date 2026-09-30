@@ -31,7 +31,8 @@ TEST_CASE("ImgFrame metadata survives a device round trip") {
     sent->setCategory(3);
     sent->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(123456789)));
     sent->setTimestampDevice(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(234567890)));
-    sent->setTimestampSystem(std::chrono::system_clock::time_point(std::chrono::nanoseconds(345678901)));
+    sent->setTimestampSystem(std::chrono::system_clock::time_point(
+        std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::nanoseconds(345678901))));
     sent->cam.exposureTimeUs = 1234;
     sent->cam.sensitivityIso = 321;
     sent->cam.lensPosition = 12;
