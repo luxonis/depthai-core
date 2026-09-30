@@ -86,7 +86,16 @@ std::shared_ptr<GateControl> Gate::sendMessages(int numMessages, int fps) {
 }
 
 std::shared_ptr<GateControl> Gate::waitForCommand() {
-    return inputControl.get<GateControl>();  // Blocking wait
+    while(mainLoop()) {
+        if(MessageQueue::waitAny(inputs)) {
+            if(auto inControl = inputControl.tryGet<GateControl>()) {
+                return inControl;
+            }
+
+            input.tryGet();
+        }
+    }
+    return nullptr;
 }
 
 void Gate::run() {
