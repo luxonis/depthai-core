@@ -68,16 +68,10 @@ statuses = from(bucket: "{bucket}")
         r.workflow == "{GITHUB_WORKFLOW}"
     )
 
-latestRun =
-    statuses
-        |> group()
-        |> max(column: "_time")
-        |> findRecord(fn: (key) => true, idx: 0)
-
 failedTestNames =
     statuses
         |> filter(fn: (r) =>
-            r._time == latestRun._time and
+            r.GITHUB_RUN_ID == "{GITHUB_RUN_ID} and
             r._value == 1
         )
         |> keep(columns: ["testName","config","context","os"])
