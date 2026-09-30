@@ -43,6 +43,11 @@ void Vpp::postBuildStage() {
     auto isConnected = [&](const std::string& name) { return sync->inputs.has(name) && sync->inputs[name].isConnected(); };
     const bool hasDisparity = isConnected(disparityName);
     const bool hasDepth = isConnected(depthName);
+    if(hasDirectSyncedInput && !hasDisparity && !hasDepth) {
+        // Legacy callers provide an already synchronized MessageGroup directly.
+        // Its contents are validated by the device when the message arrives.
+        return;
+    }
     if(hasDisparity == hasDepth) {
         throw std::invalid_argument("VPP expects exactly one of depth or disparity to be linked");
     }
@@ -54,6 +59,22 @@ void Vpp::postBuildStage() {
             unusedSyncInputs.insert(sync->inputs.extract(it));
         }
     }
+#endif
+}
+
+void Vpp::buildStage1() {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // Ignore the automatic Sync connection when detecting a direct producer.
+    // Do this before host/device bridges replace the original connections.
+    for(const auto& connection : sync->out.getConnections()) {
+        if(connection.in == &syncedInputs) {
+            sync->out.unlink(syncedInputs);
+            hasDirectSyncedInput = syncedInputs.isConnected();
+            sync->out.link(syncedInputs);
+            return;
+        }
+    }
+    hasDirectSyncedInput = syncedInputs.isConnected();
 #endif
 }
 

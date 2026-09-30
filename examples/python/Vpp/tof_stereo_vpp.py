@@ -14,16 +14,27 @@
   └─────┘
 """
 
+import argparse
 import math
 
 import cv2
 import depthai as dai
-import numpy as np
 
-FPS = 10
+FPS = 30
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--show-all", action="store_true",
+                        help="stream ToF, aligned depth, and VPP images as well as fused depth; this can reduce FPS")
+    parser.add_argument("--size", choices=("1280x800", "640x400"), default="1280x800",
+                        help="stereo processing size (default: 1280x800)")
+    parser.add_argument("--max-depth", type=float, default=5000,
+                        help="fixed display depth limit in millimeters (default: 5000)")
+    args = parser.parse_args()
+    if not math.isfinite(args.max_depth) or args.max_depth <= 0:
+        parser.error("--max-depth must be finite and positive")
+    size = tuple(map(int, args.size.split("x")))
     print(f"DepthAI {dai.__version__}")
     with dai.Pipeline() as pipeline:
         if pipeline.getDefaultDevice().getPlatform() != dai.Platform.RVC4:
@@ -33,9 +44,9 @@ def main():
         right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
         rect = pipeline.create(dai.node.Rectification)
         rect.setRunOnHost(False)
-        rect.setOutputSize(1280, 800)
+        rect.setOutputSize(*size)
         for camera, input_image in ((left, rect.input1), (right, rect.input2)):
-            camera.requestOutput((1280, 800), type=dai.ImgFrame.Type.GRAY8,
+            camera.requestOutput(size, type=dai.ImgFrame.Type.GRAY8,
                                  fps=FPS, enableUndistortion=False).link(input_image)
 
         tof = pipeline.create(dai.node.ToF).build(
@@ -71,13 +82,14 @@ def main():
         vpp.leftOut.link(stereo.left)
         vpp.rightOut.link(stereo.right)
 
-        outputs = {
-            "tof_depth": tof.tofBaseNode.depth,
-            "aligned_depth": align.outputAligned,
-            "vpp_left": vpp.leftOut,
-            "vpp_right": vpp.rightOut,
-            "fused_depth": stereo.depth,
-        }
+        outputs = {"fused_depth": stereo.depth}
+        if args.show_all:
+            outputs.update({
+                "tof_depth": tof.tofBaseNode.depth,
+                "aligned_depth": align.outputAligned,
+                "vpp_left": vpp.leftOut,
+                "vpp_right": vpp.rightOut,
+            })
         queues = {name: output.createOutputQueue(maxSize=2, blocking=False)
                   for name, output in outputs.items()}
 
@@ -88,7 +100,9 @@ def main():
                 if frame is not None:
                     img = frame.getCvFrame()
                     if name in ("tof_depth", "aligned_depth", "fused_depth"):
-                        img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                        # Fixed scale: outliers cannot change the brightness of the whole frame.
+                        # Invalid zero depth stays black; depths beyond the limit saturate to white.
+                        img = cv2.convertScaleAbs(img, alpha=255.0 / args.max_depth)
                     cv2.imshow(name, img)
             if cv2.waitKey(1) == ord("q"):
                 break

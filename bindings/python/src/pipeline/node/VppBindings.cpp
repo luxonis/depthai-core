@@ -40,7 +40,7 @@ void bind_vpp(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "disparity", [](Vpp& node) -> Node::Input& { return node.disparity; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
-            "depth", [](Vpp& node) -> Node::Input& { return node.depth; }, py::return_value_policy::reference_internal)
+            "depth", [](Vpp& node) -> Node::Input& { return node.depth; }, py::return_value_policy::reference_internal, DOC(dai, node, Vpp, depth))
         .def_property_readonly(
             "confidence", [](Vpp& node) -> Node::Input& { return node.confidence; }, py::return_value_policy::reference_internal)
         .def("build", &Vpp::build, py::arg("leftInput"), py::arg("rightInput"), py::arg("disparity"), py::arg("confidence"), DOC(dai, node, Vpp, build))

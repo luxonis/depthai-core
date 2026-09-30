@@ -34,6 +34,8 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput);
 
     void buildInternal() override;
+    /// Detect direct MessageGroup producers before pipeline transport bridges are inserted.
+    void buildStage1() override;
     void postBuildStage() override;
 
     /**
@@ -47,6 +49,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
    private:
     // Own inactive inputs without exposing them to Sync; public references keep their addresses.
     std::unordered_map<InputMap::key_type, Input, InputMap::hasher> unusedSyncInputs;
+    bool hasDirectSyncedInput = false;
 
    public:
 #endif
@@ -79,7 +82,9 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     Input& disparity{sync->inputs["disparity"]};
 
     /**
-     * Depth input, used instead of disparity.
+     * Depth input, used instead of disparity. Expects RAW16 millimetres aligned to the
+     * full rectified left image, with stereo intrinsics and extrinsics on the image frames.
+     * Requires RVC4 firmware with VPP depth-input support.
      */
     Input& depth{sync->inputs["depth"]};
 
