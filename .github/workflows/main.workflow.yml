@@ -320,7 +320,7 @@ jobs:
 
   required_core_ci_report:
     name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Core CI report (not applicable)' }}
-    needs: [precheck, consistency, style, tidy, minimal-build, build, integration]
+    needs: [precheck, consistency, style, tidy, minimal-build, device-manager-build, build, integration]
     if: always()
     runs-on: ubuntu-latest
     steps:
