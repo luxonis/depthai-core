@@ -32,7 +32,7 @@ inline std::optional<float> stereoPairPositionDeltaInView(const StereoPairTransf
     if(!validTransform(firstToCommon) || !validTransform(secondToCommon)) return std::nullopt;
 
     const auto dot = [](const Vector3& first, const Vector3& second) { return first[0] * second[0] + first[1] * second[1] + first[2] * second[2]; };
-    const auto normalized = [&dot](const Vector3& vector) -> std::optional<Vector3> {
+    const auto normalized = [&dot, epsilon](const Vector3& vector) -> std::optional<Vector3> {
         const auto length = std::sqrt(dot(vector, vector));
         if(length <= epsilon) return std::nullopt;
         return Vector3{vector[0] / length, vector[1] / length, vector[2] / length};
