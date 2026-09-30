@@ -16,7 +16,7 @@ namespace {
 using Matrix = std::vector<std::vector<float>>;
 using Socket = dai::CameraBoardSocket;
 
-constexpr float pi = 3.14159265358979323846f;
+const float pi = std::acos(-1.0f);
 
 Socket parseSocket(const std::string& name) {
     static const std::unordered_map<std::string, Socket> sockets = {{"CAM_A", Socket::CAM_A},

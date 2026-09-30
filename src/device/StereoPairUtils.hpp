@@ -63,6 +63,9 @@ inline std::optional<float> stereoPairPositionDeltaInView(const StereoPairTransf
 
 inline bool stereoPairFirstCameraIsLeft(
     const CalibrationHandler& calibrationHandler, CameraBoardSocket first, CameraBoardSocket second, bool vertical, float baseline) {
+    // Legacy getStereoPairs() inferred left/right solely from the sign of the pairwise X/Y translation. That ordering is reversed for cameras
+    // which face backward relative to the calibration origin. Preserve the legacy rule as a fallback when disconnected or degenerate calibration
+    // data prevents both cameras from being compared in a common viewing frame.
     const bool legacyOrder = baseline < 0.0f;
 
     try {
@@ -82,7 +85,7 @@ inline bool stereoPairFirstCameraIsLeft(
 class StereoPairCalculator {
    public:
     static std::vector<StereoPair> find(const CalibrationHandler& calibrationHandler, const std::vector<CameraFeatures>& connectedFeatures) {
-        constexpr float pi = 3.14159265358979323846f;
+        const float pi = std::acos(-1.0f);
         std::vector<StereoPair> stereoPairs;
         std::unordered_map<CameraBoardSocket, CameraFeatures> featureBySocket;
         std::vector<CameraBoardSocket> sockets;
