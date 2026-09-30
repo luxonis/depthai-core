@@ -1,5 +1,7 @@
 #include <pybind11/eval.h>
+#include <pyerrors.h>
 
+#include <cstdio>
 #include <string>
 #include <utility>
 
@@ -20,7 +22,7 @@ using namespace dai::node;
     if(e.matches(messageQueueException)) {
         throw dai::MessageQueue::QueueException(e.what());
     }
-    throw std::runtime_error(e.what());
+    throw;
 }
 
 class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode, false> {
