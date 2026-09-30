@@ -114,19 +114,11 @@ cv::Mat composeCalibratedCylindricalPanorama(const std::vector<cv::Mat>& images,
     return composeCalibratedPanorama(images, yaws, pitches, dai::beta::node::Stitching::CameraModel::CYLINDRICAL)->getCvFrame();
 }
 
-cv::Matx33d rotationOf(const dai::Extrinsics& extrinsics) {
-    const auto rotation = extrinsics.getRotationMatrix();
-    REQUIRE(rotation.size() == 3);
-    cv::Matx33d result;
-    for(int row = 0; row < 3; ++row) {
-        REQUIRE(rotation[row].size() == 3);
-        for(int column = 0; column < 3; ++column) result(row, column) = rotation[row][column];
-    }
-    return result;
-}
-
-double rotationAngleDegrees(const cv::Matx33d& rotation) {
-    const double cosine = std::clamp((cv::trace(rotation) - 1.0) / 2.0, -1.0, 1.0);
+double rotationAngleDegrees(const dai::Extrinsics& extrinsics) {
+    REQUIRE(extrinsics.hasValidRotationMatrix());
+    const auto& rotation = extrinsics.rotationMatrix;
+    const double trace = rotation[0][0] + rotation[1][1] + rotation[2][2];
+    const double cosine = std::clamp((trace - 1.0) / 2.0, -1.0, 1.0);
     return std::acos(cosine) * 180.0 / CV_PI;
 }
 
@@ -247,11 +239,12 @@ TEST_CASE("Calibrated cylindrical panorama uses the mean camera Y axis", "[Stitc
 
     // The virtual camera reports the tilt: its Y axis is the mean input Y axis, 20 degrees off the destination frame
     const auto pitched = composeCalibratedPanorama(views, yaws, pitchedRigPitches, dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
-    const cv::Vec3d yAxis = rotationOf(pitched->getTransformation().getExtrinsics()) * cv::Vec3d(0.0, 1.0, 0.0);
+    const auto& rotation = pitched->getTransformation().getExtrinsics().rotationMatrix;
+    REQUIRE(rotation.size() == 3);
     const double tilt = 20.0 * CV_PI / 180.0;
-    REQUIRE_THAT(yAxis[0], WithinAbs(0.0, 1e-4));
-    REQUIRE_THAT(yAxis[1], WithinAbs(std::cos(tilt), 1e-4));
-    REQUIRE_THAT(yAxis[2], WithinAbs(std::sin(tilt), 1e-4));
+    REQUIRE_THAT(rotation[0][1], WithinAbs(0.0, 1e-4));
+    REQUIRE_THAT(rotation[1][1], WithinAbs(std::cos(tilt), 1e-4));
+    REQUIRE_THAT(rotation[2][1], WithinAbs(std::sin(tilt), 1e-4));
 }
 
 TEST_CASE("Calibrated panorama describes the virtual camera that rendered it", "[Stitching]") {
@@ -277,7 +270,7 @@ TEST_CASE("Calibrated panorama describes the virtual camera that rendered it", "
         const auto extrinsics = transformation.getExtrinsics();
         REQUIRE(extrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_A);
         REQUIRE(extrinsics.toDeviceId == "reference-device");
-        REQUIRE(rotationAngleDegrees(rotationOf(extrinsics)) < 1e-3);
+        REQUIRE(rotationAngleDegrees(extrinsics) < 1e-3);
         const auto translation = extrinsics.getTranslationVector(false, dai::LengthUnit::CENTIMETER);
         REQUIRE_THAT(translation[0], WithinAbs(0.0, 1e-3));
         REQUIRE_THAT(translation[1], WithinAbs(50.0, 1e-3));
@@ -597,7 +590,7 @@ TEST_CASE("Registered panorama describes the virtual camera through its first in
         REQUIRE(extrinsics.toCameraSocket == dai::CameraBoardSocket::AUTO);
         REQUIRE(extrinsics.toDeviceId.empty());
         // The first input looks 15 degrees away from the middle of the panorama
-        REQUIRE_THAT(rotationAngleDegrees(rotationOf(extrinsics)), WithinAbs(15.0, 2.0));
+        REQUIRE_THAT(rotationAngleDegrees(extrinsics), WithinAbs(15.0, 2.0));
         const auto translation = extrinsics.getTranslationVector(false, dai::LengthUnit::CENTIMETER);
         REQUIRE(translation == std::vector<float>{0.0f, 0.0f, 0.0f});
     }
@@ -607,7 +600,7 @@ TEST_CASE("Registered panorama describes the virtual camera through its first in
         REQUIRE(extrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_A);
         REQUIRE(extrinsics.toDeviceId == "reference-device");
         // The first input's extrinsics undo its 15 degree yaw, so the panorama looks along the destination Z axis from its center
-        REQUIRE(rotationAngleDegrees(rotationOf(extrinsics)) < 2.0);
+        REQUIRE(rotationAngleDegrees(extrinsics) < 2.0);
         const auto translation = extrinsics.getTranslationVector(false, dai::LengthUnit::CENTIMETER);
         REQUIRE_THAT(translation[0], WithinAbs(-15.0, 1e-3));
         REQUIRE_THAT(translation[1], WithinAbs(50.0, 1e-3));
