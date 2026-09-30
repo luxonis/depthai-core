@@ -68,6 +68,74 @@ namespace {
 
 constexpr double PI = 3.14159265358979323846;
 
+using StereoPairTransform = std::vector<std::vector<float>>;
+
+std::optional<float> stereoPairPositionDeltaInView(const StereoPairTransform& firstToCommon,
+                                                   const StereoPairTransform& secondToCommon,
+                                                   bool vertical) {
+    using Vector3 = std::array<float, 3>;
+    constexpr float epsilon = 1e-6f;
+
+    const auto validTransform = [](const StereoPairTransform& transform) {
+        if(transform.size() != 4) return false;
+        for(const auto& row : transform) {
+            if(row.size() != 4) return false;
+        }
+        return true;
+    };
+    if(!validTransform(firstToCommon) || !validTransform(secondToCommon)) return std::nullopt;
+
+    const auto dot = [](const Vector3& first, const Vector3& second) { return first[0] * second[0] + first[1] * second[1] + first[2] * second[2]; };
+    const auto normalized = [&dot](const Vector3& vector) -> std::optional<Vector3> {
+        const auto length = std::sqrt(dot(vector, vector));
+        if(length <= epsilon) return std::nullopt;
+        return Vector3{vector[0] / length, vector[1] / length, vector[2] / length};
+    };
+
+    // The third rotation column is the camera's optical axis expressed in the common frame.
+    const auto forward =
+        normalized({firstToCommon[0][2] + secondToCommon[0][2], firstToCommon[1][2] + secondToCommon[1][2], firstToCommon[2][2] + secondToCommon[2][2]});
+    if(!forward) return std::nullopt;
+
+    // Keep the common frame's down direction, but remove any component along the optical axis.
+    // This makes the derived right direction reverse naturally for a backward-facing pair.
+    constexpr Vector3 commonDown{0.0f, 1.0f, 0.0f};
+    const auto downAlongForward = dot(commonDown, *forward);
+    const auto down = normalized(
+        {commonDown[0] - downAlongForward * (*forward)[0], commonDown[1] - downAlongForward * (*forward)[1], commonDown[2] - downAlongForward * (*forward)[2]});
+    if(!down) return std::nullopt;
+
+    const Vector3 right{(*down)[1] * (*forward)[2] - (*down)[2] * (*forward)[1],
+                        (*down)[2] * (*forward)[0] - (*down)[0] * (*forward)[2],
+                        (*down)[0] * (*forward)[1] - (*down)[1] * (*forward)[0]};
+    const Vector3 positionDelta{
+        secondToCommon[0][3] - firstToCommon[0][3], secondToCommon[1][3] - firstToCommon[1][3], secondToCommon[2][3] - firstToCommon[2][3]};
+    const auto projectedDelta = dot(positionDelta, vertical ? *down : right);
+    if(std::abs(projectedDelta) <= epsilon) return std::nullopt;
+    return projectedDelta;
+}
+
+bool stereoPairFirstCameraIsLeft(const dai::CalibrationHandler& calibrationHandler,
+                                 dai::CameraBoardSocket first,
+                                 dai::CameraBoardSocket second,
+                                 bool vertical,
+                                 float baseline) {
+    const bool legacyOrder = baseline < 0.0f;
+
+    try {
+        dai::CameraBoardSocket firstRoot = dai::CameraBoardSocket::AUTO;
+        dai::CameraBoardSocket secondRoot = dai::CameraBoardSocket::AUTO;
+        const auto firstToRoot = calibrationHandler.getExtrinsicsToOrigin(first, false, firstRoot);
+        const auto secondToRoot = calibrationHandler.getExtrinsicsToOrigin(second, false, secondRoot);
+        if(firstRoot != secondRoot) return legacyOrder;
+
+        const auto commonFrameDelta = stereoPairPositionDeltaInView(firstToRoot, secondToRoot, vertical);
+        return commonFrameDelta ? *commonFrameDelta > 0.0f : legacyOrder;
+    } catch(const std::exception&) {
+        return legacyOrder;
+    }
+}
+
 struct ScopedRpcTimeout {
    public:
     static thread_local std::optional<std::chrono::milliseconds> tlRpcTimeout;
@@ -1795,14 +1863,10 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
                 }
                 const float baseline = isVertical ? translationVector[1] : translationVector[0];
 
+                const bool firstIsLeft = stereoPairFirstCameraIsLeft(calibrationHandler, socket1, socket2, isVertical, baseline);
                 StereoPair pair;
-                if(baseline < 0.0f) {
-                    pair.left = socket1;
-                    pair.right = socket2;
-                } else {
-                    pair.left = socket2;
-                    pair.right = socket1;
-                }
+                pair.left = firstIsLeft ? socket1 : socket2;
+                pair.right = firstIsLeft ? socket2 : socket1;
                 pair.baseline = std::abs(baseline);
                 pair.isVertical = isVertical;
                 stereoPairs.push_back(pair);
