@@ -39,6 +39,7 @@ void Vpp::buildInternal() {
 
 void Vpp::postBuildStage() {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    sync->inputs.merge(unusedSyncInputs);
     auto isConnected = [&](const std::string& name) { return sync->inputs.has(name) && sync->inputs[name].isConnected(); };
     const bool hasDisparity = isConnected(disparityName);
     const bool hasDepth = isConnected(depthName);
@@ -46,11 +47,11 @@ void Vpp::postBuildStage() {
         throw std::invalid_argument("VPP expects exactly one of depth or disparity to be linked");
     }
 
-    // Sync waits for every declared input, so drop the optional ones that are not linked.
+    // Sync waits for every declared input. Transfer unlinked inputs without invalidating Vpp's public references.
     for(const auto& name : {disparityName, depthName, confidenceName}) {
         auto it = sync->inputs.find({sync->inputs.name, name});
         if(it != sync->inputs.end() && !it->second.isConnected()) {
-            sync->inputs.erase(it);
+            unusedSyncInputs.insert(sync->inputs.extract(it));
         }
     }
 #endif

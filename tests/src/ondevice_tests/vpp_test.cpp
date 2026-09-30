@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/Vpp.hpp"
 
 #include <catch2/catch_all.hpp>
+#include <chrono>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
@@ -50,7 +51,11 @@ TEST_CASE("DepthAI VPP RAW8") {
     // Build the pipeline
     Pipeline pipeline;
     auto vpp = pipeline.create<node::Vpp>();
-    auto syncQueue = vpp->syncedInputs.createInputQueue();
+    vpp->sync->setTimestampSource(node::Sync::TimestampSource::HOST);
+    auto leftQueue = vpp->left.createInputQueue();
+    auto rightQueue = vpp->right.createInputQueue();
+    auto disparityQueue = vpp->disparity.createInputQueue();
+    auto confidenceQueue = vpp->confidence.createInputQueue();
     auto configQueue = vpp->inputConfig.createInputQueue();
     auto outLeftQueue = vpp->leftOut.createOutputQueue();
     auto outRightQueue = vpp->rightOut.createOutputQueue();
@@ -78,13 +83,15 @@ TEST_CASE("DepthAI VPP RAW8") {
     confidenceFrame->setCvFrame(confidence, ImgFrame::Type::RAW16);
 
     pipeline.start();
-    // Send message group
-    auto messageGroup = std::make_shared<MessageGroup>();
-    messageGroup->add("left", leftFrame);
-    messageGroup->add("right", rightFrame);
-    messageGroup->add("disparity", disparityFrame);
-    messageGroup->add("confidence", confidenceFrame);
-    syncQueue->send(messageGroup);
+    const auto timestamp = std::chrono::steady_clock::now();
+    leftFrame->setTimestamp(timestamp);
+    rightFrame->setTimestamp(timestamp);
+    disparityFrame->setTimestamp(timestamp);
+    confidenceFrame->setTimestamp(timestamp);
+    leftQueue->send(leftFrame);
+    rightQueue->send(rightFrame);
+    disparityQueue->send(disparityFrame);
+    confidenceQueue->send(confidenceFrame);
 
     // Try to read outputs
     auto leftOut = outLeftQueue->get<ImgFrame>();
@@ -115,7 +122,11 @@ TEST_CASE("DepthAI VPP gray8") {
     // Build the pipeline
     Pipeline pipeline;
     auto vpp = pipeline.create<node::Vpp>();
-    auto syncQueue = vpp->syncedInputs.createInputQueue();
+    vpp->sync->setTimestampSource(node::Sync::TimestampSource::HOST);
+    auto leftQueue = vpp->left.createInputQueue();
+    auto rightQueue = vpp->right.createInputQueue();
+    auto disparityQueue = vpp->disparity.createInputQueue();
+    auto confidenceQueue = vpp->confidence.createInputQueue();
     auto configQueue = vpp->inputConfig.createInputQueue();
     auto outLeftQueue = vpp->leftOut.createOutputQueue();
     auto outRightQueue = vpp->rightOut.createOutputQueue();
@@ -143,13 +154,15 @@ TEST_CASE("DepthAI VPP gray8") {
     confidenceFrame->setCvFrame(confidence, ImgFrame::Type::RAW16);
 
     pipeline.start();
-    // Send message group
-    auto messageGroup = std::make_shared<MessageGroup>();
-    messageGroup->add("left", leftFrame);
-    messageGroup->add("right", rightFrame);
-    messageGroup->add("disparity", disparityFrame);
-    messageGroup->add("confidence", confidenceFrame);
-    syncQueue->send(messageGroup);
+    const auto timestamp = std::chrono::steady_clock::now();
+    leftFrame->setTimestamp(timestamp);
+    rightFrame->setTimestamp(timestamp);
+    disparityFrame->setTimestamp(timestamp);
+    confidenceFrame->setTimestamp(timestamp);
+    leftQueue->send(leftFrame);
+    rightQueue->send(rightFrame);
+    disparityQueue->send(disparityFrame);
+    confidenceQueue->send(confidenceFrame);
 
     // Try to read outputs
     auto leftOut = outLeftQueue->get<ImgFrame>();
@@ -169,7 +182,11 @@ TEST_CASE("DepthAI VPP multiple configs without recreating pipeline") {
     // Create pipeline once
     Pipeline pipeline;
     auto vpp = pipeline.create<node::Vpp>();
-    auto syncQueue = vpp->syncedInputs.createInputQueue();
+    vpp->sync->setTimestampSource(node::Sync::TimestampSource::HOST);
+    auto leftQueue = vpp->left.createInputQueue();
+    auto rightQueue = vpp->right.createInputQueue();
+    auto disparityQueue = vpp->disparity.createInputQueue();
+    auto confidenceQueue = vpp->confidence.createInputQueue();
     auto configQueue = vpp->inputConfig.createInputQueue();
     auto outLeftQueue = vpp->leftOut.createOutputQueue();
     auto outRightQueue = vpp->rightOut.createOutputQueue();
@@ -216,13 +233,15 @@ TEST_CASE("DepthAI VPP multiple configs without recreating pipeline") {
         auto disparityFrame = openCvToFrame(disparity, ImgFrame::Type::RAW16);
         auto confidenceFrame = openCvToFrame(confidence, ImgFrame::Type::RAW16);
 
-        auto messageGroup = std::make_shared<MessageGroup>();
-        messageGroup->add("left", leftFrame);
-        messageGroup->add("right", rightFrame);
-        messageGroup->add("disparity", disparityFrame);
-        messageGroup->add("confidence", confidenceFrame);
-
-        syncQueue->send(messageGroup);
+        const auto timestamp = std::chrono::steady_clock::now();
+        leftFrame->setTimestamp(timestamp);
+        rightFrame->setTimestamp(timestamp);
+        disparityFrame->setTimestamp(timestamp);
+        confidenceFrame->setTimestamp(timestamp);
+        leftQueue->send(leftFrame);
+        rightQueue->send(rightFrame);
+        disparityQueue->send(disparityFrame);
+        confidenceQueue->send(confidenceFrame);
 
         // Check outputs
         auto leftOut = outLeftQueue->get<ImgFrame>();
@@ -248,10 +267,9 @@ TEST_CASE("DepthAI VPP multiple configs without recreating pipeline") {
     pipeline.wait();
 }
 
-TEST_CASE("DepthAI VPP rejects depth and disparity together") {
-    Pipeline pipeline;
-    auto source = pipeline.create<node::ImageManip>();
-    auto vpp = pipeline.create<node::Vpp>();
+TEST_CASE("DepthAI VPP rejects depth and disparity together", "[vpp-host]") {
+    auto source = node::ImageManip::create();
+    auto vpp = node::Vpp::create();
     source->out.link(vpp->left);
     source->out.link(vpp->right);
     source->out.link(vpp->depth);
@@ -262,38 +280,63 @@ TEST_CASE("DepthAI VPP rejects depth and disparity together") {
     REQUIRE_THROWS_AS(vpp->postBuildStage(), std::invalid_argument);
 }
 
-TEST_CASE("DepthAI VPP rejects neither depth nor disparity") {
-    Pipeline pipeline;
-    auto source = pipeline.create<node::ImageManip>();
-    auto vpp = pipeline.create<node::Vpp>();
+TEST_CASE("DepthAI VPP rejects neither depth nor disparity", "[vpp-host]") {
+    auto source = node::ImageManip::create();
+    auto vpp = node::Vpp::create();
     source->out.link(vpp->left);
     source->out.link(vpp->right);
 
     REQUIRE_THROWS_AS(vpp->postBuildStage(), std::invalid_argument);
 }
 
-TEST_CASE("DepthAI VPP drops unlinked optional sync inputs") {
-    Pipeline pipeline;
-    auto source = pipeline.create<node::ImageManip>();
-    auto vpp = pipeline.create<node::Vpp>();
+TEST_CASE("DepthAI VPP preserves unlinked optional inputs", "[vpp-host]") {
+    const bool useDepth = GENERATE(true, false);
+    auto source = node::ImageManip::create();
+    auto vpp = node::Vpp::create();
     source->out.link(vpp->left);
     source->out.link(vpp->right);
-    source->out.link(vpp->depth);
-    vpp->postBuildStage();
-    REQUIRE(vpp->sync->inputs.has("depth"));
-    REQUIRE_FALSE(vpp->sync->inputs.has("disparity"));
-    REQUIRE_FALSE(vpp->sync->inputs.has("confidence"));
+    source->out.link(useDepth ? vpp->depth : vpp->disparity);
+    auto* depth = &vpp->depth;
+    auto* disparity = &vpp->disparity;
+    auto* confidence = &vpp->confidence;
+
+    // Starting again must preserve the public inputs as well as the active Sync inputs.
+    for(int build = 0; build < 2; ++build) {
+        REQUIRE_NOTHROW(vpp->postBuildStage());
+        REQUIRE(vpp->sync->inputs.has("depth") == useDepth);
+        REQUIRE(vpp->sync->inputs.has("disparity") == !useDepth);
+        REQUIRE_FALSE(vpp->sync->inputs.has("confidence"));
+        REQUIRE(&vpp->depth == depth);
+        REQUIRE(&vpp->disparity == disparity);
+        REQUIRE(&vpp->confidence == confidence);
+        REQUIRE(vpp->depth.isConnected() == useDepth);
+        REQUIRE(vpp->disparity.isConnected() == !useDepth);
+        REQUIRE_FALSE(vpp->confidence.isConnected());
+        REQUIRE(vpp->depth.getName() == "depth");
+        REQUIRE(vpp->disparity.getName() == "disparity");
+        REQUIRE(vpp->confidence.getName() == "confidence");
+    }
+
+    // A previously inactive public input can be connected before the next build stage.
+    source->out.link(vpp->confidence);
+    REQUIRE_NOTHROW(vpp->postBuildStage());
+    REQUIRE(vpp->sync->inputs.has("confidence"));
+    REQUIRE(&vpp->confidence == confidence);
+    REQUIRE(vpp->confidence.isConnected());
 }
 
 TEST_CASE("DepthAI VPP accepts depth input", "[.depth-fw]") {
     Pipeline pipeline;
     auto vpp = pipeline.create<node::Vpp>();
-    auto syncQueue = vpp->syncedInputs.createInputQueue();
+    vpp->sync->setTimestampSource(node::Sync::TimestampSource::HOST);
+    auto leftQueue = vpp->left.createInputQueue();
+    auto rightQueue = vpp->right.createInputQueue();
+    auto depthQueue = vpp->depth.createInputQueue();
     auto outLeftQueue = vpp->leftOut.createOutputQueue();
     auto outRightQueue = vpp->rightOut.createOutputQueue();
 
-    cv::Mat image(1280, 800, CV_8UC1, cv::Scalar(0));
-    cv::Mat depth(16, 16, CV_16UC1, cv::Scalar(1000));
+    cv::Mat image(800, 1280, CV_8UC1, cv::Scalar(0));
+    cv::Mat depth(image.size(), CV_16UC1, cv::Scalar(1000));
     auto leftFrame = std::make_shared<ImgFrame>();
     leftFrame->setCvFrame(image, ImgFrame::Type::GRAY8);
     auto rightFrame = std::make_shared<ImgFrame>();
@@ -301,15 +344,37 @@ TEST_CASE("DepthAI VPP accepts depth input", "[.depth-fw]") {
     auto depthFrame = std::make_shared<ImgFrame>();
     depthFrame->setCvFrame(depth, ImgFrame::Type::RAW16);
 
-    pipeline.start();
-    auto group = std::make_shared<MessageGroup>();
-    group->add("left", leftFrame);
-    group->add("right", rightFrame);
-    group->add("depth", depthFrame);
-    syncQueue->send(group);
+    // Depth conversion needs rectified intrinsics and a nonzero stereo baseline.
+    ImgTransformation leftTransform(image.cols, image.rows);
+    leftTransform.setIntrinsicMatrix({{{800.0f, 0.0f, 640.0f}, {0.0f, 800.0f, 400.0f}, {0.0f, 0.0f, 1.0f}}});
+    Extrinsics leftExtrinsics({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, CameraBoardSocket::CAM_B, LengthUnit::MILLIMETER);
+    leftTransform.setExtrinsics(leftExtrinsics);
+    auto rightTransform = leftTransform;
+    auto rightExtrinsics = leftExtrinsics;
+    rightExtrinsics.translation.x = 75.0f;
+    rightTransform.setExtrinsics(rightExtrinsics);
+    leftFrame->setTransformation(leftTransform);
+    rightFrame->setTransformation(rightTransform);
+    depthFrame->setTransformation(leftTransform);
+    const auto timestamp = std::chrono::steady_clock::now();
+    leftFrame->setTimestamp(timestamp);
+    rightFrame->setTimestamp(timestamp);
+    depthFrame->setTimestamp(timestamp);
 
-    REQUIRE(outLeftQueue->get<ImgFrame>() != nullptr);
-    REQUIRE(outRightQueue->get<ImgFrame>() != nullptr);
+    pipeline.start();
+    leftQueue->send(leftFrame);
+    rightQueue->send(rightFrame);
+    depthQueue->send(depthFrame);
+
+    bool timedOut = false;
+    auto leftOut = outLeftQueue->get<ImgFrame>(std::chrono::seconds(10), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(leftOut != nullptr);
+    auto rightOut = outRightQueue->get<ImgFrame>(std::chrono::seconds(10), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(rightOut != nullptr);
+    REQUIRE(leftOut->getCvFrame().size() == image.size());
+    REQUIRE(rightOut->getCvFrame().size() == image.size());
 
     pipeline.stop();
     pipeline.wait();
