@@ -287,8 +287,7 @@ class Stitching::Impl {
         stitcher->setSeamEstimationResol(stitching::SEAM_ESTIMATION_RESOLUTION);
         stitcher->setCompositingResol(stitching::COMPOSITING_RESOLUTION);
         stitcher->setPanoConfidenceThresh(properties.panoConfidenceThreshold);
-        const bool waveCorrection =
-            properties.cameraModel == CameraModel::Equirectangular || properties.cameraModel == CameraModel::Cylindrical;
+        const bool waveCorrection = properties.cameraModel == CameraModel::Equirectangular || properties.cameraModel == CameraModel::Cylindrical;
         stitcher->setWaveCorrection(waveCorrection);
         if(waveCorrection) {
             stitcher->setWaveCorrectKind(cv::detail::WAVE_CORRECT_HORIZ);
