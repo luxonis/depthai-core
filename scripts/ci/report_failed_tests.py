@@ -71,7 +71,7 @@ statuses = from(bucket: "{bucket}")
 failedTestNames =
     statuses
         |> filter(fn: (r) =>
-            r.GITHUB_RUN_ID == "{GITHUB_RUN_ID} and
+            r.GITHUB_RUN_ID == "{GITHUB_RUN_ID}" and
             r._value == 1
         )
         |> keep(columns: ["testName","config","context","os"])
