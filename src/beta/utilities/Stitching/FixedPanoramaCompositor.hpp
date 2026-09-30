@@ -25,7 +25,7 @@ class FixedPanoramaCompositor {
     enum class Composition { BLENDED, DIRECT };
 
     struct Config {
-        Stitching::CameraModel cameraModel = Stitching::CameraModel::SPHERICAL;
+        CameraModel cameraModel = CameraModel::Equirectangular;
         Stitching::SeamFinder seamFinder = Stitching::SeamFinder::GRAPHCUT_COLOR;
         double compositingResolution = -1.0;
         double seamEstimationResolution = 0.1;

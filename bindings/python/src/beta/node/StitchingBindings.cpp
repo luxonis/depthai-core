@@ -15,7 +15,6 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
     py::class_<StitchingProperties> stitchingProperties(betaModule, "StitchingProperties", DOC(dai, beta, StitchingProperties));
     auto stitchingNode = ADD_BETA_NODE_DERIVED(Stitching, dai::DeviceNode);
     py::enum_<Stitching::Mode> stitchingMode(stitchingNode, "Mode", DOC(dai, beta, StitchingProperties, Mode));
-    py::enum_<Stitching::CameraModel> stitchingCameraModel(stitchingNode, "CameraModel", DOC(dai, beta, StitchingProperties, CameraModel));
     py::enum_<Stitching::SeamFinder> stitchingSeamFinder(stitchingNode, "SeamFinder", DOC(dai, beta, StitchingProperties, SeamFinder));
     py::class_<Stitching::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, beta, StitchingProperties, Plane));
     py::class_<Stitching::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, beta, StitchingProperties, VirtualCamera));
@@ -34,10 +33,6 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     stitchingMode.value("PANORAMA", Stitching::Mode::PANORAMA).value("PLANAR_PROJECTION", Stitching::Mode::PLANAR_PROJECTION);
-
-    stitchingCameraModel.value("SPHERICAL", Stitching::CameraModel::SPHERICAL)
-        .value("PINHOLE", Stitching::CameraModel::PINHOLE)
-        .value("CYLINDRICAL", Stitching::CameraModel::CYLINDRICAL);
 
     stitchingSeamFinder.value("NONE", Stitching::SeamFinder::NONE)
         .value("VORONOI", Stitching::SeamFinder::VORONOI)

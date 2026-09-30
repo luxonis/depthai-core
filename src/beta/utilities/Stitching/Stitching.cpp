@@ -151,27 +151,14 @@ Extrinsics estimatedPanoramaExtrinsics(const cv::detail::CameraParams& reference
  * coordinate system, and the warper projects the way the corresponding dai::CameraModel does, up to a constant offset.
  * @param scale Scale of the warper, the radius of the projection surface in pixels
  */
-ImgTransformation panoramaTransformation(const cv::Rect& canvas, double scale, Stitching::CameraModel model, const Extrinsics& extrinsics) {
-    dai::CameraModel projection = dai::CameraModel::Perspective;
-    double offsetY = 0.0;
-    switch(model) {
-        case Stitching::CameraModel::PINHOLE:
-            projection = dai::CameraModel::Perspective;
-            break;
-        case Stitching::CameraModel::CYLINDRICAL:
-            projection = dai::CameraModel::Cylindrical;
-            break;
-        case Stitching::CameraModel::SPHERICAL:
-            // OpenCV measures the polar angle from the -Y axis, the equirectangular latitude is measured from the XZ plane
-            projection = dai::CameraModel::Equirectangular;
-            offsetY = scale * CV_PI / 2.0;
-            break;
-    }
+ImgTransformation panoramaTransformation(const cv::Rect& canvas, double scale, CameraModel model, const Extrinsics& extrinsics) {
+    // OpenCV's spherical warper measures the polar angle from the -Y axis, the equirectangular latitude is measured from the XZ plane
+    const double offsetY = model == CameraModel::Equirectangular ? scale * CV_PI / 2.0 : 0.0;
     const auto focal = static_cast<float>(scale);
     const auto cx = static_cast<float>(-canvas.x);
     const auto cy = static_cast<float>(offsetY - canvas.y);
     const std::array<std::array<float, 3>, 3> intrinsics = {{{focal, 0.0f, cx}, {0.0f, focal, cy}, {0.0f, 0.0f, 1.0f}}};
-    return {static_cast<size_t>(canvas.width), static_cast<size_t>(canvas.height), intrinsics, projection, {}, extrinsics};
+    return {static_cast<size_t>(canvas.width), static_cast<size_t>(canvas.height), intrinsics, model, {}, extrinsics};
 }
 
 /** Decorates OpenCV's matcher and scores a candidate by confidence weighted by geometrically consistent inliers. */
@@ -301,7 +288,7 @@ class Stitching::Impl {
         stitcher->setCompositingResol(stitching::COMPOSITING_RESOLUTION);
         stitcher->setPanoConfidenceThresh(properties.panoConfidenceThreshold);
         const bool waveCorrection =
-            properties.cameraModel == Stitching::CameraModel::SPHERICAL || properties.cameraModel == Stitching::CameraModel::CYLINDRICAL;
+            properties.cameraModel == CameraModel::Equirectangular || properties.cameraModel == CameraModel::Cylindrical;
         stitcher->setWaveCorrection(waveCorrection);
         if(waveCorrection) {
             stitcher->setWaveCorrectKind(cv::detail::WAVE_CORRECT_HORIZ);
@@ -580,7 +567,7 @@ void Stitching::run() {
                 if(!impl->fixedPanorama.isPrepared()) {
                     auto cameras = impl->camerasFromInputCalibration(transformations);
                     cv::Matx33d alignment = cv::Matx33d::eye();
-                    if(currentProperties.cameraModel == CameraModel::CYLINDRICAL) {
+                    if(currentProperties.cameraModel == CameraModel::Cylindrical) {
                         alignment = alignCamerasToMeanYAxis(cameras);
                     }
                     const auto geometry = impl->panoramaGeometry(images, cameras, 1.0, currentProperties);

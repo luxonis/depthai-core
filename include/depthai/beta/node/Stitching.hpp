@@ -65,11 +65,6 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     using VirtualCamera = StitchingProperties::VirtualCamera;
 
     /**
-     * Camera projection model the images are warped onto.
-     */
-    using CameraModel = StitchingProperties::CameraModel;
-
-    /**
      * Seam estimation method.
      */
     using SeamFinder = StitchingProperties::SeamFinder;
@@ -188,8 +183,10 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     float getMinIncidenceAngle() const;
 
     /**
-     * Set the projection surface the images are warped onto. Defaults to SPHERICAL, same as OpenCV.
+     * Set the projection surface the images are warped onto. Defaults to Equirectangular (a sphere), same as OpenCV.
      * Only used in `Mode::PANORAMA`.
+     * @param model dai::CameraModel::Equirectangular, Cylindrical or Perspective
+     * @throws std::invalid_argument for any other model
      */
     void setCameraModel(CameraModel model);
     CameraModel getCameraModel() const;

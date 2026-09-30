@@ -79,7 +79,7 @@ std::shared_ptr<dai::ImgFrame> toCalibratedFrame(const cv::Mat& image, double ya
 std::shared_ptr<dai::ImgFrame> composeCalibratedPanorama(const std::vector<cv::Mat>& images,
                                                          const std::vector<double>& yaws,
                                                          const std::vector<double>& pitches,
-                                                         dai::beta::node::Stitching::CameraModel cameraModel) {
+                                                         dai::CameraModel cameraModel) {
     REQUIRE(images.size() == yaws.size());
     REQUIRE(images.size() == pitches.size());
 
@@ -111,7 +111,7 @@ std::shared_ptr<dai::ImgFrame> composeCalibratedPanorama(const std::vector<cv::M
 }
 
 cv::Mat composeCalibratedCylindricalPanorama(const std::vector<cv::Mat>& images, const std::vector<double>& yaws, const std::vector<double>& pitches) {
-    return composeCalibratedPanorama(images, yaws, pitches, dai::beta::node::Stitching::CameraModel::CYLINDRICAL)->getCvFrame();
+    return composeCalibratedPanorama(images, yaws, pitches, dai::CameraModel::Cylindrical)->getCvFrame();
 }
 
 double rotationAngleDegrees(const dai::Extrinsics& extrinsics) {
@@ -184,7 +184,7 @@ TEST_CASE("Stitching uses input calibration to compose a cylindrical panorama", 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(featurelessViews.size());
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
     stitching->setSyncThreshold(std::chrono::seconds(1));
     REQUIRE(stitching->getUseInputCalibration());
@@ -238,7 +238,7 @@ TEST_CASE("Calibrated cylindrical panorama uses the mean camera Y axis", "[Stitc
     REQUIRE(meanAbsoluteDifference < 1e-3);
 
     // The virtual camera reports the tilt: its Y axis is the mean input Y axis, 20 degrees off the destination frame
-    const auto pitched = composeCalibratedPanorama(views, yaws, pitchedRigPitches, dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    const auto pitched = composeCalibratedPanorama(views, yaws, pitchedRigPitches, dai::CameraModel::Cylindrical);
     const auto& rotation = pitched->getTransformation().getExtrinsics().rotationMatrix;
     REQUIRE(rotation.size() == 3);
     const double tilt = 20.0 * CV_PI / 180.0;
@@ -254,11 +254,11 @@ TEST_CASE("Calibrated panorama describes the virtual camera that rendered it", "
     std::vector<cv::Mat> views;
     for(const auto& color : colors) views.emplace_back(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, color);
 
-    const auto check = [&](dai::beta::node::Stitching::CameraModel cameraModel, dai::CameraModel projection) {
+    const auto check = [&](dai::CameraModel cameraModel) {
         const auto panorama = composeCalibratedPanorama(views, yaws, pitches, cameraModel);
         const auto& transformation = panorama->getTransformation();
         requireSizeMatches(transformation, *panorama);
-        REQUIRE(transformation.getDistortionModel() == projection);
+        REQUIRE(transformation.getDistortionModel() == cameraModel);
         REQUIRE(transformation.getDistortionCoefficients().empty());
 
         // The inputs share one focal length, which becomes the radius of the projection surface
@@ -294,14 +294,25 @@ TEST_CASE("Calibrated panorama describes the virtual camera that rendered it", "
     };
 
     SECTION("cylindrical") {
-        check(dai::beta::node::Stitching::CameraModel::CYLINDRICAL, dai::CameraModel::Cylindrical);
+        check(dai::CameraModel::Cylindrical);
     }
-    SECTION("spherical") {
-        check(dai::beta::node::Stitching::CameraModel::SPHERICAL, dai::CameraModel::Equirectangular);
+    SECTION("equirectangular") {
+        check(dai::CameraModel::Equirectangular);
     }
-    SECTION("pinhole") {
-        check(dai::beta::node::Stitching::CameraModel::PINHOLE, dai::CameraModel::Perspective);
+    SECTION("perspective") {
+        check(dai::CameraModel::Perspective);
     }
+}
+
+TEST_CASE("Stitching rejects camera models it cannot warp onto", "[Stitching]") {
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    REQUIRE(stitching->getCameraModel() == dai::CameraModel::Equirectangular);
+    REQUIRE_THROWS_AS(stitching->setCameraModel(dai::CameraModel::Fisheye), std::invalid_argument);
+    REQUIRE_THROWS_AS(stitching->setCameraModel(dai::CameraModel::RadialDivision), std::invalid_argument);
+    REQUIRE(stitching->getCameraModel() == dai::CameraModel::Equirectangular);
+    stitching->setCameraModel(dai::CameraModel::Perspective);
+    REQUIRE(stitching->getCameraModel() == dai::CameraModel::Perspective);
 }
 
 TEST_CASE("Calibrated panorama directly copies overlapping inputs", "[Stitching]") {
@@ -313,7 +324,7 @@ TEST_CASE("Calibrated panorama directly copies overlapping inputs", "[Stitching]
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -344,7 +355,7 @@ TEST_CASE("Calibrated panorama blends overlapping inputs when seam finding is en
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::GRAPHCUT_COLOR);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -377,7 +388,7 @@ TEST_CASE("Calibrated cylindrical panorama masks inputs crossing the wrap bounda
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -516,7 +527,7 @@ TEST_CASE("Stitching combines three rotated views into a wider panorama", "[Stit
 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(views.size());
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setEstimationFrames(1);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -556,7 +567,7 @@ TEST_CASE("Registered panorama describes the virtual camera through its first in
     const auto stitch = [&](bool calibratedInputs) {
         dai::Pipeline pipeline(false);
         auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(views.size());
-        stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+        stitching->setCameraModel(dai::CameraModel::Cylindrical);
         stitching->setEstimationFrames(1);
         stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -797,7 +808,7 @@ TEST_CASE("Stitching freezes the strongest of multiple estimation candidates", "
                                                                                   : std::array<const std::vector<cv::Mat>*, 2>{&weakViews, &strongViews};
         dai::Pipeline pipeline(false);
         auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(strongViews.size());
-        stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::PINHOLE);
+        stitching->setCameraModel(dai::CameraModel::Perspective);
         stitching->setContinuous(false);
         stitching->setEstimationFrames(2);
         stitching->setSyncThreshold(std::chrono::seconds(1));
