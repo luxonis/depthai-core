@@ -13,7 +13,13 @@ namespace dai {
 namespace beta {
 
 /**
- * @brief Pure data emitted by a MultiDeviceCalibration node.
+ * @brief Final result of running multi-device calibration.
+ *
+ * Includes:
+ *  - the estimated cross-device calibration graph (only when the run passed)
+ *  - metrics evaluating the reliability of the estimate and the quality of the
+ *    data used to compute it
+ *  - a human-readable description of why a run did not pass
  *
  * The calibration graph is a snapshot and is never applied to a device or
  * pipeline by the node. Use getHandler() to resolve it or store it on a
@@ -25,13 +31,43 @@ struct MultiDeviceCalibrationResult : public Buffer {
     ~MultiDeviceCalibrationResult() override;
 
     /**
-     * Validated, meter-normalized cross-device calibration edges. Present when
-     * the calibration passed.
+     * @brief Validated, meter-normalized cross-device calibration edges.
+     *
+     * One edge per non-reference device, mapping that device's local origin to
+     * the local origin of the reference device. Present only when `passed` is
+     * true.
      */
     std::optional<std::vector<MultiDeviceExtrinsics>> graph;
+
+    /**
+     * @brief True if the calibration completed and `graph` holds a pose for
+     * every registered device.
+     *
+     * False when data collection or the solver failed; `info` explains why.
+     */
     bool passed = false;
+
+    /**
+     * @brief Quality score of the input data.
+     *
+     * A normalized value between 0.0 and 1.0 indicating how much you can trust
+     * the collected samples. Remains 0.0 when the solver was not reached.
+     */
     double dataConfidence = 0.0;
+
+    /**
+     * @brief Sampson error of the estimated calibration over the collected
+     * samples.
+     *
+     * Lower is better. Remains 0.0 when the solver was not reached.
+     */
     double sampsonError = 0.0;
+
+    /**
+     * @brief Human-readable result description.
+     *
+     * Explains why `passed` is false; empty when the calibration passed.
+     */
     std::string info;
 
     /**
