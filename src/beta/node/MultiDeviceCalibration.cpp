@@ -76,10 +76,6 @@ std::string cameraInputName(const std::string& deviceId, CameraBoardSocket socke
     return "camera_" + deviceId + "_" + toString(socket);
 }
 
-bool finitePoint(const Point3f& point) {
-    return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
-}
-
 }  // namespace
 
 class MultiDeviceCalibration::Impl {
@@ -224,7 +220,7 @@ void MultiDeviceCalibration::setInitialGuess(
                 toString(guess.toCameraSocket),
                 toString(toSocket));
     DAI_CHECK_V(isConcreteSocket(guess.toCameraSocket), "MultiDeviceCalibration initial guess destination socket must be concrete");
-    DAI_CHECK_V(finitePoint(guess.translation), "MultiDeviceCalibration initial guess translation must be finite");
+    DAI_CHECK_V(matrix::isFinitePoint3f(guess.translation), "MultiDeviceCalibration initial guess translation must be finite");
     DAI_CHECK_V(guess.lengthUnit != LengthUnit::CUSTOM, "MultiDeviceCalibration initial guess uses unsupported CUSTOM length units");
     try {
         matrix::validateRotationMatrix3x3(guess.rotationMatrix);
