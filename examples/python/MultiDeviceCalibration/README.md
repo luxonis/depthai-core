@@ -1,13 +1,17 @@
 # Multi-device calibration — DepthAI
 
-This README covers **`multi_device_calibration.py`** and its C++ counterpart
-`examples/cpp/Misc/MultiDevice/multi_device_calibration.cpp`. Both estimate the
-metric pose between two or more DepthAI devices using the experimental
-**`dai.beta.node.MultiDeviceCalibration`** node and save the result as JSON.
+This folder contains examples for the experimental
+**`dai.beta.node.MultiDeviceCalibration`** node, which estimates the metric pose
+between two or more DepthAI devices and returns it as pure data. C++
+counterparts live in `examples/cpp/MultiDeviceCalibration/`.
 
-The other scripts in this folder (frame sync, host nodes, device-to-device
-relay, system logger) are independent multi-device examples and are not
-described here.
+| Script | Shows |
+| --- | --- |
+| `multi_device_calibration.py` | The minimal flow: one stereo pair per device, scale from the factory stereo calibration, result saved to JSON. |
+| `multi_device_calibration_constraints.py` | The optional configuration: a measured camera-to-camera distance (`setKnownDistance`), an approximate rig layout (`setInitialGuess`), calibration loaded from files (`setDeviceCalibration`) and `getSampleCount()`. |
+
+Generic multi-device plumbing (frame sync, host nodes, device-to-device relay)
+is covered by the examples in `../MultiDevice/`.
 
 ---
 
@@ -117,6 +121,55 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
    FSYNC/PTP as shown in `multi_device_frame_sync.py`.
 5. `start()` begins collection. The first complete group initializes the
    solver; after `sampleCount` groups the result is emitted.
+
+---
+
+## Constraints example: known distance, initial guess, calibration files
+
+**Script:** `multi_device_calibration_constraints.py`
+(C++: `multi_device_calibration_constraints.cpp`)
+
+The basic example gets metric scale from each device's factory stereo pair. This
+one registers a **single camera per device** (`CAM_A` by default) and shows the
+optional configuration instead:
+
+```bash
+# Two devices 80 cm apart, both looking at the same wall, B rotated 15 deg to the left
+python3 multi_device_calibration_constraints.py -d <A> <B> \
+    --known-distance <A> <B> 80 \
+    --initial-guess  <A> <B>  -80 0 0   15 0 0
+
+# Same, but take device A's calibration from a file instead of its EEPROM
+python3 multi_device_calibration_constraints.py -d <A> <B> \
+    --known-distance <A> <B> 80 \
+    --calibration <A> calibA.json
+```
+
+`<A>` and `<B>` are device IDs as printed by the script, or whatever you passed
+to `-d` (an IP works too). All three options are repeatable.
+
+| Option | Node call | Notes |
+| --- | --- | --- |
+| `-s`, `--socket` | `addCamera(deviceId, socket, output)` | Same socket on every device, default `CAM_A`. |
+| `--known-distance FROM TO CM` | `setKnownDistance(from, socket, to, socket, cm, CENTIMETER)` | Tape-measured distance between the two camera centers. With one camera per device this is the only source of scale, so the script warns when it is missing. |
+| `--initial-guess FROM TO X Y Z YAW PITCH ROLL` | `setInitialGuess(from, fromOrigin, to, toOrigin, extrinsics)` | Transform from FROM's local origin to TO's: `X_to = R * X_from + t`, translation in cm, rotation as yaw/pitch/roll in degrees (`R = Rz * Ry * Rx`). Useful when the devices are strongly rotated relative to each other. |
+| `--calibration DEVICE PATH` | `setDeviceCalibration(deviceId, dai.CalibrationHandler(path))` | Overrides the device's live calibration. Required for replayed streams; here it also lets you test a calibration file before flashing it. |
+| | `getSampleCount()` | Printed when collection starts. |
+
+**Local origins.** `setInitialGuess` must name each device's local
+calibration-origin socket, not the registered camera. The script finds it by
+following the EEPROM extrinsics chain from the registered socket to its root
+(`localOriginSocket()`); the C++ version uses
+`CalibrationHandler::getExtrinsicsToOrigin`. The same origins appear as the
+endpoints of the result graph, and the script prints the distance between them
+for every edge.
+
+To produce a calibration file for `--calibration`, dump a device's EEPROM:
+
+```python
+with dai.Device(dai.DeviceInfo("<A>")) as device:
+    device.readCalibration().eepromToJsonFile("calibA.json")
+```
 
 ---
 
