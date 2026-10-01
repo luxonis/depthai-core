@@ -31,7 +31,8 @@ class ToFConfig : public Buffer {
      * not publish a supported maximum for them.
      */
     struct VD55H1 {
-        /** Phase-unwrapping residual threshold in millimeters, in [0, 10000] (IPP range, step 1). Applied at pipeline startup; runtime updates have no effect. */
+        /** Phase-unwrapping residual threshold in millimeters, in [0, 10000] (IPP range, step 1). Applied at pipeline startup; runtime updates have no effect.
+         */
         std::optional<float> phaseUnwrapErrorThreshold;
 
         /** Enable the bilateral filter (true), or bypass it (false); values are true and false. */
@@ -65,72 +66,104 @@ class ToFConfig : public Buffer {
                           flyingPixelMinDepthOccurrence);
     };
 
+    /**
+     * Processing controls for the RVC2 S5K33D and S5K63D sensors.
+     * These controls have no effect on VD55H1. Unset optional corrections use
+     * the device defaults determined by the available calibration.
+     */
+    struct S5K33D {
+        /**
+         * Phase unwrapping level.
+         */
+        int phaseUnwrappingLevel = 4;
+
+        /**
+         * Phase unwrapping error threshold.
+         */
+        uint16_t phaseUnwrapErrorThreshold = 100;
+
+        /**
+         * Enable phase shuffle temporal filter.
+         * Temporal filter that averages the shuffle and non-shuffle frequencies.
+         */
+        bool enablePhaseShuffleTemporalFilter = true;
+
+        /**
+         * Enable burst mode.
+         * Decoding is performed on a series of 4 frames.
+         * Output fps will be 4 times lower, but reduces motion blur artifacts.
+         */
+        bool enableBurstMode = false;
+
+        /**
+         * Enable FPN correction. Used for debugging.
+         */
+        std::optional<bool> enableFPPNCorrection;
+        /**
+         * Enable optical correction. Used for debugging.
+         */
+        std::optional<bool> enableOpticalCorrection;
+        /**
+         * Enable temperature correction. Used for debugging.
+         */
+        std::optional<bool> enableTemperatureCorrection;
+        /**
+         * Enable wiggle correction. Used for debugging.
+         */
+        std::optional<bool> enableWiggleCorrection;
+        /**
+         * Enable phase unwrapping. Used for debugging.
+         */
+        std::optional<bool> enablePhaseUnwrapping;
+
+        DEPTHAI_SERIALIZE(S5K33D,
+                          enablePhaseShuffleTemporalFilter,
+                          enableBurstMode,
+                          enableFPPNCorrection,
+                          enableOpticalCorrection,
+                          enableTemperatureCorrection,
+                          enableWiggleCorrection,
+                          enablePhaseUnwrapping,
+                          phaseUnwrappingLevel,
+                          phaseUnwrapErrorThreshold);
+    };
+
+    /** S5K63D uses the same processing controls as S5K33D. */
+    using S5K63D = S5K33D;
+
     Profile profile = Profile::MID_RANGE;
 
     /** Controls for the RVC4 VD55H1 IPP. */
     VD55H1 vd55h1;
+    /** Controls for the RVC2 S5K33D and S5K63D sensors. */
+    S5K33D s5k33d;
+
+    /** Access the shared Samsung controls under the S5K63D sensor name. */
+    S5K63D& s5k63d() {
+        return s5k33d;
+    }
+    const S5K63D& s5k63d() const {
+        return s5k33d;
+    }
+
     /**
      * Set kernel size for depth median filtering, or disable
      */
     filters::params::MedianFilter median = filters::params::MedianFilter::MEDIAN_OFF;
 
     /*
-     * Phase unwrapping level.
-     */
-    int phaseUnwrappingLevel = 4;
-
-    /*
-     * RVC2 phase unwrapping error threshold. For VD55H1, use vd55h1.phaseUnwrapErrorThreshold.
-     */
-    uint16_t phaseUnwrapErrorThreshold = 100;
-
-    /*
-     * Enable phase shuffle temporal filter.
-     * Temporal filter that averages the shuffle and non-shuffle frequencies.
-     */
-    bool enablePhaseShuffleTemporalFilter = true;
-
-    /*
-     * Enable burst mode.
-     * Decoding is performed on a series of 4 frames.
-     * Output fps will be 4 times lower, but reduces motion blur artifacts.
-     */
-    bool enableBurstMode = false;
-
-    /*
      * Enable distortion correction for intensity, amplitude and depth output, if calibration is present.
      */
     bool enableDistortionCorrection = true;
-
-    /*
-     * Enable FPN correction. Used for debugging.
-     */
-    std::optional<bool> enableFPPNCorrection;
-    /*
-     * Enable optical correction. Used for debugging.
-     */
-    std::optional<bool> enableOpticalCorrection;
-    /*
-     * Enable temperature correction. Used for debugging.
-     */
-    std::optional<bool> enableTemperatureCorrection;
-    /*
-     * Enable wiggle correction. Used for debugging.
-     */
-    std::optional<bool> enableWiggleCorrection;
-    /*
-     * Enable phase unwrapping. Used for debugging.
-     */
-    std::optional<bool> enablePhaseUnwrapping;
 
     /**
      * Construct ToFConfig message.
      */
     ToFConfig() {
         // Preserve the legacy RVC2 default while initializing the RVC4 preset.
-        const auto rvc2Threshold = phaseUnwrapErrorThreshold;
+        const auto rvc2Threshold = s5k33d.phaseUnwrapErrorThreshold;
         setProfilePreset(profile);
-        phaseUnwrapErrorThreshold = rvc2Threshold;
+        s5k33d.phaseUnwrapErrorThreshold = rvc2Threshold;
     }
     virtual ~ToFConfig();
 
@@ -151,20 +184,7 @@ class ToFConfig : public Buffer {
      */
     void setProfilePreset(Profile profile);
 
-    DEPTHAI_SERIALIZE(ToFConfig,
-                      profile,
-                      vd55h1,
-                      median,
-                      enablePhaseShuffleTemporalFilter,
-                      enableBurstMode,
-                      enableDistortionCorrection,
-                      enableFPPNCorrection,
-                      enableOpticalCorrection,
-                      enableTemperatureCorrection,
-                      enableWiggleCorrection,
-                      enablePhaseUnwrapping,
-                      phaseUnwrappingLevel,
-                      phaseUnwrapErrorThreshold);
+    DEPTHAI_SERIALIZE(ToFConfig, profile, vd55h1, s5k33d, median, enableDistortionCorrection);
 };
 
 }  // namespace dai
