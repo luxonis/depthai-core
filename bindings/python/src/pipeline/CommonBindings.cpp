@@ -542,12 +542,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         };
     };
     for(const char* op : {"__eq__", "__ne__"}) {
-        distortionModel.def(op, [f = mixedModels("DistortionModel", "CameraModel")](const DistortionModel& a, const CameraModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
-        distortionModel.def(op, [f = mixedModels("DistortionModel", "CameraProjectionModel")](const DistortionModel& a, const CameraProjectionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
-        cameraProjectionModel.def(op, [f = mixedModels("CameraProjectionModel", "CameraModel")](const CameraProjectionModel& a, const CameraModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
-        cameraProjectionModel.def(op, [f = mixedModels("CameraProjectionModel", "DistortionModel")](const CameraProjectionModel& a, const DistortionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
-        cameraModel.def(op, [f = mixedModels("CameraModel", "DistortionModel")](const CameraModel& a, const DistortionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
-        cameraModel.def(op, [f = mixedModels("CameraModel", "CameraProjectionModel")](const CameraModel& a, const CameraProjectionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
+        distortionModel.def(op, [f = mixedModels("DistortionModel", "CameraModel")](const DistortionModel& a, const CameraModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator(), py::prepend());
+        distortionModel.def(op, [f = mixedModels("DistortionModel", "CameraProjectionModel")](const DistortionModel& a, const CameraProjectionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator(), py::prepend());
+        cameraProjectionModel.def(op, [f = mixedModels("CameraProjectionModel", "CameraModel")](const CameraProjectionModel& a, const CameraModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator(), py::prepend());
+        cameraProjectionModel.def(op, [f = mixedModels("CameraProjectionModel", "DistortionModel")](const CameraProjectionModel& a, const DistortionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator(), py::prepend());
+        cameraModel.def(op, [f = mixedModels("CameraModel", "DistortionModel")](const CameraModel& a, const DistortionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator(), py::prepend());
+        cameraModel.def(op, [f = mixedModels("CameraModel", "CameraProjectionModel")](const CameraModel& a, const CameraProjectionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator(), py::prepend());
     }
     m.def("projectionModelOf", &projectionModelOf, py::arg("cameraModel"), DOC(dai, projectionModelOf));
     m.def("distortionModelOf", &distortionModelOf, py::arg("cameraModel"), DOC(dai, distortionModelOf));
