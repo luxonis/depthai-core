@@ -1929,6 +1929,10 @@ void DeviceBase::setXLinkChunkSize(int sizeBytes) {
     pimpl->rpcCallCheckedVoid("setXLinkChunkSize", sizeBytes);
 }
 
+void DeviceBase::setQueuePaused(int64_t nodeId, const std::string& name, const std::string& group, bool paused) {
+    pimpl->rpcCallCheckedVoid("setQueuePaused", nodeId, name, group, paused);
+}
+
 int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcCallChecked<int>("getXLinkChunkSize");
 }

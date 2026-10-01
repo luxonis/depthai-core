@@ -43,6 +43,16 @@ MessageQueue::~MessageQueue() {
     close();
 }
 
+void MessageQueue::setPaused(bool paused) {
+    if(isClosed()) throw QueueException(CLOSED_QUEUE_MESSAGE);
+    queue.setPaused(paused);
+    for(const auto& callback : pauseCallbacks) callback();
+}
+
+bool MessageQueue::isPaused() const {
+    return queue.isPaused();
+}
+
 void MessageQueue::setName(std::string name) {
     this->name = std::move(name);
 }
@@ -142,6 +152,7 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
+    if(isPaused()) return;
     callCallbacks(msg);
     auto queueNotClosed = queue.push(msg, [&](LockingQueueState state, size_t size) {
         if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
@@ -164,6 +175,8 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
 
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    if(queue.isDestroyed()) throw QueueException(CLOSED_QUEUE_MESSAGE);
+    if(isPaused()) return true;
     callCallbacks(msg);
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);

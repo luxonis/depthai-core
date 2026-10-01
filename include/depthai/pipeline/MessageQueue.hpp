@@ -19,6 +19,8 @@ namespace dai {
  * Thread safe queue to send messages between nodes
  */
 class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
+    friend class PipelineImpl;
+
    public:
     /// Alias for callback id
     using CallbackId = int;
@@ -33,6 +35,8 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     static constexpr auto CLOSED_QUEUE_MESSAGE = "MessageQueue was closed";
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::string name;
+    // Configured by PipelineImpl before starting host nodes.
+    std::vector<std::function<void()>> pauseCallbacks;
 
     std::mutex notifierMtx;
     std::unordered_map<CallbackId, std::shared_ptr<utility::WaitAnyNotifier>> notifiers;
@@ -154,6 +158,13 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      * Closes the queue and unblocks any waiting consumers or producers
      */
     void close();
+
+    /** Pause/resume incoming messages. Pausing discards buffered messages and releases blocked senders.
+     * For device outputs, pause propagates upstream when all host consumers pause.
+     */
+    void setPaused(bool paused);
+    /** Whether this queue is paused. */
+    bool isPaused() const;
 
     /**
      * Sets queue behavior when full (maxSize)

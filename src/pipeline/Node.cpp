@@ -240,7 +240,18 @@ void Node::Output::unlink(Input& in) {
     in.connectedOutputs.erase(std::remove(in.connectedOutputs.begin(), in.connectedOutputs.end(), this), in.connectedOutputs.end());
 }
 
+void Node::Output::setPaused(bool value) {
+    paused.store(value);
+    for(const auto& callback : pauseCallbacks) callback();
+}
+
+bool Node::Output::isPaused() const {
+    if(paused.load()) return true;
+    return !connectedInputs.empty() && std::all_of(connectedInputs.begin(), connectedInputs.end(), [](const MessageQueue* queue) { return queue->isPaused(); });
+}
+
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
+    if(paused.load()) return;
     // for(auto& conn : getConnections()) {
     //     // Get node AND hold a reference to it.
     //     auto node = conn.inputNode.lock();
@@ -269,6 +280,7 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
 }
 
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
+    if(paused.load()) return true;
     bool success = true;
 
     // for(auto& conn : getConnections()) {

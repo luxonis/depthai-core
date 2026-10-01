@@ -10,6 +10,14 @@ bool InputQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
     return inputQueueNode->trySend(msg);
 }
 
+void InputQueue::setPaused(bool paused) {
+    inputQueueNode->input.setPaused(paused);
+}
+
+bool InputQueue::isPaused() const {
+    return inputQueueNode->input.isPaused();
+}
+
 InputQueue::InputQueue(unsigned int maxSize, bool blocking) : inputQueueNode(std::make_shared<InputQueueNode>(maxSize, blocking)) {}
 
 InputQueue::InputQueueNode::InputQueueNode(unsigned int maxSize, bool blocking) : ThreadedHostNode() {

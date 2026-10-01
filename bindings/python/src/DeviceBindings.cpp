@@ -802,6 +802,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("calibrationDataHandler"),
             py::arg("camSocket"),
             DOC(dai, DeviceBase, tryFlashCBACalibration))
+        .def("setQueuePaused",
+             &DeviceBase::setQueuePaused,
+             py::arg("nodeId"),
+             py::arg("name"),
+             py::arg("group"),
+             py::arg("paused"),
+             py::call_guard<py::gil_scoped_release>())
         .def(
             "setXLinkChunkSize",
             [](DeviceBase& d, int s) {

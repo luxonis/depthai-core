@@ -132,6 +132,8 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setName", &MessageQueue::setName, py::arg("name"), DOC(dai, MessageQueue, setName))
         .def("isClosed", &MessageQueue::isClosed, DOC(dai, MessageQueue, isClosed))
         .def("close", &MessageQueue::close, DOC(dai, MessageQueue, close))
+        .def("setPaused", &MessageQueue::setPaused, py::arg("paused"), py::call_guard<py::gil_scoped_release>())
+        .def("isPaused", &MessageQueue::isPaused)
         .def("setBlocking", &MessageQueue::setBlocking, py::arg("blocking"), DOC(dai, MessageQueue, setBlocking))
         .def("getBlocking", &MessageQueue::getBlocking, DOC(dai, MessageQueue, getBlocking))
         .def("setMaxSize", &MessageQueue::setMaxSize, py::arg("maxSize"), DOC(dai, MessageQueue, setMaxSize))

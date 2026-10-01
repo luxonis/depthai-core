@@ -420,6 +420,9 @@ class DeviceBase {
      */
     void setXLinkChunkSize(int sizeBytes);
 
+    /** Pause/resume a device node IO in a running pipeline. Requires firmware with queue pause support. */
+    void setQueuePaused(int64_t nodeId, const std::string& name, const std::string& group, bool paused);
+
     /**
      * Gets current XLink chunk size.
      *

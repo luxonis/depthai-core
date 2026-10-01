@@ -93,7 +93,9 @@ void Gate::run() {
     auto currentCommand = std::make_shared<GateControl>(*initialConfig);
 
     // Initialize the timer baseline
-    while(mainLoop()) {
+    while(mainLoop() && currentCommand) {
+        const bool paused = !currentCommand->open || currentCommand->numMessages == 0;
+        if(input.isPaused() != paused) input.setPaused(paused);
         if(currentCommand->open) {
             if(currentCommand->numMessages >= 0) {
                 // Pass both numMessages and fps

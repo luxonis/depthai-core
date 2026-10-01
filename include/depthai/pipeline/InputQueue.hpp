@@ -24,6 +24,10 @@ class InputQueue {
      */
     bool trySend(const std::shared_ptr<ADatatype>& msg);
 
+    /** Pause/resume messages sent through this host input queue. */
+    void setPaused(bool paused);
+    bool isPaused() const;
+
    private:
     /**
      * @brief Construct a new Input Queue object. The constructor is private as we only want to expose the relevant methods - only send for now

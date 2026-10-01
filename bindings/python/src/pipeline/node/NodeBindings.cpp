@@ -345,6 +345,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
     pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send));
+    pyInputQueue.def("setPaused", &InputQueue::setPaused, py::arg("paused"), py::call_guard<py::gil_scoped_release>());
+    pyInputQueue.def("isPaused", &InputQueue::isPaused);
     pyInputQueue.def("trySend", &InputQueue::trySend, py::arg("msg"), DOC(dai, InputQueue, trySend));
 
     // Node::Id bindings
@@ -544,6 +546,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())
         .def("getName", &Node::Output::getName, DOC(dai, Node, Output, getName))
+        .def("setPaused", &Node::Output::setPaused, py::arg("paused"), py::call_guard<py::gil_scoped_release>())
+        .def("isPaused", &Node::Output::isPaused)
         .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend))
         .def("getXLinkBridge", &Node::Output::getXLinkBridge, DOC(dai, Node, Output, getXLinkBridge));
 

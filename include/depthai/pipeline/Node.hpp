@@ -163,6 +163,8 @@ class Node : public std::enable_shared_from_this<Node> {
        private:
         std::reference_wrapper<Node> parent;
         std::vector<MessageQueue*> connectedInputs;
+        std::atomic<bool> paused{false};
+        std::vector<std::function<void()>> pauseCallbacks;
         std::vector<QueueConnection> queueConnections;
         Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
@@ -182,6 +184,35 @@ class Node : public std::enable_shared_from_this<Node> {
                 setName(par.createUniqueOutputName());
             }
         }
+
+        Output(const Output& other)
+            : parent(other.parent),
+              connectedInputs(other.connectedInputs),
+              paused(other.paused.load()),
+              queueConnections(other.queueConnections),
+              type(other.type),
+              desc(other.desc),
+              pipelineEventDispatcher(other.pipelineEventDispatcher),
+              xLinkBridge(other.xLinkBridge) {}
+
+        Output& operator=(const Output& other) {
+            if(this == &other) return *this;
+            parent = other.parent;
+            connectedInputs = other.connectedInputs;
+            paused = other.paused.load();
+            pauseCallbacks.clear();
+            queueConnections = other.queueConnections;
+            type = other.type;
+            desc = other.desc;
+            pipelineEventDispatcher = other.pipelineEventDispatcher;
+            xLinkBridge = other.xLinkBridge;
+            return *this;
+        }
+
+        /** Pause/resume this output, independently of other producers. */
+        void setPaused(bool paused);
+        /** True if explicitly paused or all connected host queues are paused. */
+        bool isPaused() const;
 
         Node& getParent() {
             return parent;

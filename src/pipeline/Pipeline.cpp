@@ -1757,6 +1757,53 @@ void PipelineImpl::build() {
 
     utility::PipelineImplHelper::setupPipelineDebuggingPost(shared_from_this(), bridgesOut, bridgesIn);
 
+    // Configure once the final fan-out is known. Queues may outlive the pipeline.
+    const auto weakPipeline = std::weak_ptr<PipelineImpl>(shared_from_this());
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) continue;
+        const auto device = getAssignedDevice(node);
+        if(!device) continue;
+        for(auto* input : node->getInputRefs()) {
+            auto mutex = std::make_shared<std::mutex>();
+            input->pauseCallbacks.push_back([weakPipeline, device, id = node->id, input, mutex]() {
+                std::lock_guard<std::mutex> lock(*mutex);
+                if(auto pipeline = weakPipeline.lock(); pipeline && pipeline->running) {
+                    device->setQueuePaused(id, input->getName(), input->getGroup(), input->isPaused());
+                }
+            });
+        }
+        for(auto* output : node->getOutputRefs()) {
+            auto mutex = std::make_shared<std::mutex>();
+            output->pauseCallbacks.push_back([weakPipeline, device, id = node->id, output, mutex]() {
+                std::lock_guard<std::mutex> lock(*mutex);
+                if(auto pipeline = weakPipeline.lock(); pipeline && pipeline->running) {
+                    device->setQueuePaused(id, output->getName(), output->getGroup(), output->paused.load());
+                }
+            });
+        }
+    }
+    for(const auto& entry : bridgesOut) {
+        const auto& bridge = entry.second;
+        const auto weakSender = std::weak_ptr<node::internal::XLinkOut>(bridge.xLinkOut);
+        const auto weakReceiver = std::weak_ptr<node::internal::XLinkInHost>(bridge.xLinkInHost);
+        auto mutex = std::make_shared<std::mutex>();
+        auto updatePause = [weakPipeline, weakReceiver, weakSender, mutex]() {
+            // Serialize aggregate reads and RPCs so concurrent consumers cannot
+            // leave the device with an older pause state.
+            std::lock_guard<std::mutex> lock(*mutex);
+            auto pipeline = weakPipeline.lock();
+            auto receiver = weakReceiver.lock();
+            auto sender = weakSender.lock();
+            if(pipeline && pipeline->running && receiver && sender) {
+                sender->input.setPaused(receiver->out.isPaused());
+            }
+        };
+        bridge.xLinkInHost->out.pauseCallbacks.push_back(updatePause);
+        for(auto* queue : bridge.xLinkInHost->out.connectedInputs) {
+            queue->pauseCallbacks.push_back(updatePause);
+        }
+    }
+
     isBuild = true;
 }
 
@@ -1864,6 +1911,19 @@ void PipelineImpl::start() {
         onDeviceStateChanged(device.get(), DeviceState::FAILED);
     }
 
+    // Apply pauses requested before start, after the device IOs exist.
+    for(const auto& node : getAllNodes()) {
+        for(auto* input : node->getInputRefs()) {
+            if(input->isPaused()) input->setPaused(true);
+        }
+        for(auto* output : node->getOutputRefs()) {
+            if(output->paused.load()) output->setPaused(true);
+            for(const auto& connection : output->queueConnections) {
+                if(connection.queue->isPaused()) connection.queue->setPaused(true);
+            }
+        }
+    }
+
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
@@ -1929,6 +1989,20 @@ void PipelineImpl::resetConnections(DeviceBase* device) {
         for(const auto& assignedDevice : getAllAssignedDevices()) {
             if(device == nullptr || assignedDevice.get() == device) {
                 assignedDevice->startPipeline(Pipeline(shared_from_this()));
+                // Host queues survive reconnection; restore their device pause state.
+                for(const auto& node : getAllNodes()) {
+                    if(node->runOnHost() || getAssignedDevice(node) != assignedDevice) continue;
+                    for(auto* input : node->getInputRefs()) {
+                        if(input->isPaused()) {
+                            for(const auto& callback : input->pauseCallbacks) callback();
+                        }
+                    }
+                    for(auto* output : node->getOutputRefs()) {
+                        if(output->paused.load()) {
+                            for(const auto& callback : output->pauseCallbacks) callback();
+                        }
+                    }
+                }
             }
         }
     }

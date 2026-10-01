@@ -13,6 +13,31 @@
 
 using namespace dai;
 
+TEST_CASE("MessageQueue - Pause releases blocked producers and resumes", "[MessageQueue][pause]") {
+    MessageQueue queue(1, true);
+    auto message = std::make_shared<ADatatype>();
+    queue.send(message);
+    std::atomic<bool> sent{false};
+    std::thread producer([&]() {
+        queue.send(message);
+        sent = true;
+    });
+    queue.setPaused(true);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while(!sent && std::chrono::steady_clock::now() < deadline) std::this_thread::yield();
+    bool released = sent;
+    if(!released) queue.tryGet();  // Release the worker even when this check fails.
+    producer.join();
+    REQUIRE(released);
+    REQUIRE(queue.isPaused());
+    REQUIRE_FALSE(queue.has());
+    REQUIRE(queue.trySend(message));
+    REQUIRE_FALSE(queue.has());
+    queue.setPaused(false);
+    queue.send(message);
+    REQUIRE(queue.tryGet() == message);
+}
+
 TEST_CASE("MessageQueue - Basic operations", "[MessageQueue]") {
     MessageQueue queue(10);
 

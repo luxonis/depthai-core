@@ -28,13 +28,15 @@ class LockingQueue {
         this->maxSize = maxSize;
         this->blocking = blocking;
     }
-    LockingQueue(const LockingQueue& obj) : maxSize(obj.maxSize), blocking(obj.blocking), queue(obj.queue), destructed(obj.destructed){};
-    LockingQueue(LockingQueue&& obj) noexcept : maxSize(obj.maxSize), blocking(obj.blocking), queue(std::move(obj.queue)), destructed(obj.destructed){};
+    LockingQueue(const LockingQueue& obj) : maxSize(obj.maxSize), blocking(obj.blocking), queue(obj.queue), destructed(obj.destructed), paused(obj.paused) {};
+    LockingQueue(LockingQueue&& obj) noexcept
+        : maxSize(obj.maxSize), blocking(obj.blocking), queue(std::move(obj.queue)), destructed(obj.destructed), paused(obj.paused) {};
     LockingQueue& operator=(const LockingQueue& obj) {
         maxSize = obj.maxSize;
         blocking = obj.blocking;
         queue = obj.queue;
         destructed = obj.destructed;
+        paused = obj.paused;
         return *this;
     }
     LockingQueue& operator=(LockingQueue&& obj) noexcept {
@@ -42,7 +44,25 @@ class LockingQueue {
         blocking = obj.blocking;
         queue = std::move(obj.queue);
         destructed = obj.destructed;
+        paused = obj.paused;
         return *this;
+    }
+
+    // Paused queues discard buffered and incoming messages and release blocked producers.
+    void setPaused(bool value) {
+        {
+            std::lock_guard<std::mutex> lock(guard);
+            paused = value;
+            if(paused) {
+                while(!queue.empty()) queue.pop();
+            }
+        }
+        signalPop.notify_all();
+    }
+
+    bool isPaused() const {
+        std::lock_guard<std::mutex> lock(guard);
+        return paused;
     }
 
     void setMaxSize(unsigned sz) {
@@ -155,6 +175,8 @@ class LockingQueue {
     bool push(T const& data, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            if(destructed) return false;
+            if(paused) return true;
             if(maxSize == 0) {
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
@@ -172,10 +194,11 @@ class LockingQueue {
                 if(queue.size() >= maxSize) {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
-                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed || paused; });
                 if(destructed) return false;
             }
 
+            if(paused) return true;
             queue.push(data);
 
             callback(LockingQueueState::SUCCESS, queue.size());
@@ -187,6 +210,8 @@ class LockingQueue {
     bool push(T&& data, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            if(destructed) return false;
+            if(paused) return true;
             if(maxSize == 0) {
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
@@ -204,10 +229,11 @@ class LockingQueue {
                 if(queue.size() >= maxSize) {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
-                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed || paused; });
                 if(destructed) return false;
             }
 
+            if(paused) return true;
             queue.push(std::move(data));
 
             callback(LockingQueueState::SUCCESS, queue.size());
@@ -221,6 +247,8 @@ class LockingQueue {
         T const& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            if(destructed) return false;
+            if(paused) return true;
             if(maxSize == 0) {
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
@@ -239,7 +267,7 @@ class LockingQueue {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
                 // First checks predicate, then waits
-                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
+                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed || paused; });
                 if(!pred) {
                     callback(LockingQueueState::CANCELLED, queue.size());
                 }
@@ -247,6 +275,7 @@ class LockingQueue {
                 if(destructed) return false;
             }
 
+            if(paused) return true;
             queue.push(data);
 
             callback(LockingQueueState::SUCCESS, queue.size());
@@ -260,6 +289,8 @@ class LockingQueue {
         T&& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            if(destructed) return false;
+            if(paused) return true;
             if(maxSize == 0) {
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
@@ -278,7 +309,7 @@ class LockingQueue {
                 if(queue.size() >= maxSize) {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
-                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
+                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed || paused; });
                 if(!pred) {
                     callback(LockingQueueState::CANCELLED, queue.size());
                 }
@@ -286,6 +317,7 @@ class LockingQueue {
                 if(destructed) return false;
             }
 
+            if(paused) return true;
             queue.push(std::move(data));
 
             callback(LockingQueueState::SUCCESS, queue.size());
@@ -366,6 +398,7 @@ class LockingQueue {
     std::queue<T> queue;
     mutable std::mutex guard;
     bool destructed{false};
+    bool paused = false;
     std::condition_variable signalPop;
     std::condition_variable signalPush;
 };
