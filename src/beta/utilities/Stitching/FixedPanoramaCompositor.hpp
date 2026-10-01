@@ -25,7 +25,7 @@ class FixedPanoramaCompositor {
     enum class Composition { BLENDED, DIRECT };
 
     struct Config {
-        Stitching::CameraModel cameraModel = Stitching::CameraModel::SPHERICAL;
+        CameraModel cameraModel = CameraModel::Equirectangular;
         Stitching::SeamFinder seamFinder = Stitching::SeamFinder::GRAPHCUT_COLOR;
         double compositingResolution = -1.0;
         double seamEstimationResolution = 0.1;
@@ -44,6 +44,12 @@ class FixedPanoramaCompositor {
 
     cv::Size getCanvasSize() const;
 
+    /** Region of the warper's coordinate system the panorama covers; its top-left corner is the panorama's pixel (0, 0). */
+    cv::Rect getCanvas() const;
+
+    /** Scale of the rotation warper the panorama is rendered with, i.e. the radius of the projection surface in pixels. */
+    double getWarperScale() const;
+
    private:
     struct Source {
         cv::Size inputSize;
@@ -61,6 +67,7 @@ class FixedPanoramaCompositor {
     Config config;
     bool prepared = false;
     double composeScale = 1.0;
+    double warperScale = 0.0;
     cv::Rect canvas;
     std::vector<Source> sources;
     cv::Ptr<cv::detail::ExposureCompensator> compensator;

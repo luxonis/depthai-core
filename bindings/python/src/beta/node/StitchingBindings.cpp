@@ -15,7 +15,6 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
     py::class_<StitchingProperties> stitchingProperties(betaModule, "StitchingProperties", DOC(dai, beta, StitchingProperties));
     auto stitchingNode = ADD_BETA_NODE_DERIVED(Stitching, dai::DeviceNode);
     py::enum_<Stitching::Mode> stitchingMode(stitchingNode, "Mode", DOC(dai, beta, StitchingProperties, Mode));
-    py::enum_<Stitching::CameraModel> stitchingCameraModel(stitchingNode, "CameraModel", DOC(dai, beta, StitchingProperties, CameraModel));
     py::enum_<Stitching::SeamFinder> stitchingSeamFinder(stitchingNode, "SeamFinder", DOC(dai, beta, StitchingProperties, SeamFinder));
     py::class_<Stitching::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, beta, StitchingProperties, Plane));
     py::class_<Stitching::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, beta, StitchingProperties, VirtualCamera));
@@ -34,10 +33,6 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     stitchingMode.value("PANORAMA", Stitching::Mode::PANORAMA).value("PLANAR_PROJECTION", Stitching::Mode::PLANAR_PROJECTION);
-
-    stitchingCameraModel.value("SPHERICAL", Stitching::CameraModel::SPHERICAL)
-        .value("PINHOLE", Stitching::CameraModel::PINHOLE)
-        .value("CYLINDRICAL", Stitching::CameraModel::CYLINDRICAL);
 
     stitchingSeamFinder.value("NONE", Stitching::SeamFinder::NONE)
         .value("VORONOI", Stitching::SeamFinder::VORONOI)
@@ -78,7 +73,12 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maxRange", &StitchingProperties::maxRange)
         .def_readwrite("minIncidenceAngle", &StitchingProperties::minIncidenceAngle);
 
-    stitchingNode.def_readonly("sync", &Stitching::sync, DOC(dai, beta, node, Stitching, sync))
+    stitchingNode
+        .def_property_readonly(
+            "sync",
+            // Subnode<Sync> has no Python type; hand out the Sync node it wraps
+            [](Stitching& node) { return std::static_pointer_cast<dai::node::Sync>(node.sync->shared_from_this()); },
+            DOC(dai, beta, node, Stitching, sync))
         .def_property_readonly(
             "inputs", [](Stitching& node) { return &node.inputs; }, py::return_value_policy::reference_internal, DOC(dai, beta, node, Stitching, inputs))
         .def_readonly("out", &Stitching::out, DOC(dai, beta, node, Stitching, out))

@@ -30,6 +30,9 @@ namespace dai {
 namespace node {
 class DclUtils;
 }  // namespace node
+namespace detail {
+class StereoPairCalculator;
+}  // namespace detail
 class DeviceBase;
 
 class CalibrationHandler {
@@ -799,6 +802,7 @@ class CalibrationHandler {
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;
     LengthUnit getEepromTranslationUnits() const;
     friend DeviceBase;
+    friend detail::StereoPairCalculator;
 
     /**
      * Get the angle in radians between the optical z-axes of two cameras.

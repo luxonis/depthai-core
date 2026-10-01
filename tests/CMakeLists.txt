@@ -461,6 +461,11 @@ dai_add_test(board_imu_rotation_test src/onhost_tests/board_imu_rotation_test.cp
 target_compile_definitions(board_imu_rotation_test PRIVATE DEPTHAI_BOARDS_PATH="${PROJECT_SOURCE_DIR}/shared/depthai_boards/boards")
 dai_set_test_labels(board_imu_rotation_test onhost ci)
 
+# Board catalog stereo-pair compatibility test
+dai_add_test(stereo_pair_board_compatibility_test src/onhost_tests/stereo_pair_board_compatibility_test.cpp)
+target_compile_definitions(stereo_pair_board_compatibility_test PRIVATE DEPTHAI_BOARDS_PATH="${PROJECT_SOURCE_DIR}/shared/depthai_boards/boards")
+dai_set_test_labels(stereo_pair_board_compatibility_test onhost ci)
+
 # Calibration CBA merge test
 dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_test.cpp)
 dai_set_test_labels(calibration_cba_merge_test onhost)
