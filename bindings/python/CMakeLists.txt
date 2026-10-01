@@ -141,6 +141,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/MessageGroupBindings.cpp
     src/pipeline/datatype/NNDataBindings.cpp
     src/pipeline/datatype/NeuralDepthConfigBindings.cpp
+    src/pipeline/datatype/OdometryBindings.cpp
     src/pipeline/datatype/GPUStereoConfigBindings.cpp
     src/pipeline/datatype/RGBDDataBindings.cpp
     src/pipeline/datatype/SpatialImgDetectionsBindings.cpp
