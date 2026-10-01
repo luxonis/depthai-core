@@ -34,6 +34,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/build/version.hpp"
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -48,6 +49,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/StartupNotifications.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // libraries
@@ -1458,6 +1460,20 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             // Rethrow original exception
             throw;
         }
+
+        // Handle startup notifications
+#ifdef DEPTHAI_ENABLE_CURL
+        if(!reconnect) {
+            try {
+                const auto disableNotificationsEnv = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS", "");
+                if(disableNotificationsEnv != "1" && disableNotificationsEnv != "true") {
+                    utility::printStartupNotifications(build::VERSION, getPlatform(), getProductName(), getOSVersion());
+                }
+            } catch(const std::exception& ex) {
+                pimpl->logger.debug("Startup notification print failed: {}", ex.what());
+            }
+        }
+#endif
     }
 }
 
