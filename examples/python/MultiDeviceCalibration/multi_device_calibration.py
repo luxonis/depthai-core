@@ -48,9 +48,8 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
         for socket in sockets:
             camera = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=5)
-            calibration.addCamera(deviceId, socket, camera.requestFullResolutionOutput(fps=5))
+            calibration.addCamera(camera.requestFullResolutionOutput(fps=5))
 
-        calibration.setStereoPair(deviceId, *sockets)
 
     controlQueue = calibration.inputControl.createInputQueue()
     resultQueue = calibration.calibrationOutput.createOutputQueue()

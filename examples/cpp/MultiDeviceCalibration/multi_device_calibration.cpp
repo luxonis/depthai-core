@@ -84,8 +84,7 @@ int main(int argc, char** argv) {
         for(const auto& arg : parsed->deviceArgs) deviceInfos.emplace_back(arg);
     }
 
-    const auto leftSocket = dai::CameraBoardSocket::CAM_B;
-    const auto rightSocket = dai::CameraBoardSocket::CAM_C;
+    const std::vector<dai::CameraBoardSocket> sockets{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C};
     constexpr float fps = 5.0f;
 
     // One pipeline without an implicit device; every device is added explicitly
@@ -100,14 +99,12 @@ int main(int argc, char** argv) {
         const auto deviceId = device->getDeviceId();
         std::cout << "Using device " << deviceId << std::endl;
 
-        for(auto socket : {leftSocket, rightSocket}) {
+        // Two cameras per device give the solver a factory-calibrated baseline, which fixes the metric scale.
+        // The device ID and socket are taken from the Camera node that owns the output.
+        for(auto socket : sockets) {
             auto camera = pipeline.create<dai::node::Camera>(device)->build(socket, std::nullopt, fps);
-            // Device ID and socket are explicit: image metadata is not a reliable cross-device identity
-            calibration->addCamera(deviceId, socket, *camera->requestFullResolutionOutput(std::nullopt, fps));
+            calibration->addCamera(*camera->requestFullResolutionOutput(std::nullopt, fps));
         }
-
-        // Metric scale is recovered from this factory-calibrated stereo pair
-        calibration->setStereoPair(deviceId, leftSocket, rightSocket);
     }
 
     auto controlQueue = calibration->inputControl.createInputQueue();

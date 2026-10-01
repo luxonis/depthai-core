@@ -139,7 +139,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         calibrations[deviceId] = handler
 
         camera = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=5)
-        calibration.addCamera(deviceId, socket, camera.requestFullResolutionOutput(fps=5))
+        calibration.addCamera(camera.requestFullResolutionOutput(fps=5))
 
     def resolve(token: str) -> str:
         if token not in deviceIdByToken:

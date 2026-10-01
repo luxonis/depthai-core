@@ -24,7 +24,12 @@ void bind_beta_multi_device_calibration(pybind11::module& m, void* pCallstack) {
         .def_readonly("inputControl", &MultiDeviceCalibration::inputControl)
         .def_readonly("syncInput", &MultiDeviceCalibration::syncInput)
         .def_readonly("calibrationOutput", &MultiDeviceCalibration::calibrationOutput)
-        .def("addCamera", &MultiDeviceCalibration::addCamera, "deviceId"_a, "socket"_a, "cameraOutput"_a)
+        .def("addCamera", py::overload_cast<Node::Output&>(&MultiDeviceCalibration::addCamera), "cameraOutput"_a)
+        .def("addCamera",
+             py::overload_cast<std::string, CameraBoardSocket, Node::Output&>(&MultiDeviceCalibration::addCamera),
+             "deviceId"_a,
+             "socket"_a,
+             "cameraOutput"_a)
         .def("setSampleCount", &MultiDeviceCalibration::setSampleCount, "sampleCount"_a)
         .def("getSampleCount", &MultiDeviceCalibration::getSampleCount)
         .def("setKnownDistance",

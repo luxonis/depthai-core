@@ -36,9 +36,9 @@ whether to save it, or hand it to the pipeline with
 - A `depthai` build with **beta**, **dynamic calibration** and **OpenCV**
   support (`DEPTHAI_BUILD_BETA`, `DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT` and
   `DEPTHAI_OPENCV_SUPPORT`; the first two default to ON).
-- A source of **metric scale**: either a factory-calibrated stereo pair on at
-  least one device (`setStereoPair`) or a measured camera-to-camera distance
-  across devices (`setKnownDistance`).
+- A source of **metric scale**: at least two registered cameras on one device
+  (their factory calibration fixes the baseline) or a measured camera-to-camera
+  distance across devices (`setKnownDistance`).
 - All cameras must see the **same static, textured scene** while samples are
   collected. Keep the devices still.
 
@@ -96,8 +96,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         deviceId = device.getDeviceId()
         for socket in (dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C):
             camera = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=5)
-            calibration.addCamera(deviceId, socket, camera.requestFullResolutionOutput(fps=5))
-        calibration.setStereoPair(deviceId, dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C)
+            calibration.addCamera(camera.requestFullResolutionOutput(fps=5))
 
     controlQueue = calibration.inputControl.createInputQueue()
     resultQueue = calibration.calibrationOutput.createOutputQueue()
@@ -113,9 +112,12 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
 1. One pipeline, no implicit device. Every device is added explicitly with
    `pipeline.addDevice`, and each `Camera` is created on its own device.
-2. `CAM_B` and `CAM_C` of every device are registered. Full-resolution frames
-   give the solver the most features; 5 fps keeps the host load low.
-3. The devices' factory `CAM_B`/`CAM_C` pair provides metric scale.
+2. `CAM_B` and `CAM_C` of every device are registered. `addCamera` reads the
+   device ID and socket from the `Camera` node that owns the output.
+   Full-resolution frames give the solver the most features; 5 fps keeps the
+   host load low.
+3. Two cameras per device give the solver a factory-calibrated baseline, which
+   fixes the metric scale. No `setStereoPair` call is needed for that.
 4. The sync threshold is generous (5 s) because the devices are not hardware
    synchronized and the scene is static. Tighten it if the scene moves, or use
    FSYNC/PTP as shown in `multi_device_frame_sync.py`.
@@ -150,7 +152,7 @@ to `-d` (an IP works too). All three options are repeatable.
 
 | Option | Node call | Notes |
 | --- | --- | --- |
-| `-s`, `--socket` | `addCamera(deviceId, socket, output)` | Same socket on every device, default `CAM_A`. |
+| `-s`, `--socket` | `addCamera(output)` | Same socket on every device, default `CAM_A`. |
 | `--known-distance FROM TO CM` | `setKnownDistance(from, socket, to, socket, cm, CENTIMETER)` | Tape-measured distance between the two camera centers. With one camera per device this is the only source of scale, so the script warns when it is missing. |
 | `--initial-guess FROM TO X Y Z YAW PITCH ROLL` | `setInitialGuess(from, fromOrigin, to, toOrigin, extrinsics)` | Transform from FROM's local origin to TO's: `X_to = R * X_from + t`, translation in cm, rotation as yaw/pitch/roll in degrees (`R = Rz * Ry * Rx`). Useful when the devices are strongly rotated relative to each other. |
 | `--calibration DEVICE PATH` | `setDeviceCalibration(deviceId, dai.CalibrationHandler(path))` | Overrides the device's live calibration. Required for replayed streams; here it also lets you test a calibration file before flashing it. |
@@ -202,9 +204,10 @@ first `start`, or after a `reset`. They raise otherwise.
 | `inputControl` | Input for `MultiDeviceCalibrationControl` messages. |
 | `calibrationOutput` | Emits exactly one `MultiDeviceCalibrationResult` per run. |
 | `sync` | The internal `dai.node.Sync`. Use `sync.setSyncThreshold(...)` to control how close in time the frames of one group must be. |
-| `addCamera(deviceId, socket, cameraOutput)` | Register a camera stream. The device ID and socket are explicit because frame metadata is not a reliable cross-device identity. Each (device, socket) pair may be registered once. |
+| `addCamera(cameraOutput)` | Register a live camera stream. The device ID and socket are read from the `Camera` node that owns the output, so the output must come straight from a built `Camera` created on a device. Each (device, socket) pair may be registered once. |
+| `addCamera(deviceId, socket, cameraOutput)` | Same, with an explicit identity. Use it when the output does not come directly from a `Camera`: an `ImageManip` in between, a host node, or a replayed recording. Frame metadata is not a reliable cross-device identity, so the identity is passed in. |
 | `setSampleCount(n)` / `getSampleCount()` | Number of complete synchronized groups to collect before solving. Default `10`, minimum `1`. |
-| `setStereoPair(deviceId, leftSocket, rightSocket)` | Restrict metric scale recovery to this factory-calibrated pair on `deviceId`. Both sockets must be registered cameras. One pair per device. |
+| `setStereoPair(deviceId, leftSocket, rightSocket)` | Optional. Restrict metric scale recovery to this factory-calibrated pair on `deviceId`, for example to pin it to the widest baseline. By default every pair of registered cameras on the same device may anchor the scale. Both sockets must be registered cameras. One pair per device. |
 | `setKnownDistance(fromDeviceId, fromSocket, toDeviceId, toSocket, distance, unit=CENTIMETER)` | Supply a measured camera-center distance between two cameras on **different** devices. Alternative or complement to a stereo pair for metric scale. |
 | `setInitialGuess(fromDeviceId, fromSocket, toDeviceId, toSocket, guess)` | Optional starting pose from one device's **local calibration origin** to another's. `guess` is a `dai.Extrinsics` whose `toDeviceId`/`toCameraSocket` must match the explicit destination. Only one direction per device pair. |
 | `setDeviceCalibration(deviceId, calibrationHandler)` | Override the live device calibration. Needed for replayed or recorded streams and tests; live devices are read automatically. |

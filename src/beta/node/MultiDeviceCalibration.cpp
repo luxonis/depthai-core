@@ -26,6 +26,7 @@
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -145,6 +146,19 @@ void MultiDeviceCalibration::buildInternal() {
         entry.second.setBlocking(false);
         entry.second.setMaxSize(2);
     }
+}
+
+void MultiDeviceCalibration::addCamera(Node::Output& cameraOutput) {
+    auto* camera = dynamic_cast<dai::node::Camera*>(&cameraOutput.getParent());
+    DAI_CHECK_V(
+        camera != nullptr,
+        "MultiDeviceCalibration::addCamera(output) needs an output of a Camera node, got '{}'; use addCamera(deviceId, socket, output) for other outputs",
+        cameraOutput.getParent().getName());
+    const auto device = camera->getDevice();
+    DAI_CHECK_V(device != nullptr,
+                "MultiDeviceCalibration::addCamera(output): the Camera node has no device; create it with pipeline.create<Camera>(device) or use "
+                "addCamera(deviceId, socket, output)");
+    addCamera(device->getDeviceId(), camera->getBoardSocket(), cameraOutput);
 }
 
 void MultiDeviceCalibration::addCamera(std::string deviceId, CameraBoardSocket socket, Node::Output& cameraOutput) {

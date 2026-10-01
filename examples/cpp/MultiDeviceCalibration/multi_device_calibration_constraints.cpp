@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
         }
 
         auto camera = pipeline.create<dai::node::Camera>(device)->build(socket, std::nullopt, fps);
-        calibration->addCamera(deviceId, socket, *camera->requestFullResolutionOutput(std::nullopt, fps));
+        calibration->addCamera(*camera->requestFullResolutionOutput(std::nullopt, fps));
     }
 
     const auto resolve = [&](const std::string& token) {

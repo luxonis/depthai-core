@@ -48,10 +48,21 @@ class MultiDeviceCalibration : public NodeCRTP<dai::node::ThreadedHostNode, Mult
     Output calibrationOutput{*this, {"calibrationOutput", DEFAULT_GROUP, {{{DatatypeEnum::MultiDeviceCalibrationResult, false}}}}};
 
     /**
-     * Register an image stream.
+     * Register a live camera stream.
      *
-     * The device ID and socket are explicit because image metadata is not a
-     * reliable source of cross-device identity.
+     * The device ID and socket are taken from the Camera node that owns the
+     * output, so the output must come directly from a built Camera created on a
+     * device. For outputs of other nodes (ImageManip, host nodes, replayed
+     * streams) use the explicit overload.
+     */
+    void addCamera(Node::Output& cameraOutput);
+
+    /**
+     * Register an image stream with an explicit identity.
+     *
+     * Use this when the output does not come directly from a Camera node, for
+     * example for replayed or recorded streams. Image metadata is not a
+     * reliable source of cross-device identity, so the identity is passed in.
      */
     void addCamera(std::string deviceId, CameraBoardSocket socket, Node::Output& cameraOutput);
 
@@ -70,7 +81,11 @@ class MultiDeviceCalibration : public NodeCRTP<dai::node::ThreadedHostNode, Mult
     /** Supply an optional local-origin-to-local-origin initial pose estimate. */
     void setInitialGuess(std::string fromDeviceId, CameraBoardSocket fromSocket, std::string toDeviceId, CameraBoardSocket toSocket, const Extrinsics& guess);
 
-    /** Restrict metric scale recovery to an explicit factory-calibrated stereo pair. */
+    /**
+     * Optional. Restrict metric scale recovery to an explicit factory-calibrated
+     * stereo pair. By default every pair of registered cameras on the same
+     * device may anchor the metric scale.
+     */
     void setStereoPair(std::string deviceId, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket);
 
     /** Override live calibration for recorded/offline streams and tests. */

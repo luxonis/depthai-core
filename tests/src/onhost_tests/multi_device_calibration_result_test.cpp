@@ -29,6 +29,13 @@ TEST_CASE("Multi-device calibration control exposes only lifecycle commands") {
     REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(reset->command));
 }
 
+TEST_CASE("Multi-device calibration addCamera(output) rejects outputs that are not from a Camera") {
+    Pipeline pipeline(false);
+    auto calibration = pipeline.create<dai::beta::node::MultiDeviceCalibration>();
+    auto sync = pipeline.create<dai::node::Sync>();
+    REQUIRE_THROWS_WITH(calibration->addCamera(sync->out), Catch::Matchers::ContainsSubstring("Camera node"));
+}
+
 TEST_CASE("Multi-device calibration result round-trips calibration graph and aggregate quality") {
     MultiDeviceExtrinsics edge;
     edge.fromDeviceId = "device-b";
