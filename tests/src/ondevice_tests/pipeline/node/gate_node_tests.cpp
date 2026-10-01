@@ -9,6 +9,11 @@
 #include "depthai/pipeline/node/Gate.hpp"
 
 TEST_CASE("ImgFrame metadata survives a device round trip") {
+    constexpr unsigned int FRAME_WIDTH = 128;
+    constexpr unsigned int FRAME_HEIGHT = 32;
+    constexpr unsigned int SOURCE_WIDTH = FRAME_WIDTH * 2;
+    constexpr unsigned int SOURCE_HEIGHT = FRAME_HEIGHT * 2;
+
     dai::Pipeline pipeline;
     auto gate = pipeline.create<dai::node::Gate>();
     gate->initialConfig->open = true;
@@ -16,23 +21,23 @@ TEST_CASE("ImgFrame metadata survives a device round trip") {
     auto output = gate->output.createOutputQueue();
 
     auto sent = std::make_shared<dai::ImgFrame>();
-    sent->setSourceSize(64, 48);
-    sent->setSize(32, 24);
+    sent->setSourceSize(SOURCE_WIDTH, SOURCE_HEIGHT);
+    sent->setSize(FRAME_WIDTH, FRAME_HEIGHT);
     sent->setType(dai::ImgFrame::Type::GRAY8);
-    sent->setStride(32);
+    sent->setStride(FRAME_WIDTH);
     sent->sourceFb.bytesPP = 1;
-    auto transformation = dai::ImgTransformation(64, 48);
+    auto transformation = dai::ImgTransformation(SOURCE_WIDTH, SOURCE_HEIGHT);
     transformation.setDistortionCoefficients(std::vector<float>(14, 0.0f));
     transformation.addScale(0.5f, 0.5f);
     sent->setTransformation(transformation);
-    sent->setData(std::vector<uint8_t>(32 * 24, 0x5a));
+    sent->setData(std::vector<uint8_t>(FRAME_WIDTH * FRAME_HEIGHT, 0x5a));
     sent->setSequenceNum(42);
     sent->setInstanceNum(7);
     sent->setCategory(3);
     sent->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(123456789)));
     sent->setTimestampDevice(std::chrono::steady_clock::time_point(std::chrono::nanoseconds(234567890)));
-    sent->setTimestampSystem(std::chrono::system_clock::time_point(
-        std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::nanoseconds(345678901))));
+    sent->setTimestampSystem(
+        std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::nanoseconds(345678901))));
     sent->cam.exposureTimeUs = 1234;
     sent->cam.sensitivityIso = 321;
     sent->cam.lensPosition = 12;

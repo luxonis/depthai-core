@@ -64,7 +64,7 @@ TEST_CASE("ImgTransformation equality detects every alignment-relevant change") 
         REQUIRE_FALSE(base.isEqualTransformation(changed));
     };
 
-    requireDifferent([](auto& transformation) { transformation.addRotation(1.0f, {width / 2.0f, height / 2.0f}); });
+    requireDifferent([width, height](auto& transformation) { transformation.addRotation(1.0f, {width / 2.0f, height / 2.0f}); });
     requireDifferent([](auto& transformation) {
         auto changedIntrinsics = transformation.getSourceIntrinsicMatrix();
         changedIntrinsics[0][0] += 1.0f;
@@ -77,8 +77,8 @@ TEST_CASE("ImgTransformation equality detects every alignment-relevant change") 
         changedExtrinsics.setTranslationVector({2.0f, 2.0f, 3.0f}, dai::LengthUnit::MILLIMETER);
         transformation.setExtrinsics(changedExtrinsics);
     });
-    requireDifferent([](auto& transformation) { transformation.setSize(width - 1, height); });
-    requireDifferent([](auto& transformation) { transformation.setSourceSize(width - 1, height); });
+    requireDifferent([width, height](auto& transformation) { transformation.setSize(width - 1, height); });
+    requireDifferent([width, height](auto& transformation) { transformation.setSourceSize(width - 1, height); });
 }
 
 int testPadding() {
