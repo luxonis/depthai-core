@@ -29,6 +29,7 @@ TEST_CASE("Multi-device calibration control exposes only lifecycle commands") {
     REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(reset->command));
 }
 
+#if defined(DEPTHAI_HAVE_BETA) && defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
 TEST_CASE("Multi-device calibration addCamera(output) rejects outputs that are not from a Camera") {
     Pipeline pipeline(false);
     auto calibration = pipeline.create<dai::beta::node::MultiDeviceCalibration>();
@@ -62,6 +63,7 @@ TEST_CASE("Multi-device calibration initial guesses accept any socket pair and a
     autoSocket.fromSocket = CameraBoardSocket::AUTO;
     REQUIRE_THROWS_WITH(calibration->setInitialGuess(autoSocket), Catch::Matchers::ContainsSubstring("concrete"));
 }
+#endif
 
 TEST_CASE("Multi-device calibration result round-trips calibration graph and aggregate quality") {
     MultiDeviceExtrinsics edge;
