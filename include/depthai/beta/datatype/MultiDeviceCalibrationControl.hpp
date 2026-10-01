@@ -1,13 +1,8 @@
 #pragma once
 
 #include <cstdint>
-// Keep Serialization before variant.hpp: the latter specializes libnop types
-// declared by Serialization.hpp.
-// clang-format off
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/Serialization.hpp>
-#include <depthai/common/variant.hpp>
-// clang-format on
 #include <memory>
 #include <utility>
 #include <variant>
@@ -25,15 +20,9 @@ namespace beta {
 class MultiDeviceCalibrationControl : public Buffer {
    public:
     struct Commands {
-        struct Start {
-            DEPTHAI_SERIALIZE_EMPTY(Start);
-        };
-        struct Stop {
-            DEPTHAI_SERIALIZE_EMPTY(Stop);
-        };
-        struct Reset {
-            DEPTHAI_SERIALIZE_EMPTY(Reset);
-        };
+        struct Start {};
+        struct Stop {};
+        struct Reset {};
     };
 
     using Command = std::variant<std::monostate, Commands::Start, Commands::Stop, Commands::Reset>;
@@ -64,8 +53,6 @@ class MultiDeviceCalibrationControl : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::MultiDeviceCalibrationControl;
     }
-
-    DEPTHAI_SERIALIZE(MultiDeviceCalibrationControl, command);
 };
 
 }  // namespace beta

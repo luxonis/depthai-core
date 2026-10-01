@@ -29,39 +29,6 @@ TEST_CASE("Multi-device calibration control exposes only lifecycle commands") {
     REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(reset->command));
 }
 
-TEST_CASE("Multi-device calibration control round-trips its command") {
-    for(const auto serializationType : {SerializationType::LIBNOP, SerializationType::JSON}) {
-        const auto serialized = utility::serialize(*MultiDeviceCalibrationControl::start(), serializationType);
-        MultiDeviceCalibrationControl roundTrip;
-        REQUIRE(utility::deserialize(serialized, roundTrip, serializationType));
-        REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Start>(roundTrip.command));
-
-        const auto serializedStop = utility::serialize(*MultiDeviceCalibrationControl::stop(), serializationType);
-        REQUIRE(utility::deserialize(serializedStop, roundTrip, serializationType));
-        REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Stop>(roundTrip.command));
-
-        const auto serializedReset = utility::serialize(*MultiDeviceCalibrationControl::reset(), serializationType);
-        REQUIRE(utility::deserialize(serializedReset, roundTrip, serializationType));
-        REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(roundTrip.command));
-
-        const auto serializedEmpty = utility::serialize(MultiDeviceCalibrationControl{}, serializationType);
-        REQUIRE(utility::deserialize(serializedEmpty, roundTrip, serializationType));
-        REQUIRE(std::holds_alternative<std::monostate>(roundTrip.command));
-    }
-}
-
-TEST_CASE("Multi-device calibration control rejects non-object payloads for empty commands") {
-    const auto toBytes = [](const std::string& text) { return std::vector<std::uint8_t>(text.begin(), text.end()); };
-    MultiDeviceCalibrationControl control;
-
-    REQUIRE(utility::deserialize(toBytes(R"({"command":{"index":1,"value":{}}})"), control, SerializationType::JSON));
-    REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Start>(control.command));
-
-    REQUIRE_THROWS(utility::deserialize(toBytes(R"({"command":{"index":1,"value":null}})"), control, SerializationType::JSON));
-    REQUIRE_THROWS(utility::deserialize(toBytes(R"({"command":{"index":2,"value":5}})"), control, SerializationType::JSON));
-    REQUIRE_THROWS(utility::deserialize(toBytes(R"({"command":{"index":3,"value":"reset"}})"), control, SerializationType::JSON));
-}
-
 TEST_CASE("Multi-device calibration result round-trips calibration graph and aggregate quality") {
     MultiDeviceExtrinsics edge;
     edge.fromDeviceId = "device-b";
