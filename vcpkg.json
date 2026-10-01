@@ -9,7 +9,6 @@
         "nlohmann-json",
         "yaml-cpp",
         "spdlog",
-        "zlib",
         "bzip2",
         "lz4",
         "liblzma",

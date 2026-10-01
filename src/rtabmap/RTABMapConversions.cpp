@@ -1,6 +1,7 @@
 #include "RTABMapConversions.hpp"
 
 #include "common/CameraBoardSocket.hpp"
+#include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/core/Transform.h"
@@ -10,10 +11,23 @@ std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transfo
     auto transform = std::make_shared<TransformData>();
 
     transform->transform.matrix = {{{transformRTABMap.r11(), transformRTABMap.r12(), transformRTABMap.r13(), transformRTABMap.o14()},
-                                    {transformRTABMap.r21(), transformRTABMap.r22(), transformRTABMap.r23(), transformRTABMap.o24()},
-                                    {transformRTABMap.r31(), transformRTABMap.r32(), transformRTABMap.r33(), transformRTABMap.o34()}}};
+                                   {transformRTABMap.r21(), transformRTABMap.r22(), transformRTABMap.r23(), transformRTABMap.o24()},
+                                   {transformRTABMap.r31(), transformRTABMap.r32(), transformRTABMap.r33(), transformRTABMap.o34()},
+                                   {0.0, 0.0, 0.0, 1.0}}};
     return transform;
 }
+
+std::shared_ptr<Odometry> rtabmapToOdometry(rtabmap::Transform transformRTABMap, const Point3d& velocity) {
+    auto odometry = std::make_shared<Odometry>();
+
+    odometry->transform.matrix = {{{transformRTABMap.r11(), transformRTABMap.r12(), transformRTABMap.r13(), transformRTABMap.o14()},
+                                   {transformRTABMap.r21(), transformRTABMap.r22(), transformRTABMap.r23(), transformRTABMap.o24()},
+                                   {transformRTABMap.r31(), transformRTABMap.r32(), transformRTABMap.r33(), transformRTABMap.o34()},
+                                   {0.0, 0.0, 0.0, 1.0}}};
+    odometry->velocity = velocity;
+    return odometry;
+}
+
 rtabmap::Transform getRTABMapTransform(const Transform& transform) {
     return rtabmap::Transform(transform.matrix[0][0],
                               transform.matrix[0][1],

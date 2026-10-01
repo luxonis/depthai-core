@@ -400,6 +400,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/pipeline/datatype/Odometry.cpp
     src/pipeline/datatype/PacketizedData.cpp
     src/properties/Properties.cpp
     src/capabilities/Capabilities.cpp
@@ -940,7 +941,6 @@ target_link_libraries(${TARGET_CORE_NAME}
         Threads::Threads
         BZip2::BZip2
         LibArchive::LibArchive
-        ZLIB::ZLIB
         httplib::httplib
         semver::semver
         magic_enum::magic_enum
