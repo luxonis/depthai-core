@@ -166,18 +166,27 @@ float Stitching::getMinIncidenceAngle() const {
     return properties.minIncidenceAngle;
 }
 
-void Stitching::setCameraModel(CameraModel model) {
-    if(model != CameraModel::Equirectangular && model != CameraModel::Cylindrical && model != CameraModel::Perspective) {
-        throw std::invalid_argument(fmt::format("Stitching supports Equirectangular, Cylindrical and Perspective camera models, not {}", toString(model)));
-    }
+void Stitching::setProjectionModel(CameraProjectionModel model) {
     std::lock_guard<std::mutex> lock(hostPropertiesMutex);
-    properties.cameraModel = model;
+    properties.projectionModel = model;
     invalidateHostState();
 }
 
-CameraModel Stitching::getCameraModel() const {
+CameraProjectionModel Stitching::getProjectionModel() const {
     std::lock_guard<std::mutex> lock(hostPropertiesMutex);
-    return properties.cameraModel;
+    return properties.projectionModel;
+}
+
+void Stitching::setCameraModel(CameraModel model) {
+    // Perspective is the pinhole projection of an undistorted camera; the other pinhole models imply distortion coefficients
+    if(model == CameraModel::Fisheye || model == CameraModel::RadialDivision) {
+        throw std::invalid_argument(fmt::format("Stitching supports Equirectangular, Cylindrical and Perspective camera models, not {}", toString(model)));
+    }
+    setProjectionModel(projectionModelOf(model));
+}
+
+CameraModel Stitching::getCameraModel() const {
+    return toCameraModel(getProjectionModel(), DistortionModel::NoDistortion);
 }
 
 void Stitching::setUseInputCalibration(bool useInputCalibration) {

@@ -185,7 +185,7 @@ TEST_CASE("Distorted depth is undistorted before deprojection", "[PointCloud][Im
     constexpr float DEPTH_MM = 1000.f;
     constexpr float EXPECTED_UNDISTORTED_X_MM = 19.282993f;
     impl.setIntrinsics(100.f, 100.f, 2.f, 1.f, W, H);
-    impl.setDistortion(dai::CameraModel::Perspective, {100.f});
+    impl.setDistortion(dai::CameraProjectionModel::Pinhole, dai::DistortionModel::BrownConrady, {100.f});
 
     const auto points = computeDense(impl, makeConstantDepth(W, H, static_cast<uint16_t>(DEPTH_MM)));
 
@@ -212,7 +212,7 @@ TEST_CASE("Fisheye depth is undistorted before deprojection", "[PointCloud][Impl
     dai::node::PointCloud::Impl impl;
     constexpr unsigned W = 3, H = 1;
     impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
-    impl.setDistortion(dai::CameraModel::Fisheye, {0.5f, 0.0f, 0.0f, 0.0f});
+    impl.setDistortion(dai::CameraProjectionModel::Pinhole, dai::DistortionModel::KannalaBrandt, {0.5f, 0.0f, 0.0f, 0.0f});
 
     const auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
 
@@ -225,7 +225,7 @@ TEST_CASE("Zero distortion preserves the original deprojection", "[PointCloud][I
     dai::node::PointCloud::Impl impl;
     constexpr unsigned W = 3, H = 1;
     impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
-    impl.setDistortion(dai::CameraModel::Perspective, {0.0f, 0.0f, 0.0f, 0.0f});
+    impl.setDistortion(dai::CameraProjectionModel::Pinhole, dai::DistortionModel::BrownConrady, {0.0f, 0.0f, 0.0f, 0.0f});
 
     const auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
 
@@ -238,8 +238,8 @@ TEST_CASE("Unsupported distortion models are rejected by PointCloud", "[PointClo
     dai::node::PointCloud::Impl impl;
     impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, 3, 1);
 
-    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::RadialDivision, {0.1f}), "PointCloud does not support distortion model: RadialDivision");
-    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::Equirectangular, {0.1f}), "PointCloud does not support distortion model: Equirectangular");
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraProjectionModel::Pinhole, dai::DistortionModel::RadialDivision, {0.1f}), "PointCloud does not support distortion model: RadialDivision");
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraProjectionModel::Equirectangular, dai::DistortionModel::NoDistortion, {}), "PointCloud does not support projection model: Equirectangular");
 }
 
 // ============================================================================
@@ -1125,7 +1125,7 @@ TEST_CASE("Colored deprojection uses undistorted rays", "[PointCloud][Impl][Colo
     dai::node::PointCloud::Impl impl;
     constexpr unsigned W = 3, H = 1;
     impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
-    impl.setDistortion(dai::CameraModel::Perspective, {10.f});
+    impl.setDistortion(dai::CameraProjectionModel::Pinhole, dai::DistortionModel::BrownConrady, {10.f});
 
     const auto depth = makeConstantDepth(W, H, 1000);
     const auto color = makeConstantColor(W, H, 1, 2, 3);

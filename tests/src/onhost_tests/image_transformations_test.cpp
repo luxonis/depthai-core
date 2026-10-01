@@ -70,7 +70,7 @@ TEST_CASE("ImgTransformation equality detects every alignment-relevant change") 
         changedIntrinsics[0][0] += 1.0f;
         transformation.setIntrinsicMatrix(changedIntrinsics);
     });
-    requireDifferent([](auto& transformation) { transformation.setDistortionModel(dai::CameraModel::Fisheye); });
+    requireDifferent([](auto& transformation) { transformation.setDistortionModel(dai::DistortionModel::KannalaBrandt); });
     requireDifferent([](auto& transformation) { transformation.setDistortionCoefficients({0.2f}); });
     requireDifferent([](auto& transformation) {
         auto changedExtrinsics = transformation.getExtrinsics();
@@ -693,4 +693,161 @@ TEST_CASE("ImageManip CropRotated maps the requested rectangle to the output") {
     }
     REQUIRE(imageCorners == expected);
     REQUIRE(srcCorners.size() == 1);
+}
+
+// -----------------------------------------------------------------------------
+// cameraModelSplit
+// Purpose:
+//   The projection model (how directions map to the image) and the distortion
+//   model (how the coefficients warp the normalized image plane) are stored
+//   separately. The combined dai::CameraModel of calibrations converts both ways.
+// -----------------------------------------------------------------------------
+TEST_CASE("cameraModelSplit") {
+    SECTION("combined camera model conversions") {
+        using dai::CameraModel;
+        using dai::CameraProjectionModel;
+        using dai::DistortionModel;
+        REQUIRE(dai::projectionModelOf(CameraModel::Perspective) == CameraProjectionModel::Pinhole);
+        REQUIRE(dai::projectionModelOf(CameraModel::Fisheye) == CameraProjectionModel::Pinhole);
+        REQUIRE(dai::projectionModelOf(CameraModel::RadialDivision) == CameraProjectionModel::Pinhole);
+        REQUIRE(dai::projectionModelOf(CameraModel::Equirectangular) == CameraProjectionModel::Equirectangular);
+        REQUIRE(dai::projectionModelOf(CameraModel::Cylindrical) == CameraProjectionModel::Cylindrical);
+
+        REQUIRE(dai::distortionModelOf(CameraModel::Perspective) == DistortionModel::BrownConrady);
+        REQUIRE(dai::distortionModelOf(CameraModel::Fisheye) == DistortionModel::KannalaBrandt);
+        REQUIRE(dai::distortionModelOf(CameraModel::RadialDivision) == DistortionModel::RadialDivision);
+        REQUIRE(dai::distortionModelOf(CameraModel::Equirectangular) == DistortionModel::NoDistortion);
+        REQUIRE(dai::distortionModelOf(CameraModel::Cylindrical) == DistortionModel::NoDistortion);
+
+        // Every combined model survives the round trip
+        for(auto model : {CameraModel::Perspective, CameraModel::Fisheye, CameraModel::RadialDivision, CameraModel::Equirectangular, CameraModel::Cylindrical}) {
+            REQUIRE(dai::toCameraModel(dai::projectionModelOf(model), dai::distortionModelOf(model)) == model);
+        }
+        // An undistorted pinhole camera is a Perspective camera with zero coefficients
+        REQUIRE(dai::toCameraModel(CameraProjectionModel::Pinhole, DistortionModel::NoDistortion) == CameraModel::Perspective);
+
+        REQUIRE(dai::isValidCameraModel(CameraProjectionModel::Pinhole, DistortionModel::KannalaBrandt));
+        REQUIRE(dai::isValidCameraModel(CameraProjectionModel::Cylindrical, DistortionModel::NoDistortion));
+        REQUIRE_FALSE(dai::isValidCameraModel(CameraProjectionModel::Cylindrical, DistortionModel::BrownConrady));
+        REQUIRE_FALSE(dai::isValidCameraModel(CameraProjectionModel::Equirectangular, DistortionModel::KannalaBrandt));
+        REQUIRE_THROWS_AS(dai::toCameraModel(CameraProjectionModel::Equirectangular, DistortionModel::BrownConrady), std::invalid_argument);
+    }
+
+    const std::array<std::array<float, 3>, 3> intrinsics = {{{500.0f, 0.0f, 320.0f}, {0.0f, 500.0f, 240.0f}, {0.0f, 0.0f, 1.0f}}};
+
+    SECTION("transformation accessors and validation") {
+        dai::ImgTransformation fisheye(640, 480, intrinsics, dai::CameraModel::Fisheye, {0.1f, 0.0f, 0.0f, 0.0f});
+        REQUIRE(fisheye.getProjectionModel() == dai::CameraProjectionModel::Pinhole);
+        REQUIRE(fisheye.getDistortionModel() == dai::DistortionModel::KannalaBrandt);
+        REQUIRE(fisheye.getCameraModel() == dai::CameraModel::Fisheye);
+
+        dai::ImgTransformation panorama(640, 480, intrinsics, dai::CameraProjectionModel::Cylindrical, dai::DistortionModel::NoDistortion, {});
+        REQUIRE(panorama.getProjectionModel() == dai::CameraProjectionModel::Cylindrical);
+        REQUIRE(panorama.getDistortionModel() == dai::DistortionModel::NoDistortion);
+        REQUIRE(panorama.getCameraModel() == dai::CameraModel::Cylindrical);
+
+        dai::ImgTransformation plain(640, 480, intrinsics);
+        REQUIRE(plain.getProjectionModel() == dai::CameraProjectionModel::Pinhole);
+        REQUIRE(plain.getDistortionModel() == dai::DistortionModel::NoDistortion);
+        REQUIRE(plain.getCameraModel() == dai::CameraModel::Perspective);
+
+        // Only pinhole projections can be distorted
+        REQUIRE_THROWS_AS(dai::ImgTransformation(640, 480, intrinsics, dai::CameraProjectionModel::Equirectangular, dai::DistortionModel::BrownConrady, {}),
+                          std::invalid_argument);
+        REQUIRE_THROWS_AS(fisheye.setProjectionModel(dai::CameraProjectionModel::Equirectangular), std::invalid_argument);
+        REQUIRE(fisheye.getProjectionModel() == dai::CameraProjectionModel::Pinhole);
+        REQUIRE_THROWS_AS(panorama.setDistortionModel(dai::DistortionModel::BrownConrady), std::invalid_argument);
+        REQUIRE(panorama.getDistortionModel() == dai::DistortionModel::NoDistortion);
+
+        fisheye.setDistortionModel(dai::DistortionModel::NoDistortion);
+        fisheye.setProjectionModel(dai::CameraProjectionModel::Equirectangular);
+        REQUIRE(fisheye.getCameraModel() == dai::CameraModel::Equirectangular);
+        fisheye.setCameraModel(dai::CameraModel::RadialDivision);
+        REQUIRE(fisheye.getProjectionModel() == dai::CameraProjectionModel::Pinhole);
+        REQUIRE(fisheye.getDistortionModel() == dai::DistortionModel::RadialDivision);
+    }
+
+    SECTION("equality and alignment") {
+        const dai::ImgTransformation pinhole(640, 480, intrinsics, dai::CameraProjectionModel::Pinhole, dai::DistortionModel::BrownConrady, {});
+        dai::ImgTransformation cylindrical = pinhole;
+        cylindrical.setDistortionModel(dai::DistortionModel::NoDistortion);
+        cylindrical.setProjectionModel(dai::CameraProjectionModel::Cylindrical);
+        REQUIRE_FALSE(pinhole.isEqualTransformation(cylindrical));
+        REQUIRE_FALSE(pinhole.isAlignedTo(cylindrical));
+
+        // A distortion model with all-zero coefficients describes the same camera as no distortion at all
+        dai::ImgTransformation undistorted = pinhole;
+        undistorted.setDistortionModel(dai::DistortionModel::NoDistortion);
+        REQUIRE_FALSE(pinhole.isEqualTransformation(undistorted));
+        REQUIRE(pinhole.isAlignedTo(undistorted));
+        dai::ImgTransformation zeroCoefficients = pinhole;
+        zeroCoefficients.setDistortionModel(dai::DistortionModel::KannalaBrandt);
+        zeroCoefficients.setDistortionCoefficients({0.0f, 0.0f, 0.0f, 0.0f});
+        REQUIRE(pinhole.isAlignedTo(zeroCoefficients));
+        dai::ImgTransformation distorted = pinhole;
+        distorted.setDistortionCoefficients({0.1f});
+        REQUIRE_FALSE(pinhole.isAlignedTo(distorted));
+    }
+
+    SECTION("field of view follows the projection") {
+        constexpr float RAD_TO_DEG = 180.0f / static_cast<float>(M_PI);
+        // A cylinder of radius 100 px unrolled to 628 px spans (almost) 360 degrees of longitude
+        const std::array<std::array<float, 3>, 3> panoramaIntrinsics = {{{100.0f, 0.0f, 314.0f}, {0.0f, 100.0f, 100.0f}, {0.0f, 0.0f, 1.0f}}};
+        dai::ImgTransformation cylindrical(628, 200, panoramaIntrinsics, dai::CameraProjectionModel::Cylindrical, dai::DistortionModel::NoDistortion, {});
+        REQUIRE_THAT(cylindrical.getHFov(), Catch::Matchers::WithinAbs(6.28f * RAD_TO_DEG, 0.01f));
+        REQUIRE_THAT(cylindrical.getVFov(), Catch::Matchers::WithinAbs(90.0f, 0.01f));
+        REQUIRE_THROWS_AS(cylindrical.getDFov(), std::runtime_error);
+
+        // A sphere of radius 100 px: 628 px of longitude and 314 px of latitude cover it (almost) entirely
+        dai::ImgTransformation equirectangular(628, 314, panoramaIntrinsics, dai::CameraProjectionModel::Equirectangular, dai::DistortionModel::NoDistortion, {});
+        REQUIRE_THAT(equirectangular.getHFov(), Catch::Matchers::WithinAbs(6.28f * RAD_TO_DEG, 0.01f));
+        REQUIRE_THAT(equirectangular.getVFov(), Catch::Matchers::WithinAbs(3.14f * RAD_TO_DEG, 0.01f));
+
+        // Scaling the panorama keeps its angular span
+        cylindrical.addScale(0.5f, 0.5f);
+        REQUIRE_THAT(cylindrical.getHFov(), Catch::Matchers::WithinAbs(6.28f * RAD_TO_DEG, 0.01f));
+        REQUIRE_THAT(cylindrical.getHFov(true), Catch::Matchers::WithinAbs(6.28f * RAD_TO_DEG, 0.01f));
+
+        dai::ImgTransformation pinhole(200, 200, panoramaIntrinsics, dai::CameraProjectionModel::Pinhole, dai::DistortionModel::NoDistortion, {});
+        REQUIRE_THAT(pinhole.getHFov(), Catch::Matchers::WithinAbs(90.0f, 0.01f));
+        REQUIRE_NOTHROW(pinhole.getDFov());
+    }
+
+    SECTION("serialization keeps both models") {
+        const dai::Extrinsics extrinsics({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}, {1.0f, 2.0f, 3.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::CENTIMETER);
+        const dai::ImgTransformation source(640, 480, intrinsics, dai::CameraProjectionModel::Equirectangular, dai::DistortionModel::NoDistortion, {}, extrinsics);
+
+        const auto serialized = dai::utility::serialize(source);
+        dai::ImgTransformation deserialized;
+        dai::utility::deserialize(serialized, deserialized);
+        REQUIRE(deserialized.getProjectionModel() == dai::CameraProjectionModel::Equirectangular);
+        REQUIRE(deserialized.getDistortionModel() == dai::DistortionModel::NoDistortion);
+        REQUIRE(deserialized.isEqualTransformation(source));
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+        dai::ImgFrame frame;
+        frame.transformation = source;
+        const auto serializedProto = frame.serializeProto();
+        dai::proto::img_frame::ImgFrame protoFrame;
+        REQUIRE(protoFrame.ParseFromArray(serializedProto.data(), static_cast<int>(serializedProto.size())));
+        REQUIRE(protoFrame.transformation().has_projectionmodel());
+        REQUIRE(protoFrame.transformation().has_distortionmodel());
+        // The combined model is still written for readers from before the split
+        REQUIRE(protoFrame.transformation().cameramodel() == dai::proto::common::CameraModel::EQUIRECTANGULAR);
+
+        dai::ImgFrame deserializedProtoFrame;
+        dai::utility::setProtoMessage(deserializedProtoFrame, &protoFrame, false);
+        REQUIRE(deserializedProtoFrame.transformation.isEqualTransformation(source));
+
+        // A recording from before the split only carries the combined model
+        auto* legacy = protoFrame.mutable_transformation();
+        legacy->clear_projectionmodel();
+        legacy->clear_distortionmodel();
+        legacy->set_cameramodel(dai::proto::common::CameraModel::FISHEYE);
+        dai::ImgFrame legacyFrame;
+        dai::utility::setProtoMessage(legacyFrame, &protoFrame, false);
+        REQUIRE(legacyFrame.transformation.getProjectionModel() == dai::CameraProjectionModel::Pinhole);
+        REQUIRE(legacyFrame.transformation.getDistortionModel() == dai::DistortionModel::KannalaBrandt);
+#endif
+    }
 }

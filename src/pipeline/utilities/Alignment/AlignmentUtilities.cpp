@@ -11,11 +11,11 @@ namespace {
 constexpr float kTiny = 1e-8f;
 
 /**
- * The panorama surfaces have no normalized image plane, so a point on them can neither be distorted nor undistorted, whatever the coefficients. Silently
- * treating them as a pinhole would misplace every projection.
+ * The panorama surfaces have no normalized image plane, so their pixels cannot be turned into rays by undistorting them. Silently treating them as a
+ * pinhole would misplace every projection.
  */
-std::invalid_argument unsupportedPanoramaModel(dai::CameraModel model) {
-    return std::invalid_argument(std::string("Unsupported camera model for pinhole projection: ") + std::string(dai::toString(model)));
+std::invalid_argument unsupportedPanoramaProjection(dai::CameraProjectionModel projection) {
+    return std::invalid_argument(std::string("Unsupported projection model for pinhole unprojection: ") + std::string(dai::toString(projection)));
 }
 
 std::array<std::array<float, 3>, 3> makeRotXY(float tauX, float tauY) {
@@ -56,6 +56,9 @@ std::array<std::array<float, 3>, 3> makeInvTiltMatrix(float tauX, float tauY) {
 }  // namespace
 
 std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& transformation) {
+    if(transformation.getProjectionModel() != dai::CameraProjectionModel::Pinhole) {
+        throw unsupportedPanoramaProjection(transformation.getProjectionModel());
+    }
     std::array<float, 3> pxHomogeneous = {px.x, px.y, 1.0f};
     auto intrinsicMatrixInv = transformation.getSourceIntrinsicMatrixInv();
     auto distortionModel = transformation.getDistortionModel();
@@ -68,15 +71,44 @@ std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& t
 }
 
 dai::Point2f rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransformation& transformation) {
-    auto distortionModel = transformation.getDistortionModel();
-    auto distortionCoeffs = transformation.getDistortionCoefficients();
-    auto intrinsicMatrix = transformation.getSourceIntrinsicMatrix();
-    std::array<float, 3> distortedRay = distortPoint(ray, distortionModel, distortionCoeffs);
-
-    std::array<float, 3> rayHomogeneous = {distortedRay[0] / distortedRay[2], distortedRay[1] / distortedRay[2], 1.0f};
-    std::array<float, 3> pxHomogeneous = dai::matrix::matVecMul(intrinsicMatrix, rayHomogeneous);
+    const auto imageCoordinates =
+        projectDirection(ray, transformation.getProjectionModel(), transformation.getDistortionModel(), transformation.getDistortionCoefficients());
+    std::array<float, 3> pxHomogeneous = dai::matrix::matVecMul(transformation.getSourceIntrinsicMatrix(), imageCoordinates);
 
     return {pxHomogeneous[0] / pxHomogeneous[2], pxHomogeneous[1] / pxHomogeneous[2]};
+}
+
+std::array<float, 3> projectDirection(const std::array<float, 3>& direction,
+                                      dai::CameraProjectionModel projection,
+                                      dai::DistortionModel distortion,
+                                      const std::vector<float>& coeffs) {
+    const float x = direction[0];
+    const float y = direction[1];
+    const float z = direction[2];
+    switch(projection) {
+        case dai::CameraProjectionModel::Pinhole: {
+            if(z <= 0) {
+                throw std::runtime_error("Cannot project point with z <= 0 (point is behind or at the camera).");
+            }
+            const auto distorted = distortPoint({x / z, y / z, 1.0f}, distortion, coeffs);
+            return {distorted[0] / distorted[2], distorted[1] / distorted[2], 1.0f};
+        }
+        case dai::CameraProjectionModel::Equirectangular: {
+            const float norm = std::sqrt(x * x + y * y + z * z);
+            if(norm < kTiny) {
+                throw std::runtime_error("Cannot project a point at the center of an Equirectangular panorama.");
+            }
+            return {std::atan2(x, z), std::asin(std::clamp(y / norm, -1.0f, 1.0f)), 1.0f};
+        }
+        case dai::CameraProjectionModel::Cylindrical: {
+            const float horizontal = std::sqrt(x * x + z * z);
+            if(horizontal < kTiny) {
+                throw std::runtime_error("Cannot project a point on the axis of a Cylindrical panorama.");
+            }
+            return {std::atan2(x, z), y / horizontal, 1.0f};
+        }
+    }
+    throw std::invalid_argument("Unsupported projection model.");
 }
 
 std::array<float, 3> applyTilt(float x, float y, float tauX, float tauY) {
@@ -152,19 +184,18 @@ inline std::array<float, 3> distortFisheye(std::array<float, 3> point, const std
     return {x * scale, y * scale, 1.0f};
 }
 
-std::array<float, 3> distortPoint(std::array<float, 3> point, dai::CameraModel model, const std::vector<float>& coeffs) {
+std::array<float, 3> distortPoint(std::array<float, 3> point, dai::DistortionModel model, const std::vector<float>& coeffs) {
     const bool distorted = !coeffs.empty() && hasNonZeroDistortion(coeffs);
     switch(model) {
-        case dai::CameraModel::Perspective:
+        case dai::DistortionModel::NoDistortion:
+            return point;
+        case dai::DistortionModel::BrownConrady:
             return distorted ? distortPerspective(dai::matrix::dehomogenizePoint3(point), coeffs) : point;
-        case dai::CameraModel::Fisheye:
+        case dai::DistortionModel::KannalaBrandt:
             return distorted ? distortFisheye(dai::matrix::dehomogenizePoint3(point), coeffs) : point;
-        case dai::CameraModel::RadialDivision:
+        case dai::DistortionModel::RadialDivision:
             if(!distorted) return point;
             throw std::invalid_argument("Unsupported distortion model: RadialDivision");
-        case dai::CameraModel::Equirectangular:
-        case dai::CameraModel::Cylindrical:
-            throw unsupportedPanoramaModel(model);
     }
     throw std::invalid_argument("Unsupported distortion model.");
 }
@@ -301,19 +332,18 @@ std::array<float, 3> undistortFisheye(std::array<float, 3> point, const std::vec
     const float scale = tanTheta / rd;
     return {x * scale, y * scale, 1.0f};
 }
-std::array<float, 3> undistortPoint(std::array<float, 3> point, dai::CameraModel model, const std::vector<float>& coeffs) {
+std::array<float, 3> undistortPoint(std::array<float, 3> point, dai::DistortionModel model, const std::vector<float>& coeffs) {
     const bool distorted = !coeffs.empty() && hasNonZeroDistortion(coeffs);
     switch(model) {
-        case dai::CameraModel::Perspective:
+        case dai::DistortionModel::NoDistortion:
+            return point;
+        case dai::DistortionModel::BrownConrady:
             return distorted ? undistortPerspective(point, coeffs) : point;
-        case dai::CameraModel::Fisheye:
+        case dai::DistortionModel::KannalaBrandt:
             return distorted ? undistortFisheye(point, coeffs) : point;
-        case dai::CameraModel::RadialDivision:
+        case dai::DistortionModel::RadialDivision:
             if(!distorted) return point;
             throw std::invalid_argument("Unsupported distortion model: RadialDivision");
-        case dai::CameraModel::Equirectangular:
-        case dai::CameraModel::Cylindrical:
-            throw unsupportedPanoramaModel(model);
     }
     throw std::invalid_argument("Unsupported distortion model");
 }

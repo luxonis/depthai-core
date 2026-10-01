@@ -62,7 +62,11 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         void useCPUMT(uint32_t numThreads);
         void useGPU(uint32_t device);
         void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height);
-        void setDistortion(CameraModel model, std::vector<float> coefficients);
+        /**
+         * Set the camera model of the depth frames.
+         * @throws std::invalid_argument for a projection other than Pinhole, or for non-zero coefficients of an unsupported distortion model
+         */
+        void setDistortion(CameraProjectionModel projection, DistortionModel model, std::vector<float> coefficients);
         void setExtrinsics(const std::vector<std::vector<float>>& transformMatrix);
         void clearExtrinsics();
 
@@ -104,7 +108,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         float lengthUnitMultiplier = DEFAULT_LENGTH_UNIT_MULTIPLIER;
 
         float fx = 0.0f, fy = 0.0f, cx = 0.0f, cy = 0.0f;
-        CameraModel distortionModel = CameraModel::Perspective;
+        DistortionModel distortionModel = DistortionModel::NoDistortion;
         std::vector<float> distortionCoefficients;
         std::vector<Point2f> undistortedRays;
         bool hasDistortion = false;

@@ -133,6 +133,7 @@ void requireTransformEqual(const dai::ImgTransformation& expected, const dai::Im
     REQUIRE(actual.getMatrixInv() == expected.getMatrixInv());
     REQUIRE(actual.getSourceIntrinsicMatrix() == expected.getSourceIntrinsicMatrix());
     REQUIRE(actual.getSourceIntrinsicMatrixInv() == expected.getSourceIntrinsicMatrixInv());
+    REQUIRE(actual.getProjectionModel() == expected.getProjectionModel());
     REQUIRE(actual.getDistortionModel() == expected.getDistortionModel());
     REQUIRE(actual.getDistortionCoefficients() == expected.getDistortionCoefficients());
     REQUIRE(actual.getExtrinsics().isEqualExtrinsics(expected.getExtrinsics()));

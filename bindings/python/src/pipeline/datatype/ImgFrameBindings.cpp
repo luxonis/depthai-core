@@ -130,21 +130,38 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("height"),
              py::arg("sourceIntrinsicMatrix"),
              DOC(dai, ImgTransformation, ImgTransformation, 4))
-        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>>(),
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraProjectionModel, DistortionModel, std::vector<float>>(),
              py::arg("width"),
              py::arg("height"),
              py::arg("sourceIntrinsicMatrix"),
+             py::arg("projectionModel"),
              py::arg("distortionModel"),
              py::arg("distortionCoefficients"),
              DOC(dai, ImgTransformation, ImgTransformation, 5))
-        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>, Extrinsics>(),
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraProjectionModel, DistortionModel, std::vector<float>, Extrinsics>(),
              py::arg("width"),
              py::arg("height"),
              py::arg("sourceIntrinsicMatrix"),
+             py::arg("projectionModel"),
              py::arg("distortionModel"),
              py::arg("distortionCoefficients"),
              py::arg("extrinsics"),
              DOC(dai, ImgTransformation, ImgTransformation, 6))
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>>(),
+             py::arg("width"),
+             py::arg("height"),
+             py::arg("sourceIntrinsicMatrix"),
+             py::arg("cameraModel"),
+             py::arg("distortionCoefficients"),
+             DOC(dai, ImgTransformation, ImgTransformation, 7))
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>, Extrinsics>(),
+             py::arg("width"),
+             py::arg("height"),
+             py::arg("sourceIntrinsicMatrix"),
+             py::arg("cameraModel"),
+             py::arg("distortionCoefficients"),
+             py::arg("extrinsics"),
+             DOC(dai, ImgTransformation, ImgTransformation, 8))
 
         .def("getTransformationMatrix", &ImgTransformation::getTransformationMatrix, DOC(dai, ImgTransformation, getTransformationMatrix))
         .def("__repr__", &ImgTransformation::str)
@@ -162,7 +179,9 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getIntrinsicMatrix", &ImgTransformation::getIntrinsicMatrix, DOC(dai, ImgTransformation, getIntrinsicMatrix))
         .def("getIntrinsicMatrixInv", &ImgTransformation::getIntrinsicMatrixInv, DOC(dai, ImgTransformation, getIntrinsicMatrixInv))
         .def("getTransformationMatrixInv", &ImgTransformation::getTransformationMatrixInv, DOC(dai, ImgTransformation, getTransformationMatrixInv))
+        .def("getProjectionModel", &ImgTransformation::getProjectionModel, DOC(dai, ImgTransformation, getProjectionModel))
         .def("getDistortionModel", &ImgTransformation::getDistortionModel, DOC(dai, ImgTransformation, getDistortionModel))
+        .def("getCameraModel", &ImgTransformation::getCameraModel, DOC(dai, ImgTransformation, getCameraModel))
         .def("getDistortionCoefficients", &ImgTransformation::getDistortionCoefficients, DOC(dai, ImgTransformation, getDistortionCoefficients))
         .def("getExtrinsics", &ImgTransformation::getExtrinsics, DOC(dai, ImgTransformation, getExtrinsics))
         .def("rebaseExtrinsics", &ImgTransformation::rebaseExtrinsics, py::arg("localOriginToTarget"), DOC(dai, ImgTransformation, rebaseExtrinsics))
@@ -174,7 +193,9 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getVFov", &ImgTransformation::getVFov, py::arg("source") = false)
         .def("isEqualTransformation", &ImgTransformation::isEqualTransformation, py::arg("other"), DOC(dai, ImgTransformation, isEqualTransformation))
         .def("setIntrinsicMatrix", &ImgTransformation::setIntrinsicMatrix, py::arg("intrinsicMatrix"), DOC(dai, ImgTransformation, setIntrinsicMatrix))
+        .def("setProjectionModel", &ImgTransformation::setProjectionModel, py::arg("model"), DOC(dai, ImgTransformation, setProjectionModel))
         .def("setDistortionModel", &ImgTransformation::setDistortionModel, py::arg("model"), DOC(dai, ImgTransformation, setDistortionModel))
+        .def("setCameraModel", &ImgTransformation::setCameraModel, py::arg("model"), DOC(dai, ImgTransformation, setCameraModel))
         .def("setDistortionCoefficients",
              &ImgTransformation::setDistortionCoefficients,
              py::arg("coefficients"),

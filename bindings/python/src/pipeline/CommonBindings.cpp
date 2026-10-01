@@ -76,6 +76,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<ChipTemperatureRVC4> chipTemperatureRVC4(m, "ChipTemperatureRVC4", DOC(dai, ChipTemperatureRVC4));
     py::class_<CpuUsage> cpuUsage(m, "CpuUsage", DOC(dai, CpuUsage));
     py::enum_<CameraModel> cameraModel(m, "CameraModel", DOC(dai, CameraModel));
+    py::enum_<CameraProjectionModel> cameraProjectionModel(m, "CameraProjectionModel", DOC(dai, CameraProjectionModel));
+    py::enum_<DistortionModel> distortionModel(m, "DistortionModel", DOC(dai, DistortionModel));
     py::class_<StereoRectification> stereoRectification(m, "StereoRectification", DOC(dai, StereoRectification));
     py::class_<Extrinsics> extrinsics(m, "Extrinsics", DOC(dai, Extrinsics));
     py::class_<MultiDeviceExtrinsics> multiDeviceExtrinsics(m, "MultiDeviceExtrinsics", DOC(dai, MultiDeviceExtrinsics));
@@ -523,6 +525,34 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("Equirectangular", CameraModel::Equirectangular)
         .value("RadialDivision", CameraModel::RadialDivision)
         .value("Cylindrical", CameraModel::Cylindrical);
+    cameraProjectionModel.value("Pinhole", CameraProjectionModel::Pinhole)
+        .value("Equirectangular", CameraProjectionModel::Equirectangular)
+        .value("Cylindrical", CameraProjectionModel::Cylindrical);
+    distortionModel.value("NoDistortion", DistortionModel::NoDistortion)
+        .value("BrownConrady", DistortionModel::BrownConrady)
+        .value("KannalaBrandt", DistortionModel::KannalaBrandt)
+        .value("RadialDivision", DistortionModel::RadialDivision);
+    // ImgTransformation.getDistortionModel() used to return a CameraModel. Comparing the two enums silently evaluated to "not equal" in Python, so make
+    // the mistake loud instead.
+    const auto mixedModels = [](const char* lhs, const char* rhs) {
+        return [lhs, rhs](const py::object&, const py::object&) -> bool {
+            throw py::type_error(std::string("Cannot compare dai.") + lhs + " with dai." + rhs
+                                 + ". ImgTransformation.getDistortionModel() returns a dai.DistortionModel; use getCameraModel() for a dai.CameraModel or "
+                                   "dai.distortionModelOf() to convert.");
+        };
+    };
+    for(const char* op : {"__eq__", "__ne__"}) {
+        distortionModel.def(op, [f = mixedModels("DistortionModel", "CameraModel")](const DistortionModel& a, const CameraModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
+        distortionModel.def(op, [f = mixedModels("DistortionModel", "CameraProjectionModel")](const DistortionModel& a, const CameraProjectionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
+        cameraProjectionModel.def(op, [f = mixedModels("CameraProjectionModel", "CameraModel")](const CameraProjectionModel& a, const CameraModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
+        cameraProjectionModel.def(op, [f = mixedModels("CameraProjectionModel", "DistortionModel")](const CameraProjectionModel& a, const DistortionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
+        cameraModel.def(op, [f = mixedModels("CameraModel", "DistortionModel")](const CameraModel& a, const DistortionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
+        cameraModel.def(op, [f = mixedModels("CameraModel", "CameraProjectionModel")](const CameraModel& a, const CameraProjectionModel& b) { return f(py::cast(a), py::cast(b)); }, py::is_operator());
+    }
+    m.def("projectionModelOf", &projectionModelOf, py::arg("cameraModel"), DOC(dai, projectionModelOf));
+    m.def("distortionModelOf", &distortionModelOf, py::arg("cameraModel"), DOC(dai, distortionModelOf));
+    m.def("isValidCameraModel", &isValidCameraModel, py::arg("projection"), py::arg("distortion"), DOC(dai, isValidCameraModel));
+    m.def("toCameraModel", &toCameraModel, py::arg("projection"), py::arg("distortion"), DOC(dai, toCameraModel));
 
     // StereoRectification
     stereoRectification.def(py::init<>())

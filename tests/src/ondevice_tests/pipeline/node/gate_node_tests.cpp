@@ -76,6 +76,7 @@ TEST_CASE("ImgFrame metadata survives a device round trip") {
     REQUIRE(received->transformation.getSourceSize() == sent->transformation.getSourceSize());
     REQUIRE(received->transformation.getMatrix() == sent->transformation.getMatrix());
     REQUIRE(received->transformation.getSourceIntrinsicMatrix() == sent->transformation.getSourceIntrinsicMatrix());
+    REQUIRE(received->transformation.getProjectionModel() == sent->transformation.getProjectionModel());
     REQUIRE(received->transformation.getDistortionModel() == sent->transformation.getDistortionModel());
     REQUIRE(received->transformation.getDistortionCoefficients() == sent->transformation.getDistortionCoefficients());
     REQUIRE(received->transformation.getExtrinsics().isEqualExtrinsics(sent->transformation.getExtrinsics()));

@@ -46,7 +46,9 @@ message Extrinsics {
 message ImgTransformation {
     TransformationMatrix transformationMatrix = 1;
     TransformationMatrix sourceIntrinsicMatrix = 2;
-    CameraModel distortionModel = 3;
+    // Combined camera model, kept for recordings made before the projection and distortion models were split (where it was named distortionModel).
+    // Readers prefer projectionModel and distortionModel when both are present.
+    CameraModel cameraModel = 3;
     FloatArray distortionCoefficients = 4;
     uint32 srcWidth = 5;
     uint32 srcHeight = 6;
@@ -54,6 +56,8 @@ message ImgTransformation {
     uint32 height = 8;
     Extrinsics extrinsics = 9;
     repeated RotatedRect srcCrops = 10;
+    optional CameraProjectionModel projectionModel = 11;
+    optional DistortionModel distortionModel = 12;
 }
 
 message TransformationMatrix {
@@ -70,6 +74,19 @@ enum CameraModel {
     EQUIRECTANGULAR = 2;
     RADIALDIVISION = 3;
     CYLINDRICAL = 4;
+}
+
+enum CameraProjectionModel {
+    PINHOLE = 0;
+    PROJECTION_EQUIRECTANGULAR = 1;
+    PROJECTION_CYLINDRICAL = 2;
+}
+
+enum DistortionModel {
+    DISTORTION_NONE = 0;
+    BROWN_CONRADY = 1;
+    KANNALA_BRANDT = 2;
+    RADIAL_DIVISION = 3;
 }
 
 enum CameraBoardSocket {

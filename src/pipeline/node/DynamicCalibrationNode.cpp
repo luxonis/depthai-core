@@ -817,7 +817,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
         const auto frameIntrinsics = matrix::matrix3x3ToVectorMatrix(frame->getTransformation().getIntrinsicMatrix());
         const auto frameDistortion = frame->getTransformation().getDistortionCoefficients();
-        const auto frameDistortionModel = frame->getTransformation().getDistortionModel();
+        // The dynamic calibration library works with the combined camera model of the calibration
+        const auto frameDistortionModel = frame->getTransformation().getCameraModel();
 
         auto socket = static_cast<CameraBoardSocket>(frame->getInstanceNum());
 

@@ -148,6 +148,7 @@ bool ImgTransformation::isEqualTransformation(const ImgTransformation& other) co
     if(!matrix::mateq(getIntrinsicMatrix(), other.getIntrinsicMatrix())) return false;
 
     if(!matrix::mateq(getSourceIntrinsicMatrix(), other.getSourceIntrinsicMatrix())) return false;
+    if(getProjectionModel() != other.getProjectionModel()) return false;
     if(getDistortionModel() != other.getDistortionModel()) return false;
     if(getDistortionCoefficients() != other.getDistortionCoefficients()) return false;
 
@@ -211,6 +212,9 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrixInv() c
     return matrix::matMul(sourceIntrinsicMatrixInv, transformationMatrixInv);
 }
 float ImgTransformation::getDFov(bool source) const {
+    if(projectionModel != CameraProjectionModel::Pinhole) {
+        throw std::runtime_error(fmt::format("The diagonal field of view is only defined for the Pinhole projection, not {}", toString(projectionModel)));
+    }
     float fovWidth = source ? srcWidth : width;
     float fovHeight = source ? srcHeight : height;
     if(fovHeight <= 0) {
@@ -249,7 +253,17 @@ float ImgTransformation::getHFov(bool source) const {
     float fovWidth = source ? srcWidth : width;
 
     // Calculate horizontal FoV (in radians)
-    float horizontalFoV = 2 * atan(fovWidth / (2.0f * fx));
+    float horizontalFoV = 0.0f;
+    switch(projectionModel) {
+        case CameraProjectionModel::Pinhole:
+            horizontalFoV = 2 * atan(fovWidth / (2.0f * fx));
+            break;
+        case CameraProjectionModel::Equirectangular:
+        case CameraProjectionModel::Cylindrical:
+            // The image width spans a longitude range of width / radius
+            horizontalFoV = fovWidth / fx;
+            break;
+    }
 
     // Convert radians to degrees
     return horizontalFoV * 180.0f / (float)M_PI;
@@ -259,13 +273,30 @@ float ImgTransformation::getVFov(bool source) const {
     float fovHeight = source ? srcHeight : height;
 
     // Calculate vertical FoV (in radians)
-    float verticalFoV = 2 * atan(fovHeight / (2.0f * fy));
+    float verticalFoV = 0.0f;
+    switch(projectionModel) {
+        case CameraProjectionModel::Pinhole:
+        case CameraProjectionModel::Cylindrical:
+            // Both project y / distance onto the image, so the vertical angle is a tangent
+            verticalFoV = 2 * atan(fovHeight / (2.0f * fy));
+            break;
+        case CameraProjectionModel::Equirectangular:
+            // The image height spans a latitude range of height / radius
+            verticalFoV = fovHeight / fy;
+            break;
+    }
 
     // Convert radians to degrees
     return verticalFoV * 180.0f / (float)M_PI;
 }
-CameraModel ImgTransformation::getDistortionModel() const {
+CameraProjectionModel ImgTransformation::getProjectionModel() const {
+    return projectionModel;
+}
+DistortionModel ImgTransformation::getDistortionModel() const {
     return distortionModel;
+}
+CameraModel ImgTransformation::getCameraModel() const {
+    return toCameraModel(projectionModel, distortionModel);
 }
 std::vector<float> ImgTransformation::getDistortionCoefficients() const {
     return distortionCoefficients;
@@ -398,8 +429,34 @@ ImgTransformation& ImgTransformation::setExtrinsics(const Extrinsics& extrinsics
     this->extrinsics = extrinsics;
     return *this;
 }
-ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
+void ImgTransformation::validateCameraModel() const {
+    if(!isValidCameraModel(projectionModel, distortionModel)) {
+        throw std::invalid_argument(fmt::format("ImgTransformation: the {} projection cannot carry the {} distortion model, only Pinhole projections can be distorted",
+                                                toString(projectionModel),
+                                                toString(distortionModel)));
+    }
+}
+ImgTransformation& ImgTransformation::setProjectionModel(CameraProjectionModel model) {
+    if(!isValidCameraModel(model, distortionModel)) {
+        throw std::invalid_argument(fmt::format("ImgTransformation: the {} projection cannot carry the current {} distortion model, set the distortion model to NoDistortion first",
+                                                toString(model),
+                                                toString(distortionModel)));
+    }
+    projectionModel = model;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setDistortionModel(DistortionModel model) {
+    if(!isValidCameraModel(projectionModel, model)) {
+        throw std::invalid_argument(fmt::format("ImgTransformation: the current {} projection cannot carry the {} distortion model, only Pinhole projections can be distorted",
+                                                toString(projectionModel),
+                                                toString(model)));
+    }
     distortionModel = model;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setCameraModel(CameraModel model) {
+    projectionModel = projectionModelOf(model);
+    distortionModel = distortionModelOf(model);
     return *this;
 }
 ImgTransformation& ImgTransformation::setDistortionCoefficients(const std::vector<float>& coefficients) {
@@ -527,13 +584,8 @@ dai::RotatedRect ImgTransformation::projectRectTo(const ImgTransformation& to, R
 }
 
 dai::Point2f ImgTransformation::project3DPoint(const dai::Point3f& point3f) const {
-    if(point3f.z <= 0) {
-        throw std::runtime_error("Cannot project point with z <= 0 (point is behind or at the camera).");
-    }
-    const float x = point3f.x / point3f.z;
-    const float y = point3f.y / point3f.z;
-    const auto distorted = distortPoint({x, y, 1.0f}, distortionModel, distortionCoefficients);
-    const auto projected = matrix::dehomogenizePoint3(matrix::matVecMul(getIntrinsicMatrix(), distorted));
+    const auto imageCoordinates = projectDirection({point3f.x, point3f.y, point3f.z}, projectionModel, distortionModel, distortionCoefficients);
+    const auto projected = matrix::dehomogenizePoint3(matrix::matVecMul(getIntrinsicMatrix(), imageCoordinates));
     return {projected[0], projected[1]};
 }
 
@@ -581,7 +633,12 @@ std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformati
 bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
     if(!extrinsics.hasCompatibleCoordinateSystem(to.extrinsics)) return false;
     if(width != to.width || height != to.height) return false;
-    if(this->distortionModel != to.distortionModel) return false;
+    if(projectionModel != to.projectionModel) return false;
+    // A distortion model without effective coefficients is the same camera as no distortion at all
+    const auto effectiveDistortionModel = [](const ImgTransformation& transformation) {
+        return hasNonZeroDistortion(transformation.distortionCoefficients) ? transformation.distortionModel : DistortionModel::NoDistortion;
+    };
+    if(effectiveDistortionModel(*this) != effectiveDistortionModel(to)) return false;
     auto approxEqual = [](float a, float b, float absTol = ROUND_UP_EPS, float relTol = 2 * ROUND_UP_EPS) {
         return std::abs(a - b) <= (absTol + relTol * std::max(std::abs(a), std::abs(b)));
     };

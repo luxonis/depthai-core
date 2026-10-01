@@ -22,7 +22,8 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-    CameraModel distortionModel = CameraModel::Perspective;
+    CameraProjectionModel projectionModel = CameraProjectionModel::Pinhole;
+    DistortionModel distortionModel = DistortionModel::NoDistortion;
     std::vector<float> distortionCoefficients;
     Extrinsics extrinsics = {};
 
@@ -38,6 +39,7 @@ struct ImgTransformation {
     bool cropsValid = false;
 
     void calcCrops();
+    void validateCameraModel() const;
 
    public:
     ImgTransformation() = default;
@@ -48,28 +50,37 @@ struct ImgTransformation {
         : sourceIntrinsicMatrix(sourceIntrinsicMatrix), srcWidth(width), srcHeight(height), width(width), height(height) {
         sourceIntrinsicMatrixInv = matrix::getMatrixInverse(sourceIntrinsicMatrix);
     }
+    /**
+     * Describe a source camera by its projection and distortion models.
+     * @throws std::invalid_argument if the projection cannot carry the distortion model, see isValidCameraModel()
+     */
     ImgTransformation(size_t width,
                       size_t height,
                       std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix,
-                      CameraModel distortionModel,
+                      CameraProjectionModel projectionModel,
+                      DistortionModel distortionModel,
                       std::vector<float> distortionCoefficients)
         : sourceIntrinsicMatrix(sourceIntrinsicMatrix),
+          projectionModel(projectionModel),
           distortionModel(distortionModel),
-          distortionCoefficients(distortionCoefficients),
+          distortionCoefficients(std::move(distortionCoefficients)),
           srcWidth(width),
           srcHeight(height),
           width(width),
           height(height) {
+        validateCameraModel();
         sourceIntrinsicMatrixInv = matrix::getMatrixInverse(sourceIntrinsicMatrix);
     }
 
     ImgTransformation(size_t width,
                       size_t height,
                       std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix,
-                      CameraModel distortionModel,
+                      CameraProjectionModel projectionModel,
+                      DistortionModel distortionModel,
                       std::vector<float> distortionCoefficients,
                       Extrinsics extrinsics)
         : sourceIntrinsicMatrix(sourceIntrinsicMatrix),
+          projectionModel(projectionModel),
           distortionModel(distortionModel),
           distortionCoefficients(std::move(distortionCoefficients)),
           extrinsics(std::move(extrinsics)),
@@ -77,8 +88,32 @@ struct ImgTransformation {
           srcHeight(height),
           width(width),
           height(height) {
+        validateCameraModel();
         sourceIntrinsicMatrixInv = matrix::getMatrixInverse(sourceIntrinsicMatrix);
     }
+
+    /// Describe a source camera by the combined CameraModel of its calibration, see projectionModelOf() and distortionModelOf().
+    ImgTransformation(size_t width,
+                      size_t height,
+                      std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix,
+                      CameraModel cameraModel,
+                      std::vector<float> distortionCoefficients)
+        : ImgTransformation(
+              width, height, sourceIntrinsicMatrix, projectionModelOf(cameraModel), distortionModelOf(cameraModel), std::move(distortionCoefficients)) {}
+
+    ImgTransformation(size_t width,
+                      size_t height,
+                      std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix,
+                      CameraModel cameraModel,
+                      std::vector<float> distortionCoefficients,
+                      Extrinsics extrinsics)
+        : ImgTransformation(width,
+                            height,
+                            sourceIntrinsicMatrix,
+                            projectionModelOf(cameraModel),
+                            distortionModelOf(cameraModel),
+                            std::move(distortionCoefficients),
+                            std::move(extrinsics)) {}
 
     /**
      * Transform a point from the source frame to the current frame.
@@ -136,10 +171,20 @@ struct ImgTransformation {
      */
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
     /**
-     * Retrieve the distortion model of the source sensor
+     * Retrieve the projection model of the source camera: how directions map to the undistorted image coordinates.
+     * @return Projection model
+     */
+    CameraProjectionModel getProjectionModel() const;
+    /**
+     * Retrieve the distortion model of the source camera: how the distortion coefficients warp the normalized image plane of a Pinhole projection.
      * @return Distortion model
      */
-    CameraModel getDistortionModel() const;
+    DistortionModel getDistortionModel() const;
+    /**
+     * Retrieve the projection and distortion models of the source camera combined into the CameraModel calibrations store, see toCameraModel().
+     * @return Camera model
+     */
+    CameraModel getCameraModel() const;
     /**
      * Retrieve the distortion coefficients of the source sensor
      * @return vector of distortion coefficients
@@ -153,7 +198,7 @@ struct ImgTransformation {
     Extrinsics getExtrinsics() const;
 
     /**
-     * Two transformations are equal if the transformation matrices, intrinsic matrices, distortion models,
+     * Two transformations are equal if the transformation matrices, intrinsic matrices, projection models, distortion models,
      * distortion coefficients, extrinsics, and sizes are all equal.
      * @param other Transformation to compare with
      * @return True if the transformations are equal, false otherwise
@@ -179,19 +224,22 @@ struct ImgTransformation {
      */
     std::array<std::array<float, 3>, 3> getIntrinsicMatrixInv() const;
     /**
-     * Retrieve the diagonal field of view of the image.
+     * Retrieve the diagonal field of view of the image. Only defined for the Pinhole projection.
      * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
      * @return Diagonal field of view in degrees
+     * @throws std::runtime_error for panorama projections
      */
     float getDFov(bool source = false) const;
     /**
-     * Retrieve the horizontal field of view of the image.
+     * Retrieve the horizontal field of view of the image, following the projection model: the angle spanned by the image width on the normalized image
+     * plane of a Pinhole projection, or the longitude span of a panorama.
      * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
      * @return Horizontal field of view in degrees
      */
     float getHFov(bool source = false) const;
     /**
-     * Retrieve the vertical field of view of the image.
+     * Retrieve the vertical field of view of the image, following the projection model: the angle spanned by the image height on the normalized image
+     * plane of a Pinhole or Cylindrical projection, or the latitude span of an Equirectangular panorama.
      * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
      * @return Vertical field of view in degrees
      */
@@ -269,7 +317,18 @@ struct ImgTransformation {
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
     ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
-    ImgTransformation& setDistortionModel(CameraModel model);
+    /**
+     * Set the projection model of the source camera.
+     * @throws std::invalid_argument if the projection cannot carry the current distortion model, see isValidCameraModel()
+     */
+    ImgTransformation& setProjectionModel(CameraProjectionModel model);
+    /**
+     * Set the distortion model of the source camera.
+     * @throws std::invalid_argument if the current projection cannot carry the distortion model, see isValidCameraModel()
+     */
+    ImgTransformation& setDistortionModel(DistortionModel model);
+    /// Set both the projection and the distortion model from a combined CameraModel, see projectionModelOf() and distortionModelOf().
+    ImgTransformation& setCameraModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
 
     /**
@@ -303,10 +362,12 @@ struct ImgTransformation {
     dai::RotatedRect remapRectFrom(const ImgTransformation& from, const dai::RotatedRect& rect) const;
 
     /**
-     * Project a 3D spatial point into 2D point in the current frame defined by this transformation.
+     * Project a 3D spatial point into 2D point in the current frame defined by this transformation, following the projection and distortion models of
+     * the source camera.
      * @param point 3D point to project
      * @return Projected 2D point in the current frame
      * @note This function assumes that the point is in the coordinate system of the current frame.
+     * @throws std::runtime_error if the point cannot be projected: behind a Pinhole camera, or on the axis of a Cylindrical panorama
      */
     dai::Point2f project3DPoint(const dai::Point3f& point) const;
 
@@ -413,6 +474,7 @@ struct ImgTransformation {
                       transformationMatrixInv,
                       sourceIntrinsicMatrix,
                       sourceIntrinsicMatrixInv,
+                      projectionModel,
                       distortionModel,
                       distortionCoefficients,
                       srcWidth,

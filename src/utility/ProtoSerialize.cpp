@@ -162,7 +162,10 @@ void serializeImgTransformation(proto::common::ImgTransformation* imgTransformat
         }
     }
 
-    imgTransformation->set_distortionmodel(static_cast<proto::common::CameraModel>(transformation.getDistortionModel()));
+    // The combined model is written too, so that readers from before the split can still make sense of the recording
+    imgTransformation->set_cameramodel(static_cast<proto::common::CameraModel>(transformation.getCameraModel()));
+    imgTransformation->set_projectionmodel(static_cast<proto::common::CameraProjectionModel>(transformation.getProjectionModel()));
+    imgTransformation->set_distortionmodel(static_cast<proto::common::DistortionModel>(transformation.getDistortionModel()));
     proto::common::FloatArray* distortionCoefficients = imgTransformation->mutable_distortioncoefficients();
     for(const auto& value : transformation.getDistortionCoefficients()) {
         distortionCoefficients->add_values(value);
@@ -259,13 +262,15 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
         dai::Size2f size = deserializeSize2f(crop.size());
         srcCrops.emplace_back(center, size, crop.angle());
     }
+    // Recordings from before the split only carry the combined camera model
+    const auto cameraModel = static_cast<CameraModel>(imgTransformation.cameramodel());
+    const auto projectionModel = imgTransformation.has_projectionmodel() ? static_cast<CameraProjectionModel>(imgTransformation.projectionmodel())
+                                                                         : projectionModelOf(cameraModel);
+    const auto distortionModel =
+        imgTransformation.has_distortionmodel() ? static_cast<DistortionModel>(imgTransformation.distortionmodel()) : distortionModelOf(cameraModel);
     ImgTransformation transformation;
-    transformation = ImgTransformation(imgTransformation.srcwidth(),
-                                       imgTransformation.srcheight(),
-                                       sourceIntrinsicMatrix,
-                                       static_cast<CameraModel>(imgTransformation.distortionmodel()),
-                                       distortionCoefficients,
-                                       extrinsics);
+    transformation = ImgTransformation(
+        imgTransformation.srcwidth(), imgTransformation.srcheight(), sourceIntrinsicMatrix, projectionModel, distortionModel, distortionCoefficients, extrinsics);
     if(transformation.isValid()) {
         transformation.addTransformation(transformationMatrix);
         if(!srcCrops.empty()) {

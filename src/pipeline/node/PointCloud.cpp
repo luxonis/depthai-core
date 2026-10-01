@@ -411,9 +411,12 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
 #endif
 }
 
-void PointCloud::Impl::setDistortion(CameraModel model, std::vector<float> coefficients) {
+void PointCloud::Impl::setDistortion(CameraProjectionModel projection, DistortionModel model, std::vector<float> coefficients) {
+    if(projection != CameraProjectionModel::Pinhole) {
+        throw std::invalid_argument(std::string("PointCloud does not support projection model: ") + std::string(toString(projection)));
+    }
     const bool nextHasDistortion = hasNonZeroDistortion(coefficients);
-    if(nextHasDistortion && model != CameraModel::Perspective && model != CameraModel::Fisheye) {
+    if(nextHasDistortion && model != DistortionModel::BrownConrady && model != DistortionModel::KannalaBrandt) {
         throw std::invalid_argument(std::string("PointCloud does not support distortion model: ") + std::string(toString(model)));
     }
 
@@ -661,7 +664,9 @@ void PointCloud::initialize(const ImgFrame& depthFrame, const PointCloudConfig& 
 
     // Set camera intrinsics from the depth frame
     setIntrinsicsFromFrame(depthFrame);
-    pimplPointCloud->setDistortion(depthFrame.transformation.getDistortionModel(), depthFrame.transformation.getDistortionCoefficients());
+    pimplPointCloud->setDistortion(depthFrame.transformation.getProjectionModel(),
+                                   depthFrame.transformation.getDistortionModel(),
+                                   depthFrame.transformation.getDistortionCoefficients());
 
     // Compute and apply coordinate transformation (frame extrinsics + target transform)
     setCoordinateTransformation(depthFrame, config);

@@ -703,7 +703,7 @@ TEST_CASE("AlignmentUtilities distort point") {
         cv::Mat distortionCoeffsCv;
         cv::Mat(distCoeffs).reshape(1, 1).convertTo(distortionCoeffsCv, CV_64F);
 
-        transformation.setDistortionModel(dai::CameraModel::Fisheye);
+        transformation.setDistortionModel(dai::DistortionModel::KannalaBrandt);
         transformation.setDistortionCoefficients(distCoeffs);
 
         dai::Point2f projectedPoint = transformation.project3DPoint(point3D);
@@ -716,11 +716,36 @@ TEST_CASE("AlignmentUtilities distort point") {
         REQUIRE(std::hypot(projectedPoint.x - projected[0].x, projectedPoint.y - projected[0].y) < 1e-3);
     }
 
-    SECTION("Unsupported Camera models") {
-        transformation.setDistortionModel(dai::CameraModel::RadialDivision);
+    SECTION("Unsupported distortion models") {
+        transformation.setDistortionModel(dai::DistortionModel::RadialDivision);
         REQUIRE_THROWS_AS(transformation.project3DPoint(point3D), std::invalid_argument);
-        transformation.setDistortionModel(dai::CameraModel::Equirectangular);
-        REQUIRE_THROWS_AS(transformation.project3DPoint(point3D), std::invalid_argument);
+    }
+
+    SECTION("Panorama projections") {
+        // A distorted camera cannot become a panorama
+        REQUIRE_THROWS_AS(transformation.setProjectionModel(dai::CameraProjectionModel::Equirectangular), std::invalid_argument);
+        transformation.setDistortionModel(dai::DistortionModel::NoDistortion);
+        transformation.setDistortionCoefficients({});
+
+        const auto fx = cameraMatrixValues[0][0];
+        const auto fy = cameraMatrixValues[1][1];
+        const auto cx = cameraMatrixValues[0][2];
+        const auto cy = cameraMatrixValues[1][2];
+        const float longitude = std::atan2(point3D.x, point3D.z);
+
+        transformation.setProjectionModel(dai::CameraProjectionModel::Equirectangular);
+        auto projected = transformation.project3DPoint(point3D);
+        const float norm = std::sqrt(point3D.x * point3D.x + point3D.y * point3D.y + point3D.z * point3D.z);
+        REQUIRE(std::abs(projected.x - (fx * longitude + cx)) < 1e-2f);
+        REQUIRE(std::abs(projected.y - (fy * std::asin(point3D.y / norm) + cy)) < 1e-2f);
+        // Panoramas also see points behind the camera
+        REQUIRE_NOTHROW(transformation.project3DPoint({point3D.x, point3D.y, -point3D.z}));
+
+        transformation.setProjectionModel(dai::CameraProjectionModel::Cylindrical);
+        projected = transformation.project3DPoint(point3D);
+        REQUIRE(std::abs(projected.x - (fx * longitude + cx)) < 1e-2f);
+        REQUIRE(std::abs(projected.y - (fy * point3D.y / std::hypot(point3D.x, point3D.z) + cy)) < 1e-2f);
+        REQUIRE_THROWS_AS(transformation.project3DPoint({0.0f, 1.0f, 0.0f}), std::runtime_error);
     }
 }
 
@@ -816,7 +841,7 @@ TEST_CASE("AlignmentUtilities undistort point") {
         cv::Mat distortionCoeffsCv;
         cv::Mat(distCoeffs).reshape(1, 1).convertTo(distortionCoeffsCv, CV_64F);
 
-        transformation.setDistortionModel(dai::CameraModel::Fisheye);
+        transformation.setDistortionModel(dai::DistortionModel::KannalaBrandt);
         transformation.setDistortionCoefficients(distCoeffs);
 
         const auto undistortedRay = pixelToRay(point, transformation);
@@ -829,10 +854,12 @@ TEST_CASE("AlignmentUtilities undistort point") {
                 < 1e-3);
     }
 
-    SECTION("Unsupported Camera models") {
-        transformation.setDistortionModel(dai::CameraModel::RadialDivision);
+    SECTION("Unsupported camera models") {
+        transformation.setDistortionModel(dai::DistortionModel::RadialDivision);
         REQUIRE_THROWS_AS(pixelToRay(point, transformation), std::invalid_argument);
-        transformation.setDistortionModel(dai::CameraModel::Equirectangular);
+        // Panorama pixels do not lie on a normalized image plane
+        transformation.setDistortionModel(dai::DistortionModel::NoDistortion);
+        transformation.setProjectionModel(dai::CameraProjectionModel::Equirectangular);
         REQUIRE_THROWS_AS(pixelToRay(point, transformation), std::invalid_argument);
     }
 }

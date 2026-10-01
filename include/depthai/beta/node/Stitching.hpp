@@ -35,9 +35,9 @@ namespace node {
  *
  * The stitched frame carries an ImgTransformation describing the virtual camera that rendered it, so that the image can
  * be placed in space, e.g. wrapped onto a cylinder next to a point cloud. In `Mode::PLANAR_PROJECTION` that is the
- * pinhole view of `setView()`, relative to the common origin of the inputs. In `Mode::PANORAMA` the camera model follows
- * `setCameraModel()`: dai::CameraModel::Perspective, Cylindrical or Equirectangular (see dai::CameraModel for their
- * projection formulas), the focal length is the radius of the projection surface in pixels and the principal point is the
+ * pinhole view of `setView()`, relative to the common origin of the inputs. In `Mode::PANORAMA` the projection model follows
+ * `setProjectionModel()`: dai::CameraProjectionModel::Pinhole, Cylindrical or Equirectangular (see dai::CameraProjectionModel
+ * for their formulas), the focal length is the radius of the projection surface in pixels and the principal point is the
  * pixel the panorama Z axis projects to. A panorama composed from the input calibration is expressed in the destination
  * coordinate system of the inputs, centered at the mean of their camera centers. A visually registered panorama is only
  * known relative to its inputs, so it is expressed through the first contributing input: in the destination coordinate
@@ -185,10 +185,18 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     /**
      * Set the projection surface the images are warped onto. Defaults to Equirectangular (a sphere), same as OpenCV.
      * Only used in `Mode::PANORAMA`.
+     * @param model dai::CameraProjectionModel::Equirectangular, Cylindrical or Pinhole
+     */
+    void setProjectionModel(CameraProjectionModel model);
+    CameraProjectionModel getProjectionModel() const;
+
+    /**
+     * Set the projection surface from a combined dai::CameraModel, see setProjectionModel().
      * @param model dai::CameraModel::Equirectangular, Cylindrical or Perspective
-     * @throws std::invalid_argument for any other model
+     * @throws std::invalid_argument for a distorted camera model (Fisheye, RadialDivision), panoramas carry no distortion
      */
     void setCameraModel(CameraModel model);
+    /// The projection surface as a combined dai::CameraModel, see getProjectionModel().
     CameraModel getCameraModel() const;
 
     /**

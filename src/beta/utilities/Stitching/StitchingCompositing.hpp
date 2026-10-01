@@ -49,19 +49,16 @@ inline cv::Ptr<cv::detail::BundleAdjusterBase> createBundleAdjuster() {
     return cv::makePtr<cv::detail::BundleAdjusterRay>();
 }
 
-inline cv::Ptr<cv::WarperCreator> createWarper(CameraModel model) {
+inline cv::Ptr<cv::WarperCreator> createWarper(CameraProjectionModel model) {
     switch(model) {
-        case CameraModel::Equirectangular:
+        case CameraProjectionModel::Equirectangular:
             return cv::makePtr<cv::SphericalWarper>();
-        case CameraModel::Perspective:
+        case CameraProjectionModel::Pinhole:
             return cv::makePtr<cv::PlaneWarper>();
-        case CameraModel::Cylindrical:
+        case CameraProjectionModel::Cylindrical:
             return cv::makePtr<cv::CylindricalWarper>();
-        case CameraModel::Fisheye:
-        case CameraModel::RadialDivision:
-            break;
     }
-    throw std::invalid_argument(std::string("Stitching cannot warp onto the ") + std::string(toString(model)) + " camera model");
+    throw std::invalid_argument(std::string("Stitching cannot warp onto the ") + std::string(toString(model)) + " projection model");
 }
 
 inline cv::Ptr<cv::detail::SeamFinder> createSeamFinder(Stitching::SeamFinder finder) {

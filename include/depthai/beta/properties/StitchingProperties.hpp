@@ -52,8 +52,8 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
     };
 
     Mode mode = Mode::PANORAMA;
-    /// Projection model the panorama images are warped onto: Equirectangular (the OpenCV default), Cylindrical or Perspective.
-    CameraModel cameraModel = CameraModel::Equirectangular;
+    /// Projection model the panorama images are warped onto: Equirectangular (the OpenCV default), Cylindrical or Pinhole.
+    CameraProjectionModel projectionModel = CameraProjectionModel::Equirectangular;
     /// Number of image inputs configured by Stitching::build().
     std::uint32_t numInputs = 0;
     bool continuous = false;
@@ -80,7 +80,7 @@ DEPTHAI_SERIALIZE_EXT(StitchingProperties::Plane, point, normal, unit);
 DEPTHAI_SERIALIZE_EXT(StitchingProperties::VirtualCamera, pose, unit, intrinsics, width, height);
 DEPTHAI_SERIALIZE_EXT(StitchingProperties,
                       mode,
-                      cameraModel,
+                      projectionModel,
                       continuous,
                       estimationFrames,
                       maxPanoramaWidth,

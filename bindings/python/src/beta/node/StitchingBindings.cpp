@@ -58,7 +58,7 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
         .def_readwrite("height", &Stitching::VirtualCamera::height, DOC(dai, beta, StitchingProperties, VirtualCamera, height));
 
     stitchingProperties.def_readwrite("mode", &StitchingProperties::mode)
-        .def_readwrite("cameraModel", &StitchingProperties::cameraModel)
+        .def_readwrite("projectionModel", &StitchingProperties::projectionModel)
         .def_readwrite("useInputCalibration", &StitchingProperties::useInputCalibration)
         .def_readwrite("continuous", &StitchingProperties::continuous)
         .def_readwrite("estimationFrames", &StitchingProperties::estimationFrames)
@@ -115,6 +115,8 @@ void bind_beta_stitching(pybind11::module& m, void* pCallstack) {
         .def("getMaxRange", &Stitching::getMaxRange, py::arg("unit") = LengthUnit::CENTIMETER, DOC(dai, beta, node, Stitching, getMaxRange))
         .def("setMinIncidenceAngle", &Stitching::setMinIncidenceAngle, py::arg("degrees"), DOC(dai, beta, node, Stitching, setMinIncidenceAngle))
         .def("getMinIncidenceAngle", &Stitching::getMinIncidenceAngle, DOC(dai, beta, node, Stitching, getMinIncidenceAngle))
+        .def("setProjectionModel", &Stitching::setProjectionModel, py::arg("model"), DOC(dai, beta, node, Stitching, setProjectionModel))
+        .def("getProjectionModel", &Stitching::getProjectionModel, DOC(dai, beta, node, Stitching, getProjectionModel))
         .def("setCameraModel", &Stitching::setCameraModel, py::arg("model"), DOC(dai, beta, node, Stitching, setCameraModel))
         .def("getCameraModel", &Stitching::getCameraModel, DOC(dai, beta, node, Stitching, getCameraModel))
         .def("setUseInputCalibration",

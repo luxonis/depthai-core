@@ -22,7 +22,7 @@ with dai.Pipeline(device) as pipeline:
 
     stitching = pipeline.create(dai.beta.node.Stitching).build(outputs)
     stitching.setMode(dai.beta.node.Stitching.Mode.PANORAMA)
-    stitching.setCameraModel(dai.CameraModel.Perspective)
+    stitching.setProjectionModel(dai.CameraProjectionModel.Pinhole)
     # Uncomment to trade seam quality for throughput.
     # stitching.setSeamFinder(dai.beta.node.Stitching.SeamFinder.NONE)
     stitching.setPanoConfidenceThreshold(0.3)

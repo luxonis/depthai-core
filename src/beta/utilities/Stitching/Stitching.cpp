@@ -148,17 +148,17 @@ Extrinsics estimatedPanoramaExtrinsics(const cv::detail::CameraParams& reference
 
 /**
  * Metadata of a panorama rendered by an OpenCV rotation warper. The pixel (0, 0) of the panorama is the top-left corner of `canvas` in the warper's
- * coordinate system, and the warper projects the way the corresponding dai::CameraModel does, up to a constant offset.
+ * coordinate system, and the warper projects the way the corresponding dai::CameraProjectionModel does, up to a constant offset.
  * @param scale Scale of the warper, the radius of the projection surface in pixels
  */
-ImgTransformation panoramaTransformation(const cv::Rect& canvas, double scale, CameraModel model, const Extrinsics& extrinsics) {
+ImgTransformation panoramaTransformation(const cv::Rect& canvas, double scale, CameraProjectionModel model, const Extrinsics& extrinsics) {
     // OpenCV's spherical warper measures the polar angle from the -Y axis, the equirectangular latitude is measured from the XZ plane
-    const double offsetY = model == CameraModel::Equirectangular ? scale * CV_PI / 2.0 : 0.0;
+    const double offsetY = model == CameraProjectionModel::Equirectangular ? scale * CV_PI / 2.0 : 0.0;
     const auto focal = static_cast<float>(scale);
     const auto cx = static_cast<float>(-canvas.x);
     const auto cy = static_cast<float>(offsetY - canvas.y);
     const std::array<std::array<float, 3>, 3> intrinsics = {{{focal, 0.0f, cx}, {0.0f, focal, cy}, {0.0f, 0.0f, 1.0f}}};
-    return {static_cast<size_t>(canvas.width), static_cast<size_t>(canvas.height), intrinsics, model, {}, extrinsics};
+    return {static_cast<size_t>(canvas.width), static_cast<size_t>(canvas.height), intrinsics, model, DistortionModel::NoDistortion, {}, extrinsics};
 }
 
 /** Decorates OpenCV's matcher and scores a candidate by confidence weighted by geometrically consistent inliers. */
@@ -287,7 +287,7 @@ class Stitching::Impl {
         stitcher->setSeamEstimationResol(stitching::SEAM_ESTIMATION_RESOLUTION);
         stitcher->setCompositingResol(stitching::COMPOSITING_RESOLUTION);
         stitcher->setPanoConfidenceThresh(properties.panoConfidenceThreshold);
-        const bool waveCorrection = properties.cameraModel == CameraModel::Equirectangular || properties.cameraModel == CameraModel::Cylindrical;
+        const bool waveCorrection = properties.projectionModel == CameraProjectionModel::Equirectangular || properties.projectionModel == CameraProjectionModel::Cylindrical;
         stitcher->setWaveCorrection(waveCorrection);
         if(waveCorrection) {
             stitcher->setWaveCorrectKind(cv::detail::WAVE_CORRECT_HORIZ);
@@ -298,7 +298,7 @@ class Stitching::Impl {
         stitcher->setFeaturesMatcher(scoringMatcher);
         stitcher->setEstimator(stitching::createEstimator());
         stitcher->setBundleAdjuster(stitching::createBundleAdjuster());
-        stitcher->setWarper(stitching::createWarper(properties.cameraModel));
+        stitcher->setWarper(stitching::createWarper(properties.projectionModel));
         stitcher->setExposureCompensator(cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN_BLOCKS));
         stitcher->setSeamFinder(stitching::createSeamFinder(properties.seamFinder));
         stitcher->setBlender(stitching::createBlender(panoSizeHint));
@@ -391,14 +391,14 @@ class Stitching::Impl {
                               const StitchingProperties& properties,
                               const Extrinsics& extrinsics) {
         FixedPanoramaCompositor::Config config;
-        config.cameraModel = properties.cameraModel;
+        config.projectionModel = properties.projectionModel;
         config.seamFinder = properties.seamFinder;
         config.compositingResolution = stitching::COMPOSITING_RESOLUTION;
         config.seamEstimationResolution = stitching::SEAM_ESTIMATION_RESOLUTION;
         config.composition = composition;
         fixedPanorama.setConfig(config);
         fixedPanorama.prepare(images, cameras, registrationScale);
-        fixedPanoramaView = panoramaTransformation(fixedPanorama.getCanvas(), fixedPanorama.getWarperScale(), properties.cameraModel, extrinsics);
+        fixedPanoramaView = panoramaTransformation(fixedPanorama.getCanvas(), fixedPanorama.getWarperScale(), properties.projectionModel, extrinsics);
     }
 
     /**
@@ -435,7 +435,7 @@ class Stitching::Impl {
         const double composeWorkAspect = composeScale / registrationScale;
         PanoramaGeometry geometry;
         geometry.scale = warpedImageScale * composeWorkAspect;
-        auto warper = stitching::createWarper(properties.cameraModel)->create(static_cast<float>(geometry.scale));
+        auto warper = stitching::createWarper(properties.projectionModel)->create(static_cast<float>(geometry.scale));
 
         for(size_t i = 0; i < images.size(); ++i) {
             auto camera = cameras[i];
@@ -566,7 +566,7 @@ void Stitching::run() {
                 if(!impl->fixedPanorama.isPrepared()) {
                     auto cameras = impl->camerasFromInputCalibration(transformations);
                     cv::Matx33d alignment = cv::Matx33d::eye();
-                    if(currentProperties.cameraModel == CameraModel::Cylindrical) {
+                    if(currentProperties.projectionModel == CameraProjectionModel::Cylindrical) {
                         alignment = alignCamerasToMeanYAxis(cameras);
                     }
                     const auto geometry = impl->panoramaGeometry(images, cameras, 1.0, currentProperties);
@@ -637,7 +637,7 @@ void Stitching::run() {
             // Described from the registered cameras before composing, which cv::Stitcher may rescale to the compositing resolution
             view = panoramaTransformation(geometry.canvas,
                                           geometry.scale,
-                                          currentProperties.cameraModel,
+                                          currentProperties.projectionModel,
                                           estimatedPanoramaExtrinsics(impl->stitcher->cameras().front(), transformations[referenceInput]));
             return impl->stitcher->composePanorama(contributing, pano);
         };

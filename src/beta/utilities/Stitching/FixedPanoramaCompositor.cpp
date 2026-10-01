@@ -64,7 +64,7 @@ void FixedPanoramaCompositor::prepare(const std::vector<cv::Mat>& images, const 
     const auto middle = focals.size() / 2;
     const double warpedImageScale = focals.size() % 2 == 0 ? 0.5 * (focals[middle - 1] + focals[middle]) : focals[middle];
     warperScale = warpedImageScale * composeWorkAspect;
-    auto warper = stitching::createWarper(config.cameraModel)->create(static_cast<float>(warperScale));
+    auto warper = stitching::createWarper(config.projectionModel)->create(static_cast<float>(warperScale));
 
     sources.reserve(images.size());
     for(size_t i = 0; i < images.size(); ++i) {
