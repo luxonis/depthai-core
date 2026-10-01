@@ -40,7 +40,9 @@ void bind_beta_multi_device_calibration(pybind11::module& m, void* pCallstack) {
              "toSocket"_a,
              "distance"_a,
              "unit"_a = LengthUnit::CENTIMETER)
-        .def("setInitialGuess", &MultiDeviceCalibration::setInitialGuess, "fromDeviceId"_a, "fromSocket"_a, "toDeviceId"_a, "toSocket"_a, "guess"_a)
+        .def("setInitialGuess", &MultiDeviceCalibration::setInitialGuess, "guess"_a)
+        .def("setInitialGuesses", py::overload_cast<const std::vector<MultiDeviceExtrinsics>&>(&MultiDeviceCalibration::setInitialGuesses), "guesses"_a)
+        .def("setInitialGuesses", py::overload_cast<const beta::MultiDeviceCalibrationHandler&>(&MultiDeviceCalibration::setInitialGuesses), "previous"_a)
         .def("setStereoPair", &MultiDeviceCalibration::setStereoPair, "deviceId"_a, "leftSocket"_a, "rightSocket"_a)
         .def("setDeviceCalibration", &MultiDeviceCalibration::setDeviceCalibration, "deviceId"_a, "calibration"_a);
 }

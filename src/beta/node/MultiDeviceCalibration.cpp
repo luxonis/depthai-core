@@ -55,12 +55,6 @@ struct Endpoint {
     }
 };
 
-struct InitialGuess {
-    Endpoint from;
-    Endpoint to;
-    Extrinsics guess;
-};
-
 struct KnownDistance {
     Endpoint from;
     Endpoint to;
@@ -102,7 +96,9 @@ class MultiDeviceCalibration::Impl {
     std::map<std::string, CalibrationHandler> calibrationOverrides;
     std::map<std::string, CalibrationHandler> calibrations;
     std::vector<KnownDistance> knownDistances;
-    std::vector<InitialGuess> initialGuesses;
+    std::vector<MultiDeviceExtrinsics> initialGuesses;
+    // initialGuesses converted to local-origin-to-local-origin transforms for the current cycle
+    std::vector<detail::PairwiseDeviceTransform> originGuesses;
     std::vector<StereoPair> stereoPairs;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -118,6 +114,7 @@ class MultiDeviceCalibration::Impl {
 
     void clearCycle() {
         calibrations.clear();
+        originGuesses.clear();
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         dcl.reset();
         dclDevices.clear();
@@ -220,45 +217,43 @@ void MultiDeviceCalibration::setKnownDistance(
     }
 }
 
-void MultiDeviceCalibration::setInitialGuess(
-    std::string fromDeviceId, CameraBoardSocket fromSocket, std::string toDeviceId, CameraBoardSocket toSocket, const Extrinsics& guess) {
-    DAI_CHECK_V(!fromDeviceId.empty() && !toDeviceId.empty(), "MultiDeviceCalibration initial-guess device IDs must not be empty");
-    DAI_CHECK_V(isConcreteSocket(fromSocket) && isConcreteSocket(toSocket), "MultiDeviceCalibration initial-guess sockets must be concrete");
+void MultiDeviceCalibration::setInitialGuess(const MultiDeviceExtrinsics& guess) {
+    const auto& fromDeviceId = guess.fromDeviceId;
+    const auto& toDeviceId = guess.extrinsics.toDeviceId;
+    DAI_CHECK_V(!fromDeviceId.empty() && !toDeviceId.empty(), "MultiDeviceCalibration initial guess needs fromDeviceId and extrinsics.toDeviceId");
     DAI_CHECK_V(fromDeviceId != toDeviceId, "MultiDeviceCalibration initial guess must connect different devices");
-    DAI_CHECK_V(guess.toDeviceId == toDeviceId,
-                "MultiDeviceCalibration initial guess destination device '{}' does not match explicit destination '{}'",
-                guess.toDeviceId,
-                toDeviceId);
-    DAI_CHECK_V(guess.toCameraSocket == toSocket,
-                "MultiDeviceCalibration initial guess destination socket {} does not match explicit destination {}",
-                toString(guess.toCameraSocket),
-                toString(toSocket));
-    DAI_CHECK_V(isConcreteSocket(guess.toCameraSocket), "MultiDeviceCalibration initial guess destination socket must be concrete");
-    DAI_CHECK_V(matrix::isFinitePoint3f(guess.translation), "MultiDeviceCalibration initial guess translation must be finite");
-    DAI_CHECK_V(guess.lengthUnit != LengthUnit::CUSTOM, "MultiDeviceCalibration initial guess uses unsupported CUSTOM length units");
+    DAI_CHECK_V(isConcreteSocket(guess.fromSocket) && isConcreteSocket(guess.extrinsics.toCameraSocket),
+                "MultiDeviceCalibration initial guess sockets must be concrete, got {} -> {}",
+                toString(guess.fromSocket),
+                toString(guess.extrinsics.toCameraSocket));
+    DAI_CHECK_V(matrix::isFinitePoint3f(guess.extrinsics.translation), "MultiDeviceCalibration initial guess translation must be finite");
+    DAI_CHECK_V(guess.extrinsics.lengthUnit != LengthUnit::CUSTOM, "MultiDeviceCalibration initial guess uses unsupported CUSTOM length units");
     try {
-        matrix::validateRotationMatrix3x3(guess.rotationMatrix);
+        matrix::validateRotationMatrix3x3(guess.extrinsics.rotationMatrix);
     } catch(const std::exception&) {
         throw std::invalid_argument("MultiDeviceCalibration initial guess rotation must be a finite proper rigid rotation");
     }
 
     std::lock_guard<std::mutex> lock(pimpl->mutex);
     pimpl->requireIdle("initial guess");
-    const Endpoint from{std::move(fromDeviceId), fromSocket};
-    const Endpoint to{std::move(toDeviceId), toSocket};
-    const auto reverse = std::find_if(
-        pimpl->initialGuesses.begin(), pimpl->initialGuesses.end(), [&](const InitialGuess& initial) { return initial.from == to && initial.to == from; });
-    DAI_CHECK_V(reverse == pimpl->initialGuesses.end(),
-                "MultiDeviceCalibration initial guess between {} and {} is already registered in the opposite direction",
-                from.deviceId,
-                to.deviceId);
-    const auto existing = std::find_if(
-        pimpl->initialGuesses.begin(), pimpl->initialGuesses.end(), [&](const InitialGuess& initial) { return initial.from == from && initial.to == to; });
+    // One guess per device pair, in either direction: the last one set wins
+    const auto existing = std::find_if(pimpl->initialGuesses.begin(), pimpl->initialGuesses.end(), [&](const MultiDeviceExtrinsics& initial) {
+        return (initial.fromDeviceId == fromDeviceId && initial.extrinsics.toDeviceId == toDeviceId)
+               || (initial.fromDeviceId == toDeviceId && initial.extrinsics.toDeviceId == fromDeviceId);
+    });
     if(existing != pimpl->initialGuesses.end()) {
-        existing->guess = guess;
+        *existing = guess;
     } else {
-        pimpl->initialGuesses.push_back({from, to, guess});
+        pimpl->initialGuesses.push_back(guess);
     }
+}
+
+void MultiDeviceCalibration::setInitialGuesses(const std::vector<MultiDeviceExtrinsics>& guesses) {
+    for(const auto& guess : guesses) setInitialGuess(guess);
+}
+
+void MultiDeviceCalibration::setInitialGuesses(const MultiDeviceCalibrationHandler& previous) {
+    setInitialGuesses(previous.getGraph());
 }
 
 void MultiDeviceCalibration::setStereoPair(std::string deviceId, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket) {
@@ -339,15 +334,35 @@ bool MultiDeviceCalibration::initializeCycle(const std::shared_ptr<MessageGroup>
         }
     }
 
+    // Convert the initial guesses, given between arbitrary sockets, to local-origin-to-local-origin
+    // transforms: originGuess = (toSocket -> toOrigin) * guess * (fromOrigin -> fromSocket)
+    std::map<std::string, CameraBoardSocket> originBySocketDevice;
+    for(const auto& camera : pimpl->cameras) originBySocketDevice.emplace(camera.deviceId, camera.localOrigin);
+    pimpl->originGuesses.clear();
     for(const auto& initial : pimpl->initialGuesses) {
-        const auto fromIt = std::find_if(pimpl->cameras.begin(), pimpl->cameras.end(), [&](const Impl::Camera& camera) {
-            return camera.deviceId == initial.from.deviceId && camera.localOrigin == initial.from.socket;
-        });
-        const auto toIt = std::find_if(pimpl->cameras.begin(), pimpl->cameras.end(), [&](const Impl::Camera& camera) {
-            return camera.deviceId == initial.to.deviceId && camera.localOrigin == initial.to.socket;
-        });
-        if(fromIt == pimpl->cameras.end() || toIt == pimpl->cameras.end()) {
-            error = "initial guesses must use each endpoint device's local calibration-origin socket";
+        const auto& fromDeviceId = initial.fromDeviceId;
+        const auto& toDeviceId = initial.extrinsics.toDeviceId;
+        const auto fromOrigin = originBySocketDevice.find(fromDeviceId);
+        const auto toOrigin = originBySocketDevice.find(toDeviceId);
+        if(fromOrigin == originBySocketDevice.end() || toOrigin == originBySocketDevice.end()) {
+            error = "initial guess " + fromDeviceId + " -> " + toDeviceId + " references a device without registered cameras";
+            return false;
+        }
+        const auto socketToOrigin = [&](const std::string& deviceId, CameraBoardSocket socket, CameraBoardSocket origin, bool towardsOrigin) {
+            if(socket == origin) return detail::identityTransform();
+            const auto& calibration = pimpl->calibrations.at(deviceId);
+            return towardsOrigin ? calibration.getCameraExtrinsics(socket, origin, false, LengthUnit::METER)
+                                 : calibration.getCameraExtrinsics(origin, socket, false, LengthUnit::METER);
+        };
+        try {
+            const auto fromOriginToFromSocket = socketToOrigin(fromDeviceId, initial.fromSocket, fromOrigin->second, false);
+            const auto toSocketToToOrigin = socketToOrigin(toDeviceId, initial.extrinsics.toCameraSocket, toOrigin->second, true);
+            const auto guess = matrix::toVecMatrix4x4(initial.extrinsics.getTransformationMatrix(false, LengthUnit::METER));
+            pimpl->originGuesses.push_back(detail::PairwiseDeviceTransform{
+                fromDeviceId, toDeviceId, detail::composeRigidTransforms(toSocketToToOrigin, detail::composeRigidTransforms(guess, fromOriginToFromSocket))});
+        } catch(const std::exception& ex) {
+            error = "initial guess " + fromDeviceId + "/" + toString(initial.fromSocket) + " -> " + toDeviceId + "/"
+                    + toString(initial.extrinsics.toCameraSocket) + " uses a socket unknown to the device calibration: " + ex.what();
             return false;
         }
     }
@@ -547,17 +562,7 @@ void MultiDeviceCalibration::estimateAndEmit() {
         request.stereoPairAllowlist.emplace_back(request.sensors[left->second], request.sensors[right->second]);
     }
 
-    std::vector<detail::PairwiseDeviceTransform> pairwiseInitialGuesses;
-    pairwiseInitialGuesses.reserve(pimpl->initialGuesses.size());
-    for(const auto& initial : pimpl->initialGuesses) {
-        const auto initialTransform = initial.guess.getTransformationMatrix(false, LengthUnit::METER);
-        MultiDeviceTransform fromToTo = detail::identityTransform();
-        for(std::size_t row = 0; row < 4; ++row) {
-            for(std::size_t column = 0; column < 4; ++column) fromToTo[row][column] = initialTransform[row][column];
-        }
-        pairwiseInitialGuesses.push_back(detail::PairwiseDeviceTransform{initial.from.deviceId, initial.to.deviceId, std::move(fromToTo)});
-    }
-    const auto referenceToDevice = detail::makeReferenceRelativeTransforms(referenceDeviceId, pairwiseInitialGuesses);
+    const auto referenceToDevice = detail::makeReferenceRelativeTransforms(referenceDeviceId, pimpl->originGuesses);
     for(const auto& [deviceId, transform] : referenceToDevice) {
         if(deviceId == referenceDeviceId) continue;
         const auto device = pimpl->dclDevices.find(deviceId);

@@ -8,7 +8,7 @@ counterparts live in `examples/cpp/MultiDeviceCalibration/`.
 | Script | Shows |
 | --- | --- |
 | `multi_device_calibration.py` | The minimal flow: one stereo pair per device, scale from the factory stereo calibration, result saved to JSON. |
-| `multi_device_calibration_constraints.py` | The optional configuration: a measured camera-to-camera distance (`setKnownDistance`), an approximate rig layout (`setInitialGuess`), calibration loaded from files (`setDeviceCalibration`) and `getSampleCount()`. |
+| `multi_device_calibration_constraints.py` | The optional configuration: a measured camera-to-camera distance (`setKnownDistance`), an approximate rig layout or a previous result as starting point (`setInitialGuess`, `setInitialGuesses`), calibration loaded from files (`setDeviceCalibration`) and `getSampleCount()`. |
 
 Generic multi-device plumbing (frame sync, host nodes, device-to-device relay)
 is covered by the examples in `../MultiDevice/`.
@@ -145,6 +145,11 @@ python3 multi_device_calibration_constraints.py -d <A> <B> \
 python3 multi_device_calibration_constraints.py -d <A> <B> \
     --known-distance <A> <B> 80 \
     --calibration <A> calibA.json
+
+# Re-run, starting from the previous result
+python3 multi_device_calibration_constraints.py -d <A> <B> \
+    --known-distance <A> <B> 80 \
+    --seed multi_device_calibration_constraints.json
 ```
 
 `<A>` and `<B>` are device IDs as printed by the script, or whatever you passed
@@ -154,17 +159,17 @@ to `-d` (an IP works too). All three options are repeatable.
 | --- | --- | --- |
 | `-s`, `--socket` | `addCamera(output)` | Same socket on every device, default `CAM_A`. |
 | `--known-distance FROM TO CM` | `setKnownDistance(from, socket, to, socket, cm, CENTIMETER)` | Tape-measured distance between the two camera centers. With one camera per device this is the only source of scale, so the script warns when it is missing. |
-| `--initial-guess FROM TO X Y Z YAW PITCH ROLL` | `setInitialGuess(from, fromOrigin, to, toOrigin, extrinsics)` | Transform from FROM's local origin to TO's: `X_to = R * X_from + t`, translation in cm, rotation as yaw/pitch/roll in degrees (`R = Rz * Ry * Rx`). Useful when the devices are strongly rotated relative to each other. |
+| `--initial-guess FROM TO X Y Z YAW PITCH ROLL` | `setInitialGuess(MultiDeviceExtrinsics)` | Transform from FROM's registered camera to TO's: `X_to = R * X_from + t`, translation in cm, rotation as yaw/pitch/roll in degrees (`R = Rz * Ry * Rx`). Useful when the devices are strongly rotated relative to each other. |
+| `--seed PATH` | `setInitialGuesses(MultiDeviceCalibrationHandler(path))` | Every edge of a previous result becomes an initial guess. `setInitialGuesses(result.graph)` does the same in-process. |
 | `--calibration DEVICE PATH` | `setDeviceCalibration(deviceId, dai.CalibrationHandler(path))` | Overrides the device's live calibration. Required for replayed streams; here it also lets you test a calibration file before flashing it. |
 | | `getSampleCount()` | Printed when collection starts. |
 
-**Local origins.** `setInitialGuess` must name each device's local
-calibration-origin socket, not the registered camera. The script finds it by
-following the EEPROM extrinsics chain from the registered socket to its root
-(`localOriginSocket()`); the C++ version uses
-`CalibrationHandler::getExtrinsicsToOrigin`. The same origins appear as the
-endpoints of the result graph, and the script prints the distance between them
-for every edge.
+**Local origins.** An initial guess may connect any two sockets the device
+calibrations know, registered or not. The node converts it to the devices'
+calibration origins when the run starts, so a guess between the two registered
+cameras and a guess copied from a previous result (whose edges connect origins)
+are both fine. The result graph always uses the origins as endpoints, and the
+script prints the distance between them for every edge.
 
 To produce a calibration file for `--calibration`, dump a device's EEPROM:
 
@@ -209,7 +214,8 @@ first `start`, or after a `reset`. They raise otherwise.
 | `setSampleCount(n)` / `getSampleCount()` | Number of complete synchronized groups to collect before solving. Default `10`, minimum `1`. |
 | `setStereoPair(deviceId, leftSocket, rightSocket)` | Optional. Restrict metric scale recovery to this factory-calibrated pair on `deviceId`, for example to pin it to the widest baseline. By default every pair of registered cameras on the same device may anchor the scale. Both sockets must be registered cameras. One pair per device. |
 | `setKnownDistance(fromDeviceId, fromSocket, toDeviceId, toSocket, distance, unit=CENTIMETER)` | Supply a measured camera-center distance between two cameras on **different** devices. Alternative or complement to a stereo pair for metric scale. |
-| `setInitialGuess(fromDeviceId, fromSocket, toDeviceId, toSocket, guess)` | Optional starting pose from one device's **local calibration origin** to another's. `guess` is a `dai.Extrinsics` whose `toDeviceId`/`toCameraSocket` must match the explicit destination. Only one direction per device pair. |
+| `setInitialGuess(guess)` | Optional starting pose between two devices as a `dai.MultiDeviceExtrinsics`: `fromDeviceId`/`fromSocket` plus `extrinsics` with `toDeviceId`/`toCameraSocket`. Any sockets known to the device calibrations are accepted; the node converts to the calibration origins at start. One guess per device pair, the last one set wins. |
+| `setInitialGuesses(graph)` / `setInitialGuesses(handler)` | Several guesses at once. Pass a previous `result.graph`, or a `MultiDeviceCalibrationHandler` loaded from a saved JSON, to seed the next run. |
 | `setDeviceCalibration(deviceId, calibrationHandler)` | Override the live device calibration. Needed for replayed or recorded streams and tests; live devices are read automatically. |
 
 **Local calibration origin.** Each device's intrinsics and extrinsics come from
@@ -245,7 +251,7 @@ A `stop` during `collecting` goes straight back to `idle`.
 | `dataConfidence` | `float` | Solver's quality score of the collected samples, 0.0 to 1.0. |
 | `sampsonError` | `float` | Sampson error of the estimated calibration over the samples. Lower is better. |
 | `info` | `str` | Why the run did not pass. Empty on success. |
-| `getHandler()` | `MultiDeviceCalibrationHandler \| None` | Wraps `graph` for saving and querying. |
+| `getHandler()` | `MultiDeviceCalibrationHandler \| None` | Wraps `graph` for saving and querying. Either `graph` or the handler can seed the next run through `setInitialGuesses`. |
 
 ### `dai.beta.MultiDeviceCalibrationHandler`
 

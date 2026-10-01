@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <depthai/beta/datatype/MultiDeviceCalibrationControl.hpp>
 #include <depthai/beta/datatype/MultiDeviceCalibrationResult.hpp>
+#include <depthai/beta/device/MultiDeviceCalibrationHandler.hpp>
 #include <depthai/common/CameraBoardSocket.hpp>
 #include <depthai/common/DepthUnit.hpp>
 #include <depthai/common/Extrinsics.hpp>
@@ -78,8 +79,22 @@ class MultiDeviceCalibration : public NodeCRTP<dai::node::ThreadedHostNode, Mult
                           float distance,
                           LengthUnit unit = LengthUnit::CENTIMETER);
 
-    /** Supply an optional local-origin-to-local-origin initial pose estimate. */
-    void setInitialGuess(std::string fromDeviceId, CameraBoardSocket fromSocket, std::string toDeviceId, CameraBoardSocket toSocket, const Extrinsics& guess);
+    /**
+     * Supply an optional initial pose estimate between two devices.
+     *
+     * The edge may connect any two sockets known to the devices' calibrations,
+     * registered or not; the node converts it to the devices' calibration
+     * origins when the run starts. One guess per device pair, the last one set
+     * wins. Sockets unknown to a device's calibration fail the run with a
+     * descriptive result.
+     */
+    void setInitialGuess(const MultiDeviceExtrinsics& guess);
+
+    /** Supply several initial guesses at once, for example a previous result's graph. */
+    void setInitialGuesses(const std::vector<MultiDeviceExtrinsics>& guesses);
+
+    /** Seed the run with every edge of a previous calibration. */
+    void setInitialGuesses(const MultiDeviceCalibrationHandler& previous);
 
     /**
      * Optional. Restrict metric scale recovery to an explicit factory-calibrated

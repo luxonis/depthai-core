@@ -8,6 +8,7 @@ example covers the optional MultiDeviceCalibration configuration:
   * setKnownDistance     metric scale from a measured camera-to-camera distance,
                          so a single camera per device is enough
   * setInitialGuess      an approximate rig layout as the solver's starting point
+  * setInitialGuesses    a previous result as the starting point of the next run
   * setDeviceCalibration calibration loaded from a file instead of the device EEPROM
   * getSampleCount       progress reporting
 
@@ -17,6 +18,11 @@ rotated 15 degrees to the left (about the vertical axis):
   python3 multi_device_calibration_constraints.py -d <A> <B> \
       --known-distance <A> <B> 80 \
       --initial-guess <A> <B> -80 0 0  15 0 0
+
+Re-running with the previous result as the starting point:
+
+  python3 multi_device_calibration_constraints.py -d <A> <B> \
+      --known-distance <A> <B> 80 --seed multi_device_calibration_constraints.json
 
 Device tokens are the IDs printed by the script, or whatever was passed to -d.
 """
@@ -48,23 +54,6 @@ def rotationMatrix(yawDeg: float, pitchDeg: float, rollDeg: float) -> list:
     ]
 
 
-def localOriginSocket(calibration: dai.CalibrationHandler, socket: dai.CameraBoardSocket) -> dai.CameraBoardSocket:
-    """Follow the extrinsics chain of a device calibration to its root camera.
-
-    MultiDeviceCalibration expresses initial guesses and results between these
-    local origins, not between the sockets that were registered.
-    """
-    cameraData = calibration.getEepromData().cameraData
-    visited = set()
-    while socket in cameraData and socket not in visited:
-        visited.add(socket)
-        nextSocket = cameraData[socket].extrinsics.toCameraSocket
-        if nextSocket == dai.CameraBoardSocket.AUTO:
-            break
-        socket = nextSocket
-    return socket
-
-
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("-d", "--devices", nargs="+", default=[], help="Device IDs or IPs (at least two). Defaults to the first two available devices.")
 parser.add_argument("-s", "--socket", type=parseSocket, default=dai.CameraBoardSocket.CAM_A, help="Camera socket to use on every device (default: CAM_A)")
@@ -84,8 +73,9 @@ parser.add_argument(
     action="append",
     default=[],
     metavar=("FROM", "TO", "X", "Y", "Z", "YAW", "PITCH", "ROLL"),
-    help="Approximate transform from FROM's calibration origin to TO's: translation in cm, rotation in degrees (repeatable)",
+    help="Approximate transform from FROM's camera to TO's camera: translation in cm, rotation in degrees (repeatable)",
 )
+parser.add_argument("--seed", type=Path, help="Previous calibration JSON whose edges seed this run (setInitialGuesses)")
 parser.add_argument(
     "--calibration",
     nargs=2,
@@ -117,7 +107,6 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     calibration.sync.setSyncThreshold(timedelta(seconds=5))
 
     deviceIdByToken = {}  # user token or device ID -> device ID
-    calibrations = {}  # device ID -> calibration the node will use
 
     for token, info in zip(tokens, deviceInfos):
         device = pipeline.addDevice(info)
@@ -130,13 +119,10 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         # Without an override the node reads the device calibration itself.
         calibrationFile = calibrationFiles.get(token) or calibrationFiles.get(deviceId)
         if calibrationFile is not None:
-            handler = dai.CalibrationHandler(calibrationFile)
-            calibration.setDeviceCalibration(deviceId, handler)
+            calibration.setDeviceCalibration(deviceId, dai.CalibrationHandler(calibrationFile))
             print(f"Using device {deviceId} with calibration from {calibrationFile}")
         else:
-            handler = device.readCalibration()
             print(f"Using device {deviceId}")
-        calibrations[deviceId] = handler
 
         camera = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=5)
         calibration.addCamera(camera.requestFullResolutionOutput(fps=5))
@@ -153,22 +139,29 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     if not args.known_distance:
         print("Warning: no --known-distance given; with a single camera per device the solver has no metric scale.")
 
-    # setInitialGuess: an approximate pose between two devices' local calibration
-    # origins (X_to = R * X_from + t). Helps the solver when the devices are rotated
-    # strongly relative to each other.
+    # setInitialGuess: an approximate pose between the two registered cameras
+    # (X_to = R * X_from + t). Any socket pair known to the device calibrations works;
+    # the node converts it to the devices' calibration origins itself. Helps the
+    # solver when the devices are rotated strongly relative to each other.
     for fromToken, toToken, x, y, z, yaw, pitch, roll in args.initial_guess:
-        fromId, toId = resolve(fromToken), resolve(toToken)
-        fromOrigin = localOriginSocket(calibrations[fromId], socket)
-        toOrigin = localOriginSocket(calibrations[toId], socket)
-        guess = dai.Extrinsics(
+        guess = dai.MultiDeviceExtrinsics()
+        guess.fromDeviceId = resolve(fromToken)
+        guess.fromSocket = socket
+        extrinsics = dai.Extrinsics(
             rotationMatrix(float(yaw), float(pitch), float(roll)),
             dai.Point3f(float(x), float(y), float(z)),
-            toOrigin,
+            socket,
             dai.LengthUnit.CENTIMETER,
         )
-        guess.toDeviceId = toId
-        calibration.setInitialGuess(fromId, fromOrigin, toId, toOrigin, guess)
-        print(f"Initial guess {fromId}/{fromOrigin.name} -> {toId}/{toOrigin.name}")
+        extrinsics.toDeviceId = resolve(toToken)
+        guess.extrinsics = extrinsics
+        calibration.setInitialGuess(guess)
+        print(f"Initial guess {guess.fromDeviceId}/{socket.name} -> {extrinsics.toDeviceId}/{socket.name}")
+
+    # setInitialGuesses: start from a previous result. A result's `graph` works as well.
+    if args.seed is not None:
+        calibration.setInitialGuesses(dai.beta.MultiDeviceCalibrationHandler(args.seed))
+        print(f"Seeded from {args.seed}")
 
     controlQueue = calibration.inputControl.createInputQueue()
     resultQueue = calibration.calibrationOutput.createOutputQueue()

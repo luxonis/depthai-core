@@ -36,6 +36,33 @@ TEST_CASE("Multi-device calibration addCamera(output) rejects outputs that are n
     REQUIRE_THROWS_WITH(calibration->addCamera(sync->out), Catch::Matchers::ContainsSubstring("Camera node"));
 }
 
+TEST_CASE("Multi-device calibration initial guesses accept any socket pair and are validated on set") {
+    Pipeline pipeline(false);
+    auto calibration = pipeline.create<dai::beta::node::MultiDeviceCalibration>();
+
+    MultiDeviceExtrinsics guess;
+    guess.fromDeviceId = "device-a";
+    guess.fromSocket = CameraBoardSocket::CAM_B;
+    guess.extrinsics = makeExtrinsics("device-b", CameraBoardSocket::CAM_C, Point3f(0.5f, 0.0f, 0.0f));
+    REQUIRE_NOTHROW(calibration->setInitialGuess(guess));
+
+    // A previous result (or a handler built from it) seeds the next run
+    REQUIRE_NOTHROW(calibration->setInitialGuesses(std::vector<MultiDeviceExtrinsics>{guess}));
+    REQUIRE_NOTHROW(calibration->setInitialGuesses(MultiDeviceCalibrationHandler({guess})));
+
+    auto sameDevice = guess;
+    sameDevice.extrinsics.toDeviceId = "device-a";
+    REQUIRE_THROWS_WITH(calibration->setInitialGuess(sameDevice), Catch::Matchers::ContainsSubstring("different devices"));
+
+    auto customUnit = guess;
+    customUnit.extrinsics.lengthUnit = LengthUnit::CUSTOM;
+    REQUIRE_THROWS_WITH(calibration->setInitialGuess(customUnit), Catch::Matchers::ContainsSubstring("CUSTOM"));
+
+    auto autoSocket = guess;
+    autoSocket.fromSocket = CameraBoardSocket::AUTO;
+    REQUIRE_THROWS_WITH(calibration->setInitialGuess(autoSocket), Catch::Matchers::ContainsSubstring("concrete"));
+}
+
 TEST_CASE("Multi-device calibration result round-trips calibration graph and aggregate quality") {
     MultiDeviceExtrinsics edge;
     edge.fromDeviceId = "device-b";
@@ -127,17 +154,23 @@ TEST_CASE("Multi-device calibration node defaults and validates idle configurati
     REQUIRE_THROWS_AS(node->setKnownDistance("device-a", CameraBoardSocket::CAM_A, "device-b", CameraBoardSocket::CAM_B, 0.0f), std::runtime_error);
     REQUIRE_THROWS_AS(node->setKnownDistance("device-a", CameraBoardSocket::CAM_A, "device-a", CameraBoardSocket::CAM_B, 1.0f), std::runtime_error);
 
-    Extrinsics mismatchedDestination({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}, {0.0f, 0.0f, 0.0f}, CameraBoardSocket::CAM_C);
-    mismatchedDestination.toDeviceId = "device-c";
-    REQUIRE_THROWS_AS(node->setInitialGuess("device-a", CameraBoardSocket::CAM_A, "device-b", CameraBoardSocket::CAM_B, mismatchedDestination),
-                      std::runtime_error);
+    MultiDeviceExtrinsics missingDestination;
+    missingDestination.fromDeviceId = "device-a";
+    missingDestination.fromSocket = CameraBoardSocket::CAM_A;
+    missingDestination.extrinsics = Extrinsics({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}, {0.0f, 0.0f, 0.0f}, CameraBoardSocket::CAM_C);
+    REQUIRE_THROWS_AS(node->setInitialGuess(missingDestination), std::runtime_error);
 
-    Extrinsics forwardGuess({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}, {0.25f, 0.0f, 0.0f}, CameraBoardSocket::CAM_B, LengthUnit::METER);
-    forwardGuess.toDeviceId = "device-b";
-    REQUIRE_NOTHROW(node->setInitialGuess("device-a", CameraBoardSocket::CAM_A, "device-b", CameraBoardSocket::CAM_B, forwardGuess));
+    MultiDeviceExtrinsics forwardGuess;
+    forwardGuess.fromDeviceId = "device-a";
+    forwardGuess.fromSocket = CameraBoardSocket::CAM_A;
+    forwardGuess.extrinsics = makeExtrinsics("device-b", CameraBoardSocket::CAM_B, Point3f(0.25f, 0.0f, 0.0f));
+    REQUIRE_NOTHROW(node->setInitialGuess(forwardGuess));
 
-    Extrinsics reverseGuess({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}, {-0.25f, 0.0f, 0.0f}, CameraBoardSocket::CAM_A, LengthUnit::METER);
-    reverseGuess.toDeviceId = "device-a";
-    REQUIRE_THROWS_AS(node->setInitialGuess("device-b", CameraBoardSocket::CAM_B, "device-a", CameraBoardSocket::CAM_A, reverseGuess), std::runtime_error);
+    // A guess for the same device pair in the opposite direction replaces the previous one
+    MultiDeviceExtrinsics reverseGuess;
+    reverseGuess.fromDeviceId = "device-b";
+    reverseGuess.fromSocket = CameraBoardSocket::CAM_B;
+    reverseGuess.extrinsics = makeExtrinsics("device-a", CameraBoardSocket::CAM_A, Point3f(-0.25f, 0.0f, 0.0f));
+    REQUIRE_NOTHROW(node->setInitialGuess(reverseGuess));
 }
 #endif

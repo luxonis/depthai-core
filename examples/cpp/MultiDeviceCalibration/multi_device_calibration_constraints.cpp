@@ -6,6 +6,7 @@
 //   * setKnownDistance     metric scale from a measured camera-to-camera distance,
 //                          so a single camera per device is enough
 //   * setInitialGuess      an approximate rig layout as the solver's starting point
+//   * setInitialGuesses    a previous result as the starting point of the next run
 //   * setDeviceCalibration calibration loaded from a file instead of the device EEPROM
 //   * getSampleCount       progress reporting
 //
@@ -53,6 +54,7 @@ struct ParsedArgs {
     std::vector<KnownDistanceArg> knownDistances;
     std::vector<InitialGuessArg> initialGuesses;
     std::map<std::string, std::filesystem::path> calibrationFiles;
+    std::optional<std::filesystem::path> seed;
 };
 
 dai::CameraBoardSocket parseSocket(const std::string& name) {
@@ -74,7 +76,8 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
     auto printUsage = [argv]() {
         std::cout << "Usage: " << argv[0]
                   << " [-d|--devices <device_1> <device_2> ...] [-s|--socket CAM_A] [-n|--sample-count <count>] [-o|--output <path>]\n"
-                     "       [--known-distance FROM TO CM]... [--initial-guess FROM TO X Y Z YAW PITCH ROLL]... [--calibration DEVICE PATH]..."
+                     "       [--known-distance FROM TO CM]... [--initial-guess FROM TO X Y Z YAW PITCH ROLL]... [--calibration DEVICE PATH]...\n"
+                     "       [--seed <previous_calibration.json>]"
                   << std::endl;
     };
     auto need = [&](int i, int count, const std::string& arg) {
@@ -118,6 +121,10 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
                 need(i, 2, arg);
                 parsed.calibrationFiles[argv[i + 1]] = argv[i + 2];
                 i += 3;
+            } else if(arg == "--seed") {
+                need(i, 1, arg);
+                parsed.seed = argv[i + 1];
+                i += 2;
             } else if(arg == "-h" || arg == "--help") {
                 printUsage();
                 return std::nullopt;
@@ -140,14 +147,6 @@ std::vector<std::vector<float>> rotationMatrix(float yawDeg, float pitchDeg, flo
     const float cp = std::cos(pitchDeg * kDegToRad), sp = std::sin(pitchDeg * kDegToRad);
     const float cr = std::cos(rollDeg * kDegToRad), sr = std::sin(rollDeg * kDegToRad);
     return {{cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr}, {sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr}, {-sp, cp * sr, cp * cr}};
-}
-
-// MultiDeviceCalibration expresses initial guesses and results between the devices'
-// local calibration origins, not between the sockets that were registered.
-dai::CameraBoardSocket localOriginSocket(const dai::CalibrationHandler& calibration, dai::CameraBoardSocket socket) {
-    auto origin = dai::CameraBoardSocket::AUTO;
-    calibration.getExtrinsicsToOrigin(socket, false, origin);
-    return origin;
 }
 
 }  // namespace
@@ -181,8 +180,7 @@ int main(int argc, char** argv) {
     calibration->setSampleCount(parsed->sampleCount);
     calibration->sync->setSyncThreshold(std::chrono::seconds(5));
 
-    std::map<std::string, std::string> deviceIdByToken;           // user token or device ID -> device ID
-    std::map<std::string, dai::CalibrationHandler> calibrations;  // device ID -> calibration the node will use
+    std::map<std::string, std::string> deviceIdByToken;  // user token or device ID -> device ID
 
     for(std::size_t index = 0; index < deviceInfos.size(); ++index) {
         auto device = pipeline.addDevice(deviceInfos[index]);
@@ -195,12 +193,9 @@ int main(int argc, char** argv) {
         auto file = parsed->calibrationFiles.find(tokens[index]);
         if(file == parsed->calibrationFiles.end()) file = parsed->calibrationFiles.find(deviceId);
         if(file != parsed->calibrationFiles.end()) {
-            dai::CalibrationHandler handler(file->second);
-            calibration->setDeviceCalibration(deviceId, handler);
-            calibrations.emplace(deviceId, handler);
+            calibration->setDeviceCalibration(deviceId, dai::CalibrationHandler(file->second));
             std::cout << "Using device " << deviceId << " with calibration from " << file->second.string() << std::endl;
         } else {
-            calibrations.emplace(deviceId, device->readCalibration());
             std::cout << "Using device " << deviceId << std::endl;
         }
 
@@ -223,19 +218,26 @@ int main(int argc, char** argv) {
         std::cout << "Warning: no --known-distance given; with a single camera per device the solver has no metric scale." << std::endl;
     }
 
-    // setInitialGuess: an approximate pose between two devices' local calibration
-    // origins (X_to = R * X_from + t). Helps the solver when the devices are rotated
-    // strongly relative to each other.
+    // setInitialGuess: an approximate pose between the two registered cameras
+    // (X_to = R * X_from + t). Any socket pair known to the device calibrations works;
+    // the node converts it to the devices' calibration origins itself. Helps the
+    // solver when the devices are rotated strongly relative to each other.
     for(const auto& initial : parsed->initialGuesses) {
-        const auto fromId = resolve(initial.from);
-        const auto toId = resolve(initial.to);
-        const auto fromOrigin = localOriginSocket(calibrations.at(fromId), socket);
-        const auto toOrigin = localOriginSocket(calibrations.at(toId), socket);
-        dai::Extrinsics guess(
-            rotationMatrix(initial.yaw, initial.pitch, initial.roll), dai::Point3f(initial.x, initial.y, initial.z), toOrigin, dai::LengthUnit::CENTIMETER);
-        guess.toDeviceId = toId;
-        calibration->setInitialGuess(fromId, fromOrigin, toId, toOrigin, guess);
-        std::cout << "Initial guess " << fromId << "/" << dai::toString(fromOrigin) << " -> " << toId << "/" << dai::toString(toOrigin) << std::endl;
+        dai::MultiDeviceExtrinsics guess;
+        guess.fromDeviceId = resolve(initial.from);
+        guess.fromSocket = socket;
+        guess.extrinsics = dai::Extrinsics(
+            rotationMatrix(initial.yaw, initial.pitch, initial.roll), dai::Point3f(initial.x, initial.y, initial.z), socket, dai::LengthUnit::CENTIMETER);
+        guess.extrinsics.toDeviceId = resolve(initial.to);
+        calibration->setInitialGuess(guess);
+        std::cout << "Initial guess " << guess.fromDeviceId << "/" << dai::toString(socket) << " -> " << guess.extrinsics.toDeviceId << "/"
+                  << dai::toString(socket) << std::endl;
+    }
+
+    // setInitialGuesses: start from a previous result. A result's graph works as well.
+    if(parsed->seed.has_value()) {
+        calibration->setInitialGuesses(dai::beta::MultiDeviceCalibrationHandler(*parsed->seed));
+        std::cout << "Seeded from " << parsed->seed->string() << std::endl;
     }
 
     auto controlQueue = calibration->inputControl.createInputQueue();
