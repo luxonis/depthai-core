@@ -27,10 +27,10 @@ args = parser.parse_args()
 if args.devices:
     if len(args.devices) < 2:
         parser.error("at least two devices are required")
-    device_infos = [dai.DeviceInfo(d) for d in args.devices]
+    deviceInfos = [dai.DeviceInfo(d) for d in args.devices]
 else:
-    device_infos = dai.Device.getAllAvailableDevices()[:2]
-    if len(device_infos) < 2:
+    deviceInfos = dai.Device.getAllAvailableDevices()[:2]
+    if len(deviceInfos) < 2:
         print("At least two devices are required for this example.")
         raise SystemExit(0)
 
@@ -41,24 +41,24 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     calibration.setSampleCount(args.sample_count)
     calibration.sync.setSyncThreshold(timedelta(seconds=5))
 
-    for info in device_infos:
+    for info in deviceInfos:
         device = pipeline.addDevice(info)
-        device_id = device.getDeviceId()
-        print(f"Using device {device_id}")
+        deviceId = device.getDeviceId()
+        print(f"Using device {deviceId}")
 
         for socket in sockets:
             camera = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=5)
-            calibration.addCamera(device_id, socket, camera.requestFullResolutionOutput(fps=5))
+            calibration.addCamera(deviceId, socket, camera.requestFullResolutionOutput(fps=5))
 
-        calibration.setStereoPair(device_id, *sockets)
+        calibration.setStereoPair(deviceId, *sockets)
 
-    control_queue = calibration.inputControl.createInputQueue()
-    result_queue = calibration.calibrationOutput.createOutputQueue()
+    controlQueue = calibration.inputControl.createInputQueue()
+    resultQueue = calibration.calibrationOutput.createOutputQueue()
 
     print("Point all devices at the same textured scene and keep them still.")
     pipeline.start()
-    control_queue.send(dai.beta.MultiDeviceCalibrationControl.start())
-    result = result_queue.get(timedelta(minutes=3))
+    controlQueue.send(dai.beta.MultiDeviceCalibrationControl.start())
+    result = resultQueue.get(timedelta(minutes=3))
 
     if result is None or not result.passed or result.graph is None:
         raise RuntimeError(result.info if result is not None else "Calibration timed out")
