@@ -302,11 +302,30 @@ void Sync::run() {
         }
         return false;
     };
-    // Receive one message without blocking indefinitely; nullptr means a source
-    // device is degraded (or the node is stopping) and the current group is dropped
-    auto receive = [this, &anySourceNotRunning](const std::string& name) -> std::shared_ptr<dai::Buffer> {
+    // Only resume inputs that this node paused, preserving explicit input pauses.
+    std::unordered_set<Input*> pausedInputs;
+    auto updateInputPause = [this, &pausedInputs]() {
+        const bool paused = out.isPaused();
+        if(paused) {
+            for(auto& entry : inputs) {
+                auto& input = entry.second;
+                if(!input.isPaused()) {
+                    input.setPaused(true);
+                    pausedInputs.insert(&input);
+                }
+            }
+        } else {
+            for(auto* input : pausedInputs) input->setPaused(false);
+            pausedInputs.clear();
+        }
+        return paused;
+    };
+    // Receive without blocking indefinitely, also checking for downstream pauses
+    // while waiting for an input. Drop partial groups when paused or disconnected.
+    auto receive = [this, &anySourceNotRunning, &updateInputPause](const std::string& name) -> std::shared_ptr<dai::Buffer> {
         auto& input = inputs[name];
         while(mainLoop()) {
+            if(updateInputPause()) return nullptr;
             auto msg = input.tryGet<dai::Buffer>();
             if(msg != nullptr) return msg;
             if(anySourceNotRunning()) return nullptr;
@@ -319,6 +338,10 @@ void Sync::run() {
     time_point<steady_clock> tAfterMessageBeginning;
 
     while(mainLoop()) {
+        if(updateInputPause()) {
+            std::this_thread::sleep_for(milliseconds(100));
+            continue;
+        }
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
         bool dropped = false;
@@ -394,7 +417,7 @@ void Sync::run() {
                 attempts++;
             }
         }
-        if(dropped) {
+        if(dropped || updateInputPause()) {
             continue;
         }
         auto tBeforeSend = steady_clock::now();

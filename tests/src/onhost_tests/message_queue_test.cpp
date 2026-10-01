@@ -13,6 +13,53 @@
 
 using namespace dai;
 
+TEST_CASE("Sync - Output pause propagates to inputs and resumes without incoming frames", "[Sync][pause]") {
+    using namespace std::chrono_literals;
+    Pipeline pipeline(false);
+    auto sync = pipeline.create<node::Sync>();
+    sync->setRunOnHost(true);
+    auto& left = sync->inputs["left"];
+    auto& right = sync->inputs["right"];
+    auto first = sync->out.createOutputQueue(4, false);
+    auto second = sync->out.createOutputQueue(4, false);
+    pipeline.start();
+
+    auto waitFor = [](auto predicate) {
+        const auto deadline = std::chrono::steady_clock::now() + 2s;
+        while(!predicate() && std::chrono::steady_clock::now() < deadline) std::this_thread::sleep_for(10ms);
+        REQUIRE(predicate());
+    };
+
+    first->setPaused(true);
+    std::this_thread::sleep_for(250ms);
+    CHECK_FALSE(left.isPaused());
+    CHECK_FALSE(right.isPaused());
+    second->setPaused(true);
+    waitFor([&]() { return left.isPaused() && right.isPaused(); });
+    first->setPaused(false);
+    waitFor([&]() { return !left.isPaused() && !right.isPaused(); });
+
+    // Explicit output pause also propagates, preserving an already paused input.
+    right.setPaused(true);
+    sync->out.setPaused(true);
+    waitFor([&]() { return left.isPaused(); });
+    sync->out.setPaused(false);
+    waitFor([&]() { return !left.isPaused(); });
+    CHECK(right.isPaused());
+    right.setPaused(false);
+
+    auto frame = std::make_shared<ImgFrame>();
+    left.send(frame);
+    right.send(frame);
+    bool timedOut = false;
+    auto group = first->get<MessageGroup>(2s, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(group != nullptr);
+    CHECK(group->get<ImgFrame>("left") == frame);
+    CHECK(group->get<ImgFrame>("right") == frame);
+    pipeline.stop();
+}
+
 TEST_CASE("MessageQueue - Pause releases blocked producers and resumes", "[MessageQueue][pause]") {
     MessageQueue queue(1, true);
     auto message = std::make_shared<ADatatype>();
