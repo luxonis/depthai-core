@@ -2,11 +2,12 @@
 
 #include <cpr/cpr.h>
 
+#include <algorithm>
 #include <cstdio>
+#include <exception>
 #include <nlohmann/json.hpp>
-#include <stdexcept>
+#include <unordered_map>
 
-#include "depthai/device/Version.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
 
@@ -34,82 +35,74 @@ nlohmann::json getStartupNotifications(const std::string& url) {
     return nlohmann::json::object();
 }
 
-std::vector<std::string> collectMessages(
-    const nlohmann::json& json, const std::string& depthaiVersion, Platform platform, const std::string& deviceSKU, const std::string& osVersion) {
+std::vector<std::string> collectMessages(const nlohmann::json& json,
+                                         const std::string& depthaiVersion,
+                                         Platform platform,
+                                         XLinkProtocol_t protocol,
+                                         const std::string& osVersion,
+                                         const std::string& deviceSKU) {
     std::vector<std::string> messages;
-    if(!json.is_object()) {
+    const auto entries = json.find("messages");
+    if(entries == json.end() || !entries->is_array()) {
         return messages;
     }
 
-    // General
-    if(const auto general = json.find("general"); general != json.end() && general->is_array()) {
-        for(const auto& message : *general) {
-            if(message.is_string() && !message.get_ref<const std::string&>().empty()) {
-                messages.push_back(message.get<std::string>());
+    std::string protocolName;
+    if(protocol == X_LINK_USB_VSC || protocol == X_LINK_USB_CDC || protocol == X_LINK_USB_EP) {
+        protocolName = "usb";
+    } else if(protocol == X_LINK_TCP_IP) {
+        protocolName = "tcpip";
+    }
+    const std::unordered_map<std::string, std::string> filters{
+        {"depthaiVersions", depthaiVersion},
+        {"platforms", platform2string(platform)},
+        {"protocols", protocolName},
+        {"osVersions", osVersion},
+        {"deviceSKUs", deviceSKU},
+    };
+
+    // Go over the messages and filter the ones relevant
+    for(const auto& entry : *entries) {
+        const auto message = entry.find("message");
+        if(message == entry.end() || !message->is_string() || message->get_ref<const std::string&>().empty()) {
+            continue;
+        }
+
+        bool applicable = true;
+        for(const auto& [key, value] : filters) {
+            const auto filter = entry.find(key);
+            if(filter == entry.end() || !filter->is_array()) {
+                applicable = false;
+                break;
             }
+
+            // Check if all values are valid
+            const bool validValues = std::all_of(
+                filter->begin(), filter->end(), [](const nlohmann::json& item) { return item.is_string() && !item.get_ref<const std::string&>().empty(); });
+
+            // Check if the filter list is emppty or if it matches our device
+            const bool matchesDevice = filter->empty() || std::find(filter->begin(), filter->end(), value) != filter->end();
+            if(!validValues || !matchesDevice) {
+                applicable = false;
+                break;
+            }
+        }
+        if(applicable) {
+            messages.push_back(message->get<std::string>());
         }
     }
-
-    // DepthAI Core Version
-    if(const auto version = json.find("version"); version != json.end() && version->is_string() && !depthaiVersion.empty()) {
-        try {
-            const Version currentVersion(depthaiVersion);
-            const Version latestVersion(version->get_ref<const std::string&>());
-            if(latestVersion > currentVersion) {
-                messages.push_back(fmt::format("A new DepthAI version is available: {} (current: {}).", latestVersion.toString(), depthaiVersion));
-            }
-        } catch(const std::invalid_argument& ex) {
-            logger::debug("Skipping DepthAI startup version comparison: {}", ex.what());
-        }
-    }
-
-    // Platform specific
-    const auto platformEntry = json.find(platform == Platform::RVC4 ? "rvc4" : "rvc2");
-    if(platformEntry != json.end() && platformEntry->is_object()) {
-        // General platform specific messages
-        if(const auto general = platformEntry->find("general"); general != platformEntry->end() && general->is_array()) {
-            for(const auto& message : *general) {
-                if(message.is_string() && !message.get_ref<const std::string&>().empty()) {
-                    messages.push_back(message.get<std::string>());
-                }
-            }
-        }
-
-        // RVC4 OS Version
-        if(const auto version = platformEntry->find("osVersion");
-           platform == Platform::RVC4 && !osVersion.empty() && version != platformEntry->end() && version->is_string()) {
-            try {
-                const Version currentVersion(osVersion);
-                const Version latestVersion(version->get_ref<const std::string&>());
-                if(latestVersion > currentVersion) {
-                    messages.push_back(fmt::format("A new RVC4 OS version is available: {} (current: {}).", latestVersion.toString(), osVersion));
-                }
-            } catch(const std::invalid_argument& ex) {
-                logger::debug("Skipping RVC4 OS startup version comparison: {}", ex.what());
-            }
-        }
-
-        // Device Specific messages
-        if(const auto sku = platformEntry->find(deviceSKU); sku != platformEntry->end() && sku->is_array()) {
-            for(const auto& message : *sku) {
-                if(message.is_string() && !message.get_ref<const std::string&>().empty()) {
-                    messages.push_back(message.get<std::string>());
-                }
-            }
-        }
-    }
-
     return messages;
 }
 
-void printStartupNotifications(const std::string& depthaiVersion, Platform platform, const std::string& deviceSKU, const std::string& osVersion) {
+void printStartupNotifications(
+    const std::string& depthaiVersion, Platform platform, XLinkProtocol_t protocol, const std::string& osVersion, const std::string& deviceSKU) {
     const auto url = getEnvAs<std::string>("DEPTHAI_STARTUP_NOTIFICATIONS_URL", "");  // TO DO: Add default value
     if(url.empty()) {
         return;
     }
 
     nlohmann::json fetchedJson = getStartupNotifications(url);
-    std::vector<std::string> collectedMessages = collectMessages(fetchedJson, depthaiVersion, platform, deviceSKU, osVersion);
+    std::vector<std::string> collectedMessages = collectMessages(fetchedJson, depthaiVersion, platform, protocol, osVersion, deviceSKU);
     for(const auto& message : collectedMessages) {
         fmt::print(stderr, "{}\n", message);
     }

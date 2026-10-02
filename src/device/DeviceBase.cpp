@@ -1229,6 +1229,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     {
         std::lock_guard<std::mutex> lock(deviceInfoMtx);
         deviceInfo.state = expectedBootState;
+        deviceInfo.protocol = connection->getDeviceInfo().protocol;
     }
 
     // prepare rpc for both attached and host controlled mode
@@ -1467,7 +1468,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             try {
                 const auto disableNotificationsEnv = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS", "");
                 if(disableNotificationsEnv != "1" && disableNotificationsEnv != "true") {
-                    utility::printStartupNotifications(build::VERSION, getPlatform(), getProductName(), getOSVersion());
+                    utility::printStartupNotifications(build::VERSION, getPlatform(), getProtocol(), getOSVersion(), getProductName());
                 }
             } catch(const std::exception& ex) {
                 pimpl->logger.debug("Startup notification print failed: {}", ex.what());
@@ -2672,6 +2673,10 @@ Platform DeviceBase::getPlatform() const {
 
 std::string DeviceBase::getPlatformAsString() const {
     return platform2string(this->getPlatform());
+}
+
+XLinkProtocol_t DeviceBase::getProtocol() const {
+    return getDeviceInfo().protocol;
 }
 
 }  // namespace dai
