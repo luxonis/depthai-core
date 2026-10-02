@@ -26,8 +26,16 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
+    py::enum_<PointCloudProperties::ComputeMethod>(properties, "ComputeMethod", DOC(dai, PointCloudProperties, ComputeMethod))
+        .value("CPU", PointCloudProperties::ComputeMethod::CPU)
+        .value("CPU_MT", PointCloudProperties::ComputeMethod::CPU_MT)
+        .value("GPU", PointCloudProperties::ComputeMethod::GPU);
+
     properties.def_readwrite("initialConfig", &PointCloudProperties::initialConfig, DOC(dai, PointCloudProperties, initialConfig))
-        .def_readwrite("numFramesPool", &PointCloudProperties::numFramesPool, DOC(dai, PointCloudProperties, numFramesPool));
+        .def_readwrite("numFramesPool", &PointCloudProperties::numFramesPool, DOC(dai, PointCloudProperties, numFramesPool))
+        .def_readwrite("computeMethod", &PointCloudProperties::computeMethod, DOC(dai, PointCloudProperties, computeMethod))
+        .def_readwrite("numThreads", &PointCloudProperties::numThreads, DOC(dai, PointCloudProperties, numThreads))
+        .def_readwrite("gpuDevice", &PointCloudProperties::gpuDevice, DOC(dai, PointCloudProperties, gpuDevice));
 
     // Node
     node.def_readonly("inputConfig", &PointCloud::inputConfig, DOC(dai, node, PointCloud, inputConfig), DOC(dai, node, PointCloud, inputConfig))

@@ -136,6 +136,19 @@ Rules of the merged output:
   with a single allocation. `useCPUMT(n)` still splits every stream over `n` threads on top of
   that (and stays the only parallelism when the node runs on a device). GPU streams are
   processed one after another.
+- `useGPU()` computes on the GPU. On an RVC4 device (the node running on the device) this is
+  an OpenCL kernel that deprojects, undistorts (through the per-pixel ray table) and transforms
+  the points in one pass, with the depth frame imported without a copy where the driver allows
+  it. On the host it is the Kompute path when compiled in. The compute method is part of the
+  node properties, so `useCPU()` / `useCPUMT(n)` / `useGPU()` apply wherever the node runs; a
+  device without a GPU logs a warning and falls back to the CPU.
+  Measured on an OAK-4-D (RVC4, board revision P10) for a 1280x800 depth frame: the OpenCL
+  kernel itself takes 0.6 ms, but the CPU still has to read the 12 MB of points the GPU wrote
+  (to compact and emit them), and on this SoC that read is several times slower than reading
+  CPU-written memory. The GPU path therefore ends at about 8.5 ms per cloud against 5.7 ms on
+  the CPU, so the CPU stays the default on the device; `useGPU()` there is an option to offload
+  the deprojection math, not a speed-up. The node logs the compute time per group at debug
+  level every 30 groups, and the GPU backend logs its upload / kernel / map times.
 - When the depth streams come from more than one device and the Sync timestamp source is left
   at its default, the Sync subnode is moved to the host at build time.
 - Streams only have to be linked, not named in any particular way: a default `inputDepth` that

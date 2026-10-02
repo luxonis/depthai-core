@@ -760,6 +760,8 @@ dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
+dai_add_test(pointcloud_gpu_test src/ondevice_tests/pointcloud_gpu_test.cpp)
+dai_set_test_labels(pointcloud_gpu_test ondevice rvc4)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
