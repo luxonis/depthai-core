@@ -1449,6 +1449,22 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             // Starts and waits for initial timesync
             setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
             pimpl->rpcCallCheckedVoid("onInit");
+
+            const auto connectionInfo = connection->getDeviceInfo();
+            if(connectionInfo.protocol == X_LINK_TCP_IP && !isLoopbackDeviceName(connectionInfo.name)) {
+                try {
+                    const auto speedMbps = pimpl->rpcCallChecked<int>("getEthernetLinkSpeed", connectionInfo.name);
+                    pimpl->logger.trace("Ethernet link speed is {} Mbit/s", speedMbps);
+                    if(speedMbps > 0 && speedMbps <= 100) {
+                        pimpl->logger.warn(
+                            "Ethernet link speed is {} Mbit/s (100 Mbit/s or below). Large transfers may cause delays and disconnect the device. "
+                            "Check the Ethernet cable and switch port.",
+                            speedMbps);
+                    }
+                } catch(const std::exception& ex) {
+                    pimpl->logger.warn("Could not determine Ethernet link speed: {}", ex.what());
+                }
+            }
             startTelemetryLifecycle(reconnect);
         } catch(const std::exception&) {
             // Close device (cleanup). On a reconnection attempt the caller (monitor thread)
