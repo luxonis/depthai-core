@@ -52,6 +52,34 @@ Housing calibration is resolved using the spec translation path.
 `inputConfig` queue. When combined with (A)/(B), the custom matrix is applied *after*
 the calibration-derived transform.
 
+### Targets on another device
+
+(A) and (B) look the socket or housing up on the device that owns the reference camera of
+the depth frame (`Extrinsics::toDeviceId` of the frame extrinsics; with a multi-device
+calibration that is the device of the common origin). The overloads with a device ID select
+the device explicitly, so the cloud can be expressed in the coordinate system of **any**
+camera or housing of **any** device in the pipeline:
+
+```cpp
+pc->setTargetCoordinateSystem(deviceB->getDeviceId(), dai::CameraBoardSocket::CAM_C);
+pc->setTargetCoordinateSystem(deviceB->getDeviceId(), dai::HousingCoordinateSystem::VESA_A);
+```
+
+Resolution chain for a frame whose reference camera lives on another device than the target:
+frame → reference camera (frame extrinsics) → local calibration origin of the reference device
+→ common origin of the multi-device calibration → local calibration origin of the target
+device → target socket / housing (calibration of the target device). The pipeline therefore
+needs a multi-device calibration (`Pipeline::setMultiDeviceCalibration`) that connects the two
+devices; until it has one, the node logs an error and drops the synced groups instead of
+stopping. Every depth stream is resolved on its own, so streams of several devices can be
+merged into a cloud expressed in the frame of one of them even before the devices rebase
+their frames. The output `Extrinsics` name the target device and socket (housing targets use
+`CameraBoardSocket::AUTO`).
+
+Explicit device targets are only supported when the node runs on the host (the default). For
+recorded or offline streams the calibration of a device can be supplied with
+`setDeviceCalibration(deviceId, calibration)`.
+
 ```cpp
 std::array<std::array<float, 4>, 4> mat = {{
     {{ 0.f, -1.f, 0.f, 0.f }},
@@ -95,7 +123,10 @@ Rules of the merged output:
   have the same width, otherwise it degrades to a single row.
 - The cloud is colorized only when every stream has a usable color frame.
 - `setTargetCoordinateSystem()` and custom matrices work as for one stream: the target is
-  resolved from the calibration of the device that owns the common reference camera.
+  resolved from the calibration of the device that owns the common reference camera, or of
+  the device named in `setTargetCoordinateSystem(deviceId, ...)` (see *Targets on another
+  device* above). The groups are merged as soon as every stream resolves to the same output
+  coordinate system.
 - The output `ImgTransformation` of a merged cloud carries the output size and the coordinate
   system of the points (identity extrinsics to the common origin, or the configured target),
   not the intrinsics of a single source image.

@@ -73,6 +73,21 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
              py::arg("housingCS"),
              DOC(dai, node, PointCloud, setTargetCoordinateSystem, 2))
         .def("setTargetCoordinateSystem",
+             py::overload_cast<const std::string&, CameraBoardSocket>(&PointCloud::setTargetCoordinateSystem),
+             py::arg("targetDeviceId"),
+             py::arg("targetCamera"),
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 3))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<const std::string&, HousingCoordinateSystem>(&PointCloud::setTargetCoordinateSystem),
+             py::arg("targetDeviceId"),
+             py::arg("housingCS"),
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 4))
+        .def("setDeviceCalibration",
+             &PointCloud::setDeviceCalibration,
+             py::arg("deviceId"),
+             py::arg("calibration"),
+             DOC(dai, node, PointCloud, setDeviceCalibration))
+        .def("setTargetCoordinateSystem",
              py::overload_cast<CameraBoardSocket, bool>(&PointCloud::setTargetCoordinateSystem),
              py::arg("targetCamera"),
              py::arg("useSpecTranslation"),

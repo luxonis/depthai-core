@@ -15,6 +15,7 @@
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
@@ -43,6 +44,11 @@ namespace node {
  * frame extrinsics and the merged result is sent as a single PointCloudData message. Depth
  * streams from several devices share a coordinate system once the pipeline carries a
  * multi-device calibration (Pipeline::setMultiDeviceCalibration).
+ *
+ * The output can be expressed in the coordinate system of any camera socket or housing of any
+ * device in the pipeline (setTargetCoordinateSystem). Targets on another device than the one
+ * owning the reference camera of a depth frame are resolved through the multi-device
+ * calibration of the pipeline and the calibration of the target device.
  */
 class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>, public HostRunnable {
    public:
@@ -280,17 +286,49 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     void useGPU(uint32_t device = 0);
 
     /**
-     * Set target coordinate system to transform point cloud
+     * Set target coordinate system to transform point cloud.
+     * The socket is looked up on the device that owns the reference camera of the depth frame.
      * @param targetCamera Target camera socket
      */
     void setTargetCoordinateSystem(CameraBoardSocket targetCamera);
 
     /**
      * Set target coordinate system to housing coordinate system
-     * Point cloud will be transformed to this housing coordinate system
+     * Point cloud will be transformed to this housing coordinate system of the device that owns the reference camera of the depth frame.
      * @param housingCS Target housing coordinate system
      */
     void setTargetCoordinateSystem(HousingCoordinateSystem housingCS);
+
+    /**
+     * Set target coordinate system to a camera socket of any device in the pipeline.
+     *
+     * Depth frames whose reference camera lives on another device are transformed through the
+     * multi-device calibration of the pipeline (Pipeline::setMultiDeviceCalibration), which has to
+     * connect the two devices, and the calibration of the target device. Every depth stream is
+     * resolved independently, so streams of several devices can be merged into a cloud expressed in
+     * the coordinate system of one of them. Not supported when the node runs on a device.
+     * @param targetDeviceId Device ID of the device owning the target camera socket
+     * @param targetCamera Target camera socket
+     */
+    void setTargetCoordinateSystem(const std::string& targetDeviceId, CameraBoardSocket targetCamera);
+
+    /**
+     * Set target coordinate system to a housing coordinate system of any device in the pipeline.
+     * See setTargetCoordinateSystem(targetDeviceId, targetCamera) for how other devices are resolved.
+     * @param targetDeviceId Device ID of the device owning the housing coordinate system
+     * @param housingCS Target housing coordinate system
+     */
+    void setTargetCoordinateSystem(const std::string& targetDeviceId, HousingCoordinateSystem housingCS);
+
+    /**
+     * Override the calibration used for a device, for recorded/offline streams and tests.
+     *
+     * The node otherwise reads the calibration of a device from the pipeline. Only used when the
+     * node runs on the host; call it before the pipeline is started.
+     * @param deviceId Device ID the calibration belongs to
+     * @param calibration Calibration of that device
+     */
+    void setDeviceCalibration(const std::string& deviceId, const CalibrationHandler& calibration);
 
     /**
      * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
@@ -314,6 +352,14 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /// Private input receiving synced MessageGroup from Sync subnode
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
 
+    /// Coordinate system the points of one stream are expressed in after the transformation
+    struct OutputCoordinateSystem {
+        std::string deviceId;
+        CameraBoardSocket socket = CameraBoardSocket::AUTO;
+        HousingCoordinateSystem housing = HousingCoordinateSystem::AUTO;
+        std::string describe() const;
+    };
+
     /// Per depth stream state. The default stream uses pimplPointCloud, additional streams own an Impl configured alike.
     struct DepthStream {
         std::unique_ptr<Impl> impl;
@@ -322,6 +368,8 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         std::optional<ImgTransformation> lastTransformation;
         // Extrinsics to set on the output PointCloudData after coordinate transformation
         std::optional<Extrinsics> targetExtrinsics;
+        // Coordinate system of the transformed points (the frame reference unless a target is configured)
+        OutputCoordinateSystem outputCoordinateSystem;
     };
 
     /// Depth frame (and optional color frame) of one stream inside a synced group
@@ -344,6 +392,14 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     // Helper methods for initialize()
     void setIntrinsicsFromFrame(Impl& impl, const ImgFrame& frame);
     void setCoordinateTransformation(DepthStream& stream, const ImgFrame& depthFrame, const PointCloudConfig& config);
+    /// Device that owns the reference camera of a depth frame (the node's device when the frame does not say)
+    std::string getReferenceDeviceId(const Extrinsics& frameExtrinsics);
+    /// Transformation from the reference camera of a depth frame to the local calibration origin of another device (4x4, in `unit`)
+    std::vector<std::vector<float>> getReferenceToDeviceOrigin(const std::string& referenceDeviceId,
+                                                               CameraBoardSocket referenceSocket,
+                                                               const std::string& targetDeviceId,
+                                                               CameraBoardSocket& targetOriginSocket,
+                                                               LengthUnit unit);
 
     // Processing methods for the two code paths; append the points of one stream
     void computeDepthOnly(Impl& impl, const ImgFrame& depthFrame, bool organized, std::vector<Point3f>& points);
@@ -353,10 +409,12 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     bool runOnHostVar = true;
     bool colorMode = false;
     bool coordinateSystemMismatchWarned = false;
+    bool initializationFailedWarned = false;
     bool mixedColorWarned = false;
     bool organizedLayoutWarned = false;
 
     std::map<std::string, DepthStream> depthStreams;
+    std::map<std::string, CalibrationHandler> deviceCalibrations;
 };
 
 }  // namespace node

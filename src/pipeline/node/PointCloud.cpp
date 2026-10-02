@@ -16,6 +16,7 @@
     #include "kompute/Kompute.hpp"
 #endif
 
+#include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
@@ -681,6 +682,25 @@ void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bo
     initialConfig->setTargetCoordinateSystem(housingCS, useSpecTranslation);
 }
 
+void PointCloud::setTargetCoordinateSystem(const std::string& targetDeviceId, CameraBoardSocket targetCamera) {
+    initialConfig->setTargetCoordinateSystem(targetDeviceId, targetCamera);
+}
+
+void PointCloud::setTargetCoordinateSystem(const std::string& targetDeviceId, HousingCoordinateSystem housingCS) {
+    initialConfig->setTargetCoordinateSystem(targetDeviceId, housingCS);
+}
+
+void PointCloud::setDeviceCalibration(const std::string& deviceId, const CalibrationHandler& calibration) {
+    deviceCalibrations[deviceId] = calibration;
+    for(auto& entry : depthStreams) entry.second.initialized = false;
+}
+
+std::string PointCloud::OutputCoordinateSystem::describe() const {
+    std::string description = "device '" + deviceId + "' ";
+    if(housing != HousingCoordinateSystem::AUTO) return description + "housing " + toString(housing);
+    return description + "socket " + std::string(toString(socket));
+}
+
 // ── Depth stream bookkeeping ──
 
 PointCloud::DepthStream& PointCloud::getDepthStream(const std::string& name) {
@@ -748,32 +768,35 @@ bool PointCloud::isValidDepthFrame(const ImgFrame& depthFrame) {
 }
 
 bool PointCloud::haveCommonTargetCoordinateSystem(const std::vector<StreamFrames>& frames) {
-    // Every stream is transformed into the coordinate system its frame extrinsics point to. The
-    // merged cloud is only meaningful when all of those coincide (same device and socket, e.g. the
-    // common origin of a multi-device calibration).
-    const auto describe = [](const Extrinsics& extrinsics) {
-        return "device '" + extrinsics.toDeviceId + "' socket " + std::string(toString(extrinsics.toCameraSocket));
+    // Every stream is transformed into its own output coordinate system: the one its frame extrinsics
+    // point to, or the configured target resolved for that stream. The merged cloud is only meaningful
+    // when all of those coincide (same device and socket/housing, e.g. the common origin of a
+    // multi-device calibration or an explicit target device). Unknown parts (AUTO sockets) are
+    // treated as compatible, like Extrinsics::hasCompatibleCoordinateSystem.
+    const auto compatible = [](const OutputCoordinateSystem& a, const OutputCoordinateSystem& b) {
+        const bool sameSocket = a.socket == CameraBoardSocket::AUTO || b.socket == CameraBoardSocket::AUTO || a.socket == b.socket;
+        return a.deviceId == b.deviceId && sameSocket && a.housing == b.housing;
     };
-    const auto reference = frames.front().depth->transformation.getExtrinsics();
+    const auto& reference = getDepthStream(frames.front().name).outputCoordinateSystem;
     for(size_t i = 1; i < frames.size(); ++i) {
-        const auto other = frames[i].depth->transformation.getExtrinsics();
-        if(!reference.hasCompatibleCoordinateSystem(other)) {
+        const auto& other = getDepthStream(frames[i].name).outputCoordinateSystem;
+        if(!compatible(reference, other)) {
             if(!coordinateSystemMismatchWarned) {
                 pimpl->logger->warn(
                     "PointCloud: depth stream '{}' is expressed relative to {} while depth stream '{}' is expressed relative to {}. The streams cannot "
                     "be merged until they share a target coordinate system (set a multi-device calibration on the pipeline for depth from several "
-                    "devices) -- dropping synced groups",
+                    "devices, or select the target device explicitly with setTargetCoordinateSystem(deviceId, ...)) -- dropping synced groups",
                     frames.front().name,
-                    describe(reference),
+                    reference.describe(),
                     frames[i].name,
-                    describe(other));
+                    other.describe());
                 coordinateSystemMismatchWarned = true;
             }
             return false;
         }
     }
     if(coordinateSystemMismatchWarned) {
-        pimpl->logger->info("PointCloud: depth streams share the target coordinate system {} again", describe(reference));
+        pimpl->logger->info("PointCloud: depth streams share the target coordinate system {} again", reference.describe());
         coordinateSystemMismatchWarned = false;
     }
     return true;
@@ -793,9 +816,14 @@ static void logMatrix4x4(const std::shared_ptr<spdlog::logger>& logger,
 
 CalibrationHandler PointCloud::getCalibrationFor(const std::string& deviceId) {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // Explicit overrides (offline streams, tests) win over live device calibrations
+    const auto overrideIt = deviceCalibrations.find(deviceId);
+    if(overrideIt != deviceCalibrations.end()) {
+        return overrideIt->second;
+    }
     // The frame extrinsics name the device owning the reference coordinate system. With a
     // multi-device calibration that is the origin device, which is not necessarily the device
-    // this node was created with.
+    // this node was created with. An explicit target device may be any device of the pipeline.
     if(!deviceId.empty()) {
         if(device && device->getDeviceId() == deviceId) {
             return device->getCalibration();
@@ -806,10 +834,9 @@ CalibrationHandler PointCloud::getCalibrationFor(const std::string& deviceId) {
             }
         }
         if(device) {
-            throw std::runtime_error(
-                "PointCloud: the depth frame is expressed relative to device '" + deviceId
-                + "', which is not part of the pipeline. Its calibration is required to transform the cloud to another camera or housing coordinate "
-                  "system.");
+            throw std::runtime_error("PointCloud: device '" + deviceId
+                                     + "' is not part of the pipeline. Its calibration is required to transform the cloud to a camera or housing "
+                                       "coordinate system of that device (set it explicitly with setDeviceCalibration for offline streams).");
         }
     }
 #else
@@ -833,6 +860,65 @@ void PointCloud::setIntrinsicsFromFrame(Impl& impl, const ImgFrame& frame) {
     impl.setIntrinsics(fx, fy, cx, cy, width, height);
 }
 
+std::string PointCloud::getReferenceDeviceId(const Extrinsics& frameExtrinsics) {
+    if(!frameExtrinsics.toDeviceId.empty()) return frameExtrinsics.toDeviceId;
+    // Frames without a device ID (older firmware, synthetic frames) are expressed relative to the node's own device
+    if(device) return device->getDeviceId();
+    return {};
+}
+
+std::vector<std::vector<float>> PointCloud::getReferenceToDeviceOrigin(const std::string& referenceDeviceId,
+                                                                       CameraBoardSocket referenceSocket,
+                                                                       const std::string& targetDeviceId,
+                                                                       CameraBoardSocket& targetOriginSocket,
+                                                                       LengthUnit unit) {
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    (void)referenceSocket;
+    (void)targetOriginSocket;
+    (void)unit;
+    throw std::runtime_error("PointCloud: the target coordinate system lives on device '" + targetDeviceId
+                             + "' while the depth frame is expressed relative to device '" + referenceDeviceId
+                             + "'. Targets on another device are only supported when the node runs on the host (setRunOnHost(true)).");
+#else
+    // ref camera -> local origin of the reference device -> common origin of the multi-device calibration -> local origin of the target device
+    const auto graph = getParentPipeline().getMultiDeviceCalibration();
+    if(!graph.has_value()) {
+        throw std::runtime_error("PointCloud: the target coordinate system lives on device '" + targetDeviceId
+                                 + "' while the depth frame is expressed relative to device '" + referenceDeviceId
+                                 + "'. Transforming between devices requires a multi-device calibration on the pipeline "
+                                   "(Pipeline::setMultiDeviceCalibration) that connects both devices.");
+    }
+    const beta::MultiDeviceCalibrationHandler handler(*graph);
+    const auto referenceOrigin = handler.getDeviceSocket(referenceDeviceId);
+    const auto targetOrigin = handler.getDeviceSocket(targetDeviceId);
+    if(!referenceOrigin.has_value() || !targetOrigin.has_value()) {
+        throw std::runtime_error("PointCloud: device '" + (referenceOrigin.has_value() ? targetDeviceId : referenceDeviceId)
+                                 + "' is not part of the multi-device calibration of the pipeline, so the point cloud cannot be transformed from device '"
+                                 + referenceDeviceId + "' to device '" + targetDeviceId + "'.");
+    }
+    const auto referenceOriginToCommon = handler.getExtrinsicsToOrigin(referenceDeviceId, *referenceOrigin);
+    const auto targetOriginToCommon = handler.getExtrinsicsToOrigin(targetDeviceId, *targetOrigin);
+    if(!referenceOriginToCommon.has_value() || !targetOriginToCommon.has_value() || referenceOriginToCommon->toDeviceId != targetOriginToCommon->toDeviceId
+       || referenceOriginToCommon->toCameraSocket != targetOriginToCommon->toCameraSocket) {
+        throw std::runtime_error(
+            "PointCloud: devices '" + referenceDeviceId + "' and '" + targetDeviceId
+            + "' are not connected by the multi-device calibration of the pipeline, so the point cloud cannot be transformed between them.");
+    }
+
+    // The reference camera is usually the local origin already (the device rebased the frame onto it); otherwise go through the local calibration
+    std::vector<std::vector<float>> T_ref_to_referenceOrigin = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    if(referenceSocket != *referenceOrigin) {
+        T_ref_to_referenceOrigin = getCalibrationFor(referenceDeviceId).getCameraExtrinsics(referenceSocket, *referenceOrigin, false, unit);
+    }
+    const auto T_referenceOrigin_to_common = matrix::toVecMatrix4x4(referenceOriginToCommon->getTransformationMatrix(false, unit));
+    auto T_common_to_targetOrigin = matrix::toVecMatrix4x4(targetOriginToCommon->getTransformationMatrix(false, unit));
+    matrix::invertSe3Matrix4x4InPlace(T_common_to_targetOrigin);
+
+    targetOriginSocket = *targetOrigin;
+    return matrix::matMul(T_common_to_targetOrigin, matrix::matMul(T_referenceOrigin_to_common, T_ref_to_referenceOrigin));
+#endif
+}
+
 void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame& depthFrame, const PointCloudConfig& config) {
     auto& impl = getImpl(stream);
     auto unit = impl.targetLengthUnit;
@@ -853,27 +939,54 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
     auto T_frame_to_ref = matrix::toVecMatrix4x4(frameExtrinsics.getTransformationMatrix(useSpecTranslation, unit));
     logMatrix4x4(pimpl->logger, spdlog::level::debug, "T_frame_to_ref", T_frame_to_ref);
 
+    // The target socket / housing is looked up on the configured device, by default the one owning the reference camera.
+    // When the two differ, the reference is first carried over to the local calibration origin of the target device.
+    const std::string referenceDeviceId = getReferenceDeviceId(frameExtrinsics);
+    const bool explicitTargetDevice = !config.getTargetDeviceId().empty();
+    const std::string targetDeviceId = explicitTargetDevice ? config.getTargetDeviceId() : referenceDeviceId;
+    const bool crossDevice = coordSystemType != PointCloudConfig::CoordinateSystemType::DEFAULT && targetDeviceId != referenceDeviceId;
+    CameraBoardSocket targetRefCamera = refCamera;
+    std::vector<std::vector<float>> T_ref_to_targetRef = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    if(crossDevice) {
+        T_ref_to_targetRef = getReferenceToDeviceOrigin(referenceDeviceId, refCamera, targetDeviceId, targetRefCamera, unit);
+        logMatrix4x4(pimpl->logger, spdlog::level::debug, "T_ref_to_target_device_origin", T_ref_to_targetRef);
+    }
+
     // Compute the target transform based on coordSystemType
     // The final transform is: T_ref→target * T_frame→ref
     std::optional<std::vector<std::vector<float>>> T_final = std::nullopt;
     std::optional<Extrinsics> targetExtrinsics = std::nullopt;
+    // Without a target the points stay in the coordinate system the frame extrinsics point to
+    OutputCoordinateSystem outputCoordinateSystem{frameExtrinsics.toDeviceId, refCamera, HousingCoordinateSystem::AUTO};
 
     switch(coordSystemType) {
         case PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET: {
-            pimpl->logger->info("Using CAMERA_SOCKET transformation to {}, via ref camera {}", toString(targetCameraSocket), toString(refCamera));
-            auto calibHandler = getCalibrationFor(frameExtrinsics.toDeviceId);
-            auto T_ref_to_target = calibHandler.getCameraExtrinsics(refCamera, targetCameraSocket, useSpecTranslation, unit);
+            pimpl->logger->info("Using CAMERA_SOCKET transformation to {} of device '{}', via ref camera {} of device '{}'",
+                                toString(targetCameraSocket),
+                                targetDeviceId,
+                                toString(refCamera),
+                                referenceDeviceId);
+            auto calibHandler = getCalibrationFor(targetDeviceId);
+            auto T_targetRef_to_target = calibHandler.getCameraExtrinsics(targetRefCamera, targetCameraSocket, useSpecTranslation, unit);
+            auto T_ref_to_target = matrix::matMul(T_targetRef_to_target, T_ref_to_targetRef);
             T_final = matrix::matMul(T_ref_to_target, T_frame_to_ref);
             targetExtrinsics = Extrinsics(T_ref_to_target, targetCameraSocket, unit);
+            outputCoordinateSystem = {targetDeviceId, targetCameraSocket, HousingCoordinateSystem::AUTO};
             break;
         }
 
         case PointCloudConfig::CoordinateSystemType::HOUSING: {
-            pimpl->logger->info("Using HOUSING transformation to housing {}, via ref camera {}", static_cast<int>(targetHousingCS), toString(refCamera));
-            auto calibHandler = getCalibrationFor(frameExtrinsics.toDeviceId);
-            auto T_ref_to_housing = calibHandler.getHousingCalibration(refCamera, targetHousingCS, true, unit);
+            pimpl->logger->info("Using HOUSING transformation to housing {} of device '{}', via ref camera {} of device '{}'",
+                                toString(targetHousingCS),
+                                targetDeviceId,
+                                toString(refCamera),
+                                referenceDeviceId);
+            auto calibHandler = getCalibrationFor(targetDeviceId);
+            auto T_targetRef_to_housing = calibHandler.getHousingCalibration(targetRefCamera, targetHousingCS, true, unit);
+            auto T_ref_to_housing = matrix::matMul(T_targetRef_to_housing, T_ref_to_targetRef);
             T_final = matrix::matMul(T_ref_to_housing, T_frame_to_ref);
             targetExtrinsics = Extrinsics(T_ref_to_housing, CameraBoardSocket::AUTO, unit);
+            outputCoordinateSystem = {targetDeviceId, CameraBoardSocket::AUTO, targetHousingCS};
             break;
         }
 
@@ -894,11 +1007,12 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
         }
     }
 
-    // The target coordinate system lives on the device that owns the reference camera
+    // The target coordinate system lives on the explicitly selected device, otherwise on the device that owns the reference camera
     if(targetExtrinsics) {
-        targetExtrinsics->toDeviceId = frameExtrinsics.toDeviceId;
+        targetExtrinsics->toDeviceId = explicitTargetDevice ? targetDeviceId : frameExtrinsics.toDeviceId;
     }
     stream.targetExtrinsics = std::move(targetExtrinsics);
+    stream.outputCoordinateSystem = std::move(outputCoordinateSystem);
 
     // Apply the final transform
     if(T_final) {
@@ -1075,7 +1189,23 @@ void PointCloud::run() {
             auto& state = getDepthStream(stream.name);
             if(hasTransformationChanged(state, *stream.depth)) state.initialized = false;
             if(!state.initialized) {
-                initialize(state, *stream.depth, *latestConfig);
+                try {
+                    initialize(state, *stream.depth, *latestConfig);
+                } catch(const std::exception& ex) {
+                    // Typically a coordinate system that cannot be resolved yet (missing multi-device calibration or device calibration).
+                    // Keep the node alive and retry with the next group, the situation may be fixed at runtime.
+                    if(!initializationFailedWarned) {
+                        pimpl->logger->error(
+                            "PointCloud: cannot initialize depth stream '{}': {} -- dropping synced groups until it succeeds", stream.name, ex.what());
+                        initializationFailedWarned = true;
+                    }
+                    skipGroup = true;
+                    break;
+                }
+                if(initializationFailedWarned) {
+                    pimpl->logger->info("PointCloud: depth stream '{}' initialized", stream.name);
+                    initializationFailedWarned = false;
+                }
             }
             if(!isValidDepthFrame(*stream.depth)) {
                 skipGroup = true;

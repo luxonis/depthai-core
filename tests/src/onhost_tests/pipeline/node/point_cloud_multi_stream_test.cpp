@@ -10,12 +10,15 @@
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/node/PointCloud.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 // Host-only pipelines (no device): the PointCloud node and its Sync subnode both run on the host and are
 // fed synthetic depth frames through input queues.
@@ -341,4 +344,232 @@ TEST_CASE_METHOD(HostPointCloudFixture, "Unlinked default depth and color inputs
     REQUIRE(points.size() == 2 * W * H);
     requirePointsClose(points, 0, 0.f, 0.f, 0.f, DEPTH_MM);
     requirePointsClose(points, W * H, 0.f, 0.f, 0.f, 2000.f);
+}
+
+// ── Target coordinate systems on any device ──
+
+namespace {
+
+const std::vector<std::vector<float>> IDENTITY_ROTATION = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+
+/// Calibration of one device: CAM_A is the calibration origin, CAM_B is placed at `camBToCamAMm` relative to CAM_A
+/// (translation of the CAM_B -> CAM_A extrinsics, in millimeters).
+dai::CalibrationHandler makeDeviceCalibration(const std::vector<float>& camBToCamAMm) {
+    dai::CalibrationHandler handler;
+    const std::vector<std::vector<float>> intrinsics = {{FX, 0.f, CX}, {0.f, FY, CY}, {0.f, 0.f, 1.f}};
+    handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_A, intrinsics, W, H);
+    handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_B, intrinsics, W, H);
+    handler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B,
+                                dai::CameraBoardSocket::CAM_A,
+                                IDENTITY_ROTATION,
+                                {camBToCamAMm[0] / 10.f, camBToCamAMm[1] / 10.f, camBToCamAMm[2] / 10.f},
+                                {camBToCamAMm[0] / 10.f, camBToCamAMm[1] / 10.f, camBToCamAMm[2] / 10.f});
+    return handler;
+}
+
+/// Calibration of one device whose housing origin is CAM_A, displaced by `housingToCamAMm`.
+dai::CalibrationHandler makeHousingCalibration(const dai::Point3f& housingToCamAMm) {
+    dai::EepromData eeprom;
+    eeprom.housingExtrinsics.rotationMatrix = IDENTITY_ROTATION;
+    eeprom.housingExtrinsics.translation = {housingToCamAMm.x / 10.f, housingToCamAMm.y / 10.f, housingToCamAMm.z / 10.f};
+    eeprom.housingExtrinsics.specTranslation = eeprom.housingExtrinsics.translation;
+    eeprom.housingExtrinsics.toCameraSocket = dai::CameraBoardSocket::CAM_A;
+    dai::CalibrationHandler handler(eeprom);
+    const std::vector<std::vector<float>> intrinsics = {{FX, 0.f, CX}, {0.f, FY, CY}, {0.f, 0.f, 1.f}};
+    handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_A, intrinsics, W, H);
+    return handler;
+}
+
+/// Multi-device calibration with two devices: dev1/CAM_A -> dev0/CAM_A is a pure translation of `tzMm` along Z.
+/// dev0/CAM_A is the common origin (lowest device ID).
+std::vector<dai::MultiDeviceExtrinsics> makeTwoDeviceGraph(float tzMm) {
+    dai::MultiDeviceExtrinsics edge;
+    edge.fromDeviceId = "dev1";
+    edge.fromSocket = dai::CameraBoardSocket::CAM_A;
+    edge.extrinsics = makeExtrinsics(0.f, 0.f, tzMm, dai::CameraBoardSocket::CAM_A, "dev0");
+    return {edge};
+}
+
+void requireTranslation(const std::array<std::array<float, 4>, 4>& matrix, float tx, float ty, float tz) {
+    for(int r = 0; r < 3; ++r) {
+        for(int c = 0; c < 3; ++c) {
+            REQUIRE(matrix[r][c] == Catch::Approx(r == c ? 1.f : 0.f).margin(1e-5f));
+        }
+    }
+    REQUIRE(matrix[0][3] == Catch::Approx(tx).margin(1e-3f));
+    REQUIRE(matrix[1][3] == Catch::Approx(ty).margin(1e-3f));
+    REQUIRE(matrix[2][3] == Catch::Approx(tz).margin(1e-3f));
+}
+
+}  // namespace
+
+TEST_CASE("PointCloudConfig target device", "[PointCloud][Config]") {
+    dai::PointCloudConfig config;
+    REQUIRE(config.getTargetDeviceId().empty());
+
+    config.setTargetCoordinateSystem("dev1", dai::CameraBoardSocket::CAM_B);
+    REQUIRE(config.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET);
+    REQUIRE(config.getTargetCameraSocket() == dai::CameraBoardSocket::CAM_B);
+    REQUIRE(config.getTargetDeviceId() == "dev1");
+
+    config.setTargetCoordinateSystem("dev2", dai::HousingCoordinateSystem::VESA_A);
+    REQUIRE(config.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::HOUSING);
+    REQUIRE(config.getTargetHousingCS() == dai::HousingCoordinateSystem::VESA_A);
+    REQUIRE(config.getTargetDeviceId() == "dev2");
+
+    // The device-less overloads select the device owning the reference camera again
+    config.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_C);
+    REQUIRE(config.getTargetCameraSocket() == dai::CameraBoardSocket::CAM_C);
+    REQUIRE(config.getTargetDeviceId().empty());
+    config.setTargetCoordinateSystem("dev1", dai::CameraBoardSocket::CAM_B);
+    config.setTargetCoordinateSystem(dai::HousingCoordinateSystem::IMU);
+    REQUIRE(config.getTargetDeviceId().empty());
+
+    // The device ID survives serialization
+    config.setTargetCoordinateSystem("dev1", dai::CameraBoardSocket::CAM_B);
+    std::vector<std::uint8_t> metadata;
+    dai::DatatypeEnum datatype;
+    config.serialize(metadata, datatype);
+    dai::PointCloudConfig restored;
+    REQUIRE(dai::utility::deserialize(metadata, restored));
+    REQUIRE(restored.getTargetDeviceId() == "dev1");
+    REQUIRE(restored.getTargetCameraSocket() == dai::CameraBoardSocket::CAM_B);
+    REQUIRE(restored.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET);
+
+    // Node setters forward to the initial config
+    dai::Pipeline pipeline(false);
+    auto pc = pipeline.create<dai::node::PointCloud>();
+    pc->setTargetCoordinateSystem("dev3", dai::CameraBoardSocket::CAM_D);
+    REQUIRE(pc->initialConfig->getTargetDeviceId() == "dev3");
+    REQUIRE(pc->initialConfig->getTargetCameraSocket() == dai::CameraBoardSocket::CAM_D);
+    pc->setTargetCoordinateSystem("dev3", dai::HousingCoordinateSystem::VESA_B);
+    REQUIRE(pc->initialConfig->getTargetHousingCS() == dai::HousingCoordinateSystem::VESA_B);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Camera socket target without a device uses the reference device", "[PointCloud][Target][Compat]") {
+    // dev0: CAM_B -> CAM_A is (0, -100, 0) mm, so CAM_A -> CAM_B is (0, +100, 0) mm
+    pc->setDeviceCalibration("dev0", makeDeviceCalibration({0.f, -100.f, 0.f}));
+    pc->setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_B);
+    auto depthQ = pc->inputDepth.createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    // Frame -> CAM_A of dev0 is a 10 mm shift along X
+    depthQ->send(makeDepthFrame(makeExtrinsics(10.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now()));
+
+    auto pcd = waitForOutput(*outQ);
+    auto points = pcd->getPoints();
+    REQUIRE(points.size() == W * H);
+    requirePointsClose(points, 0, 10.f, 100.f, 0.f);
+
+    const auto outExtrinsics = pcd->getTransformation().getExtrinsics();
+    REQUIRE(outExtrinsics.toDeviceId == "dev0");
+    REQUIRE(outExtrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_B);
+    requireTranslation(outExtrinsics.getTransformationMatrix(false, dai::LengthUnit::MILLIMETER), 0.f, 100.f, 0.f);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Camera socket target on another device", "[PointCloud][Target][MultiDevice]") {
+    // dev1/CAM_A sits 500 mm in front of dev0/CAM_A; on dev1, CAM_A -> CAM_B is (+200, 0, 0) mm
+    pipeline.setMultiDeviceCalibration(makeTwoDeviceGraph(500.f));
+    pc->setDeviceCalibration("dev1", makeDeviceCalibration({-200.f, 0.f, 0.f}));
+    pc->setTargetCoordinateSystem("dev1", dai::CameraBoardSocket::CAM_B);
+    auto depthA = pc->inputDepth.createInputQueue();
+    auto depthB = pc->getDepthInput("dev1").createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    // Both frames are expressed relative to the common origin dev0/CAM_A, as the devices rebase them
+    const auto now = std::chrono::steady_clock::now();
+    depthA->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0"), now));
+    depthB->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 500.f, dai::CameraBoardSocket::CAM_A, "dev0"), now, 2000));
+
+    auto pcd = waitForOutput(*outQ);
+    auto points = pcd->getPoints();
+    REQUIRE(points.size() == 2 * W * H);
+    // dev0 depth: origin -> dev1/CAM_A (0, 0, -500), then CAM_A -> CAM_B (+200, 0, 0)
+    requirePointsClose(points, 0, 200.f, 0.f, -500.f, DEPTH_MM);
+    // dev1 depth: frame -> origin (+500 z) cancels against origin -> dev1/CAM_A
+    requirePointsClose(points, W * H, 200.f, 0.f, 0.f, 2000.f);
+
+    const auto outExtrinsics = pcd->getTransformation().getExtrinsics();
+    REQUIRE(outExtrinsics.toDeviceId == "dev1");
+    REQUIRE(outExtrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_B);
+    requireTranslation(outExtrinsics.getTransformationMatrix(false, dai::LengthUnit::MILLIMETER), 200.f, 0.f, -500.f);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Housing target on another device", "[PointCloud][Target][MultiDevice]") {
+    pipeline.setMultiDeviceCalibration(makeTwoDeviceGraph(500.f));
+    const auto dev1Calibration = makeHousingCalibration({100.f, 0.f, 0.f});
+    pc->setDeviceCalibration("dev1", dev1Calibration);
+    pc->setTargetCoordinateSystem("dev1", dai::HousingCoordinateSystem::AUTO);
+    auto depthQ = pc->inputDepth.createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    depthQ->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now()));
+
+    // Expected: origin -> dev1/CAM_A (0, 0, -500), then CAM_A -> housing as the calibration handler resolves it
+    const auto camToHousing =
+        dev1Calibration.getHousingCalibration(dai::CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::AUTO, true, dai::LengthUnit::MILLIMETER);
+    for(int r = 0; r < 3; ++r) {
+        for(int c = 0; c < 3; ++c) REQUIRE(camToHousing[r][c] == Catch::Approx(r == c ? 1.f : 0.f).margin(1e-5f));
+    }
+    const float tx = camToHousing[0][3], ty = camToHousing[1][3], tz = camToHousing[2][3] - 500.f;
+    REQUIRE(tx != 0.f);  // the housing offset has to show up in the result
+
+    auto pcd = waitForOutput(*outQ);
+    auto points = pcd->getPoints();
+    REQUIRE(points.size() == W * H);
+    requirePointsClose(points, 0, tx, ty, tz);
+
+    const auto outExtrinsics = pcd->getTransformation().getExtrinsics();
+    REQUIRE(outExtrinsics.toDeviceId == "dev1");
+    REQUIRE(outExtrinsics.toCameraSocket == dai::CameraBoardSocket::AUTO);
+    requireTranslation(outExtrinsics.getTransformationMatrix(false, dai::LengthUnit::MILLIMETER), tx, ty, tz);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Streams with different reference devices are merged into an explicit target", "[PointCloud][Target][MultiDevice]") {
+    // The frames are not rebased (each device still reports its own origin) but the host knows how the devices relate
+    pipeline.setMultiDeviceCalibration(makeTwoDeviceGraph(500.f));
+    pc->setDeviceCalibration("dev0", makeDeviceCalibration({0.f, -100.f, 0.f}));
+    pc->setTargetCoordinateSystem("dev0", dai::CameraBoardSocket::CAM_B);
+    auto depthA = pc->inputDepth.createInputQueue();
+    auto depthB = pc->getDepthInput("dev1").createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    const auto now = std::chrono::steady_clock::now();
+    depthA->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0"), now));
+    depthB->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev1"), now));
+
+    auto pcd = waitForOutput(*outQ);
+    auto points = pcd->getPoints();
+    REQUIRE(points.size() == 2 * W * H);
+    requirePointsClose(points, 0, 0.f, 100.f, 0.f);        // dev0: CAM_A -> CAM_B
+    requirePointsClose(points, W * H, 0.f, 100.f, 500.f);  // dev1: dev1/CAM_A -> dev0/CAM_A -> CAM_B
+    const auto outExtrinsics = pcd->getTransformation().getExtrinsics();
+    REQUIRE(outExtrinsics.toDeviceId == "dev0");
+    REQUIRE(outExtrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_B);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Cross-device target waits for the multi-device calibration", "[PointCloud][Target][MultiDevice]") {
+    pc->setDeviceCalibration("dev1", makeDeviceCalibration({-200.f, 0.f, 0.f}));
+    pc->setTargetCoordinateSystem("dev1", dai::CameraBoardSocket::CAM_B);
+    auto depthQ = pc->inputDepth.createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    // Without a multi-device calibration the devices cannot be related: the group is dropped, the node keeps running
+    depthQ->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now()));
+    bool timedOut = false;
+    auto dropped = outQ->get<dai::PointCloudData>(NO_OUTPUT_WAIT, timedOut);
+    REQUIRE(timedOut);
+    REQUIRE(dropped == nullptr);
+    REQUIRE(pipeline.isRunning());
+
+    // Once the calibration is known the next group is transformed
+    pipeline.setMultiDeviceCalibration(makeTwoDeviceGraph(500.f));
+    depthQ->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now()));
+    auto pcd = waitForOutput(*outQ);
+    requirePointsClose(pcd->getPoints(), 0, 200.f, 0.f, -500.f);
 }

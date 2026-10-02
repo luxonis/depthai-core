@@ -5,6 +5,8 @@ Every device computes depth aligned to its color camera. Each depth + color pair
 same PointCloud node through getDepthInput(<device id>) / getColorInput(<device id>); the node
 synchronizes the streams and merges them into a single PointCloudData expressed in the common
 origin of a multi-device calibration (create one with MultiDevice/multi_device_calibration.py).
+With --target-device the merged cloud is expressed in a camera socket (or housing) of that device
+instead, whichever device the common origin belongs to.
 
 The merged cloud is shown in the DepthAI visualizer: open http://localhost:8082 and press Q to quit.
 """
@@ -25,6 +27,9 @@ parser.add_argument(
 parser.add_argument(
     "--size", type=int, nargs=2, default=(640, 400), metavar=("W", "H"), help="Depth / color size per device; lower it when many devices share one network link (default: 640 400)"
 )
+parser.add_argument("--target-device", default=None, help="Device ID whose coordinate system the merged cloud is expressed in (default: the common origin)")
+parser.add_argument("--target-socket", default="CAM_A", help="Camera socket of the target device, e.g. CAM_A (default: CAM_A)")
+parser.add_argument("--target-housing", default=None, help="Housing coordinate system of the target device instead of a camera socket, e.g. VESA_A")
 args = parser.parse_args()
 SIZE = tuple(args.size)
 
@@ -43,6 +48,13 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     pc = pipeline.create(dai.node.PointCloud)
     pc.initialConfig.setLengthUnit(dai.LengthUnit.METER)
     pc.sync.setSyncThreshold(timedelta(milliseconds=1000 / FPS))  # one frame period: the devices are not hardware-synchronized
+    if args.target_device is not None:
+        # Express the merged cloud in a coordinate system of one particular device. Frames of the other
+        # devices are carried over through the multi-device calibration and that device's own calibration.
+        if args.target_housing is not None:
+            pc.setTargetCoordinateSystem(args.target_device, getattr(dai.HousingCoordinateSystem, args.target_housing))
+        else:
+            pc.setTargetCoordinateSystem(args.target_device, getattr(dai.CameraBoardSocket, args.target_socket))
 
     for info in deviceInfos:
         device = pipeline.addDevice(info)
@@ -68,6 +80,8 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     pipeline.start()
     remote.registerPipeline(pipeline)
     print("Merged point cloud streams:", pc.getDepthInputNames())
+    if args.target_device is not None:
+        print(f"Cloud expressed in {args.target_housing or args.target_socket} of device {args.target_device}")
 
     try:
         while pipeline.isRunning():
