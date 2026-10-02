@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/properties/PointCloudProperties.hpp>
-#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -41,9 +40,9 @@ namespace node {
 
 /**
  * Platform specific GPU implementation of the dense deprojection used by the PointCloud node, for example
- * OpenCL on RVC4 devices. A factory is registered with PointCloud::Impl::setGpuBackendFactory; PointCloud::useGPU
- * then computes through it. Without a registered factory the built-in Kompute path is used when compiled in,
- * otherwise the node falls back to the CPU.
+ * OpenCL on RVC4 devices. A platform node class provides it by overriding PointCloud::createGpuBackend;
+ * PointCloud::useGPU then computes through it. Without a backend the built-in Kompute path is used when
+ * compiled in, otherwise the node falls back to the CPU.
  */
 class PointCloudGpuBackend {
    public:
@@ -83,9 +82,6 @@ class PointCloudGpuBackend {
                                                    const std::shared_ptr<Memory>& colorMemory) = 0;
 };
 
-/// Creates a GPU backend for a GPU device index; returns null (or throws) when no GPU is available
-using PointCloudGpuBackendFactory = std::function<std::shared_ptr<PointCloudGpuBackend>(std::uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger)>;
-
 /**
  * @brief PointCloud node. Computes point cloud from depth frames.
  *
@@ -116,14 +112,15 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
         void setLogger(const std::shared_ptr<::spdlog::logger>& log);
 
-        // Compute DENSE point cloud (width * height points, includes invalid z=0 or negative)
+        // Compute DENSE point cloud (width * height points, includes invalid z=0 or negative) on the CPU or through Kompute
         void computePointCloudDense(const uint8_t* depthData, std::vector<Point3f>& points);
 
-        // Same, with the Memory object owning the depth data so that a GPU backend can import it without a copy
-        void computePointCloudDense(const uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory, std::vector<Point3f>& points);
+        // Compute DENSE colored point cloud from aligned depth+color (like RGBD node) on the CPU
+        void computePointCloudDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points);
 
         // Dense points computed by the platform GPU backend, in backend-owned memory valid until the next compute call;
-        // nullptr when this Impl does not compute through a backend. The extrinsics are already applied.
+        // nullptr when this Impl does not compute through a backend. The extrinsics are already applied, so
+        // applyTransformation must not be called on them.
         const Point3f* computeDenseOnGpu(const uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory);
         const Point3fRGBA* computeDenseColoredOnGpu(const uint8_t* depthData,
                                                     const std::shared_ptr<Memory>& depthMemory,
@@ -134,18 +131,11 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         template <typename PointT>
         static void gatherPoints(const PointT* dense, size_t count, bool organized, std::vector<PointT>& points);
 
-        // Compute DENSE colored point cloud from aligned depth+color (like RGBD node)
-        void computePointCloudDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points);
+        // Remove invalid points (z <= 0) in place, keeping the order and the capacity of the vector
+        template <typename PointT>
+        static void compactValidPoints(std::vector<PointT>& points);
 
-        // Same, with the Memory objects owning the depth and color data
-        void computePointCloudDenseColored(const uint8_t* depthData,
-                                           const std::shared_ptr<Memory>& depthMemory,
-                                           const uint8_t* colorData,
-                                           const std::shared_ptr<Memory>& colorMemory,
-                                           std::vector<Point3fRGBA>& points);
-
-        // Apply extrinsic transformation to points. A no-op right after a GPU backend computed the points,
-        // because the backend applies the transformation itself.
+        // Apply extrinsic transformation to points
         template <typename PointT>
         void applyTransformation(std::vector<PointT>& points);
 
@@ -153,30 +143,21 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         template <typename PointT>
         std::vector<PointT> filterValidPoints(const std::vector<PointT>& densePoints);
 
-        // Remove invalid points (z <= 0) in place, keeping the order and the capacity of the vector
-        template <typename PointT>
-        static void compactValidPoints(std::vector<PointT>& points);
-
         void setLengthUnit(dai::LengthUnit lengthUnit);
         void useCPU();
         void useCPUMT(uint32_t numThreads);
-        void useGPU(uint32_t device);
+        /**
+         * Compute through `backend` when given, otherwise through Kompute on GPU `device` when compiled in.
+         * Throws when neither is available.
+         */
+        void useGPU(uint32_t device, std::shared_ptr<PointCloudGpuBackend> backend = nullptr);
         void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height);
         void setDistortion(CameraModel model, std::vector<float> coefficients);
         void setExtrinsics(const std::vector<std::vector<float>>& transformMatrix);
         void clearExtrinsics();
 
-        // Adopt the compute method (CPU / multi-threaded CPU / GPU) of another Impl
-        void copyComputeSettingsFrom(const Impl& other);
-
         // Whether this Impl computes on the GPU
         bool usesGPU() const;
-
-        /**
-         * Register the platform GPU backend used by useGPU (a device firmware registers its OpenCL implementation).
-         * Passing an empty factory removes the registration.
-         */
-        static void setGpuBackendFactory(PointCloudGpuBackendFactory factory);
 
         LengthUnit targetLengthUnit = LengthUnit::MILLIMETER;
 
@@ -196,7 +177,6 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
         enum class ComputeMethod { CPU, CPU_MT, GPU };
         ComputeMethod computeMethod = ComputeMethod::CPU;
-        uint32_t gpuDevice = 0;
 
 #ifdef DEPTHAI_ENABLE_KOMPUTE
         std::shared_ptr<kp::Manager> mgr;
@@ -230,15 +210,12 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         std::vector<std::vector<float>> extrinsics;
         bool hasExtrinsics = false;
 
-        // Platform GPU backend (set by initializeGPU when a factory is registered)
-        static PointCloudGpuBackendFactory& gpuBackendFactory();
+        // Platform GPU backend (useGPU)
         std::shared_ptr<PointCloudGpuBackend> gpuBackend;
         PointCloudGpuBackend::Geometry gpuGeometry() const;
         // Give up on the backend after a runtime failure and continue on the CPU
         void dropGpuBackend(const std::string& reason);
         uint64_t raysVersion = 0;
-        // Set when the backend already applied the extrinsics to the last computed points
-        bool transformAppliedByBackend = false;
 
         std::shared_ptr<::spdlog::logger> logger;
     };
@@ -246,6 +223,12 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
    protected:
     Properties& getProperties() override;
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    /**
+     * Platform GPU backend used by useGPU. Returns null here; a platform node class (the RVC4 firmware)
+     * overrides it with its implementation. Called once per depth stream when the node starts.
+     */
+    virtual std::shared_ptr<PointCloudGpuBackend> createGpuBackend(uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger);
 
    public:
     PointCloud();
@@ -486,8 +469,8 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     };
 
     void run() override;
-    /// Apply properties.computeMethod to every Impl, falling back to the CPU when the GPU is unavailable
-    void applyComputeSettings();
+    /// Apply properties.computeMethod to an Impl, falling back to the CPU when the GPU is unavailable
+    void applyComputeSettings(Impl& impl);
     DepthStream& getDepthStream(const std::string& name);
     Impl& getImpl(DepthStream& stream);
     std::vector<StreamFrames> collectStreamFrames(MessageGroup& group);
@@ -525,7 +508,6 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     size_t computeStreams(const std::vector<StreamFrames>& frames, bool organized, PointCloudData& output);
 
     bool runOnHostVar = true;
-    bool colorMode = false;
     bool coordinateSystemMismatchWarned = false;
     bool initializationFailedWarned = false;
     // Compute time of the merged groups, reported at debug level every COMPUTE_TIME_LOG_INTERVAL groups

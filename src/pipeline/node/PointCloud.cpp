@@ -51,16 +51,11 @@ bool PointCloud::Impl::usesGPU() const {
 }
 
 void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, std::vector<Point3f>& points) {
-    computePointCloudDense(depthData, nullptr, points);
-}
-
-void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory, std::vector<Point3f>& points) {
     if(!intrinsicsSet) {
         throw std::runtime_error("Intrinsics not set");
     }
 
     points.resize(size);
-    transformAppliedByBackend = false;
 
     switch(computeMethod) {
         case ComputeMethod::CPU:
@@ -70,14 +65,8 @@ void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, const st
             computePointCloudDenseCPUMT(depthData, points);
             break;
         case ComputeMethod::GPU:
-            if(gpuBackend) {
-                // The platform backend handles distortion through the ray table and applies the extrinsics itself
-                if(const auto* dense = computeDenseOnGpu(depthData, depthMemory)) {
-                    std::copy(dense, dense + size, points.begin());
-                } else {
-                    computePointCloudDenseCPU(depthData, points);
-                }
-            } else if(hasDistortion) {
+            // A platform backend is used through computeDenseOnGpu; this is the Kompute path
+            if(hasDistortion) {
                 if(!gpuDistortionFallbackWarned) {
                     if(logger) logger->warn("GPU compute does not support depth undistortion yet, falling back to CPU");
                     gpuDistortionFallbackWarned = true;
@@ -91,20 +80,11 @@ void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, const st
 }
 
 void PointCloud::Impl::computePointCloudDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
-    computePointCloudDenseColored(depthData, nullptr, colorData, nullptr, points);
-}
-
-void PointCloud::Impl::computePointCloudDenseColored(const uint8_t* depthData,
-                                                     const std::shared_ptr<Memory>& depthMemory,
-                                                     const uint8_t* colorData,
-                                                     const std::shared_ptr<Memory>& colorMemory,
-                                                     std::vector<Point3fRGBA>& points) {
     if(!intrinsicsSet) {
         throw std::runtime_error("Intrinsics not set");
     }
 
     points.resize(size);
-    transformAppliedByBackend = false;
 
     switch(computeMethod) {
         case ComputeMethod::CPU:
@@ -114,29 +94,19 @@ void PointCloud::Impl::computePointCloudDenseColored(const uint8_t* depthData,
             computePointCloudDenseColoredCPUMT(depthData, colorData, points);
             break;
         case ComputeMethod::GPU:
-            if(gpuBackend) {
-                if(const auto* dense = computeDenseColoredOnGpu(depthData, depthMemory, colorData, colorMemory)) {
-                    std::copy(dense, dense + size, points.begin());
-                } else {
-                    computePointCloudDenseColoredCPU(depthData, colorData, points);
-                }
-            } else {
-                // Kompute path doesn't support color yet, fall back to CPU
-                if(logger) logger->warn("GPU compute does not support colorization yet, falling back to CPU");
-                computePointCloudDenseColoredCPU(depthData, colorData, points);
-            }
+            // Kompute path doesn't support color yet, fall back to CPU
+            if(logger) logger->warn("GPU compute does not support colorization yet, falling back to CPU");
+            computePointCloudDenseColoredCPU(depthData, colorData, points);
             break;
     }
 }
 
 const Point3f* PointCloud::Impl::computeDenseOnGpu(const uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory) {
-    if(computeMethod != ComputeMethod::GPU || !gpuBackend) return nullptr;
+    if(!gpuBackend) return nullptr;
     if(!intrinsicsSet) throw std::runtime_error("Intrinsics not set");
-    transformAppliedByBackend = false;
     try {
         const auto* dense = gpuBackend->computeDense(gpuGeometry(), depthData, depthMemory);
         if(dense == nullptr) throw std::runtime_error("backend returned no points");
-        transformAppliedByBackend = hasExtrinsics;
         return dense;
     } catch(const std::exception& ex) {
         dropGpuBackend(ex.what());
@@ -148,13 +118,11 @@ const Point3fRGBA* PointCloud::Impl::computeDenseColoredOnGpu(const uint8_t* dep
                                                               const std::shared_ptr<Memory>& depthMemory,
                                                               const uint8_t* colorData,
                                                               const std::shared_ptr<Memory>& colorMemory) {
-    if(computeMethod != ComputeMethod::GPU || !gpuBackend) return nullptr;
+    if(!gpuBackend) return nullptr;
     if(!intrinsicsSet) throw std::runtime_error("Intrinsics not set");
-    transformAppliedByBackend = false;
     try {
         const auto* dense = gpuBackend->computeDenseColored(gpuGeometry(), depthData, depthMemory, colorData, colorMemory);
         if(dense == nullptr) throw std::runtime_error("backend returned no points");
-        transformAppliedByBackend = hasExtrinsics;
         return dense;
     } catch(const std::exception& ex) {
         dropGpuBackend(ex.what());
@@ -184,13 +152,6 @@ void PointCloud::Impl::applyTransformation(std::vector<PointT>& points) {
     if(!hasExtrinsics) {
         if(logger) {
             logger->debug("No extrinsics set, skipping transformation");
-        }
-        return;
-    }
-    if(transformAppliedByBackend) {
-        transformAppliedByBackend = false;
-        if(logger) {
-            logger->debug("Transformation already applied by the GPU backend");
         }
         return;
     }
@@ -400,15 +361,6 @@ void PointCloud::Impl::dropGpuBackend(const std::string& reason) {
     computeMethod = ComputeMethod::CPU;
 }
 
-PointCloudGpuBackendFactory& PointCloud::Impl::gpuBackendFactory() {
-    static PointCloudGpuBackendFactory factory;
-    return factory;
-}
-
-void PointCloud::Impl::setGpuBackendFactory(PointCloudGpuBackendFactory factory) {
-    gpuBackendFactory() = std::move(factory);
-}
-
 PointCloudGpuBackend::Geometry PointCloud::Impl::gpuGeometry() const {
     PointCloudGpuBackend::Geometry geometry;
     geometry.width = width;
@@ -426,16 +378,6 @@ PointCloudGpuBackend::Geometry PointCloud::Impl::gpuGeometry() const {
 }
 
 void PointCloud::Impl::initializeGPU(uint32_t device) {
-    gpuBackend.reset();
-    if(const auto& factory = gpuBackendFactory()) {
-        // Platform backend (e.g. OpenCL on an RVC4 device) takes precedence over the built-in path
-        gpuBackend = factory(device, logger);
-        if(!gpuBackend) {
-            throw std::runtime_error("No GPU available for point cloud computation");
-        }
-        computeMethod = ComputeMethod::GPU;
-        return;
-    }
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     // Reset any stale Kompute state before creating a new manager
     algo.reset();
@@ -532,30 +474,15 @@ void PointCloud::Impl::useCPUMT(uint32_t numThreads) {
     computeMethod = ComputeMethod::CPU_MT;
 }
 
-void PointCloud::Impl::useGPU(uint32_t device) {
+void PointCloud::Impl::useGPU(uint32_t device, std::shared_ptr<PointCloudGpuBackend> backend) {
     gpuDistortionFallbackWarned = false;
-    gpuDevice = device;
-    initializeGPU(device);
-}
-
-void PointCloud::Impl::copyComputeSettingsFrom(const Impl& other) {
-    threadNum = other.threadNum;
-    switch(other.computeMethod) {
-        case ComputeMethod::CPU:
-            useCPU();
-            break;
-        case ComputeMethod::CPU_MT:
-            useCPUMT(other.threadNum);
-            break;
-        case ComputeMethod::GPU:
-            try {
-                useGPU(other.gpuDevice);
-            } catch(const std::exception& ex) {
-                if(logger) logger->warn("GPU compute not available for this depth stream ({}) -- falling back to CPU", ex.what());
-                useCPU();
-            }
-            break;
+    gpuBackend = std::move(backend);
+    if(gpuBackend) {
+        // Platform backend (e.g. OpenCL on an RVC4 device) takes precedence over the built-in path
+        computeMethod = ComputeMethod::GPU;
+        return;
     }
+    initializeGPU(device);
 }
 
 void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height) {
@@ -815,8 +742,13 @@ void PointCloud::useGPU(uint32_t device) {
     properties.gpuDevice = device;
 }
 
-void PointCloud::applyComputeSettings() {
-    auto& impl = *pimplPointCloud;
+std::shared_ptr<PointCloudGpuBackend> PointCloud::createGpuBackend(uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger) {
+    (void)gpuDevice;
+    (void)logger;
+    return nullptr;
+}
+
+void PointCloud::applyComputeSettings(Impl& impl) {
     impl.setLogger(pimpl->logger);  // so that a failing GPU backend can report why
     switch(properties.computeMethod) {
         case Properties::ComputeMethod::CPU:
@@ -827,17 +759,13 @@ void PointCloud::applyComputeSettings() {
             break;
         case Properties::ComputeMethod::GPU:
             try {
-                impl.useGPU(properties.gpuDevice);
+                impl.useGPU(properties.gpuDevice, createGpuBackend(properties.gpuDevice, pimpl->logger));
                 pimpl->logger->info("PointCloud: computing on GPU device {}", properties.gpuDevice);
             } catch(const std::exception& ex) {
                 pimpl->logger->warn("PointCloud: GPU compute requested but not available ({}) -- falling back to CPU", ex.what());
                 impl.useCPU();
             }
             break;
-    }
-    // Streams created before the start adopt the same method (later ones copy it when they are created)
-    for(auto& entry : depthStreams) {
-        if(entry.second.impl) entry.second.impl->copyComputeSettingsFrom(impl);
     }
 }
 
@@ -886,7 +814,7 @@ PointCloud::DepthStream& PointCloud::getDepthStream(const std::string& name) {
     if(!name.empty()) {
         // Additional streams get their own deprojection state, computed the same way as the default one
         stream.impl = std::make_unique<Impl>();
-        stream.impl->copyComputeSettingsFrom(*pimplPointCloud);
+        applyComputeSettings(*stream.impl);
     }
     return depthStreams.emplace(name, std::move(stream)).first->second;
 }
@@ -1231,7 +1159,7 @@ void PointCloud::computeDepthOnly(Impl& impl, const ImgFrame& depthFrame, bool o
     }
     // CPU: the dense cloud is written into the reused scratch buffer (resize keeps its capacity), invalid points are
     // compacted away in place for sparse output and the transformation is applied in place as well
-    impl.computePointCloudDense(depthFrame.getData().data(), depthFrame.data, points);
+    impl.computePointCloudDense(depthFrame.getData().data(), points);
     if(!organized) Impl::compactValidPoints(points);
     impl.applyTransformation(points);
 }
@@ -1271,7 +1199,7 @@ void PointCloud::computeColorized(Impl& impl, const ImgFrame& depthFrame, const 
         Impl::gatherPoints(dense, static_cast<size_t>(depthFrame.getWidth()) * depthFrame.getHeight(), organized, points);
         return;
     }
-    impl.computePointCloudDenseColored(depthFrame.getData().data(), depthFrame.data, colorFrame.getData().data(), colorFrame.data, points);
+    impl.computePointCloudDenseColored(depthFrame.getData().data(), colorFrame.getData().data(), points);
     if(!organized) Impl::compactValidPoints(points);
     impl.applyTransformation(points);
 }
@@ -1356,28 +1284,17 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
 //------------------------------------------------------------------
 
 void PointCloud::run() {
-    // Detect color mode at runtime — a color entry in syncInputs only exists
-    // if the user accessed getColorInput() and linked to it before pipeline.start().
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    colorMode = false;
-    for(auto& entry : syncInputs) {
-        const auto& key = entry.first.second;
-        const std::string colorBase = colorInputName;
-        if(key == colorBase || (key.size() > colorBase.size() && key.compare(0, colorBase.size(), colorBase) == 0 && key[colorBase.size()] == '/')) {
-            colorMode = true;
-            entry.second.setBlocking(false);
-            entry.second.setMaxSize(4);
-        }
-    }
-#endif
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     // On device, apply the deserialized config from properties. On the host initialConfig is the
     // source of truth (properties are only refreshed from it when the pipeline is serialized).
     *initialConfig = properties.initialConfig;
 #endif
 
-    applyComputeSettings();
-    pimpl->logger->info("PointCloud node started (colorMode={})", colorMode);
+    applyComputeSettings(*pimplPointCloud);
+    for(auto& entry : depthStreams) {
+        if(entry.second.impl) applyComputeSettings(*entry.second.impl);
+    }
+    pimpl->logger->info("PointCloud node started");
 
     // EEPROM id of the device this node runs on (falls back to the pipeline default device when the node has none),
     // so calibration changes are tracked on the node's own device rather than the master's.
@@ -1531,12 +1448,8 @@ void PointCloud::run() {
             }
             pc->setTransformation(outputTransformation);
         } else {
-            // Timestamps follow the newest depth frame of the group
-            std::shared_ptr<ImgFrame> newest = primary.depth;
-            for(const auto& stream : frames) {
-                if(stream.depth->getTimestamp() > newest->getTimestamp()) newest = stream.depth;
-            }
-            pc->setBufferMetadataFrom(newest);
+            // Timestamps follow the newest frame of the group (Sync stamps the group that way)
+            pc->setBufferMetadataFrom(group);
             // A merged cloud has no single source image: the transformation only carries the output size and the
             // coordinate system the points are expressed in (identity to the common reference unless a target was configured)
             ImgTransformation outputTransformation(pc->getWidth(), pc->getHeight());

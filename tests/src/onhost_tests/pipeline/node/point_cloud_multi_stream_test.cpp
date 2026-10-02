@@ -742,38 +742,47 @@ struct FakeGpuBackend : dai::node::PointCloudGpuBackend {
     }
 };
 
-struct GpuBackendFactoryGuard {
-    ~GpuBackendFactoryGuard() {
-        dai::node::PointCloud::Impl::setGpuBackendFactory(nullptr);
+/// PointCloud node whose GPU backend is the fake one, through the hook a platform node class (the RVC4 firmware) overrides
+struct FakeGpuPointCloud : dai::node::PointCloud {
+    std::shared_ptr<FakeGpuBackend> backend;  // null: no GPU available
+    std::atomic<int> backendRequests{0};
+
+   protected:
+    std::shared_ptr<dai::node::PointCloudGpuBackend> createGpuBackend(uint32_t, std::shared_ptr<spdlog::logger>) override {
+        ++backendRequests;
+        return backend;
     }
 };
 
+/// Host-run PointCloud node of a subclass (Pipeline::create only knows the built-in node classes)
+template <typename NodeT>
+std::shared_ptr<NodeT> createHostPointCloud(dai::Pipeline& pipeline) {
+    auto node = std::shared_ptr<NodeT>(new NodeT());
+    node->buildInternal();
+    pipeline.add(node);
+    node->setRunOnHost(true);
+    node->sync->setRunOnHost(true);
+    node->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+    return node;
+}
+
 }  // namespace
 
-TEST_CASE_METHOD(HostPointCloudFixture, "A registered GPU backend computes the points and the transformation once", "[PointCloud][GPU]") {
-    GpuBackendFactoryGuard guard;
-    auto backend = std::make_shared<FakeGpuBackend>();
-    int factoryCalls = 0;
-    dai::node::PointCloud::Impl::setGpuBackendFactory([&](std::uint32_t, std::shared_ptr<spdlog::logger>) {
-        ++factoryCalls;
-        return backend;
-    });
-
+TEST_CASE("A GPU backend computes the points and the transformation once", "[PointCloud][GPU]") {
+    dai::Pipeline pipeline(false);
     // Reference node on the CPU, GPU node through the backend; both get the same frames
-    auto cpu = pipeline.create<dai::node::PointCloud>();
-    cpu->setRunOnHost(true);
-    cpu->sync->setRunOnHost(true);
-    cpu->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
-    pc->useGPU(0);
+    auto cpu = createHostPointCloud<dai::node::PointCloud>(pipeline);
+    auto gpu = createHostPointCloud<FakeGpuPointCloud>(pipeline);
+    gpu->backend = std::make_shared<FakeGpuBackend>();
+    gpu->useGPU(0);
 
     auto cpuDepth = cpu->inputDepth.createInputQueue();
     auto cpuColor = cpu->getColorInput().createInputQueue();
-    auto gpuDepth = pc->inputDepth.createInputQueue();
-    auto gpuColor = pc->getColorInput().createInputQueue();
+    auto gpuDepth = gpu->inputDepth.createInputQueue();
+    auto gpuColor = gpu->getColorInput().createInputQueue();
     auto cpuOut = cpu->outputPointCloud.createOutputQueue(4, false);
-    auto gpuOut = pc->outputPointCloud.createOutputQueue(4, false);
+    auto gpuOut = gpu->outputPointCloud.createOutputQueue(4, false);
     pipeline.start();
-    REQUIRE(factoryCalls == 1);
 
     // Frame -> CAM_A is a translation, so the extrinsics have to be applied exactly once
     const auto extrinsics = makeExtrinsics(10.f, -20.f, 30.f, dai::CameraBoardSocket::CAM_A, "dev0");
@@ -785,10 +794,14 @@ TEST_CASE_METHOD(HostPointCloudFixture, "A registered GPU backend computes the p
     gpuDepth->send(depth);
     gpuColor->send(color);
 
-    auto reference = waitForOutput(*cpuOut);
-    auto result = waitForOutput(*gpuOut);
-    REQUIRE(backend->coloredCalls == 1);
-    REQUIRE(backend->memorySeen == 1);
+    bool timedOut = false;
+    auto reference = cpuOut->get<dai::PointCloudData>(OUTPUT_TIMEOUT, timedOut);
+    REQUIRE_FALSE(timedOut);
+    auto result = gpuOut->get<dai::PointCloudData>(OUTPUT_TIMEOUT, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(gpu->backendRequests == 1);
+    REQUIRE(gpu->backend->coloredCalls == 1);
+    REQUIRE(gpu->backend->memorySeen == 1);
     REQUIRE(result->isColor());
     auto refPoints = reference->getPointsRGB();
     auto gpuPoints = result->getPointsRGB();
@@ -805,27 +818,24 @@ TEST_CASE_METHOD(HostPointCloudFixture, "A registered GPU backend computes the p
     // The translation shows up exactly once
     requirePointsClose(reference->getPoints(), 0, 10.f, -20.f, 30.f, 1500.f);
     requirePointsClose(result->getPoints(), 0, 10.f, -20.f, 30.f, 1500.f);
+    pipeline.stop();
 }
 
-TEST_CASE_METHOD(HostPointCloudFixture, "GPU backend handles depth-only frames with distortion and a target socket", "[PointCloud][GPU]") {
-    GpuBackendFactoryGuard guard;
-    auto backend = std::make_shared<FakeGpuBackend>();
-    dai::node::PointCloud::Impl::setGpuBackendFactory([&](std::uint32_t, std::shared_ptr<spdlog::logger>) { return backend; });
-
-    auto cpu = pipeline.create<dai::node::PointCloud>();
-    cpu->setRunOnHost(true);
-    cpu->sync->setRunOnHost(true);
-    cpu->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
-    for(auto* node : {cpu.get(), pc.get()}) {
+TEST_CASE("GPU backend handles depth-only frames with distortion and a target socket", "[PointCloud][GPU]") {
+    dai::Pipeline pipeline(false);
+    auto cpu = createHostPointCloud<dai::node::PointCloud>(pipeline);
+    auto gpu = createHostPointCloud<FakeGpuPointCloud>(pipeline);
+    gpu->backend = std::make_shared<FakeGpuBackend>();
+    for(dai::node::PointCloud* node : {cpu.get(), static_cast<dai::node::PointCloud*>(gpu.get())}) {
         node->setDeviceCalibration("dev0", makeDeviceCalibration({0.f, -100.f, 0.f}));
         node->setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_B);
     }
-    pc->useGPU();
+    gpu->useGPU();
 
     auto cpuDepth = cpu->inputDepth.createInputQueue();
-    auto gpuDepth = pc->inputDepth.createInputQueue();
+    auto gpuDepth = gpu->inputDepth.createInputQueue();
     auto cpuOut = cpu->outputPointCloud.createOutputQueue(4, false);
-    auto gpuOut = pc->outputPointCloud.createOutputQueue(4, false);
+    auto gpuOut = gpu->outputPointCloud.createOutputQueue(4, false);
     pipeline.start();
 
     // Distorted frame with invalid pixels: the ray table carries the undistortion, the compaction drops the zeros
@@ -843,10 +853,15 @@ TEST_CASE_METHOD(HostPointCloudFixture, "GPU backend handles depth-only frames w
     cpuDepth->send(frame);
     gpuDepth->send(frame);
 
-    auto refPoints = waitForOutput(*cpuOut)->getPoints();
-    auto gpuPoints = waitForOutput(*gpuOut)->getPoints();
-    REQUIRE(backend->denseCalls == 1);
-    REQUIRE(backend->transformsSeen == 1);
+    bool timedOut = false;
+    auto reference = cpuOut->get<dai::PointCloudData>(OUTPUT_TIMEOUT, timedOut);
+    REQUIRE_FALSE(timedOut);
+    auto result = gpuOut->get<dai::PointCloudData>(OUTPUT_TIMEOUT, timedOut);
+    REQUIRE_FALSE(timedOut);
+    auto refPoints = reference->getPoints();
+    auto gpuPoints = result->getPoints();
+    REQUIRE(gpu->backend->denseCalls == 1);
+    REQUIRE(gpu->backend->transformsSeen == 1);
     REQUIRE(refPoints.size() == 32 * 24 - (32 * 24 + 4) / 5);
     REQUIRE(gpuPoints.size() == refPoints.size());
     for(size_t i = 0; i < refPoints.size(); ++i) {
@@ -854,17 +869,22 @@ TEST_CASE_METHOD(HostPointCloudFixture, "GPU backend handles depth-only frames w
         REQUIRE(gpuPoints[i].y == Catch::Approx(refPoints[i].y).margin(1e-3f));
         REQUIRE(gpuPoints[i].z == Catch::Approx(refPoints[i].z).margin(1e-3f));
     }
+    pipeline.stop();
 }
 
-TEST_CASE_METHOD(HostPointCloudFixture, "GPU request without a GPU falls back to the CPU", "[PointCloud][GPU]") {
-    GpuBackendFactoryGuard guard;
-    dai::node::PointCloud::Impl::setGpuBackendFactory(
-        [](std::uint32_t, std::shared_ptr<spdlog::logger>) -> std::shared_ptr<dai::node::PointCloudGpuBackend> { return nullptr; });
-    pc->useGPU();
-    auto depthQ = pc->inputDepth.createInputQueue();
-    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+TEST_CASE("GPU request without a GPU falls back to the CPU", "[PointCloud][GPU]") {
+    dai::Pipeline pipeline(false);
+    auto gpu = createHostPointCloud<FakeGpuPointCloud>(pipeline);  // no backend: the platform has no GPU
+    gpu->useGPU();
+    auto depthQ = gpu->inputDepth.createInputQueue();
+    auto outQ = gpu->outputPointCloud.createOutputQueue(4, false);
     pipeline.start();
     depthQ->send(makeDepthFrame(makeExtrinsics(1.f, 2.f, 3.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now()));
-    auto pcd = waitForOutput(*outQ);
+    bool timedOut = false;
+    auto pcd = outQ->get<dai::PointCloudData>(OUTPUT_TIMEOUT, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(pcd != nullptr);
+    REQUIRE(gpu->backendRequests == 1);
     requirePointsClose(pcd->getPoints(), 0, 1.f, 2.f, 3.f);
+    pipeline.stop();
 }
