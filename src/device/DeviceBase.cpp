@@ -1456,9 +1456,9 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
                 try {
                     const auto speedMbps = pimpl->rpcCallChecked<int>("getEthernetLinkSpeed", connectionInfo.name);
                     pimpl->logger.trace("Ethernet link speed is {} Mbit/s", speedMbps);
-                    if(speedMbps > 0 && speedMbps < 100) {
+                    if(speedMbps > 0 && speedMbps <= 100) {
                         pimpl->logger.warn(
-                            "Ethernet link speed is {} Mbit/s (below 100 Mbit/s). Large transfers may cause delays and disconnect the device. "
+                            "Ethernet link speed is {} Mbit/s (100 Mbit/s or below). Large transfers may cause delays and disconnect the device. "
                             "Check the Ethernet cable and switch port.",
                             speedMbps);
                     }
