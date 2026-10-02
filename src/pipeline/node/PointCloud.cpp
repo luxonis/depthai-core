@@ -6,11 +6,13 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <exception>
 #include <future>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     #include "kompute/Kompute.hpp"
@@ -42,6 +44,10 @@ namespace node {
 
 void PointCloud::Impl::setLogger(const std::shared_ptr<::spdlog::logger>& log) {
     logger = log;
+}
+
+bool PointCloud::Impl::usesGPU() const {
+    return computeMethod == ComputeMethod::GPU;
 }
 
 void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, std::vector<Point3f>& points) {
@@ -119,6 +125,21 @@ void PointCloud::Impl::applyTransformation(std::vector<PointT>& points) {
             break;
     }
 }
+
+template <typename PointT>
+void PointCloud::Impl::compactValidPoints(std::vector<PointT>& points) {
+    size_t kept = 0;
+    for(size_t i = 0; i < points.size(); ++i) {
+        if(points[i].z > 0.0f) {
+            if(kept != i) points[kept] = points[i];
+            ++kept;
+        }
+    }
+    points.resize(kept);
+}
+
+template void PointCloud::Impl::compactValidPoints(std::vector<Point3f>& points);
+template void PointCloud::Impl::compactValidPoints(std::vector<Point3fRGBA>& points);
 
 // Explicit template instantiations
 template void PointCloud::Impl::applyTransformation(std::vector<Point3f>& points);
@@ -1048,20 +1069,11 @@ void PointCloud::initialize(DepthStream& stream, const ImgFrame& depthFrame, con
 //------------------------------------------------------------------
 
 void PointCloud::computeDepthOnly(Impl& impl, const ImgFrame& depthFrame, bool organized, std::vector<Point3f>& points) {
-    const auto* depthData = depthFrame.getData().data();
-
-    if(organized) {
-        std::vector<Point3f> densePoints;
-        impl.computePointCloudDense(depthData, densePoints);
-        impl.applyTransformation(densePoints);
-        points.insert(points.end(), densePoints.begin(), densePoints.end());
-    } else {
-        std::vector<Point3f> densePoints;
-        impl.computePointCloudDense(depthData, densePoints);
-        auto sparsePoints = impl.filterValidPoints(densePoints);
-        impl.applyTransformation(sparsePoints);
-        points.insert(points.end(), sparsePoints.begin(), sparsePoints.end());
-    }
+    // The dense cloud is written into the reused scratch buffer (resize keeps its capacity), invalid points are
+    // compacted away in place for sparse output and the transformation is applied in place as well
+    impl.computePointCloudDense(depthFrame.getData().data(), points);
+    if(!organized) Impl::compactValidPoints(points);
+    impl.applyTransformation(points);
 }
 
 bool PointCloud::canColorize(const ImgFrame& depthFrame, const ImgFrame& colorFrame) {
@@ -1095,21 +1107,84 @@ void PointCloud::computeColorized(Impl& impl, const ImgFrame& depthFrame, const 
         pimpl->logger->warn("PointCloud: depth and color transformations are not aligned (intrinsics/distortion differ) -- colorization may be misaligned");
     }
 
-    const auto* depthData = depthFrame.getData().data();
-    const auto* colorData = colorFrame.getData().data();
+    impl.computePointCloudDenseColored(depthFrame.getData().data(), colorFrame.getData().data(), points);
+    if(!organized) Impl::compactValidPoints(points);
+    impl.applyTransformation(points);
+}
 
-    if(organized) {
-        std::vector<Point3fRGBA> denseColored;
-        impl.computePointCloudDenseColored(depthData, colorData, denseColored);
-        impl.applyTransformation(denseColored);
-        points.insert(points.end(), denseColored.begin(), denseColored.end());
+template <typename PointT>
+size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool organized, PointCloudData& output) {
+    constexpr bool colored = std::is_same_v<PointT, Point3fRGBA>;
+    const size_t count = frames.size();
+    std::vector<DepthStream*> streams;
+    streams.reserve(count);
+    for(const auto& stream : frames) streams.push_back(&getDepthStream(stream.name));
+    auto bufferOf = [](DepthStream& stream) -> std::vector<PointT>& {
+        if constexpr(colored) {
+            return stream.coloredPoints;
+        } else {
+            return stream.points;
+        }
+    };
+
+    // Each stream computes into its own scratch buffer so that the streams can be processed independently
+    auto computeOne = [&](size_t i) {
+        auto& stream = *streams[i];
+        if constexpr(colored) {
+            computeColorized(getImpl(stream), *frames[i].depth, *frames[i].color, organized, stream.coloredPoints);
+        } else {
+            computeDepthOnly(getImpl(stream), *frames[i].depth, organized, stream.points);
+        }
+    };
+
+    // One thread per additional stream on the host. Every stream owns its Impl (intrinsics, undistortion cache,
+    // extrinsics, worker threads of CPU_MT), so the streams do not share mutable state. GPU Impls stay sequential:
+    // their Vulkan resources are not meant to be driven from several threads at once.
+    bool parallel = count > 1;
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    parallel = false;
+#else
+    for(auto* stream : streams) parallel = parallel && !getImpl(*stream).usesGPU();
+#endif
+    if(parallel) {
+        std::vector<std::future<void>> workers;
+        workers.reserve(count - 1);
+        for(size_t i = 1; i < count; ++i) {
+            workers.push_back(std::async(std::launch::async, computeOne, i));
+        }
+        // The first stream is computed on this thread; errors of the workers are collected after all of them finished
+        std::exception_ptr error;
+        try {
+            computeOne(0);
+        } catch(...) {
+            error = std::current_exception();
+        }
+        for(auto& worker : workers) {
+            try {
+                worker.get();
+            } catch(...) {
+                if(!error) error = std::current_exception();
+            }
+        }
+        if(error) std::rethrow_exception(error);
     } else {
-        std::vector<Point3fRGBA> denseColored;
-        impl.computePointCloudDenseColored(depthData, colorData, denseColored);
-        auto sparseColored = impl.filterValidPoints(denseColored);
-        impl.applyTransformation(sparseColored);
-        points.insert(points.end(), sparseColored.begin(), sparseColored.end());
+        for(size_t i = 0; i < count; ++i) computeOne(i);
     }
+
+    // Gather the streams, in stream order, into the output buffer with a single allocation
+    size_t total = 0;
+    for(auto* stream : streams) total += bufferOf(*stream).size();
+    std::vector<uint8_t> data(total * sizeof(PointT));
+    size_t offset = 0;
+    for(auto* stream : streams) {
+        const auto& points = bufferOf(*stream);
+        const size_t bytes = points.size() * sizeof(PointT);
+        if(bytes > 0) std::memcpy(data.data() + offset, points.data(), bytes);
+        offset += bytes;
+    }
+    output.setData(std::move(data));
+    output.setColor(colored);
+    return total;
 }
 
 //------------------------------------------------------------------
@@ -1235,23 +1310,8 @@ void PointCloud::run() {
         pc->setInstanceNum(primary.depth->getInstanceNum());
         const auto& primaryState = getDepthStream(primary.name);
 
-        // Compute and merge the points of all streams
-        size_t totalPoints = 0;
-        if(colorize) {
-            std::vector<Point3fRGBA> coloredPoints;
-            for(const auto& stream : frames) {
-                computeColorized(getImpl(getDepthStream(stream.name)), *stream.depth, *stream.color, organized, coloredPoints);
-            }
-            totalPoints = coloredPoints.size();
-            pc->setPointsRGB(std::move(coloredPoints));
-        } else {
-            std::vector<Point3f> points;
-            for(const auto& stream : frames) {
-                computeDepthOnly(getImpl(getDepthStream(stream.name)), *stream.depth, organized, points);
-            }
-            totalPoints = points.size();
-            pc->setPoints(std::move(points));
-        }
+        // Compute and merge the points of all streams (concurrently on the host)
+        const size_t totalPoints = colorize ? computeStreams<Point3fRGBA>(frames, organized, *pc) : computeStreams<Point3f>(frames, organized, *pc);
 
         // Output layout
         if(!organized) {

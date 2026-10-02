@@ -45,6 +45,9 @@ namespace node {
  * streams from several devices share a coordinate system once the pipeline carries a
  * multi-device calibration (Pipeline::setMultiDeviceCalibration).
  *
+ * On the host the streams of a synced group are deprojected concurrently, one thread per stream;
+ * useCPUMT additionally splits every stream over several threads.
+ *
  * The output can be expressed in the coordinate system of any camera socket or housing of any
  * device in the pipeline (setTargetCoordinateSystem). Targets on another device than the one
  * owning the reference camera of a depth frame are resolved through the multi-device
@@ -74,6 +77,10 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         template <typename PointT>
         std::vector<PointT> filterValidPoints(const std::vector<PointT>& densePoints);
 
+        // Remove invalid points (z <= 0) in place, keeping the order and the capacity of the vector
+        template <typename PointT>
+        static void compactValidPoints(std::vector<PointT>& points);
+
         void setLengthUnit(dai::LengthUnit lengthUnit);
         void useCPU();
         void useCPUMT(uint32_t numThreads);
@@ -85,6 +92,9 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
         // Adopt the compute method (CPU / multi-threaded CPU / GPU) of another Impl
         void copyComputeSettingsFrom(const Impl& other);
+
+        // Whether this Impl computes on the GPU
+        bool usesGPU() const;
 
         LengthUnit targetLengthUnit = LengthUnit::MILLIMETER;
 
@@ -370,6 +380,9 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         std::optional<Extrinsics> targetExtrinsics;
         // Coordinate system of the transformed points (the frame reference unless a target is configured)
         OutputCoordinateSystem outputCoordinateSystem;
+        // Scratch buffers reused across frames so that no large allocation (and page faulting) happens per frame
+        std::vector<Point3f> points;
+        std::vector<Point3fRGBA> coloredPoints;
     };
 
     /// Depth frame (and optional color frame) of one stream inside a synced group
@@ -401,10 +414,20 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
                                                                CameraBoardSocket& targetOriginSocket,
                                                                LengthUnit unit);
 
-    // Processing methods for the two code paths; append the points of one stream
+    // Processing methods for the two code paths; overwrite `points` (a scratch buffer reused across frames) with the points of one stream
     void computeDepthOnly(Impl& impl, const ImgFrame& depthFrame, bool organized, std::vector<Point3f>& points);
     bool canColorize(const ImgFrame& depthFrame, const ImgFrame& colorFrame);
     void computeColorized(Impl& impl, const ImgFrame& depthFrame, const ImgFrame& colorFrame, bool organized, std::vector<Point3fRGBA>& points);
+
+    /**
+     * Compute the points of every stream of a synced group and store them, in stream order, as the data of
+     * `output`. On the host the streams are computed concurrently (one thread per additional stream, each
+     * stream has its own Impl and scratch buffer); on device and with GPU compute they are processed one
+     * after another.
+     * @returns Number of points stored
+     */
+    template <typename PointT>
+    size_t computeStreams(const std::vector<StreamFrames>& frames, bool organized, PointCloudData& output);
 
     bool runOnHostVar = true;
     bool colorMode = false;

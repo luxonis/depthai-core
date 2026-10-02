@@ -573,3 +573,101 @@ TEST_CASE_METHOD(HostPointCloudFixture, "Cross-device target waits for the multi
     auto pcd = waitForOutput(*outQ);
     requirePointsClose(pcd->getPoints(), 0, 200.f, 0.f, -500.f);
 }
+
+// ── Concurrent per-stream computation ──
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Streams computed concurrently keep stream order and are deterministic", "[PointCloud][MultiStream][Parallel]") {
+    // Four streams of different sizes and depths; each one carries its own extrinsics so that a mix-up between the
+    // per-stream buffers (or their Impls) would show up in the merged points
+    constexpr size_t STREAMS = 4;
+    const unsigned widths[STREAMS] = {64, 48, 80, 32};
+    const unsigned heights[STREAMS] = {40, 30, 50, 20};
+    const uint16_t depths[STREAMS] = {1000, 1500, 2000, 2500};
+    const float shifts[STREAMS] = {0.f, 100.f, 200.f, 300.f};
+
+    std::vector<std::shared_ptr<dai::InputQueue>> inputs;
+    for(size_t i = 0; i < STREAMS; ++i) inputs.push_back(pc->getDepthInput("s" + std::to_string(i)).createInputQueue());
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    std::vector<dai::Point3f> firstPoints;
+    for(int round = 0; round < 5; ++round) {
+        const auto now = std::chrono::steady_clock::now();
+        for(size_t i = 0; i < STREAMS; ++i) {
+            inputs[i]->send(makeDepthFrame(makeExtrinsics(shifts[i], 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0"), now, depths[i], widths[i], heights[i]));
+        }
+        auto pcd = waitForOutput(*outQ);
+        auto points = pcd->getPoints();
+        size_t expectedTotal = 0;
+        for(size_t i = 0; i < STREAMS; ++i) expectedTotal += widths[i] * heights[i];
+        REQUIRE(points.size() == expectedTotal);
+
+        // Stream i occupies its block, in stream order, with its own depth and shift
+        size_t offset = 0;
+        for(size_t i = 0; i < STREAMS; ++i) {
+            for(unsigned row = 0; row < heights[i]; ++row) {
+                for(unsigned col = 0; col < widths[i]; ++col) {
+                    const auto& p = points[offset + row * widths[i] + col];
+                    REQUIRE(p.x == Catch::Approx((static_cast<float>(col) - CX) / FX * depths[i] + shifts[i]).margin(1e-3f));
+                    REQUIRE(p.y == Catch::Approx((static_cast<float>(row) - CY) / FY * depths[i]).margin(1e-3f));
+                    REQUIRE(p.z == Catch::Approx(depths[i]).margin(1e-3f));
+                }
+            }
+            offset += widths[i] * heights[i];
+        }
+
+        // Identical inputs give identical outputs, round after round
+        if(round == 0) {
+            firstPoints = points;
+        } else {
+            REQUIRE(points.size() == firstPoints.size());
+            for(size_t k = 0; k < points.size(); ++k) {
+                REQUIRE(points[k].x == firstPoints[k].x);
+                REQUIRE(points[k].y == firstPoints[k].y);
+                REQUIRE(points[k].z == firstPoints[k].z);
+            }
+        }
+    }
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Concurrent streams match the single-stream computation", "[PointCloud][MultiStream][Parallel]") {
+    // The same depth frame goes through a merged node with three streams and through a single-stream node;
+    // the merged cloud has to be exactly three copies of the single-stream cloud (same Impl code, different threads)
+    constexpr unsigned BIG_W = 160, BIG_H = 120;
+    auto single = pipeline.create<dai::node::PointCloud>();
+    single->setRunOnHost(true);
+    single->sync->setRunOnHost(true);
+    single->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+
+    auto mergedInputs = std::vector<std::shared_ptr<dai::InputQueue>>{
+        pc->getDepthInput("a").createInputQueue(), pc->getDepthInput("b").createInputQueue(), pc->getDepthInput("c").createInputQueue()};
+    auto singleInput = single->inputDepth.createInputQueue();
+    auto mergedOut = pc->outputPointCloud.createOutputQueue(4, false);
+    auto singleOut = single->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    // Depth gradient with some invalid pixels so that filtering is exercised too
+    auto frame = makeDepthFrame(makeExtrinsics(5.f, -3.f, 7.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now(), 0, BIG_W, BIG_H);
+    {
+        std::vector<uint16_t> depth(BIG_W * BIG_H);
+        for(size_t k = 0; k < depth.size(); ++k) depth[k] = (k % 7 == 0) ? 0 : static_cast<uint16_t>(500 + (k % 1000));
+        std::vector<uint8_t> bytes(depth.size() * sizeof(uint16_t));
+        std::memcpy(bytes.data(), depth.data(), bytes.size());
+        frame->setData(std::move(bytes));
+    }
+    for(auto& input : mergedInputs) input->send(frame);
+    singleInput->send(frame);
+
+    auto merged = waitForOutput(*mergedOut)->getPoints();
+    auto reference = waitForOutput(*singleOut)->getPoints();
+    REQUIRE_FALSE(reference.empty());
+    REQUIRE(merged.size() == 3 * reference.size());
+    for(size_t copy = 0; copy < 3; ++copy) {
+        for(size_t k = 0; k < reference.size(); ++k) {
+            const auto& p = merged[copy * reference.size() + k];
+            REQUIRE(p.x == reference[k].x);
+            REQUIRE(p.y == reference[k].y);
+            REQUIRE(p.z == reference[k].z);
+        }
+    }
+}

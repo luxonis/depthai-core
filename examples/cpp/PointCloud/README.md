@@ -131,6 +131,11 @@ Rules of the merged output:
   system of the points (identity extrinsics to the common origin, or the configured target),
   not the intrinsics of a single source image.
 - `passthroughDepth` sends every depth frame of the merged group, in stream order.
+- On the host the streams of a group are deprojected concurrently, one thread per stream, each
+  into a scratch buffer that is reused from frame to frame; the merged output is then assembled
+  with a single allocation. `useCPUMT(n)` still splits every stream over `n` threads on top of
+  that (and stays the only parallelism when the node runs on a device). GPU streams are
+  processed one after another.
 - When the depth streams come from more than one device and the Sync timestamp source is left
   at its default, the Sync subnode is moved to the host at build time.
 - Streams only have to be linked, not named in any particular way: a default `inputDepth` that
