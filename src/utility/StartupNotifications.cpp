@@ -80,9 +80,13 @@ std::vector<std::string> collectMessages(const nlohmann::json& json,
             const bool validValues = std::all_of(
                 filter->begin(), filter->end(), [](const nlohmann::json& item) { return item.is_string() && !item.get_ref<const std::string&>().empty(); });
 
-            // Check if the filter list is emppty or if it matches our device
-            const bool matchesDevice = filter->empty() || std::find(filter->begin(), filter->end(), value) != filter->end();
-            if(!validValues || !matchesDevice) {
+            // Empty lists match all devices; a trailing '*' matches any suffix.
+            const bool matchesDevice =
+                validValues && (filter->empty() || std::any_of(filter->begin(), filter->end(), [&value](const nlohmann::json& item) {
+                                    const auto& pattern = item.get_ref<const std::string&>();
+                                    return pattern.back() == '*' ? value.compare(0, pattern.size() - 1, pattern, 0, pattern.size() - 1) == 0 : value == pattern;
+                                }));
+            if(!matchesDevice) {
                 applicable = false;
                 break;
             }
@@ -96,7 +100,7 @@ std::vector<std::string> collectMessages(const nlohmann::json& json,
 
 void printStartupNotifications(
     const std::string& depthaiVersion, Platform platform, XLinkProtocol_t protocol, const std::string& osVersion, const std::string& deviceSKU) {
-    const auto url = getEnvAs<std::string>("DEPTHAI_STARTUP_NOTIFICATIONS_URL", "");  // TO DO: Add default value
+    const auto url = getEnvAs<std::string>("DEPTHAI_STARTUP_NOTIFICATIONS_URL", "https://depthai-releases.luxonis.com/startup_notifications.json");
     if(url.empty()) {
         return;
     }
