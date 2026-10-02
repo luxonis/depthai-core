@@ -555,6 +555,13 @@ dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
 
+# Startup notification filtering
+if(DEPTHAI_ENABLE_CURL)
+    dai_add_test(startup_notifications_test src/onhost_tests/utility/startup_notifications_test.cpp)
+    target_compile_definitions(startup_notifications_test PRIVATE DEPTHAI_ENABLE_CURL)
+    dai_set_test_labels(startup_notifications_test onhost ci)
+endif()
+
 # Telemetry fork safety test
 dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
 dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
