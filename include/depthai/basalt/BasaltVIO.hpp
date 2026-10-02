@@ -4,6 +4,7 @@
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/utility/Pimpl.hpp"
@@ -123,9 +124,9 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     Input imu{*this, {"inIMU", DEFAULT_GROUP, false, 0, {{DatatypeEnum::IMUData, true}}}};
 
     /**
-     * Output transform data.
+     * Output odometry data.
      */
-    Output transform{*this, {"transform", DEFAULT_GROUP, {{DatatypeEnum::TransformData, true}}}};
+    Output transform{*this, {"transform", DEFAULT_GROUP, {{DatatypeEnum::Odometry, true}}}};
     /**
      * Output passthrough of left image.
      */

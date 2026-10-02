@@ -50,8 +50,6 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     find_package(liblzma ${_QUIET} CONFIG REQUIRED)
     # httplib for Gate communication
     find_package(httplib ${_QUIET} CONFIG REQUIRED)
-    # ZLIB for compressing Apps
-    find_package(ZLIB REQUIRED)
     find_package(Eigen3 ${_QUIET} CONFIG REQUIRED)
 
     # spdlog for library and device logging

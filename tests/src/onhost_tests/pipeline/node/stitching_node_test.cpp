@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <chrono>
 #include <cmath>
 #include <depthai/beta/node/Stitching.hpp>
@@ -8,7 +10,11 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <optional>
+#include <utility>
 #include <vector>
+
+using Catch::Matchers::WithinAbs;
+using Catch::Matchers::WithinRel;
 
 namespace {
 
@@ -70,14 +76,17 @@ std::shared_ptr<dai::ImgFrame> toCalibratedFrame(const cv::Mat& image, double ya
     return frame;
 }
 
-cv::Mat composeCalibratedCylindricalPanorama(const std::vector<cv::Mat>& images, const std::vector<double>& yaws, const std::vector<double>& pitches) {
+std::shared_ptr<dai::ImgFrame> composeCalibratedPanorama(const std::vector<cv::Mat>& images,
+                                                         const std::vector<double>& yaws,
+                                                         const std::vector<double>& pitches,
+                                                         dai::CameraModel cameraModel) {
     REQUIRE(images.size() == yaws.size());
     REQUIRE(images.size() == pitches.size());
 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(images.size());
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(cameraModel);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -98,7 +107,54 @@ cv::Mat composeCalibratedCylindricalPanorama(const std::vector<cv::Mat>& images,
 
     REQUIRE_FALSE(timedOut);
     REQUIRE(panorama != nullptr);
-    return panorama->getCvFrame();
+    return panorama;
+}
+
+cv::Mat composeCalibratedCylindricalPanorama(const std::vector<cv::Mat>& images, const std::vector<double>& yaws, const std::vector<double>& pitches) {
+    return composeCalibratedPanorama(images, yaws, pitches, dai::CameraModel::Cylindrical)->getCvFrame();
+}
+
+double rotationAngleDegrees(const dai::Extrinsics& extrinsics) {
+    REQUIRE(extrinsics.hasValidRotationMatrix());
+    const auto& rotation = extrinsics.rotationMatrix;
+    const double trace = rotation[0][0] + rotation[1][1] + rotation[2][2];
+    const double cosine = std::clamp((trace - 1.0) / 2.0, -1.0, 1.0);
+    return std::acos(cosine) * 180.0 / CV_PI;
+}
+
+/// Pixel a direction in the virtual camera frame projects to, following the projection formulas documented for dai::CameraModel.
+cv::Point2d projectDirection(const dai::ImgTransformation& transformation, const cv::Vec3d& direction) {
+    const auto intrinsics = transformation.getIntrinsicMatrix();
+    const double fx = intrinsics[0][0];
+    const double fy = intrinsics[1][1];
+    const double cx = intrinsics[0][2];
+    const double cy = intrinsics[1][2];
+    const double x = direction[0];
+    const double y = direction[1];
+    const double z = direction[2];
+    switch(transformation.getDistortionModel()) {
+        case dai::CameraModel::Perspective:
+            return {fx * x / z + cx, fy * y / z + cy};
+        case dai::CameraModel::Cylindrical:
+            return {fx * std::atan2(x, z) + cx, fy * y / std::sqrt(x * x + z * z) + cy};
+        case dai::CameraModel::Equirectangular:
+            return {fx * std::atan2(x, z) + cx, fy * std::asin(y / cv::norm(direction)) + cy};
+        default:
+            FAIL("Unexpected camera model " << dai::toString(transformation.getDistortionModel()));
+            return {};
+    }
+}
+
+/// Direction with the given yaw about the Y axis, rising by `slope` per unit of horizontal distance.
+cv::Vec3d rayAt(double yawDegrees, double slope) {
+    const double yaw = yawDegrees * CV_PI / 180.0;
+    return {std::sin(yaw), slope, std::cos(yaw)};
+}
+
+void requireSizeMatches(const dai::ImgTransformation& transformation, const dai::ImgFrame& frame) {
+    REQUIRE(transformation.isValid());
+    REQUIRE(transformation.getSize() == std::make_pair(static_cast<size_t>(frame.getWidth()), static_cast<size_t>(frame.getHeight())));
+    REQUIRE(transformation.getSourceSize() == transformation.getSize());
 }
 
 }  // namespace
@@ -128,7 +184,7 @@ TEST_CASE("Stitching uses input calibration to compose a cylindrical panorama", 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(featurelessViews.size());
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
     stitching->setSyncThreshold(std::chrono::seconds(1));
     REQUIRE(stitching->getUseInputCalibration());
@@ -180,6 +236,83 @@ TEST_CASE("Calibrated cylindrical panorama uses the mean camera Y axis", "[Stitc
     REQUIRE(pitchedRig.size() == levelRig.size());
     const double meanAbsoluteDifference = cv::norm(pitchedRig, levelRig, cv::NORM_L1) / static_cast<double>(pitchedRig.total() * pitchedRig.channels());
     REQUIRE(meanAbsoluteDifference < 1e-3);
+
+    // The virtual camera reports the tilt: its Y axis is the mean input Y axis, 20 degrees off the destination frame
+    const auto pitched = composeCalibratedPanorama(views, yaws, pitchedRigPitches, dai::CameraModel::Cylindrical);
+    const auto& rotation = pitched->getTransformation().getExtrinsics().rotationMatrix;
+    REQUIRE(rotation.size() == 3);
+    const double tilt = 20.0 * CV_PI / 180.0;
+    REQUIRE_THAT(rotation[0][1], WithinAbs(0.0, 1e-4));
+    REQUIRE_THAT(rotation[1][1], WithinAbs(std::cos(tilt), 1e-4));
+    REQUIRE_THAT(rotation[2][1], WithinAbs(std::sin(tilt), 1e-4));
+}
+
+TEST_CASE("Calibrated panorama describes the virtual camera that rendered it", "[Stitching]") {
+    const std::vector<double> yaws = {-15.0, 0.0, 15.0};
+    const std::vector<double> pitches = {0.0, 0.0, 0.0};
+    const std::vector<cv::Vec3b> colors = {{40, 60, 80}, {80, 60, 40}, {60, 80, 40}};
+    std::vector<cv::Mat> views;
+    for(const auto& color : colors) views.emplace_back(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, color);
+
+    const auto check = [&](dai::CameraModel cameraModel) {
+        const auto panorama = composeCalibratedPanorama(views, yaws, pitches, cameraModel);
+        const auto& transformation = panorama->getTransformation();
+        requireSizeMatches(transformation, *panorama);
+        REQUIRE(transformation.getDistortionModel() == cameraModel);
+        REQUIRE(transformation.getDistortionCoefficients().empty());
+
+        // The inputs share one focal length, which becomes the radius of the projection surface
+        const auto intrinsics = transformation.getIntrinsicMatrix();
+        REQUIRE_THAT(intrinsics[0][0], WithinAbs(FOCAL, 1e-3));
+        REQUIRE_THAT(intrinsics[1][1], WithinAbs(FOCAL, 1e-3));
+
+        // Expressed in the destination frame of the inputs, looking along its Z axis from the mean of the input centers
+        const auto extrinsics = transformation.getExtrinsics();
+        REQUIRE(extrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_A);
+        REQUIRE(extrinsics.toDeviceId == "reference-device");
+        REQUIRE(rotationAngleDegrees(extrinsics) < 1e-3);
+        const auto translation = extrinsics.getTranslationVector(false, dai::LengthUnit::CENTIMETER);
+        REQUIRE_THAT(translation[0], WithinAbs(0.0, 1e-3));
+        REQUIRE_THAT(translation[1], WithinAbs(50.0, 1e-3));
+        REQUIRE_THAT(translation[2], WithinAbs(-25.0, 1e-3));
+
+        // Directions only the outer inputs see project onto their colors, so the intrinsics place the content correctly
+        const auto image = panorama->getCvFrame();
+        const auto sample = [&](const cv::Vec3d& direction) {
+            const auto pixel = projectDirection(transformation, direction);
+            const cv::Point rounded(static_cast<int>(std::lround(pixel.x)), static_cast<int>(std::lround(pixel.y)));
+            REQUIRE(rounded.x >= 0);
+            REQUIRE(rounded.x < image.cols);
+            REQUIRE(rounded.y >= 0);
+            REQUIRE(rounded.y < image.rows);
+            return image.at<cv::Vec3b>(rounded);
+        };
+        REQUIRE(sample(rayAt(-35.0, 0.0)) == colors[0]);
+        REQUIRE(sample(rayAt(-35.0, 0.3)) == colors[0]);
+        REQUIRE(sample(rayAt(35.0, 0.0)) == colors[2]);
+        REQUIRE(sample(rayAt(35.0, -0.3)) == colors[2]);
+    };
+
+    SECTION("cylindrical") {
+        check(dai::CameraModel::Cylindrical);
+    }
+    SECTION("equirectangular") {
+        check(dai::CameraModel::Equirectangular);
+    }
+    SECTION("perspective") {
+        check(dai::CameraModel::Perspective);
+    }
+}
+
+TEST_CASE("Stitching rejects camera models it cannot warp onto", "[Stitching]") {
+    dai::Pipeline pipeline(false);
+    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    REQUIRE(stitching->getCameraModel() == dai::CameraModel::Equirectangular);
+    REQUIRE_THROWS_AS(stitching->setCameraModel(dai::CameraModel::Fisheye), std::invalid_argument);
+    REQUIRE_THROWS_AS(stitching->setCameraModel(dai::CameraModel::RadialDivision), std::invalid_argument);
+    REQUIRE(stitching->getCameraModel() == dai::CameraModel::Equirectangular);
+    stitching->setCameraModel(dai::CameraModel::Perspective);
+    REQUIRE(stitching->getCameraModel() == dai::CameraModel::Perspective);
 }
 
 TEST_CASE("Calibrated panorama directly copies overlapping inputs", "[Stitching]") {
@@ -191,7 +324,7 @@ TEST_CASE("Calibrated panorama directly copies overlapping inputs", "[Stitching]
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -222,7 +355,7 @@ TEST_CASE("Calibrated panorama blends overlapping inputs when seam finding is en
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::GRAPHCUT_COLOR);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -255,7 +388,7 @@ TEST_CASE("Calibrated cylindrical panorama masks inputs crossing the wrap bounda
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
     stitching->setUseInputCalibration(true);
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setSeamFinder(dai::beta::node::Stitching::SeamFinder::NONE);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -394,7 +527,7 @@ TEST_CASE("Stitching combines three rotated views into a wider panorama", "[Stit
 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(views.size());
-    stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::CYLINDRICAL);
+    stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setEstimationFrames(1);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -421,6 +554,69 @@ TEST_CASE("Stitching combines three rotated views into a wider panorama", "[Stit
     REQUIRE(panorama->getWidth() > static_cast<unsigned int>(VIEW_WIDTH));
     REQUIRE(panorama->getWidth() < static_cast<unsigned int>(2 * VIEW_WIDTH));
     REQUIRE(panorama->getHeight() > static_cast<unsigned int>(VIEW_HEIGHT * 3 / 4));
+}
+
+TEST_CASE("Registered panorama describes the virtual camera through its first input", "[Stitching]") {
+    const cv::Mat scene = cv::imread(KITCHEN_IMAGE_PATH);
+    REQUIRE(!scene.empty());
+
+    const std::vector<double> yaws = {-15.0, 0.0, 15.0};
+    std::vector<cv::Mat> views;
+    for(const auto yaw : yaws) views.push_back(renderView(scene, yaw));
+
+    const auto stitch = [&](bool calibratedInputs) {
+        dai::Pipeline pipeline(false);
+        auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(views.size());
+        stitching->setCameraModel(dai::CameraModel::Cylindrical);
+        stitching->setEstimationFrames(1);
+        stitching->setSyncThreshold(std::chrono::seconds(1));
+
+        std::vector<std::shared_ptr<dai::InputQueue>> inputQueues;
+        for(size_t i = 0; i < views.size(); ++i) {
+            inputQueues.push_back(stitching->inputs["input" + std::to_string(i)].createInputQueue());
+        }
+        auto output = stitching->out.createOutputQueue();
+
+        pipeline.start();
+        for(size_t i = 0; i < views.size(); ++i) {
+            inputQueues[i]->send(calibratedInputs ? toCalibratedFrame(views[i], yaws[i], 0) : toFrame(views[i], 0));
+        }
+
+        bool timedOut = false;
+        auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
+        REQUIRE_FALSE(timedOut);
+        pipeline.stop();
+        REQUIRE(panorama != nullptr);
+
+        const auto& transformation = panorama->getTransformation();
+        requireSizeMatches(transformation, *panorama);
+        REQUIRE(transformation.getDistortionModel() == dai::CameraModel::Cylindrical);
+        // The registration recovers the focal length the views were rendered with
+        REQUIRE_THAT(transformation.getIntrinsicMatrix()[0][0], WithinRel(FOCAL, 0.15));
+        return panorama;
+    };
+
+    SECTION("inputs without extrinsics are related to the first input's camera") {
+        const auto extrinsics = stitch(false)->getTransformation().getExtrinsics();
+        REQUIRE(extrinsics.toCameraSocket == dai::CameraBoardSocket::AUTO);
+        REQUIRE(extrinsics.toDeviceId.empty());
+        // The first input looks 15 degrees away from the middle of the panorama
+        REQUIRE_THAT(rotationAngleDegrees(extrinsics), WithinAbs(15.0, 2.0));
+        const auto translation = extrinsics.getTranslationVector(false, dai::LengthUnit::CENTIMETER);
+        REQUIRE(translation == std::vector<float>{0.0f, 0.0f, 0.0f});
+    }
+
+    SECTION("inputs with extrinsics put the panorama in their destination frame") {
+        const auto extrinsics = stitch(true)->getTransformation().getExtrinsics();
+        REQUIRE(extrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_A);
+        REQUIRE(extrinsics.toDeviceId == "reference-device");
+        // The first input's extrinsics undo its 15 degree yaw, so the panorama looks along the destination Z axis from its center
+        REQUIRE(rotationAngleDegrees(extrinsics) < 2.0);
+        const auto translation = extrinsics.getTranslationVector(false, dai::LengthUnit::CENTIMETER);
+        REQUIRE_THAT(translation[0], WithinAbs(-15.0, 1e-3));
+        REQUIRE_THAT(translation[1], WithinAbs(50.0, 1e-3));
+        REQUIRE_THAT(translation[2], WithinAbs(-25.0, 1e-3));
+    }
 }
 
 TEST_CASE("Stitching rejects panoramas larger than the configured canvas", "[Stitching]") {
@@ -491,6 +687,9 @@ TEST_CASE("Stitching re-estimates every frame when continuous", "[Stitching]") {
     REQUIRE(panorama->getWidth() < static_cast<unsigned int>(2 * VIEW_WIDTH));
     // Metadata comes from the first input
     REQUIRE(panorama->getSequenceNum() == 7);
+    // The default spherical surface is an equirectangular camera
+    requireSizeMatches(panorama->getTransformation(), *panorama);
+    REQUIRE(panorama->getTransformation().getDistortionModel() == dai::CameraModel::Equirectangular);
 }
 
 TEST_CASE("Stitching reuses the selected transform once the estimation frames are consumed", "[Stitching]") {
@@ -518,6 +717,7 @@ TEST_CASE("Stitching reuses the selected transform once the estimation frames ar
     pipeline.start();
 
     unsigned int fixedWidth = 0;
+    std::optional<dai::ImgTransformation> fixedView;
     for(int64_t group = 0; group < NUM_GROUPS; ++group) {
         const bool panoramaExpected = group + 1 >= ESTIMATION_FRAMES;
         // Once the transform is fixed, images the node never estimated on still get warped by it
@@ -535,8 +735,11 @@ TEST_CASE("Stitching reuses the selected transform once the estimation frames ar
 
         if(fixedWidth == 0) {
             fixedWidth = panorama->getWidth();
+            fixedView = panorama->getTransformation();
+            requireSizeMatches(*fixedView, *panorama);
         } else {
             REQUIRE(panorama->getWidth() == fixedWidth);
+            REQUIRE(panorama->getTransformation().isEqualTransformation(*fixedView));
         }
     }
 
@@ -605,7 +808,7 @@ TEST_CASE("Stitching freezes the strongest of multiple estimation candidates", "
                                                                                   : std::array<const std::vector<cv::Mat>*, 2>{&weakViews, &strongViews};
         dai::Pipeline pipeline(false);
         auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(strongViews.size());
-        stitching->setCameraModel(dai::beta::node::Stitching::CameraModel::PINHOLE);
+        stitching->setCameraModel(dai::CameraModel::Perspective);
         stitching->setContinuous(false);
         stitching->setEstimationFrames(2);
         stitching->setSyncThreshold(std::chrono::seconds(1));

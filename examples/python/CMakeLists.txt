@@ -268,6 +268,7 @@ dai_set_example_test_labels(edge_detector ondevice rvc2_all ci)
 
 ## Vpp
 add_python_example(virtual_patern_projection Vpp/virtual_patern_projection.py)
+add_python_example(tof_stereo_vpp Vpp/tof_stereo_vpp.py)
 dai_set_example_test_labels(virtual_patern_projection ondevice rvc4 ci)
 
 ## RGBD
@@ -441,3 +442,9 @@ add_python_example(multi_device_frame_sync MultiDevice/multi_device_frame_sync.p
 add_python_example(multi_device_host_node MultiDevice/multi_device_host_node.py)
 add_python_example(device_to_device_relay MultiDevice/device_to_device_relay.py)
 add_python_example(multi_device_system_logger MultiDevice/multi_device_system_logger.py)
+
+# Multi-device calibration examples: also multi-device, so no CI labels
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_python_example(multi_device_calibration MultiDeviceCalibration/multi_device_calibration.py)
+    add_python_example(multi_device_calibration_constraints MultiDeviceCalibration/multi_device_calibration_constraints.py)
+endif()
