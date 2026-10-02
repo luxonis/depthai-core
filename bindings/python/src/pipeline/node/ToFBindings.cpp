@@ -12,6 +12,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
     py::class_<ToFProperties> tofProperties(m, "ToFProperties", DOC(dai, ToFProperties));
     auto tofBase = ADD_NODE(ToFBase);
     auto tof = ADD_NODE_DERIVED(ToF, DeviceNodeGroup);
+    py::enum_<ToF::SensorMode> sensorMode(tof, "SensorMode");
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -25,6 +26,12 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
+
+    sensorMode.value("FREQUENCY_3", ToF::SensorMode::FREQUENCY_3)
+        .value("FREQUENCY_2", ToF::SensorMode::FREQUENCY_2)
+        .value("FREQUENCY_1", ToF::SensorMode::FREQUENCY_1)
+        .value("FREQUENCY_2_BINNED", ToF::SensorMode::FREQUENCY_2_BINNED)
+        .value("FREQUENCY_3_BINNED", ToF::SensorMode::FREQUENCY_3_BINNED);
 
     // Properties
     tofProperties.def_readwrite("initialConfig", &ToFProperties::initialConfig, DOC(dai, ToFProperties, initialConfig))
@@ -57,16 +64,18 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
            "tofBaseNode", [](const ToF& self) -> const dai::node::ToFBase& { return self.tofBaseNode; }, DOC(dai, node, ToF, tofBaseNode))
         .def_static("create", &ToF::create, "device"_a, DOC(dai, node, ToF, create))
         .def("build",
-             py::overload_cast<CameraBoardSocket, ImageFiltersPresetMode, std::optional<float>>(&ToF::build),
+             py::overload_cast<CameraBoardSocket, ImageFiltersPresetMode, std::optional<float>, ToF::SensorMode>(&ToF::build),
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "presetMode"_a = ImageFiltersPresetMode::TOF_MID_RANGE,
              "fps"_a = std::nullopt,
+             "sensorMode"_a = ToF::SensorMode::FREQUENCY_3,
              DOC(dai, node, ToF, build))
         .def("build",
-             py::overload_cast<CameraBoardSocket, ToFConfig::Profile, std::optional<float>>(&ToF::build),
+             py::overload_cast<CameraBoardSocket, ToFConfig::Profile, std::optional<float>, ToF::SensorMode>(&ToF::build),
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "profile"_a = ToFConfig::Profile::MID_RANGE,
-             "fps"_a = std::nullopt)
+             "fps"_a = std::nullopt,
+             "sensorMode"_a = ToF::SensorMode::FREQUENCY_3)
         .def("setOutputUndistortion", &ToF::setOutputUndistortion, "enable"_a, DOC(dai, node, ToF, setOutputUndistortion))
         .def("getInitialConfig", [&](const ToF& self) { return *self.tofBaseNode.initialConfig; })
         .def("setInitialConfig", [&](ToF& self, ToFConfig& config) { self.tofBaseNode.initialConfig = std::make_shared<ToFConfig>(config); });

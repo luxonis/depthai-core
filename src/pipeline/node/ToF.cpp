@@ -175,7 +175,7 @@ void ToF::buildInternal() {
 #endif
 }
 
-void ToF::buildAutoCamera() {
+void ToF::buildAutoCamera(std::pair<uint32_t, uint32_t> rawSize) {
     if(!usesAutoCamera(getDevice())) {
         return;
     }
@@ -186,19 +186,40 @@ void ToF::buildAutoCamera() {
 
     auto& camera = **autoCamera;
     camera.setSensorType(CameraSensorType::TOF);
-    camera.build(tofBase->getBoardSocket(),
-                 std::pair<uint32_t, uint32_t>{1344, 7244},
-                 tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : std::nullopt);
+    camera.build(tofBase->getBoardSocket(), rawSize, tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : std::nullopt);
     camera.raw.link(tofBase->rawInput);
 }
 
-std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ImageFiltersPresetMode presetMode, std::optional<float> fps) {
-    return build(boardSocket, presetModeToProfile(presetMode), fps);
+std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ImageFiltersPresetMode presetMode, std::optional<float> fps, SensorMode sensorMode) {
+    return build(boardSocket, presetModeToProfile(presetMode), fps, sensorMode);
 }
 
-std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ToFConfig::Profile profile, std::optional<float> fps) {
+std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ToFConfig::Profile profile, std::optional<float> fps, SensorMode sensorMode) {
+    std::pair<uint32_t, uint32_t> rawSize;
+    switch(sensorMode) {
+        case SensorMode::FREQUENCY_3:
+            rawSize = {1344, 7244};
+            break;
+        case SensorMode::FREQUENCY_2:
+            rawSize = {1344, 4832};
+            break;
+        case SensorMode::FREQUENCY_1:
+            rawSize = {1344, 2420};
+            break;
+        case SensorMode::FREQUENCY_2_BINNED:
+            rawSize = {672, 2420};
+            break;
+        case SensorMode::FREQUENCY_3_BINNED:
+            rawSize = {672, 3626};
+            break;
+        default:
+            throw std::invalid_argument("Unknown ToF sensor mode");
+    }
+    if(sensorMode != SensorMode::FREQUENCY_3 && !usesAutoCamera(getDevice())) {
+        throw std::invalid_argument("ToF sensor modes require an RVC4 device");
+    }
     tofBase->build(boardSocket, profile, fps);
-    buildAutoCamera();
+    buildAutoCamera(rawSize);
 
     const auto presetMode = profileToPresetMode(profile);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

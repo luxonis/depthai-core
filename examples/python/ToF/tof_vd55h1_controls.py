@@ -10,6 +10,8 @@ flying-pixel depth threshold 1-1000 mm, and minimum occurrence 0-24.99 samples.
 Press q to quit.
 """
 
+import argparse
+
 import cv2
 import depthai as dai
 
@@ -35,6 +37,9 @@ def configFromTrackbars() -> dai.ToFConfig:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--sensor-mode", choices=list(dai.node.ToF.SensorMode.__members__), default="FREQUENCY_3")
+    args = parser.parse_args()
     with dai.Pipeline() as pipeline:
         cameras = pipeline.getDefaultDevice().getConnectedCameraFeatures()
         boardSocket = next((camera.socket for camera in cameras if camera.sensorName == "VD55H1"), None)
@@ -45,6 +50,7 @@ def main() -> None:
             boardSocket=boardSocket,
             profile=dai.ToFConfig.Profile.MID_RANGE,
             fps=FPS,
+            sensorMode=dai.node.ToF.SensorMode.__members__[args.sensor_mode],
         )
         initialConfig = tof.getInitialConfig()
         initialConfig.vd55h1.phaseUnwrapErrorThreshold = UNWRAP_THRESHOLD_MM

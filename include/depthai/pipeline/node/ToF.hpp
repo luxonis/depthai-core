@@ -92,6 +92,15 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
 class ToF : public DeviceNodeGroup {
    public:
+    /** VD55H1 startup sensor modes (RVC4 only). Dimensions are raw superframe sizes. */
+    enum class SensorMode {
+        FREQUENCY_3,         ///< 1344 x 7244 (default)
+        FREQUENCY_2,         ///< 1344 x 4832
+        FREQUENCY_1,         ///< 1344 x 2420
+        FREQUENCY_2_BINNED,  ///< 672 x 2420
+        FREQUENCY_3_BINNED,  ///< 672 x 3626
+    };
+
     ToF() : ToF(nullptr) {}
     ToF(const std::shared_ptr<Device>& device);
 
@@ -110,20 +119,25 @@ class ToF : public DeviceNodeGroup {
      * @param boardSocket Board socket to use, or AUTO to select an available ToF socket automatically
      * @param presetMode Legacy ToF image filter preset mode
      * @param fps Requested ToF camera FPS
+     * @param sensorMode VD55H1 startup mode on RVC4; RVC2 supports only the default value
      */
-    [[deprecated("Use 'build(boardSocket, dai::ToFConfig::Profile, fps)' instead.")]] std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket,
-                                                                                                                 dai::ImageFiltersPresetMode presetMode,
-                                                                                                                 std::optional<float> fps = std::nullopt);
+    [[deprecated("Use 'build(boardSocket, dai::ToFConfig::Profile, fps)' instead.")]] std::shared_ptr<ToF> build(
+        dai::CameraBoardSocket boardSocket,
+        dai::ImageFiltersPresetMode presetMode,
+        std::optional<float> fps = std::nullopt,
+        SensorMode sensorMode = SensorMode::FREQUENCY_3);
 
     /**
      * Build the ToF node with a specific board socket, profile, and optional FPS.
      * @param boardSocket Board socket to use, or AUTO to select an available ToF socket automatically
      * @param presetMode ToF processing profile to apply
      * @param fps Requested ToF camera FPS
+     * @param sensorMode VD55H1 startup mode on RVC4; RVC2 supports only the default value
      */
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ToFConfig::Profile presetMode = dai::ToFConfig::Profile::MID_RANGE,
-                               std::optional<float> fps = std::nullopt);
+                               std::optional<float> fps = std::nullopt,
+                               SensorMode sensorMode = SensorMode::FREQUENCY_3);
 
     /**
      * Enable or disable undistortion for depth and auxiliary outputs.
@@ -138,7 +152,7 @@ class ToF : public DeviceNodeGroup {
     void postBuildStage() override;
 
    private:
-    void buildAutoCamera();
+    void buildAutoCamera(std::pair<uint32_t, uint32_t> rawSize);
 
     std::unique_ptr<Subnode<ImageFilters>> imageFilters = nullptr;
     std::unique_ptr<Subnode<Camera>> autoCamera = nullptr;
