@@ -183,7 +183,8 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
                        std::optional<dai::ExternalFrameSyncRole> role,
                        std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
                        std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                       std::vector<std::string>& camSockets) {
+                       std::vector<std::string>& camSockets,
+                       std::string &ptpMasterDeviceName) {
     auto outNode = createPipeline(pipeline, socket, targetFps, syncType, role);
 
     if(syncType == SyncType::EXTERNAL) {
@@ -207,6 +208,9 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
         // Actual PTP master might be different, but it doesn't matter for this test.
         if(!masterNode.has_value()) {
             masterNode.emplace();
+            ptpMasterDeviceName = name;
+        }
+        if (ptpMasterDeviceName == name) {
             masterNode.value().emplace(dai::toString(socket), outNode);
         } else {
             if(slaveQueues.find(name) == slaveQueues.end()) {
@@ -255,7 +259,8 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                  std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
                  std::vector<std::string>& camSockets,
                  float targetFps,
-                 SyncType syncType) {
+                 SyncType syncType,
+                 std::string &ptpMasterDeviceName) {
     auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
     auto device = pipeline->getDefaultDevice();
 
@@ -274,7 +279,7 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
     for(auto socket : device->getConnectedCameras()) {
-        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets);
+        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets, ptpMasterDeviceName);
     }
 
     setUpIrLeds(device);
@@ -330,8 +335,10 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     std::vector<std::string> outputNames;
     std::vector<std::string> camSockets;
 
+    std::string ptpMasterDeviceName = "";
+
     for(auto deviceInfo : deviceInfos) {
-        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps, parameters.syncType);
+        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps, parameters.syncType, ptpMasterDeviceName);
     }
 
     if(masterPipeline == nullptr || !masterNode.has_value() || !masterName.has_value()) {
