@@ -120,6 +120,10 @@ void requireDepthSingleBackendChild(const node::Depth& depth, const char* expect
         REQUIRE(std::dynamic_pointer_cast<node::ToF>(child) != nullptr);
         return;
     }
+    if(std::strcmp(expectedNodeName, "ToFStereoFusion") == 0) {
+        REQUIRE(std::dynamic_pointer_cast<beta::node::ToFStereoFusion>(child) != nullptr);
+        return;
+    }
     REQUIRE(std::strcmp(child->getName(), expectedNodeName) == 0);
 }
 
@@ -490,6 +494,112 @@ TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "StereoDepth");
+}
+
+TEST_CASE("Depth: AUTO does not select ToFStereoFusion on RVC4 devices with stereo and ToF") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4 || !deviceReportsTofSensor(device) || device->getStereoPairs().empty()) {
+        SKIP("Skipping fusion test: requires RVC4 with a stereo pair and ToF sensor.");
+    }
+
+    auto depth = pipeline.create<node::Depth>();
+    REQUIRE_NOTHROW((void)&depth->depth());
+    REQUIRE(depth->getResolvedAlgorithm() != node::Depth::Algorithm::TOF_STEREO_FUSION);
+    requireDepthAutoBackend(*depth, device->getPlatform(), true);
+}
+
+TEST_CASE("Depth: fusion rejects unsupported devices with an informative error", "[fusion]") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() == Platform::RVC4 && deviceReportsTofSensor(device) && !device->getStereoPairs().empty()) {
+        SKIP("Requires a device without fusion support.");
+    }
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF_STEREO_FUSION);
+    SECTION("implicit config, depth output") {
+        REQUIRE_THROWS_WITH(depth->depth(), Catch::Matchers::ContainsSubstring("TOF_STEREO_FUSION is not supported on this device"));
+    }
+    SECTION("explicit empty config, confidence output") {
+        depth->setConfig(std::monostate{});
+        REQUIRE_THROWS_WITH(depth->confidence(), Catch::Matchers::ContainsSubstring("TOF_STEREO_FUSION is not supported on this device"));
+    }
+    SECTION("lazy pipeline build still validates on first output access") {
+        REQUIRE_NOTHROW(pipeline.build());
+        REQUIRE_THROWS_WITH(depth->depth(), Catch::Matchers::ContainsSubstring("TOF_STEREO_FUSION is not supported on this device"));
+    }
+}
+
+TEST_CASE("Depth: fusion rejects incompatible config", "[fusion]") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4 || !deviceReportsTofSensor(device) || device->getStereoPairs().empty()) {
+        SKIP("Requires RVC4 with stereo and ToF.");
+    }
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF_STEREO_FUSION);
+    depth->setConfig(node::StereoDepth::PresetMode::DEFAULT);
+    REQUIRE_THROWS_WITH(depth->depth(), Catch::Matchers::ContainsSubstring("Depth config for TOF_STEREO_FUSION must be empty"));
+}
+
+TEST_CASE("Depth: fusion streams depth and confidence continuously", "[fusion]") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4 || !deviceReportsTofSensor(device) || device->getStereoPairs().empty()) {
+        SKIP("Requires RVC4 with stereo and ToF.");
+    }
+    auto depth = pipeline.create<node::Depth>();
+    float expectedFps = 30.f;
+    SECTION("explicit fusion") {
+        depth->build(node::Depth::Algorithm::TOF_STEREO_FUSION);
+    }
+    SECTION("explicit empty config at 15 FPS") {
+        expectedFps = 15.f;
+        depth->build(node::Depth::Algorithm::TOF_STEREO_FUSION, std::monostate{}, 15.f);
+    }
+    SECTION("infer 15 FPS from prebuilt cameras without output requests") {
+        expectedFps = 15.f;
+        const auto pair = requireFirstStereoPairForTest(device);
+        pipeline.create<node::Camera>()->build(pair.left, std::nullopt, expectedFps);
+        pipeline.create<node::Camera>()->build(pair.right, std::nullopt, expectedFps);
+        depth->build(node::Depth::Algorithm::TOF_STEREO_FUSION);
+    }
+    auto depthQueue = depth->depth().createOutputQueue(4, false);
+    auto confidenceQueue = depth->confidence().createOutputQueue(4, false);
+    REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::TOF_STEREO_FUSION);
+    requireDepthSingleBackendChild(*depth, "ToFStereoFusion");
+    PipelineStopGuard guard(pipeline);
+    pipeline.start();
+    auto previousDepth = requireStreamFrame(depthQueue, kDepthFrameTimeout);
+    auto previousConfidence = requireStreamFrame(confidenceQueue, kStreamFrameTimeout);
+    const auto firstDepthTimestamp = previousDepth->getTimestamp();
+    const auto firstConfidenceTimestamp = previousConfidence->getTimestamp();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    size_t frames = 0;
+    while(std::chrono::steady_clock::now() < deadline) {
+        auto frame = requireStreamFrame(depthQueue, std::chrono::seconds(5));
+        auto confidence = requireStreamFrame(confidenceQueue, std::chrono::seconds(5));
+        REQUIRE(frame->getWidth() > 0);
+        REQUIRE(frame->getHeight() > 0);
+        REQUIRE(frame->getWidth() == previousDepth->getWidth());
+        REQUIRE(frame->getHeight() == previousDepth->getHeight());
+        REQUIRE(confidence->getWidth() == frame->getWidth());
+        REQUIRE(confidence->getHeight() == frame->getHeight());
+        REQUIRE_FALSE(frame->getData().empty());
+        REQUIRE_FALSE(confidence->getData().empty());
+        REQUIRE(frame->getTimestamp() > previousDepth->getTimestamp());
+        REQUIRE(confidence->getTimestamp() > previousConfidence->getTimestamp());
+        previousDepth = frame;
+        previousConfidence = confidence;
+        ++frames;
+    }
+    INFO("Received " << frames << " depth/confidence frames over 10 seconds");
+    REQUIRE(frames >= 10);
+    const auto depthFps = frames / std::chrono::duration<double>(previousDepth->getTimestamp() - firstDepthTimestamp).count();
+    const auto confidenceFps = frames / std::chrono::duration<double>(previousConfidence->getTimestamp() - firstConfidenceTimestamp).count();
+    INFO("Expected " << expectedFps << " FPS; depth=" << depthFps << ", confidence=" << confidenceFps);
+    REQUIRE(depthFps >= expectedFps * 0.8f);
+    REQUIRE(depthFps <= expectedFps * 1.2f);
+    REQUIRE(confidenceFps >= expectedFps * 0.8f);
+    REQUIRE(confidenceFps <= expectedFps * 1.2f);
 }
 
 TEST_CASE("Depth: TOF confidence output maps to ToF confidence output") {
