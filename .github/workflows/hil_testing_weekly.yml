@@ -15,6 +15,10 @@ on:
         description: Run sanitizer tests
         type: boolean
         default: true
+      rvc2_iterations:
+        description: Number of sequential RVC2 test runs for each flavor (maximum 256)
+        type: number
+        default: 100
 
 permissions:
   actions: read
@@ -30,9 +34,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       test_all: ${{ steps.selection.outputs.test_all }}
+      rvc2_iterations: ${{ steps.iterations.outputs.rvc2_iterations }}
     steps:
       - id: selection
         run: echo "test_all=${{ !inputs.test_os && !inputs.test_replay && !inputs.test_sanitizers }}" >> "$GITHUB_OUTPUT"
+      - id: iterations
+        env:
+          RVC2_ITERATIONS: ${{ inputs.rvc2_iterations }}
+        run: echo "rvc2_iterations=$(seq 1 "$RVC2_ITERATIONS" | jq -cs .)" >> "$GITHUB_OUTPUT"
 
   run_vanilla_tests:
     needs: select_tests
@@ -40,14 +49,19 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.30.1','1.35.0','1.40.0']"
-      luxonis_os_versions_to_test_rgb: "['1.40.0']"
-      luxonis_os_versions_to_test_usb: "['1.40.0']"
+      test_label: "ci|ci_weekly"
+      rvc2_protocol: "tcpip" # RVC2 loop: PoE only
+      rvc2_iterations: ${{ needs.select_tests.outputs.rvc2_iterations }}
+      luxonis_os_versions_to_test: "[]"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
       CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
+      INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+      INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+      INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+      INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
 
   run_tsan_tests:
     needs: select_tests
@@ -55,12 +69,19 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
-      luxonis_os_versions_to_test: "['1.40.0']"
+      test_label: "ci|ci_weekly"
+      rvc2_protocol: "tcpip" # RVC2 loop: PoE only
+      rvc2_iterations: ${{ needs.select_tests.outputs.rvc2_iterations }}
+      luxonis_os_versions_to_test: "[]"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
       CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
+      INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+      INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+      INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+      INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
 
   run_asan-ubsan_tests:
     needs: select_tests
@@ -68,16 +89,23 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
-      luxonis_os_versions_to_test: "['1.40.0']"
+      test_label: "ci|ci_weekly"
+      rvc2_protocol: "tcpip" # RVC2 loop: PoE only
+      rvc2_iterations: ${{ needs.select_tests.outputs.rvc2_iterations }}
+      luxonis_os_versions_to_test: "[]"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
       CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
+      INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+      INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+      INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+      INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
 
   run_windows_tests:
     needs: select_tests
-    if: inputs.test_os || needs.select_tests.outputs.test_all == 'true'
+    if: false # RVC2 loop: Windows has RVC4 tests only
     uses: ./.github/workflows/test_child_windows.yml
     with:
       luxonis_os_versions_to_test: "['1.40.0']"
@@ -97,16 +125,23 @@ jobs:
       job_prefix: "vanilla-replay"
       enable_replay_tests: true
       rvc2_timeout_minutes: 1440
-      luxonis_os_versions_to_test: "['1.40.0']"
+      test_label: "ci|ci_weekly"
+      rvc2_protocol: "tcpip" # RVC2 loop: PoE only
+      rvc2_iterations: ${{ needs.select_tests.outputs.rvc2_iterations }}
+      luxonis_os_versions_to_test: "[]"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
       CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
       CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
+      INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+      INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+      INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+      INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
 
   run_vanilla_mac_tests:
     needs: select_tests
-    if: inputs.test_os || needs.select_tests.outputs.test_all == 'true'
+    if: false # RVC2 loop: macOS has RVC4 tests only
     uses: ./.github/workflows/test_child_mac.yml
     with:
       flavor: "vanilla"

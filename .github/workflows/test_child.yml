@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: "all"
+      rvc2_iterations:
+        description: JSON array with one element for each sequential RVC2 test run
+        required: false
+        type: string
+        default: "[1]"
       run_standard_tests:
         required: false
         type: boolean
@@ -100,6 +105,11 @@ jobs:
  linux_rvc2_test:
     needs: [build_docker_container]
     if: inputs.run_standard_tests
+    strategy:
+      matrix:
+        iteration: ${{ fromJson(inputs.rvc2_iterations) }}
+      max-parallel: 1
+      fail-fast: false
     runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: ${{ inputs.rvc2_timeout_minutes }}
     steps:
@@ -120,7 +130,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc2_test
+        name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc2_test-iter=${{ matrix.iteration }}
         path: rvc2_test_output.log
         if-no-files-found: warn
 

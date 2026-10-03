@@ -1000,6 +1000,9 @@ dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
+dai_add_test(camera_stream_1080p_nv12_test src/ondevice_tests/pipeline/node/camera_stream_1080p_nv12_test.cpp)
+dai_set_test_labels(camera_stream_1080p_nv12_test ondevice rvc2 poe ci_weekly noreplayci)
+
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
