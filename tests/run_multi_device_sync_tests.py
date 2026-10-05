@@ -9,7 +9,7 @@ import os
 import subprocess
 import signal
 from threading import Event
-import atexit
+from threading import Thread
 
 interrupted = Event()
 
@@ -17,62 +17,33 @@ def signal_handler(signal, frame):
     interrupted.set()
     print("Received SIGINT, exiting...")
 
+class ResultThread(Thread):
 
-def enablePTPonCamera(device: adbutils.AdbDevice, sync_frames: bool, is_master: bool, ptp_domain: int):
-    devicename = device.serial
-    print(f"Enabling PTP on {devicename}")
+    def __init__(self, cmd, env, name):
+        Thread.__init__(self)
+        self.cmd = cmd
+        self.env = env
+        self.name = name
+        self.result = None
+        self.stdout_lines = []
+        self.stderr_lines = []
 
-    cmd = f"sed -i -E 's/^(domainNumber[[:space:]]+?)[0-9]+?$/\\1{ptp_domain}/' /etc/linuxptp/ptp4l.conf"
-    ret = device.shell2(cmd, v2=True)
-    if ret.returncode != 0:
-        raise RuntimeError(f"{devicename} Failed to set PTP domain to {ptp_domain}: {ret.stderr}")
+    def run(self):
+        process = subprocess.Popen(
+            self.cmd,
+            env=self.env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
 
-    role = "master" if is_master else "slave"
-    cmd = f"luxonis-ptp-config mode {role}"
-    ret = device.shell2(cmd, v2=True)
-    if ret.returncode != 0:
-        raise RuntimeError(f"{devicename} Failed to set PTP mode to {role}: {ret.stderr}")
+        for output in process.stdout:
+            line = output.rstrip()
+            print(f"[{self.name}] {line}", flush=True)
+            self.stdout_lines.append(line)
 
-    cmd = f"luxonis-ptp-config sync_frames {"true" if sync_frames else "false"}"
-    ret = device.shell2(cmd, v2=True)
-    if ret.returncode != 0:
-        raise RuntimeError(f"{devicename} Failed to set PTP sync_frames to {sync_frames}: {ret.stderr}")
-
-    cmd = "luxonis-ptp-config enable"
-    ret = device.shell2(cmd, v2=True)
-    if ret.returncode != 0:
-        raise RuntimeError(f"{devicename} Failed to enable PTP: {ret.stderr}")
-
-def disablePTPonCamera(device: adbutils.AdbDevice):
-    devicename = device.serial
-    print(f"Disabling PTP on {devicename}")
-    cmd = "luxonis-ptp-config disable"
-    ret = device.shell2(cmd, v2=True)
-    if ret.returncode != 0:
-        raise RuntimeError(f"{devicename} Failed to disable PTP: {ret.stderr}")
-
-def enablePTPonAllDevices(devices: list[adbutils.AdbDevice], sync_frames: bool, ptp_domain: int):
-    print(f"Found {len(devices)} devices")
-    print(f"PTP domain: {ptp_domain}")
-    print("Enabling PTP on all devices")
-    for idx, device in enumerate(devices):
-        if idx == 0:
-            enablePTPonCamera(device, sync_frames, True, ptp_domain)
-        else:
-            enablePTPonCamera(device, sync_frames, False, ptp_domain)
-
-        ret = device.shell2("reboot")
-        if ret.returncode != 0:
-            raise RuntimeError(f"Failed to reboot {device.serial}: {ret.stderr}")
-
-def disablePTPonAllDevices(devices: list[adbutils.AdbDevice]):
-    print(f"Found {len(devices)} devices")
-    print("Disabling PTP on all devices")
-    for device in devices:
-        try:
-            disablePTPonCamera(device)
-        except RuntimeError as e:
-            print(f"Failed to disable PTP on {device.serial}: {e}")
+        process.wait()
+        self.result = process
 
 def main():
     parser = argparse.ArgumentParser()
@@ -91,10 +62,8 @@ def main():
     args = parser.parse_args()
     num_devices = 4
     if args.fsync:
-        sync_frames = False
         test_executable = "multi_device_fsync_test"
     elif args.ptp:
-        sync_frames = True
         test_executable = "multi_device_ptp_test"
     else:
         raise RuntimeError("Must specify either --fsync or --ptp")
@@ -117,9 +86,6 @@ def main():
 
     print("All devices are online")
     try:
-        atexit.register(disablePTPonAllDevices, devices)
-        enablePTPonAllDevices(devices, sync_frames, 111)
-
         print(f"Waiting for all {num_devices} devices to come online...")
         start_time = datetime.datetime.now()
         while True:
@@ -152,7 +118,7 @@ def main():
                 "ctest",
                 "--no-tests=error",
                 "-VV",
-                "-L",
+                "-R",
                 f"^({test_executable})$",
                 "--timeout",
                 str(test_timeout_sec),
@@ -164,13 +130,17 @@ def main():
                 "tail",
             ]
 
-            subprocess.run(cmd, env=envvars, shell=True, check=True)
+            thread = ResultThread(cmd, envvars, test_executable)
+            thread.start()
+            thread.join()
+            if thread.result.returncode != 0:
+                raise RuntimeError(f"Failed to run tests: {thread.stderr_lines}")
         except Exception as e:
             print(f"Failed to run tests: {e}")
             raise e
-    finally:
-        atexit.unregister(disablePTPonAllDevices)
-        disablePTPonAllDevices(devices)
+    except Exception as e:
+        print(f"Failed to run tests: {e}")
+        raise e
 
 if __name__ == "__main__":
     main()
