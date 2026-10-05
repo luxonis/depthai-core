@@ -1826,7 +1826,6 @@ void PipelineImpl::start() {
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
-        DAI_CHECK_V(masterDevices.size() > 0, "No master devices are assigned to device nodes");
         DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(), "Number of devices assigned to device nodes does not match the number of master and slave devices");
         // Start all devices in parallel, all-or-nothing: if any fails, close the
         // ones that started and rethrow
@@ -1837,7 +1836,7 @@ void PipelineImpl::start() {
         // Each thread writes only its own index; read after join
         std::vector<uint8_t> masterStarted(masterDevices.size(), 0);
         std::vector<uint8_t> slaveStarted(slaveDevices.size(), 0);
-        
+
         auto startDevices = [this]
         (
             std::vector<std::shared_ptr<dai::Device>> &devices,
