@@ -4,6 +4,7 @@ import adbutils
 import argparse
 import datetime
 import time
+import pathlib
 import os
 import subprocess
 import signal
@@ -88,13 +89,12 @@ def main():
     )
 
     args = parser.parse_args()
+    num_devices = 4
     if args.fsync:
         sync_frames = False
-        num_devices = 4
         test_executable = "multi_device_fsync_test"
     elif args.ptp:
         sync_frames = True
-        num_devices = 3
         test_executable = "multi_device_ptp_test"
     else:
         raise RuntimeError("Must specify either --fsync or --ptp")
@@ -141,7 +141,29 @@ def main():
             envvars = os.environ.copy()
             envvars["DEPTHAI_PROTOCOL"] = "tcpip"
 
-            cmd = f"../build/tests/{test_executable}"
+            test_timeout_sec = 2000
+
+            default_path = pathlib.Path(__file__) / ".." / ".." / "build"
+            print("Going to run tests in directory:", default_path)
+            print("abs path:", pathlib.Path(default_path).resolve())
+            os.chdir(pathlib.Path(default_path).resolve())
+
+            cmd = [
+                "ctest",
+                "--no-tests=error",
+                "-VV",
+                "-L",
+                f"^({test_executable})$",
+                "--timeout",
+                str(test_timeout_sec),
+                "-C",
+                "Release",
+                "--test-output-size-failed",
+                "500000",
+                "--test-output-truncation",
+                "tail",
+            ]
+
             subprocess.run(cmd, env=envvars, shell=True, check=True)
         except Exception as e:
             print(f"Failed to run tests: {e}")
