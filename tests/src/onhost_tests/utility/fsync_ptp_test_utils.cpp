@@ -319,6 +319,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     if(numSlaves == 0) {
         throw std::runtime_error("No slaves detected!");
     }
+    auto queue = sync->out.createOutputQueue();
 
     pipeline.start();
 
@@ -336,8 +337,6 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     if (parameters.initialTimeoutSec == 0) {
         waitingForInitialTimeout = false;
     }
-
-    auto queue = sync->out.createOutputQueue();
 
     while(true) {
         while(queue->has()) {
