@@ -7,6 +7,7 @@
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "device/Platform.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
 #endif
@@ -1813,7 +1814,14 @@ void PipelineImpl::start() {
     std::vector<std::shared_ptr<dai::Device>> slaveDevices;
 
     for(auto d : devices) {
-        auto role = d->getExternalFrameSyncRole();
+        auto role = dai::ExternalFrameSyncRole::AUTO_DETECT;
+
+        if (d->getPlatform() != dai::Platform::RVC4) {
+            role = dai::ExternalFrameSyncRole::MASTER;
+        } else {
+            role = d->getExternalFrameSyncRole();
+        }
+
         if(role == dai::ExternalFrameSyncRole::MASTER) {
             masterDevices.push_back(d);
         } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
