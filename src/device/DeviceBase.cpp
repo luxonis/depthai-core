@@ -406,6 +406,8 @@ class DeviceBase::Impl {
     // Device Logger
     DeviceLogger logger{"host", stdoutColorSink};
 
+    std::thread startupNotificationsThread;
+
     // RPC
     std::mutex rpcMutex;
     std::shared_ptr<XLinkStream> rpcStream;
@@ -934,6 +936,7 @@ void DeviceBase::closeImpl() {
     if(loggingThread.joinable()) loggingThread.join();
     // And at the end stop profiling thread
     if(profilingThread.joinable()) profilingThread.join();
+    if(pimpl->startupNotificationsThread.joinable()) pimpl->startupNotificationsThread.join();
 
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
@@ -1468,7 +1471,14 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             try {
                 const auto disableNotificationsEnv = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS", "");
                 if(disableNotificationsEnv != "1" && disableNotificationsEnv != "true") {
-                    utility::printStartupNotifications(build::VERSION, getPlatform(), getProtocol(), getOSVersion(), getProductName());
+                    pimpl->startupNotificationsThread =
+                        std::thread([this, platform = getPlatform(), protocol = getProtocol(), osVersion = getOSVersion(), deviceSKU = getProductName()]() {
+                            try {
+                                utility::printStartupNotifications(build::VERSION, platform, protocol, osVersion, deviceSKU);
+                            } catch(const std::exception& ex) {
+                                pimpl->logger.debug("Startup notification print failed: {}", ex.what());
+                            }
+                        });
                 }
             } catch(const std::exception& ex) {
                 pimpl->logger.debug("Startup notification print failed: {}", ex.what());
