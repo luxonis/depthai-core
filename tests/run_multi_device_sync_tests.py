@@ -100,7 +100,9 @@ def main():
 
         print("All devices are online")
         print("Sleeping 2 minutes for PTP to settle")
-        time.sleep(120)
+
+        if interrupted.wait(120):
+            raise RuntimeError("Interrupted by SIGINT")
 
         try:
             print("Running tests...")
