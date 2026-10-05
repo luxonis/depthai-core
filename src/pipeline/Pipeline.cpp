@@ -1847,19 +1847,29 @@ void PipelineImpl::start() {
                 });
             }
         };
-        startDevices(masterDevices);
-        startDevices(slaveDevices);
-        for(auto& thread : startThreads) {
-            thread.join();
-        }
-        for(std::size_t i = 0; i < devices.size(); i++) {
-            if(startErrors[i]) {
-                for(std::size_t j = 0; j < devices.size(); j++) {
-                    if(started[j]) devices[j]->close();
-                }
-                std::rethrow_exception(startErrors[i]);
+        auto finalizeStartedDevices = [&startThreads, &startErrors, &started](std::vector<std::shared_ptr<dai::Device>> &devices)
+        {
+            for(auto& thread : startThreads) {
+                thread.join();
             }
-        }
+            for(std::size_t i = 0; i < devices.size(); i++) {
+                if(startErrors[i]) {
+                    for(std::size_t j = 0; j < devices.size(); j++) {
+                        if(started[j]) devices[j]->close();
+                    }
+                    std::rethrow_exception(startErrors[i]);
+                }
+            }
+
+            startThreads.clear();
+            startErrors.clear();
+            started.clear();
+        };
+
+        startDevices(masterDevices);
+        finalizeStartedDevices(masterDevices);
+        startDevices(slaveDevices);
+        finalizeStartedDevices(slaveDevices);
     }
 
     // All devices that have no recorded transition are up. A monitor thread may have
