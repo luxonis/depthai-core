@@ -1,4 +1,5 @@
 #include <optional>
+#include <string_view>
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
@@ -170,6 +171,22 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
 #endif
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
         .def("setBlob", py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
+        .def(
+            "setOtherModelFormat",
+            [](NeuralNetwork& self, py::bytes model) {
+                const std::string_view data = model;
+                self.setOtherModelFormat(std::vector<uint8_t>(data.begin(), data.end()));
+            },
+            py::arg("model"),
+            DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def("setOtherModelFormat",
+             py::overload_cast<std::vector<uint8_t>>(&NeuralNetwork::setOtherModelFormat),
+             py::arg("model"),
+             DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def("setOtherModelFormat",
+             py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setOtherModelFormat),
+             py::arg("path"),
+             DOC(dai, node, NeuralNetwork, setOtherModelFormat, 2))
         .def("setModelPath", &NeuralNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, NeuralNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &NeuralNetwork::setNumShavesPerInferenceThread,
