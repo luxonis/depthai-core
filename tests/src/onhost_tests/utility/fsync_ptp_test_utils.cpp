@@ -313,11 +313,13 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
         setupDevice(deviceInfo, pipeline, sync, numMasters, numSlaves, inputNames, targetFps, parameters.syncType, parameters.allowedSensors);
     }
 
-    if(numMasters == 0) {
-        throw std::runtime_error("No master detected!");
-    }
-    if(numSlaves == 0) {
-        throw std::runtime_error("No slaves detected!");
+    if (parameters.syncType == SyncType::EXTERNAL) {
+        if(numMasters == 0) {
+            throw std::runtime_error("No master detected!");
+        }
+        if(numSlaves == 0) {
+            throw std::runtime_error("No slaves detected!");
+        }
     }
     auto queue = sync->out.createOutputQueue();
 
