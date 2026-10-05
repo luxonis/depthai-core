@@ -73,6 +73,22 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     TimestampSource getTimestampSource() const;
 
     /**
+     * Compare all populated IMU reports (in every packet) and image exposure-middle timestamps.
+     * Disabled by default to preserve header-based synchronization. Reports with a zero device
+     * timestamp (or a negative device timestamp) are considered absent. No message or report timestamps are modified.
+     * Only syncAttempts = -1 guarantees that the complete timestamp span is below the threshold;
+     * finite attempts retain their existing send-anyway behavior. An IMU message without populated
+     * reports, or a populated report missing the selected timestamp, stops the node with an error
+     * when matching is attempted (finite attempts can send without matching). Device execution
+     * of this opt-in mode requires firmware supporting individual report synchronization.
+     * @param enabled Whether to synchronize individual reports.
+     */
+    void setSyncOnIndividualReports(bool enabled);
+
+    /** Get whether individual report synchronization is enabled. */
+    bool getSyncOnIndividualReports() const;
+
+    /**
      * Gets the maximal interval between messages in the group in milliseconds
      */
     std::chrono::nanoseconds getSyncThreshold() const;
