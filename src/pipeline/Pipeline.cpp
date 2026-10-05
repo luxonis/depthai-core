@@ -1812,11 +1812,11 @@ void PipelineImpl::start() {
     std::vector<std::shared_ptr<dai::Device>> masterDevices;
     std::vector<std::shared_ptr<dai::Device>> slaveDevices;
 
-    for (auto d : devices) {
+    for(auto d : devices) {
         auto role = d->getExternalFrameSyncRole();
-        if (role == dai::ExternalFrameSyncRole::MASTER) {
+        if(role == dai::ExternalFrameSyncRole::MASTER) {
             masterDevices.push_back(d);
-        } else if (role == dai::ExternalFrameSyncRole::SLAVE) {
+        } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
             slaveDevices.push_back(d);
         } else {
             throw std::runtime_error("Unknown external frame sync role");
@@ -1826,7 +1826,8 @@ void PipelineImpl::start() {
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
-        DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(), "Number of devices assigned to device nodes does not match the number of master and slave devices");
+        DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(),
+                    "Number of devices assigned to device nodes does not match the number of master and slave devices");
         // Start masters before slaves, in parallel within each group. If either
         // group fails, roll back every device that started in either group.
         // Each thread writes only its own index; read after join
@@ -1879,8 +1880,8 @@ void PipelineImpl::start() {
                         Logging::getInstance().logger.error(
                             "Failed to close device {} during startup rollback: {}", devices[i]->getDeviceInfo().getDeviceId(), ex.what());
                     } catch(...) {
-                        Logging::getInstance().logger.error(
-                            "Failed to close device {} during startup rollback: unknown exception", devices[i]->getDeviceInfo().getDeviceId());
+                        Logging::getInstance().logger.error("Failed to close device {} during startup rollback: unknown exception",
+                                                            devices[i]->getDeviceInfo().getDeviceId());
                     }
                 }
             };
