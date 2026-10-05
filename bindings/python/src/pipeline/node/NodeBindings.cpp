@@ -342,7 +342,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Node::DatatypeHierarchy> nodeDatatypeHierarchy(pyNode, "DatatypeHierarchy", DOC(dai, Node, DatatypeHierarchy));
 
     py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
-    pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send));
+    pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send), py::call_guard<py::gil_scoped_release>());
     pyInputQueue.def("trySend", &InputQueue::trySend, py::arg("msg"), DOC(dai, InputQueue, trySend));
 
     // Node::Id bindings
