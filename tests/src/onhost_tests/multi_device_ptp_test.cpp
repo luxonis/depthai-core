@@ -8,7 +8,7 @@ namespace {
 struct FsyncTestParameters getDefaultParameters() {
     struct FsyncTestParameters parameters {};
     parameters.totalRunDurationSec = 180;
-    parameters.firstGroupTimeoutSec = 15;
+    parameters.firstGroupTimeoutSec = 10;
     parameters.syncAcquisitionTimeoutSec = 60;
     parameters.warmupDurationSec = 60;
     parameters.deltaMeanThreshold = 1e-3;
