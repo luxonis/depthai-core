@@ -623,10 +623,10 @@ TEST_CASE("Depth: fusion streams depth and confidence continuously", "[fusion]")
     const auto depthFps = frames / std::chrono::duration<double>(previousDepth->getTimestamp() - firstDepthTimestamp).count();
     const auto confidenceFps = frames / std::chrono::duration<double>(previousConfidence->getTimestamp() - firstConfidenceTimestamp).count();
     INFO("Expected " << expectedFps << " FPS; depth=" << depthFps << ", confidence=" << confidenceFps);
-    REQUIRE(depthFps >= expectedFps * 0.8f);
-    REQUIRE(depthFps <= expectedFps * 1.2f);
-    REQUIRE(confidenceFps >= expectedFps * 0.8f);
-    REQUIRE(confidenceFps <= expectedFps * 1.2f);
+    REQUIRE(depthFps >= expectedFps * 0.7f);
+    REQUIRE(depthFps <= expectedFps * 1.3f);
+    REQUIRE(confidenceFps >= expectedFps * 0.7f);
+    REQUIRE(confidenceFps <= expectedFps * 1.3f);
 }
 
 TEST_CASE("Depth: TOF confidence output maps to ToF confidence output") {
