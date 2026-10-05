@@ -52,6 +52,12 @@ Report readReport(const std::shared_ptr<dai::IMUData>& data) {
     REQUIRE(data != nullptr);
     REQUIRE(data->packets.size() == 1);
     const auto& packet = data->packets.front();
+    CHECK(std::isfinite(packet.acceleroMeter.x));
+    CHECK(std::isfinite(packet.acceleroMeter.y));
+    CHECK(std::isfinite(packet.acceleroMeter.z));
+    CHECK(std::isfinite(packet.magneticField.x));
+    CHECK(std::isfinite(packet.magneticField.y));
+    CHECK(std::isfinite(packet.magneticField.z));
     return {seconds(data->getTimestampDevice()), seconds(packet.acceleroMeter.getTimestampDevice()), seconds(packet.magneticField.getTimestampDevice())};
 }
 
@@ -64,19 +70,27 @@ Image readImage(const std::shared_ptr<dai::ImgFrame>& image) {
     return {image->getSequenceNum(), seconds(image->getTimestampDevice(dai::CameraExposureOffset::MIDDLE))};
 }
 
-Capture capture(dai::Pipeline& pipeline, int fps, bool oversampled) {
+Capture capture(dai::Pipeline& pipeline, int fps, bool oversampled, const std::string& sensorMode, bool reportAware, bool syncOnHost) {
     const auto camera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, static_cast<float>(fps));
     camera->initialControl.setManualExposure(1000, 100);
     auto* output = camera->requestOutput({320, 200}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, static_cast<float>(fps));
     const auto imu = pipeline.create<dai::node::IMU>();
-    imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, oversampled ? 200 : fps);
-    imu->enableIMUSensor(dai::IMUSensor::MAGNETOMETER_RAW, oversampled ? 100 : fps);
+    const auto accelerometer = sensorMode == "calibrated"     ? dai::IMUSensor::ACCELEROMETER_CALIBRATED
+                               : sensorMode == "uncalibrated" ? dai::IMUSensor::ACCELEROMETER_UNCALIBRATED
+                                                              : dai::IMUSensor::ACCELEROMETER_RAW;
+    const auto magnetometer = sensorMode == "calibrated"     ? dai::IMUSensor::MAGNETOMETER_CALIBRATED
+                              : sensorMode == "uncalibrated" ? dai::IMUSensor::MAGNETOMETER_UNCALIBRATED
+                                                             : dai::IMUSensor::MAGNETOMETER_RAW;
+    imu->enableIMUSensor(accelerometer, oversampled ? 200 : fps);
+    imu->enableIMUSensor(magnetometer, oversampled ? 100 : fps);
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(1);
     const auto sync = pipeline.create<dai::node::Sync>();
     sync->setTimestampSource(dai::node::Sync::TimestampSource::DEVICE);
     sync->setSyncThreshold(std::chrono::milliseconds(10));
     sync->setSyncAttempts(-1);
+    sync->setSyncOnIndividualReports(reportAware);
+    sync->setRunOnHost(syncOnHost);
     output->link(sync->inputs["image"]);
     imu->out.link(sync->inputs["imu"]);
     const auto images = output->createOutputQueue(4000, false);
@@ -157,7 +171,7 @@ void checkRate(const Rate& actual, double expected, const char* stream) {
     CHECK(actual.maxWindow == Catch::Approx(expected).epsilon(RATE_ERROR));
 }
 
-void verify(const Capture& capture, int fps, bool oversampled, const std::string& deviceId) {
+void verify(const Capture& capture, int fps, bool oversampled, const std::string& sensorMode, bool reportAware, bool syncOnHost, const std::string& deviceId) {
     REQUIRE_FALSE(capture.images.empty());
     REQUIRE_FALSE(capture.reports.empty());
     const auto lower = std::max(capture.images.front().timestamp, capture.reports.front().header) + WARMUP;
@@ -212,6 +226,9 @@ void verify(const Capture& capture, int fps, bool oversampled, const std::string
         {"measurement_end", upper},
         {"fps", fps},
         {"oversampled", oversampled},
+        {"sensor_mode", sensorMode},
+        {"report_aware", reportAware},
+        {"sync_on_host", syncOnHost},
         {"image", rateMetrics(imageRate)},
         {"imu", rateMetrics(headerRate)},
         {"accel", rateMetrics(accelRate)},
@@ -256,7 +273,11 @@ void verify(const Capture& capture, int fps, bool oversampled, const std::string
 
 TEST_CASE("RVC4 requested IMU rates and individual report image alignment", "[imu][alignment][rvc4]") {
     const auto fps = GENERATE(5, 10, 20, 30, 40, 45, 50);
-    const auto oversampled = GENERATE(false, true);
+    const std::string sensorMode = GENERATE("raw", "uncalibrated", "calibrated");
+    // Default CI checks achievable association with enough real candidates.
+    // Same-rate acquisition remains an explicit diagnostic: independent sensor
+    // phases and upstream undersupply cannot guarantee this alignment contract.
+    bool oversampled = true;
     // The campaign runner may select one case, while plain CTest runs all.
     if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_FPS")) {
         REQUIRE(std::string(selected) == std::to_string(std::stoi(selected)));
@@ -267,9 +288,24 @@ TEST_CASE("RVC4 requested IMU rates and individual report image alignment", "[im
     if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_PROFILE")) {
         const std::string profile(selected);
         REQUIRE((profile == "same-rate" || profile == "oversampled"));
-        if((profile == "oversampled") != oversampled) return;
+        oversampled = profile == "oversampled";
     }
-    CAPTURE(fps, oversampled);
+    if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_SENSOR_MODE")) {
+        const std::string mode(selected);
+        REQUIRE((mode == "raw" || mode == "uncalibrated" || mode == "calibrated"));
+        if(mode != sensorMode) return;
+    }
+    bool reportAware = true;
+    if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_REPORT_AWARE")) {
+        REQUIRE((std::string(selected) == "0" || std::string(selected) == "1"));
+        reportAware = std::string(selected) == "1";
+    }
+    bool syncOnHost = false;
+    if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_SYNC_HOST")) {
+        REQUIRE((std::string(selected) == "0" || std::string(selected) == "1"));
+        syncOnHost = std::string(selected) == "1";
+    }
+    CAPTURE(fps, oversampled, sensorMode, reportAware, syncOnHost);
     dai::Pipeline pipeline;
     const auto device = pipeline.getDefaultDevice();
     REQUIRE(device != nullptr);
@@ -280,5 +316,6 @@ TEST_CASE("RVC4 requested IMU rates and individual report image alignment", "[im
         SKIP("Requires CAM_B for the RVC4 camera/IMU fixture");
     }
     if(device->getConnectedIMU().empty() || device->getConnectedIMU() == "BMI270") SKIP("Requires accelerometer and magnetometer");
-    verify(capture(pipeline, fps, oversampled), fps, oversampled, device->getDeviceId());
+    verify(
+        capture(pipeline, fps, oversampled, sensorMode, reportAware, syncOnHost), fps, oversampled, sensorMode, reportAware, syncOnHost, device->getDeviceId());
 }
