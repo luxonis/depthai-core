@@ -348,7 +348,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
             prevReceived = std::chrono::steady_clock::now();
         }
 
-        if (std::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - prevReceived).count() > 5) {
+        if (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - prevReceived).count() > 5) {
             REQUIRE_MSG(false, "Timeout: No frame groups received for 5 seconds");
         }
 
