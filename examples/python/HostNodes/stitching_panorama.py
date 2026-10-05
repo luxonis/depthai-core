@@ -9,7 +9,7 @@ import depthai as dai
 FPS = 30.0
 WINDOW_NAME = "CAM_B + CAM_C panorama"
 
-parser = argparse.ArgumentParser(description="Stitch CAM_B and CAM_C into a panorama")
+parser = argparse.ArgumentParser(description="Stitch CAM_B and CAM_C into a panorama from their calibration")
 parser.add_argument("--device-ip", help="Device IP address (default: auto-discover)")
 args = parser.parse_args()
 
@@ -18,16 +18,16 @@ with dai.Pipeline(device) as pipeline:
     outputs = []
     for socket in (dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C):
         camera = pipeline.create(dai.node.Camera).build(socket, sensorFps=FPS)
-        outputs.append(camera.requestOutput((640, 400), fps=FPS))
+        # Calibrated composition needs undistorted inputs
+        outputs.append(camera.requestOutput((640, 400), fps=FPS, enableUndistortion=True))
 
     stitching = pipeline.create(dai.node.Stitching).build(outputs)
     stitching.setMode(dai.node.Stitching.Mode.PANORAMA)
     stitching.setCameraModel(dai.CameraModel.Perspective)
     # Uncomment to trade seam quality for throughput.
     # stitching.setSeamFinder(dai.node.Stitching.SeamFinder.NONE)
-    stitching.setPanoConfidenceThreshold(0.3)
-    stitching.setContinuous(False)
-    stitching.setEstimationFrames(10)
+    # Uncomment to register the images visually instead of using the calibration.
+    # stitching.setUseInputCalibration(False)
     stitching.setMaxPanoramaSize(2000, 1000)
     stitching.setSyncThreshold(timedelta(seconds=2.0 / FPS))
     output = stitching.out.createOutputQueue()

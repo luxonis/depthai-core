@@ -71,8 +71,8 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
     /// Maximum planar projection range, stored in centimeters.
     float maxRange = 1000.0f;
     float minIncidenceAngle = 5.0f;
-    /// Use the rotations and intrinsics carried by the input frames instead of visually registering a panorama.
-    bool useInputCalibration = false;
+    /// Compose the panorama from the rotations and intrinsics carried by the input frames (the default) instead of visually registering it.
+    bool useInputCalibration = true;
 
     ~StitchingProperties() override;
 };

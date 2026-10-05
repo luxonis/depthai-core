@@ -12,7 +12,7 @@ def test_stitching_api_and_input_calibration_configuration():
         assert isinstance(stitching, dai.node.Stitching)
         assert stitching.getNumInputs() == 2
         assert stitching.getMode() == dai.node.Stitching.Mode.PANORAMA
-        assert not stitching.getUseInputCalibration()
-
-        stitching.setUseInputCalibration(True)
         assert stitching.getUseInputCalibration()
+
+        stitching.setUseInputCalibration(False)
+        assert not stitching.getUseInputCalibration()

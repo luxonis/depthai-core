@@ -42,10 +42,10 @@ model of the output:
 
 The mapping lives in `createWarper()` in [`StitchingCompositing.hpp`](StitchingCompositing.hpp).
 
-The **inputs** are ordinary camera frames and may use any pinhole model. Visual registration (`cv::Stitcher`) ignores
-their intrinsics and distortion altogether. Calibrated composition (`setUseInputCalibration(true)`) reads the input
-intrinsics and rotations and requires the inputs to be undistorted, since the warper only models the surface; request
-undistorted camera outputs for that.
+The **inputs** are ordinary camera frames and may use any pinhole model. Calibrated composition (the default) reads
+the input intrinsics and rotations and requires the inputs to be undistorted, since the warper only models the
+surface; request undistorted camera outputs for that. Visual registration (`setUseInputCalibration(false)`,
+`cv::Stitcher`) ignores their intrinsics and distortion altogether.
 
 ## What the node emits
 

@@ -26,8 +26,9 @@ namespace node {
  * Inputs are fixed at build() time and synced by an internal Sync subnode that follows the node's execution side, so
  * host-mode sources may come from different devices. Two independent stitching modes are available:
  *
- *  - `Mode::PANORAMA` wraps OpenCV's cv::Stitcher and registers the images from their content, so no calibration is
- *    needed, but the cameras have to overlap.
+ *  - `Mode::PANORAMA` composes a panorama of the calibrated, undistorted inputs from their intrinsics and rotations
+ *    by default. With `setUseInputCalibration(false)` it wraps OpenCV's cv::Stitcher instead and registers the images
+ *    from their content, so no calibration is needed, but the cameras have to overlap.
  *  - `Mode::PLANAR_PROJECTION` projects the images onto a plane given in the common origin frame of the inputs
  *    (bird's-eye view), driven purely by the calibration carried in the messages, so it also works without overlap.
  *    All input transformations must have the same origin camera socket.
@@ -199,7 +200,9 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     CameraModel getCameraModel() const;
 
     /**
-     * Use the intrinsics and rotations carried by the input ImgTransformations to compose a panorama.
+     * Use the intrinsics and rotations carried by the input ImgTransformations to compose a panorama. Enabled by
+     * default; `false` registers the images visually with OpenCV's cv::Stitcher instead, see `setContinuous()` and
+     * `setEstimationFrames()`.
      *
      * All inputs must be expressed relative to exactly the same destination device ID and camera socket. Translation
      * is ignored, so all camera centers are treated as coincident. Cylindrical panoramas use the normalized mean input

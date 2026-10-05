@@ -166,11 +166,12 @@ TEST_CASE("Stitching rejects fewer than two inputs", "[Stitching]") {
     REQUIRE_THROWS(stitching->build(1));
 }
 
-TEST_CASE("Stitching stitches panoramas by default", "[Stitching]") {
+TEST_CASE("Stitching stitches calibrated panoramas by default", "[Stitching]") {
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::node::Stitching>();
 
     REQUIRE(stitching->getMode() == dai::node::Stitching::Mode::PANORAMA);
+    REQUIRE(stitching->getUseInputCalibration());
 }
 
 TEST_CASE("Stitching uses input calibration to compose a cylindrical panorama", "[Stitching]") {
@@ -527,6 +528,7 @@ TEST_CASE("Stitching combines three rotated views into a wider panorama", "[Stit
 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::node::Stitching>()->build(views.size());
+    stitching->setUseInputCalibration(false);
     stitching->setCameraModel(dai::CameraModel::Cylindrical);
     stitching->setEstimationFrames(1);
     stitching->setSyncThreshold(std::chrono::seconds(1));
@@ -567,6 +569,7 @@ TEST_CASE("Registered panorama describes the virtual camera through its first in
     const auto stitch = [&](bool calibratedInputs) {
         dai::Pipeline pipeline(false);
         auto stitching = pipeline.create<dai::node::Stitching>()->build(views.size());
+        stitching->setUseInputCalibration(false);
         stitching->setCameraModel(dai::CameraModel::Cylindrical);
         stitching->setEstimationFrames(1);
         stitching->setSyncThreshold(std::chrono::seconds(1));
@@ -629,6 +632,7 @@ TEST_CASE("Stitching rejects panoramas larger than the configured canvas", "[Sti
         CAPTURE(continuous);
         dai::Pipeline pipeline(false);
         auto stitching = pipeline.create<dai::node::Stitching>()->build(views.size());
+        stitching->setUseInputCalibration(false);
         stitching->setContinuous(continuous);
         stitching->setEstimationFrames(1);
         stitching->setMaxPanoramaSize(320, 240);
@@ -663,6 +667,7 @@ TEST_CASE("Stitching re-estimates every frame when continuous", "[Stitching]") {
 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::node::Stitching>()->build(views.size());
+    stitching->setUseInputCalibration(false);
     stitching->setContinuous(true);
     stitching->setSyncThreshold(std::chrono::seconds(1));
 
@@ -704,6 +709,7 @@ TEST_CASE("Stitching reuses the selected transform once the estimation frames ar
 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::node::Stitching>()->build(views.size());
+    stitching->setUseInputCalibration(false);
     stitching->setContinuous(false);
     stitching->setEstimationFrames(ESTIMATION_FRAMES);
     stitching->setSyncThreshold(std::chrono::seconds(1));
@@ -754,6 +760,7 @@ TEST_CASE("Stitching rebuilds fixed panorama composition on request", "[Stitchin
 
     dai::Pipeline pipeline(false);
     auto stitching = pipeline.create<dai::node::Stitching>()->build(views.size());
+    stitching->setUseInputCalibration(false);
     stitching->setContinuous(false);
     stitching->setEstimationFrames(1);
     stitching->setSyncThreshold(std::chrono::seconds(1));
@@ -808,6 +815,7 @@ TEST_CASE("Stitching freezes the strongest of multiple estimation candidates", "
                                                                                   : std::array<const std::vector<cv::Mat>*, 2>{&weakViews, &strongViews};
         dai::Pipeline pipeline(false);
         auto stitching = pipeline.create<dai::node::Stitching>()->build(strongViews.size());
+        stitching->setUseInputCalibration(false);
         stitching->setCameraModel(dai::CameraModel::Perspective);
         stitching->setContinuous(false);
         stitching->setEstimationFrames(2);
