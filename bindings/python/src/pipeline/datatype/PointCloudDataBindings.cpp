@@ -17,7 +17,7 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawPointCloudData, RawBuffer, std::shared_ptr<RawPointCloudData>> rawPointCloudData(m, "RawPointCloudData", DOC(dai, RawPointCloudData));
-    py::class_<PointCloudData, Py<PointCloudData>, Buffer, Transformable, std::shared_ptr<PointCloudData>> pointCloudData(
+    py::class_<PointCloudData, Py<PointCloudData>, Buffer, ProtoSerializable, Transformable, std::shared_ptr<PointCloudData>> pointCloudData(
         m, "PointCloudData", DOC(dai, PointCloudData));
 
     ///////////////////////////////////////////////////////////////////////

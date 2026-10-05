@@ -36,6 +36,7 @@ message Rect {
     float y = 2; // default value: 0.0f
     float width = 3; // default value: 0.0f
     float height = 4; // default value: 0.0f
+    optional bool normalized = 5;
 }
 
 message SpatialLocationCalculatorConfigThresholds {

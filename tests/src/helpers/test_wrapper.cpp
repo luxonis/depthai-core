@@ -10,6 +10,10 @@
 #include "depthai/depthai.hpp"
 #include "subprocess.hpp"
 
+#ifndef DEVICE_SEARCH_TIMEOUT_SECONDS
+    #define DEVICE_SEARCH_TIMEOUT_SECONDS 30
+#endif
+
 int main(int argc, char* argv[]) {
     if(argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <timeout> <script> [args...]" << std::endl;
@@ -38,7 +42,13 @@ int main(int argc, char* argv[]) {
         auto devicesBefore = 0;
         std::string targetDeviceId;
 
+        constexpr auto DEVICE_SEARCH_TIMEOUT = std::chrono::seconds(DEVICE_SEARCH_TIMEOUT_SECONDS);
+        auto searchStart = std::chrono::steady_clock::now();
         while(devicesBefore < 1) {
+            if(std::chrono::steady_clock::now() - searchStart > DEVICE_SEARCH_TIMEOUT) {
+                std::cerr << "=== No device found after " << DEVICE_SEARCH_TIMEOUT.count() << " seconds, skipping test ===" << std::endl;
+                return 125;  // skip code
+            }
             devicesBefore = dai::Device::getAllAvailableDevices().size();
             std::cout << "Devices now: " << devicesBefore << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -47,7 +57,9 @@ int main(int argc, char* argv[]) {
         // Mirror child auto-selection logic, then pin child to that same device id.
         bool foundTargetDevice = false;
         dai::DeviceInfo targetDeviceInfo;
-        std::tie(foundTargetDevice, targetDeviceInfo) = dai::Device::getAnyAvailableDevice();
+        if(devicesBefore >= 1) {
+            std::tie(foundTargetDevice, targetDeviceInfo) = dai::Device::getAnyAvailableDevice();
+        }
         if(foundTargetDevice) {
             targetDeviceId = targetDeviceInfo.getDeviceId();
         }

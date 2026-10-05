@@ -6,6 +6,10 @@ void InputQueue::send(const std::shared_ptr<ADatatype>& msg) {
     inputQueueNode->send(msg);
 }
 
+bool InputQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
+    return inputQueueNode->trySend(msg);
+}
+
 InputQueue::InputQueue(unsigned int maxSize, bool blocking) : inputQueueNode(std::make_shared<InputQueueNode>(maxSize, blocking)) {}
 
 InputQueue::InputQueueNode::InputQueueNode(unsigned int maxSize, bool blocking) : ThreadedHostNode() {
@@ -21,6 +25,10 @@ void InputQueue::InputQueueNode::run() {
 
 void InputQueue::InputQueueNode::send(const std::shared_ptr<ADatatype>& msg) {
     input.send(msg);
+}
+
+bool InputQueue::InputQueueNode::trySend(const std::shared_ptr<ADatatype>& msg) {
+    return input.trySend(msg);
 }
 
 const char* InputQueue::InputQueueNode::getName() const {

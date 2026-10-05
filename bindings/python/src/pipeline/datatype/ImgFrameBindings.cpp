@@ -18,7 +18,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawImgFrame, RawBuffer, std::shared_ptr<RawImgFrame>> rawImgFrame(m, "RawImgFrame", DOC(dai, RawImgFrame));
-    py::class_<ImgFrame, Py<ImgFrame>, Buffer, std::shared_ptr<ImgFrame>> imgFrame(m, "ImgFrame", DOC(dai, ImgFrame));
+    py::class_<ImgFrame, Py<ImgFrame>, Buffer, ProtoSerializable, std::shared_ptr<ImgFrame>> imgFrame(m, "ImgFrame", DOC(dai, ImgFrame));
     py::enum_<ImgFrame::Type> imgFrameType(imgFrame, "Type");
     py::enum_<ImgFrame::Fsync> imgFrameFsync(imgFrame, "Fsync");
     py::class_<ImgFrame::Specs> imgFrameSpecs(imgFrame, "Specs", DOC(dai, ImgFrame, Specs));
@@ -165,6 +165,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getDistortionModel", &ImgTransformation::getDistortionModel, DOC(dai, ImgTransformation, getDistortionModel))
         .def("getDistortionCoefficients", &ImgTransformation::getDistortionCoefficients, DOC(dai, ImgTransformation, getDistortionCoefficients))
         .def("getExtrinsics", &ImgTransformation::getExtrinsics, DOC(dai, ImgTransformation, getExtrinsics))
+        .def("rebaseExtrinsics", &ImgTransformation::rebaseExtrinsics, py::arg("localOriginToTarget"), DOC(dai, ImgTransformation, rebaseExtrinsics))
         .def("getSrcCrops", &ImgTransformation::getSrcCrops, DOC(dai, ImgTransformation, getSrcCrops))
         .def("getSrcMaskPt", &ImgTransformation::getSrcMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getSrcMaskPt))
         .def("getDstMaskPt", &ImgTransformation::getDstMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getDstMaskPt))

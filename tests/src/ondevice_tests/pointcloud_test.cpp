@@ -1,3 +1,4 @@
+#include <array>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
@@ -63,6 +64,73 @@ TEST_CASE("sparse pointcloud") {
         REQUIRE(pcl->getMinY() <= pcl->getMaxY());
         REQUIRE(pcl->getMinZ() <= pcl->getMaxZ());
     }
+}
+
+TEST_CASE("PointCloud compensates perspective distortion in depth rays") {
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) {
+        WARN("Skipping distorted pointcloud test: PointCloud node is not supported on RVC2.");
+        return;
+    }
+
+    auto pointcloud = pipeline.create<dai::node::PointCloud>();
+    pointcloud->initialConfig->setOrganized(true);
+    pointcloud->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+
+    auto depthInQ = pointcloud->inputDepth.createInputQueue();
+    auto outQ = pointcloud->outputPointCloud.createOutputQueue(4, false);
+
+    constexpr unsigned W = 5, H = 3;
+    constexpr float FX = 100.f, FY = 100.f, CX = 2.f, CY = 1.f;
+    constexpr unsigned CX_PIXEL = 2, CY_PIXEL = 1;
+    constexpr float DEPTH_MM = 1000.f;
+    constexpr float K1 = 100.f;
+    constexpr float EXPECTED_UNDISTORTED_X_MM = 19.282993f;
+
+    const std::array<std::array<float, 3>, 3> intrinsics = {{{FX, 0.f, CX}, {0.f, FY, CY}, {0.f, 0.f, 1.f}}};
+    dai::Extrinsics extrinsics({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_B);
+    dai::ImgTransformation transformation(W, H, intrinsics, dai::CameraModel::Perspective, {K1}, extrinsics);
+
+    auto depthFrame = std::make_shared<dai::ImgFrame>();
+    depthFrame->setWidth(W);
+    depthFrame->setHeight(H);
+    depthFrame->setType(dai::ImgFrame::Type::RAW16);
+    std::vector<uint16_t> depthData(W * H, static_cast<uint16_t>(DEPTH_MM));
+    std::vector<uint8_t> depthBytes(depthData.size() * sizeof(uint16_t));
+    std::memcpy(depthBytes.data(), depthData.data(), depthBytes.size());
+    depthFrame->setData(std::move(depthBytes));
+    depthFrame->setTransformation(transformation);
+
+    pipeline.start();
+    depthInQ->send(depthFrame);
+
+    auto pointCloudData = outQ->get<dai::PointCloudData>();
+    REQUIRE(pointCloudData != nullptr);
+    REQUIRE(pointCloudData->isOrganized());
+
+    const auto points = pointCloudData->getPoints();
+    REQUIRE(points.size() == W * H);
+
+    // The centre pixel has no radial distortion and lies on the optical axis.
+    const auto& centre = points[CY_PIXEL * W + CX_PIXEL];
+    REQUIRE(centre.x == Catch::Approx(0.f));
+    REQUIRE(centre.y == Catch::Approx(0.f));
+    REQUIRE(centre.z == Catch::Approx(DEPTH_MM));
+
+    // At (u=4,v=1), xd=(u-cx)/fx=0.02. With k1=100, the undistorted
+    // normalized ray is 0.019282993, giving x=19.282993 mm at z=1000 mm.
+    const auto& right = points[1 * W + 4];
+    REQUIRE(right.x == Catch::Approx(EXPECTED_UNDISTORTED_X_MM).epsilon(0.0001f));
+    REQUIRE(right.y == Catch::Approx(0.f));
+    REQUIRE(right.z == Catch::Approx(DEPTH_MM));
+
+    // Radial distortion is symmetric around the principal point.
+    const auto& left = points[1 * W + 0];
+    REQUIRE(left.x == Catch::Approx(-EXPECTED_UNDISTORTED_X_MM).epsilon(0.0001f));
+    REQUIRE(left.y == Catch::Approx(0.f));
+    REQUIRE(left.z == Catch::Approx(DEPTH_MM));
+
+    pipeline.stop();
 }
 
 // ============================================================================

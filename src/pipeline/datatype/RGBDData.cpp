@@ -67,8 +67,13 @@ std::vector<std::uint8_t> RGBDData::serializeProto(bool metadataOnly) const {
 }
 
 ProtoSerializable::SchemaPair RGBDData::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<RGBDData>();
 }
+
+void RGBDData::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
+
 #endif
 
 }  // namespace dai

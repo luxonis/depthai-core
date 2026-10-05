@@ -23,7 +23,7 @@ Extrinsics::Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, 
     setTransformationMatrix(extrinsicsMatrix, lengthUnit);
 }
 
-Extrinsics::Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
+Extrinsics::Extrinsics(const std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
     : toCameraSocket(toCameraSocket) {
     setTransformationMatrix(extrinsicsMatrix, lengthUnit);
 }
@@ -101,12 +101,25 @@ std::vector<float> Extrinsics::getTranslationVector(bool useSpecTranslation, Len
     return translationVector;
 }
 
+Extrinsics Extrinsics::withLengthUnit(LengthUnit unit) const {
+    Extrinsics result = *this;
+    const auto convertedTranslation = getTranslationVector(false, unit);
+    const auto convertedSpecTranslation = getTranslationVector(true, unit);
+    result.translation = Point3f(convertedTranslation[0], convertedTranslation[1], convertedTranslation[2]);
+    result.specTranslation = Point3f(convertedSpecTranslation[0], convertedSpecTranslation[1], convertedSpecTranslation[2]);
+    result.lengthUnit = unit;
+    return result;
+}
+
 bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const {
     if(!matrix::mateq(rotationMatrix, other.rotationMatrix, epsilon)) {
         return false;
     }
 
     if(this->toCameraSocket != other.toCameraSocket) {
+        return false;
+    }
+    if(this->toDeviceId != other.toDeviceId) {
         return false;
     }
 
@@ -121,15 +134,33 @@ bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const
     return true;
 }
 
+bool Extrinsics::hasCompatibleCoordinateSystem(const Extrinsics& to) const {
+    // transformation A  |  transforamtion B    |    sameTargetDevice
+    //        ""           |       ""           |      true
+    //        ""           |       "x"          |      false
+    //        "x"          |       ""           |      false
+    //        "x"          |       "x"          |      true
+    const bool sameTargetDevice = toDeviceId == to.toDeviceId;  // XNOR
+
+    // transformation A  |  transforamtion B    |    compatibleTargetSockets
+    //        AUTO       |       AUTO           |      true
+    //        AUTO       |        A             |      true
+    //         A         |       AUTO           |      true
+    //         A         |        B             |      false
+    const bool compatibleTargetSockets =
+        toCameraSocket == CameraBoardSocket::AUTO || to.toCameraSocket == CameraBoardSocket::AUTO || toCameraSocket == to.toCameraSocket;
+    return sameTargetDevice && compatibleTargetSockets;
+}
+
 std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(const Extrinsics& to,
                                                                               const bool useSpecTranslation,
                                                                               const LengthUnit sourceUnit) const {
-    if(this->toCameraSocket == dai::CameraBoardSocket::AUTO || to.toCameraSocket == dai::CameraBoardSocket::AUTO) {
-        throw std::runtime_error(
-            "Cannot get extrinsics transformation to or from an extrinsics with AUTO camera socket. Please specify the camera socket for both extrinsics.");
-    }
-    if(this->toCameraSocket != to.toCameraSocket) {
-        throw std::runtime_error("Cannot get extrinsics to a transformation with a different base camera socket.");
+    if(!hasCompatibleCoordinateSystem(to) || this->toCameraSocket == CameraBoardSocket::AUTO || to.toCameraSocket == CameraBoardSocket::AUTO) {
+        const auto describeTarget = [](const Extrinsics& extrinsics) {
+            return "deviceId '" + extrinsics.toDeviceId + "', socket " + toString(extrinsics.toCameraSocket);
+        };
+        throw std::runtime_error("Cannot get extrinsics between different target coordinate systems. Source target: " + describeTarget(*this)
+                                 + ". Destination target: " + describeTarget(to) + ".");
     }
 
     // this -> Common
@@ -154,6 +185,15 @@ Point3f Extrinsics::getTranslationInUnit(bool useSpec, LengthUnit targetUnit) co
     translationToUse.y *= scale;
     translationToUse.z *= scale;
     return translationToUse;
+}
+
+bool Extrinsics::hasValidRotationMatrix() const {
+    try {
+        matrix::validateRotationMatrix3x3(rotationMatrix);
+    } catch(const std::exception&) {
+        return false;
+    }
+    return true;
 }
 
 bool Extrinsics::validRotationMatrix() const {

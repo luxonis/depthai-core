@@ -62,7 +62,7 @@ if requireOpenCv:
         DEPENDENCIES.append('opencv-python<5')
 
 if args.install_rerun:
-    DEPENDENCIES.append('rerun-sdk')
+    DEPENDENCIES.append('rerun-sdk<0.38')
 if args.install_open3d_cpu:
     if platform.system() == "Darwin":
         DEPENDENCIES.append("open3d")

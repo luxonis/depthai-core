@@ -10,6 +10,7 @@
 // Include experimental APIs
 #ifdef DEPTHAI_HAVE_BETA
     #include "beta/datatypes.hpp"
+    #include "beta/device/MultiDeviceCalibrationHandler.hpp"
     #include "beta/nodes.hpp"
 #endif
 

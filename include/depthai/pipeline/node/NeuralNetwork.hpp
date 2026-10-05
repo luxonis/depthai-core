@@ -161,7 +161,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     void setOtherModelFormat(std::vector<uint8_t> model);
 
     /**
-     * Load network model into assets and use once pipeline is started.
+     * Register a network model for lazy asset loading and use it once the pipeline is started. The file must remain available and unchanged until
+     * the pipeline has been built.
      *
      * @throws Error if file doesn't exist or isn't a valid network model.
      * @param path Path to the network model
@@ -169,8 +170,9 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     void setOtherModelFormat(const std::filesystem::path& path);
 
     /**
-     * Load network xml and bin files into assets.
-     * @param xmlModelPath Path to the neural network model file.
+     * Load a network model into assets. DLC and other custom model files are loaded lazily and must remain available and unchanged until the
+     * pipeline has been built.
+     * @param modelPath Path to the neural network model file.
      */
     void setModelPath(const std::filesystem::path& modelPath);
 

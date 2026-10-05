@@ -91,6 +91,16 @@ TEST_CASE("ImgFrame basic metadata and layout", "[ImgFrame][Geometry]") {
     }
 }
 
+TEST_CASE("ImgFrame plane geometry on an unsized frame", "[ImgFrame][Geometry]") {
+    // getPlaneHeight() divides by the stride, which is 0 until the frame has a
+    // size and a type. Without a guard this raises SIGFPE instead of returning.
+    dai::ImgFrame frame;
+
+    REQUIRE(frame.getStride() == 0);
+    REQUIRE(frame.getPlaneStride() == 0);
+    REQUIRE(frame.getPlaneHeight() == 0);
+}
+
 TEST_CASE("ImgFrame constructors initialize buffers", "[ImgFrame][Constructors]") {
     dai::ImgFrame defaultFrame;
     REQUIRE(defaultFrame.getData().empty());

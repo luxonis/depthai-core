@@ -4,6 +4,10 @@
 #include <string>
 #include <vector>
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include <filesystem>
+#endif
+
 namespace dai {
 
 class ProtoSerializable {
@@ -23,10 +27,28 @@ class ProtoSerializable {
     virtual std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const = 0;
 
     /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    virtual void deserializeProto(const std::vector<std::uint8_t>& bytes) = 0;
+
+    /**
      * @brief Serialize the schema of this object
      * @return schemaPair
      */
     virtual SchemaPair serializeSchema() const = 0;
+
+    /**
+     * @brief Serialize this object and write it to disk
+     * @param path Output file path.
+     * @param metadataOnly If true, serialize only metadata and omit payload data where supported by the concrete type.
+     */
+    void save(const std::filesystem::path& path, bool metadataOnly = false) const;
+
+    /**
+     * @brief Load this object from a serialized protobuf file on disk
+     * @param path Input file path.
+     */
+    void load(const std::filesystem::path& path);
 
 #else
     // Helper struct for compile-time check

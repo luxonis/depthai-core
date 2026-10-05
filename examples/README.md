@@ -1,6 +1,6 @@
 # DepthAI Examples
 
-For more information about the examples, please refer to the [DepthAI documentation](https://stg.docs.luxonis.com/software/v3/examples/).
+For more information about the examples, please refer to the [DepthAI documentation](https://docs.luxonis.com/software-v3/depthai/examples/).
 ## Supported platforms
 The examples are now split into three categories:
 * In the root directory of examples, there are the examples that are supported on both RVC2 and RVC4 platforms devices

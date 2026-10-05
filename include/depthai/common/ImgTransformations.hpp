@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <vector>
 
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Extrinsics.hpp"
@@ -145,7 +146,8 @@ struct ImgTransformation {
      */
     std::vector<float> getDistortionCoefficients() const;
     /**
-     * Retrieve the extrinsics to the source sensor.
+     * Retrieve the pose of the source sensor or virtual camera relative to its target coordinate system.
+     * The target coordinate system is identified by Extrinsics::toDeviceId and Extrinsics::toCameraSocket.
      * @return Extrinsics
      */
     Extrinsics getExtrinsics() const;
@@ -196,6 +198,21 @@ struct ImgTransformation {
     float getVFov(bool source = false) const;
 
     std::vector<dai::RotatedRect> getSrcCrops() const;
+
+    /**
+     * Re-express the source extrinsics relative to a new target coordinate
+     * system.
+     *
+     * The supplied transform must map the current local calibration origin to
+     * the new target. Only the extrinsics are changed; all image-space
+     * transformation data is preserved. The rebased extrinsics translation is
+     * stored in centimeters.
+     *
+     * @param localOriginToTarget Transform from the current local calibration
+     * origin to the new target coordinate system.
+     * @return This transformation.
+     */
+    ImgTransformation& rebaseExtrinsics(const Extrinsics& localOriginToTarget);
 
     /**
      * Returns true if the point is inside the transformed region of interest (determined by crops used).
@@ -357,7 +374,7 @@ struct ImgTransformation {
      * calibration.
      * @param sourceUnit The desired measurement unit in which to return the transformation matrix in.
      * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
-     * @note Both transformations must have a common toCameraSocket. Otherwise extrinsics cannot be calculated.
+     * @note Both transformations must have a compatible target device ID and a common target camera socket. Otherwise extrinsics cannot be calculated.
      */
     std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
                                                                             bool useSpecTranslation = false,

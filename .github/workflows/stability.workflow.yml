@@ -23,7 +23,26 @@ on:
         type: string
         default: "latest"
         description: "Version for depthai"
+      protocol:
+        required: false
+        type: choice
+        default: "tcpip"
+        options:
+          - tcpip
+          - usb
+        description: "Connect to the device over PoE (tcpip) or USB"
+      timeout:
+        required: false
+        type: string
+        description: "Stop the stability test after this many hours; unlimited when omitted"
+      wheel_run_id:
+        required: false
+        type: string
+        description: "Workflow run containing the Python wheel artifact"
 
+permissions:
+  actions: read
+  contents: read
 
 jobs:
   id:
@@ -41,8 +60,26 @@ jobs:
 
     - uses: actions/checkout@v3
 
+    - name: Download Python wheel
+      if: github.event.inputs.wheel_run_id != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: audited-wheels-combined-linux-x86_64
+        path: stability-wheels
+        github-token: ${{ github.token }}
+        run-id: ${{ github.event.inputs.wheel_run_id }}
+
     - name: Test
+      env:
+        INPUT_DEPTHAI_VERSION: ${{ github.event.inputs.depthai }}
+        INPUT_PROTOCOL: ${{ github.event.inputs.protocol }}
+        INPUT_TIMEOUT: ${{ github.event.inputs.timeout }}
       run: |
+          if [[ -n "$INPUT_TIMEOUT" ]] && ! python3 -c 'import math, sys; value = float(sys.argv[1]); raise SystemExit(0 if math.isfinite(value) and value > 0 else 1)' "$INPUT_TIMEOUT" 2>/dev/null; then
+            echo "::error::timeout must be a positive finite number"
+            exit 1
+          fi
+
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
             TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
@@ -50,11 +87,12 @@ jobs:
           if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
             RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
           else
-            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-stability"
+            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-stability-$INPUT_PROTOCOL"
             RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
           fi
           if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
             UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
           fi
 
-          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name depthai-stability --commands 'cd /tmp/depthai-core || exit' 'scripts/hil/run_hil_stability.sh ${{ github.event.inputs.depthai  }}'
+          printf -v STABILITY_COMMAND 'scripts/hil/run_hil_stability.sh %q %q %q %q' "$INPUT_DEPTHAI_VERSION" "$INPUT_PROTOCOL" "$INPUT_TIMEOUT" stability-wheels
+          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name "depthai-stability-$INPUT_PROTOCOL" --commands 'cd /tmp/depthai-core || exit' "$STABILITY_COMMAND"

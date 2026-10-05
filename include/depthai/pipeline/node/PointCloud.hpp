@@ -9,6 +9,7 @@
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/Subnode.hpp"
@@ -61,6 +62,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         void useCPUMT(uint32_t numThreads);
         void useGPU(uint32_t device);
         void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height);
+        void setDistortion(CameraModel model, std::vector<float> coefficients);
         void setExtrinsics(const std::vector<std::vector<float>>& transformMatrix);
         void clearExtrinsics();
 
@@ -68,6 +70,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
        private:
         void initializeGPU(uint32_t device);
+        void cacheUndistortedRays();
         template <typename PointT>
         void transformPointsCPU(std::vector<PointT>& points);
         void calcPointsChunkDense(const uint8_t* depthData, std::vector<Point3f>& points, unsigned int startRow, unsigned int endRow);
@@ -101,6 +104,11 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         float lengthUnitMultiplier = DEFAULT_LENGTH_UNIT_MULTIPLIER;
 
         float fx = 0.0f, fy = 0.0f, cx = 0.0f, cy = 0.0f;
+        CameraModel distortionModel = CameraModel::Perspective;
+        std::vector<float> distortionCoefficients;
+        std::vector<Point2f> undistortedRays;
+        bool hasDistortion = false;
+        bool gpuDistortionFallbackWarned = false;
         unsigned int width = 0u, height = 0u;
         size_t size = 0;
         bool intrinsicsSet = false;

@@ -45,4 +45,6 @@ void bind_replay(pybind11::module& m, void* pCallstack) {
         .def("getReplayFile", &ReplayMetadataOnly::getReplayFile, DOC(dai, node, ReplayMetadataOnly, getReplayFile))
         .def("getFps", &ReplayMetadataOnly::getFps, DOC(dai, node, ReplayMetadataOnly, getFps))
         .def("getLoop", &ReplayMetadataOnly::getLoop, DOC(dai, node, ReplayMetadataOnly, getLoop));
+
+    daiNodeModule.attr("ReplayMessage") = replayMessage;
 }

@@ -179,6 +179,69 @@ TEST_CASE("Zero depth pixels produce zero-valued points", "[PointCloud][Impl]") 
     }
 }
 
+TEST_CASE("Distorted depth is undistorted before deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 5, H = 3;
+    constexpr float DEPTH_MM = 1000.f;
+    constexpr float EXPECTED_UNDISTORTED_X_MM = 19.282993f;
+    impl.setIntrinsics(100.f, 100.f, 2.f, 1.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {100.f});
+
+    const auto points = computeDense(impl, makeConstantDepth(W, H, static_cast<uint16_t>(DEPTH_MM)));
+
+    // At (u=4,v=1), xd=(u-cx)/fx=0.02. With k1=100, the undistorted
+    // normalized ray is 0.019282993, giving x=19.282993 mm at z=1000 mm.
+    const auto& right = points[1 * W + 4];
+    REQUIRE(right.x == Catch::Approx(EXPECTED_UNDISTORTED_X_MM).epsilon(0.0001f));
+    REQUIRE(right.y == Catch::Approx(0.f));
+    REQUIRE(right.z == Catch::Approx(DEPTH_MM));
+
+    // Radial distortion is symmetric around the principal point.
+    const auto& left = points[1 * W + 0];
+    REQUIRE(left.x == Catch::Approx(-EXPECTED_UNDISTORTED_X_MM).epsilon(0.0001f));
+    REQUIRE(left.y == Catch::Approx(0.f));
+    REQUIRE(left.z == Catch::Approx(DEPTH_MM));
+
+    // Updating intrinsics must rebuild the cached rays.
+    impl.setIntrinsics(200.f, 100.f, 1.f, 0.f, W, H);
+    const auto updatedPoints = computeDense(impl, makeConstantDepth(W, H, static_cast<uint16_t>(DEPTH_MM)));
+    REQUIRE(updatedPoints[1 * W + 4].x < EXPECTED_UNDISTORTED_X_MM);
+}
+
+TEST_CASE("Fisheye depth is undistorted before deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Fisheye, {0.5f, 0.0f, 0.0f, 0.0f});
+
+    const auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
+
+    REQUIRE(points[2].x < 10.f);
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+}
+
+TEST_CASE("Zero distortion preserves the original deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {0.0f, 0.0f, 0.0f, 0.0f});
+
+    const auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
+
+    REQUIRE(points[2].x == Catch::Approx(10.f));
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+}
+
+TEST_CASE("Unsupported distortion models are rejected by PointCloud", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, 3, 1);
+
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::RadialDivision, {0.1f}), "PointCloud does not support distortion model: RadialDivision");
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::Equirectangular, {0.1f}), "PointCloud does not support distortion model: Equirectangular");
+}
+
 // ============================================================================
 // Depth with holes → filterValidPoints keeps only z > 0
 // ============================================================================
@@ -1057,6 +1120,24 @@ std::vector<dai::Point3fRGBA> computeDenseColored(dai::node::PointCloud::Impl& i
 }
 
 }  // namespace
+
+TEST_CASE("Colored deprojection uses undistorted rays", "[PointCloud][Impl][Colored]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {10.f});
+
+    const auto depth = makeConstantDepth(W, H, 1000);
+    const auto color = makeConstantColor(W, H, 1, 2, 3);
+    const auto points = computeDenseColored(impl, depth, color);
+
+    REQUIRE(points[2].x < 10.f);
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+    REQUIRE(points[2].r == 1);
+    REQUIRE(points[2].g == 2);
+    REQUIRE(points[2].b == 3);
+}
 
 // ============================================================================
 // Colored dense compute: constant depth + constant color

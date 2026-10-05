@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
 import cv2
 import depthai as dai
 import numpy as np
@@ -14,8 +13,12 @@ with dai.Pipeline() as pipeline:
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()
+    # Start with the thresholds loaded from the model and update them while running.
+    configQueue = detectionNetwork.detectionParser.inputConfig.createInputQueue()
+    config = detectionNetwork.detectionParser.initialConfig
 
     pipeline.start()
+    print("Controls: w/s confidence +/- 0.05, e/d IoU +/- 0.05, q quit.")
 
     frame = None
     detections = []
@@ -81,6 +84,16 @@ with dai.Pipeline() as pipeline:
             if now - lastPrintTime >= 1.0:
                 print("FPS: {:.2f}".format(counter / (now - startTime)))
                 lastPrintTime = now
-        if cv2.waitKey(1) == ord("q"):
+        key = cv2.waitKey(1)
+        if key in (ord("w"), ord("s"), ord("e"), ord("d")):
+            if key in (ord("w"), ord("s")):
+                delta = 0.05 if key == ord("w") else -0.05
+                config.confidenceThreshold = round(max(0.0, min(1.0, config.confidenceThreshold + delta)), 2)
+            else:
+                delta = 0.05 if key == ord("e") else -0.05
+                config.iouThreshold = round(max(0.0, min(1.0, config.iouThreshold + delta)), 2)
+            configQueue.send(config)
+            print(f"Confidence: {config.confidenceThreshold:.2f}, IoU: {config.iouThreshold:.2f}")
+        if key == ord("q"):
             pipeline.stop()
             break

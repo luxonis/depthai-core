@@ -12,6 +12,11 @@
     #include "fp16/fp16.h"
 #endif
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/NNData.pb.h"
+    #include "utility/ProtoSerialize.hpp"
+#endif
+
 namespace dai {
 
 NNData::~NNData() = default;
@@ -348,4 +353,19 @@ TensorInfo::DataType NNData::getFirstTensorDatatype() {
 
     return tensors.front().dataType;
 };
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+ProtoSerializable::SchemaPair NNData::serializeSchema() const {
+    return utility::getProtoSchema<NNData>();
+}
+
+std::vector<std::uint8_t> NNData::serializeProto(bool metadataOnly) const {
+    return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
+}
+
+void NNData::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
+#endif
+
 }  // namespace dai

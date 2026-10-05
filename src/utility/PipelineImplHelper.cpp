@@ -25,6 +25,13 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
             auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
             auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
 
+            // The whole record/replay setup below is keyed to the default device only.
+            // Note: this check must stay outside the try block below, which downgrades
+            // runtime errors to warnings.
+            if((pipeline->enableHolisticRecordReplay || !recordPath.empty() || !replayPath.empty()) && pipeline->getAllAssignedDevices().size() > 1) {
+                throw std::runtime_error("Holistic record/replay is not supported with multiple devices yet");
+            }
+
             if(pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
                || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
                || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {

@@ -22,6 +22,8 @@
     #include "depthai/beta/datatype/MPPalmDetectionParserConfig.hpp"
     #include "depthai/beta/datatype/Map2D.hpp"
     #include "depthai/beta/datatype/MapOutputParserConfig.hpp"
+    #include "depthai/beta/datatype/MultiDeviceCalibrationControl.hpp"
+    #include "depthai/beta/datatype/MultiDeviceCalibrationResult.hpp"
     #include "depthai/beta/datatype/PPTextDetectionParserConfig.hpp"
     #include "depthai/beta/datatype/Predictions.hpp"
     #include "depthai/beta/datatype/RFDETRParserConfig.hpp"
@@ -48,6 +50,8 @@
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "PacketizedData.hpp"
+#include "depthai/pipeline/datatype/AlignConfig.hpp"
+#include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
@@ -65,6 +69,7 @@
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
 #include "depthai/pipeline/datatype/ObjectTrackerConfig.hpp"
+#include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
@@ -220,6 +225,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ImageAlignConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::AlignConfig:
+            return parseDatatype<AlignConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::CameraControl:
             return parseDatatype<CameraControl>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -252,6 +261,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<SpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::DetectionParserConfig:
+            return parseDatatype<DetectionParserConfig>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::SegmentationParserConfig:
             return parseDatatype<SegmentationParserConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -327,6 +338,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::TransformData:
             return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::Odometry:
+            return parseDatatype<Odometry>(metadataStart, serializedObjectSize, data, fd);
+            break;
         case DatatypeEnum::ImgAnnotations:
             return parseDatatype<ImgAnnotations>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -390,6 +404,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<beta::XFeatMonoParserConfig>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::XFeatStereoParserConfig:
             return parseDatatype<beta::XFeatStereoParserConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::MultiDeviceCalibrationControl:
+            return parseDatatype<beta::MultiDeviceCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::MultiDeviceCalibrationResult:
+            return parseDatatype<beta::MultiDeviceCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
 #else
         case DatatypeEnum::ImgDetectionsFilterConfig:
         case DatatypeEnum::Classifications:
@@ -411,6 +429,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::MapOutputParserConfig:
         case DatatypeEnum::XFeatMonoParserConfig:
         case DatatypeEnum::XFeatStereoParserConfig:
+        case DatatypeEnum::MultiDeviceCalibrationControl:
+        case DatatypeEnum::MultiDeviceCalibrationResult:
             throw std::runtime_error("Cannot parse beta datatype: depthai-core was built without beta support");
 #endif  // DEPTHAI_HAVE_BETA
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT

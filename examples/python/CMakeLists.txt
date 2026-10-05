@@ -15,8 +15,9 @@ endif()
 set(TARGET_NAME "depthai")
 
 # Regexes for example test failure
-set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
-set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
+set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\\\[warning\\\\];\\\\[error\\\\];\\\\[critical\\\\]")
+set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
+set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\\\[error\\\\];\\\\[critical\\\\]")
 
 # Add a target to install_requirements (added to ALL)
 # For windows we don't install open3d-cpu
@@ -92,6 +93,8 @@ function(add_python_example example_name python_script_path)
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION ${STRICT_EXAMPLE_TEST_FAIL_REGEX})
+
+        set_tests_properties (${example_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX}")
 
     endif()
 
@@ -265,6 +268,7 @@ dai_set_example_test_labels(edge_detector ondevice rvc2_all ci)
 
 ## Vpp
 add_python_example(virtual_patern_projection Vpp/virtual_patern_projection.py)
+add_python_example(tof_stereo_vpp Vpp/tof_stereo_vpp.py)
 dai_set_example_test_labels(virtual_patern_projection ondevice rvc4 ci)
 
 ## RGBD
@@ -325,6 +329,12 @@ dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 c
 ## ImageAlign
 add_python_example(depth_align ImageAlign/depth_align.py)
 dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
+
+## Align
+add_python_example(img_detections_align Align/img_detections_align.py)
+dai_set_example_test_labels(img_detections_align ondevice rvc4 ci)
+add_python_example(custom_message_align Align/custom_message_align.py)
+dai_set_example_test_labels(custom_message_align ondevice rvc2_all rvc4 ci)
 
 ## Visualizer
 
@@ -424,3 +434,17 @@ dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
 
 add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
 dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
+
+# Multi-device examples: registered without labels so they never run in CI
+# (they need at least two devices; the CI test wrapper pins to a single device)
+add_python_example(multi_device_cam_sync MultiDevice/multi_device_cam_sync.py)
+add_python_example(multi_device_frame_sync MultiDevice/multi_device_frame_sync.py --ptp-sync)
+add_python_example(multi_device_host_node MultiDevice/multi_device_host_node.py)
+add_python_example(device_to_device_relay MultiDevice/device_to_device_relay.py)
+add_python_example(multi_device_system_logger MultiDevice/multi_device_system_logger.py)
+
+# Multi-device calibration examples: also multi-device, so no CI labels
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_python_example(multi_device_calibration MultiDeviceCalibration/multi_device_calibration.py)
+    add_python_example(multi_device_calibration_constraints MultiDeviceCalibration/multi_device_calibration_constraints.py)
+endif()

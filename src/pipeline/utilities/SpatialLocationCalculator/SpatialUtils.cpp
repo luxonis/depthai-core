@@ -412,7 +412,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
         logger->warn(
             "DepthFrame and ImgDetections transformations are not aligned and processing may be slowed down due to need for remapping points. Consider "
             "using "
-            "ImageAlign node beforehand.");
+            "Align node beforehand.");
     }
 
     std::vector<dai::ImgDetection> imgDetectionsVector = imgDetections.detections;

@@ -14,6 +14,8 @@
 #include "datatype/MPPalmDetectionParserConfig.hpp"
 #include "datatype/Map2D.hpp"
 #include "datatype/MapOutputParserConfig.hpp"
+#include "datatype/MultiDeviceCalibrationControl.hpp"
+#include "datatype/MultiDeviceCalibrationResult.hpp"
 #include "datatype/PPTextDetectionParserConfig.hpp"
 #include "datatype/Predictions.hpp"
 #include "datatype/RFDETRParserConfig.hpp"
