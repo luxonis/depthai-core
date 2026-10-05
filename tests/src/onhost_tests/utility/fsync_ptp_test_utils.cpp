@@ -348,6 +348,10 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
             prevReceived = std::chrono::steady_clock::now();
         }
 
+        if (std::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - prevReceived).count() > 5) {
+            REQUIRE_MSG(false, "Timeout: No frame groups received for 5 seconds");
+        }
+
         if(!firstReceived) {
             auto endTime = std::chrono::steady_clock::now();
             auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();

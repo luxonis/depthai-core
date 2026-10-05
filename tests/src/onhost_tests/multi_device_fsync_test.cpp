@@ -9,7 +9,7 @@ struct FsyncTestParameters getDefaultParameters() {
     struct FsyncTestParameters parameters {};
     parameters.totalRunDurationSec = 180;
     parameters.firstGroupTimeoutSec = 10;
-    parameters.syncAcquisitionTimeoutSec = 4;
+    parameters.syncAcquisitionTimeoutSec = 1;
     parameters.warmupDurationSec = 0;
     parameters.deltaMeanThreshold = 2e-3;
     parameters.deltaP99Threshold = 2.5e-3;
