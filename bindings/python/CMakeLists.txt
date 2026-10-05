@@ -141,6 +141,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/MessageGroupBindings.cpp
     src/pipeline/datatype/NNDataBindings.cpp
     src/pipeline/datatype/NeuralDepthConfigBindings.cpp
+    src/pipeline/datatype/OdometryBindings.cpp
     src/pipeline/datatype/GPUStereoConfigBindings.cpp
     src/pipeline/datatype/RGBDDataBindings.cpp
     src/pipeline/datatype/SpatialImgDetectionsBindings.cpp
@@ -182,6 +183,8 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/datatype/LinesBindings.cpp
         src/beta/datatype/Map2DBindings.cpp
         src/beta/datatype/PredictionsBindings.cpp
+        src/beta/datatype/MultiDeviceCalibrationControlBindings.cpp
+        src/beta/datatype/MultiDeviceCalibrationResultBindings.cpp
         src/beta/datatype/ClassificationSequenceParserConfigBindings.cpp
         src/beta/datatype/FastSAMParserConfigBindings.cpp
         src/beta/datatype/HRNetParserConfigBindings.cpp
@@ -248,6 +251,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/AutoCalibrationConfigBindings.cpp
         src/pipeline/datatype/AutoCalibrationResultBindings.cpp
     )
+    if(DEPTHAI_BUILD_BETA)
+        list(APPEND SOURCE_LIST
+            src/beta/node/MultiDeviceCalibrationBindings.cpp
+        )
+    endif()
 endif()
 
 # Add files for python module

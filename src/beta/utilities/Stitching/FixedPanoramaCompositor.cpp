@@ -20,6 +20,7 @@ void FixedPanoramaCompositor::setConfig(const Config& config) {
 void FixedPanoramaCompositor::reset() {
     prepared = false;
     composeScale = 1.0;
+    warperScale = 0.0;
     canvas = {};
     sources.clear();
     compensator.release();
@@ -31,8 +32,17 @@ bool FixedPanoramaCompositor::isPrepared() const {
 }
 
 cv::Size FixedPanoramaCompositor::getCanvasSize() const {
+    return getCanvas().size();
+}
+
+cv::Rect FixedPanoramaCompositor::getCanvas() const {
     DAI_CHECK_V(prepared, "The fixed panorama compositor was not prepared yet");
-    return canvas.size();
+    return canvas;
+}
+
+double FixedPanoramaCompositor::getWarperScale() const {
+    DAI_CHECK_V(prepared, "The fixed panorama compositor was not prepared yet");
+    return warperScale;
 }
 
 void FixedPanoramaCompositor::prepare(const std::vector<cv::Mat>& images, const std::vector<cv::detail::CameraParams>& cameras, double registrationScale) {
@@ -53,7 +63,8 @@ void FixedPanoramaCompositor::prepare(const std::vector<cv::Mat>& images, const 
     std::sort(focals.begin(), focals.end());
     const auto middle = focals.size() / 2;
     const double warpedImageScale = focals.size() % 2 == 0 ? 0.5 * (focals[middle - 1] + focals[middle]) : focals[middle];
-    auto warper = stitching::createWarper(config.cameraModel)->create(static_cast<float>(warpedImageScale * composeWorkAspect));
+    warperScale = warpedImageScale * composeWorkAspect;
+    auto warper = stitching::createWarper(config.cameraModel)->create(static_cast<float>(warperScale));
 
     sources.reserve(images.size());
     for(size_t i = 0; i < images.size(); ++i) {

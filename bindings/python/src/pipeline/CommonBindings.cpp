@@ -521,7 +521,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     cameraModel.value("Perspective", CameraModel::Perspective)
         .value("Fisheye", CameraModel::Fisheye)
         .value("Equirectangular", CameraModel::Equirectangular)
-        .value("RadialDivision", CameraModel::RadialDivision);
+        .value("RadialDivision", CameraModel::RadialDivision)
+        .value("Cylindrical", CameraModel::Cylindrical);
 
     // StereoRectification
     stereoRectification.def(py::init<>())
@@ -576,6 +577,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getTranslationVector))
         .def("isEqualExtrinsics", &Extrinsics::isEqualExtrinsics, py::arg("other"), py::arg("epsilon") = 1e-6f, DOC(dai, Extrinsics, isEqualExtrinsics))
+        .def("hasValidRotationMatrix", &Extrinsics::hasValidRotationMatrix, DOC(dai, Extrinsics, hasValidRotationMatrix))
         .def("hasCompatibleCoordinateSystem", &Extrinsics::hasCompatibleCoordinateSystem, py::arg("to"), DOC(dai, Extrinsics, hasCompatibleCoordinateSystem))
         .def("getExtrinsicsTransformationTo",
              &Extrinsics::getExtrinsicsTransformationTo,
