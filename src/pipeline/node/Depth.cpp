@@ -816,6 +816,15 @@ void Depth::buildInternal() {
                     }
                 }
             }
+            for(const auto& camera : {left, right}) {
+                if(camera) {
+                    DAI_CHECK_V(camera->properties.fps == CameraProperties::AUTO || camera->properties.fps >= fps,
+                                "Depth: TOF_STEREO_FUSION camera {} FPS ({}) must not be below fusion FPS ({}).",
+                                camera == left ? "left" : "right",
+                                camera->properties.fps,
+                                fps);
+                }
+            }
             if(!left) left = pipeline.create<Camera>(device)->build(pair.left, std::nullopt, fps);
             if(!right) right = pipeline.create<Camera>(device)->build(pair.right, std::nullopt, fps);
             tofStereoFusionBackend_ = beta::node::ToFStereoFusion::create(device);

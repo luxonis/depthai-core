@@ -540,6 +540,33 @@ TEST_CASE("Depth: fusion rejects incompatible config", "[fusion]") {
     REQUIRE_THROWS_WITH(depth->depth(), Catch::Matchers::ContainsSubstring("Depth config for TOF_STEREO_FUSION must be empty"));
 }
 
+TEST_CASE("Depth: fusion validates existing camera FPS before adding a backend", "[fusion]") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4 || !deviceReportsTofSensor(device) || device->getStereoPairs().empty()) {
+        SKIP("Requires RVC4 with stereo and ToF.");
+    }
+    const auto pair = requireFirstStereoPairForTest(device);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF_STEREO_FUSION, 30.f);
+    std::string expectedCamera;
+    SECTION("left camera is slower") {
+        pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 15.f);
+        expectedCamera = "left";
+    }
+    SECTION("right camera is slower") {
+        pipeline.create<node::Camera>()->build(pair.right, std::nullopt, 15.f);
+        expectedCamera = "right";
+    }
+    const auto nodeCount = pipeline.getAllNodes().size();
+    REQUIRE_THROWS_WITH(depth->depth(), "Depth: TOF_STEREO_FUSION camera " + expectedCamera + " FPS (15) must not be below fusion FPS (30).");
+    REQUIRE(depth->getNodeMap().empty());
+    REQUIRE(pipeline.getAllNodes().size() == nodeCount);
+    // A rejected request must leave the node reusable with a compatible explicit rate.
+    depth->build(node::Depth::Algorithm::TOF_STEREO_FUSION, 15.f);
+    REQUIRE_NOTHROW((void)depth->depth());
+    requireDepthSingleBackendChild(*depth, "ToFStereoFusion");
+}
+
 TEST_CASE("Depth: fusion streams depth and confidence continuously", "[fusion]") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
