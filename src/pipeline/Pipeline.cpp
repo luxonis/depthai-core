@@ -1,8 +1,11 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
 #include <cstring>
+#include <vector>
 
+#include "common/ExternalFrameSyncRoles.hpp"
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
+#include "depthai/depthai.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
@@ -1806,25 +1809,46 @@ void PipelineImpl::start() {
         }
     }
 
+    std::vector<std::shared_ptr<dai::Device>> masterDevices;
+    std::vector<std::shared_ptr<dai::Device>> slaveDevices;
+
+    for (auto d : devices) {
+        auto role = d->getExternalFrameSyncRole();
+        if (role == dai::ExternalFrameSyncRole::MASTER) {
+            masterDevices.push_back(d);
+        } else if (role == dai::ExternalFrameSyncRole::SLAVE) {
+            slaveDevices.push_back(d);
+        } else {
+            throw std::runtime_error("Unknown external frame sync role");
+        }
+    }
+
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
+        DAI_CHECK_V(masterDevices.size() > 0, "No master devices are assigned to device nodes");
+        DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(), "Number of devices assigned to device nodes does not match the number of master and slave devices");
         // Start all devices in parallel, all-or-nothing: if any fails, close the
         // ones that started and rethrow
         std::vector<std::thread> startThreads;
         std::vector<std::exception_ptr> startErrors(devices.size());
         // Each thread writes only its own index; read after join
         std::vector<uint8_t> started(devices.size(), 0);
-        for(std::size_t i = 0; i < devices.size(); i++) {
-            startThreads.emplace_back([this, &devices, &startErrors, &started, i]() {
-                try {
-                    devices[i]->startPipeline(Pipeline(shared_from_this()));
-                    started[i] = true;
-                } catch(...) {
-                    startErrors[i] = std::current_exception();
-                }
-            });
-        }
+        auto startDevices = [this, &startErrors, &started, &startThreads](std::vector<std::shared_ptr<dai::Device>> &devices)
+        {
+            for (std::size_t i = 0; i < devices.size(); i++) {
+                startThreads.emplace_back([this, &devices, &startErrors, &started, i]() {
+                    try {
+                        devices[i]->startPipeline(Pipeline(shared_from_this()));
+                        started[i] = true;
+                    } catch(...) {
+                        startErrors[i] = std::current_exception();
+                    }
+                });
+            }
+        };
+        startDevices(masterDevices);
+        startDevices(slaveDevices);
         for(auto& thread : startThreads) {
             thread.join();
         }
