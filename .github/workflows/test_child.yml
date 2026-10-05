@@ -294,7 +294,7 @@ jobs:
           export HIL_TESTBED="sloptp1"
           export HIL_SCOPE="ptp"
           exec hil_runner --platforms="rvc4 and rvc4 and rvc4 and rvc4" \
-              --scope $HIL_SCOPE --testbed $HIL_TESTBED --enable-ptp no-frame-sync \
+              --scope $HIL_SCOPE --testbed $HIL_TESTBED --enable-ptp \
               --basic-sanity --reservation-name $RESERVATION_NAME --wait \
               --rvc4-os-version ${{ matrix.rvc4os }} \
               --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} \
@@ -317,8 +317,8 @@ jobs:
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-ptp"
           export HIL_TESTBED="slo603-cs"
           export HIL_SCOPE="ptp"
-          exec hil_runner --platforms="rvc4 and rvc4 and rvc4" \
-              --scope $HIL_SCOPE --testbed $HIL_TESTBED --enable-ptp frame-sync \
+          exec hil_runner --platforms="rvc4 and rvc4 and rvc4 and rvc4" \
+              --scope $HIL_SCOPE --testbed $HIL_TESTBED --enable-ptp \
               --basic-sanity --reservation-name $RESERVATION_NAME --wait \
               --rvc4-os-version ${{ matrix.rvc4os }} \
               --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} \
