@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -14,14 +13,11 @@
 #include <numeric>
 #include <optional>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/depthai.hpp"
-#include "depthai/pipeline/InputQueue.hpp"
-#include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
