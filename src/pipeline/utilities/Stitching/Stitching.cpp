@@ -1,4 +1,4 @@
-#include "depthai/beta/node/Stitching.hpp"
+#include "depthai/pipeline/node/Stitching.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_HAVE_OPENCV_STITCHING)
 
@@ -15,17 +15,16 @@
     #include <string>
     #include <utility>
 
-    #include "beta/utilities/Stitching/FixedPanoramaCompositor.hpp"
-    #include "beta/utilities/Stitching/PlanarStitcher.hpp"
-    #include "beta/utilities/Stitching/StitchingCompositing.hpp"
     #include "depthai/pipeline/datatype/ImgFrame.hpp"
     #include "depthai/pipeline/datatype/MessageGroup.hpp"
     #include "depthai/utility/matrixOps.hpp"
     #include "pipeline/ThreadedNodeImpl.hpp"
+    #include "pipeline/utilities/Stitching/FixedPanoramaCompositor.hpp"
+    #include "pipeline/utilities/Stitching/PlanarStitcher.hpp"
+    #include "pipeline/utilities/Stitching/StitchingCompositing.hpp"
     #include "utility/ErrorMacros.hpp"
 
 namespace dai {
-namespace beta {
 namespace node {
 
 using utilities::FixedPanoramaCompositor;
@@ -767,7 +766,6 @@ void Stitching::run() {
 }
 
 }  // namespace node
-}  // namespace beta
 }  // namespace dai
 
 #endif

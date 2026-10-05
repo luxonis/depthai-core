@@ -8,24 +8,23 @@
 #include <optional>
 #include <vector>
 
-#include "depthai/beta/BetaNode.hpp"
-#include "depthai/beta/properties/StitchingProperties.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/properties/StitchingProperties.hpp"
 
 namespace dai {
-namespace beta {
 namespace node {
 
 /**
  * @brief Stitching node. Combines N time-synced image streams into a single stitched image.
  *
- * The node runs on the host by default and can run on an RVC4 device when selected with `setRunOnHost(false)`. Host
- * execution requires depthai-core OpenCV support. Inputs are fixed at build() time and synced by an internal Sync
- * subnode that follows the node's execution side, so host-mode sources may come from different devices.
- * Two independent stitching modes are available:
+ * The node runs on the host by default and can run on an RVC4 device when selected with `setRunOnHost(false)`; RVC2
+ * cannot run it on-device, so there it falls back to the host. Host execution requires depthai-core OpenCV support.
+ * Inputs are fixed at build() time and synced by an internal Sync subnode that follows the node's execution side, so
+ * host-mode sources may come from different devices. Two independent stitching modes are available:
  *
  *  - `Mode::PANORAMA` wraps OpenCV's cv::Stitcher and registers the images from their content, so no calibration is
  *    needed, but the cameras have to overlap.
@@ -40,14 +39,14 @@ namespace node {
  * projection formulas), the focal length is the radius of the projection surface in pixels and the principal point is the
  * pixel the panorama Z axis projects to. A dai::CameraModel names a projection surface together with a distortion model;
  * the panorama is rendered straight onto its surface, so the output never carries distortion coefficients and
- * getDistortionModel() on it reports the surface, not a lens. See src/beta/utilities/Stitching/README.md for the details.
+ * getDistortionModel() on it reports the surface, not a lens. See src/pipeline/utilities/Stitching/README.md for the details.
  * A panorama composed from the input calibration is expressed in the destination
  * coordinate system of the inputs, centered at the mean of their camera centers. A visually registered panorama is only
  * known relative to its inputs, so it is expressed through the first contributing input: in the destination coordinate
  * system of that input's extrinsics when it carries some, and relative to that input's camera, with an AUTO socket,
  * otherwise.
  */
-class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties> {
+class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "Stitching";
 
@@ -130,7 +129,7 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     /**
      * Specify whether to run on host or an RVC4 device. By default, the node runs on host.
      */
-    void setRunOnHost(bool runOnHost) override;
+    void setRunOnHost(bool runOnHost);
 
     /**
      * Check whether the node is configured to run on host.
@@ -263,6 +262,10 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     SeamFinder getSeamFinder() const;
 
     void buildInternal() override;
+    /**
+     * Falls back to host execution on RVC2, which cannot run the node on-device.
+     */
+    void buildStage1() override;
     void run() override;
 
    private:
@@ -281,5 +284,4 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
 };
 
 }  // namespace node
-}  // namespace beta
 }  // namespace dai

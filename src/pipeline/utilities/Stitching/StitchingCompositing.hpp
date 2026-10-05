@@ -13,10 +13,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "depthai/beta/node/Stitching.hpp"
+#include "depthai/pipeline/node/Stitching.hpp"
 
 namespace dai {
-namespace beta {
 namespace utilities {
 
 using node::Stitching;
@@ -103,5 +102,4 @@ inline cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) 
 
 }  // namespace stitching
 }  // namespace utilities
-}  // namespace beta
 }  // namespace dai

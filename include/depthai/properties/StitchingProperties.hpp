@@ -12,7 +12,6 @@
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
-namespace beta {
 
 /** Serializable properties for the Stitching node. */
 struct StitchingProperties : PropertiesSerializable<Properties, StitchingProperties> {
@@ -98,5 +97,4 @@ DEPTHAI_SERIALIZE_EXT(StitchingProperties,
                       numInputs,
                       useInputCalibration);
 
-}  // namespace beta
 }  // namespace dai
