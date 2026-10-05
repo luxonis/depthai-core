@@ -1827,61 +1827,67 @@ void PipelineImpl::start() {
     if(!isHostOnly()) {
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
         DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(), "Number of devices assigned to device nodes does not match the number of master and slave devices");
-        // Start all devices in parallel, all-or-nothing: if any fails, close the
-        // ones that started and rethrow
-        std::vector<std::thread> startMasterThreads;
-        std::vector<std::thread> startSlaveThreads;
-        std::vector<std::exception_ptr> masterStartErrors(masterDevices.size());
-        std::vector<std::exception_ptr> slaveStartErrors(slaveDevices.size());
+        // Start masters before slaves, in parallel within each group. If either
+        // group fails, roll back every device that started in either group.
         // Each thread writes only its own index; read after join
         std::vector<uint8_t> masterStarted(masterDevices.size(), 0);
         std::vector<uint8_t> slaveStarted(slaveDevices.size(), 0);
 
-        auto startDevices = [this]
-        (
-            std::vector<std::shared_ptr<dai::Device>> &devices,
-            std::vector<std::thread> &startThreads,
-            std::vector<std::exception_ptr> &startErrors,
-            std::vector<uint8_t> &started
-        )
-        {
-            for (std::size_t i = 0; i < devices.size(); i++) {
-                startThreads.emplace_back([this, &devices, &startErrors, &started, i]() {
-                    try {
-                        devices[i]->startPipeline(Pipeline(shared_from_this()));
-                        started[i] = true;
-                    } catch(...) {
-                        startErrors[i] = std::current_exception();
-                    }
-                });
+        auto startDevices = [this](const std::vector<std::shared_ptr<dai::Device>>& devices, std::vector<uint8_t>& started) {
+            std::vector<std::thread> startThreads;
+            std::vector<std::exception_ptr> startErrors(devices.size());
+            startThreads.reserve(devices.size());
+            try {
+                for(std::size_t i = 0; i < devices.size(); i++) {
+                    startThreads.emplace_back([this, &devices, &startErrors, &started, i]() {
+                        try {
+                            devices[i]->startPipeline(Pipeline(shared_from_this()));
+                            started[i] = true;
+                        } catch(...) {
+                            startErrors[i] = std::current_exception();
+                        }
+                    });
+                }
+            } catch(...) {
+                // Thread creation can fail after other devices have begun starting.
+                // Join them before their state is inspected or destroyed by rollback.
+                for(auto& thread : startThreads) {
+                    thread.join();
+                }
+                throw;
             }
-        };
-
-        auto finalizeStartedDevices = []
-        (
-            std::vector<std::shared_ptr<dai::Device>> &devices,
-            std::vector<std::thread> &startThreads,
-            std::vector<std::exception_ptr> &startErrors,
-            std::vector<uint8_t> &started
-        )
-        {
             for(auto& thread : startThreads) {
                 thread.join();
             }
-            for(std::size_t i = 0; i < devices.size(); i++) {
-                if(startErrors[i]) {
-                    for(std::size_t j = 0; j < devices.size(); j++) {
-                        if(started[j]) devices[j]->close();
-                    }
-                    std::rethrow_exception(startErrors[i]);
+            for(const auto& error : startErrors) {
+                if(error) {
+                    std::rethrow_exception(error);
                 }
             }
         };
 
-        startDevices(masterDevices, startMasterThreads, masterStartErrors, masterStarted);
-        finalizeStartedDevices(masterDevices, startMasterThreads, masterStartErrors, masterStarted);
-        startDevices(slaveDevices, startSlaveThreads, slaveStartErrors, slaveStarted);
-        finalizeStartedDevices(slaveDevices, startSlaveThreads, slaveStartErrors, slaveStarted);
+        try {
+            startDevices(masterDevices, masterStarted);
+            startDevices(slaveDevices, slaveStarted);
+        } catch(...) {
+            auto closeStartedDevices = [](const std::vector<std::shared_ptr<dai::Device>>& devices, const std::vector<uint8_t>& started) {
+                for(std::size_t i = 0; i < devices.size(); i++) {
+                    if(!started[i]) continue;
+                    try {
+                        devices[i]->close();
+                    } catch(const std::exception& ex) {
+                        Logging::getInstance().logger.error(
+                            "Failed to close device {} during startup rollback: {}", devices[i]->getDeviceInfo().getDeviceId(), ex.what());
+                    } catch(...) {
+                        Logging::getInstance().logger.error(
+                            "Failed to close device {} during startup rollback: unknown exception", devices[i]->getDeviceInfo().getDeviceId());
+                    }
+                }
+            };
+            closeStartedDevices(slaveDevices, slaveStarted);
+            closeStartedDevices(masterDevices, masterStarted);
+            throw;
+        }
     }
 
     // All devices that have no recorded transition are up. A monitor thread may have
