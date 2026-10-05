@@ -26,10 +26,10 @@ std::string toString(SyncType syncType);
 
 struct FsyncTestParameters {
     double syncThresholdSec;
-    uint64_t testDurationSec;
-    int recvAllTimeoutSec;
-    int initialSyncTimeoutSec;
-    int initialTimeoutSec;
+    uint64_t totalRunDurationSec;
+    int firstGroupTimeoutSec;
+    int syncAcquisitionTimeoutSec;
+    int warmupDurationSec;
     double deltaMeanThreshold;
     double deltaP99Threshold;
     SyncType syncType;

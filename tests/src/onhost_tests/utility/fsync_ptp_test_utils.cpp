@@ -283,8 +283,8 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     std::cout << "Sync type: " << toString(parameters.syncType) << std::endl;
     std::cout << "FPS: " << targetFps << std::endl;
     std::cout << "SYNC_THRESHOLD_SEC: " << parameters.syncThresholdSec << std::endl;
-    std::cout << "RECV_ALL_TIMEOUT_SEC: " << parameters.recvAllTimeoutSec << std::endl;
-    std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << parameters.initialSyncTimeoutSec << std::endl;
+    std::cout << "RECV_ALL_TIMEOUT_SEC: " << parameters.firstGroupTimeoutSec << std::endl;
+    std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << parameters.syncAcquisitionTimeoutSec << std::endl;
 
     if (parameters.allowedSensors.has_value()) {
         std::cout << "ALLOWED_SENSORS: " << std::endl;
@@ -335,9 +335,9 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     std::vector<Delta> deltas;
 
     bool waitingForInitialSync = true;
-    bool waitingForInitialTimeout = true;
-    if (parameters.initialTimeoutSec == 0) {
-        waitingForInitialTimeout = false;
+    bool waitingForWarmup = true;
+    if (parameters.warmupDurationSec == 0) {
+        waitingForWarmup = false;
     }
 
     while(true) {
@@ -355,12 +355,12 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
         if(!firstReceived) {
             auto endTime = std::chrono::steady_clock::now();
             auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
-            REQUIRE_MSG(elapsedSec < parameters.recvAllTimeoutSec, "Timeout: Didn't receive all frames in time");
+            REQUIRE_MSG(elapsedSec < parameters.firstGroupTimeoutSec, "Timeout: Didn't receive first group on time");
         }
 
         auto totalElapsedSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - startTime).count();
 
-        if(totalElapsedSec >= parameters.testDurationSec) {
+        if(totalElapsedSec >= parameters.totalRunDurationSec) {
             std::cout << "Timeout: Test finished after " << totalElapsedSec << " sec" << std::endl;
             break;
         }
@@ -389,15 +389,15 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
 
             bool syncStatus = abs(deltaUs) < parameters.syncThresholdSec * 1e6;
 
-            if (waitingForInitialTimeout) {
+            if (waitingForWarmup) {
                 auto endTime = std::chrono::steady_clock::now();
                 auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
-                if (elapsedSec >= parameters.initialTimeoutSec) {
-                    waitingForInitialTimeout = false;
+                if (elapsedSec >= parameters.warmupDurationSec) {
+                    waitingForWarmup = false;
                 }
             }
 
-            if (syncStatus && !waitingForInitialSync && !waitingForInitialTimeout) {
+            if (syncStatus && !waitingForInitialSync && !waitingForWarmup) {
                 Delta deltaStruct;
                 deltaStruct.delta_us = deltaUs;
                 deltaStruct.name = "[MIN=" + minElement->first + ", MAX=" + maxElement->first + "]";
@@ -407,7 +407,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
             if(!syncStatus && waitingForInitialSync) {
                 auto endTime = std::chrono::steady_clock::now();
                 auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
-                REQUIRE_MSG(elapsedSec < parameters.initialSyncTimeoutSec, "Timeout: Didn't sync frames in time");
+                REQUIRE_MSG(elapsedSec < parameters.syncAcquisitionTimeoutSec, "Timeout: Didn't sync frames in time");
             }
 
             if(syncStatus && waitingForInitialSync) {
