@@ -27,6 +27,9 @@ TEST_CASE("Test reconnecting to the pipeline multiple times") {
 
 TEST_CASE("Initially stopped synchronized cameras feeding StereoDepth do not crash", "[paired-camera-stop]") {
     using namespace std::chrono_literals;
+    const bool rightFirst = GENERATE(false, true);
+    const bool staggeredStart = GENERATE(false, true);
+    CAPTURE(rightFirst, staggeredStart);
 
     dai::Pipeline p;
     auto device = p.getDefaultDevice();
@@ -64,15 +67,33 @@ TEST_CASE("Initially stopped synchronized cameras feeding StereoDepth do not cra
     REQUIRE_FALSE(device->hasCrashed());
     REQUIRE_FALSE(device->isClosed());
     REQUIRE(device->isPipelineRunning());
-
+    // Initialization can leave frames queued before initialControl takes effect.
     for(auto& queue : queues) {
         while(queue->tryGet<dai::ImgFrame>() != nullptr) {
         }
     }
-    for(auto& control : controls) {
+    auto requireNoFrames = [&](const char* phase) {
+        INFO(phase);
+        for(size_t i = 0; i < queues.size(); ++i) {
+            CAPTURE(i);
+            bool timedOut = false;
+            auto frame = queues[i]->get<dai::ImgFrame>(100ms, timedOut);
+            REQUIRE(timedOut);
+            REQUIRE(frame == nullptr);
+        }
+    };
+    requireNoFrames("Before either START command");
+
+    for(size_t i = 0; i < controls.size(); ++i) {
+        auto& control = controls[rightFirst ? controls.size() - 1 - i : i];
         auto start = std::make_shared<dai::CameraControl>();
         start->setStartStreaming();
         control->send(start);
+        if(i == 0 && staggeredStart) {
+            // One ready receiver must not start the synchronized sensor pair.
+            std::this_thread::sleep_for(1s);
+            requireNoFrames("Before the second START command");
+        }
     }
     for(auto& queue : queues) {
         bool timedOut = false;
