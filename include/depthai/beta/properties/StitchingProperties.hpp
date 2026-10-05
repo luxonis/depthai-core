@@ -52,7 +52,9 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
     };
 
     Mode mode = Mode::PANORAMA;
-    /// Projection model the panorama images are warped onto: Equirectangular (the OpenCV default), Cylindrical or Perspective.
+    /// Projection surface the panorama images are warped onto: Equirectangular (a sphere, the OpenCV default), Cylindrical or Perspective (a pinhole
+    /// plane). It is also the dai::CameraModel of the output ImgTransformation; the panorama has no distortion, so the distortion-only models
+    /// Fisheye and RadialDivision are not accepted.
     CameraModel cameraModel = CameraModel::Equirectangular;
     /// Number of image inputs configured by Stitching::build().
     std::uint32_t numInputs = 0;

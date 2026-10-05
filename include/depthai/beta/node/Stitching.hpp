@@ -38,7 +38,10 @@ namespace node {
  * pinhole view of `setView()`, relative to the common origin of the inputs. In `Mode::PANORAMA` the camera model follows
  * `setCameraModel()`: dai::CameraModel::Perspective, Cylindrical or Equirectangular (see dai::CameraModel for their
  * projection formulas), the focal length is the radius of the projection surface in pixels and the principal point is the
- * pixel the panorama Z axis projects to. A panorama composed from the input calibration is expressed in the destination
+ * pixel the panorama Z axis projects to. A dai::CameraModel names a projection surface together with a distortion model;
+ * the panorama is rendered straight onto its surface, so the output never carries distortion coefficients and
+ * getDistortionModel() on it reports the surface, not a lens. See src/beta/utilities/Stitching/README.md for the details.
+ * A panorama composed from the input calibration is expressed in the destination
  * coordinate system of the inputs, centered at the mean of their camera centers. A visually registered panorama is only
  * known relative to its inputs, so it is expressed through the first contributing input: in the destination coordinate
  * system of that input's extrinsics when it carries some, and relative to that input's camera, with an AUTO socket,
@@ -185,6 +188,11 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     /**
      * Set the projection surface the images are warped onto. Defaults to Equirectangular (a sphere), same as OpenCV.
      * Only used in `Mode::PANORAMA`.
+     *
+     * The value picks the surface of the output, not a lens: Equirectangular renders onto a sphere, Cylindrical onto a
+     * cylinder and Perspective onto a pinhole plane, all without distortion. Fisheye and RadialDivision are distortion
+     * models of the pinhole plane rather than surfaces to render onto, so they are rejected. The input images may carry
+     * any pinhole model; with `setUseInputCalibration(true)` they must be undistorted.
      * @param model dai::CameraModel::Equirectangular, Cylindrical or Perspective
      * @throws std::invalid_argument for any other model
      */
