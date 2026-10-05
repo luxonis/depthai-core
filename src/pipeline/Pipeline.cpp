@@ -1830,11 +1830,21 @@ void PipelineImpl::start() {
         DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(), "Number of devices assigned to device nodes does not match the number of master and slave devices");
         // Start all devices in parallel, all-or-nothing: if any fails, close the
         // ones that started and rethrow
-        std::vector<std::thread> startThreads;
-        std::vector<std::exception_ptr> startErrors(devices.size());
+        std::vector<std::thread> startMasterThreads;
+        std::vector<std::thread> startSlaveThreads;
+        std::vector<std::exception_ptr> masterStartErrors(masterDevices.size());
+        std::vector<std::exception_ptr> slaveStartErrors(slaveDevices.size());
         // Each thread writes only its own index; read after join
-        std::vector<uint8_t> started(devices.size(), 0);
-        auto startDevices = [this, &startErrors, &started, &startThreads](std::vector<std::shared_ptr<dai::Device>> &devices)
+        std::vector<uint8_t> masterStarted(masterDevices.size(), 0);
+        std::vector<uint8_t> slaveStarted(slaveDevices.size(), 0);
+        
+        auto startDevices = [this]
+        (
+            std::vector<std::shared_ptr<dai::Device>> &devices,
+            std::vector<std::thread> &startThreads,
+            std::vector<std::exception_ptr> &startErrors,
+            std::vector<uint8_t> &started
+        )
         {
             for (std::size_t i = 0; i < devices.size(); i++) {
                 startThreads.emplace_back([this, &devices, &startErrors, &started, i]() {
@@ -1847,7 +1857,14 @@ void PipelineImpl::start() {
                 });
             }
         };
-        auto finalizeStartedDevices = [&startThreads, &startErrors, &started](std::vector<std::shared_ptr<dai::Device>> &devices)
+
+        auto finalizeStartedDevices = []
+        (
+            std::vector<std::shared_ptr<dai::Device>> &devices,
+            std::vector<std::thread> &startThreads,
+            std::vector<std::exception_ptr> &startErrors,
+            std::vector<uint8_t> &started
+        )
         {
             for(auto& thread : startThreads) {
                 thread.join();
@@ -1860,16 +1877,12 @@ void PipelineImpl::start() {
                     std::rethrow_exception(startErrors[i]);
                 }
             }
-
-            startThreads.clear();
-            startErrors.clear();
-            started.clear();
         };
 
-        startDevices(masterDevices);
-        finalizeStartedDevices(masterDevices);
-        startDevices(slaveDevices);
-        finalizeStartedDevices(slaveDevices);
+        startDevices(masterDevices, startMasterThreads, masterStartErrors, masterStarted);
+        finalizeStartedDevices(masterDevices, startMasterThreads, masterStartErrors, masterStarted);
+        startDevices(slaveDevices, startSlaveThreads, slaveStartErrors, slaveStarted);
+        finalizeStartedDevices(slaveDevices, startSlaveThreads, slaveStartErrors, slaveStarted);
     }
 
     // All devices that have no recorded transition are up. A monitor thread may have
