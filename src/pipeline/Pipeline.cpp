@@ -5,7 +5,6 @@
 
 #include "common/ExternalFrameSyncRoles.hpp"
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
-#include "depthai/depthai.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "device/Platform.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
