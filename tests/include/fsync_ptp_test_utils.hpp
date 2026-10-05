@@ -37,41 +37,26 @@ struct FsyncTestParameters {
     int expectedDevices;
 };
 
-dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline,
-                                  dai::CameraBoardSocket socket,
-                                  float sensorFps,
-                                  SyncType syncType,
-                                  std::optional<dai::ExternalFrameSyncRole> role);
-
-std::shared_ptr<dai::node::Sync> createSyncNode(std::shared_ptr<dai::Pipeline>& masterPipeline,
-                                                std::map<std::string, dai::Node::Output*>& masterNode,
-                                                const std::string& masterName,
-                                                std::chrono::nanoseconds syncThreshold,
-                                                std::vector<std::string>& outputNames,
-                                                std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                                                std::map<std::string, std::shared_ptr<dai::InputQueue>>& inputQueues);
-
-void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
+void setUpCameraSocket(dai::Pipeline& pipeline,
+                       std::shared_ptr<dai::Device> device,
+                       std::shared_ptr<dai::node::Sync> syncNode,
                        dai::CameraBoardSocket socket,
-                       std::string& name,
+                       std::string& deviceName,
                        float targetFps,
                        SyncType syncType,
                        std::optional<dai::ExternalFrameSyncRole> role,
-                       std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
-                       std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                       std::vector<std::string>& camSockets);
+                       std::vector<std::string>& inputNames);
 
 void setUpIrLeds(std::shared_ptr<dai::Device> device);
 
 void setupDevice(dai::DeviceInfo& deviceInfo,
-                 std::shared_ptr<dai::Pipeline>& masterPipeline,
-                 std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
-                 std::optional<std::string>& masterName,
-                 std::map<std::string, std::shared_ptr<dai::Pipeline>>& slavePipelines,
-                 std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                 std::vector<std::string>& camSockets,
+                 dai::Pipeline& pipeline,
+                 std::shared_ptr<dai::node::Sync> syncNode,
+                 uint32_t &numMasters,
+                 uint32_t &numSlaves,
+                 std::vector<std::string>& inputNames,
                  float targetFps,
-                 SyncType syncType);
+                 SyncType syncType,
+                 std::optional<std::set<std::string>> &allowedSensors);
 
 int testFsync(float targetFps, struct FsyncTestParameters parameters);
-int testFsync2(float targetFps, struct FsyncTestParameters parameters);
