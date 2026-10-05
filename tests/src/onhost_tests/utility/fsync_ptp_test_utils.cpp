@@ -154,9 +154,9 @@ void setUpCameraSocket(dai::Pipeline& pipeline,
                        std::vector<std::string>& inputNames) {
     std::shared_ptr<dai::node::Camera> cam;
     if(syncType == SyncType::PTP || role == dai::ExternalFrameSyncRole::MASTER) {
-        cam = pipeline.create<dai::node::Camera>()->build(socket, std::nullopt, targetFps);
+        cam = pipeline.create<dai::node::Camera>(device)->build(socket, std::nullopt, targetFps);
     } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
-        cam = pipeline.create<dai::node::Camera>()->build(socket, std::nullopt);
+        cam = pipeline.create<dai::node::Camera>(device)->build(socket, std::nullopt);
     } else {
         throw std::runtime_error("Don't know how to handle role");
     }
