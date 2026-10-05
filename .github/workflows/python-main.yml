@@ -98,7 +98,7 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
+        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
         with:
           cmake-version : '3.31.x'
       - name: Cache vcpkg folder
@@ -165,7 +165,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
+        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
         with:
           cmake-version : '3.31.x'
       - name: Print home directory
@@ -266,7 +266,7 @@ jobs:
       CMAKE_GENERATOR_TOOLSET: v143
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
+        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
         with:
           cmake-version : '4.2.x'
       - name: Cache vcpkg folder
@@ -362,7 +362,7 @@ jobs:
       DEPTHAI_BUILD_KOMPUTE: ON
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
+        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
         with:
           cmake-version : '3.31.x'
       - name: Cache vcpkg folder
