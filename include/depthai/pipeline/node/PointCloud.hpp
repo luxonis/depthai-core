@@ -1,9 +1,14 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/properties/PointCloudProperties.hpp>
+#include <map>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/DepthUnit.hpp"
@@ -12,11 +17,14 @@
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Subnode.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/utility/Memory.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
 namespace spdlog {
@@ -31,7 +39,68 @@ namespace dai {
 namespace node {
 
 /**
+ * Platform specific GPU implementation of the dense deprojection used by the PointCloud node, for example
+ * OpenCL on RVC4 devices. A platform node class provides it by overriding PointCloud::createGpuBackend;
+ * PointCloud::useGPU then computes through it. Without a backend the built-in Kompute path is used when
+ * compiled in, otherwise the node falls back to the CPU.
+ */
+class PointCloudGpuBackend {
+   public:
+    /// Inputs of the deprojection that stay constant between frames of the same size, intrinsics and target
+    struct Geometry {
+        unsigned int width = 0;
+        unsigned int height = 0;
+        /// Multiplier from the raw uint16 depth value (millimeters) to the output length unit
+        float depthScale = 1.0f;
+        /// Undistorted normalized ray (x/z, y/z) of every pixel, width*height entries, row-major
+        const Point2f* rays = nullptr;
+        /// Changes whenever the content of `rays` changes, so that a backend can cache the uploaded table
+        std::uint64_t raysVersion = 0;
+        /// Apply `transform` (4x4 row-major, R*p + t) to every valid point (z > 0)
+        bool hasTransform = false;
+        std::array<std::array<float, 4>, 4> transform{};
+    };
+
+    virtual ~PointCloudGpuBackend() = default;
+
+    /**
+     * Deproject a RAW16 depth frame into width*height points: z = depth * depthScale, x = ray.x * z, y = ray.y * z,
+     * invalid depth (0) gives (0, 0, 0); valid points are transformed when `hasTransform` is set.
+     * @param depthMemory Memory object that owns `depthData` when known (allows zero-copy import), may be null
+     * @returns The dense points in memory owned by the backend (for example a mapped GPU buffer), valid until the
+     * next compute call on this backend. The caller copies or compacts them into its own buffers.
+     */
+    virtual const Point3f* computeDense(const Geometry& geometry, const std::uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory) = 0;
+
+    /**
+     * Same as computeDense with the RGB888i color of every pixel copied into the point (alpha = 255).
+     */
+    virtual const Point3fRGBA* computeDenseColored(const Geometry& geometry,
+                                                   const std::uint8_t* depthData,
+                                                   const std::shared_ptr<Memory>& depthMemory,
+                                                   const std::uint8_t* colorData,
+                                                   const std::shared_ptr<Memory>& colorMemory) = 0;
+};
+
+/**
  * @brief PointCloud node. Computes point cloud from depth frames.
+ *
+ * One depth stream is linked to `inputDepth` (optionally colorized through `getColorInput()`).
+ * Additional depth streams can be linked with `getDepthInput(name)`; every stream is deprojected
+ * with its own intrinsics, transformed into the common target coordinate system using its
+ * frame extrinsics and the merged result is sent as a single PointCloudData message. Depth
+ * streams from several devices share a coordinate system once the pipeline carries a
+ * multi-device calibration (Pipeline::setMultiDeviceCalibration).
+ *
+ * On the host the streams of a synced group are deprojected concurrently, one thread per stream;
+ * useCPUMT additionally splits every stream over several threads. useGPU computes on the GPU: on an
+ * RVC4 device through OpenCL, on the host through Kompute when compiled in. The compute method is
+ * part of the node properties, so it also applies when the node runs on the device.
+ *
+ * The output can be expressed in the coordinate system of any camera socket or housing of any
+ * device in the pipeline (setTargetCoordinateSystem). Targets on another device than the one
+ * owning the reference camera of a depth frame are resolved through the multi-device
+ * calibration of the pipeline and the calibration of the target device.
  */
 class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>, public HostRunnable {
    public:
@@ -43,11 +112,28 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
         void setLogger(const std::shared_ptr<::spdlog::logger>& log);
 
-        // Compute DENSE point cloud (width * height points, includes invalid z=0 or negative)
+        // Compute DENSE point cloud (width * height points, includes invalid z=0 or negative) on the CPU or through Kompute
         void computePointCloudDense(const uint8_t* depthData, std::vector<Point3f>& points);
 
-        // Compute DENSE colored point cloud from aligned depth+color (like RGBD node)
+        // Compute DENSE colored point cloud from aligned depth+color (like RGBD node) on the CPU
         void computePointCloudDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points);
+
+        // Dense points computed by the platform GPU backend, in backend-owned memory valid until the next compute call;
+        // nullptr when this Impl does not compute through a backend. The extrinsics are already applied, so
+        // applyTransformation must not be called on them.
+        const Point3f* computeDenseOnGpu(const uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory);
+        const Point3fRGBA* computeDenseColoredOnGpu(const uint8_t* depthData,
+                                                    const std::shared_ptr<Memory>& depthMemory,
+                                                    const uint8_t* colorData,
+                                                    const std::shared_ptr<Memory>& colorMemory);
+
+        // Copy dense points into `points`: all of them (organized) or only the valid ones (z > 0), in order
+        template <typename PointT>
+        static void gatherPoints(const PointT* dense, size_t count, bool organized, std::vector<PointT>& points);
+
+        // Remove invalid points (z <= 0) in place, keeping the order and the capacity of the vector
+        template <typename PointT>
+        static void compactValidPoints(std::vector<PointT>& points);
 
         // Apply extrinsic transformation to points
         template <typename PointT>
@@ -60,11 +146,18 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         void setLengthUnit(dai::LengthUnit lengthUnit);
         void useCPU();
         void useCPUMT(uint32_t numThreads);
-        void useGPU(uint32_t device);
+        /**
+         * Compute through `backend` when given, otherwise through Kompute on GPU `device` when compiled in.
+         * Throws when neither is available.
+         */
+        void useGPU(uint32_t device, std::shared_ptr<PointCloudGpuBackend> backend = nullptr);
         void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height);
         void setDistortion(CameraModel model, std::vector<float> coefficients);
         void setExtrinsics(const std::vector<std::vector<float>>& transformMatrix);
         void clearExtrinsics();
+
+        // Whether this Impl computes on the GPU
+        bool usesGPU() const;
 
         LengthUnit targetLengthUnit = LengthUnit::MILLIMETER;
 
@@ -117,12 +210,25 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         std::vector<std::vector<float>> extrinsics;
         bool hasExtrinsics = false;
 
+        // Platform GPU backend (useGPU)
+        std::shared_ptr<PointCloudGpuBackend> gpuBackend;
+        PointCloudGpuBackend::Geometry gpuGeometry() const;
+        // Give up on the backend after a runtime failure and continue on the CPU
+        void dropGpuBackend(const std::string& reason);
+        uint64_t raysVersion = 0;
+
         std::shared_ptr<::spdlog::logger> logger;
     };
 
    protected:
     Properties& getProperties() override;
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    /**
+     * Platform GPU backend used by useGPU. Returns null here; a platform node class (the RVC4 firmware)
+     * overrides it with its implementation. Called once per depth stream when the node starts.
+     */
+    virtual std::shared_ptr<PointCloudGpuBackend> createGpuBackend(uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger);
 
    public:
     PointCloud();
@@ -150,12 +256,23 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     static constexpr const char* depthInputName = "depth";
     static constexpr const char* colorInputName = "color";
 
+    /**
+     * Sync input key of a depth stream: "depth" for the default stream (empty name), "depth/<name>" otherwise.
+     * The same key identifies the depth frame inside the synced MessageGroup.
+     */
+    static std::string getDepthInputKey(const std::string& name);
+
+    /**
+     * Sync input key of the color stream paired with a depth stream: "color" for the default stream (empty name), "color/<name>" otherwise.
+     */
+    static std::string getColorInputKey(const std::string& name);
+
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     InputMap& syncInputs = sync->inputs;
 
     /**
      * Input message with depth data used to create the point cloud.
-     * Routed through the internal Sync subnode.
+     * Routed through the internal Sync subnode. Equivalent to getDepthInput("").
      */
     Input& inputDepth = syncInputs[depthInputName];
 
@@ -168,6 +285,49 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
      * to this input to enable colored point cloud output.
      */
     Input& getColorInput();
+
+    /**
+     * Get (or create) an additional depth input.
+     *
+     * Every depth stream linked to this node is synchronized by the internal Sync subnode,
+     * deprojected with its own intrinsics and transformed into the target coordinate system
+     * using its frame extrinsics. The clouds of all streams are merged into one output
+     * PointCloudData. All depth frames must therefore share a target coordinate system
+     * (Extrinsics::toDeviceId / Extrinsics::toCameraSocket); depth from several devices
+     * requires a multi-device calibration on the pipeline. Groups whose streams do not share
+     * a coordinate system are dropped with a warning.
+     *
+     * When the depth streams come from more than one device and the Sync timestamp source
+     * is left at its default, the Sync subnode is moved to the host at build time so that
+     * the streams can be paired with host timestamps.
+     *
+     * @param name Name of the depth stream. An empty name refers to inputDepth.
+     */
+    Input& getDepthInput(const std::string& name);
+
+    /**
+     * Get (or create) the color input paired with the depth stream `name`.
+     * The output is colorized only when every depth stream has a matching color frame.
+     *
+     * @param name Name of the depth stream. An empty name refers to the default color input.
+     */
+    Input& getColorInput(const std::string& name);
+
+    /**
+     * Names of the depth streams linked to this node, the default (unnamed) stream first.
+     */
+    std::vector<std::string> getDepthInputNames() const;
+
+    /**
+     * Moves the Sync subnode to the host when depth streams come from more than one device.
+     */
+    void buildStage1() override;
+
+    /**
+     * Drops Sync entries nobody linked (an unused default depth input next to named depth
+     * streams, unused color inputs) so that the Sync subnode does not wait for them.
+     */
+    void postBuildStage() override;
 #endif
 
     /**
@@ -178,6 +338,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /**
      * Passthrough depth from which the point cloud was calculated.
      * Suitable for when input queue is set to non-blocking behavior.
+     * With several depth streams every depth frame of the merged group is passed through, in stream order.
      */
     Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
@@ -194,33 +355,66 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     void setRunOnHost(bool runOnHost);
 
     /**
-     * Use single-threaded CPU for processing
+     * Use single-threaded CPU for processing (one thread per depth stream on the host). Default.
      */
     void useCPU();
 
     /**
-     * Use multi-threaded CPU for processing
+     * Use multi-threaded CPU for processing: every depth stream is split over `numThreads` threads.
      */
     void useCPUMT(uint32_t numThreads = 2);
 
     /**
-     * Use GPU for point cloud computation
+     * Use GPU for point cloud computation: OpenCL on an RVC4 device, Kompute on the host when compiled in.
+     * When no GPU is available at runtime the node logs a warning and falls back to the CPU.
      * @param device GPU device index (default 0)
      */
     void useGPU(uint32_t device = 0);
 
     /**
-     * Set target coordinate system to transform point cloud
+     * Set target coordinate system to transform point cloud.
+     * The socket is looked up on the device that owns the reference camera of the depth frame.
      * @param targetCamera Target camera socket
      */
     void setTargetCoordinateSystem(CameraBoardSocket targetCamera);
 
     /**
      * Set target coordinate system to housing coordinate system
-     * Point cloud will be transformed to this housing coordinate system
+     * Point cloud will be transformed to this housing coordinate system of the device that owns the reference camera of the depth frame.
      * @param housingCS Target housing coordinate system
      */
     void setTargetCoordinateSystem(HousingCoordinateSystem housingCS);
+
+    /**
+     * Set target coordinate system to a camera socket of any device in the pipeline.
+     *
+     * Depth frames whose reference camera lives on another device are transformed through the
+     * multi-device calibration of the pipeline (Pipeline::setMultiDeviceCalibration), which has to
+     * connect the two devices, and the calibration of the target device. Every depth stream is
+     * resolved independently, so streams of several devices can be merged into a cloud expressed in
+     * the coordinate system of one of them. Not supported when the node runs on a device.
+     * @param targetDeviceId Device ID of the device owning the target camera socket
+     * @param targetCamera Target camera socket
+     */
+    void setTargetCoordinateSystem(const std::string& targetDeviceId, CameraBoardSocket targetCamera);
+
+    /**
+     * Set target coordinate system to a housing coordinate system of any device in the pipeline.
+     * See setTargetCoordinateSystem(targetDeviceId, targetCamera) for how other devices are resolved.
+     * @param targetDeviceId Device ID of the device owning the housing coordinate system
+     * @param housingCS Target housing coordinate system
+     */
+    void setTargetCoordinateSystem(const std::string& targetDeviceId, HousingCoordinateSystem housingCS);
+
+    /**
+     * Override the calibration used for a device, for recorded/offline streams and tests.
+     *
+     * The node otherwise reads the calibration of a device from the pipeline. Only used when the
+     * node runs on the host; call it before the pipeline is started.
+     * @param deviceId Device ID the calibration belongs to
+     * @param calibration Calibration of that device
+     */
+    void setDeviceCalibration(const std::string& deviceId, const CalibrationHandler& calibration);
 
     /**
      * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
@@ -244,30 +438,87 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /// Private input receiving synced MessageGroup from Sync subnode
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
 
+    /// Coordinate system the points of one stream are expressed in after the transformation
+    struct OutputCoordinateSystem {
+        std::string deviceId;
+        CameraBoardSocket socket = CameraBoardSocket::AUTO;
+        HousingCoordinateSystem housing = HousingCoordinateSystem::AUTO;
+        std::string describe() const;
+    };
+
+    /// Per depth stream state. The default stream uses pimplPointCloud, additional streams own an Impl configured alike.
+    struct DepthStream {
+        std::unique_ptr<Impl> impl;
+        bool initialized = false;
+        // Cached frame transformation — used to detect intrinsic/extrinsic/size changes at runtime
+        std::optional<ImgTransformation> lastTransformation;
+        // Extrinsics to set on the output PointCloudData after coordinate transformation
+        std::optional<Extrinsics> targetExtrinsics;
+        // Coordinate system of the transformed points (the frame reference unless a target is configured)
+        OutputCoordinateSystem outputCoordinateSystem;
+        // Scratch buffers reused across frames so that no large allocation (and page faulting) happens per frame
+        std::vector<Point3f> points;
+        std::vector<Point3fRGBA> coloredPoints;
+    };
+
+    /// Depth frame (and optional color frame) of one stream inside a synced group
+    struct StreamFrames {
+        std::string name;
+        std::shared_ptr<ImgFrame> depth;
+        std::shared_ptr<ImgFrame> color;
+    };
+
     void run() override;
-    void initialize(const ImgFrame& depthFrame, const PointCloudConfig& config);
-    bool hasTransformationChanged(const ImgFrame& frame);
+    /// Apply properties.computeMethod to an Impl, falling back to the CPU when the GPU is unavailable
+    void applyComputeSettings(Impl& impl);
+    DepthStream& getDepthStream(const std::string& name);
+    Impl& getImpl(DepthStream& stream);
+    std::vector<StreamFrames> collectStreamFrames(MessageGroup& group);
+    void initialize(DepthStream& stream, const ImgFrame& depthFrame, const PointCloudConfig& config);
+    bool hasTransformationChanged(DepthStream& stream, const ImgFrame& frame);
+    bool isValidDepthFrame(const ImgFrame& depthFrame);
+    bool haveCommonTargetCoordinateSystem(const std::vector<StreamFrames>& frames);
+    CalibrationHandler getCalibrationFor(const std::string& deviceId);
 
     // Helper methods for initialize()
-    void setIntrinsicsFromFrame(const ImgFrame& frame);
-    void setCoordinateTransformation(const ImgFrame& depthFrame, const PointCloudConfig& config);
+    void setIntrinsicsFromFrame(Impl& impl, const ImgFrame& frame);
+    void setCoordinateTransformation(DepthStream& stream, const ImgFrame& depthFrame, const PointCloudConfig& config);
+    /// Device that owns the reference camera of a depth frame (the node's device when the frame does not say)
+    std::string getReferenceDeviceId(const Extrinsics& frameExtrinsics);
+    /// Transformation from the reference camera of a depth frame to the local calibration origin of another device (4x4, in `unit`)
+    std::vector<std::vector<float>> getReferenceToDeviceOrigin(const std::string& referenceDeviceId,
+                                                               CameraBoardSocket referenceSocket,
+                                                               const std::string& targetDeviceId,
+                                                               CameraBoardSocket& targetOriginSocket,
+                                                               LengthUnit unit);
 
-    // Processing methods for the two code paths
-    void processDepthOnly(const std::shared_ptr<ImgFrame>& depthFrame, const std::shared_ptr<PointCloudData>& pc, bool organized);
-    void processColorized(const std::shared_ptr<ImgFrame>& depthFrame,
-                          const std::shared_ptr<ImgFrame>& colorFrame,
-                          const std::shared_ptr<PointCloudData>& pc,
-                          bool organized);
+    // Processing methods for the two code paths; overwrite `points` (a scratch buffer reused across frames) with the points of one stream
+    void computeDepthOnly(Impl& impl, const ImgFrame& depthFrame, bool organized, std::vector<Point3f>& points);
+    bool canColorize(const ImgFrame& depthFrame, const ImgFrame& colorFrame);
+    void computeColorized(Impl& impl, const ImgFrame& depthFrame, const ImgFrame& colorFrame, bool organized, std::vector<Point3fRGBA>& points);
+
+    /**
+     * Compute the points of every stream of a synced group and store them, in stream order, as the data of
+     * `output`. On the host the streams are computed concurrently (one thread per additional stream, each
+     * stream has its own Impl and scratch buffer); on device and with GPU compute they are processed one
+     * after another.
+     * @returns Number of points stored
+     */
+    template <typename PointT>
+    size_t computeStreams(const std::vector<StreamFrames>& frames, bool organized, PointCloudData& output);
 
     bool runOnHostVar = true;
-    bool initialized = false;
-    bool colorMode = false;
+    bool coordinateSystemMismatchWarned = false;
+    bool initializationFailedWarned = false;
+    // Compute time of the merged groups, reported at debug level every COMPUTE_TIME_LOG_INTERVAL groups
+    static constexpr unsigned COMPUTE_TIME_LOG_INTERVAL = 30;
+    double computeTimeSum = 0.0;
+    unsigned computeTimeCount = 0;
+    bool mixedColorWarned = false;
+    bool organizedLayoutWarned = false;
 
-    // Extrinsics to set on the output PointCloudData after coordinate transformation
-    std::optional<Extrinsics> targetExtrinsics_;
-
-    // Cached frame transformation — used to detect intrinsic/extrinsic/size changes at runtime
-    std::optional<ImgTransformation> lastTransformation_;
+    std::map<std::string, DepthStream> depthStreams;
+    std::map<std::string, CalibrationHandler> deviceCalibrations;
 };
 
 }  // namespace node
