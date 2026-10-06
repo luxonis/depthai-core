@@ -450,6 +450,7 @@ class Pipeline {
         return pimpl.get();
     }
 
+    /// Get the source nodes used for recording and replay.
     std::vector<std::shared_ptr<Node>> getSourceNodes() {
         return impl()->getSourceNodes();
     }
@@ -919,15 +920,20 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+    /// Return whether holistic recording is enabled.
     bool isHolisticRecordEnabled() const;
+    /// Return whether holistic replay is enabled.
     bool isHolisticReplayEnabled() const;
 
     /// Pipeline debugging
     void enablePipelineDebugging(bool enable = true);
+    /// Return whether pipeline debugging is enabled.
     bool isPipelineDebuggingEnabled() const;
 
     // Access to pipeline state queues
+    /// Get the output queue carrying PipelineState responses.
     std::shared_ptr<MessageQueue> getPipelineStateOut() const;
+    /// Get the input queue accepting PipelineEventAggregationConfig requests.
     std::shared_ptr<InputQueue> getPipelineStateRequest() const;
 
     // Pipeline state getters

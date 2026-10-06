@@ -49,7 +49,10 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
     //     ;
 
     // Message
-    pointCloudData.def(py::init<>())
+    pointCloudData
+        .def("setColor", &dai::PointCloudData::setColor, py::arg("val"), py::return_value_policy::reference_internal, DOC(dai, PointCloudData, setColor))
+        .def("transformTo", &dai::PointCloudData::transformTo, py::arg("target"), DOC(dai, PointCloudData, transformTo))
+        .def(py::init<>())
         .def("__repr__", &PointCloudData::str)
         // .def_property("points", [](PointCloudData& data) { return &data.getPoints(); }, [](PointCloudData& data, std::vector<Point3f> points)
         // {data.getPoints() = points;})

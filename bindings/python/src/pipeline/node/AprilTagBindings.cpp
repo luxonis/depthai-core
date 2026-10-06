@@ -32,6 +32,7 @@ void bind_apriltag(pybind11::module& m, void* pCallstack) {
     // Node
     aprilTag.def_readonly("inputConfig", &AprilTag::inputConfig, DOC(dai, node, AprilTag, inputConfig))
         .def_readonly("inputImage", &AprilTag::inputImage, DOC(dai, node, AprilTag, inputImage))
+        .def_readonly("outConfig", &AprilTag::outConfig, DOC(dai, node, AprilTag, outConfig))
         .def_readonly("out", &AprilTag::out, DOC(dai, node, AprilTag, out))
         .def_readonly("passthroughInputImage", &AprilTag::passthroughInputImage, DOC(dai, node, AprilTag, passthroughInputImage))
         .def_readonly("initialConfig", &AprilTag::initialConfig, DOC(dai, node, AprilTag, initialConfig))

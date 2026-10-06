@@ -101,6 +101,10 @@ void Map2D::setMap(span<const float> map, size_t width, size_t height) {
     if(map.size() != width * height) {
         throw std::runtime_error("Map2D: map size does not match width*height");
     }
+    if(data.use_count() > 1) {
+        const auto previous = getData();
+        setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+    }
     data->setSize(map.size() * sizeof(float));
     std::memcpy(data->getData().data(), map.data(), map.size() * sizeof(float));
     this->width = width;

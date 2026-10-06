@@ -33,6 +33,11 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
         .def_readwrite("stepSize", &SpatialDetectionNetworkProperties::stepSize);
 
     // Node
+    spatialDetectionNetwork.def("setSpatialCalculationStepSize",
+                                &dai::node::SpatialDetectionNetwork::setSpatialCalculationStepSize,
+                                py::arg("stepSize"),
+                                DOC(dai, node, SpatialDetectionNetwork, setSpatialCalculationStepSize));
+
     spatialDetectionNetwork
         // Build methods with DepthSource variant
         .def(
@@ -143,7 +148,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("setFromModelZoo",
              py::overload_cast<NNModelDescription, bool>(&SpatialDetectionNetwork::setFromModelZoo),
              py::arg("description"),
-             py::arg("useCached"),
+             py::arg("useCached") = true,
              DOC(dai, node, SpatialDetectionNetwork, setFromModelZoo))
         .def("setBlob",
              py::overload_cast<const dai::OpenVINO::Blob&>(&SpatialDetectionNetwork::setBlob),

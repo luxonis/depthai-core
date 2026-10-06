@@ -1,6 +1,9 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 
 #include <cmath>
+#include <cstdint>
+#include <limits>
+#include <stdexcept>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "spdlog/fmt/fmt.h"
@@ -545,7 +548,12 @@ int ColorCamera::getResolutionHeight() const {
 }
 
 int ColorCamera::getScaledSize(int input, int num, int denom) const {
-    return (input * num - 1) / denom + 1;
+    if(denom == 0) throw std::invalid_argument("Scale denominator must not be zero");
+    const auto scaled = (static_cast<int64_t>(input) * num - 1) / denom + 1;
+    if(scaled < std::numeric_limits<int>::min() || scaled > std::numeric_limits<int>::max()) {
+        throw std::overflow_error("Scaled size does not fit in an int");
+    }
+    return static_cast<int>(scaled);
 }
 
 int ColorCamera::getIspWidth() const {

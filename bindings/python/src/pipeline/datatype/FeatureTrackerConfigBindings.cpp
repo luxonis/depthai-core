@@ -116,7 +116,10 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
                        DOC(dai, FeatureTrackerConfig, FeatureMaintainer, trackedFeatureThreshold));
 
     // Message
-    featureTrackerConfig.def(py::init<>())
+    featureTrackerConfig.def_readwrite("cornerDetector", &dai::FeatureTrackerConfig::cornerDetector, DOC(dai, FeatureTrackerConfig, cornerDetector))
+        .def_readwrite("featureMaintainer", &dai::FeatureTrackerConfig::featureMaintainer, DOC(dai, FeatureTrackerConfig, featureMaintainer))
+        .def_readwrite("motionEstimator", &dai::FeatureTrackerConfig::motionEstimator, DOC(dai, FeatureTrackerConfig, motionEstimator))
+        .def(py::init<>())
         .def("__repr__", &FeatureTrackerConfig::str)
         // .def(py::init<std::shared_ptr<FeatureTrackerConfig>>())
 

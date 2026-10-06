@@ -24,10 +24,17 @@ void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind Asset
+    asset.def("getData", [](Asset& self) { return self.getData(); }, DOC(dai, Asset, getData));
+
+    asset.def("setData", &dai::Asset::setData, py::arg("data"), DOC(dai, Asset, setData))
+        .def("getSize", &dai::Asset::getSize, DOC(dai, Asset, getSize))
+        .def("getRelativeUri", &dai::Asset::getRelativeUri, DOC(dai, Asset, getRelativeUri))
+        .def("setFile", &dai::Asset::setFile, py::arg("path"), py::arg("size"), DOC(dai, Asset, setFile));
+
     asset.def(py::init<>())
         .def(py::init<std::string>())
         .def_readonly("key", &Asset::key)
-        // numpy array access - zero copy on access
+        // Mutable view; replacing the asset storage invalidates existing views.
         .def_property(
             "data",
             [](py::object& obj) {
@@ -38,10 +45,16 @@ void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
             [](py::object& obj, py::array_t<std::uint8_t, py::array::c_style> array) {
                 dai::Asset& a = obj.cast<dai::Asset&>();
                 a.setData({array.data(), array.data() + array.size()});
-            })
+            },
+            "Mutable view of asset data. Replacing the storage invalidates existing views; use getData() for an owned copy.")
         .def_readwrite("alignment", &Asset::alignment);
 
     // Bind AssetManager
+    assetManager.def("setLazy", &AssetManager::setLazy, py::arg("key"), py::arg("path"), py::arg("alignment") = 64, DOC(dai, AssetManager, setLazy))
+        .def("getSerializedSize", &AssetManager::getSerializedSize, py::arg("offset") = 0, DOC(dai, AssetManager, getSerializedSize));
+
+    assetManager.def("setRootPath", &dai::AssetManager::setRootPath, py::arg("rootPath"), DOC(dai, AssetManager, setRootPath));
+
     assetManager.def(py::init<>())
         .def(py::init<std::string>())
         .def("addExisting", &AssetManager::addExisting, py::arg("assets"), DOC(dai, AssetManager, addExisting))

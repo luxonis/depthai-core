@@ -41,7 +41,9 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
 
     // Message
 
-    imageManipConfig.def(py::init<>())
+    imageManipConfig.def("getReusePreviousImage", &dai::ImageManipConfig::getReusePreviousImage, DOC(dai, ImageManipConfig, getReusePreviousImage))
+        .def("getSkipCurrentImage", &dai::ImageManipConfig::getSkipCurrentImage, DOC(dai, ImageManipConfig, getSkipCurrentImage))
+        .def(py::init<>())
         .def("__repr__", &ImageManipConfig::str)
         // New API Setters
         .def("clearOps", &ImageManipConfig::clearOps, DOC(dai, ImageManipConfig, clearOps))
@@ -55,12 +57,12 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
         .def("addCrop",
              static_cast<ImageManipConfig& (ImageManipConfig::*)(const dai::Rect&, bool)>(&ImageManipConfig::addCrop),
              py::arg("rect"),
-             py::arg("normalizedCoords"),
+             py::arg("normalizedCoords") = false,
              DOC(dai, ImageManipConfig, addCrop))
         .def("addCropRotatedRect",
              &ImageManipConfig::addCropRotatedRect,
              py::arg("rect"),
-             py::arg("normalizedCoords"),
+             py::arg("normalizedCoords") = false,
              DOC(dai, ImageManipConfig, addCropRotatedRect))
         .def(
             "addScale", [](ImageManipConfig& self, float scale) { return self.addScale(scale); }, py::arg("scale"), DOC(dai, ImageManipConfig, addScale))
@@ -87,7 +89,7 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
              &ImageManipConfig::addTransformFourPoints,
              py::arg("src"),
              py::arg("dst"),
-             py::arg("normalizedCoords"),
+             py::arg("normalizedCoords") = false,
              DOC(dai, ImageManipConfig, addTransformFourPoints))
         .def("setColormap", &ImageManipConfig::setColormap, py::arg("colormap"), DOC(dai, ImageManipConfig, setColormap))
         .def("setBackgroundColor",
@@ -106,7 +108,7 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
              py::arg("h"),
              py::arg("mode") = ImageManipConfig::ResizeMode::STRETCH,
              DOC(dai, ImageManipConfig, setOutputSize))
-        .def("setOutputCenter", &ImageManipConfig::setOutputCenter, py::arg("c"), DOC(dai, ImageManipConfig, setOutputCenter))
+        .def("setOutputCenter", &ImageManipConfig::setOutputCenter, py::arg("c") = true, DOC(dai, ImageManipConfig, setOutputCenter))
         .def("setReusePreviousImage", &ImageManipConfig::setReusePreviousImage, py::arg("reuse"), DOC(dai, ImageManipConfig, setReusePreviousImage))
         .def("setSkipCurrentImage", &ImageManipConfig::setSkipCurrentImage, py::arg("skip"), DOC(dai, ImageManipConfig, setSkipCurrentImage))
         .def("setFrameType", &ImageManipConfig::setFrameType, py::arg("type"), DOC(dai, ImageManipConfig, setFrameType))

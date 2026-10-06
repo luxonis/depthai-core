@@ -31,7 +31,8 @@ void bind_edgedetector(pybind11::module& m, void* pCallstack) {
         .def_readwrite("numFramesPool", &EdgeDetectorProperties::numFramesPool, DOC(dai, EdgeDetectorProperties, numFramesPool));
 
     // Node
-    edgeDetector.def_readonly("initialConfig", &EdgeDetector::initialConfig, DOC(dai, node, EdgeDetector, initialConfig))
+    edgeDetector.def_readonly("passthroughInputImage", &dai::node::EdgeDetector::passthroughInputImage, DOC(dai, node, EdgeDetector, passthroughInputImage))
+        .def_readonly("initialConfig", &EdgeDetector::initialConfig, DOC(dai, node, EdgeDetector, initialConfig))
         .def_readonly("inputConfig", &EdgeDetector::inputConfig, DOC(dai, node, EdgeDetector, inputConfig))
         .def_readonly("inputImage", &EdgeDetector::inputImage, DOC(dai, node, EdgeDetector, inputImage))
         .def_readonly("outputImage", &EdgeDetector::outputImage, DOC(dai, node, EdgeDetector, outputImage))

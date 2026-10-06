@@ -63,14 +63,16 @@ void SegmentationMask::setMask(span<const std::uint8_t> mask, size_t width, size
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
-    data->setSize(mask.size());
-    std::memcpy(data->getData().data(), mask.data(), mask.size());
-    this->width = width;
-    this->height = height;
+    auto dst = prepareMask(width, height);
+    std::memcpy(dst.data(), mask.data(), mask.size());
 }
 
 span<std::uint8_t> SegmentationMask::prepareMask(size_t width, size_t height) {
     const size_t size = width * height;
+    if(data.use_count() > 1) {
+        const auto previous = getData();
+        setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+    }
     data->setSize(size);
     this->width = width;
     this->height = height;
@@ -88,13 +90,11 @@ void SegmentationMask::setMask(dai::ImgFrame& frame) {
         setMask(frame.getData(), width, height);
     } else {  // Need to repack the data
         auto dataSpan = frame.getData();
-        const size_t packedSize = static_cast<size_t>(width) * static_cast<size_t>(height);
         const size_t minSourceSize = (static_cast<size_t>(height - 1) * static_cast<size_t>(stride)) + static_cast<size_t>(width);
         if(dataSpan.size() < minSourceSize) {
             throw std::runtime_error("SegmentationMask: ImgFrame data size does not match width/height/stride");
         }
-        data->setSize(packedSize);
-        auto dst = data->getData();
+        auto dst = prepareMask(width, height);
         for(size_t y = 0; y < height; y++) {
             const size_t srcOffset = y * static_cast<size_t>(stride);
             const size_t dstOffset = y * static_cast<size_t>(width);

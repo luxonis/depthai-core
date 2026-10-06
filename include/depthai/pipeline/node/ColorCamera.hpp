@@ -32,6 +32,11 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     ColorCamera(std::unique_ptr<Properties> props);
     /**
      * Computes the scaled size given numerator and denominator
+     * @param input Input dimension.
+     * @param num Scale numerator.
+     * @param denom Nonzero scale denominator.
+     * @throws std::invalid_argument If denom is zero.
+     * @throws std::overflow_error If the scaled size cannot be represented as an int.
      */
     int getScaledSize(int input, int num, int denom) const;
 
@@ -181,6 +186,7 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     /// Set still output size, as a tuple <width, height>
     void setStillSize(const std::tuple<int, int>& size);
 
+    /// Set the mock ISP output width and height in pixels.
     void setMockIspSize(int width, int height);
 
     /// Set number of frames in preview pool

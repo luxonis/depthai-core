@@ -112,6 +112,7 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
     /// Get camera image orientation
     CameraImageOrientation getImageOrientation() const;
 
+    /// Set the mock ISP output width and height in pixels.
     void setMockIspSize(int width, int height);
 
     /// Set sensor resolution

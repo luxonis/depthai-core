@@ -38,7 +38,11 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
     videoEncoderPropertiesProfileRateControlMode.value("CBR", VideoEncoderProperties::RateControlMode::CBR)
         .value("VBR", VideoEncoderProperties::RateControlMode::VBR);
 
-    videoEncoderProperties.def_readwrite("bitrate", &VideoEncoderProperties::bitrate)
+    videoEncoderProperties.def(py::init<>());
+
+    videoEncoderProperties.def_readwrite("frameRate", &dai::VideoEncoderProperties::frameRate, DOC(dai, VideoEncoderProperties, frameRate))
+        .def_readwrite("lossless", &dai::VideoEncoderProperties::lossless, DOC(dai, VideoEncoderProperties, lossless))
+        .def_readwrite("bitrate", &VideoEncoderProperties::bitrate)
         .def_readwrite("keyframeFrequency", &VideoEncoderProperties::keyframeFrequency)
         .def_readwrite("maxBitrate", &VideoEncoderProperties::maxBitrate)
         .def_readwrite("numBFrames", &VideoEncoderProperties::numBFrames)

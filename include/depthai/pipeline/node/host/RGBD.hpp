@@ -75,6 +75,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
                                 const std::pair<int, int>& frameSize = std::make_pair(640, 400),
                                 std::optional<float> fps = std::nullopt);
 
+    /// Set the input depth unit used to convert depth values to point coordinates in meters.
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit);
     /**
      * @brief Use single-threaded CPU for processing

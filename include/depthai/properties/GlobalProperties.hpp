@@ -98,6 +98,11 @@ struct DeviceProperties : PropertiesSerializable<Properties, DeviceProperties> {
 
     ~DeviceProperties() override;
 
+    /**
+     * Updates properties from another object. Absent calibData preserves the current calibration and eepromId;
+     * absent cameraTuningBlobSize preserves the current tuning size and URI. Other fields are copied unconditionally.
+     * @returns Reference to this object.
+     */
     DeviceProperties& setFrom(const DeviceProperties& other) {
         leonCssFrequencyHz = other.leonCssFrequencyHz;
         leonMssFrequencyHz = other.leonMssFrequencyHz;

@@ -61,6 +61,7 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
      */
     CameraBoardSocket getBoardSocket() const;
 
+    /// Set the thermal camera frame rate in frames per second.
     void setFps(float fps);
 
    private:

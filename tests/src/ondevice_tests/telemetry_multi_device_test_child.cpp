@@ -108,8 +108,8 @@ int main() {
                 std::string message = "Timed out waiting for frames from devices:";
                 for(const auto& scenario : scenarios) {
                     if(scenario.framesReceived < kFrameCount) {
-                        message += " " + scenario.deviceInfo.toString() + " (" + std::to_string(scenario.framesReceived) + "/" + std::to_string(kFrameCount)
-                                   + ")";
+                        message +=
+                            " " + scenario.deviceInfo.toString() + " (" + std::to_string(scenario.framesReceived) + "/" + std::to_string(kFrameCount) + ")";
                     }
                 }
                 fail(message);

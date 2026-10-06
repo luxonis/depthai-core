@@ -37,6 +37,13 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
+    spatialImgDetection.def("transform",
+                            &dai::SpatialImgDetection::transform,
+                            py::arg("source"),
+                            py::arg("target"),
+                            py::arg("lengthUnit") = LengthUnit::MILLIMETER,
+                            DOC(dai, SpatialImgDetection, transform));
+
     spatialImgDetection.def(py::init<>())
         .def(py::init<const RotatedRect&, Point3f, float, std::uint32_t>(),
              py::arg("boundingBox"),

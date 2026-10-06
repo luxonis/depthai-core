@@ -307,8 +307,8 @@ class NNData : public Buffer, public ProtoSerializable {
         // else if(dataType==dai::TensorInfo::DataType::FP64) std::cout<<"FP64\n";
         // else std::cout<<"Unsupported type\n";
 
-        // Check if data is vector type of data
-        if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
+        // Preserve storage retained by views or other messages before resizing.
+        if(data.use_count() > 1 || std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
             auto prev = std::vector<uint8_t>(data->getData().begin(), data->getData().end());
             data = std::make_shared<VectorMemory>(std::move(prev));
         }

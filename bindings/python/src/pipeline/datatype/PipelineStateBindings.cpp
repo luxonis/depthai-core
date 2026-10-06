@@ -104,7 +104,9 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def_readwrite("otherTimings", &NodeState::otherTimings, DOC(dai, NodeState, otherTimings));
 
     // Message
-    pipelineState.def(py::init<>())
+    pipelineState.def_readwrite("configSequenceNum", &dai::PipelineState::configSequenceNum, DOC(dai, PipelineState, configSequenceNum))
+        .def(py::init<>())
         .def("__repr__", &PipelineState::str)
+        .def("toJson", &PipelineState::toJson, DOC(dai, PipelineState, toJson))
         .def_readwrite("nodeStates", &PipelineState::nodeStates, DOC(dai, PipelineState, nodeStates));
 }

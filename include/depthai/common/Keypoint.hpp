@@ -29,6 +29,14 @@ struct Keypoint {
     explicit Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0, std::string labelName = "")
         : Keypoint(Point3f{x, y, z}, confidence, label, std::move(labelName)) {}
 
+    /**
+     * Remap imageCoordinates.x and imageCoordinates.y in place, leaving Z unchanged.
+     * Coordinate normalization is inferred using Point2f::isNormalized(): values in
+     * [0, 1] are normalized, except when both coordinates are 0 or 1, which are pixels.
+     * Remapping between different cameras is approximate because depth is not used.
+     * @param source Image transformation in which this keypoint is defined.
+     * @param target Image transformation to remap the keypoint into.
+     */
     void transform(const ImgTransformation& source, const ImgTransformation& target) {
         // TODO (aljazkonec1) Possible issue: Keypoint does not store its own normalization flag, so normalization is guessed based on if coordinates are in
         // range [0,1]. A keypoint can be normalized but outside the [0, 1] range. Possible fix: Add hasNormalized and normalized fields to KeypointsList and

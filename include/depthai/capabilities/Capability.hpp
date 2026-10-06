@@ -5,6 +5,7 @@ namespace dai {
 
 class Capability {
    public:
+    /// Get the capability type name.
     virtual const char* getName() const = 0;
     // virtual Capability getIntersection(const Capability& other) = 0;
     virtual ~Capability();

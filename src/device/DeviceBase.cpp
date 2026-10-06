@@ -2121,6 +2121,8 @@ bool DeviceBase::isCBAEepromAvailable(CameraBoardSocket camSocket) {
 }
 
 bool DeviceBase::isCalibrationAvailable() {
+    // RVC2 firmware returns a bare boolean rather than a checked RPC tuple.
+    if(getPlatform() == Platform::RVC2) return pimpl->rpcCall("isCalibrationAvailable").as<bool>();
     return pimpl->rpcCallChecked<bool>("isCalibrationAvailable");
 }
 

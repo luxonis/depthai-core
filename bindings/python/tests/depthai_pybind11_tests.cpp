@@ -25,8 +25,8 @@ productively.
 Instead, see the "How can I reduce the build time?" question in the "Frequently asked questions"
 section of the documentation for good practice on splitting binding code over multiple files.
 */
-std::list<std::function<void(py::module_ &)>> &initializers() {
-    static std::list<std::function<void(py::module_ &)>> inits;
+std::list<std::function<void(py::module_&)>>& initializers() {
+    static std::list<std::function<void(py::module_&)>> inits;
     return inits;
 }
 
@@ -34,8 +34,8 @@ test_initializer::test_initializer(Initializer init) {
     initializers().emplace_back(init);
 }
 
-test_initializer::test_initializer(const char *submodule_name, Initializer init) {
-    initializers().emplace_back([=](py::module_ &parent) {
+test_initializer::test_initializer(const char* submodule_name, Initializer init) {
+    initializers().emplace_back([=](py::module_& parent) {
         auto m = parent.def_submodule(submodule_name);
         init(m);
     });
@@ -50,6 +50,5 @@ PYBIND11_MODULE(depthai_pybind11_tests, m) {
     m.attr("debug_enabled") = false;
 #endif
 
-    for (const auto &initializer : initializers())
-        initializer(m);
+    for(const auto& initializer : initializers()) initializer(m);
 }

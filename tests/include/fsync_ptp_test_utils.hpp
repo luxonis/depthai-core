@@ -1,12 +1,12 @@
 #pragma once
 
-#include <memory>
-#include <string>
-#include <vector>
-#include <optional>
-#include <map>
 #include <chrono>
 #include <cstdint>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
@@ -34,11 +34,8 @@ struct FsyncTestParameters {
     SyncType syncType;
 };
 
-dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline,
-                                  dai::CameraBoardSocket socket,
-                                  float sensorFps,
-                                  SyncType syncType,
-                                  std::optional<dai::ExternalFrameSyncRole> role);
+dai::Node::Output* createPipeline(
+    std::shared_ptr<dai::Pipeline> pipeline, dai::CameraBoardSocket socket, float sensorFps, SyncType syncType, std::optional<dai::ExternalFrameSyncRole> role);
 
 std::shared_ptr<dai::node::Sync> createSyncNode(std::shared_ptr<dai::Pipeline>& masterPipeline,
                                                 std::map<std::string, dai::Node::Output*>& masterNode,

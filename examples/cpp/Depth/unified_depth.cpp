@@ -12,6 +12,8 @@
  */
 #include <algorithm>
 #include <argparse/argparse.hpp>
+#include <atomic>
+#include <csignal>
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -29,6 +31,9 @@
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
 namespace {
+
+static_assert(std::atomic<bool>::is_always_lock_free, "Signal flag must be lock-free");
+std::atomic<bool> quitEvent{false};
 
 cv::Mat colorizeConfidence(const cv::Mat& frame) {
     if(frame.empty() || frame.channels() != 1) {
@@ -213,6 +218,10 @@ dai::Pipeline makePipeline(const CliOptions& options) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    const auto signalHandler = [](int) { quitEvent.store(true, std::memory_order_relaxed); };
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
     argparse::ArgumentParser program("unified_depth", "1.0.0");
     program.add_description(
         "Unified Depth node demo.\n\n"
@@ -290,7 +299,7 @@ int main(int argc, char** argv) {
 
         pipeline.start();
 
-        while(pipeline.isRunning()) {
+        while(pipeline.isRunning() && !quitEvent.load(std::memory_order_relaxed)) {
             auto depthFrame = depthQueue->get<dai::ImgFrame>();
             auto confidenceFrame = confidenceQueue->get<dai::ImgFrame>();
 
@@ -302,11 +311,12 @@ int main(int argc, char** argv) {
             }
 
             if(cv::waitKey(1) == 'q') {
-                pipeline.stop();
                 break;
             }
         }
 
+        pipeline.stop();
+        pipeline.wait();
         cv::destroyAllWindows();
     } catch(const std::exception& ex) {
         std::cerr << ex.what() << '\n';

@@ -178,27 +178,25 @@ TEST_CASE("FPS check") {
                 REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
             }
         }
-        if(std::string(node->getName()) == "SpatialDetectionNetwork") {
+        if(std::string(node->getName()) == "SpatialLocationCalculator") {
             ++gotNodes;
             // Not implemented on RVC2 REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(8.0).margin(2.0));
             // Not implemented on RVC2 REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(8.0).margin(2.0));
             // Not implemented on RVC2 REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.inputStates.at("inputDepth").isValid());
             REQUIRE(nodeState.inputStates.at("inputDetections").isValid());
-            REQUIRE(nodeState.inputStates.at("inputImg").isValid());
             REQUIRE(nodeState.outputStates.at("passthroughDepth").isValid());
-            REQUIRE(nodeState.outputStates.at("out").isValid());
+            REQUIRE(nodeState.outputStates.at("outputDetections").isValid());
             if(!pipeline.isHolisticReplayEnabled()) {
                 REQUIRE(nodeState.inputStates.at("inputDepth").timing.fps == Catch::Approx(8.0).margin(2.0));
                 REQUIRE(nodeState.inputStates.at("inputDetections").timing.fps == Catch::Approx(8.0).margin(2.0));
-                REQUIRE(nodeState.inputStates.at("inputImg").timing.fps == Catch::Approx(8.0).margin(2.0));
                 REQUIRE(nodeState.outputStates.at("passthroughDepth").timing.fps == Catch::Approx(8.0).margin(2.0));
-                REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.outputStates.at("outputDetections").timing.fps == Catch::Approx(8.0).margin(2.0));
             }
         }
     }
 
-    REQUIRE(gotNodes == 7);  // 3 cameras, stereo, neural network, detection parser, spatial detection network
+    REQUIRE(gotNodes == 7);  // 3 cameras, stereo, neural network, detection parser, spatial location calculator
 
     pipeline.stop();
 }

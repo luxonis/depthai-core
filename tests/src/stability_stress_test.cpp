@@ -157,7 +157,8 @@ int main(int argc, char** argv) {
 
     // Align depth map to the perspective of RGB camera, on which inference is done
     stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
-    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2)
+        stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
 
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);
@@ -341,9 +342,7 @@ int main(int argc, char** argv) {
                 unique_lock<mutex> l(countersMtx);
 
                 bool failed = counters.size() == 0;
-                cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] "
-                     << "Usb speed " << usb_speed << " "
-                     << "FPS: ";
+                cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] " << "Usb speed " << usb_speed << " " << "FPS: ";
                 for(const auto& kv : counters) {
                     if(kv.second == 0) {
                         failed = true;

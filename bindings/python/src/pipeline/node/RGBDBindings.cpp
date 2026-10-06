@@ -29,8 +29,9 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // RGBD Node
-    rgbdNode.def_property_readonly(
-                "inColor", [](RGBD& node) { return &node.inColor; }, py::return_value_policy::reference_internal)
+    rgbdNode.def("setDepthUnit", &dai::node::RGBD::setDepthUnit, py::arg("depthUnit"), DOC(dai, node, RGBD, setDepthUnit))
+        .def_property_readonly(
+            "inColor", [](RGBD& node) { return &node.inColor; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "inDepth", [](RGBD& node) { return &node.inDepth; }, py::return_value_policy::reference_internal)
         .def_readonly("pcl", &RGBD::pcl, DOC(dai, node, RGBD, pcl))

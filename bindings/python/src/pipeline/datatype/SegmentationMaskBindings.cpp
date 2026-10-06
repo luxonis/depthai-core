@@ -56,7 +56,18 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    segmentationMask.def(py::init<>())
+    segmentationMask.def("setSize", &dai::SegmentationMask::setSize, py::arg("width"), py::arg("height"), DOC(dai, SegmentationMask, setSize))
+        .def(
+            "prepareMask",
+            [](py::object self, size_t width, size_t height) {
+                auto& mask = self.cast<SegmentationMask&>();
+                mask.prepareMask(width, height);
+                return self.attr("getData")();
+            },
+            py::arg("width"),
+            py::arg("height"),
+            DOC(dai, SegmentationMask, prepareMask))
+        .def(py::init<>())
         .def(py::init<const std::vector<std::uint8_t>&, size_t, size_t>(),
              py::arg("mask"),
              py::arg("width"),
