@@ -1,15 +1,9 @@
 #include <algorithm>
-#include <array>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>
-#include <cstdlib>
-#include <iostream>
-#include <limits>
-#include <nlohmann/json.hpp>
-#include <numeric>
-#include <set>
-#include <string>
+#include <memory>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -17,305 +11,222 @@
 
 namespace {
 
-constexpr double TOLERANCE = 0.010;
-constexpr double RATE_ERROR = 0.02;
-constexpr double WARMUP = 3.0;
-constexpr double DURATION = 15.0;
-
-double seconds(std::chrono::steady_clock::time_point timestamp) {
-    return std::chrono::duration<double>(timestamp.time_since_epoch()).count();
-}
-
-struct Report {
-    double header;
-    double accel;
-    double mag;
-};
-
-struct Image {
-    int64_t sequence;
-    double timestamp;
-};
-
-struct Group {
-    Image image;
-    Report report;
-};
-
-struct Capture {
-    std::vector<Image> images;
-    std::vector<Report> reports;
-    std::vector<Group> groups;
-};
-
-Report readReport(const std::shared_ptr<dai::IMUData>& data) {
-    REQUIRE(data != nullptr);
-    REQUIRE(data->packets.size() == 1);
-    const auto& packet = data->packets.front();
-    CHECK(std::isfinite(packet.acceleroMeter.x));
-    CHECK(std::isfinite(packet.acceleroMeter.y));
-    CHECK(std::isfinite(packet.acceleroMeter.z));
-    CHECK(std::isfinite(packet.magneticField.x));
-    CHECK(std::isfinite(packet.magneticField.y));
-    CHECK(std::isfinite(packet.magneticField.z));
-    return {seconds(data->getTimestampDevice()), seconds(packet.acceleroMeter.getTimestampDevice()), seconds(packet.magneticField.getTimestampDevice())};
-}
-
-Image readImage(const std::shared_ptr<dai::ImgFrame>& image) {
-    REQUIRE(image != nullptr);
-    CHECK(image->getWidth() == 320);
-    CHECK(image->getHeight() == 200);
-    CHECK(image->getType() == dai::ImgFrame::Type::GRAY8);
-    CHECK(image->getTimestampDevice(dai::CameraExposureOffset::MIDDLE) <= image->getTimestampDevice(dai::CameraExposureOffset::END));
-    return {image->getSequenceNum(), seconds(image->getTimestampDevice(dai::CameraExposureOffset::MIDDLE))};
-}
-
-Capture capture(dai::Pipeline& pipeline, int fps, bool oversampled, const std::string& sensorMode, bool reportAware, bool syncOnHost) {
-    const auto camera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, static_cast<float>(fps));
-    camera->initialControl.setManualExposure(1000, 100);
-    auto* output = camera->requestOutput({320, 200}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, static_cast<float>(fps));
-    const auto imu = pipeline.create<dai::node::IMU>();
-    const auto accelerometer = sensorMode == "calibrated"     ? dai::IMUSensor::ACCELEROMETER_CALIBRATED
-                               : sensorMode == "uncalibrated" ? dai::IMUSensor::ACCELEROMETER_UNCALIBRATED
-                                                              : dai::IMUSensor::ACCELEROMETER_RAW;
-    const auto magnetometer = sensorMode == "calibrated"     ? dai::IMUSensor::MAGNETOMETER_CALIBRATED
-                              : sensorMode == "uncalibrated" ? dai::IMUSensor::MAGNETOMETER_UNCALIBRATED
-                                                             : dai::IMUSensor::MAGNETOMETER_RAW;
-    imu->enableIMUSensor(accelerometer, oversampled ? 200 : fps);
-    imu->enableIMUSensor(magnetometer, oversampled ? 100 : fps);
-    imu->setBatchReportThreshold(1);
-    imu->setMaxBatchReports(1);
-    const auto sync = pipeline.create<dai::node::Sync>();
-    sync->setTimestampSource(dai::node::Sync::TimestampSource::DEVICE);
-    sync->setSyncThreshold(std::chrono::milliseconds(10));
-    sync->setSyncAttempts(-1);
-    sync->setSyncOnIndividualReports(reportAware);
-    sync->setRunOnHost(syncOnHost);
-    output->link(sync->inputs["image"]);
-    imu->out.link(sync->inputs["imu"]);
-    const auto images = output->createOutputQueue(4000, false);
-    const auto reports = imu->out.createOutputQueue(4000, false);
-    const auto groups = sync->out.createOutputQueue(4000, false);
-    Capture result;
-    pipeline.start();
-    const auto startupDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-    auto deadline = startupDeadline;
-    bool started = false;
-    while(std::chrono::steady_clock::now() < deadline) {
-        for(int drained = 0; drained < 4000; ++drained) {
-            const auto image = images->tryGet<dai::ImgFrame>();
-            if(!image) break;
-            result.images.push_back(readImage(image));
-        }
-        for(int drained = 0; drained < 4000; ++drained) {
-            const auto report = reports->tryGet<dai::IMUData>();
-            if(!report) break;
-            result.reports.push_back(readReport(report));
-        }
-        for(int drained = 0; drained < 4000; ++drained) {
-            const auto group = groups->tryGet<dai::MessageGroup>();
-            if(!group) break;
-            result.groups.push_back({readImage(group->get<dai::ImgFrame>("image")), readReport(group->get<dai::IMUData>("imu"))});
-        }
-        if(!started && !result.images.empty() && !result.reports.empty()) {
-            started = true;
-            deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(18500);
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-    pipeline.stop();
-    REQUIRE(started);
-    return result;
-}
-
-struct Rate {
-    double mean = 0;
-    double minWindow = 0;
-    double maxWindow = 0;
-    bool valid = false;
-};
-
-// Use elapsed timestamp intervals, not counts in a fixed bucket: bucket-edge
-// quantization alone can exceed 2% at 5 Hz. Every sample starts a ~2s window.
-Rate rate(const std::vector<double>& timestamps) {
-    if(timestamps.size() < 2) return {};
-    bool advancing = std::isfinite(timestamps.front()) && timestamps.front() > 0;
-    for(std::size_t i = 1; i < timestamps.size(); ++i) {
-        advancing = advancing && std::isfinite(timestamps[i]) && timestamps[i] > timestamps[i - 1];
-    }
-    Rate result;
-    if(timestamps.back() > timestamps.front()) result.mean = static_cast<double>(timestamps.size() - 1) / (timestamps.back() - timestamps.front());
-    if(!advancing) return result;
-    result.minWindow = std::numeric_limits<double>::infinity();
-    for(std::size_t begin = 0; begin + 1 < timestamps.size(); ++begin) {
-        const auto end = std::lower_bound(timestamps.begin() + begin + 1, timestamps.end(), timestamps[begin] + 2.0);
-        if(end == timestamps.end()) break;
-        const auto window = static_cast<double>(end - timestamps.begin() - begin) / (*end - timestamps[begin]);
-        result.minWindow = std::min(result.minWindow, window);
-        result.maxWindow = std::max(result.maxWindow, window);
-    }
-    result.valid = std::isfinite(result.minWindow);
-    if(!result.valid) result.minWindow = 0;
-    return result;
-}
-
-nlohmann::json rateMetrics(const Rate& actual) {
-    return {{"mean_hz", actual.mean}, {"min_window_hz", actual.minWindow}, {"max_window_hz", actual.maxWindow}, {"valid", actual.valid}};
-}
-
-void checkRate(const Rate& actual, double expected, const char* stream) {
+void checkRate(const std::vector<std::chrono::steady_clock::time_point>& timestamps, double expected, const char* stream) {
     INFO("stream=" << stream << ", requested=" << expected);
-    CHECK(actual.valid);
-    CHECK(actual.mean == Catch::Approx(expected).epsilon(RATE_ERROR));
-    CHECK(actual.minWindow == Catch::Approx(expected).epsilon(RATE_ERROR));
-    CHECK(actual.maxWindow == Catch::Approx(expected).epsilon(RATE_ERROR));
+    REQUIRE(timestamps.size() >= 2);
+    REQUIRE(timestamps.front() > std::chrono::steady_clock::time_point{});
+    for(std::size_t i = 1; i < timestamps.size(); ++i) REQUIRE(timestamps[i] > timestamps[i - 1]);
+    const auto elapsed = std::chrono::duration<double>(timestamps.back() - timestamps.front()).count();
+    CHECK(static_cast<double>(timestamps.size() - 1) / elapsed == Catch::Approx(expected).epsilon(0.02));
+    // Count intervals over elapsed time: fixed buckets alone have >2% edge error at 5Hz.
+    REQUIRE(timestamps.back() - timestamps.front() >= std::chrono::seconds(2));
+    for(auto begin = timestamps.begin(); begin != timestamps.end(); ++begin) {
+        const auto end = std::lower_bound(begin + 1, timestamps.end(), *begin + std::chrono::seconds(2));
+        if(end == timestamps.end()) break;
+        const auto window = std::chrono::duration<double>(*end - *begin).count();
+        CHECK(static_cast<double>(end - begin) / window == Catch::Approx(expected).epsilon(0.02));
+    }
 }
 
-void verify(const Capture& capture, int fps, bool oversampled, const std::string& sensorMode, bool reportAware, bool syncOnHost, const std::string& deviceId) {
-    REQUIRE_FALSE(capture.images.empty());
-    REQUIRE_FALSE(capture.reports.empty());
-    const auto lower = std::max(capture.images.front().timestamp, capture.reports.front().header) + WARMUP;
-    const auto upper = lower + DURATION;
-    std::vector<double> images, headers, accel, mag;
-    std::set<int64_t> eligible;
-    for(const auto& image : capture.images) {
-        if(image.timestamp < lower || image.timestamp > upper) continue;
-        images.push_back(image.timestamp);
-        if(!eligible.empty()) CHECK(image.sequence == *eligible.rbegin() + 1);
-        CHECK(eligible.insert(image.sequence).second);
-    }
-    double maxHeaderError = 0;
-    double maxSensorSpan = 0;
-    std::vector<double> signedSkew;
-    for(const auto& report : capture.reports) {
-        if(report.header < lower || report.header > upper) continue;
-        headers.push_back(report.header);
-        accel.push_back(report.accel);
-        mag.push_back(report.mag);
-        maxHeaderError = std::max(maxHeaderError, std::abs(report.header - std::max(report.accel, report.mag)));
-        maxSensorSpan = std::max(maxSensorSpan, std::abs(report.accel - report.mag));
-        signedSkew.push_back((report.accel - report.mag) * 1000);
-    }
-    const auto imageRate = rate(images);
-    const auto headerRate = rate(headers);
-    const auto accelRate = rate(accel);
-    const auto magRate = rate(mag);
-    std::vector<double> syncedImages, syncedAccel, syncedMag;
-    std::set<int64_t> matched;
-    double maxJointSpan = 0;
-    for(const auto& group : capture.groups) {
-        if(eligible.count(group.image.sequence) == 0) continue;
-        CHECK(matched.insert(group.image.sequence).second);
-        syncedImages.push_back(group.image.timestamp);
-        syncedAccel.push_back(group.report.accel);
-        syncedMag.push_back(group.report.mag);
-        maxJointSpan = std::max(
-            maxJointSpan,
-            std::max({group.image.timestamp, group.report.accel, group.report.mag}) - std::min({group.image.timestamp, group.report.accel, group.report.mag}));
-    }
-    const auto coverage = eligible.empty() ? 0.0 : static_cast<double>(matched.size()) / static_cast<double>(eligible.size());
-    auto absoluteSkew = signedSkew;
-    for(auto& value : absoluteSkew) value = std::abs(value);
-    std::sort(absoluteSkew.begin(), absoluteSkew.end());
-    const nlohmann::json metrics = {
-        {"device_id", deviceId},
-        {"captured_images", capture.images.size()},
-        {"captured_reports", capture.reports.size()},
-        {"captured_groups", capture.groups.size()},
-        {"measurement_start", lower},
-        {"measurement_end", upper},
-        {"fps", fps},
-        {"oversampled", oversampled},
-        {"sensor_mode", sensorMode},
-        {"report_aware", reportAware},
-        {"sync_on_host", syncOnHost},
-        {"image", rateMetrics(imageRate)},
-        {"imu", rateMetrics(headerRate)},
-        {"accel", rateMetrics(accelRate)},
-        {"mag", rateMetrics(magRate)},
-        {"synced_image", rateMetrics(rate(syncedImages))},
-        {"synced_accel", rateMetrics(rate(syncedAccel))},
-        {"synced_mag", rateMetrics(rate(syncedMag))},
-        {"eligible_images", eligible.size()},
-        {"matched_images", matched.size()},
-        {"group_count", syncedImages.size()},
-        {"coverage", coverage},
-        {"max_sensor_span_ms", maxSensorSpan * 1000},
-        {"max_joint_span_ms", maxJointSpan * 1000},
-        {"max_header_error_ms", maxHeaderError * 1000},
-        {"p99_sensor_span_ms", absoluteSkew.empty() ? 0 : absoluteSkew[static_cast<std::size_t>(std::ceil(0.99 * absoluteSkew.size())) - 1]},
-        {"mean_signed_sensor_skew_ms", signedSkew.empty() ? 0 : std::accumulate(signedSkew.begin(), signedSkew.end(), 0.0) / signedSkew.size()},
-        {"signed_sensor_skew_drift_ms", signedSkew.empty() ? 0 : signedSkew.back() - signedSkew.front()}};
-    std::cout << "IMU_HIL_METRICS " << metrics.dump() << '\n';
-    checkRate(imageRate, fps, "image");
-    // IMUData exposes fresh paired reports at the bottleneck rate, not every
-    // accelerometer sample captured at 200Hz in the oversampled profile.
-    const auto expectedImuRate = oversampled ? 100 : fps;
-    checkRate(headerRate, expectedImuRate, "IMU packet");
-    checkRate(accelRate, expectedImuRate, "accelerometer");
-    checkRate(magRate, expectedImuRate, "magnetometer");
-    CHECK(maxHeaderError <= 1e-9);
-    CHECK(maxSensorSpan <= TOLERANCE + 1e-9);
-    CHECK(coverage >= 0.98);
-    CHECK(maxJointSpan <= TOLERANCE + 1e-9);
-    checkRate(rate(syncedImages), fps, "synced image");
-    checkRate(rate(syncedAccel), fps, "synced accelerometer");
-    checkRate(rate(syncedMag), fps, "synced magnetometer");
-    REQUIRE(images.size() >= 2);
-    REQUIRE(headers.size() >= 2);
-    CHECK(images.front() <= lower + 2.0 / fps);
-    CHECK(images.back() >= upper - 2.0 / fps);
-    CHECK(headers.front() <= lower + 2.0 / expectedImuRate);
-    CHECK(headers.back() >= upper - 2.0 / expectedImuRate);
-}
-
-}  // namespace
-
-TEST_CASE("RVC4 requested IMU rates and individual report image alignment", "[imu][alignment][rvc4]") {
-    const auto fps = GENERATE(5, 10, 20, 30, 40, 45, 50);
-    const std::string sensorMode = GENERATE("raw", "uncalibrated", "calibrated");
-    // Default CI checks achievable association with enough real candidates.
-    // Same-rate acquisition remains an explicit diagnostic: independent sensor
-    // phases and upstream undersupply cannot guarantee this alignment contract.
-    bool oversampled = true;
-    // The campaign runner may select one case, while plain CTest runs all.
-    if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_FPS")) {
-        REQUIRE(std::string(selected) == std::to_string(std::stoi(selected)));
-        const std::array<int, 7> supported{5, 10, 20, 30, 40, 45, 50};
-        REQUIRE(std::find(supported.begin(), supported.end(), std::stoi(selected)) != supported.end());
-        if(std::stoi(selected) != fps) return;
-    }
-    if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_PROFILE")) {
-        const std::string profile(selected);
-        REQUIRE((profile == "same-rate" || profile == "oversampled"));
-        oversampled = profile == "oversampled";
-    }
-    if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_SENSOR_MODE")) {
-        const std::string mode(selected);
-        REQUIRE((mode == "raw" || mode == "uncalibrated" || mode == "calibrated"));
-        if(mode != sensorMode) return;
-    }
-    bool reportAware = true;
-    if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_REPORT_AWARE")) {
-        REQUIRE((std::string(selected) == "0" || std::string(selected) == "1"));
-        reportAware = std::string(selected) == "1";
-    }
-    bool syncOnHost = false;
-    if(const auto* selected = std::getenv("DEPTHAI_IMU_TEST_SYNC_HOST")) {
-        REQUIRE((std::string(selected) == "0" || std::string(selected) == "1"));
-        syncOnHost = std::string(selected) == "1";
-    }
-    CAPTURE(fps, oversampled, sensorMode, reportAware, syncOnHost);
+void testImuAlignment(int fps, dai::IMUSensor accelerometer, dai::IMUSensor magnetometer) {
+    CAPTURE(fps, accelerometer, magnetometer);
     dai::Pipeline pipeline;
     const auto device = pipeline.getDefaultDevice();
     REQUIRE(device != nullptr);
-    if(const auto* expected = std::getenv("DEPTHAI_IMU_EXPECTED_DEVICE_ID")) REQUIRE(device->getDeviceId() == expected);
     if(device->getPlatform() != dai::Platform::RVC4) SKIP("RVC4-only IMU regression");
     const auto features = device->getConnectedCameraFeatures();
     if(std::none_of(features.begin(), features.end(), [](const auto& feature) { return feature.socket == dai::CameraBoardSocket::CAM_B; })) {
         SKIP("Requires CAM_B for the RVC4 camera/IMU fixture");
     }
     if(device->getConnectedIMU().empty() || device->getConnectedIMU() == "BMI270") SKIP("Requires accelerometer and magnetometer");
-    verify(
-        capture(pipeline, fps, oversampled, sensorMode, reportAware, syncOnHost), fps, oversampled, sensorMode, reportAware, syncOnHost, device->getDeviceId());
+
+    const auto camera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, static_cast<float>(fps));
+    camera->initialControl.setManualExposure(1000, 100);
+    auto* output = camera->requestOutput({320, 200}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, static_cast<float>(fps));
+    const auto imu = pipeline.create<dai::node::IMU>();
+    imu->enableIMUSensor(accelerometer, 200);
+    imu->enableIMUSensor(magnetometer, 100);
+    imu->setBatchReportThreshold(1);
+    imu->setMaxBatchReports(1);
+    const auto sync = pipeline.create<dai::node::Sync>();
+    sync->setTimestampSource(dai::node::Sync::TimestampSource::DEVICE);
+    sync->setSyncThreshold(std::chrono::milliseconds(10));
+    sync->setSyncAttempts(-1);
+    sync->setSyncOnIndividualReports(true);
+    sync->setRunOnHost(false);
+    output->link(sync->inputs["image"]);
+    imu->out.link(sync->inputs["imu"]);
+    const auto imageQueue = output->createOutputQueue(4000, false);
+    const auto imuQueue = imu->out.createOutputQueue(4000, false);
+    const auto syncQueue = sync->out.createOutputQueue(4000, false);
+
+    std::vector<std::shared_ptr<dai::ImgFrame>> images;
+    std::vector<std::shared_ptr<dai::IMUData>> reports;
+    std::vector<std::shared_ptr<dai::MessageGroup>> groups;
+    pipeline.start();
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    bool started = false;
+    while(std::chrono::steady_clock::now() < deadline) {
+        const auto newImages = imageQueue->tryGetAll<dai::ImgFrame>();
+        images.insert(images.end(), newImages.begin(), newImages.end());
+        const auto newReports = imuQueue->tryGetAll<dai::IMUData>();
+        reports.insert(reports.end(), newReports.begin(), newReports.end());
+        const auto newGroups = syncQueue->tryGetAll<dai::MessageGroup>();
+        groups.insert(groups.end(), newGroups.begin(), newGroups.end());
+        if(!started && !images.empty() && !reports.empty()) {
+            started = true;
+            // Three seconds of warmup, 15 seconds measured, and a tail for Sync.
+            deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(18500);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    pipeline.stop();
+    REQUIRE(started);
+    REQUIRE(images.front() != nullptr);
+    REQUIRE(reports.front() != nullptr);
+    const auto lower =
+        std::max(images.front()->getTimestampDevice(dai::CameraExposureOffset::MIDDLE), reports.front()->getTimestampDevice()) + std::chrono::seconds(3);
+    const auto upper = lower + std::chrono::seconds(15);
+    const auto tolerance = std::chrono::milliseconds(10) + std::chrono::nanoseconds(1);
+    std::vector<std::chrono::steady_clock::time_point> imageTimes, headerTimes, accelTimes, magTimes;
+    std::vector<int64_t> imageSequences;
+    for(const auto& image : images) {
+        REQUIRE(image != nullptr);
+        CHECK(image->getWidth() == 320);
+        CHECK(image->getHeight() == 200);
+        CHECK(image->getType() == dai::ImgFrame::Type::GRAY8);
+        const auto timestamp = image->getTimestampDevice(dai::CameraExposureOffset::MIDDLE);
+        CHECK(timestamp <= image->getTimestampDevice(dai::CameraExposureOffset::END));
+        if(timestamp < lower || timestamp > upper) continue;
+        if(!imageSequences.empty()) REQUIRE(image->getSequenceNum() == imageSequences.back() + 1);
+        imageSequences.push_back(image->getSequenceNum());
+        imageTimes.push_back(timestamp);
+    }
+    for(const auto& report : reports) {
+        REQUIRE(report != nullptr);
+        REQUIRE(report->packets.size() == 1);
+        const auto& packet = report->packets.front();
+        CHECK(std::isfinite(packet.acceleroMeter.x));
+        CHECK(std::isfinite(packet.acceleroMeter.y));
+        CHECK(std::isfinite(packet.acceleroMeter.z));
+        CHECK(std::isfinite(packet.magneticField.x));
+        CHECK(std::isfinite(packet.magneticField.y));
+        CHECK(std::isfinite(packet.magneticField.z));
+        const auto header = report->getTimestampDevice();
+        if(header < lower || header > upper) continue;
+        const auto accel = packet.acceleroMeter.getTimestampDevice();
+        const auto mag = packet.magneticField.getTimestampDevice();
+        CHECK(std::chrono::abs(header - std::max(accel, mag)) <= std::chrono::nanoseconds(1));
+        CHECK(std::chrono::abs(accel - mag) <= tolerance);
+        headerTimes.push_back(header);
+        accelTimes.push_back(accel);
+        magTimes.push_back(mag);
+    }
+    checkRate(imageTimes, fps, "image");
+    // Paired output is limited by the 100Hz magnetometer, even with 200Hz accel.
+    checkRate(headerTimes, 100, "IMU packet");
+    checkRate(accelTimes, 100, "accelerometer");
+    checkRate(magTimes, 100, "magnetometer");
+    CHECK(imageTimes.front() <= lower + std::chrono::duration<double>(2.0 / fps));
+    CHECK(imageTimes.back() >= upper - std::chrono::duration<double>(2.0 / fps));
+    CHECK(headerTimes.front() <= lower + std::chrono::milliseconds(20));
+    CHECK(headerTimes.back() >= upper - std::chrono::milliseconds(20));
+
+    std::vector<std::chrono::steady_clock::time_point> syncedImages, syncedAccel, syncedMag;
+    std::optional<int64_t> previousSyncedSequence;
+    for(const auto& group : groups) {
+        REQUIRE(group != nullptr);
+        const auto image = group->get<dai::ImgFrame>("image");
+        const auto report = group->get<dai::IMUData>("imu");
+        REQUIRE(image != nullptr);
+        REQUIRE(report != nullptr);
+        REQUIRE(report->packets.size() == 1);
+        CHECK(image->getWidth() == 320);
+        CHECK(image->getHeight() == 200);
+        CHECK(image->getType() == dai::ImgFrame::Type::GRAY8);
+        const auto timestamp = image->getTimestampDevice(dai::CameraExposureOffset::MIDDLE);
+        CHECK(timestamp <= image->getTimestampDevice(dai::CameraExposureOffset::END));
+        const auto& packet = report->packets.front();
+        CHECK(std::isfinite(packet.acceleroMeter.x));
+        CHECK(std::isfinite(packet.acceleroMeter.y));
+        CHECK(std::isfinite(packet.acceleroMeter.z));
+        CHECK(std::isfinite(packet.magneticField.x));
+        CHECK(std::isfinite(packet.magneticField.y));
+        CHECK(std::isfinite(packet.magneticField.z));
+        if(!std::binary_search(imageSequences.begin(), imageSequences.end(), image->getSequenceNum())) continue;
+        if(previousSyncedSequence) CHECK(image->getSequenceNum() > *previousSyncedSequence);
+        previousSyncedSequence = image->getSequenceNum();
+        const auto accel = packet.acceleroMeter.getTimestampDevice();
+        const auto mag = packet.magneticField.getTimestampDevice();
+        CHECK(std::max({timestamp, accel, mag}) - std::min({timestamp, accel, mag}) <= tolerance);
+        syncedImages.push_back(timestamp);
+        syncedAccel.push_back(accel);
+        syncedMag.push_back(mag);
+    }
+    CHECK(static_cast<double>(syncedImages.size()) / imageTimes.size() >= 0.98);
+    checkRate(syncedImages, fps, "synced image");
+    checkRate(syncedAccel, fps, "synced accelerometer");
+    checkRate(syncedMag, fps, "synced magnetometer");
+}
+
+}  // namespace
+
+TEST_CASE("RVC4 raw IMU rates and image alignment", "[imu][alignment][rvc4]") {
+    const auto fps = GENERATE(5, 10, 20, 30, 40, 45, 50);
+    testImuAlignment(fps, dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::MAGNETOMETER_RAW);
+}
+
+TEST_CASE("RVC4 uncalibrated IMU rates and image alignment", "[imu][alignment][rvc4]") {
+    const auto fps = GENERATE(5, 10, 20, 30, 40, 45, 50);
+    testImuAlignment(fps, dai::IMUSensor::ACCELEROMETER_UNCALIBRATED, dai::IMUSensor::MAGNETOMETER_UNCALIBRATED);
+}
+
+TEST_CASE("RVC4 calibrated IMU rates and image alignment", "[imu][alignment][rvc4]") {
+    const auto fps = GENERATE(5, 10, 20, 30, 40, 45, 50);
+    testImuAlignment(fps, dai::IMUSensor::ACCELEROMETER_CALIBRATED, dai::IMUSensor::MAGNETOMETER_CALIBRATED);
+}
+
+TEST_CASE("RVC4 IMU non-native requested rates", "[imu][rate][rvc4]") {
+    const auto fps = GENERATE(40, 45);
+    CAPTURE(fps);
+    dai::Pipeline pipeline;
+    const auto device = pipeline.getDefaultDevice();
+    REQUIRE(device != nullptr);
+    if(device->getPlatform() != dai::Platform::RVC4) SKIP("RVC4-only IMU regression");
+    if(device->getConnectedIMU().empty() || device->getConnectedIMU() == "BMI270") SKIP("Requires accelerometer and magnetometer");
+    const auto imu = pipeline.create<dai::node::IMU>();
+    imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, fps);
+    imu->enableIMUSensor(dai::IMUSensor::MAGNETOMETER_RAW, fps);
+    imu->setBatchReportThreshold(1);
+    imu->setMaxBatchReports(1);
+    const auto queue = imu->out.createOutputQueue(4000, false);
+    std::vector<std::chrono::steady_clock::time_point> headers, accel, mag;
+    std::optional<std::chrono::steady_clock::time_point> lower;
+    pipeline.start();
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    while(std::chrono::steady_clock::now() < deadline) {
+        for(const auto& report : queue->tryGetAll<dai::IMUData>()) {
+            REQUIRE(report != nullptr);
+            REQUIRE(report->packets.size() == 1);
+            const auto header = report->getTimestampDevice();
+            if(!lower) {
+                lower = header + std::chrono::seconds(3);
+                deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(18500);
+            }
+            if(header < *lower || header > *lower + std::chrono::seconds(15)) continue;
+            const auto& packet = report->packets.front();
+            headers.push_back(header);
+            accel.push_back(packet.acceleroMeter.getTimestampDevice());
+            mag.push_back(packet.magneticField.getTimestampDevice());
+            CHECK(std::chrono::abs(header - std::max(accel.back(), mag.back())) <= std::chrono::nanoseconds(1));
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    pipeline.stop();
+    REQUIRE(lower.has_value());
+    checkRate(headers, fps, "IMU packet");
+    checkRate(accel, fps, "accelerometer");
+    checkRate(mag, fps, "magnetometer");
+    CHECK(headers.front() <= *lower + std::chrono::duration<double>(2.0 / fps));
+    CHECK(headers.back() >= *lower + std::chrono::seconds(15) - std::chrono::duration<double>(2.0 / fps));
 }

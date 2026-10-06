@@ -80,7 +80,7 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
      * finite attempts retain their existing send-anyway behavior. An IMU message without populated
      * reports, or a populated report missing the selected timestamp, stops the node with an error
      * when matching is attempted (finite attempts can send without matching). Device execution
-     * of this opt-in mode requires firmware supporting individual report synchronization.
+     * requires firmware supporting this Sync properties schema, including when the option is disabled.
      * @param enabled Whether to synchronize individual reports.
      */
     void setSyncOnIndividualReports(bool enabled);

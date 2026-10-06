@@ -36,44 +36,30 @@ std::shared_ptr<dai::ImgFrame> image(int ms) {
 }
 }  // namespace
 
-namespace legacy {
-struct SyncProperties {
-    int64_t syncThresholdNs = 10000000;
-    int32_t syncAttempts = -1;
-    dai::ProcessorType processor = dai::ProcessorType::LEON_CSS;
-    dai::SyncProperties::TimestampSource timestampSource = dai::SyncProperties::TimestampSource::DEFAULT;
-};
-DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts, processor, timestampSource);
-}  // namespace legacy
-
-TEST_CASE("Sync properties retain legacy wire compatibility when report matching is disabled") {
-    const legacy::SyncProperties original{};
-    dai::SyncProperties decoded;
-    REQUIRE_NOTHROW(dai::utility::deserialize(dai::utility::serialize(original), decoded));
-    REQUIRE_FALSE(decoded.syncOnIndividualReports);
-    legacy::SyncProperties oldDecoder;
-    REQUIRE_NOTHROW(dai::utility::deserialize(dai::utility::serialize(decoded), oldDecoder));
-    REQUIRE(oldDecoder.syncThresholdNs == 10000000);
-    REQUIRE(dai::utility::serialize(decoded) == dai::utility::serialize(original));
-    nlohmann::json oldJson = original;
-    decoded.syncOnIndividualReports = true;
-    REQUIRE_NOTHROW(oldJson.get_to(decoded));
-    REQUIRE_FALSE(decoded.syncOnIndividualReports);
-}
-
-TEST_CASE("Report-aware Sync properties roundtrip through the pipeline schema") {
+TEST_CASE("Sync properties roundtrip through the pipeline schema") {
     dai::Pipeline pipeline(false);
     auto sync = pipeline.create<dai::node::Sync>();
     sync->setRunOnHost(true);
-    sync->setSyncOnIndividualReports(true);
-    REQUIRE(sync->getSyncOnIndividualReports());
+    REQUIRE_FALSE(sync->getSyncOnIndividualReports());
+    const auto reportAware = GENERATE(false, true);
+    sync->setSyncOnIndividualReports(reportAware);
+    sync->setSyncThreshold(17ms);
+    sync->setSyncAttempts(3);
+    sync->setTimestampSource(dai::node::Sync::TimestampSource::SYSTEM);
+    REQUIRE(sync->getSyncOnIndividualReports() == reportAware);
     dai::SyncProperties decoded;
     dai::utility::deserialize(pipeline.getPipelineSchema().nodes.at(sync->id).properties, decoded);
-    REQUIRE(decoded.syncOnIndividualReports);
+    REQUIRE(decoded.syncOnIndividualReports == reportAware);
+    REQUIRE(decoded.syncThresholdNs == 17000000);
+    REQUIRE(decoded.syncAttempts == 3);
+    REQUIRE(decoded.timestampSource == dai::SyncProperties::TimestampSource::SYSTEM);
     const nlohmann::json json = decoded;
-    REQUIRE(json.get<dai::SyncProperties>().syncOnIndividualReports);
-    legacy::SyncProperties oldDecoder;
-    REQUIRE_THROWS(dai::utility::deserialize(dai::utility::serialize(decoded), oldDecoder));
+    const auto fromJson = json.get<dai::SyncProperties>();
+    REQUIRE(fromJson.syncOnIndividualReports == reportAware);
+    REQUIRE(fromJson.syncThresholdNs == decoded.syncThresholdNs);
+    REQUIRE(fromJson.syncAttempts == decoded.syncAttempts);
+    REQUIRE(fromJson.processor == decoded.processor);
+    REQUIRE(fromJson.timestampSource == decoded.timestampSource);
 }
 
 TEST_CASE("Report-aware Sync rejects an IMU packet whose header hides an old accelerometer report") {
