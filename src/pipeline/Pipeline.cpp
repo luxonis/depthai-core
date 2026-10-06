@@ -1809,29 +1809,29 @@ void PipelineImpl::start() {
         }
     }
 
-    std::vector<std::shared_ptr<dai::Device>> masterDevices;
-    std::vector<std::shared_ptr<dai::Device>> slaveDevices;
-
-    for(auto d : devices) {
-        auto role = dai::ExternalFrameSyncRole::AUTO_DETECT;
-
-        if(d->getPlatform() != dai::Platform::RVC4) {
-            role = dai::ExternalFrameSyncRole::MASTER;
-        } else {
-            role = d->getExternalFrameSyncRole();
-        }
-
-        if(role == dai::ExternalFrameSyncRole::MASTER) {
-            masterDevices.push_back(d);
-        } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
-            slaveDevices.push_back(d);
-        } else {
-            throw std::runtime_error("Unknown external frame sync role");
-        }
-    }
-
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
+        std::vector<std::shared_ptr<dai::Device>> masterDevices;
+        std::vector<std::shared_ptr<dai::Device>> slaveDevices;
+
+        for(auto d : devices) {
+            auto role = dai::ExternalFrameSyncRole::AUTO_DETECT;
+
+            if(d->getPlatform() != dai::Platform::RVC4) {
+                role = dai::ExternalFrameSyncRole::MASTER;
+            } else {
+                role = d->getExternalFrameSyncRole();
+            }
+
+            if(role == dai::ExternalFrameSyncRole::MASTER) {
+                masterDevices.push_back(d);
+            } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
+                slaveDevices.push_back(d);
+            } else {
+                throw std::runtime_error("Unknown external frame sync role");
+            }
+        }
+
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
         DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(),
                     "Number of devices assigned to device nodes does not match the number of master and slave devices");
