@@ -1815,7 +1815,7 @@ void PipelineImpl::start() {
     for(auto d : devices) {
         auto role = dai::ExternalFrameSyncRole::AUTO_DETECT;
 
-        if (d->getPlatform() != dai::Platform::RVC4) {
+        if(d->getPlatform() != dai::Platform::RVC4) {
             role = dai::ExternalFrameSyncRole::MASTER;
         } else {
             role = d->getExternalFrameSyncRole();
