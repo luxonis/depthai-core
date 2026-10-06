@@ -179,10 +179,13 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             },
             py::arg("model"),
             DOC(dai, node, NeuralNetwork, setOtherModelFormat))
-        .def("setOtherModelFormat",
-             py::overload_cast<std::vector<uint8_t>>(&NeuralNetwork::setOtherModelFormat),
-             py::arg("model"),
-             DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def(
+            "setOtherModelFormat",
+            [](NeuralNetwork& self, py::array_t<uint8_t, py::array::c_style | py::array::forcecast> model) {
+                self.setOtherModelFormat(std::vector<uint8_t>(model.data(), model.data() + model.size()));
+            },
+            py::arg("model"),
+            DOC(dai, node, NeuralNetwork, setOtherModelFormat))
         .def("setOtherModelFormat",
              py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setOtherModelFormat),
              py::arg("path"),

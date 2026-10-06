@@ -1,14 +1,14 @@
 """Host-only tests for loading neural network models from memory and paths."""
 
-import depthai as dai
 import pytest
+
+from depthai_pybind11_tests import neural_network_model as m
 
 
 @pytest.mark.parametrize("model_type", [bytes, bytearray, list])
 @pytest.mark.parametrize("data", [b"", bytes(range(256))])
 def test_set_other_model_format_from_memory(model_type, data):
-    pipeline = dai.Pipeline(False)
-    nn = pipeline.create(dai.node.NeuralNetwork)
+    nn = m.create_neural_network()
 
     nn.setOtherModelFormat(model_type(data))
 
@@ -16,8 +16,7 @@ def test_set_other_model_format_from_memory(model_type, data):
 
 
 def test_set_other_model_format_owns_model_data():
-    pipeline = dai.Pipeline(False)
-    nn = pipeline.create(dai.node.NeuralNetwork)
+    nn = m.create_neural_network()
     data = bytes(range(256))
     model = bytearray(data)
 
@@ -29,13 +28,17 @@ def test_set_other_model_format_owns_model_data():
 
 
 @pytest.mark.parametrize("string_path", [False, True])
-def test_set_other_model_format_from_path(tmp_path, string_path):
-    pipeline = dai.Pipeline(False)
-    nn = pipeline.create(dai.node.NeuralNetwork)
+@pytest.mark.parametrize("keyword_path", [False, True])
+def test_set_other_model_format_from_path(tmp_path, string_path, keyword_path):
+    nn = m.create_neural_network()
     data = bytes(range(256))
     path = tmp_path / "model.dlc"
     path.write_bytes(data)
 
-    nn.setOtherModelFormat(path=str(path) if string_path else path)
+    path = str(path) if string_path else path
+    if keyword_path:
+        nn.setOtherModelFormat(path=path)
+    else:
+        nn.setOtherModelFormat(path)
 
     assert bytes(nn.getAssetManager().get("__model").data) == data
