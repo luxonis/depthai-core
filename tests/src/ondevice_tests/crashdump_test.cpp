@@ -284,6 +284,10 @@ TEST_CASE("Crashdump is written to the configured path") {
         REQUIRE(observer.waitForCount(1, CRASH_DUMP_CALLBACK_TIMEOUT));
         requireCrashDumpPayload(observer.get(0));
 
+        // The callback runs before the archive is written. Closing joins the
+        // collection thread, so a visible filename cannot still be incomplete.
+        device.close();
+
         fs::path expectedPath;
         REQUIRE(waitUntil(
             [&] {

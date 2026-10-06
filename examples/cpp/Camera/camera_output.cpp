@@ -19,6 +19,8 @@ int main() {
     // Create device
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
 
+    std::cout << "Using camera with id: " << device->getDeviceId() << std::endl;
+
     // Create pipeline
     dai::Pipeline pipeline(device);
 

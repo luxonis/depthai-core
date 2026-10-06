@@ -796,10 +796,20 @@ void DeviceBase::waitForGateAndCollectCrashDump() {
         return;
     }
 
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(getCrashdumpTimeout(deviceInfo.protocol));
     pimpl->logger.warn("FW crashed - trying to get out the crash dump");
     std::this_thread::sleep_for(std::chrono::seconds(5));  // Allow for the generation of the crash dump and the log file
     pimpl->logger.warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
-    collectAndLogCrashDump();
+    // A CRASHED session does not guarantee its core dump is available yet. The
+    // gate can return 404 while the dump is being generated; do not reconnect
+    // and replace the session after a single unsuccessful retrieval.
+    do {
+        collectAndLogCrashDump();
+        if(crashDumpHandled.load() || !isCrashDumpCollectionEnabled()) return;
+        if(std::chrono::steady_clock::now() >= deadline) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    } while(std::chrono::steady_clock::now() < deadline);
+    pimpl->logger.warn("Crash dump was not available before the collection timeout");
 }
 
 void DeviceBase::waitForRebootAndCollectCrashDump() {
