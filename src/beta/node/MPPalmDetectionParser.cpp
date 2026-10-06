@@ -195,7 +195,7 @@ bool MPPalmDetectionParser::runOnHost() const {
 
 void MPPalmDetectionParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("MPPalmDetectionParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     MPPalmDetectionParserConfig activeConfig = getProperties().initialConfig;
     DAI_CHECK(activeConfig.validate(), "MPPalmDetectionParser initial configuration is invalid.");
@@ -208,6 +208,7 @@ void MPPalmDetectionParser::run() {
     std::vector<std::array<double, 4>> anchors;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -233,6 +234,7 @@ void MPPalmDetectionParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         const MPPalmDetectionParserConfig config = activeConfig;
 
@@ -293,10 +295,13 @@ void MPPalmDetectionParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("MPPalmDetectionParser created message with {} detections", message->detections.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

@@ -178,6 +178,7 @@ int shiftDepthImg(const std::shared_ptr<dai::ImgFrame>& inVec,
 void ImageAlign::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     bool calibrationSet = false;
     std::array<std::array<float, 3>, 3> depthSourceIntrinsics;
@@ -331,6 +332,7 @@ void ImageAlign::run() {
     ImageAlignInputState previousInputs;
     std::shared_ptr<ImgFrame> inputAlignToImg = nullptr;
     while(mainLoop()) {
+        auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<ImgFrame> inputImg = nullptr;
         std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
         bool hasConfig = false;
@@ -406,6 +408,7 @@ void ImageAlign::run() {
                 }
             }
         }
+        auto tGotInput = steady_clock::now();
 
         if(hasConfig) {
             latestConfig = inConfig;
@@ -461,8 +464,7 @@ void ImageAlign::run() {
 
         previousShiftFactor = constantShiftFactor;
 
-        decltype(steady_clock::now()) t1, t2, tStart, tStop;
-        tStart = steady_clock::now();
+        decltype(steady_clock::now()) t1, t2;
         if(PRINT_DEBUG) {
             t1 = steady_clock::now();
         }
@@ -527,7 +529,7 @@ void ImageAlign::run() {
             auto stopProcessing = high_resolution_clock::now();
 
             auto durationProcessing = duration_cast<microseconds>(stopProcessing - startProcessing);
-            logger->debug("Processing time: {} ms", durationProcessing.count() / 1000.0f);
+            logger->debug("ImageAlign depth shift took {} ms.", durationProcessing.count() / 1000.0f);
 
             warp2Input = shiftedOutput;
         }
@@ -597,16 +599,14 @@ void ImageAlign::run() {
         const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
         alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
 
-        tStop = steady_clock::now();
-        auto runtime = duration_cast<milliseconds>(tStop - tStart).count();
-
-        logger->trace("ImageAlign took {} ms", runtime);
-
+        auto tProcessed = steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             outputAligned.send(alignedImg);
             passthroughInput.send(inputImg);
         }
+        auto tAbsoluteEnd = steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 
