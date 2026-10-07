@@ -1,6 +1,7 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 
 #include "../utility/PimplImpl.hpp"
+#include "BasaltVIOUtils.hpp"
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
 #include "basalt/spline/se3_spline.h"
@@ -255,47 +256,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
             pimpl->calib->gyro_noise_std = Eigen::Vector3d(gyroNoiseStd.value()[0], gyroNoiseStd.value()[1], gyroNoiseStd.value()[2]).cwiseSqrt();
         }
 
-        // camera intrinsics
-        auto intrinsics = calibHandler.getCameraIntrinsics(camID, frame->getWidth(), frame->getHeight());
-        auto model = calibHandler.getDistortionModel(camID);
-        auto distCoeffs = calibHandler.getDistortionCoefficients(camID);
-        basalt::GenericCamera<Scalar> camera;
-        if(model == CameraModel::Perspective) {
-            basalt::PinholeRadtan8Camera<Scalar>::VecN params;
-            // fx, fy, cx, cy
-            double fx = double(intrinsics[0][0]);
-            double fy = double(intrinsics[1][1]);
-            double cx = double(intrinsics[0][2]);
-            double cy = double(intrinsics[1][2]);
-            double k1 = double(distCoeffs[0]);
-            double k2 = double(distCoeffs[1]);
-            double p1 = double(distCoeffs[2]);
-            double p2 = double(distCoeffs[3]);
-            double k3 = double(distCoeffs[4]);
-            double k4 = double(distCoeffs[5]);
-            double k5 = double(distCoeffs[6]);
-            double k6 = double(distCoeffs[7]);
-            params << fx, fy, cx, cy, k1, k2, p1, p2, k3, k4, k5, k6;
-            basalt::PinholeRadtan8Camera<Scalar> pinhole(params);
-            camera.variant = pinhole;
-        } else if(model == CameraModel::Fisheye) {
-            // fx, fy, cx, cy
-            double fx = double(intrinsics[0][0]);
-            double fy = double(intrinsics[1][1]);
-            double cx = double(intrinsics[0][2]);
-            double cy = double(intrinsics[1][2]);
-            double k1 = double(distCoeffs[0]);
-            double k2 = double(distCoeffs[1]);
-            double k3 = double(distCoeffs[2]);
-            double k4 = double(distCoeffs[3]);
-            basalt::KannalaBrandtCamera4<Scalar>::VecN params;
-            params << fx, fy, cx, cy, k1, k2, k3, k4;
-            basalt::KannalaBrandtCamera4<Scalar> kannala(params);
-            camera.variant = kannala;
-        } else {
-            throw std::runtime_error("Unknown distortion model");
-        }
-        pimpl->calib->intrinsics.push_back(camera);
+        pimpl->calib->intrinsics.push_back(utility::getBasaltCameraModel(calibHandler, *frame));
     }
     if(!configPath.empty()) {
         pimpl->vioConfig.load(configPath);
@@ -386,70 +347,7 @@ void BasaltVIO::setConfig(const BasaltVIO::VioConfig& config) {
     pimpl->vioConfig.mapper_lm_lambda_max = config.mapper_lm_lambda_max;
 }
 void BasaltVIO::setDefaultVIOConfig() {
-    pimpl->vioConfig.optical_flow_type = "frame_to_frame";
-    pimpl->vioConfig.optical_flow_detection_grid_size = 50;
-    pimpl->vioConfig.optical_flow_detection_num_points_cell = 1;
-    pimpl->vioConfig.optical_flow_detection_min_threshold = 5;
-    pimpl->vioConfig.optical_flow_detection_max_threshold = 40;
-    pimpl->vioConfig.optical_flow_detection_nonoverlap = true;
-    pimpl->vioConfig.optical_flow_max_recovered_dist2 = 0.04;
-    pimpl->vioConfig.optical_flow_pattern = 51;
-    pimpl->vioConfig.optical_flow_max_iterations = 5;
-    pimpl->vioConfig.optical_flow_epipolar_error = 0.005;
-    pimpl->vioConfig.optical_flow_levels = 3;
-    pimpl->vioConfig.optical_flow_skip_frames = 1;
-    pimpl->vioConfig.optical_flow_matching_guess_type = basalt::MatchingGuessType::REPROJ_AVG_DEPTH;
-    pimpl->vioConfig.optical_flow_matching_default_depth = 2.0;
-    pimpl->vioConfig.optical_flow_image_safe_radius = 472.0;
-    pimpl->vioConfig.optical_flow_recall_enable = false;
-    pimpl->vioConfig.optical_flow_recall_all_cams = false;
-    pimpl->vioConfig.optical_flow_recall_num_points_cell = true;
-    pimpl->vioConfig.optical_flow_recall_over_tracking = false;
-    pimpl->vioConfig.optical_flow_recall_update_patch_viewpoint = false;
-    pimpl->vioConfig.optical_flow_recall_max_patch_dist = 3;
-    pimpl->vioConfig.optical_flow_recall_max_patch_norms = {1.74, 0.96, 0.99, 0.44};
-    pimpl->vioConfig.vio_linearization_type = basalt::LinearizationType::ABS_QR;
-    pimpl->vioConfig.vio_sqrt_marg = true;
-    pimpl->vioConfig.vio_max_states = 3;
-    pimpl->vioConfig.vio_max_kfs = 7;
-    pimpl->vioConfig.vio_min_frames_after_kf = 5;
-    pimpl->vioConfig.vio_new_kf_keypoints_thresh = 0.7;
-    pimpl->vioConfig.vio_debug = false;
-    pimpl->vioConfig.vio_extended_logging = false;
-    pimpl->vioConfig.vio_obs_std_dev = 0.5;
-    pimpl->vioConfig.vio_obs_huber_thresh = 1.0;
-    pimpl->vioConfig.vio_min_triangulation_dist = 0.05;
-    pimpl->vioConfig.vio_max_iterations = 7;
-    pimpl->vioConfig.vio_enforce_realtime = false;
-    pimpl->vioConfig.vio_use_lm = true;
-    pimpl->vioConfig.vio_lm_lambda_initial = 1e-4;
-    pimpl->vioConfig.vio_lm_lambda_min = 1e-6;
-    pimpl->vioConfig.vio_lm_lambda_max = 1e2;
-    pimpl->vioConfig.vio_scale_jacobian = false;
-    pimpl->vioConfig.vio_init_pose_weight = 1e8;
-    pimpl->vioConfig.vio_init_ba_weight = 1e1;
-    pimpl->vioConfig.vio_init_bg_weight = 1e2;
-    pimpl->vioConfig.vio_marg_lost_landmarks = true;
-    pimpl->vioConfig.vio_fix_long_term_keyframes = false;
-    pimpl->vioConfig.vio_kf_marg_feature_ratio = 0.1;
-    pimpl->vioConfig.vio_kf_marg_criteria = basalt::KeyframeMargCriteria::KF_MARG_DEFAULT;
-    pimpl->vioConfig.mapper_obs_std_dev = 0.25;
-    pimpl->vioConfig.mapper_obs_huber_thresh = 1.5;
-    pimpl->vioConfig.mapper_detection_num_points = 800;
-    pimpl->vioConfig.mapper_num_frames_to_match = 30;
-    pimpl->vioConfig.mapper_frames_to_match_threshold = 0.04;
-    pimpl->vioConfig.mapper_min_matches = 20;
-    pimpl->vioConfig.mapper_ransac_threshold = 5e-5;
-    pimpl->vioConfig.mapper_min_track_length = 5;
-    pimpl->vioConfig.mapper_max_hamming_distance = 70;
-    pimpl->vioConfig.mapper_second_best_test_ratio = 1.2;
-    pimpl->vioConfig.mapper_bow_num_bits = 16;
-    pimpl->vioConfig.mapper_min_triangulation_dist = 0.07;
-    pimpl->vioConfig.mapper_no_factor_weights = false;
-    pimpl->vioConfig.mapper_use_factors = true;
-    pimpl->vioConfig.mapper_use_lm = true;
-    pimpl->vioConfig.mapper_lm_lambda_min = 1e-32;
-    pimpl->vioConfig.mapper_lm_lambda_max = 1e3;
+    pimpl->vioConfig = utility::getDefaultBasaltVIOConfig();
 }
 }  // namespace node
 }  // namespace dai

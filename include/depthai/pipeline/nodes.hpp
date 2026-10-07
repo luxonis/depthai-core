@@ -12,6 +12,7 @@
 #include "node/DetectionParser.hpp"
 #include "node/Rectification.hpp"
 #include "node/SegmentationParser.hpp"
+#include "node/VIO.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "node/AutoCalibration.hpp"
     #include "node/DynamicCalibrationNode.hpp"

@@ -36,6 +36,7 @@
 #include "depthai/properties/ThermalProperties.hpp"
 #include "depthai/properties/ToFProperties.hpp"
 #include "depthai/properties/UVCProperties.hpp"
+#include "depthai/properties/VIOProperties.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/properties/VppProperties.hpp"
 #include "depthai/properties/WarpProperties.hpp"
@@ -77,6 +78,7 @@ FeatureTrackerProperties::~FeatureTrackerProperties() = default;
 IMUProperties::~IMUProperties() = default;
 ImageAlignProperties::~ImageAlignProperties() = default;
 AlignProperties::~AlignProperties() = default;
+VIOProperties::~VIOProperties() = default;
 ImageManipProperties::~ImageManipProperties() = default;
 DeviceNodeGroupProperties::~DeviceNodeGroupProperties() = default;
 MessageDemuxProperties::~MessageDemuxProperties() = default;

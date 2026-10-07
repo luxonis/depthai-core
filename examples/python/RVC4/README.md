@@ -41,3 +41,8 @@ python3 examples/python/install_requirements.py
 cd examples/python/RVC4
 python3 example.py
 ```
+
+### On-device visual-inertial odometry
+
+See [VIO pose logger](VSLAM/README.md) for a PC-launched example that runs stereo/IMU
+odometry in the RVC4 firmware and displays/logs only the returned poses on the PC.

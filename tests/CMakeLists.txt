@@ -966,6 +966,15 @@ dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4rgb ci)
 dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
 dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci noreplayci)
 
+# VIO configuration needs no device or host Basalt dependency.
+dai_add_test(vio_properties_test src/onhost_tests/pipeline/node/vio_test.cpp)
+dai_set_test_labels(vio_properties_test onhost ci)
+
+# Requires VIO-enabled RVC4 firmware, a calibrated stereo/IMU camera, and a textured scene.
+dai_add_test(vio_device_test src/ondevice_tests/pipeline/node/vio_test.cpp)
+dai_set_test_labels(vio_device_test ondevice rvc4)
+set_tests_properties(vio_device_test PROPERTIES TIMEOUT 120)
+
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite

@@ -351,6 +351,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/Align.cpp
+    src/pipeline/node/VIO.cpp
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
@@ -572,7 +573,7 @@ endif()
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 
-set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp)
+set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp src/basalt/BasaltVIOUtils.cpp)
 
 set(TARGET_RTABMAP_SOURCES
     src/rtabmap/RTABMapConversions.cpp
@@ -1328,7 +1329,7 @@ endif()
 if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 
     # Add depthai-basalt library and depthai::basalt alias
-    add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
+    add_library(${TARGET_BASALT_NAME} ${TARGET_BASALT_SOURCES})
     add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
 
     # Specifies name of generated IMPORTED target (set to alias)

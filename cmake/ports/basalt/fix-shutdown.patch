@@ -1,0 +1,51 @@
+--- a/src/vi_estimator/sqrt_keypoint_vio.cpp
++++ b/src/vi_estimator/sqrt_keypoint_vio.cpp
+@@ -277,6 +277,8 @@
+           // std::cout << "Skipping IMU data.." << std::endl;
+         }
+ 
++        if (!data) break;  // End-of-stream while waiting for the first image.
++
+         Vec3 vel_w_i_init;
+         vel_w_i_init.setZero();
+ 
+@@ -321,6 +323,8 @@
+           data->accel = calib.calib_accel_bias.getCalibrated(data->accel);
+           data->gyro = calib.calib_gyro_bias.getCalibrated(data->gyro);
+         }
++
++        if (!data) break;  // End-of-stream while catching up to the previous image.
+ 
+         while (data->t_ns <= curr_frame->t_ns) {
+           meas->integrate(*data, accel_cov, gyro_cov);
+@@ -329,6 +333,8 @@
+           data->accel = calib.calib_accel_bias.getCalibrated(data->accel);
+           data->gyro = calib.calib_gyro_bias.getCalibrated(data->gyro);
+         }
++
++        if (!data) break;
+ 
+         if (meas->get_start_t_ns() + meas->get_dt_ns() < curr_frame->t_ns) {
+           if (!data.get()) break;
+--- a/include/basalt/vi_estimator/sqrt_keypoint_vio.h
++++ b/include/basalt/vi_estimator/sqrt_keypoint_vio.h
+@@ -104,7 +104,7 @@
+   virtual ~SqrtKeypointVioEstimator() { maybe_join(); }
+ 
+   inline void maybe_join() override {
+-    if (processing_thread->joinable()) {
++    if (processing_thread && processing_thread->joinable()) {
+       processing_thread->join();
+     }
+   }
+--- a/include/basalt/optical_flow/frame_to_frame_optical_flow.h
++++ b/include/basalt/optical_flow/frame_to_frame_optical_flow.h
+@@ -130,7 +130,7 @@
+   virtual ~FrameToFrameOpticalFlow() { maybe_join(); }
+ 
+   inline void maybe_join() override {
+-    if (processing_thread->joinable()) {
++    if (processing_thread && processing_thread->joinable()) {
+       processing_thread->join();
+     }
+   }
