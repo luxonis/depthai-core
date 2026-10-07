@@ -247,32 +247,63 @@ void consumeWarmup(const GroupReader& reader, std::chrono::seconds duration) {
 GroupReadResult waitForConvergence(const GroupReader& reader,
                                   std::chrono::seconds timeout,
                                   std::chrono::system_clock::duration syncThreshold,
+                                  float targetFps,
                                   std::optional<GroupReadResult> initialGroup) {
     const auto start = std::chrono::steady_clock::now();
+    constexpr int REQUIRED_CONSECUTIVE_GROUPS = 3;
+    CAPTURE(targetFps, REQUIRED_CONSECUTIVE_GROUPS);
     INFO("Convergence phase: timeout " << timeout.count() << " seconds, spread must be strictly below "
-                                      << std::chrono::duration_cast<std::chrono::microseconds>(syncThreshold).count() << " us");
+                                      << std::chrono::duration<double>(syncThreshold).count() << " seconds");
     REQUIRE(timeout > std::chrono::seconds::zero());
     REQUIRE(syncThreshold > std::chrono::system_clock::duration::zero());
+    {
+        INFO("Convergence target FPS must be finite and positive");
+        REQUIRE(std::isfinite(targetFps));
+        REQUIRE(targetFps > 0.0f);
+    }
+    const auto maxGap = std::chrono::duration<double>(1.5 / targetFps);
+    INFO("Convergence median intervals must be positive and <= " << maxGap.count() << " seconds (1.5 frame periods)");
 
     const auto deadline = start + timeout;
-    std::cout << "Convergence started: " << timeout.count() << " sec\n";
+    std::cout << "Convergence started: " << timeout.count() << " sec, requiring " << REQUIRED_CONSECUTIVE_GROUPS << " consecutive aligned groups\n";
+    int consecutiveGroups = 0;
+    std::optional<std::chrono::system_clock::time_point> previousTimestamp;
     auto group = std::move(initialGroup);
     if(!group) group = reader.read(deadline);
     {
-        INFO("Convergence timed out without receiving a validated group");
+        INFO("Convergence timed out without receiving a validated group; no spread or gap observed");
+        CAPTURE(consecutiveGroups);
         REQUIRE(group.has_value());
     }
 
-    while(group->timestampSpread >= syncThreshold) {
+    while(true) {
+        std::optional<std::chrono::system_clock::duration> gap;
+        if(previousTimestamp) gap = group->medianTimestamp - *previousTimestamp;
+        if(group->timestampSpread < syncThreshold) {
+            if(gap && *gap > std::chrono::system_clock::duration::zero() && *gap <= maxGap) {
+                ++consecutiveGroups;
+            } else {
+                consecutiveGroups = 1;
+            }
+            previousTimestamp = group->medianTimestamp;
+        } else {
+            consecutiveGroups = 0;
+            previousTimestamp.reset();
+        }
+
         INFO("Convergence timed out; last observed spread: "
-             << std::chrono::duration_cast<std::chrono::microseconds>(group->timestampSpread).count() << " us");
-        CAPTURE(group->minStreamName, group->maxStreamName);
+             << std::chrono::duration<double>(group->timestampSpread).count() << " seconds; gap from preceding candidate: "
+             << (gap ? std::to_string(std::chrono::duration<double>(*gap).count()) : "n/a") << " seconds");
+        CAPTURE(consecutiveGroups, group->minStreamName, group->maxStreamName);
+        REQUIRE(std::chrono::steady_clock::now() < deadline);
+        if(consecutiveGroups == REQUIRED_CONSECUTIVE_GROUPS) {
+            std::cout << "Convergence finished: " << REQUIRED_CONSECUTIVE_GROUPS << " consecutive aligned groups with valid median intervals\n";
+            return std::move(*group);
+        }
+
         group = reader.read(deadline);
         REQUIRE(group.has_value());
     }
-
-    std::cout << "Convergence finished: in sync\n";
-    return std::move(*group);
 }
 
 std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
@@ -594,7 +625,7 @@ int testSync(float targetFps, struct FsyncTestParameters parameters) {
         consumeWarmup(reader, warmupDuration);
     }
 
-    auto convergedGroup = waitForConvergence(reader, convergenceTimeout, syncThreshold, std::move(initialGroup));
+    auto convergedGroup = waitForConvergence(reader, convergenceTimeout, syncThreshold, targetFps, std::move(initialGroup));
     const auto samples = collectMeasurements(reader, std::move(convergedGroup), measurementDuration, targetFps, noProgressTimeout);
     pipeline.stop();
 
