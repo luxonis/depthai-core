@@ -1,20 +1,21 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
 #include <optional>
-#include <map>
-#include <chrono>
+#include <tuple>
 #include <cstdint>
 #include <set>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/depthai.hpp"
-#include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 
 enum class SyncType {
@@ -26,16 +27,68 @@ std::string toString(SyncType syncType);
 
 struct FsyncTestParameters {
     double syncThresholdSec;
-    uint64_t totalRunDurationSec;
-    int firstGroupTimeoutSec;
-    int syncAcquisitionTimeoutSec;
-    int warmupDurationSec;
+    // Measurement window after convergence; excludes startup, warmup, and convergence.
+    uint64_t measurementDurationSec;
+    uint64_t firstGroupTimeoutSec;
+    uint64_t syncAcquisitionTimeoutSec;
+    uint64_t warmupDurationSec;
     double deltaMeanThreshold;
     double deltaP99Threshold;
     SyncType syncType;
     std::optional<std::set<std::string>> allowedSensors;
     int expectedDevices;
 };
+
+struct GroupReadResult {
+    std::chrono::system_clock::duration timestampSpread;
+    std::string minStreamName;
+    std::string maxStreamName;
+    std::chrono::system_clock::time_point medianTimestamp;
+};
+
+// Reads and validates groups for the sync tests. The queue must outlive the reader.
+class GroupReader {
+   public:
+    GroupReader(dai::MessageQueue& queue, std::vector<std::string> inputNames, SyncType syncType);
+
+    // Consume at most one message before the deadline. An expired deadline consumes nothing.
+    // Returns nullopt on timeout; malformed messages fail Catch2 assertions, and queue closure propagates.
+    std::optional<GroupReadResult> read(std::chrono::steady_clock::time_point deadline) const;
+
+   private:
+    dai::MessageQueue& queue;
+    std::vector<std::string> inputNames;
+    dai::ImgFrame::Fsync expectedFsync;
+
+    std::chrono::system_clock::time_point readTimestamp(const dai::MessageGroup& group, const std::string& name) const;
+    GroupReadResult analyze(const dai::MessageGroup& group) const;
+};
+
+// Wait for the first validated group; the positive timeout starts on entry.
+// Fail if no group arrives before the deadline.
+GroupReadResult waitForFirstGroup(const GroupReader& reader, std::chrono::seconds timeout);
+
+// Consume groups for the duration starting on entry, after startup. Zero skips warmup.
+void consumeWarmup(const GroupReader& reader, std::chrono::seconds duration);
+
+// Return the first group strictly within the threshold; the positive timeout starts on entry.
+// Check the initial candidate before reading the queue, and fail if convergence times out.
+// Seed with the startup group only when warmup is disabled; otherwise discard that group.
+GroupReadResult waitForConvergence(const GroupReader& reader,
+                                  std::chrono::seconds timeout,
+                                  std::chrono::system_clock::duration syncThreshold,
+                                  std::optional<GroupReadResult> initialGroup = std::nullopt);
+
+// Measure for a positive duration starting on entry, counting the convergence group once.
+// Retain all groups and fail immediately on nonincreasing timestamps or gaps over 1.5 frame periods.
+// Continuity starts at the convergence sample; a skipped interval is detected when the next group arrives.
+std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
+                                               GroupReadResult firstGroup,
+                                               std::chrono::seconds duration,
+                                               float targetFps);
+
+// Require at least 101 samples, report mean/p99/max spread, and check the mean and p99 limits.
+void reportAndCheckStatistics(const std::vector<GroupReadResult>& samples, float targetFps, const FsyncTestParameters& parameters);
 
 void setUpCameraSocket(dai::Pipeline& pipeline,
                        std::shared_ptr<dai::Device> device,
@@ -59,4 +112,8 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                  SyncType syncType,
                  std::optional<std::set<std::string>> &allowedSensors);
 
-int testFsync(float targetFps, struct FsyncTestParameters parameters);
+std::tuple<dai::Pipeline, std::shared_ptr<dai::node::Sync>, std::vector<std::string>> setupPipeline(
+                   float targetFps,
+                   struct FsyncTestParameters parameters);
+
+int testSync(float targetFps, struct FsyncTestParameters parameters);
