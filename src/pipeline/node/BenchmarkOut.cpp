@@ -24,6 +24,7 @@ bool BenchmarkOut::runOnHost() const {
 void BenchmarkOut::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     std::shared_ptr<ADatatype> inMessage = nullptr;
     {
         auto blockEvent = this->inputBlockEvent();
@@ -39,6 +40,8 @@ void BenchmarkOut::run() {
 
     auto nextFrameTime = steady_clock::now();
     for(int i = 0; (i < properties.numMessages || properties.numMessages == -1) && mainLoop(); i++) {
+        auto tAbsoluteBeginning = steady_clock::now();
+        auto tGotInput = tAbsoluteBeginning;
         auto imgMessage = std::dynamic_pointer_cast<dai::ImgFrame>(inMessage);
         if(imgMessage != nullptr) {
             logger->trace("Sending img message with id {}", i);
@@ -52,16 +55,22 @@ void BenchmarkOut::run() {
             } else {
                 newMessage->setTimestampDevice(steady_clock::now());
             }
+            auto tProcessed = steady_clock::now();
             {
                 auto blockEvent = this->outputBlockEvent();
                 out.send(newMessage);
             }
+            auto tAbsoluteEnd = steady_clock::now();
+            this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
         } else {
             logger->trace("Sending message with id {}", i);
+            auto tProcessed = steady_clock::now();
             {
                 auto blockEvent = this->outputBlockEvent();
                 out.send(inMessage);
             }
+            auto tAbsoluteEnd = steady_clock::now();
+            this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
         }
 
         if(useTiming) {

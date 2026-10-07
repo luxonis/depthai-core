@@ -18,6 +18,14 @@ on:
         required: true
       CI_TELEMETRY_API_KEY:
         required: true
+      INFLUXDB_TEST_REPORT_BUCKET:
+        required: true
+      INFLUXDB_ORG:
+        required: true
+      INFLUXDB_TOKEN:
+        required: true
+      INFLUXDB_URL:
+        required: true
 
 jobs:
   build_windows_tests:
@@ -103,7 +111,7 @@ jobs:
 
     - name: Setup cmake
       if: steps.reuse.outputs.skip_build != 'true'
-      uses: jwlawson/actions-setup-cmake@v2
+      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
       with:
         cmake-version: '4.2.x'
 
