@@ -40,7 +40,8 @@ def main():
                 "with the IMU defaults fix, or supply valid camera-to-IMU calibration for this board. "
                 f"Details: {error}"
             ) from error
-        requestedFps = 90
+        width, height = 1280, 800
+        requestedFps = 60
         fps = requestedFps
         cameraFeatures = {camera.socket: camera for camera in device.getConnectedCameraFeatures()}
         for socket in (dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C):
@@ -48,11 +49,11 @@ def main():
             if camera is None:
                 raise RuntimeError(f"Stereo camera {socket} is not connected.")
             maxFps = max((config.maxFps for config in camera.configs
-                          if config.width >= 640 and config.height >= 400 and not getattr(config, "hdr", False)), default=0)
+                          if config.width >= width and config.height >= height and not getattr(config, "hdr", False)), default=0)
             if maxFps <= 0:
-                raise RuntimeError(f"{socket} ({camera.sensorName}) has no supported 640x400 camera mode.")
+                raise RuntimeError(f"{socket} ({camera.sensorName}) has no supported {width}x{height} camera mode.")
             fps = min(fps, maxFps)
-        print(f"Stereo input: 640x400 at {fps:g} FPS (requested {requestedFps} FPS).")
+        print(f"Stereo input: {width}x{height} at {fps:g} FPS (requested {requestedFps} FPS).")
         left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
         right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
         imu = pipeline.create(dai.node.IMU)
@@ -65,8 +66,8 @@ def main():
         imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_RAW, dai.IMUSensor.GYROSCOPE_RAW], 200)
         imu.setBatchReportThreshold(1)
         imu.setMaxBatchReports(10)
-        left.requestOutput((640, 400), type=dai.ImgFrame.Type.GRAY8, fps=fps, enableUndistortion=False).link(sync.inputs["left"])
-        right.requestOutput((640, 400), type=dai.ImgFrame.Type.GRAY8, fps=fps, enableUndistortion=False).link(sync.inputs["right"])
+        left.requestOutput((width, height), type=dai.ImgFrame.Type.GRAY8, fps=fps, enableUndistortion=False).link(sync.inputs["left"])
+        right.requestOutput((width, height), type=dai.ImgFrame.Type.GRAY8, fps=fps, enableUndistortion=False).link(sync.inputs["right"])
         sync.out.link(vio.stereo)
         imu.out.link(vio.imu)
         # This is the only data stream to the PC. No image or IMU output queues.

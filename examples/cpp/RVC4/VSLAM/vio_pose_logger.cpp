@@ -37,8 +37,8 @@ int main(int argc, char** argv) {
                                                  "fix, or supply valid camera-to-IMU calibration for this board. Details: ")
                                      + error.what());
         }
-        const auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, 30);
-        const auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, 30);
+        const auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, 60);
+        const auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, 60);
         const auto imu = pipeline.create<dai::node::IMU>();
         const auto sync = pipeline.create<dai::node::Sync>();
         sync->setRunOnHost(false);
@@ -49,8 +49,8 @@ int main(int argc, char** argv) {
         imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
         imu->setBatchReportThreshold(1);
         imu->setMaxBatchReports(10);
-        left->requestOutput({640, 400}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, std::nullopt, false)->link(sync->inputs["left"]);
-        right->requestOutput({640, 400}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, std::nullopt, false)->link(sync->inputs["right"]);
+        left->requestOutput({1280, 800}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, std::nullopt, false)->link(sync->inputs["left"]);
+        right->requestOutput({1280, 800}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::CROP, std::nullopt, false)->link(sync->inputs["right"]);
         sync->out.link(vio->stereo);
         imu->out.link(vio->imu);
         const auto poses = vio->transform.createOutputQueue(8, false);

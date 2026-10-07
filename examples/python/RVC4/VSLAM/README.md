@@ -93,10 +93,10 @@ camera-to-IMU calibration. Runtime defaults do not write the EEPROM.
 3. Move through a measured distance and back to assess scale, drift, and latency.
 4. Stop and restart the example, then test dropouts and the real vehicle workload.
 
-Input is 640x400 unrectified GRAY8 stereo. The Python example requests 90 FPS,
+Input is 1280x800 unrectified GRAY8 stereo. The Python example requests 60 FPS,
 caps it to the highest rate supported by both cameras' advertised modes,
 and prints the selected rate before startup. HDR modes are excluded when the SDK
-exposes that flag. The C++ example requests 30 FPS.
+exposes that flag. The C++ example requests 60 FPS.
 Both configure raw accelerometer/gyroscope at 200 Hz.
 These are input settings, not a verified pose rate. Firmware uses
 Basalt's real-time mode; estimator frames and the PC's bounded output queue can
