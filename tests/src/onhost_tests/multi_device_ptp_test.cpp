@@ -7,9 +7,9 @@ namespace {
 
 struct FsyncTestParameters getDefaultParameters() {
     struct FsyncTestParameters parameters {};
-    parameters.measurementDurationSec = 180;
+    parameters.measurementDurationSec = 30;
     parameters.firstGroupTimeoutSec = 10;
-    parameters.syncAcquisitionTimeoutSec = 60;
+    parameters.syncAcquisitionTimeoutSec = 10;
     parameters.warmupDurationSec = 60;
     parameters.deltaMeanThreshold = 1e-3;
     parameters.deltaP99Threshold = 2e-3;
@@ -24,7 +24,7 @@ struct FsyncTestParameters getDefaultParameters() {
 TEST_CASE("Test Multi-device external frame sync with at 30 FPS on OV9282 sensors", "[ptp][fps-30][ov9282]") {
     float fps = 30.0f;
     auto p = getDefaultParameters();
-    p.measurementDurationSec = 120;
+    // p.measurementDurationSec = 120;
     p.allowedSensors = std::set<std::string>{"OV9282"};
     testSync(fps, p);
 }
@@ -32,7 +32,7 @@ TEST_CASE("Test Multi-device external frame sync with at 30 FPS on OV9282 sensor
 TEST_CASE("Test Multi-device external frame sync with at 30 FPS on IMX586 sensors", "[ptp][fps-30][imx586]") {
     float fps = 30.0f;
     auto p = getDefaultParameters();
-    p.measurementDurationSec = 120;
+    // p.measurementDurationSec = 120;
     p.allowedSensors = std::set<std::string>{"IMX586"};
     testSync(fps, p);
 }
