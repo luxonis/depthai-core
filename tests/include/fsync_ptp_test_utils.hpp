@@ -73,12 +73,17 @@ GroupReadResult waitForFirstGroup(const GroupReader& reader, std::chrono::second
 // Consume groups for the duration starting on entry, after startup. Zero skips warmup.
 void consumeWarmup(const GroupReader& reader, std::chrono::seconds duration);
 
-// Return the first group strictly within the threshold; the positive timeout starts on entry.
-// Check the initial candidate before reading the queue, and fail if convergence times out.
+// Return the third consecutive group strictly within the positive spread threshold.
+// Both adjacent median intervals must be positive and <= 1.5 / targetFps seconds; FPS must be finite and positive.
+// Misalignment clears the run; an aligned group after an invalid interval starts a new run of one.
+// The positive timeout starts on entry and is never restarted; fail if convergence times out.
+// Check the initial candidate once before reading the queue; if aligned, it starts the run at one.
 // Seed with the startup group only when warmup is disabled; otherwise discard that group.
+// Only the returned group becomes measurement sample 0; earlier convergence groups are discarded.
 GroupReadResult waitForConvergence(const GroupReader& reader,
                                   std::chrono::seconds timeout,
                                   std::chrono::system_clock::duration syncThreshold,
+                                  float targetFps,
                                   std::optional<GroupReadResult> initialGroup = std::nullopt);
 
 // Measure for a positive duration starting on entry, counting the convergence group once.
