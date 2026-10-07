@@ -20,6 +20,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/log/LogLevel.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -559,6 +560,7 @@ std::tuple<dai::Pipeline, std::shared_ptr<dai::node::Sync>, std::vector<std::str
     sync->setRunOnHost(true);
     sync->setSyncThreshold(std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))));
     sync->setTimestampSource(dai::SyncProperties::TimestampSource::SYSTEM);
+    sync->setLogLevel(dai::LogLevel::ERR);
 
     std::vector<std::string> inputNames;
     std::set<std::string> contributingDeviceIds;
