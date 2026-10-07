@@ -9,10 +9,10 @@ import depthai as dai
 FPS = 10.0
 
 parser = argparse.ArgumentParser(description="Project CAM_B and CAM_C onto a plane")
-parser.add_argument("--device-ip", help="Device IP address (default: auto-discover)")
+parser.add_argument("--deviceIp", help="Device IP address (default: auto-discover)")
 args = parser.parse_args()
 
-device = dai.Device(dai.DeviceInfo(args.device_ip)) if args.device_ip else dai.Device()
+device = dai.Device(dai.DeviceInfo(args.deviceIp)) if args.deviceIp else dai.Device()
 with dai.Pipeline(device) as pipeline:
     outputs = []
     for socket in (dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C):

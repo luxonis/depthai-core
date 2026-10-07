@@ -186,7 +186,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     float getMinIncidenceAngle() const;
 
     /**
-     * Set the projection surface the images are warped onto. Defaults to Equirectangular (a sphere), same as OpenCV.
+     * Set the projection surface the images are warped onto. Defaults to Equirectangular (a sphere).
      * Only used in `Mode::PANORAMA`.
      *
      * The value picks the surface of the output, not a lens: Equirectangular renders onto a sphere, Cylindrical onto a
@@ -240,7 +240,7 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
     uint32_t getEstimationFrames() const;
 
     /**
-     * Reject panorama registrations whose projected canvas exceeds this size before OpenCV allocates and composes it.
+     * Reject panorama registrations whose projected canvas exceeds this size before it is allocated and composed.
      * This protects against degenerate feature matches producing extremely large canvases. By default the size is
      * unbounded.
      */

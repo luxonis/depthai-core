@@ -10,13 +10,13 @@ namespace dai {
  * There is deliberately no separate enum for the projection and for the distortion. One value fixes both at once, because only the pinhole plane
  * carries distortion in depthai and every supported combination has a name of its own:
  *
- *  | CameraModel     | Projection surface | Distortion model (parametrized by the distortion coefficients)                         |
- *  |-----------------|--------------------|----------------------------------------------------------------------------------------|
- *  | Perspective     | pinhole plane      | Brown-Conrady, OpenCV layout (k1, k2, p1, p2, k3, k4, k5, k6, s1, s2, s3, s4, taux, tauy) |
- *  | Fisheye         | pinhole plane      | Kannala-Brandt, OpenCV fisheye layout (k1, k2, k3, k4)                                 |
- *  | RadialDivision  | pinhole plane      | radial division (not evaluated by depthai-core yet)                                    |
- *  | Equirectangular | sphere             | none                                                                                   |
- *  | Cylindrical     | cylinder           | none                                                                                   |
+ *  | CameraModel     | Projection surface | Distortion model (parametrized by the distortion coefficients)              |
+ *  |-----------------|--------------------|-----------------------------------------------------------------------------|
+ *  | Perspective     | pinhole plane      | Brown-Conrady (k1, k2, p1, p2, k3, k4, k5, k6, s1, s2, s3, s4, taux, tauy) |
+ *  | Fisheye         | pinhole plane      | Kannala-Brandt (k1, k2, k3, k4)                                             |
+ *  | RadialDivision  | pinhole plane      | radial division (not evaluated by depthai-core yet)                         |
+ *  | Equirectangular | sphere             | none                                                                        |
+ *  | Cylindrical     | cylinder           | none                                                                        |
  *
  * The projection surface tells how a direction (x, y, z) in the camera frame maps to normalized coordinates, and therefore what the intrinsic matrix
  * (fx, fy, cx, cy) means. The distortion model tells which formula warps those normalized coordinates on the pinhole plane before the intrinsics are

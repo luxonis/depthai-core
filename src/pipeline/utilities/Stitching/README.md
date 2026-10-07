@@ -58,6 +58,6 @@ surface; request undistorted camera outputs for that. Visual registration (`setU
 canvas; the only subtlety is the spherical warper measuring its polar angle from the -Y axis while the equirectangular
 latitude is measured from the XZ plane, which shifts `cy` by `scale * pi / 2`.
 
-So for a panorama, `getDistortionModel()` returns `Equirectangular` or `Cylindrical` and `getDistortionCoefficients()`
+So for a panorama, `getDistortionModel()` returns `Perspective`, `Equirectangular` or `Cylindrical` and `getDistortionCoefficients()`
 is empty. That is correct and intended: the value tells the consumer which surface to wrap the image onto, and the
 empty coefficients tell it that no lens model is involved.
