@@ -40,6 +40,8 @@ TEST_CASE("Test Multi-device external frame sync with at 30 FPS on IMX586 sensor
 TEST_CASE("Test Multi-device external frame sync with at 10 FPS", "[fsync][fps-10]") {
     float fps = 10.0f;
     auto p = getDefaultParameters();
+    // Keep the 101-sample minimum comfortably inside the measurement window at 10 FPS.
+    p.measurementDurationSec = 15;
     testSync(fps, p);
 }
 
