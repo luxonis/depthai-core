@@ -785,6 +785,7 @@ void ImageFilters::run() {
 
     // A helper function to update an existing pipeline
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto updateExistingFilterPipeline = [&filters, &logger](const ImageFiltersConfig& config) {
         for(size_t i = 0; i < config.filterIndices.size(); i++) {
             const auto& index = config.filterIndices[i];
@@ -819,6 +820,7 @@ void ImageFilters::run() {
                   getFilterPipelineString());
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::ImgFrame> frame = nullptr;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -843,6 +845,7 @@ void ImageFilters::run() {
             // Get frame from input queue
             frame = input.get<dai::ImgFrame>();
         }
+        auto tGotInput = std::chrono::steady_clock::now();
         if(frame == nullptr) {
             logger->error("ImageFilters: Input frame is nullptr");
             break;
@@ -852,16 +855,10 @@ void ImageFilters::run() {
         // Otherwise, create a copy and run filters inplace on the copy
         std::shared_ptr<dai::ImgFrame> filteredFrame = filters.size() == 0 ? frame : frame->clone();
 
-        auto t1 = std::chrono::high_resolution_clock::now();
         for(const auto& filter : filters) {
             filter->process(filteredFrame);  // inplace filter
         }
-        auto t2 = std::chrono::high_resolution_clock::now();
-        static auto tlast = t2;
-        if(t2 - tlast > std::chrono::milliseconds(5000)) {
-            pimpl->logger->debug("ImageFilters: Time taken: {}ms", std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() / 1000);
-            tlast = t2;
-        }
+        auto tProcessed = std::chrono::steady_clock::now();
 
         {
             auto blockEvent = this->outputBlockEvent();
@@ -869,6 +866,8 @@ void ImageFilters::run() {
             // Send filtered frame to the output queue
             output.send(filteredFrame);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 
@@ -958,12 +957,15 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
 }
 
 void ToFDepthConfidenceFilter::run() {
+    auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto confidenceThreshold = getProperties().initialConfig.confidenceThreshold;
 
     std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;
     std::shared_ptr<dai::ImgFrame> amplitudeFrame = nullptr;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->inputBlockEvent();
 
@@ -983,6 +985,7 @@ void ToFDepthConfidenceFilter::run() {
                 break;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // In case the confidence threshold is 0, serve as a passthrough
         if(confidenceThreshold == 0.0f) {
@@ -1009,15 +1012,8 @@ void ToFDepthConfidenceFilter::run() {
         confidenceFrame->data->setSize(depthFrame->getData().size() * depthFrame->getBytesPerPixel());
 
         // Apply filter
-        auto t1 = std::chrono::high_resolution_clock::now();
         applyDepthConfidenceFilter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, confidenceThreshold);
-        auto t2 = std::chrono::high_resolution_clock::now();
-
-        static auto tlast = t2;
-        if(t2 - tlast > std::chrono::milliseconds(5000)) {
-            pimpl->logger->debug("DepthConfidenceFilter: Time taken: {}ms", std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() / 1000);
-            tlast = t2;
-        }
+        auto tProcessed = std::chrono::steady_clock::now();
 
         {
             auto blockEvent = this->outputBlockEvent();
@@ -1025,6 +1021,8 @@ void ToFDepthConfidenceFilter::run() {
             filteredDepth.send(filteredDepthFrame);
             confidence.send(confidenceFrame);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

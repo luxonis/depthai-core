@@ -227,7 +227,7 @@ bool HRNetParser::runOnHost() const {
 
 void HRNetParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("HRNetParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto config = getProperties().initialConfig;
     DAI_CHECK(config.validate(), "HRNetParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
@@ -237,6 +237,7 @@ void HRNetParser::run() {
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -262,6 +263,7 @@ void HRNetParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
         const HRNetParserConfig configSnapshot = config;
 
         // Extract
@@ -287,10 +289,13 @@ void HRNetParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("HRNetParser created message with {} keypoints", message->keypointsList.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 
