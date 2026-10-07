@@ -8,18 +8,21 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 #include <tuple>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/properties/SyncProperties.hpp"
@@ -38,37 +41,12 @@ namespace {
         std::string name;
     };
 
-    double calculate_average(std::vector<Delta> &values) {
+    double calculate_mean(std::vector<Delta> &values) {
         std::uint64_t sum = std::accumulate(values.begin(), values.end(), static_cast<std::uint64_t>(0),
         [](std::uint64_t const &sum, Delta const &delta) -> std::uint64_t {
             return sum + delta.delta_us;
         });
         return double(sum) / double(values.size());
-    }
-
-    using ts_type = std::chrono::time_point<std::chrono::system_clock>;
-
-    double mean_timestamp(std::vector<ts_type> &values)
-    {
-        if (values.empty()) {
-            throw std::invalid_argument("percentile_linear: input vector must not be empty");
-        }
-
-        std::sort(values.begin(), values.end());
-
-        if (values.size() == 1) {
-            return static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(values[0].time_since_epoch()).count());
-        }
-
-        const double pos = 0.5 * static_cast<double>(values.size() - 1);
-        const std::size_t lower = static_cast<std::size_t>(std::floor(pos));
-        const std::size_t upper = static_cast<std::size_t>(std::ceil(pos));
-        const double fraction = pos - static_cast<double>(lower);
-
-        const double lower_value = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(values[lower].time_since_epoch()).count());
-        const double upper_value = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(values[upper].time_since_epoch()).count());
-
-        return lower_value + (upper_value - lower_value) * fraction;
     }
 
     double percentile_linear(std::vector<Delta> values, double q)
@@ -111,15 +89,6 @@ namespace {
         return *max_itr;
     }
 
-    void expect_percentile(
-        std::vector<Delta> const &values,
-        double q,
-        double expected)
-    {
-        using Catch::Matchers::WithinAbs;
-        REQUIRE_THAT(percentile_linear(values, q), WithinAbs(expected, 1e-12));
-    }
-
     std::string toString(dai::ImgFrame::Fsync fsync) {
         switch(fsync) {
             case dai::ImgFrame::Fsync::NONE:
@@ -153,6 +122,228 @@ namespace {
         }
         return std::nullopt;
     }
+
+    std::chrono::seconds toPhaseDuration(std::uint64_t seconds) {
+        const auto remaining = std::chrono::steady_clock::time_point::max() - std::chrono::steady_clock::now();
+        const auto maxSeconds = std::chrono::duration_cast<std::chrono::seconds>(remaining).count();
+        INFO("Phase duration must fit a steady-clock deadline");
+        CAPTURE(seconds, maxSeconds);
+        REQUIRE(seconds < static_cast<std::uint64_t>(maxSeconds));
+        return std::chrono::seconds(static_cast<std::chrono::seconds::rep>(seconds));
+    }
+
+    void printTestParameters(float targetFps, const FsyncTestParameters& parameters) {
+        std::cout << "=================================\x1B[1;32mTest started\x1B[0m================================\n";
+        std::cout << "Sync type: " << ::toString(parameters.syncType) << '\n';
+        std::cout << "FPS: " << targetFps << '\n';
+        std::cout << "SYNC_THRESHOLD_SEC: " << parameters.syncThresholdSec << '\n';
+        std::cout << "FIRST_GROUP_TIMEOUT_SEC: " << parameters.firstGroupTimeoutSec << '\n';
+        std::cout << "WARMUP_DURATION_SEC: " << parameters.warmupDurationSec << '\n';
+        std::cout << "CONVERGENCE_TIMEOUT_SEC: " << parameters.syncAcquisitionTimeoutSec << '\n';
+        std::cout << "MEASUREMENT_DURATION_SEC: " << parameters.measurementDurationSec << '\n';
+        if(parameters.allowedSensors.has_value()) {
+            std::cout << "ALLOWED_SENSORS:\n";
+            for(const auto& sensor : parameters.allowedSensors.value()) {
+                std::cout << '\t' << sensor << '\n';
+            }
+        }
+    }
+}
+
+GroupReader::GroupReader(dai::MessageQueue& queue, std::vector<std::string> inputNames, SyncType syncType)
+    : queue(queue), inputNames(std::move(inputNames)), expectedFsync(convertSyncType(syncType)) {
+    std::sort(this->inputNames.begin(), this->inputNames.end());
+    INFO("GroupReader requires nonempty, unique expected stream names");
+    CAPTURE(this->inputNames);
+    REQUIRE_FALSE(this->inputNames.empty());
+    REQUIRE_FALSE(this->inputNames.front().empty());
+    REQUIRE(std::adjacent_find(this->inputNames.begin(), this->inputNames.end()) == this->inputNames.end());
+}
+
+std::optional<GroupReadResult> GroupReader::read(std::chrono::steady_clock::time_point deadline) const {
+    const auto now = std::chrono::steady_clock::now();
+    if(now >= deadline) return std::nullopt;
+
+    bool hasTimedOut = false;
+    const auto group = queue.get<dai::MessageGroup>(deadline - now, hasTimedOut);
+    if(hasTimedOut) return std::nullopt;
+    INFO("GroupReader expected a non-null MessageGroup");
+    REQUIRE(group != nullptr);
+    return analyze(*group);
+}
+
+std::chrono::system_clock::time_point GroupReader::readTimestamp(const dai::MessageGroup& group, const std::string& name) const {
+    CAPTURE(name);
+    // MessageGroup::get inserts missing names; use a const lookup for validation.
+    const auto entry = group.group.find(name);
+    INFO("GroupReader requires each expected stream to contain an ImgFrame with matching fsync metadata and a system timestamp");
+    REQUIRE(entry != group.group.end());
+    const auto frame = std::dynamic_pointer_cast<const dai::ImgFrame>(entry->second);
+    REQUIRE(frame != nullptr);
+    CAPTURE(toString(expectedFsync), toString(frame->getFsync()));
+    REQUIRE(frame->getFsync() == expectedFsync);
+    const auto timestamp = frame->getTimestampSystem(dai::CameraExposureOffset::END);
+    REQUIRE(timestamp.has_value());
+    return *timestamp;
+}
+
+GroupReadResult GroupReader::analyze(const dai::MessageGroup& group) const {
+    INFO("GroupReader message count must match the expected stream count");
+    REQUIRE(group.group.size() == inputNames.size());
+    std::vector<std::chrono::system_clock::time_point> timestamps;
+    timestamps.reserve(inputNames.size());
+    for(const auto& name : inputNames) {
+        timestamps.push_back(readTimestamp(group, name));
+    }
+
+    // Both extrema choose the lexicographically first stream when timestamps tie.
+    const auto minIt = std::min_element(timestamps.begin(), timestamps.end());
+    const auto maxIt = std::max_element(timestamps.begin(), timestamps.end());
+    const auto spread = *maxIt - *minIt;
+    const auto minName = inputNames[static_cast<std::size_t>(minIt - timestamps.begin())];
+    const auto maxName = inputNames[static_cast<std::size_t>(maxIt - timestamps.begin())];
+
+    std::sort(timestamps.begin(), timestamps.end());
+    const auto middle = timestamps.size() / 2;
+    const auto upper = timestamps[middle];
+    const auto lower = timestamps[(timestamps.size() - 1) / 2];
+    // Keep native clock precision; an even-sized median rounds down to a clock tick.
+    const auto median = lower + (upper - lower) / 2;
+    return {spread, minName, maxName, median};
+}
+
+GroupReadResult waitForFirstGroup(const GroupReader& reader, std::chrono::seconds timeout) {
+    const auto start = std::chrono::steady_clock::now();
+    INFO("Startup phase: timeout " << timeout.count() << " seconds to receive the first validated group");
+    REQUIRE(timeout > std::chrono::seconds::zero());
+
+    const auto deadline = start + timeout;
+    std::cout << "Startup started: " << timeout.count() << " sec\n";
+    auto group = reader.read(deadline);
+    {
+        INFO("Startup timed out without receiving a validated group");
+        REQUIRE(group.has_value());
+    }
+
+    std::cout << "Startup finished: first validated group received\n";
+    return std::move(*group);
+}
+
+void consumeWarmup(const GroupReader& reader, std::chrono::seconds duration) {
+    const auto start = std::chrono::steady_clock::now();
+    INFO("Warmup phase: consuming validated groups for " << duration.count() << " seconds");
+    REQUIRE(duration >= std::chrono::seconds::zero());
+    if(duration == std::chrono::seconds::zero()) return;
+
+    const auto deadline = start + duration;
+    std::cout << "Warmup started: " << duration.count() << " sec\n";
+    while(reader.read(deadline)) {
+        // Discard each validated group; a timed read ends warmup when the budget expires.
+    }
+    std::cout << "Warmup finished\n";
+}
+
+GroupReadResult waitForConvergence(const GroupReader& reader,
+                                  std::chrono::seconds timeout,
+                                  std::chrono::system_clock::duration syncThreshold,
+                                  std::optional<GroupReadResult> initialGroup) {
+    const auto start = std::chrono::steady_clock::now();
+    INFO("Convergence phase: timeout " << timeout.count() << " seconds, spread must be strictly below "
+                                      << std::chrono::duration_cast<std::chrono::microseconds>(syncThreshold).count() << " us");
+    REQUIRE(timeout > std::chrono::seconds::zero());
+    REQUIRE(syncThreshold > std::chrono::system_clock::duration::zero());
+
+    const auto deadline = start + timeout;
+    std::cout << "Convergence started: " << timeout.count() << " sec\n";
+    auto group = std::move(initialGroup);
+    if(!group) group = reader.read(deadline);
+    {
+        INFO("Convergence timed out without receiving a validated group");
+        REQUIRE(group.has_value());
+    }
+
+    while(group->timestampSpread >= syncThreshold) {
+        INFO("Convergence timed out; last observed spread: "
+             << std::chrono::duration_cast<std::chrono::microseconds>(group->timestampSpread).count() << " us");
+        CAPTURE(group->minStreamName, group->maxStreamName);
+        group = reader.read(deadline);
+        REQUIRE(group.has_value());
+    }
+
+    std::cout << "Convergence finished: in sync\n";
+    return std::move(*group);
+}
+
+std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
+                                               GroupReadResult firstGroup,
+                                               std::chrono::seconds duration,
+                                               float targetFps) {
+    const auto start = std::chrono::steady_clock::now();
+    INFO("Measurement phase: duration must be positive, got " << duration.count() << " seconds");
+    REQUIRE(duration > std::chrono::seconds::zero());
+    CAPTURE(targetFps);
+    {
+        INFO("Measurement target FPS must be finite and positive");
+        REQUIRE(std::isfinite(targetFps));
+        REQUIRE(targetFps > 0.0f);
+    }
+    const auto maxGap = std::chrono::duration<double>(1.5 / targetFps);
+
+    const auto deadline = start + duration;
+    std::cout << "Measurement started: " << duration.count() << " sec\n";
+    std::vector<GroupReadResult> samples;
+    samples.push_back(std::move(firstGroup));
+    while(auto group = reader.read(deadline)) {
+        const auto previousTimestamp = samples.back().medianTimestamp;
+        const auto gap = group->medianTimestamp - previousTimestamp;
+        INFO("Measurement continuity: sample index " << samples.size() << " (zero-based; convergence sample is 0), observed gap "
+                                                     << std::chrono::duration<double>(gap).count() << " seconds, allowed gap " << maxGap.count()
+                                                     << " seconds (1.5 frame periods)");
+        {
+            INFO("Nonincreasing measurement timestamps are not allowed");
+            REQUIRE(gap > std::chrono::system_clock::duration::zero());
+        }
+        {
+            INFO("Measurement frame interval exceeds the allowed gap");
+            REQUIRE(gap <= maxGap);
+        }
+        samples.push_back(std::move(*group));
+    }
+    std::cout << "Measurement finished: " << samples.size() << " samples\n";
+    return samples;
+}
+
+void reportAndCheckStatistics(const std::vector<GroupReadResult>& samples, float targetFps, const FsyncTestParameters& parameters) {
+    CAPTURE(targetFps);
+    {
+        INFO("Not enough measurement samples (expected at least 101, got " << samples.size() << ").");
+        REQUIRE(samples.size() > 100);
+    }
+
+    std::vector<Delta> deltas;
+    deltas.reserve(samples.size());
+    for(const auto& sample : samples) {
+        const auto spreadUs = std::chrono::duration_cast<std::chrono::microseconds>(sample.timestampSpread).count();
+        deltas.push_back({static_cast<std::uint64_t>(spreadUs), "[MIN=" + sample.minStreamName + ", MAX=" + sample.maxStreamName + "]"});
+    }
+
+    const double meanDeltaUs = calculate_mean(deltas);
+    const double p99DeltaUs = percentile_linear(deltas, 99.0);
+    const Delta maxDelta = calculate_max_outlier(deltas);
+
+    std::cout << "=== Stats\n";
+    std::cout << "   [FPS=" << targetFps << "] # of frames used for stats calculation: " << deltas.size() << '\n';
+    std::cout << "   [FPS=" << targetFps << "] Mean frame delta: " << meanDeltaUs / 1e3 << " ms\n";
+    std::cout << "   [FPS=" << targetFps << "] p99 frame delta: " << p99DeltaUs / 1e3 << " ms\n";
+    std::cout << "   [FPS=" << targetFps << "] Max outlier frame delta: " << static_cast<double>(maxDelta.delta_us) / 1e3 << " ms, between "
+              << maxDelta.name << '\n';
+
+    const double meanDeltaSec = meanDeltaUs / 1e6;
+    const double p99DeltaSec = p99DeltaUs / 1e6;
+    INFO("Arithmetic mean and p99 frame deltas must be strictly below their thresholds (all values in seconds)");
+    CAPTURE(meanDeltaSec, p99DeltaSec, parameters.deltaMeanThreshold, parameters.deltaP99Threshold);
+    REQUIRE(meanDeltaSec < parameters.deltaMeanThreshold);
+    REQUIRE(p99DeltaSec < parameters.deltaP99Threshold);
 }
 
 std::string toString(SyncType syncType) {
@@ -330,152 +521,40 @@ std::tuple<dai::Pipeline, std::shared_ptr<dai::node::Sync>, std::vector<std::str
 }
 
 int testSync(float targetFps, struct FsyncTestParameters parameters) {
+    printTestParameters(targetFps, parameters);
+    REQUIRE(std::isfinite(targetFps));
+    REQUIRE(targetFps > 0.0f);
+    REQUIRE(std::isfinite(parameters.syncThresholdSec));
+    REQUIRE(parameters.syncThresholdSec > 0.0);
+    REQUIRE(parameters.syncThresholdSec < std::chrono::duration<double>(std::chrono::system_clock::duration::max()).count());
 
-    std::cout << "=================================\x1B[1;32mTest started\x1B[0m================================" << std::endl;
-    std::cout << "Sync type: " << toString(parameters.syncType) << std::endl;
-    std::cout << "FPS: " << targetFps << std::endl;
-    std::cout << "SYNC_THRESHOLD_SEC: " << parameters.syncThresholdSec << std::endl;
-    std::cout << "RECV_ALL_TIMEOUT_SEC: " << parameters.firstGroupTimeoutSec << std::endl;
-    std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << parameters.syncAcquisitionTimeoutSec << std::endl;
-
-    if (parameters.allowedSensors.has_value()) {
-        std::cout << "ALLOWED_SENSORS: " << std::endl;
-        for (const auto& sensor : parameters.allowedSensors.value()) {
-            std::cout << "\t" << sensor << std::endl;
-        }
-    }
+    const auto firstGroupTimeout = toPhaseDuration(parameters.firstGroupTimeoutSec);
+    const auto warmupDuration = toPhaseDuration(parameters.warmupDurationSec);
+    const auto convergenceTimeout = toPhaseDuration(parameters.syncAcquisitionTimeoutSec);
+    const auto measurementDuration = toPhaseDuration(parameters.measurementDurationSec);
+    const auto syncThreshold = std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::duration<double>(parameters.syncThresholdSec));
+    REQUIRE(firstGroupTimeout > std::chrono::seconds::zero());
+    REQUIRE(convergenceTimeout > std::chrono::seconds::zero());
+    REQUIRE(measurementDuration > std::chrono::seconds::zero());
+    REQUIRE(syncThreshold > std::chrono::system_clock::duration::zero());
 
     auto [pipeline, sync, inputNames] = setupPipeline(targetFps, parameters);
     auto queue = sync->out.createOutputQueue();
+    const GroupReader reader(*queue, std::move(inputNames), parameters.syncType);
 
+    // Pipeline destruction stops and joins it if a phase fails a fatal Catch2 assertion.
     pipeline.start();
+    std::optional<GroupReadResult> initialGroup = waitForFirstGroup(reader, firstGroupTimeout);
 
-    std::optional<std::shared_ptr<dai::MessageGroup>> latestFrameGroup;
-    bool firstReceived = false;
-    auto startTime = std::chrono::steady_clock::now();
-    double prevMeanTimestamp = 0.0;
-
-    std::optional<std::chrono::time_point<std::chrono::steady_clock>> initialSyncTime;
-
-    std::vector<Delta> deltas;
-
-    bool waitingForInitialSync = true;
-    bool waitingForWarmup = true;
-    if (parameters.warmupDurationSec == 0) {
-        waitingForWarmup = false;
+    if(warmupDuration > std::chrono::seconds::zero()) {
+        initialGroup.reset();
+        consumeWarmup(reader, warmupDuration);
     }
 
-    while(true) {
-        while(queue->has()) {
-            auto syncData = queue->get();
-            REQUIRE_MSG(syncData != nullptr, "Sync node failed to receive message");
-            latestFrameGroup = std::dynamic_pointer_cast<dai::MessageGroup>(syncData);
-            if(!firstReceived) {
-                firstReceived = true;
-                initialSyncTime = std::chrono::steady_clock::now();
-            }
-        }
-
-        if(!firstReceived) {
-            auto endTime = std::chrono::steady_clock::now();
-            auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
-            REQUIRE_MSG(elapsedSec < parameters.firstGroupTimeoutSec, "Timeout: Didn't receive first group on time");
-        }
-
-        auto totalElapsedSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - startTime).count();
-
-        if(totalElapsedSec >= parameters.totalRunDurationSec) {
-            std::cout << "Timeout: Test finished after " << totalElapsedSec << " sec" << std::endl;
-            break;
-        }
-
-        if(latestFrameGroup.has_value()) {
-            REQUIRE_MSG(size_t(latestFrameGroup.value()->getNumMessages()) == inputNames.size(),
-                        "Number of messages received doesn't match number of outputs");
-
-            std::map<std::string, ts_type> frameGroupTimestamps;
-            for(auto name : inputNames) {
-                auto frame = latestFrameGroup.value()->get<dai::ImgFrame>(name);
-                REQUIRE_MSG(frame != nullptr, "Frame pointer is null");
-                REQUIRE_MSG(frame->getFsync() == convertSyncType(parameters.syncType),
-                    "Frame sync type doesn't match: expected " << toString(convertSyncType(parameters.syncType)) << ", got " << toString(frame->getFsync()));
-                frameGroupTimestamps.emplace(name, frame->getTimestampSystem(dai::CameraExposureOffset::END).value());
-            }
-
-            auto compFunct = [](const std::pair<std::string, ts_type>& p1, const std::pair<std::string, ts_type>& p2) -> bool { return p1.second < p2.second; };
-
-            std::vector<ts_type> timestamps;
-            for (auto &it : frameGroupTimestamps) {
-                timestamps.push_back(it.second);
-            }
-            double meanTimestamp = mean_timestamp(timestamps);
-
-            REQUIRE_MSG(meanTimestamp - prevMeanTimestamp > 1.5 / targetFps, "Frame was skipped");
-
-            prevMeanTimestamp = meanTimestamp;
-
-            auto maxElement = std::max_element(frameGroupTimestamps.begin(), frameGroupTimestamps.end(), compFunct);
-            auto minElement = std::min_element(frameGroupTimestamps.begin(), frameGroupTimestamps.end(), compFunct);
-
-            auto delta = maxElement->second - minElement->second;
-            auto deltaUs = std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
-
-            bool syncStatus = abs(deltaUs) < parameters.syncThresholdSec * 1e6;
-
-            if (waitingForWarmup) {
-                auto endTime = std::chrono::steady_clock::now();
-                auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
-                if (elapsedSec >= parameters.warmupDurationSec) {
-                    waitingForWarmup = false;
-                    initialSyncTime = std::chrono::steady_clock::now();
-                }
-            }
-
-            if (syncStatus && !waitingForInitialSync && !waitingForWarmup) {
-                Delta deltaStruct;
-                deltaStruct.delta_us = deltaUs;
-                deltaStruct.name = "[MIN=" + minElement->first + ", MAX=" + maxElement->first + "]";
-                deltas.emplace_back(deltaStruct);
-            }
-
-            if(!syncStatus && waitingForInitialSync && !waitingForWarmup) {
-                auto endTime = std::chrono::steady_clock::now();
-                auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
-                REQUIRE_MSG(elapsedSec < parameters.syncAcquisitionTimeoutSec, "Timeout: Didn't sync frames in time");
-            }
-
-            if(syncStatus && waitingForInitialSync) {
-                std::cout << "Sync status: in sync" << std::endl;
-                waitingForInitialSync = false;
-            }
-
-            // Enable this once we have better accuracy for timestamps
-            // if (thresholds.syncType == SyncType::EXTERNAL) {
-            //     REQUIRE_MSG(waitingForInitialSync || syncStatus, "Sync error: Sync lost, threshold exceeded: " << deltaUs << " us");
-            // }
-
-            latestFrameGroup.reset();
-        }
-    }
-
+    auto convergedGroup = waitForConvergence(reader, convergenceTimeout, syncThreshold, std::move(initialGroup));
+    const auto samples = collectMeasurements(reader, std::move(convergedGroup), measurementDuration, targetFps);
     pipeline.stop();
 
-    REQUIRE_MSG(deltas.size() > 100, "[FPS=" << targetFps << "] Not enough frames left after stabilization period (expected at least 100, got " << deltas.size() << ").");
-
-    double averageDelta_us = calculate_average(deltas);
-    double meanDelta_us = percentile_linear(deltas, 50.0);
-    double p99Delta_us = percentile_linear(deltas, 99.0);
-    Delta maxDelta = calculate_max_outlier(deltas);
-
-    std::cout << "=== Stats" << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] # of frames used for stats caluculation: " << deltas.size() << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] Average frame delta: " << averageDelta_us/1e3 << " ms" << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] Mean frame delta: " << meanDelta_us/1e3 << " ms" << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] p99 frame delta: " << p99Delta_us/1e3 << " ms" << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] Max outlier frame delta: " << maxDelta.delta_us/1e3 << " ms, between " << maxDelta.name << std::endl;
-
-    REQUIRE_MSG(meanDelta_us/1e6 < parameters.deltaMeanThreshold, "[FPS=" << targetFps << "] Mean value of frame deltas above " << parameters.deltaMeanThreshold*1e3 << " ms (" << meanDelta_us/1e3 << " ms)");
-    REQUIRE_MSG(p99Delta_us/1e6 < parameters.deltaP99Threshold, "[FPS=" << targetFps << "] p99 metric does not meet " << parameters.deltaP99Threshold*1e3 << " ms (" << p99Delta_us/1e3 << " ms)");
-
+    reportAndCheckStatistics(samples, targetFps, parameters);
     return 0;
 }
