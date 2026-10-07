@@ -89,6 +89,66 @@ python3 -c "import depthai as dai; print(dai.__file__)"
 
 ## Running tests
 
+### Checking new Python bindings without a build
+
+The Python workflow's precheck checks new public C++ declarations on PR creation
+and updates, before any requested wheel builds. It compares the PR base with the
+checkout; push events compare against the previous commit from the event. Manual
+runs and new branches/tags compare against `HEAD^`.
+
+Run the same check locally from the repository root (including uncommitted files):
+
+```sh
+python -m pip install -r ci/requirements-binding-check.txt
+python ci/check_python_bindings.py --base "$(git merge-base origin/develop HEAD)"
+python -m unittest discover -s ci/tests -p 'test_python_bindings.py'
+```
+
+The check parses headers under `include/depthai` and binding sources listed in
+`bindings/python/CMakeLists.txt`. New public classes, enums, enum values, fields,
+constructors and functions in `dai` need a corresponding pybind11 registration.
+Private/protected members, anonymous namespaces, `detail`/`internal`/`impl` namespaces,
+and `internal`/`test` header directories are excluded. Existing omissions are not
+reported. Adding an overload or changing parameter types requires a change to
+that function's binding registration, even if its name is already bound.
+Each new overload needs a distinct registration: parameter types from
+`py::overload_cast`, `py::init`, and explicit function-pointer `static_cast`s are
+matched against the declaration. Disambiguating an old overload does not cover a
+new one. Unresolved explicit casts need an exception; wrappers with unknown
+signatures count once. Python aliases of the same callable do not count as
+additional overloads. An intentional shared dispatcher needs exact exceptions
+for the additional overloads it covers.
+
+For an intentional C++-only API or a binding the checker cannot recognize, add the
+exact key from the diagnostic to `ci/python_binding_exceptions.json`, with a
+nonempty reason, for example:
+
+```json
+{
+  "dai::Example::nativeHandle()const": "C++ integration only; exposes a native handle."
+}
+```
+
+Exceptions cover only that declaration, not its whole class or future overloads.
+Keys are literal, including `*` in pointer parameter types; wildcard matching is
+never performed. Keep exceptions narrow and review them alongside the API change.
+
+This is a source-level guard, not proof of runtime coverage. It recognizes
+`py::class_`, `py::enum_`, `ADD_NODE*`, direct member bindings and common lambda
+wrappers that access the typed bound instance directly. Enum values are matched
+by their C++ target within the owning enum, including unqualified and
+namespace-qualified unscoped enumerators, regardless of their Python name.
+Signature matching is textual; type aliases and wrapper conversions may need
+exceptions. The check
+does not expand arbitrary macros, resolve template instantiations, check
+aliases/operators, verify callstack registration, or prove runtime overload
+coverage. Header access specifiers are tracked separately in each conditional
+branch; declarations public in any parsed branch are checked. Newly encountered
+syntax that produces parser errors fails the precheck. Build and runtime tests
+remain necessary.
+
+### Running the compiled tests
+
 To run the tests build the library with the following options
 ```
 git submodule update --init --recursive
