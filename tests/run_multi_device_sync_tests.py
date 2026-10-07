@@ -86,19 +86,6 @@ def main():
 
     print("All devices are online")
     try:
-        print(f"Waiting for all {num_devices} devices to come online...")
-        start_time = datetime.datetime.now()
-        while True:
-            if interrupted.is_set():
-                raise RuntimeError("Interrupted by SIGINT")
-            devices = adbutils.adb.device_list()
-            if len(devices) == num_devices:
-                break
-            if datetime.datetime.now() - start_time > datetime.timedelta(seconds=timeout_sec):
-                raise RuntimeError("Timeout waiting for all devices to come online")
-            time.sleep(1)
-
-        print("All devices are online")
         print("Sleeping 2 minutes for PTP to settle")
 
         if interrupted.wait(120):
