@@ -436,8 +436,9 @@ void setUpCameraSocket(dai::Pipeline& pipeline,
     REQUIRE_MSG(ccmName.has_value(), "Camera sensor name not found for socket " + dai::toString(socket));
     std::string fullSocketName = deviceName + "_" +dai::toString(socket) + "[" + ccmName.value() + "]";
 
-    int width = 320;
-    int height = 240;
+    // This is to ensure hil can handle so many streams even at higher fps.
+    int width = 10;
+    int height = 10;
     cam->requestOutput(std::make_pair(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP)->link(syncNode->inputs[fullSocketName]);
 
     inputNames.push_back(fullSocketName);
