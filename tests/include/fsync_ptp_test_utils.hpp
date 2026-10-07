@@ -37,6 +37,8 @@ struct FsyncTestParameters {
     SyncType syncType;
     std::optional<std::set<std::string>> allowedSensors;
     int expectedDevices;
+    // Maximum measurement delivery silence, allowing host/network jitter independently of frame timestamp gaps.
+    uint64_t measurementNoProgressTimeoutSec = 1;
 };
 
 struct GroupReadResult {
@@ -82,10 +84,12 @@ GroupReadResult waitForConvergence(const GroupReader& reader,
 // Measure for a positive duration starting on entry, counting the convergence group once.
 // Retain all groups and fail immediately on nonincreasing timestamps or gaps over 1.5 frame periods.
 // Continuity starts at the convergence sample; a skipped interval is detected when the next group arrives.
+// Fail on delivery silence reaching noProgressTimeout, including the trailing interval at measurement end.
 std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
                                                GroupReadResult firstGroup,
                                                std::chrono::seconds duration,
-                                               float targetFps);
+                                               float targetFps,
+                                               std::chrono::seconds noProgressTimeout = std::chrono::seconds(1));
 
 // Require at least 101 samples, report mean/p99/max spread, and check the mean and p99 limits.
 void reportAndCheckStatistics(const std::vector<GroupReadResult>& samples, float targetFps, const FsyncTestParameters& parameters);

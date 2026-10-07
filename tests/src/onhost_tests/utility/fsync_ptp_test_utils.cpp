@@ -141,6 +141,7 @@ namespace {
         std::cout << "WARMUP_DURATION_SEC: " << parameters.warmupDurationSec << '\n';
         std::cout << "CONVERGENCE_TIMEOUT_SEC: " << parameters.syncAcquisitionTimeoutSec << '\n';
         std::cout << "MEASUREMENT_DURATION_SEC: " << parameters.measurementDurationSec << '\n';
+        std::cout << "MEASUREMENT_NO_PROGRESS_TIMEOUT_SEC: " << parameters.measurementNoProgressTimeoutSec << '\n';
         if(parameters.allowedSensors.has_value()) {
             std::cout << "ALLOWED_SENSORS:\n";
             for(const auto& sensor : parameters.allowedSensors.value()) {
@@ -277,11 +278,14 @@ GroupReadResult waitForConvergence(const GroupReader& reader,
 std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
                                                GroupReadResult firstGroup,
                                                std::chrono::seconds duration,
-                                               float targetFps) {
+                                               float targetFps,
+                                               std::chrono::seconds noProgressTimeout) {
     const auto start = std::chrono::steady_clock::now();
     INFO("Measurement phase: duration must be positive, got " << duration.count() << " seconds");
     REQUIRE(duration > std::chrono::seconds::zero());
+    REQUIRE(noProgressTimeout > std::chrono::seconds::zero());
     CAPTURE(targetFps);
+    INFO("Maximum measurement delivery silence: " << noProgressTimeout.count() << " seconds");
     {
         INFO("Measurement target FPS must be finite and positive");
         REQUIRE(std::isfinite(targetFps));
@@ -293,7 +297,21 @@ std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
     std::cout << "Measurement started: " << duration.count() << " sec\n";
     std::vector<GroupReadResult> samples;
     samples.push_back(std::move(firstGroup));
-    while(auto group = reader.read(deadline)) {
+    auto lastProgressTime = start;
+    while(std::chrono::steady_clock::now() < deadline) {
+        const auto progressDeadline = lastProgressTime + noProgressTimeout;
+        auto group = reader.read(std::min(deadline, progressDeadline));
+        if(!group) {
+            INFO("Synchronized groups stopped arriving during measurement");
+            REQUIRE(deadline < progressDeadline);
+            break;
+        }
+        const auto receivedAt = std::chrono::steady_clock::now();
+        {
+            INFO("Measurement delivery silence exceeded the no-progress timeout");
+            CAPTURE(std::chrono::duration<double>(receivedAt - lastProgressTime).count());
+            REQUIRE(receivedAt < progressDeadline);
+        }
         const auto previousTimestamp = samples.back().medianTimestamp;
         const auto gap = group->medianTimestamp - previousTimestamp;
         INFO("Measurement continuity: sample index " << samples.size() << " (zero-based; convergence sample is 0), observed gap "
@@ -308,7 +326,11 @@ std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
             REQUIRE(gap <= maxGap);
         }
         samples.push_back(std::move(*group));
+        lastProgressTime = receivedAt;
     }
+    INFO("Trailing measurement interval must remain within the delivery-silence allowance");
+    CAPTURE(std::chrono::duration<double>(deadline - lastProgressTime).count());
+    REQUIRE(deadline - lastProgressTime < noProgressTimeout);
     std::cout << "Measurement finished: " << samples.size() << " samples\n";
     return samples;
 }
@@ -507,9 +529,28 @@ std::tuple<dai::Pipeline, std::shared_ptr<dai::node::Sync>, std::vector<std::str
     sync->setTimestampSource(dai::SyncProperties::TimestampSource::SYSTEM);
 
     std::vector<std::string> inputNames;
+    std::set<std::string> contributingDeviceIds;
+    std::vector<std::string> devicesWithoutStreams;
 
     for(auto deviceInfo : deviceInfos) {
+        const auto previousInputCount = inputNames.size();
         setupDevice(deviceInfo, pipeline, sync, numMasters, numSlaves, inputNames, targetFps, parameters.syncType, parameters.allowedSensors);
+        if(inputNames.size() > previousInputCount) {
+            contributingDeviceIds.insert(deviceInfo.getDeviceId());
+        } else {
+            devicesWithoutStreams.push_back(deviceInfo.getDeviceId());
+            std::cout << "Device " << deviceInfo.getDeviceId() << " contributes no camera streams after sensor filtering\n";
+        }
+    }
+
+    {
+        INFO("Multi-device synchronization requires camera streams from at least two distinct devices");
+        CAPTURE(contributingDeviceIds, devicesWithoutStreams, parameters.allowedSensors);
+        REQUIRE(contributingDeviceIds.size() >= 2);
+        if(!parameters.allowedSensors.has_value()) {
+            INFO("Without a sensor filter, every discovered device must contribute camera streams");
+            REQUIRE(contributingDeviceIds.size() == deviceInfos.size());
+        }
     }
 
     if (parameters.syncType == SyncType::EXTERNAL) {
@@ -532,10 +573,12 @@ int testSync(float targetFps, struct FsyncTestParameters parameters) {
     const auto warmupDuration = toPhaseDuration(parameters.warmupDurationSec);
     const auto convergenceTimeout = toPhaseDuration(parameters.syncAcquisitionTimeoutSec);
     const auto measurementDuration = toPhaseDuration(parameters.measurementDurationSec);
+    const auto noProgressTimeout = toPhaseDuration(parameters.measurementNoProgressTimeoutSec);
     const auto syncThreshold = std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::duration<double>(parameters.syncThresholdSec));
     REQUIRE(firstGroupTimeout > std::chrono::seconds::zero());
     REQUIRE(convergenceTimeout > std::chrono::seconds::zero());
     REQUIRE(measurementDuration > std::chrono::seconds::zero());
+    REQUIRE(noProgressTimeout > std::chrono::seconds::zero());
     REQUIRE(syncThreshold > std::chrono::system_clock::duration::zero());
 
     auto [pipeline, sync, inputNames] = setupPipeline(targetFps, parameters);
@@ -552,7 +595,7 @@ int testSync(float targetFps, struct FsyncTestParameters parameters) {
     }
 
     auto convergedGroup = waitForConvergence(reader, convergenceTimeout, syncThreshold, std::move(initialGroup));
-    const auto samples = collectMeasurements(reader, std::move(convergedGroup), measurementDuration, targetFps);
+    const auto samples = collectMeasurements(reader, std::move(convergedGroup), measurementDuration, targetFps, noProgressTimeout);
     pipeline.stop();
 
     reportAndCheckStatistics(samples, targetFps, parameters);
