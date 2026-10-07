@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <tuple>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
@@ -37,12 +38,37 @@ namespace {
         std::string name;
     };
 
-    double calculate_mean(std::vector<Delta> values) {
+    double calculate_average(std::vector<Delta> &values) {
         std::uint64_t sum = std::accumulate(values.begin(), values.end(), static_cast<std::uint64_t>(0),
         [](std::uint64_t const &sum, Delta const &delta) -> std::uint64_t {
             return sum + delta.delta_us;
         });
         return double(sum) / double(values.size());
+    }
+
+    using ts_type = std::chrono::time_point<std::chrono::system_clock>;
+
+    double mean_timestamp(std::vector<ts_type> &values)
+    {
+        if (values.empty()) {
+            throw std::invalid_argument("percentile_linear: input vector must not be empty");
+        }
+
+        std::sort(values.begin(), values.end());
+
+        if (values.size() == 1) {
+            return static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(values[0].time_since_epoch()).count());
+        }
+
+        const double pos = 0.5 * static_cast<double>(values.size() - 1);
+        const std::size_t lower = static_cast<std::size_t>(std::floor(pos));
+        const std::size_t upper = static_cast<std::size_t>(std::ceil(pos));
+        const double fraction = pos - static_cast<double>(lower);
+
+        const double lower_value = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(values[lower].time_since_epoch()).count());
+        const double upper_value = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(values[upper].time_since_epoch()).count());
+
+        return lower_value + (upper_value - lower_value) * fraction;
     }
 
     double percentile_linear(std::vector<Delta> values, double q)
@@ -86,7 +112,7 @@ namespace {
     }
 
     void expect_percentile(
-        const std::vector<Delta>& values,
+        std::vector<Delta> const &values,
         double q,
         double expected)
     {
@@ -261,9 +287,7 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
             device->setExternalStrobeEnable(true);
             std::cout << device->getDeviceId() << " is master" << std::endl;
 
-            if(numMasters > 1) {
-                throw std::runtime_error("Only one master pipeline is supported");
-            }
+            REQUIRE_MSG(numMasters <= 1, "Only one master pipeline is supported");
         } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
             numSlaves++;
             std::cout << device->getDeviceId() << " is slave" << std::endl;
@@ -273,22 +297,10 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     }
 }
 
-int testFsync(float targetFps, struct FsyncTestParameters parameters) {
-
-    std::cout << "=================================\x1B[1;32mTest started\x1B[0m================================" << std::endl;
-    std::cout << "Sync type: " << toString(parameters.syncType) << std::endl;
-    std::cout << "FPS: " << targetFps << std::endl;
-    std::cout << "SYNC_THRESHOLD_SEC: " << parameters.syncThresholdSec << std::endl;
-    std::cout << "RECV_ALL_TIMEOUT_SEC: " << parameters.firstGroupTimeoutSec << std::endl;
-    std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << parameters.syncAcquisitionTimeoutSec << std::endl;
-
-    if (parameters.allowedSensors.has_value()) {
-        std::cout << "ALLOWED_SENSORS: " << std::endl;
-        for (const auto& sensor : parameters.allowedSensors.value()) {
-            std::cout << "\t" << sensor << std::endl;
-        }
-    }
-
+std::tuple<dai::Pipeline, std::shared_ptr<dai::node::Sync>, std::vector<std::string>> setupPipeline(
+                   float targetFps,
+                   struct FsyncTestParameters parameters)
+{
     std::vector<dai::DeviceInfo> deviceInfos = dai::Device::getAllAvailableDevices();
 
     // REQUIRE_MSG(deviceInfos.size() >= 2, "At least two devices are required for this test.");
@@ -310,13 +322,30 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     }
 
     if (parameters.syncType == SyncType::EXTERNAL) {
-        if(numMasters == 0) {
-            throw std::runtime_error("No master detected!");
-        }
-        if(numSlaves == 0) {
-            throw std::runtime_error("No slaves detected!");
+        REQUIRE_MSG(numMasters == 1, "Number of masters detected is not 1");
+        REQUIRE_MSG(numSlaves > 0, "Number of slaves detected is not > 0");
+    }
+
+    return std::make_tuple(std::move(pipeline), sync, std::move(inputNames));
+}
+
+int testSync(float targetFps, struct FsyncTestParameters parameters) {
+
+    std::cout << "=================================\x1B[1;32mTest started\x1B[0m================================" << std::endl;
+    std::cout << "Sync type: " << toString(parameters.syncType) << std::endl;
+    std::cout << "FPS: " << targetFps << std::endl;
+    std::cout << "SYNC_THRESHOLD_SEC: " << parameters.syncThresholdSec << std::endl;
+    std::cout << "RECV_ALL_TIMEOUT_SEC: " << parameters.firstGroupTimeoutSec << std::endl;
+    std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << parameters.syncAcquisitionTimeoutSec << std::endl;
+
+    if (parameters.allowedSensors.has_value()) {
+        std::cout << "ALLOWED_SENSORS: " << std::endl;
+        for (const auto& sensor : parameters.allowedSensors.value()) {
+            std::cout << "\t" << sensor << std::endl;
         }
     }
+
+    auto [pipeline, sync, inputNames] = setupPipeline(targetFps, parameters);
     auto queue = sync->out.createOutputQueue();
 
     pipeline.start();
@@ -324,7 +353,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     std::optional<std::shared_ptr<dai::MessageGroup>> latestFrameGroup;
     bool firstReceived = false;
     auto startTime = std::chrono::steady_clock::now();
-    auto prevReceived = std::chrono::steady_clock::now();
+    double prevMeanTimestamp = 0.0;
 
     std::optional<std::chrono::time_point<std::chrono::steady_clock>> initialSyncTime;
 
@@ -345,7 +374,6 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
                 firstReceived = true;
                 initialSyncTime = std::chrono::steady_clock::now();
             }
-            prevReceived = std::chrono::steady_clock::now();
         }
 
         if(!firstReceived) {
@@ -365,20 +393,29 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
             REQUIRE_MSG(size_t(latestFrameGroup.value()->getNumMessages()) == inputNames.size(),
                         "Number of messages received doesn't match number of outputs");
 
-            using ts_type = std::chrono::time_point<std::chrono::system_clock>;
-            std::map<std::string, ts_type> tsValues;
+            std::map<std::string, ts_type> frameGroupTimestamps;
             for(auto name : inputNames) {
                 auto frame = latestFrameGroup.value()->get<dai::ImgFrame>(name);
                 REQUIRE_MSG(frame != nullptr, "Frame pointer is null");
                 REQUIRE_MSG(frame->getFsync() == convertSyncType(parameters.syncType),
                     "Frame sync type doesn't match: expected " << toString(convertSyncType(parameters.syncType)) << ", got " << toString(frame->getFsync()));
-                tsValues.emplace(name, frame->getTimestampSystem(dai::CameraExposureOffset::END).value());
+                frameGroupTimestamps.emplace(name, frame->getTimestampSystem(dai::CameraExposureOffset::END).value());
             }
 
             auto compFunct = [](const std::pair<std::string, ts_type>& p1, const std::pair<std::string, ts_type>& p2) -> bool { return p1.second < p2.second; };
 
-            auto maxElement = std::max_element(tsValues.begin(), tsValues.end(), compFunct);
-            auto minElement = std::min_element(tsValues.begin(), tsValues.end(), compFunct);
+            std::vector<ts_type> timestamps;
+            for (auto &it : frameGroupTimestamps) {
+                timestamps.push_back(it.second);
+            }
+            double meanTimestamp = mean_timestamp(timestamps);
+
+            REQUIRE_MSG(meanTimestamp - prevMeanTimestamp > 1.5 / targetFps, "Frame was skipped");
+
+            prevMeanTimestamp = meanTimestamp;
+
+            auto maxElement = std::max_element(frameGroupTimestamps.begin(), frameGroupTimestamps.end(), compFunct);
+            auto minElement = std::min_element(frameGroupTimestamps.begin(), frameGroupTimestamps.end(), compFunct);
 
             auto delta = maxElement->second - minElement->second;
             auto deltaUs = std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
@@ -390,6 +427,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
                 auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
                 if (elapsedSec >= parameters.warmupDurationSec) {
                     waitingForWarmup = false;
+                    initialSyncTime = std::chrono::steady_clock::now();
                 }
             }
 
@@ -400,7 +438,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
                 deltas.emplace_back(deltaStruct);
             }
 
-            if(!syncStatus && waitingForInitialSync) {
+            if(!syncStatus && waitingForInitialSync && !waitingForWarmup) {
                 auto endTime = std::chrono::steady_clock::now();
                 auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
                 REQUIRE_MSG(elapsedSec < parameters.syncAcquisitionTimeoutSec, "Timeout: Didn't sync frames in time");
@@ -420,14 +458,18 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
         }
     }
 
+    pipeline.stop();
+
     REQUIRE_MSG(deltas.size() > 100, "[FPS=" << targetFps << "] Not enough frames left after stabilization period (expected at least 100, got " << deltas.size() << ").");
 
-    double meanDelta_us = calculate_mean(deltas);
+    double averageDelta_us = calculate_average(deltas);
+    double meanDelta_us = percentile_linear(deltas, 50.0);
     double p99Delta_us = percentile_linear(deltas, 99.0);
     Delta maxDelta = calculate_max_outlier(deltas);
 
     std::cout << "=== Stats" << std::endl;
     std::cout << "   [FPS=" << targetFps << "] # of frames used for stats caluculation: " << deltas.size() << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] Average frame delta: " << averageDelta_us/1e3 << " ms" << std::endl;
     std::cout << "   [FPS=" << targetFps << "] Mean frame delta: " << meanDelta_us/1e3 << " ms" << std::endl;
     std::cout << "   [FPS=" << targetFps << "] p99 frame delta: " << p99Delta_us/1e3 << " ms" << std::endl;
     std::cout << "   [FPS=" << targetFps << "] Max outlier frame delta: " << maxDelta.delta_us/1e3 << " ms, between " << maxDelta.name << std::endl;

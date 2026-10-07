@@ -13,6 +13,7 @@ struct FsyncTestParameters getDefaultParameters() {
     parameters.warmupDurationSec = 60;
     parameters.deltaMeanThreshold = 1e-3;
     parameters.deltaP99Threshold = 2e-3;
+    parameters.syncThresholdSec = 5e-3;
     parameters.syncType = SyncType::PTP;
     parameters.expectedDevices = 4;
     return parameters;
@@ -23,59 +24,51 @@ struct FsyncTestParameters getDefaultParameters() {
 TEST_CASE("Test Multi-device external frame sync with at 30 FPS on OV9282 sensors", "[ptp][fps-30][ov9282]") {
     float fps = 30.0f;
     auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
     p.totalRunDurationSec = 120;
     p.allowedSensors = std::set<std::string>{"OV9282"};
-    testFsync(fps, p);
+    testSync(fps, p);
 }
 
 TEST_CASE("Test Multi-device external frame sync with at 30 FPS on IMX586 sensors", "[ptp][fps-30][imx586]") {
     float fps = 30.0f;
     auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
     p.totalRunDurationSec = 120;
     p.allowedSensors = std::set<std::string>{"IMX586"};
-    testFsync(fps, p);
+    testSync(fps, p);
 }
 
 TEST_CASE("Test Multi-device external frame sync with at 10 FPS", "[ptp][fps-10]") {
     float fps = 10.0f;
     auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync(fps, p);
+    testSync(fps, p);
 }
 
 TEST_CASE("Test Multi-device external frame sync with at 13 FPS", "[ptp][fps-13]") {
     float fps = 13.0f;
     auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync(fps, p);
+    testSync(fps, p);
 }
 
 TEST_CASE("Test Multi-device external frame sync with at 18.5 FPS", "[ptp][fps-18.5]") {
     float fps = 18.5f;
     auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync(fps, p);
+    testSync(fps, p);
 }
 
 TEST_CASE("Test Multi-device external frame sync with at 30 FPS", "[ptp][fps-30]") {
     float fps = 30.0f;
     auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync(fps, p);
+    testSync(fps, p);
 }
 
 TEST_CASE("Test Multi-device external frame sync with at 45 FPS", "[ptp][fps-45]") {
     float fps = 45.0f;
     auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync(fps, p);
+    testSync(fps, p);
 }
 
 TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[ptp][fps-60]") {
     float fps = 60.0f;
     auto p = getDefaultParameters();
-    p.syncThresholdSec = 1 / (2 * fps);
-    testFsync(fps, p);
+    testSync(fps, p);
 }
