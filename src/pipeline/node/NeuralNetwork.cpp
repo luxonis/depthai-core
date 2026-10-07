@@ -32,14 +32,26 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
                                                     std::optional<dai::ImgResizeMode> resizeMode) {
     ImgFrameCapability cap;
     if(fps.has_value()) cap.fps.value = *fps;
-    if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
-
-    return build(input, model, cap);
+    return buildCamera(input, model, cap, resizeMode);
 }
 
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability) {
+    return buildCamera(input, model, capability, capability.resizeMode);
+}
+
+std::shared_ptr<NeuralNetwork> NeuralNetwork::buildCamera(const std::shared_ptr<Camera>& input,
+                                                          const Model& model,
+                                                          const ImgFrameCapability& capability,
+                                                          std::optional<dai::ImgResizeMode> resizeMode) {
     decodeModel(model);
     ImgFrameCapability cap = getFrameCapability(*nnArchive, capability);
+    const auto& preprocessing = nnArchive->getVersionedConfig().getConfig<nn_archive::v1::Config>().model.inputs[0].preprocessing;
+    if(preprocessing.resizeMode.has_value()) {
+        const auto archiveResizeMode = magic_enum::enum_cast<ImgResizeMode>(*preprocessing.resizeMode);
+        DAI_CHECK_V(archiveResizeMode.has_value(), "Unsupported preprocessing resize_mode: {}", *preprocessing.resizeMode);
+        cap.resizeMode = *archiveResizeMode;
+    }
+    if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
     auto* camInput = input->requestOutput(cap, false);
     DAI_CHECK_V(camInput != nullptr, "Camera does not have output with requested capabilities");
     camInput->link(this->input);

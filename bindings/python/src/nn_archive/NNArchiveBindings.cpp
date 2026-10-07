@@ -226,4 +226,5 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
         "reverseChannels", &v1::PreprocessingBlock::reverseChannels, DOC(dai, nn_archive, v1, PreprocessingBlock, reverseChannels));
     v1preprocessingBlock.def_readwrite("scale", &v1::PreprocessingBlock::scale, DOC(dai, nn_archive, v1, PreprocessingBlock, scale));
     v1preprocessingBlock.def_readwrite("daiType", &v1::PreprocessingBlock::daiType, DOC(dai, nn_archive, v1, PreprocessingBlock, daiType));
+    v1preprocessingBlock.def_readwrite("resizeMode", &v1::PreprocessingBlock::resizeMode, DOC(dai, nn_archive, v1, PreprocessingBlock, resizeMode));
 }

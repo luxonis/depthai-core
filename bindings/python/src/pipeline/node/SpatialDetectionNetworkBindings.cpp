@@ -76,7 +76,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("stereo"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, SpatialDetectionNetwork, build))
         .def(
             "build",
@@ -92,7 +92,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("stereo"),
             py::arg("nnArchive"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, SpatialDetectionNetwork, build))
         .def(
             "build",
@@ -106,7 +106,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("stereo"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, SpatialDetectionNetwork, build))
         .def(
             "build",
