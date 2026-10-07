@@ -96,7 +96,8 @@ def main():
             envvars = os.environ.copy()
             envvars["DEPTHAI_PROTOCOL"] = "tcpip"
 
-            test_timeout_sec = 2000
+            # Eight PTP cases budget 2360 seconds across phases; allow setup/teardown headroom.
+            test_timeout_sec = 3600
 
             default_path = pathlib.Path(__file__) / ".." / ".." / "build"
             print("Going to run tests in directory:", default_path)
