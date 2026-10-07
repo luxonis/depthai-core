@@ -13,7 +13,7 @@ struct FsyncTestParameters getDefaultParameters() {
     parameters.warmupDurationSec = 0;
     parameters.deltaMeanThreshold = 2e-3;
     parameters.deltaP99Threshold = 2.5e-3;
-    parameters.syncThresholdSec = 5e-3;
+    parameters.syncThresholdSec = 2.5e-3;
     parameters.syncType = SyncType::EXTERNAL;
     parameters.expectedDevices = 4;
     return parameters;
