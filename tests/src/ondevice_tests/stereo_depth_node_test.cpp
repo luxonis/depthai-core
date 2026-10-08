@@ -1,7 +1,25 @@
 #include <catch2/catch_all.hpp>
 
+#include <tuple>
+
 #include "depthai/depthai.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
+
+auto stereoProfileSignature(const std::shared_ptr<dai::node::StereoDepth>& stereo) {
+    const auto& config = *stereo->initialConfig;
+    return std::make_tuple(config.getConfidenceThreshold(),
+                           config.getLeftRightCheck(),
+                           config.getLeftRightCheckThreshold(),
+                           config.getExtendedDisparity(),
+                           config.getMedianFilter(),
+                           config.algorithmControl.enableSwLeftRightCheck,
+                           config.censusTransform.noiseThresholdScale,
+                           config.confidenceMetrics.flatnessConfidenceWeight,
+                           config.costAggregation.p1Config.defaultValue,
+                           config.costAggregation.p2Config.defaultValue,
+                           config.postProcessing.decimationFilter.decimationFactor,
+                           config.postProcessing.holeFilling.enable);
+}
 
 void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::ProcessorType backend = dai::ProcessorType::CPU) {
     dai::Pipeline p;
@@ -37,6 +55,24 @@ TEST_CASE("Test StereoDepth node DENSITY preset") {
 
 TEST_CASE("Test StereoDepth node DEFAULT preset") {
     testStereoDepthPreset(dai::node::StereoDepth::PresetMode::DEFAULT);
+}
+
+TEST_CASE("StereoDepth applies DEFAULT before manual links") {
+    dai::Pipeline pipeline;
+    auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    auto leftOutput = left->requestFullResolutionOutput();
+    auto rightOutput = right->requestFullResolutionOutput();
+
+    auto manual = pipeline.create<dai::node::StereoDepth>();
+    leftOutput->link(manual->left);
+    rightOutput->link(manual->right);
+    auto built = pipeline.create<dai::node::StereoDepth>()->build(*leftOutput, *rightOutput);
+    auto accuracy = pipeline.create<dai::node::StereoDepth>();
+    accuracy->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::ACCURACY);
+
+    REQUIRE(stereoProfileSignature(manual) == stereoProfileSignature(built));
+    REQUIRE(stereoProfileSignature(manual) != stereoProfileSignature(accuracy));
 }
 
 TEST_CASE("Test StereoDepth node FACE preset") {
