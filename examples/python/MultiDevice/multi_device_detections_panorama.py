@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
-"""Merge detections on a calibrated panorama. Keys: 1=Off, 2=NMS, 3=Average, W/S=IoU +/-0.05, Q=quit."""
+"""Show camera detections and a calibrated panorama. Keys: 1=Off, 2=NMS, 3=Average, W/S=IoU +/-0.05, Q=quit."""
 import argparse
 from datetime import timedelta
 
 import cv2
 import depthai as dai
+
+
+def drawDetections(frame, detections):
+    for detection in detections:
+        box = detection.getBoundingBox().denormalize(frame.shape[1], frame.shape[0])
+        points = box.getPoints()
+        for a, b in zip(points, points[1:] + points[:1]):
+            cv2.line(frame, (round(a.x), round(a.y)), (round(b.x), round(b.y)), (0, 255, 0), 2)
+        cv2.putText(frame, f"{detection.labelName or detection.label}: {detection.confidence:.2f}",
+                    (round(box.center.x), round(box.center.y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
 
 FPS = 5
 parser = argparse.ArgumentParser(description=__doc__)
@@ -15,6 +26,8 @@ parser.add_argument("--projection", choices=["Perspective", "Equirectangular", "
 parser.add_argument("--average", action="store_true", help="Average duplicate boxes and union their masks instead of NMS")
 parser.add_argument("--panorama-scale", type=int, choices=range(1, 5), default=2,
                     help="Stitching resolution multiplier for 640x400 camera views (default: 2)")
+parser.add_argument("--max-panorama-size", nargs=2, type=int, metavar=("WIDTH", "HEIGHT"),
+                    help="Maximum canvas in pixels; default is 1600x800 times scale, or 1600x1600 for Perspective")
 parser.add_argument("--sync-threshold-ms", type=int, default=100,
                     help="Maximum timestamp spread in milliseconds (default: 100; does not synchronize capture)")
 args = parser.parse_args()
@@ -22,8 +35,13 @@ if len(args.devices) < 2:
     parser.error("at least two devices are required")
 if not 0 < args.sync_threshold_ms <= 1000 / FPS:
     parser.error("sync threshold must be positive and at most one frame period (200 ms at 5 FPS)")
+if args.max_panorama_size is not None and min(args.max_panorama_size) <= 0:
+    parser.error("maximum panorama width and height must be positive")
 
 syncThreshold = timedelta(milliseconds=args.sync_threshold_ms)
+# Perspective stretches off-axis views vertically as well as horizontally.
+maxPanoramaSize = args.max_panorama_size or (1600 * args.panorama_scale,
+                                            (1600 if args.projection == "Perspective" else 800) * args.panorama_scale)
 with dai.Pipeline(createImplicitDevice=False) as pipeline:
     # Apply the graph before starting: all camera transformations must use a common coordinate system.
     calibration = dai.beta.MultiDeviceCalibrationHandler(args.calibration)
@@ -45,11 +63,19 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     merged.initialConfig.overlapIouThreshold = iouThreshold
     configQueue = merged.inputConfig.createInputQueue(maxSize=1, blocking=False)
     views = []
+    cameraQueues = []
     for index, identifier in enumerate(args.devices):
         device = pipeline.addDevice(dai.DeviceInfo(identifier))
         camera = pipeline.create(dai.node.Camera, device).build(dai.CameraBoardSocket.CAM_A, sensorFps=FPS)
         model = dai.NNModelDescription(args.model, platform=device.getPlatformAsString())
         network = pipeline.create(dai.node.DetectionNetwork, device).build(camera, model, fps=FPS)
+        # Pair each camera's detections with the image actually used for inference.
+        cameraDisplay = pipeline.create(dai.node.Sync)
+        cameraDisplay.setRunOnHost(True)
+        cameraDisplay.setSyncThreshold(timedelta(milliseconds=1))
+        network.passthrough.link(cameraDisplay.inputs["image"])
+        network.out.link(cameraDisplay.inputs["detections"])
+        cameraQueues.append((f"Camera {identifier} (CAM_A)", cameraDisplay.out.createOutputQueue(maxSize=1, blocking=False)))
         key = f"cam{index}"
         network.out.link(detectionSync.inputs[key])
         # MessageDemux accepts Buffer outputs; declare the concrete type for the typed filter inputs.
@@ -62,7 +88,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     stitching.setMode(dai.node.Stitching.Mode.PANORAMA)
     stitching.setUseInputCalibration(True)
     stitching.setCameraModel(getattr(dai.CameraModel, args.projection))
-    stitching.setMaxPanoramaSize(1600 * args.panorama_scale, 800 * args.panorama_scale)
+    stitching.setMaxPanoramaSize(*maxPanoramaSize)
     stitching.setSyncThreshold(syncThreshold)
     stitching.out.link(merged.inputReference)
 
@@ -75,16 +101,16 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     queue = display.out.createOutputQueue()
     pipeline.start()
     while pipeline.isRunning():
+        for windowName, cameraQueue in cameraQueues:
+            cameraGroup = cameraQueue.tryGet()
+            if cameraGroup is not None:
+                frame = cameraGroup["image"].getCvFrame()
+                drawDetections(frame, cameraGroup["detections"].detections)
+                cv2.imshow(windowName, frame)
         group = queue.tryGet()
         if group is not None:
             frame = group["panorama"].getCvFrame()
-            for detection in group["detections"].detections:
-                box = detection.getBoundingBox().denormalize(frame.shape[1], frame.shape[0])
-                points = box.getPoints()
-                for a, b in zip(points, points[1:] + points[:1]):
-                    cv2.line(frame, (round(a.x), round(a.y)), (round(b.x), round(b.y)), (0, 255, 0), 2)
-                cv2.putText(frame, f"{detection.labelName or detection.label}: {detection.confidence:.2f}",
-                            (round(box.center.x), round(box.center.y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            drawDetections(frame, group["detections"].detections)
             cv2.rectangle(frame, (0, 0), (frame.shape[1], 60), (0, 0, 0), -1)
             cv2.putText(frame, f"Duplicates: {overlapModes[modeIndex].name} | IoU: {iouThreshold:.2f}",
                         (10, 23), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
