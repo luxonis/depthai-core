@@ -1044,9 +1044,24 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
 
-dai_add_test(img_detections_filter_test src/onhost_tests/pipeline/node/img_detections_filter_test.cpp)
-target_include_directories(img_detections_filter_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
-dai_set_test_labels(img_detections_filter_test onhost ci)
+set(FILTER_TEST_DIR src/onhost_tests/pipeline/node)
+dai_add_test(img_detections_filter_helpers_test ${FILTER_TEST_DIR}/img_detections_filter_helpers_test.cpp)
+dai_set_test_labels(img_detections_filter_helpers_test onhost ci)
+set_tests_properties(img_detections_filter_helpers_test PROPERTIES FIXTURES_SETUP img_detections_filter_fixtures)
 
-dai_add_test(img_detections_filter_device_test src/ondevice_tests/img_detections_filter_device_test.cpp)
+foreach(name img_detections_filter_test img_detections_filter_panorama_test img_detections_filter_errors_test)
+    dai_add_test(${name} ${FILTER_TEST_DIR}/${name}.cpp)
+    dai_set_test_labels(${name} onhost ci)
+    set_tests_properties(${name} PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+endforeach()
+
+# Stitching is public (not beta) in this tree; this fixture needs no downloaded assets.
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(img_detections_filter_stitching_test ${FILTER_TEST_DIR}/img_detections_filter_stitching_test.cpp)
+    dai_set_test_labels(img_detections_filter_stitching_test onhost ci)
+    set_tests_properties(img_detections_filter_stitching_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+endif()
+
+dai_add_test(img_detections_filter_device_test src/ondevice_tests/pipeline/node/img_detections_filter_device_test.cpp)
 dai_set_test_labels(img_detections_filter_device_test ondevice rvc2_all rvc4 ci)
+set_tests_properties(img_detections_filter_device_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)

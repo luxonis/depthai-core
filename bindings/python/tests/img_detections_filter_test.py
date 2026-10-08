@@ -1,83 +1,185 @@
+"""Black-box cases P-1 to P-6 from img_detections_filter_test_spec.md."""
+
 from datetime import timedelta
 
 import depthai as dai
+import numpy as np
 import pytest
 
 
-def test_public_filter_and_runtime_mask_reindexing():
+def transformation(width=512, height=512):
+    intrinsics = [[width / 2, 0, width / 2], [0, width / 2, height / 2], [0, 0, 1]]
+    extrinsics = dai.Extrinsics(
+        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]],
+        dai.CameraBoardSocket.CAM_A,
+    )
+    return dai.ImgTransformation(width, height, intrinsics, dai.CameraModel.Perspective, [], extrinsics)
+
+
+def message(t, detections):
+    """Rows are (label, confidence, center x/y, width/height), all in pixels."""
+    width, height = t.getSize()
+    result = dai.ImgDetections()
+    result.setTransformation(t)
+    result.setSequenceNum(42)
+    result.setTimestamp(timedelta(seconds=10))
+    data = []
+    for label, confidence, x, y, w, h in detections:
+        detection = dai.ImgDetection()
+        detection.label = label
+        detection.confidence = confidence
+        detection.setBoundingBox(
+            dai.RotatedRect(dai.Point2f(x / width, y / height, True), dai.Size2f(w / width, h / height, True), 0)
+        )
+        data.append(detection)
+    result.detections = data
+    return result
+
+
+def set_mask(msg, rows):
+    mask = np.asarray(rows, dtype=np.uint8)
+    if hasattr(msg, "setCvSegmentationMask"):
+        msg.setCvSegmentationMask(mask)
+    else:
+        frame = dai.ImgFrame()
+        frame.setType(dai.ImgFrame.Type.GRAY8)
+        frame.setWidth(mask.shape[1])
+        frame.setHeight(mask.shape[0])
+        frame.setData(mask.ravel())
+        msg.setSegmentationMask(frame)
+
+
+def require_output(out, t, expected, mask=None, tolerance=1e-4):
+    assert out is not None
+    assert out.getTransformation() is not None
+    assert out.getTransformation().isEqualTransformation(t)
+    assert len(out.detections) == len(expected)
+    width, height = t.getSize()
+    for actual, (label, confidence, x, y, w, h) in zip(out.detections, expected):
+        assert actual.label == label
+        assert actual.confidence == pytest.approx(confidence, abs=1e-6, rel=0)
+        box = actual.getBoundingBox().denormalize(width, height)
+        assert (box.center.x, box.center.y, box.size.width, box.size.height, box.angle) == pytest.approx(
+            (x, y, w, h, 0), abs=tolerance, rel=0
+        )
+    if mask is not None:
+        expected_mask = np.asarray(mask, dtype=np.uint8)
+        assert out.getSegmentationMaskWidth() == expected_mask.shape[1]
+        assert out.getSegmentationMaskHeight() == expected_mask.shape[0]
+        if hasattr(out, "getCvSegmentationMask"):
+            actual_mask = out.getCvSegmentationMask()
+        else:
+            actual_mask = np.asarray(out.getMaskData(), dtype=np.uint8).reshape(expected_mask.shape)
+        np.testing.assert_array_equal(actual_mask, expected_mask)
+
+
+@pytest.mark.parametrize("_case", ["P-1[IN-1]"])
+def test_p1_public_api(_case):
+    with dai.Pipeline(False) as pipeline:
+        node = pipeline.create(dai.node.ImgDetectionsFilter)
+        config = dai.ImgDetectionsFilterConfig()
+        assert config is not None
+        for name in ("inputs", "inputReference", "inputConfig", "out", "initialConfig"):
+            assert hasattr(node, name)
+        # Exercise the public node as well as inspecting its shape.
+        queue = node.inputs["cam"].createInputQueue()
+        output = node.out.createOutputQueue()
+        pipeline.start()
+        t = transformation()
+        data = [(1, 0.9, 100, 100, 64, 64)]
+        queue.send(message(t, data))
+        require_output(output.get(timeout=timedelta(seconds=1)), t, data)
+
+
+@pytest.mark.parametrize("_case", ["P-2[control]"])
+def test_p2_beta_node_removed(_case):
     if hasattr(dai, "beta"):
         assert not hasattr(dai.beta.node, "ImgDetectionsFilter")
-        assert not hasattr(dai.beta, "ImgDetectionsFilterConfig")
+
+
+@pytest.mark.parametrize("_case", ["P-3[CF-1]"])
+def test_p3_default_filter(_case):
     with dai.Pipeline(False) as pipeline:
         node = pipeline.create(dai.node.ImgDetectionsFilter)
-        node.inputs["unused"]
         queue = node.inputs["cam"].createInputQueue()
-        configs = node.inputConfig.createInputQueue()
         output = node.out.createOutputQueue()
         pipeline.start()
-        message = dai.ImgDetections()
-        a, b = dai.ImgDetection(), dai.ImgDetection()
-        a.label, a.confidence = 1, 0.9
-        b.label, b.confidence = 2, 0.7
-        message.detections = [a, b]
-        mask = dai.ImgFrame()
-        mask.setType(dai.ImgFrame.Type.GRAY8)
-        mask.setWidth(4)
-        mask.setHeight(1)
-        mask.setData([0, 1, 255, 9])
-        message.setSegmentationMask(mask)
+        t = transformation()
+        data = [(7, 0.75, 100, 100, 64, 64)]
+        queue.send(message(t, data))
+        out = output.get(timeout=timedelta(seconds=1))
+        require_output(out, t, data)
+        assert out.getSequenceNum() == 42
+
+
+@pytest.mark.parametrize("_case", ["P-4[MK-1]"])
+def test_p4_mask_reindexing(_case):
+    with dai.Pipeline(False) as pipeline:
+        node = pipeline.create(dai.node.ImgDetectionsFilter)
+        node.initialConfig.setConfidenceRange(0.5)
+        queue = node.inputs["cam"].createInputQueue()
+        output = node.out.createOutputQueue()
+        t = transformation(8, 4)
+        data = [(1, 0.9, 1, 2, 2, 4), (2, 0.25, 4, 2, 2, 4), (1, 0.75, 7, 2, 2, 4)]
+        msg = message(t, data)
+        set_mask(msg, [[0, 0, 255, 1, 1, 255, 2, 2]] * 3 + [[255, 255, 255, 1, 1, 255, 255, 255]])
+        pipeline.start()
+        queue.send(msg)
+        require_output(
+            output.get(timeout=timedelta(seconds=1)), t, [data[0], data[2]],
+            [[0, 0, 255, 255, 255, 255, 1, 1]] * 3 + [[255] * 8],
+        )
+
+
+@pytest.mark.parametrize("_case", ["P-5[RT-1]"])
+def test_p5_runtime_config_replacement(_case):
+    with dai.Pipeline(False) as pipeline:
+        node = pipeline.create(dai.node.ImgDetectionsFilter)
+        node.initialConfig.setConfidenceRange(0.5)
+        queue = node.inputs["cam"].createInputQueue()
+        output = node.out.createOutputQueue()
+        t = transformation()
+        data = [(1, 0.9, 100, 100, 64, 64), (2, 0.3, 300, 300, 64, 64)]
+        pipeline.start()
+        queue.send(message(t, data))
+        require_output(output.get(timeout=timedelta(seconds=1)), t, [data[0]])
         config = dai.ImgDetectionsFilterConfig()
-        config.labelsToKeep = [1, 2]
         config.labelsToReject = [1]
         node.inputConfig.send(config)
-        queue.send(message)
-        result = output.get(timedelta(seconds=2))
-        assert result is not None
-        assert [d.label for d in result.detections] == [2]
-        assert list(result.getMaskData()) == [255, 0, 255, 255]
-        assert list(message.getMaskData()) == [0, 1, 255, 9]
+        queue.send(message(t, data))
+        require_output(output.get(timeout=timedelta(seconds=1)), t, [data[1]])
 
 
-def test_config_ranges_and_nested_alias():
-    config = dai.node.ImgDetectionsFilter.Config()
-    config.setConfidenceRange(0.2, 0.9).setSizeRange(10, 500).setWidthRange(1, 50).setHeightRange(2, 100)
-    assert config.validate()
-    assert config.hasGeometryFilters()
-    config.overlapMode = dai.ImgDetectionsFilterConfig.OverlapMode.AVERAGE
-    assert config.overlapMode == dai.node.ImgDetectionsFilter.Config.OverlapMode.AVERAGE
-    config.setConfidenceRange(0.5, 0.5)
-    assert not config.validate()
-
-
-@pytest.mark.parametrize("spread_ms,threshold_ms", [(0, 40), (65, 100)])
-def test_synchronized_demux_to_filter_example_topology(spread_ms, threshold_ms):
+@pytest.mark.parametrize("_case", ["P-6[OV-7][MK-15]"])
+def test_p6_average_mask_union(_case):
     with dai.Pipeline(False) as pipeline:
-        sync = pipeline.create(dai.node.Sync)
-        sync.setRunOnHost(True)
-        sync.setSyncThreshold(timedelta(milliseconds=threshold_ms))
-        demux = pipeline.create(dai.node.MessageDemux)
-        demux.setRunOnHost(True)
-        sync.out.link(demux.input)
         node = pipeline.create(dai.node.ImgDetectionsFilter)
-        node.initialConfig.reference = dai.ImgTransformation(200, 100)
-        queues = []
-        for key in ("left", "right"):
-            queues.append(sync.inputs[key].createInputQueue())
-            demux.outputs[key].setPossibleDatatypes([(dai.DatatypeEnum.ImgDetections, False)])
-            demux.outputs[key].link(node.inputs[key])
+        t = transformation(8, 4)
+        node.initialConfig.reference = t
+        node.initialConfig.overlapMode = dai.ImgDetectionsFilterConfig.OverlapMode.AVERAGE
+        in_a = node.inputs["a"].createInputQueue()
+        in_b = node.inputs["b"].createInputQueue()
         output = node.out.createOutputQueue()
+        a = message(t, [(0, 0.75, 3, 2, 4, 4)])
+        b = message(t, [(0, 0.25, 4, 2, 4, 4)])
+        set_mask(a, [
+            [255, 255, 0, 0, 255, 255, 255, 255],
+            [255, 0, 0, 0, 0, 255, 255, 255],
+            [255, 0, 0, 0, 0, 255, 255, 255],
+            [255, 0, 255, 255, 0, 255, 255, 255],
+        ])
+        set_mask(b, [
+            [255, 255, 255, 0, 0, 255, 255, 255],
+            [255, 255, 0, 0, 0, 0, 255, 255],
+            [255, 255, 0, 0, 0, 0, 255, 255],
+            [255, 255, 0, 255, 255, 0, 255, 255],
+        ])
         pipeline.start()
-        for index, queue in enumerate(queues):
-            message = dai.ImgDetections()
-            message.setTransformation(dai.ImgTransformation(200, 100))
-            message.setTimestamp(timedelta(seconds=1, milliseconds=index * spread_ms))
-            detection = dai.ImgDetection()
-            detection.setOuterBoundingBox(0.1, 0.1, 0.8, 0.8)
-            detection.confidence = 0.9 - index * 0.1
-            message.detections = [detection]
-            queue.send(message)
-        result = output.get(timedelta(seconds=2))
-        assert result is not None
-        assert len(result.detections) == 1
-        assert abs(result.detections[0].confidence - 0.9) < 1e-6
-        assert result.getTimestamp() == timedelta(seconds=1, milliseconds=spread_ms)
+        in_a.send(a)
+        in_b.send(b)
+        require_output(output.get(timeout=timedelta(seconds=1)), t, [(0, 0.75, 3.25, 2, 4, 4)], [
+            [255, 255, 0, 0, 0, 255, 255, 255],
+            [255, 0, 0, 0, 0, 0, 255, 255],
+            [255, 0, 0, 0, 0, 0, 255, 255],
+            [255, 0, 0, 255, 0, 0, 255, 255],
+        ], tolerance=1e-3)
