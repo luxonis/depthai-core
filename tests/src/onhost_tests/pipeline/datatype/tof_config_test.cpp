@@ -1,5 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
+#include <sstream>
+#include <spdlog/sinks/ostream_sink.h>
+#include <spdlog/spdlog.h>
 
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 
@@ -27,11 +30,11 @@ TEST_CASE("ToF standard presets populate VD55H1 controls independently of phase 
     REQUIRE(config.s5k33d.phaseUnwrappingLevel == 4);
     REQUIRE(config.s5k33d.enablePhaseShuffleTemporalFilter);
     REQUIRE_FALSE(config.s5k33d.enableBurstMode);
-    REQUIRE_FALSE(config.s5k33d.enableFPPNCorrection.has_value());
-    REQUIRE_FALSE(config.s5k33d.enableOpticalCorrection.has_value());
-    REQUIRE_FALSE(config.s5k33d.enableTemperatureCorrection.has_value());
-    REQUIRE_FALSE(config.s5k33d.enableWiggleCorrection.has_value());
-    REQUIRE_FALSE(config.s5k33d.enablePhaseUnwrapping.has_value());
+    REQUIRE_FALSE(nlohmann::json(config.s5k33d).contains("enableFPPNCorrection"));
+    REQUIRE_FALSE(nlohmann::json(config.s5k33d).contains("enableOpticalCorrection"));
+    REQUIRE_FALSE(nlohmann::json(config.s5k33d).contains("enableTemperatureCorrection"));
+    REQUIRE_FALSE(nlohmann::json(config.s5k33d).contains("enableWiggleCorrection"));
+    REQUIRE_FALSE(nlohmann::json(config.s5k33d).contains("enablePhaseUnwrapping"));
     REQUIRE(config.profile == dai::ToFConfig::Profile::MID_RANGE);
     REQUIRE(config.vd55h1.phaseUnwrapErrorThreshold == 192.0f);
     REQUIRE(config.vd55h1.enableTemporalNoiseReduction == true);
@@ -78,16 +81,11 @@ TEST_CASE("ToF config serialization preserves presets and optional controls") {
     SECTION("S5K33D controls") {
         config.s5k33d.phaseUnwrappingLevel = 0;
         config.s5k33d.enableBurstMode = true;
-        config.s5k33d.enableOpticalCorrection = false;
-        config.s5k33d.enableTemperatureCorrection = true;
-        config.s5k33d.enableWiggleCorrection = false;
-        config.s5k33d.enablePhaseUnwrapping = false;
     }
 
     // Exercise the public message serializer, not just the nested controls.
     config.s5k33d.phaseUnwrapErrorThreshold = 42;
     config.s5k33d.enablePhaseShuffleTemporalFilter = false;
-    config.s5k33d.enableFPPNCorrection = false;
     std::vector<std::uint8_t> metadata;
     dai::DatatypeEnum datatype{};
     config.serialize(metadata, datatype);
@@ -95,4 +93,71 @@ TEST_CASE("ToF config serialization preserves presets and optional controls") {
     dai::ToFConfig decoded;
     REQUIRE(dai::utility::deserialize(metadata, decoded));
     REQUIRE(nlohmann::json(decoded) == nlohmann::json(config));
+}
+
+TEST_CASE("ToF legacy RVC2 fields warn and preserve supported settings") {
+    std::ostringstream warnings;
+    auto sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(warnings);
+    auto logger = std::make_shared<spdlog::logger>("tof-legacy-test", sink);
+    logger->set_pattern("%v");
+    logger->set_level(spdlog::level::warn);
+    struct RestoreLogger {
+        std::shared_ptr<spdlog::logger> previous = spdlog::default_logger();
+        ~RestoreLogger() { spdlog::set_default_logger(previous); }
+    } restoreLogger;
+    spdlog::set_default_logger(logger);
+
+    const nlohmann::json legacyValues = {
+        {"phaseUnwrappingLevel", 0},
+        {"phaseUnwrapErrorThreshold", 0},
+        {"enablePhaseShuffleTemporalFilter", false},
+        {"enableBurstMode", true},
+        {"enableFPPNCorrection", false},
+        {"enableOpticalCorrection", false},
+        {"enableTemperatureCorrection", false},
+        {"enableWiggleCorrection", false},
+        {"enablePhaseUnwrapping", false},
+    };
+    dai::ToFConfig defaults;
+    const nlohmann::json defaultJson = defaults;
+    for(const auto& field : legacyValues.items()) {
+        REQUIRE(defaultJson.at(field.key()).is_null());
+    }
+    defaults.applyLegacyConfig();
+    std::vector<std::uint8_t> metadata;
+    dai::DatatypeEnum datatype{};
+    defaults.serialize(metadata, datatype);
+    REQUIRE(warnings.str().empty());
+
+    for(const auto& field : legacyValues.items()) {
+        CAPTURE(field.key());
+        auto json = defaultJson;
+        json[field.key()] = field.value();
+        auto config = json.get<dai::ToFConfig>();
+        const bool moved = json.at("s5k33d").contains(field.key());
+        const auto expectedWarning = moved ? "use ToFConfig.s5k33d." + field.key() : "this control was removed";
+
+        // Startup uses applyLegacyConfig; runtime messages use serialize.
+        warnings.str("");
+        auto initialConfig = config;
+        initialConfig.applyLegacyConfig();
+        REQUIRE(warnings.str().find("ToFConfig." + field.key() + " is deprecated") != std::string::npos);
+        REQUIRE(warnings.str().find(expectedWarning) != std::string::npos);
+
+        warnings.str("");
+        config.serialize(metadata, datatype);
+        REQUIRE(warnings.str().find(expectedWarning) != std::string::npos);
+        dai::ToFConfig decoded;
+        REQUIRE(dai::utility::deserialize(metadata, decoded));
+        const nlohmann::json decodedJson = decoded;
+        REQUIRE(decodedJson == nlohmann::json(initialConfig));
+        REQUIRE(decodedJson.at(field.key()) == field.value());
+        if(moved) {
+            REQUIRE(decodedJson.at("s5k33d").at(field.key()) == field.value());
+        } else {
+            REQUIRE(decodedJson.at("s5k33d") == defaultJson.at("s5k33d"));
+        }
+        // Serializing must not mutate the user's nested controls.
+        REQUIRE(nlohmann::json(config) == json);
+    }
 }

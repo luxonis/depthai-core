@@ -62,17 +62,62 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         // .def("get", &ToFConfig::get, DOC(dai, ToFConfig, get))
         ;
 
+    auto bindLegacyField = [&](const char* name, auto member, const char* message, const char* doc) {
+        using Value = std::decay_t<decltype(std::declval<ToFConfig>().*member)>;
+        toFConfig.def_property(
+            name,
+            [member](const ToFConfig& self) { return self.*member; },
+            [member, message](ToFConfig& self, Value value) {
+                if(value.has_value() && PyErr_WarnEx(PyExc_DeprecationWarning, message, 1) < 0) {
+                    throw py::error_already_set();
+                }
+                self.*member = value;
+            },
+            doc);
+    };
+    bindLegacyField("phaseUnwrappingLevel",
+                    &ToFConfig::phaseUnwrappingLevel,
+                    "ToFConfig.phaseUnwrappingLevel is deprecated; use ToFConfig.s5k33d.phaseUnwrappingLevel (or s5k63d) instead.",
+                    DOC(dai, ToFConfig, phaseUnwrappingLevel));
+    bindLegacyField("phaseUnwrapErrorThreshold",
+                    &ToFConfig::phaseUnwrapErrorThreshold,
+                    "ToFConfig.phaseUnwrapErrorThreshold is deprecated; use ToFConfig.s5k33d.phaseUnwrapErrorThreshold (or s5k63d) instead.",
+                    DOC(dai, ToFConfig, phaseUnwrapErrorThreshold));
+    bindLegacyField("enablePhaseShuffleTemporalFilter",
+                    &ToFConfig::enablePhaseShuffleTemporalFilter,
+                    "ToFConfig.enablePhaseShuffleTemporalFilter is deprecated; use ToFConfig.s5k33d.enablePhaseShuffleTemporalFilter (or s5k63d) instead.",
+                    DOC(dai, ToFConfig, enablePhaseShuffleTemporalFilter));
+    bindLegacyField("enableBurstMode",
+                    &ToFConfig::enableBurstMode,
+                    "ToFConfig.enableBurstMode is deprecated; use ToFConfig.s5k33d.enableBurstMode (or s5k63d) instead.",
+                    DOC(dai, ToFConfig, enableBurstMode));
+    bindLegacyField("enableFPPNCorrection",
+                    &ToFConfig::enableFPPNCorrection,
+                    "ToFConfig.enableFPPNCorrection is deprecated: this control was removed and its value is ignored.",
+                    DOC(dai, ToFConfig, enableFPPNCorrection));
+    bindLegacyField("enableOpticalCorrection",
+                    &ToFConfig::enableOpticalCorrection,
+                    "ToFConfig.enableOpticalCorrection is deprecated: this control was removed and its value is ignored.",
+                    DOC(dai, ToFConfig, enableOpticalCorrection));
+    bindLegacyField("enableTemperatureCorrection",
+                    &ToFConfig::enableTemperatureCorrection,
+                    "ToFConfig.enableTemperatureCorrection is deprecated: this control was removed and its value is ignored.",
+                    DOC(dai, ToFConfig, enableTemperatureCorrection));
+    bindLegacyField("enableWiggleCorrection",
+                    &ToFConfig::enableWiggleCorrection,
+                    "ToFConfig.enableWiggleCorrection is deprecated: this control was removed and its value is ignored.",
+                    DOC(dai, ToFConfig, enableWiggleCorrection));
+    bindLegacyField("enablePhaseUnwrapping",
+                    &ToFConfig::enablePhaseUnwrapping,
+                    "ToFConfig.enablePhaseUnwrapping is deprecated: this control was removed and its value is ignored.",
+                    DOC(dai, ToFConfig, enablePhaseUnwrapping));
+
     s5k33d.def(py::init<>())
         .def_readwrite("enablePhaseShuffleTemporalFilter",
                        &ToFConfig::S5K33D::enablePhaseShuffleTemporalFilter,
                        DOC(dai, ToFConfig, S5K33D, enablePhaseShuffleTemporalFilter))
         .def_readwrite("enableBurstMode", &ToFConfig::S5K33D::enableBurstMode, DOC(dai, ToFConfig, S5K33D, enableBurstMode))
         .def_readwrite("phaseUnwrappingLevel", &ToFConfig::S5K33D::phaseUnwrappingLevel, DOC(dai, ToFConfig, S5K33D, phaseUnwrappingLevel))
-        .def_readwrite("enableFPPNCorrection", &ToFConfig::S5K33D::enableFPPNCorrection, DOC(dai, ToFConfig, S5K33D, enableFPPNCorrection))
-        .def_readwrite("enableOpticalCorrection", &ToFConfig::S5K33D::enableOpticalCorrection, DOC(dai, ToFConfig, S5K33D, enableOpticalCorrection))
-        .def_readwrite("enableTemperatureCorrection", &ToFConfig::S5K33D::enableTemperatureCorrection, DOC(dai, ToFConfig, S5K33D, enableTemperatureCorrection))
-        .def_readwrite("enableWiggleCorrection", &ToFConfig::S5K33D::enableWiggleCorrection, DOC(dai, ToFConfig, S5K33D, enableWiggleCorrection))
-        .def_readwrite("enablePhaseUnwrapping", &ToFConfig::S5K33D::enablePhaseUnwrapping, DOC(dai, ToFConfig, S5K33D, enablePhaseUnwrapping))
         .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::S5K33D::phaseUnwrapErrorThreshold, DOC(dai, ToFConfig, S5K33D, phaseUnwrapErrorThreshold));
 
     vd55h1.def(py::init<>())

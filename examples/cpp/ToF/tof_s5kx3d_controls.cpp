@@ -12,21 +12,13 @@ namespace {
 constexpr float FPS = 30.0f;
 constexpr const char* WINDOW = "S5K33D / S5K63D controls";
 // Example tuning ranges: unwrap level 0-5 and threshold 0-500 mm.
-// Toggle sliders use 0/1. Level 0 also disables phase unwrapping.
-// Burst mode reduces output FPS by four. Corrections use available calibration.
-std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 9>& value, bool isS5K63D) {
+// Level 0 disables phase unwrapping.
+std::shared_ptr<dai::ToFConfig> configFromTrackbars(const std::array<int, 2>& value, bool isS5K63D) {
     auto config = std::make_shared<dai::ToFConfig>();
     // S5K63D is a type alias; the accessor returns the same settings as s5k33d.
     auto& params = isS5K63D ? config->s5k63d() : config->s5k33d;
     params.phaseUnwrappingLevel = value[0];
     params.phaseUnwrapErrorThreshold = value[1];
-    params.enablePhaseShuffleTemporalFilter = value[2] != 0;
-    params.enableBurstMode = value[3] != 0;
-    params.enableFPPNCorrection = value[4] != 0;
-    params.enableOpticalCorrection = value[5] != 0;
-    params.enableTemperatureCorrection = value[6] != 0;
-    params.enableWiggleCorrection = value[7] != 0;
-    params.enablePhaseUnwrapping = value[8] != 0;
     return config;
 }
 
@@ -53,16 +45,9 @@ int main() {
     auto configQueue = tof->tofBaseInputConfig.createInputQueue();
 
     cv::namedWindow(WINDOW);
-    std::array<int, 9> value = {4, 75, 1, 0, 1, 1, 1, 1, 1};  // MID_RANGE threshold.
+    std::array<int, 2> value = {4, 75};  // MID_RANGE threshold.
     cv::createTrackbar("unwrap level", WINDOW, &value[0], 5);
     cv::createTrackbar("unwrap threshold mm", WINDOW, &value[1], 500);
-    cv::createTrackbar("phase shuffle", WINDOW, &value[2], 1);
-    cv::createTrackbar("burst mode", WINDOW, &value[3], 1);
-    cv::createTrackbar("FPPN correction", WINDOW, &value[4], 1);
-    cv::createTrackbar("optical correction", WINDOW, &value[5], 1);
-    cv::createTrackbar("temperature correction", WINDOW, &value[6], 1);
-    cv::createTrackbar("wiggle correction", WINDOW, &value[7], 1);
-    cv::createTrackbar("phase unwrapping", WINDOW, &value[8], 1);
 
     *tof->tofBaseNode.initialConfig = *configFromTrackbars(value, isS5K63D);
     pipeline.start();

@@ -68,8 +68,8 @@ class ToFConfig : public Buffer {
 
     /**
      * Processing controls for the RVC2 S5K33D and S5K63D sensors.
-     * These controls have no effect on VD55H1. Unset optional corrections use
-     * the device defaults determined by the available calibration.
+     * These controls have no effect on VD55H1. Corrections use the device defaults
+     * determined by the available calibration.
      */
     struct S5K33D {
         /**
@@ -95,41 +95,42 @@ class ToFConfig : public Buffer {
          */
         bool enableBurstMode = false;
 
-        /**
-         * Enable FPN correction. Used for debugging.
-         */
-        std::optional<bool> enableFPPNCorrection;
-        /**
-         * Enable optical correction. Used for debugging.
-         */
-        std::optional<bool> enableOpticalCorrection;
-        /**
-         * Enable temperature correction. Used for debugging.
-         */
-        std::optional<bool> enableTemperatureCorrection;
-        /**
-         * Enable wiggle correction. Used for debugging.
-         */
-        std::optional<bool> enableWiggleCorrection;
-        /**
-         * Enable phase unwrapping. Used for debugging.
-         */
-        std::optional<bool> enablePhaseUnwrapping;
-
         DEPTHAI_SERIALIZE(S5K33D,
                           enablePhaseShuffleTemporalFilter,
                           enableBurstMode,
-                          enableFPPNCorrection,
-                          enableOpticalCorrection,
-                          enableTemperatureCorrection,
-                          enableWiggleCorrection,
-                          enablePhaseUnwrapping,
                           phaseUnwrappingLevel,
                           phaseUnwrapErrorThreshold);
     };
 
     /** S5K63D uses the same processing controls as S5K33D. */
     using S5K63D = S5K33D;
+
+    /** Deprecated: use s5k33d.phaseUnwrappingLevel (or s5k63d). Unset by default; when set, overrides the nested value with a warning. */
+    std::optional<int> phaseUnwrappingLevel = std::nullopt;
+
+    /** Deprecated: use s5k33d.phaseUnwrapErrorThreshold (or s5k63d). Unset by default; when set, overrides the nested value with a warning. */
+    std::optional<uint16_t> phaseUnwrapErrorThreshold = std::nullopt;
+
+    /** Deprecated: use s5k33d.enablePhaseShuffleTemporalFilter (or s5k63d). Unset by default; when set, overrides the nested value with a warning. */
+    std::optional<bool> enablePhaseShuffleTemporalFilter = std::nullopt;
+
+    /** Deprecated: use s5k33d.enableBurstMode (or s5k63d). Unset by default; when set, overrides the nested value with a warning. */
+    std::optional<bool> enableBurstMode = std::nullopt;
+
+    /** Deprecated: this debugging control was removed and is ignored. */
+    std::optional<bool> enableFPPNCorrection = std::nullopt;
+
+    /** Deprecated: this debugging control was removed and is ignored. */
+    std::optional<bool> enableOpticalCorrection = std::nullopt;
+
+    /** Deprecated: this debugging control was removed and is ignored. */
+    std::optional<bool> enableTemperatureCorrection = std::nullopt;
+
+    /** Deprecated: this debugging control was removed and is ignored. */
+    std::optional<bool> enableWiggleCorrection = std::nullopt;
+
+    /** Deprecated: this debugging control was removed and is ignored. */
+    std::optional<bool> enablePhaseUnwrapping = std::nullopt;
 
     Profile profile = Profile::MID_RANGE;
 
@@ -172,6 +173,9 @@ class ToFConfig : public Buffer {
      */
     ToFConfig& setMedianFilter(filters::params::MedianFilter median);
 
+    /** @internal Apply legacy RVC2 fields and report deprecated or removed controls. */
+    void applyLegacyConfig();
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
@@ -184,7 +188,21 @@ class ToFConfig : public Buffer {
      */
     void setProfilePreset(Profile profile);
 
-    DEPTHAI_SERIALIZE(ToFConfig, profile, vd55h1, s5k33d, median, enableDistortionCorrection);
+    DEPTHAI_SERIALIZE(ToFConfig,
+                      profile,
+                      vd55h1,
+                      s5k33d,
+                      median,
+                      enableDistortionCorrection,
+                      phaseUnwrappingLevel,
+                      phaseUnwrapErrorThreshold,
+                      enablePhaseShuffleTemporalFilter,
+                      enableBurstMode,
+                      enableFPPNCorrection,
+                      enableOpticalCorrection,
+                      enableTemperatureCorrection,
+                      enableWiggleCorrection,
+                      enablePhaseUnwrapping);
 };
 
 }  // namespace dai
