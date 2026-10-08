@@ -1,11 +1,32 @@
 #pragma once
+#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <limits>
 #include <mutex>
 #include <queue>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace dai {
+
+namespace detail {
+// Private host diagnostics: collect identities while locked, inspect them only after push returns.
+template <typename T>
+struct QueuePushDiagnostics {
+    std::vector<T> evicted;
+    size_t evictionCount = 0;
+    size_t captureErrors = 0;
+    size_t sizeBefore = 0;
+    size_t sizeAfter = 0;
+    unsigned capacity = 0;
+    bool blocking = false;
+    bool discardedIncoming = false;
+    std::chrono::steady_clock::time_point completedAt{};
+};
+struct SyncDebugQueueAccess;
+}  // namespace detail
 
 // class Mutex : public std::mutex {
 //    public:
@@ -153,86 +174,152 @@ class LockingQueue {
     }
 
     bool push(T const& data, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
-        {
-            std::unique_lock<std::mutex> lock(guard);
-            if(maxSize == 0) {
-                // necessary if maxSize was changed
-                while(!queue.empty()) {
-                    queue.pop();
-                }
-                return true;
-            }
-            if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
-                    queue.pop();
-                }
-            } else {
-                if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED, queue.size());
-                }
-                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
-                if(destructed) return false;
-            }
-
-            queue.push(data);
-
-            callback(LockingQueueState::SUCCESS, queue.size());
-        }
-        signalPush.notify_all();
-        return true;
+        return pushImpl(data, std::move(callback), nullptr);
     }
 
     bool push(T&& data, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
-        {
-            std::unique_lock<std::mutex> lock(guard);
-            if(maxSize == 0) {
-                // necessary if maxSize was changed
-                while(!queue.empty()) {
-                    queue.pop();
-                }
-                return true;
-            }
-            if(!blocking) {
-                // if non blocking, remove as many oldest elements as necessary, so next one will fit
-                // necessary if maxSize was changed
-                while(queue.size() >= maxSize) {
-                    queue.pop();
-                }
-            } else {
-                if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED, queue.size());
-                }
-                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
-                if(destructed) return false;
-            }
-
-            queue.push(std::move(data));
-
-            callback(LockingQueueState::SUCCESS, queue.size());
-        }
-        signalPush.notify_all();
-        return true;
+        return pushImpl(std::move(data), std::move(callback), nullptr);
     }
 
     template <typename Rep, typename Period>
     bool tryWaitAndPush(
         T const& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
+        return tryWaitAndPushImpl(data, timeout, std::move(callback), nullptr);
+    }
+
+    template <typename Rep, typename Period>
+    bool tryWaitAndPush(
+        T&& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
+        return tryWaitAndPushImpl(std::move(data), timeout, std::move(callback), nullptr);
+    }
+
+   private:
+    friend struct detail::SyncDebugQueueAccess;
+
+    void beginPushDiagnostics(detail::QueuePushDiagnostics<T>* diagnostics) {
+        if(!diagnostics) return;
+        diagnostics->sizeBefore = queue.size();
+        diagnostics->sizeAfter = queue.size();
+        diagnostics->capacity = maxSize;
+        diagnostics->blocking = blocking;
+        diagnostics->discardedIncoming = maxSize == 0;
+    }
+
+    void popEvicted(detail::QueuePushDiagnostics<T>* diagnostics) {
+        if(diagnostics) {
+            ++diagnostics->evictionCount;
+            // Only copy nothrow message handles; generic move-only queue types remain usable.
+            if constexpr(std::is_nothrow_copy_constructible_v<T>) {
+                try {
+                    diagnostics->evicted.push_back(queue.front());
+                } catch(...) {
+                    // A failed diagnostic copy must not change queue delivery semantics.
+                    ++diagnostics->captureErrors;
+                }
+            } else {
+                ++diagnostics->captureErrors;
+            }
+        }
+        queue.pop();
+    }
+
+    void endPushDiagnostics(detail::QueuePushDiagnostics<T>* diagnostics) {
+        if(!diagnostics) return;
+        diagnostics->sizeAfter = queue.size();
+        diagnostics->completedAt = std::chrono::steady_clock::now();
+    }
+
+    bool pushImpl(T const& data, std::function<void(LockingQueueState, size_t)> callback, detail::QueuePushDiagnostics<T>* diagnostics) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            beginPushDiagnostics(diagnostics);
             if(maxSize == 0) {
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
-                    queue.pop();
+                    popEvicted(diagnostics);
                 }
+                endPushDiagnostics(diagnostics);
                 return true;
             }
             if(!blocking) {
                 // if non blocking, remove as many oldest elements as necessary, so next one will fit
                 // necessary if maxSize was changed
                 while(queue.size() >= maxSize) {
-                    queue.pop();
+                    popEvicted(diagnostics);
+                }
+            } else {
+                if(queue.size() >= maxSize) {
+                    callback(LockingQueueState::BLOCKED, queue.size());
+                }
+                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                if(destructed) return false;
+            }
+
+            queue.push(data);
+            endPushDiagnostics(diagnostics);
+
+            callback(LockingQueueState::SUCCESS, queue.size());
+        }
+        signalPush.notify_all();
+        return true;
+    }
+
+    bool pushImpl(T&& data, std::function<void(LockingQueueState, size_t)> callback, detail::QueuePushDiagnostics<T>* diagnostics) {
+        {
+            std::unique_lock<std::mutex> lock(guard);
+            beginPushDiagnostics(diagnostics);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    popEvicted(diagnostics);
+                }
+                endPushDiagnostics(diagnostics);
+                return true;
+            }
+            if(!blocking) {
+                // if non blocking, remove as many oldest elements as necessary, so next one will fit
+                // necessary if maxSize was changed
+                while(queue.size() >= maxSize) {
+                    popEvicted(diagnostics);
+                }
+            } else {
+                if(queue.size() >= maxSize) {
+                    callback(LockingQueueState::BLOCKED, queue.size());
+                }
+                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                if(destructed) return false;
+            }
+
+            queue.push(std::move(data));
+            endPushDiagnostics(diagnostics);
+
+            callback(LockingQueueState::SUCCESS, queue.size());
+        }
+        signalPush.notify_all();
+        return true;
+    }
+
+    template <typename Rep, typename Period>
+    bool tryWaitAndPushImpl(T const& data,
+                            std::chrono::duration<Rep, Period> timeout,
+                            std::function<void(LockingQueueState, size_t)> callback,
+                            detail::QueuePushDiagnostics<T>* diagnostics) {
+        {
+            std::unique_lock<std::mutex> lock(guard);
+            beginPushDiagnostics(diagnostics);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    popEvicted(diagnostics);
+                }
+                endPushDiagnostics(diagnostics);
+                return true;
+            }
+            if(!blocking) {
+                // if non blocking, remove as many oldest elements as necessary, so next one will fit
+                // necessary if maxSize was changed
+                while(queue.size() >= maxSize) {
+                    popEvicted(diagnostics);
                 }
             } else {
                 if(queue.size() >= maxSize) {
@@ -248,6 +335,7 @@ class LockingQueue {
             }
 
             queue.push(data);
+            endPushDiagnostics(diagnostics);
 
             callback(LockingQueueState::SUCCESS, queue.size());
         }
@@ -256,22 +344,26 @@ class LockingQueue {
     }
 
     template <typename Rep, typename Period>
-    bool tryWaitAndPush(
-        T&& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
+    bool tryWaitAndPushImpl(T&& data,
+                            std::chrono::duration<Rep, Period> timeout,
+                            std::function<void(LockingQueueState, size_t)> callback,
+                            detail::QueuePushDiagnostics<T>* diagnostics) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            beginPushDiagnostics(diagnostics);
             if(maxSize == 0) {
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
-                    queue.pop();
+                    popEvicted(diagnostics);
                 }
+                endPushDiagnostics(diagnostics);
                 return true;
             }
             if(!blocking) {
                 // if non blocking, remove as many oldest elements as necessary, so next one will fit
                 // necessary if maxSize was changed
                 while(queue.size() >= maxSize) {
-                    queue.pop();
+                    popEvicted(diagnostics);
                 }
             } else {
                 // First checks predicate, then waits
@@ -287,6 +379,7 @@ class LockingQueue {
             }
 
             queue.push(std::move(data));
+            endPushDiagnostics(diagnostics);
 
             callback(LockingQueueState::SUCCESS, queue.size());
         }
@@ -294,6 +387,7 @@ class LockingQueue {
         return true;
     }
 
+   public:
     bool empty() const {
         std::lock_guard<std::mutex> lock(guard);
         return queue.empty();

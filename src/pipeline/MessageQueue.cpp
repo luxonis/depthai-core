@@ -7,6 +7,7 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "pipeline/SyncDebug.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
 
 // libraries
@@ -142,47 +143,64 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
+    const auto trace = detail::syncdebug::find(this);
+    if(trace) detail::syncdebug::arrival(trace, msg);
     callCallbacks(msg);
-    auto queueNotClosed = queue.push(msg, [&](LockingQueueState state, size_t size) {
-        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
-            switch(state) {
-                case LockingQueueState::BLOCKED:
-                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
-                    break;
-                case LockingQueueState::CANCELLED:
-                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
-                    break;
-                case LockingQueueState::SUCCESS:
-                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::SUCCESS, size);
-                    break;
+    detail::SyncDebugQueueAccess::Diagnostics diagnostics;
+    auto queueNotClosed = detail::SyncDebugQueueAccess::push(
+        queue,
+        msg,
+        [&](LockingQueueState state, size_t size) {
+            if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
+                switch(state) {
+                    case LockingQueueState::BLOCKED:
+                        pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
+                        break;
+                    case LockingQueueState::CANCELLED:
+                        pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
+                        break;
+                    case LockingQueueState::SUCCESS:
+                        pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::SUCCESS, size);
+                        break;
+                }
             }
-        }
-    });
+        },
+        trace ? &diagnostics : nullptr);
+    if(trace) detail::syncdebug::pushed(trace, msg, diagnostics, queueNotClosed);
     notifyListeners();
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
 }
 
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    const auto trace = detail::syncdebug::find(this);
+    if(trace) detail::syncdebug::arrival(trace, msg);
     callCallbacks(msg);
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
-    auto ret = queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state, size_t size) {
-        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
-            switch(state) {
-                case LockingQueueState::BLOCKED:
-                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
-                    break;
-                case LockingQueueState::CANCELLED:
-                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
-                    break;
-                case LockingQueueState::SUCCESS:
-                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::SUCCESS, size);
-                    break;
+    detail::SyncDebugQueueAccess::Diagnostics diagnostics;
+    auto ret = detail::SyncDebugQueueAccess::push(
+        queue,
+        msg,
+        timeout,
+        [&](LockingQueueState state, size_t size) {
+            if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
+                switch(state) {
+                    case LockingQueueState::BLOCKED:
+                        pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
+                        break;
+                    case LockingQueueState::CANCELLED:
+                        pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
+                        break;
+                    case LockingQueueState::SUCCESS:
+                        pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::SUCCESS, size);
+                        break;
+                }
             }
-        }
-    });
+        },
+        trace ? &diagnostics : nullptr);
+    if(trace) detail::syncdebug::pushed(trace, msg, diagnostics, ret);
     if(ret) notifyListeners();
     return ret;
 }

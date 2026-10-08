@@ -13,9 +13,9 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
@@ -28,6 +28,7 @@
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/properties/SyncProperties.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "pipeline/SyncDebug.hpp"
 
 #define REQUIRE_MSG(x, msg)                                         \
     if(!(x)) {                                                      \
@@ -150,6 +151,31 @@ namespace {
             }
         }
     }
+
+    std::unique_ptr<dai::detail::syncdebug::Session> createSyncDebugSession(
+        dai::node::Sync& sync, dai::MessageQueue& output, const std::vector<std::string>& inputNames, float targetFps, const FsyncTestParameters& parameters) {
+        if(!dai::detail::syncdebug::requested()) return nullptr;
+        std::vector<dai::detail::syncdebug::Input> inputs;
+        inputs.reserve(inputNames.size());
+        for(const auto& name : inputNames) {
+            auto& input = sync.inputs[name];
+            const auto device = input.getSourceDevice();
+            inputs.push_back({&input, name, device ? device->getDeviceId() : "unknown"});
+        }
+        return dai::detail::syncdebug::Session::create(inputs,
+                                                       output,
+                                                       {{"fps", targetFps},
+                                                        {"sync_type", ::toString(parameters.syncType)},
+                                                        {"grouping_threshold_ns", sync.getSyncThreshold().count()},
+                                                        {"spread_threshold_seconds", parameters.syncThresholdSec},
+                                                        {"first_group_timeout_seconds", parameters.firstGroupTimeoutSec},
+                                                        {"warmup_seconds", parameters.warmupDurationSec},
+                                                        {"convergence_timeout_seconds", parameters.syncAcquisitionTimeoutSec},
+                                                        {"measurement_seconds", parameters.measurementDurationSec},
+                                                        {"no_progress_timeout_seconds", parameters.measurementNoProgressTimeoutSec},
+                                                        {"mean_threshold_seconds", parameters.deltaMeanThreshold},
+                                                        {"p99_threshold_seconds", parameters.deltaP99Threshold}});
+    }
 }
 
 GroupReader::GroupReader(dai::MessageQueue& queue, std::vector<std::string> inputNames, SyncType syncType)
@@ -169,9 +195,21 @@ std::optional<GroupReadResult> GroupReader::read(std::chrono::steady_clock::time
     bool hasTimedOut = false;
     const auto group = queue.get<dai::MessageGroup>(deadline - now, hasTimedOut);
     if(hasTimedOut) return std::nullopt;
+    if(auto trace = dai::detail::syncdebug::find(&queue)) dai::detail::syncdebug::dequeued(trace, group);
     INFO("GroupReader expected a non-null MessageGroup");
     REQUIRE(group != nullptr);
     return analyze(*group);
+}
+
+void GroupReader::setDebugContext(const char* phase,
+                                  std::optional<std::size_t> sampleIndex,
+                                  std::optional<std::chrono::system_clock::duration> gap,
+                                  std::optional<double> limitSec) const {
+    if(auto trace = dai::detail::syncdebug::find(&queue)) {
+        // Freeze at the detected interval violation, before Catch2 prints the assertion or teardown begins.
+        const bool invalidGap = gap && limitSec && (*gap <= std::chrono::system_clock::duration::zero() || *gap > std::chrono::duration<double>(*limitSec));
+        dai::detail::syncdebug::context(trace, phase, sampleIndex, gap, limitSec, invalidGap);
+    }
 }
 
 std::chrono::system_clock::time_point GroupReader::readTimestamp(const dai::MessageGroup& group, const std::string& name) const {
@@ -215,6 +253,7 @@ GroupReadResult GroupReader::analyze(const dai::MessageGroup& group) const {
 }
 
 GroupReadResult waitForFirstGroup(const GroupReader& reader, std::chrono::seconds timeout) {
+    reader.setDebugContext("startup");
     const auto start = std::chrono::steady_clock::now();
     INFO("Startup phase: timeout " << timeout.count() << " seconds to receive the first validated group");
     REQUIRE(timeout > std::chrono::seconds::zero());
@@ -232,6 +271,7 @@ GroupReadResult waitForFirstGroup(const GroupReader& reader, std::chrono::second
 }
 
 void consumeWarmup(const GroupReader& reader, std::chrono::seconds duration) {
+    reader.setDebugContext("warmup");
     const auto start = std::chrono::steady_clock::now();
     INFO("Warmup phase: consuming validated groups for " << duration.count() << " seconds");
     REQUIRE(duration >= std::chrono::seconds::zero());
@@ -250,6 +290,7 @@ GroupReadResult waitForConvergence(const GroupReader& reader,
                                   std::chrono::system_clock::duration syncThreshold,
                                   float targetFps,
                                   std::optional<GroupReadResult> initialGroup) {
+    reader.setDebugContext("convergence");
     const auto start = std::chrono::steady_clock::now();
     constexpr int REQUIRED_CONSECUTIVE_GROUPS = 3;
     CAPTURE(targetFps, REQUIRED_CONSECUTIVE_GROUPS);
@@ -312,6 +353,7 @@ std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
                                                std::chrono::seconds duration,
                                                float targetFps,
                                                std::chrono::seconds noProgressTimeout) {
+    reader.setDebugContext("measurement", 0);
     const auto start = std::chrono::steady_clock::now();
     INFO("Measurement phase: duration must be positive, got " << duration.count() << " seconds");
     REQUIRE(duration > std::chrono::seconds::zero());
@@ -331,6 +373,7 @@ std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
     samples.push_back(std::move(firstGroup));
     auto lastProgressTime = start;
     while(std::chrono::steady_clock::now() < deadline) {
+        reader.setDebugContext("measurement", samples.size());
         const auto progressDeadline = lastProgressTime + noProgressTimeout;
         auto group = reader.read(std::min(deadline, progressDeadline));
         if(!group) {
@@ -346,6 +389,7 @@ std::vector<GroupReadResult> collectMeasurements(const GroupReader& reader,
         }
         const auto previousTimestamp = samples.back().medianTimestamp;
         const auto gap = group->medianTimestamp - previousTimestamp;
+        reader.setDebugContext("measurement", samples.size(), gap, maxGap.count());
         INFO("Measurement continuity: sample index " << samples.size() << " (zero-based; convergence sample is 0), observed gap "
                                                      << std::chrono::duration<double>(gap).count() << " seconds, allowed gap " << maxGap.count()
                                                      << " seconds (1.5 frame periods)");
@@ -617,21 +661,31 @@ int testSync(float targetFps, struct FsyncTestParameters parameters) {
 
     auto [pipeline, sync, inputNames] = setupPipeline(targetFps, parameters);
     auto queue = sync->out.createOutputQueue();
+    auto diagnostics = createSyncDebugSession(*sync, *queue, inputNames, targetFps, parameters);
     const GroupReader reader(*queue, std::move(inputNames), parameters.syncType);
 
-    // Pipeline destruction stops and joins it if a phase fails a fatal Catch2 assertion.
-    pipeline.start();
-    std::optional<GroupReadResult> initialGroup = waitForFirstGroup(reader, firstGroupTimeout);
+    try {
+        // Snapshot on failure before unwinding can stop the pipeline and starve device outputs.
+        pipeline.start();
+        std::optional<GroupReadResult> initialGroup = waitForFirstGroup(reader, firstGroupTimeout);
 
-    if(warmupDuration > std::chrono::seconds::zero()) {
-        initialGroup.reset();
-        consumeWarmup(reader, warmupDuration);
+        if(warmupDuration > std::chrono::seconds::zero()) {
+            initialGroup.reset();
+            consumeWarmup(reader, warmupDuration);
+        }
+
+        auto convergedGroup = waitForConvergence(reader, convergenceTimeout, syncThreshold, targetFps, std::move(initialGroup));
+        const auto samples = collectMeasurements(reader, std::move(convergedGroup), measurementDuration, targetFps, noProgressTimeout);
+        if(diagnostics) diagnostics->freeze();
+        pipeline.stop();
+        reportAndCheckStatistics(samples, targetFps, parameters);
+        if(diagnostics) diagnostics->finish(true, "completed");
+    } catch(const std::exception& ex) {
+        if(diagnostics) diagnostics->finish(false, ex.what());
+        throw;
+    } catch(...) {
+        if(diagnostics) diagnostics->finish(false, "Catch2 assertion or non-standard exception; see test output");
+        throw;
     }
-
-    auto convergedGroup = waitForConvergence(reader, convergenceTimeout, syncThreshold, targetFps, std::move(initialGroup));
-    const auto samples = collectMeasurements(reader, std::move(convergedGroup), measurementDuration, targetFps, noProgressTimeout);
-    pipeline.stop();
-
-    reportAndCheckStatistics(samples, targetFps, parameters);
     return 0;
 }

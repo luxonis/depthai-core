@@ -6,6 +6,7 @@
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "pipeline/SyncDebug.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
@@ -283,6 +284,11 @@ void Sync::run() {
     auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
+    std::vector<detail::syncdebug::Handle> outputTraces;
+    for(const auto& connection : out.getQueueConnections()) {
+        if(auto trace = detail::syncdebug::find(connection.queue.get())) outputTraces.push_back(std::move(trace));
+    }
+
     // Resolve which device produces each input (host producers are left out); while any of
     // those devices is not RUNNING the node drops instead of blocking on a dead stream.
     // The devices are held weakly and asked for their state directly: resolving the pipeline
@@ -307,9 +313,13 @@ void Sync::run() {
     // device is degraded (or the node is stopping) and the current group is dropped
     auto receive = [this, &anySourceNotRunning](const std::string& name) -> std::shared_ptr<dai::Buffer> {
         auto& input = inputs[name];
+        const auto trace = detail::syncdebug::find(&input);
         while(mainLoop()) {
             auto msg = input.tryGet<dai::Buffer>();
-            if(msg != nullptr) return msg;
+            if(msg != nullptr) {
+                if(trace) detail::syncdebug::consumed(trace, msg);
+                return msg;
+            }
             if(anySourceNotRunning()) return nullptr;
             std::vector<std::reference_wrapper<MessageQueue>> queues{std::ref(static_cast<MessageQueue&>(input))};
             MessageQueue::waitAny(queues, std::chrono::milliseconds(100));
@@ -318,6 +328,13 @@ void Sync::run() {
     };
 
     time_point<steady_clock> tAfterMessageBeginning;
+    const auto discardCandidate = [&](const auto& frames, const char* reason) {
+        for(const auto& entry : frames) {
+            if(auto trace = detail::syncdebug::find(&inputs[entry.first])) {
+                detail::syncdebug::discarded(trace, entry.second, reason, nanoseconds::zero(), nanoseconds(syncThresholdNs));
+            }
+        }
+    };
 
     while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
@@ -329,7 +346,12 @@ void Sync::run() {
             // Drop (emit nothing) while any input's device is not running
             if(anySourceNotRunning()) {
                 for(const auto& name : inputNames) {
-                    inputs[name].tryGetAll();
+                    const auto frames = inputs[name].tryGetAll();
+                    if(auto trace = detail::syncdebug::find(&inputs[name])) {
+                        for(const auto& frame : frames) {
+                            detail::syncdebug::discarded(trace, frame, "source_unavailable_drain", nanoseconds::zero(), nanoseconds(syncThresholdNs));
+                        }
+                    }
                 }
                 std::this_thread::sleep_for(milliseconds(100));
                 continue;
@@ -344,6 +366,7 @@ void Sync::run() {
                 }
             }
             if(dropped) {
+                discardCandidate(inputFrames, "source_unavailable_or_stopping");
                 continue;
             }
             // Print out the timestamps
@@ -387,6 +410,10 @@ void Sync::run() {
                 // Get the message with the minimum timestamp (oldest message)
                 std::string minTsName = tsCompare.getMinName();
                 logger->trace("Receiving input: {}", minTsName);
+                if(auto trace = detail::syncdebug::find(&inputs[minTsName])) {
+                    detail::syncdebug::discarded(
+                        trace, inputFrames[minTsName], "timestamp_matching", tsCompare.getDifference<nanoseconds>(), nanoseconds(syncThresholdNs));
+                }
                 inputFrames[minTsName] = receive(minTsName);
                 if(inputFrames[minTsName] == nullptr) {
                     dropped = true;
@@ -396,6 +423,7 @@ void Sync::run() {
             }
         }
         if(dropped) {
+            discardCandidate(inputFrames, "source_unavailable_or_stopping");
             continue;
         }
         auto tBeforeSend = steady_clock::now();
@@ -410,6 +438,8 @@ void Sync::run() {
 
         outputGroup->setBufferMetadataFrom(newestFrame);
         outputGroup->setTimestampSource(timestampSource);
+
+        for(const auto& trace : outputTraces) detail::syncdebug::emitted(trace, outputGroup);
 
         {
             auto blockEvent = this->outputBlockEvent();

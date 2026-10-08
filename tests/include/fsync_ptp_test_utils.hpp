@@ -1,13 +1,14 @@
 #pragma once
 
 #include <chrono>
-#include <memory>
-#include <string>
-#include <vector>
-#include <optional>
-#include <tuple>
+#include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <set>
+#include <string>
+#include <tuple>
+#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
@@ -56,6 +57,12 @@ class GroupReader {
     // Consume at most one message before the deadline. An expired deadline consumes nothing.
     // Returns nullopt on timeout; malformed messages fail Catch2 assertions, and queue closure propagates.
     std::optional<GroupReadResult> read(std::chrono::steady_clock::time_point deadline) const;
+
+    // Internal diagnostic context; phase names must be string literals. No-op unless recording is enabled.
+    void setDebugContext(const char* phase,
+                         std::optional<std::size_t> sampleIndex = std::nullopt,
+                         std::optional<std::chrono::system_clock::duration> gap = std::nullopt,
+                         std::optional<double> limitSec = std::nullopt) const;
 
    private:
     dai::MessageQueue& queue;

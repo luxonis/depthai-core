@@ -906,12 +906,12 @@ dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci noreplayci)
 
 # Multi-device frame sync test (External and PTP)
 dai_add_test(multi_device_fsync_test src/onhost_tests/multi_device_fsync_test.cpp)
-target_include_directories(multi_device_fsync_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(multi_device_fsync_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include ${PROJECT_SOURCE_DIR}/src)
 target_sources(multi_device_fsync_test PRIVATE src/onhost_tests/utility/fsync_ptp_test_utils.cpp)
 dai_set_test_labels(multi_device_fsync_test ondevice rvc4fsync ci noreplayci)
 
 dai_add_test(multi_device_ptp_test src/onhost_tests/multi_device_ptp_test.cpp)
-target_include_directories(multi_device_ptp_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(multi_device_ptp_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include ${PROJECT_SOURCE_DIR}/src)
 target_sources(multi_device_ptp_test PRIVATE src/onhost_tests/utility/fsync_ptp_test_utils.cpp)
 dai_set_test_labels(multi_device_ptp_test ondevice rvc4ptp ci noreplayci)
 

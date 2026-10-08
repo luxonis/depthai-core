@@ -315,6 +315,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/PipelineStateApi.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
+    src/pipeline/SyncDebug.cpp
     src/pipeline/Node.cpp
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
