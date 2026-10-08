@@ -833,7 +833,9 @@ TEST_CASE("AlignmentUtilities undistort point") {
         transformation.setDistortionModel(dai::CameraModel::RadialDivision);
         REQUIRE_THROWS_AS(pixelToRay(point, transformation), std::invalid_argument);
         transformation.setDistortionModel(dai::CameraModel::Equirectangular);
-        REQUIRE_THROWS_AS(pixelToRay(point, transformation), std::invalid_argument);
+        const auto ray = pixelToRay(point, transformation);
+        const auto recovered = rayToPixel(ray, transformation);
+        REQUIRE(std::hypot(recovered.x - point.x, recovered.y - point.y) < 1e-3f);
     }
 }
 

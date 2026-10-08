@@ -45,4 +45,5 @@
     #include "datatype/DynamicCalibrationControl.hpp"
     #include "datatype/DynamicCalibrationResults.hpp"
 #endif
+#include "datatype/ImgDetectionsFilterConfig.hpp"
 #include "datatype/VppConfig.hpp"

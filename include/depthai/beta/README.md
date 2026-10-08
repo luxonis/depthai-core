@@ -11,13 +11,13 @@ Beta features are well-developed, but minor API and behavioral changes may occur
 In C++, beta nodes are available under `dai::beta::node`:
 
 ```cpp
-auto node = pipeline.create<dai::beta::node::ImgDetectionsFilter>();
+auto node = pipeline.create<dai::beta::node::ClassificationParser>();
 ```
 
 In Python, they are available under `dai.beta.node`:
 
 ```python
-node = pipeline.create(dai.beta.node.ImgDetectionsFilter)
+node = pipeline.create(dai.beta.node.ClassificationParser)
 ```
 
 ## Device support

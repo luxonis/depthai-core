@@ -449,13 +449,19 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+list(APPEND TARGET_CORE_SOURCES
+    src/pipeline/datatype/ImgDetectionsFilterConfig.cpp
+    src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+    src/pipeline/node/ImgDetectionsFilter.cpp
+    src/properties/ImgDetectionsFilterProperties.cpp
+)
+
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
         src/beta/BetaNode.cpp
         src/beta/device/MultiDeviceCalibrationHandler.cpp
         src/beta/datatype/Classifications.cpp
         src/beta/datatype/Clusters.cpp
-        src/beta/datatype/ImgDetectionsFilterConfig.cpp
         src/beta/datatype/Keypoints.cpp
         src/beta/datatype/MultiDeviceCalibrationControl.cpp
         src/beta/datatype/MultiDeviceCalibrationResult.cpp
@@ -481,7 +487,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/FastSAMParser.cpp
         src/beta/node/HRNetParser.cpp
         src/beta/node/ImageOutputParser.cpp
-        src/beta/node/ImgDetectionsFilter.cpp
         src/beta/node/KeypointParser.cpp
         src/beta/node/LaneDetectionParser.cpp
         src/beta/node/MapOutputParser.cpp
@@ -495,7 +500,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/XFeatMonoParser.cpp
         src/beta/node/XFeatStereoParser.cpp
         src/beta/node/YuNetParser.cpp
-        src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp
         src/beta/utilities/Detection/MaskUtils.cpp
