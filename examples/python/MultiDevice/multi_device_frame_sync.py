@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Frame synchronization across several devices in ONE dai.Pipeline.
 
-Every device's cameras are created in the same pipeline with an explicit device
-(pipeline.create(dai.node.Camera, device)) and link directly into one host Sync
+Every device's CAM_A camera is created in the same pipeline with an explicit device
+(pipeline.create(dai.node.Camera, device)) and links directly into one host Sync
 node - no per-device pipelines, no manual queue pumping between them.
 
 Hardware sync is configured the same way as before:
@@ -10,9 +10,11 @@ Hardware sync is configured the same way as before:
   --ptp-sync       PTP: cameras timestamp on the PTP-synchronized system clock
 Without either option the cameras run free and only the host Sync node pairs the
 frames by host timestamp (software sync, no special wiring or network setup).
+
+Every tile shows its frame timestamp; the mosaic shows the max diff between the
+newest and the oldest timestamp of the synced group.
 """
 import argparse
-import os
 from datetime import timedelta
 
 import cv2
@@ -26,7 +28,7 @@ parser.add_argument(
     "--sync-threshold-sec",
     type=float,
     default=None,
-    help="Sync threshold in seconds (default: 1 ms with hardware sync, half a frame period with host sync)",
+    help="Sync threshold in seconds (default: 1 ms with hardware sync, 20 ms with host sync)",
 )
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--external-sync", action="store_true", help="Use FSYNC wiring")
@@ -35,11 +37,7 @@ args = parser.parse_args()
 
 hostSyncOnly = not (args.external_sync or args.ptp_sync)
 if args.sync_threshold_sec is None:
-    # Free-running cameras of separate devices have an arbitrary, fixed phase offset of
-    # up to half a frame period - a tighter threshold would match frames only by luck
-    args.sync_threshold_sec = 0.5 / args.fps if hostSyncOnly else 1e-3
-if hostSyncOnly:
-    print(f"No hardware sync selected - host Sync node only, threshold {args.sync_threshold_sec * 1e3:.1f} ms")
+    args.sync_threshold_sec = 20e-3 if hostSyncOnly else 1e-3
 
 if args.devices:
     deviceInfos = [dai.DeviceInfo(d) for d in args.devices]
@@ -67,42 +65,37 @@ with dai.Pipeline(False) as pipeline:
             role = device.getExternalFrameSyncRole()
             if role == dai.ExternalFrameSyncRole.MASTER:
                 device.setExternalStrobeEnable(True)
-                print(f"{device.getDeviceId()} is FSYNC master")
-            else:
-                print(f"{device.getDeviceId()} is FSYNC slave")
 
-        for socket in device.getConnectedCameras():
-            if not args.external_sync or role == dai.ExternalFrameSyncRole.MASTER:
-                cam = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=args.fps)
-            else:
-                # FSYNC slaves lock to the master's strobe
-                cam = pipeline.create(dai.node.Camera, device).build(socket)
-            if args.ptp_sync:
-                cam.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
-            name = f"{device.getDeviceId()}_{socket.name}"
-            cam.requestOutput((640, 400), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH).link(sync.inputs[name])
-            inputNames.append(name)
+        if not args.external_sync or role == dai.ExternalFrameSyncRole.MASTER:
+            cam = pipeline.create(dai.node.Camera, device).build(dai.CameraBoardSocket.CAM_A, sensorFps=args.fps)
+        else:
+            # FSYNC slaves lock to the master's strobe
+            cam = pipeline.create(dai.node.Camera, device).build(dai.CameraBoardSocket.CAM_A)
+        if args.ptp_sync:
+            cam.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
+        name = device.getDeviceId()
+        cam.requestOutput((1280, 800), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH).link(sync.inputs[name])
+        inputNames.append(name)
 
     queue = sync.out.createOutputQueue()
     pipeline.start()
 
-    display = bool(os.environ.get("DISPLAY"))
     while pipeline.isRunning():
         group_msg = queue.get()
         if group_msg is None:
             continue
-        deltaMs = group_msg.getIntervalNs() / 1e6
-        print(f"Synced group of {group_msg.getNumMessages()} frames, timestamp spread {deltaMs:.2f} ms")
+        # Newest minus oldest frame timestamp of the group
+        maxDiffMs = group_msg.getIntervalNs() / 1e6
 
-        if display:
-            frames = []
-            for name in inputNames:
-                frame = group_msg[name]
-                img = frame.getCvFrame()
-                cv2.putText(img, name, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 127, 255), 2, cv2.LINE_AA)
-                frames.append(img)
-            combined = cv2.hconcat(frames)
-            cv2.putText(combined, f"delta = {deltaMs:.2f} ms", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
-            cv2.imshow("multi_device_frame_sync", combined)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+        frames = []
+        for name in inputNames:
+            frame = group_msg[name]
+            img = frame.getCvFrame()
+            label = f"{name}  {frame.getTimestamp().total_seconds():.3f} s"
+            cv2.putText(img, label, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 127, 255), 2, cv2.LINE_AA)
+            frames.append(img)
+        combined = cv2.hconcat(frames)
+        cv2.putText(combined, f"max diff = {maxDiffMs:.2f} ms", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+        cv2.imshow("multi_device_frame_sync", combined)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break

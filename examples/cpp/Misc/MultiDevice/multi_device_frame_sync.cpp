@@ -1,24 +1,14 @@
-// Frame synchronization across several devices in ONE dai::Pipeline.
-//
-// Every device's cameras are created in the same pipeline with an explicit device
-// (pipeline.create<Camera>(device)) and link directly into one host Sync node -
-// no per-device pipelines, no manual queue pumping between them.
-//
-// Hardware sync is configured the same way as before:
-//  --external-sync  FSYNC wiring: the master device strobes, slaves lock to it
-//  --ptp-sync       PTP: cameras timestamp on the PTP-synchronized system clock
-// Without either option the cameras run free and only the host Sync node pairs the
-// frames by host timestamp (software sync, no special wiring or network setup).
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <csignal>
-#include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <opencv2/opencv.hpp>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -34,7 +24,7 @@ void interruptHandler(int) {
 
 struct ParsedArgs {
     float targetFps = 30.0f;
-    // Unset: 1 ms with hardware sync, half a frame period with host sync only
+    // Unset: 1 ms with hardware sync, 20 ms with host sync only
     std::optional<float> syncThresholdSec;
     bool externalSync = false;
     bool ptpSync = false;
@@ -98,12 +88,7 @@ int main(int argc, char** argv) {
     if(!parsed.has_value()) return 1;
 
     const bool hostSyncOnly = !parsed->externalSync && !parsed->ptpSync;
-    // Free-running cameras of separate devices have an arbitrary, fixed phase offset of
-    // up to half a frame period - a tighter threshold would match frames only by luck
-    const float syncThresholdSec = parsed->syncThresholdSec.value_or(hostSyncOnly ? 0.5f / parsed->targetFps : 1e-3f);
-    if(hostSyncOnly) {
-        std::cout << "No hardware sync selected - host Sync node only, threshold " << syncThresholdSec * 1e3f << " ms" << std::endl;
-    }
+    const float syncThresholdSec = parsed->syncThresholdSec.value_or(hostSyncOnly ? 20e-3f : 1e-3f);
 
     std::vector<dai::DeviceInfo> deviceInfos;
     if(parsed->deviceArgs.empty()) {
@@ -116,7 +101,6 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    // One pipeline; the first added device becomes the master (default device)
     dai::Pipeline pipeline(false);
 
     auto sync = pipeline.create<dai::node::Sync>();
@@ -135,59 +119,54 @@ int main(int argc, char** argv) {
             role = device->getExternalFrameSyncRole();
             if(role == dai::ExternalFrameSyncRole::MASTER) {
                 device->setExternalStrobeEnable(true);
-                std::cout << device->getDeviceId() << " is FSYNC master" << std::endl;
-            } else {
-                std::cout << device->getDeviceId() << " is FSYNC slave" << std::endl;
             }
         }
 
-        for(auto socket : device->getConnectedCameras()) {
-            std::shared_ptr<dai::node::Camera> cam;
-            if(!parsed->externalSync || role == dai::ExternalFrameSyncRole::MASTER) {
-                cam = pipeline.create<dai::node::Camera>(device)->build(socket, std::nullopt, parsed->targetFps);
-            } else {
-                // FSYNC slaves lock to the master's strobe
-                cam = pipeline.create<dai::node::Camera>(device)->build(socket, std::nullopt);
-            }
-            if(parsed->ptpSync) {
-                cam->initialControl.setFrameSyncMode(dai::CameraControl::FrameSyncMode::TIME_PTP);
-            }
-            auto name = device->getDeviceId() + "_" + std::string(dai::toString(socket));
-            cam->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH)->link(sync->inputs[name]);
-            inputNames.push_back(name);
+        std::shared_ptr<dai::node::Camera> cam;
+        if(!parsed->externalSync || role == dai::ExternalFrameSyncRole::MASTER) {
+            cam = pipeline.create<dai::node::Camera>(device)->build(dai::CameraBoardSocket::CAM_A, std::nullopt, parsed->targetFps);
+        } else {
+            // FSYNC slaves lock to the master's strobe
+            cam = pipeline.create<dai::node::Camera>(device)->build(dai::CameraBoardSocket::CAM_A, std::nullopt);
         }
+        if(parsed->ptpSync) {
+            cam->initialControl.setFrameSyncMode(dai::CameraControl::FrameSyncMode::TIME_PTP);
+        }
+        auto name = device->getDeviceId();
+        cam->requestOutput(std::make_pair(1280, 800), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH)->link(sync->inputs[name]);
+        inputNames.push_back(name);
     }
 
     auto queue = sync->out.createOutputQueue();
     pipeline.start();
 
-    const char* displayEnv = std::getenv("DISPLAY");
-    const bool display = displayEnv != nullptr && displayEnv[0] != '\0';
     while(running && pipeline.isRunning()) {
         bool hasTimedOut = false;
         auto group = queue->get<dai::MessageGroup>(std::chrono::milliseconds(500), hasTimedOut);
         if(group == nullptr) continue;
 
-        const double deltaMs = static_cast<double>(group->getIntervalNs()) / 1e6;
-        std::cout << "Synced group of " << group->getNumMessages() << " frames, timestamp spread " << deltaMs << " ms" << std::endl;
+        // Newest minus oldest frame timestamp of the group
+        const double maxDiffMs = static_cast<double>(group->getIntervalNs()) / 1e6;
 
-        if(display) {
-            std::vector<cv::Mat> frames;
-            for(const auto& name : inputNames) {
-                auto frame = group->get<dai::ImgFrame>(name);
-                if(frame == nullptr) continue;
-                auto img = frame->getCvFrame();
-                cv::putText(img, name, {20, 40}, cv::FONT_HERSHEY_SIMPLEX, 0.6, {0, 127, 255}, 2, cv::LINE_AA);
-                frames.push_back(img);
-            }
-            if(!frames.empty()) {
-                cv::Mat combined;
-                cv::hconcat(frames, combined);
-                cv::putText(
-                    combined, "delta = " + std::to_string(deltaMs).substr(0, 5) + " ms", {20, 80}, cv::FONT_HERSHEY_SIMPLEX, 0.7, {0, 255, 0}, 2, cv::LINE_AA);
-                cv::imshow("multi_device_frame_sync", combined);
-                if(cv::waitKey(1) == 'q') break;
-            }
+        std::vector<cv::Mat> frames;
+        for(const auto& name : inputNames) {
+            auto frame = group->get<dai::ImgFrame>(name);
+            if(frame == nullptr) continue;
+            auto img = frame->getCvFrame();
+            std::ostringstream label;
+            label << name << "  " << std::fixed << std::setprecision(3) << std::chrono::duration<double>(frame->getTimestamp().time_since_epoch()).count()
+                  << " s";
+            cv::putText(img, label.str(), {20, 40}, cv::FONT_HERSHEY_SIMPLEX, 0.6, {0, 127, 255}, 2, cv::LINE_AA);
+            frames.push_back(img);
+        }
+        if(!frames.empty()) {
+            cv::Mat combined;
+            cv::hconcat(frames, combined);
+            std::ostringstream diff;
+            diff << "max diff = " << std::fixed << std::setprecision(2) << maxDiffMs << " ms";
+            cv::putText(combined, diff.str(), {20, 80}, cv::FONT_HERSHEY_SIMPLEX, 0.7, {0, 255, 0}, 2, cv::LINE_AA);
+            cv::imshow("multi_device_frame_sync", combined);
+            if(cv::waitKey(1) == 'q') break;
         }
     }
 
