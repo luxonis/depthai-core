@@ -34,3 +34,7 @@ dai_add_example(host_pipeline_synced_node host_pipeline_synced_node.cpp ON OFF)
 dai_set_example_test_labels(host_pipeline_synced_node ondevice rvc2_all rvc4 ci)
 
 dai_add_example(host_only_camera host_only_camera.cpp OFF OFF)
+
+dai_add_example(stitching_panorama stitching_panorama.cpp OFF OFF)
+
+dai_add_example(stitching_planar_projection stitching_planar_projection.cpp OFF OFF)

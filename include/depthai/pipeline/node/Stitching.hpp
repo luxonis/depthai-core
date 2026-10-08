@@ -8,27 +8,27 @@
 #include <optional>
 #include <vector>
 
-#include "depthai/beta/BetaNode.hpp"
-#include "depthai/beta/properties/StitchingProperties.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/properties/StitchingProperties.hpp"
 
 namespace dai {
-namespace beta {
 namespace node {
 
 /**
  * @brief Stitching node. Combines N time-synced image streams into a single stitched image.
  *
- * The node runs on the host by default and can run on an RVC4 device when selected with `setRunOnHost(false)`. Host
- * execution requires depthai-core OpenCV support. Inputs are fixed at build() time and synced by an internal Sync
- * subnode that follows the node's execution side, so host-mode sources may come from different devices.
- * Two independent stitching modes are available:
+ * The node runs on the host by default and can run on an RVC4 device when selected with `setRunOnHost(false)`; RVC2
+ * cannot run it on-device, so there it falls back to the host. Host execution requires depthai-core OpenCV support.
+ * Inputs are fixed at build() time and synced by an internal Sync subnode that follows the node's execution side, so
+ * host-mode sources may come from different devices. Two independent stitching modes are available:
  *
- *  - `Mode::PANORAMA` wraps OpenCV's cv::Stitcher and registers the images from their content, so no calibration is
- *    needed, but the cameras have to overlap.
+ *  - `Mode::PANORAMA` composes a panorama of the calibrated, undistorted inputs from their intrinsics and rotations
+ *    by default. With `setUseInputCalibration(false)` it wraps OpenCV's cv::Stitcher instead and registers the images
+ *    from their content, so no calibration is needed, but the cameras have to overlap.
  *  - `Mode::PLANAR_PROJECTION` projects the images onto a plane given in the common origin frame of the inputs
  *    (bird's-eye view), driven purely by the calibration carried in the messages, so it also works without overlap.
  *    All input transformations must have the same origin camera socket.
@@ -38,13 +38,16 @@ namespace node {
  * pinhole view of `setView()`, relative to the common origin of the inputs. In `Mode::PANORAMA` the camera model follows
  * `setCameraModel()`: dai::CameraModel::Perspective, Cylindrical or Equirectangular (see dai::CameraModel for their
  * projection formulas), the focal length is the radius of the projection surface in pixels and the principal point is the
- * pixel the panorama Z axis projects to. A panorama composed from the input calibration is expressed in the destination
+ * pixel the panorama Z axis projects to. A dai::CameraModel names a projection surface together with a distortion model;
+ * the panorama is rendered straight onto its surface, so the output never carries distortion coefficients and
+ * getDistortionModel() on it reports the surface, not a lens. See src/pipeline/utilities/Stitching/README.md for the details.
+ * A panorama composed from the input calibration is expressed in the destination
  * coordinate system of the inputs, centered at the mean of their camera centers. A visually registered panorama is only
  * known relative to its inputs, so it is expressed through the first contributing input: in the destination coordinate
  * system of that input's extrinsics when it carries some, and relative to that input's camera, with an AUTO socket,
  * otherwise.
  */
-class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties> {
+class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "Stitching";
 
@@ -127,7 +130,7 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     /**
      * Specify whether to run on host or an RVC4 device. By default, the node runs on host.
      */
-    void setRunOnHost(bool runOnHost) override;
+    void setRunOnHost(bool runOnHost);
 
     /**
      * Check whether the node is configured to run on host.
@@ -183,8 +186,13 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     float getMinIncidenceAngle() const;
 
     /**
-     * Set the projection surface the images are warped onto. Defaults to Equirectangular (a sphere), same as OpenCV.
+     * Set the projection surface the images are warped onto. Defaults to Equirectangular (a sphere).
      * Only used in `Mode::PANORAMA`.
+     *
+     * The value picks the surface of the output, not a lens: Equirectangular renders onto a sphere, Cylindrical onto a
+     * cylinder and Perspective onto a pinhole plane, all without distortion. Fisheye and RadialDivision are distortion
+     * models of the pinhole plane rather than surfaces to render onto, so they are rejected. The input images may carry
+     * any pinhole model; with `setUseInputCalibration(true)` they must be undistorted.
      * @param model dai::CameraModel::Equirectangular, Cylindrical or Perspective
      * @throws std::invalid_argument for any other model
      */
@@ -192,7 +200,9 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     CameraModel getCameraModel() const;
 
     /**
-     * Use the intrinsics and rotations carried by the input ImgTransformations to compose a panorama.
+     * Use the intrinsics and rotations carried by the input ImgTransformations to compose a panorama. Enabled by
+     * default; `false` registers the images visually with OpenCV's cv::Stitcher instead, see `setContinuous()` and
+     * `setEstimationFrames()`.
      *
      * All inputs must be expressed relative to exactly the same destination device ID and camera socket. Translation
      * is ignored, so all camera centers are treated as coincident. Cylindrical panoramas use the normalized mean input
@@ -230,7 +240,7 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     uint32_t getEstimationFrames() const;
 
     /**
-     * Reject panorama registrations whose projected canvas exceeds this size before OpenCV allocates and composes it.
+     * Reject panorama registrations whose projected canvas exceeds this size before it is allocated and composed.
      * This protects against degenerate feature matches producing extremely large canvases. By default the size is
      * unbounded.
      */
@@ -255,6 +265,10 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     SeamFinder getSeamFinder() const;
 
     void buildInternal() override;
+    /**
+     * Falls back to host execution on RVC2, which cannot run the node on-device.
+     */
+    void buildStage1() override;
     void run() override;
 
    private:
@@ -273,5 +287,4 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
 };
 
 }  // namespace node
-}  // namespace beta
 }  // namespace dai
