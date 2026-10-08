@@ -61,7 +61,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      * @param depthSource Depth source node (StereoDepth, NeuralDepth, ToF, or Depth)
      * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps Desired frames per second
-     * @param resizeMode Resize mode for input color frames
+     * @param resizeMode Override the archive's resize mode. If omitted, use preprocessing.resize_mode, or CROP if unspecified.
      * @returns Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
@@ -76,7 +76,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      * @param inputRgb Camera node
      * @param depthSource Depth source node (StereoDepth, NeuralDepth, ToF, or Depth)
      * @param model: Neural network model description, NNArchive or HubAI model id string
-     * @param capability: Camera capabilities
+     * @param capability: Camera capabilities. Its resizeMode overrides the archive's resize mode.
      * @returns Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,

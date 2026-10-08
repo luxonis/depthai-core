@@ -127,9 +127,13 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
                                                                         std::optional<dai::ImgResizeMode> resizeMode) {
     ImgFrameCapability cap;
     if(fps.has_value()) cap.fps.value = *fps;
-    if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
     cap.enableUndistortion = true;  // default for SpatialDetectionNetwork
-    return build(inputRgb, depthSource, model, cap);
+    neuralNetwork->buildCamera(inputRgb, model, cap, resizeMode);
+    auto nnArchive = neuralNetwork->getNNArchive();
+    DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
+    detectionParser->setNNArchive(nnArchive.value());
+    alignDepth(depthSource, inputRgb);
+    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,

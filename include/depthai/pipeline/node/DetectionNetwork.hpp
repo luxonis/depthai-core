@@ -41,19 +41,19 @@ class DetectionNetwork : public DeviceNodeGroup {
      * @param input: Camera node
      * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps: Desired frames per second
-     * @param resizeMode: Resize mode for input frames
+     * @param resizeMode: Override the archive's resize mode. If omitted, use preprocessing.resize_mode, or CROP if unspecified.
      * @returns Shared pointer to DetectionNetwork node
      */
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input,
                                             const Model& model,
                                             std::optional<float> fps = std::nullopt,
-                                            std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+                                            std::optional<dai::ImgResizeMode> resizeMode = std::nullopt);
 
     /**
      * @brief Build DetectionNetwork node. Connect Camera output to this node's input and configure the inference model.
      * @param input: Camera node
      * @param model: Neural network model description, NNArchive or HubAI model id string
-     * @param capability: Camera capabilities
+     * @param capability: Camera capabilities. Its resizeMode overrides the archive's resize mode.
      * @returns Shared pointer to DetectionNetwork node
      */
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability);
