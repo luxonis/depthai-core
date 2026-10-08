@@ -164,6 +164,36 @@ function(DepthaiDeviceDownloader)
             "${folder}/${device_type}-fwp-${_version_commit_identifier}-LICENSE"
             "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../notices/depthai-device-RVC4-LICENSE"
         )
+
+        # Download firmware package SBOMs (SPDX and CycloneDX), used by scripts/generate_sbom.py.
+        # Firmware versions from before the SBOMs have none, so a missing SBOM is not an error.
+        # They are not added to the resource list: the library does not embed them.
+        set(_saved_retry_num ${DOWNLOADER_RETRY_NUM})
+        set(DOWNLOADER_RETRY_NUM 1)
+        foreach(_sbom_extension "spdx.json" "cdx.json")
+            set(_sbom_file "${folder}/${device_type}-fwp-${_version_commit_identifier}.${_sbom_extension}")
+            if(EXISTS "${_sbom_file}.unavailable")
+                continue()
+            endif()
+            DownloadAndChecksum(
+                "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.${_sbom_extension}" # File
+                "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.${_sbom_extension}.sha256" # File checksum
+                "${_sbom_file}"
+                status
+            )
+            if(${status})
+                # A failed download can leave a partial file, which the next configure would take as downloaded
+                file(REMOVE "${_sbom_file}")
+                if("${status}" STREQUAL "22")
+                    # HTTP error (not published): do not ask again on the next configure
+                    message(STATUS "No ${device_type}-fwp ${_sbom_extension} SBOM for this firmware version")
+                    file(WRITE "${_sbom_file}.unavailable" "")
+                else()
+                    message(WARNING "Could not download the ${device_type}-fwp ${_sbom_extension} SBOM (status ${status})")
+                endif()
+            endif()
+        endforeach()
+        set(DOWNLOADER_RETRY_NUM ${_saved_retry_num})
     endif()
 
 
