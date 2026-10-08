@@ -8,6 +8,8 @@ node - no per-device pipelines, no manual queue pumping between them.
 Hardware sync is configured the same way as before:
   --external-sync  FSYNC wiring: the master device strobes, slaves lock to it
   --ptp-sync       PTP: cameras timestamp on the PTP-synchronized system clock
+Without either option the cameras run free and only the host Sync node pairs the
+frames by host timestamp (software sync, no special wiring or network setup).
 """
 import argparse
 import os
@@ -19,11 +21,25 @@ import depthai as dai
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--fps", type=float, default=30.0, help="Target FPS")
 parser.add_argument("-d", "--devices", nargs="+", default=[], help="Device ids or IPs")
-parser.add_argument("-t", "--sync-threshold-sec", type=float, default=1e-3, help="Sync threshold in seconds")
-group = parser.add_mutually_exclusive_group(required=True)
+parser.add_argument(
+    "-t",
+    "--sync-threshold-sec",
+    type=float,
+    default=None,
+    help="Sync threshold in seconds (default: 1 ms with hardware sync, half a frame period with host sync)",
+)
+group = parser.add_mutually_exclusive_group()
 group.add_argument("--external-sync", action="store_true", help="Use FSYNC wiring")
 group.add_argument("--ptp-sync", action="store_true", help="Use PTP time sync")
 args = parser.parse_args()
+
+hostSyncOnly = not (args.external_sync or args.ptp_sync)
+if args.sync_threshold_sec is None:
+    # Free-running cameras of separate devices have an arbitrary, fixed phase offset of
+    # up to half a frame period - a tighter threshold would match frames only by luck
+    args.sync_threshold_sec = 0.5 / args.fps if hostSyncOnly else 1e-3
+if hostSyncOnly:
+    print(f"No hardware sync selected - host Sync node only, threshold {args.sync_threshold_sec * 1e3:.1f} ms")
 
 if args.devices:
     deviceInfos = [dai.DeviceInfo(d) for d in args.devices]
@@ -56,7 +72,7 @@ with dai.Pipeline(False) as pipeline:
                 print(f"{device.getDeviceId()} is FSYNC slave")
 
         for socket in device.getConnectedCameras():
-            if args.ptp_sync or role == dai.ExternalFrameSyncRole.MASTER:
+            if not args.external_sync or role == dai.ExternalFrameSyncRole.MASTER:
                 cam = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=args.fps)
             else:
                 # FSYNC slaves lock to the master's strobe

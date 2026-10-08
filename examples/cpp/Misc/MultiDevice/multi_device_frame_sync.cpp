@@ -7,6 +7,8 @@
 // Hardware sync is configured the same way as before:
 //  --external-sync  FSYNC wiring: the master device strobes, slaves lock to it
 //  --ptp-sync       PTP: cameras timestamp on the PTP-synchronized system clock
+// Without either option the cameras run free and only the host Sync node pairs the
+// frames by host timestamp (software sync, no special wiring or network setup).
 
 #include <algorithm>
 #include <chrono>
@@ -32,7 +34,8 @@ void interruptHandler(int) {
 
 struct ParsedArgs {
     float targetFps = 30.0f;
-    float syncThresholdSec = 1e-3f;
+    // Unset: 1 ms with hardware sync, half a frame period with host sync only
+    std::optional<float> syncThresholdSec;
     bool externalSync = false;
     bool ptpSync = false;
     std::vector<std::string> deviceArgs;
@@ -43,7 +46,7 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
     auto printUsage = [argv]() {
         std::cout << "Usage: " << argv[0]
                   << " [-f|--fps <target_fps>] [-d|--devices <device_1> [device_2 ...]]"
-                     " [-t|--sync-threshold-sec <sec>] (--external-sync|--ptp-sync)"
+                     " [-t|--sync-threshold-sec <sec>] [--external-sync|--ptp-sync]"
                   << std::endl;
     };
     try {
@@ -78,8 +81,8 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
         printUsage();
         return std::nullopt;
     }
-    if(parsed.externalSync == parsed.ptpSync) {
-        std::cerr << "Must specify exactly one of --external-sync or --ptp-sync" << std::endl;
+    if(parsed.externalSync && parsed.ptpSync) {
+        std::cerr << "Specify at most one of --external-sync or --ptp-sync" << std::endl;
         printUsage();
         return std::nullopt;
     }
@@ -93,6 +96,14 @@ int main(int argc, char** argv) {
 
     auto parsed = parseArguments(argc, argv);
     if(!parsed.has_value()) return 1;
+
+    const bool hostSyncOnly = !parsed->externalSync && !parsed->ptpSync;
+    // Free-running cameras of separate devices have an arbitrary, fixed phase offset of
+    // up to half a frame period - a tighter threshold would match frames only by luck
+    const float syncThresholdSec = parsed->syncThresholdSec.value_or(hostSyncOnly ? 0.5f / parsed->targetFps : 1e-3f);
+    if(hostSyncOnly) {
+        std::cout << "No hardware sync selected - host Sync node only, threshold " << syncThresholdSec * 1e3f << " ms" << std::endl;
+    }
 
     std::vector<dai::DeviceInfo> deviceInfos;
     if(parsed->deviceArgs.empty()) {
@@ -110,7 +121,7 @@ int main(int argc, char** argv) {
 
     auto sync = pipeline.create<dai::node::Sync>();
     sync->setRunOnHost(true);
-    sync->setSyncThreshold(std::chrono::nanoseconds(static_cast<int64_t>(std::round(1e9 * parsed->syncThresholdSec))));
+    sync->setSyncThreshold(std::chrono::nanoseconds(static_cast<int64_t>(std::round(1e9 * syncThresholdSec))));
 
     std::vector<std::string> inputNames;
     for(auto& info : deviceInfos) {
@@ -132,7 +143,7 @@ int main(int argc, char** argv) {
 
         for(auto socket : device->getConnectedCameras()) {
             std::shared_ptr<dai::node::Camera> cam;
-            if(parsed->ptpSync || role == dai::ExternalFrameSyncRole::MASTER) {
+            if(!parsed->externalSync || role == dai::ExternalFrameSyncRole::MASTER) {
                 cam = pipeline.create<dai::node::Camera>(device)->build(socket, std::nullopt, parsed->targetFps);
             } else {
                 // FSYNC slaves lock to the master's strobe

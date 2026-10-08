@@ -4,6 +4,7 @@
 // InputMap::getSourceDevices() (resolved at pipeline build) and composes a mosaic.
 // It keeps running when a device disappears: the lost device's tile freezes and is
 // labeled OFFLINE while the other tiles keep updating (partial operation).
+// With --stop-on-device-loss the pipeline stops instead when any device is lost for good.
 
 #include <chrono>
 #include <csignal>
@@ -68,10 +69,18 @@ class MosaicNode : public dai::node::CustomThreadedNode<MosaicNode> {
 int main(int argc, char** argv) {
     signal(SIGINT, [](int) { running = false; });
 
+    // Usage: multi_device_stream [--stop-on-device-loss] [device_1 device_2 ...]
+    bool stopOnDeviceLoss = false;
     std::vector<dai::DeviceInfo> deviceInfos;
-    if(argc >= 2) {
-        for(int i = 1; i < argc; i++) deviceInfos.emplace_back(argv[i]);
-    } else {
+    for(int i = 1; i < argc; i++) {
+        const std::string arg = argv[i];
+        if(arg == "--stop-on-device-loss") {
+            stopOnDeviceLoss = true;
+        } else {
+            deviceInfos.emplace_back(arg);
+        }
+    }
+    if(deviceInfos.empty()) {
         deviceInfos = dai::Device::getAllAvailableDevices();
     }
     if(deviceInfos.size() < 2) {
@@ -80,6 +89,8 @@ int main(int argc, char** argv) {
     }
 
     dai::Pipeline pipeline(false);
+    // Off by default (partial operation)
+    pipeline.setStopOnDeviceLoss(stopOnDeviceLoss);
     auto mosaic = pipeline.create<MosaicNode>();
 
     for(auto& info : deviceInfos) {
@@ -95,10 +106,17 @@ int main(int argc, char** argv) {
     const bool display = displayEnv != nullptr && displayEnv[0] != '\0';
     while(running && pipeline.isRunning()) {
         bool hasTimedOut = false;
-        auto frame = queue->get<dai::ImgFrame>(std::chrono::milliseconds(500), hasTimedOut);
+        std::shared_ptr<dai::ImgFrame> frame;
+        try {
+            frame = queue->get<dai::ImgFrame>(std::chrono::milliseconds(500), hasTimedOut);
+        } catch(const dai::MessageQueue::QueueException&) {
+            // The pipeline stopped itself after a device loss
+            std::cout << "Pipeline stopped - a device was lost" << std::endl;
+            break;
+        }
         if(frame == nullptr) continue;
         if(display) {
-            cv::imshow("multi_device_host_node", frame->getCvFrame());
+            cv::imshow("multi_device_stream", frame->getCvFrame());
             if(cv::waitKey(1) == 'q') break;
         } else {
             std::cout << "Mosaic frame " << frame->getWidth() << "x" << frame->getHeight() << std::endl;

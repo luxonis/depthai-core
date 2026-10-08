@@ -417,8 +417,8 @@ class DeviceBase::Impl {
      * RPC call with custom timeout. Set timeout to 0 to enable endless wait.
      */
     template <typename... Args>
-    auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name),
-                                                                                                                  std::forward<Args>(args)...)) {
+    auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args)
+        -> decltype(rpcClient->call(std::string(name), std::forward<Args>(args)...)) {
         ScopedRpcTimeout guard(timeout);
         return rpcCall(std::move(name), std::forward<Args>(args)...);
     }
@@ -1674,8 +1674,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
     }
-    // Device is gone for good: idle its streams; the pipeline stops only when this
-    // was the last device or a fatal one (a device consuming other devices' streams)
     notifyPipelineDeviceState(DeviceState::FAILED);
 }
 
