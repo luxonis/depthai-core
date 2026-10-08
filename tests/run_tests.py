@@ -25,6 +25,8 @@ class ResultThread(threading.Thread):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding="utf-8",
+            errors="backslashreplace",
         )
 
         for output in process.stdout:
@@ -298,7 +300,7 @@ if __name__ == "__main__":
     for name, resultThread in resultThreads:
         resultThread.join()
         result = resultThread.result
-        if result.returncode != 0:
+        if result is None or result.returncode != 0:
             print(f"Tests failed for configuration: {name}")
             any_failures = True
         else:
