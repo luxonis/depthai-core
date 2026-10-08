@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge detections on a calibrated panorama. Keys: 1=Off, 2=NMS, 3=Average, W/S=IoU +/-0.05, Q=quit."""
+"""Show per-device detections and a calibrated panorama. Keys: 1=Off, 2=NMS, 3=Average, W/S=IoU +/-0.05, Q=quit."""
 import argparse
 from datetime import timedelta
 
@@ -45,6 +45,7 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     merged.initialConfig.overlapIouThreshold = iouThreshold
     configQueue = merged.inputConfig.createInputQueue(maxSize=1, blocking=False)
     views = []
+    displayQueues = []
     for index, identifier in enumerate(args.devices):
         device = pipeline.addDevice(dai.DeviceInfo(identifier))
         camera = pipeline.create(dai.node.Camera, device).build(dai.CameraBoardSocket.CAM_A, sensorFps=FPS)
@@ -55,6 +56,13 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         # MessageDemux accepts Buffer outputs; declare the concrete type for the typed filter inputs.
         demux.outputs[key].setPossibleDatatypes([(dai.DatatypeEnum.ImgDetections, False)])
         demux.outputs[key].link(merged.inputs[key])
+        # Pair detections with the camera frame used for inference.
+        cameraDisplay = pipeline.create(dai.node.Sync)
+        cameraDisplay.setRunOnHost(True)
+        cameraDisplay.setSyncThreshold(timedelta(milliseconds=1))
+        network.passthrough.link(cameraDisplay.inputs["image"])
+        network.out.link(cameraDisplay.inputs["detections"])
+        displayQueues.append((f"Camera {index}: {identifier}", cameraDisplay.out.createOutputQueue(maxSize=1, blocking=False)))
         views.append(camera.requestOutput((640 * args.panorama_scale, 400 * args.panorama_scale),
                                           type=dai.ImgFrame.Type.BGR888i, fps=FPS, enableUndistortion=True))
 
@@ -70,14 +78,17 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     display = pipeline.create(dai.node.Sync)
     display.setRunOnHost(True)
     display.setSyncThreshold(syncThreshold)
-    stitching.out.link(display.inputs["panorama"])
+    stitching.out.link(display.inputs["image"])
     merged.out.link(display.inputs["detections"])
-    queue = display.out.createOutputQueue()
+    panoramaWindow = "Multi-device detections panorama"
+    displayQueues.append((panoramaWindow, display.out.createOutputQueue()))
     pipeline.start()
     while pipeline.isRunning():
-        group = queue.tryGet()
-        if group is not None:
-            frame = group["panorama"].getCvFrame()
+        for windowName, queue in displayQueues:
+            group = queue.tryGet()
+            if group is None:
+                continue
+            frame = group["image"].getCvFrame()
             for detection in group["detections"].detections:
                 box = detection.getBoundingBox().denormalize(frame.shape[1], frame.shape[0])
                 points = box.getPoints()
@@ -85,12 +96,13 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
                     cv2.line(frame, (round(a.x), round(a.y)), (round(b.x), round(b.y)), (0, 255, 0), 2)
                 cv2.putText(frame, f"{detection.labelName or detection.label}: {detection.confidence:.2f}",
                             (round(box.center.x), round(box.center.y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-            cv2.rectangle(frame, (0, 0), (frame.shape[1], 60), (0, 0, 0), -1)
-            cv2.putText(frame, f"Duplicates: {overlapModes[modeIndex].name} | IoU: {iouThreshold:.2f}",
-                        (10, 23), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
-            cv2.putText(frame, "1: Off | 2: NMS | 3: Average | W/S: IoU +/-0.05 | Q: Quit",
-                        (10, 47), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-            cv2.imshow("Multi-device detections panorama", frame)
+            if windowName == panoramaWindow:
+                cv2.rectangle(frame, (0, 0), (frame.shape[1], 60), (0, 0, 0), -1)
+                cv2.putText(frame, f"Duplicates: {overlapModes[modeIndex].name} | IoU: {iouThreshold:.2f}",
+                            (10, 23), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+                cv2.putText(frame, "1: Off | 2: NMS | 3: Average | W/S: IoU +/-0.05 | Q: Quit",
+                            (10, 47), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            cv2.imshow(windowName, frame)
         key = cv2.waitKey(1) & 0xFF
         if key in (ord("q"), ord("Q")):
             break
