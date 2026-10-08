@@ -34,61 +34,59 @@ if len(deviceInfos) < 2:
     raise SystemExit(0)
 
 # One pipeline; the first added device becomes the master (default device)
-pipeline = dai.Pipeline(False)
+with dai.Pipeline(False) as pipeline:
 
-sync = pipeline.create(dai.node.Sync)
-sync.setRunOnHost(True)
-sync.setSyncThreshold(timedelta(seconds=args.sync_threshold_sec))
+    sync = pipeline.create(dai.node.Sync)
+    sync.setRunOnHost(True)
+    sync.setSyncThreshold(timedelta(seconds=args.sync_threshold_sec))
 
-inputNames = []
-for info in deviceInfos:
-    device = pipeline.addDevice(info)
-    if device.getPlatform() != dai.Platform.RVC4:
-        raise RuntimeError("This example supports only the RVC4 platform!")
+    inputNames = []
+    for info in deviceInfos:
+        device = pipeline.addDevice(info)
+        if device.getPlatform() != dai.Platform.RVC4:
+            raise RuntimeError("This example supports only the RVC4 platform!")
 
-    role = None
-    if args.external_sync:
-        role = device.getExternalFrameSyncRole()
-        if role == dai.ExternalFrameSyncRole.MASTER:
-            device.setExternalStrobeEnable(True)
-            print(f"{device.getDeviceId()} is FSYNC master")
-        else:
-            print(f"{device.getDeviceId()} is FSYNC slave")
+        role = None
+        if args.external_sync:
+            role = device.getExternalFrameSyncRole()
+            if role == dai.ExternalFrameSyncRole.MASTER:
+                device.setExternalStrobeEnable(True)
+                print(f"{device.getDeviceId()} is FSYNC master")
+            else:
+                print(f"{device.getDeviceId()} is FSYNC slave")
 
-    for socket in device.getConnectedCameras():
-        if args.ptp_sync or role == dai.ExternalFrameSyncRole.MASTER:
-            cam = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=args.fps)
-        else:
-            # FSYNC slaves lock to the master's strobe
-            cam = pipeline.create(dai.node.Camera, device).build(socket)
-        if args.ptp_sync:
-            cam.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
-        name = f"{device.getDeviceId()}_{socket.name}"
-        cam.requestOutput((640, 400), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH).link(sync.inputs[name])
-        inputNames.append(name)
+        for socket in device.getConnectedCameras():
+            if args.ptp_sync or role == dai.ExternalFrameSyncRole.MASTER:
+                cam = pipeline.create(dai.node.Camera, device).build(socket, sensorFps=args.fps)
+            else:
+                # FSYNC slaves lock to the master's strobe
+                cam = pipeline.create(dai.node.Camera, device).build(socket)
+            if args.ptp_sync:
+                cam.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
+            name = f"{device.getDeviceId()}_{socket.name}"
+            cam.requestOutput((640, 400), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH).link(sync.inputs[name])
+            inputNames.append(name)
 
-queue = sync.out.createOutputQueue()
-pipeline.start()
+    queue = sync.out.createOutputQueue()
+    pipeline.start()
 
-display = bool(os.environ.get("DISPLAY"))
-while pipeline.isRunning():
-    group_msg = queue.get()
-    if group_msg is None:
-        continue
-    deltaMs = group_msg.getIntervalNs() / 1e6
-    print(f"Synced group of {group_msg.getNumMessages()} frames, timestamp spread {deltaMs:.2f} ms")
+    display = bool(os.environ.get("DISPLAY"))
+    while pipeline.isRunning():
+        group_msg = queue.get()
+        if group_msg is None:
+            continue
+        deltaMs = group_msg.getIntervalNs() / 1e6
+        print(f"Synced group of {group_msg.getNumMessages()} frames, timestamp spread {deltaMs:.2f} ms")
 
-    if display:
-        frames = []
-        for name in inputNames:
-            frame = group_msg[name]
-            img = frame.getCvFrame()
-            cv2.putText(img, name, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 127, 255), 2, cv2.LINE_AA)
-            frames.append(img)
-        combined = cv2.hconcat(frames)
-        cv2.putText(combined, f"delta = {deltaMs:.2f} ms", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
-        cv2.imshow("multi_device_frame_sync", combined)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-
-pipeline.stop()
+        if display:
+            frames = []
+            for name in inputNames:
+                frame = group_msg[name]
+                img = frame.getCvFrame()
+                cv2.putText(img, name, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 127, 255), 2, cv2.LINE_AA)
+                frames.append(img)
+            combined = cv2.hconcat(frames)
+            cv2.putText(combined, f"delta = {deltaMs:.2f} ms", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+            cv2.imshow("multi_device_frame_sync", combined)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
