@@ -288,6 +288,7 @@ void Sync::run() {
     for(const auto& connection : out.getQueueConnections()) {
         if(auto trace = detail::syncdebug::find(connection.queue.get())) outputTraces.push_back(std::move(trace));
     }
+    std::vector<detail::syncdebug::SyncTiming> outputTimings(outputTraces.size());
 
     // Resolve which device produces each input (host producers are left out); while any of
     // those devices is not RUNNING the node drops instead of blocking on a dead stream.
@@ -439,12 +440,36 @@ void Sync::run() {
         outputGroup->setBufferMetadataFrom(newestFrame);
         outputGroup->setTimestampSource(timestampSource);
 
-        for(const auto& trace : outputTraces) detail::syncdebug::emitted(trace, outputGroup);
+        for(std::size_t i = 0; i < outputTraces.size(); ++i) {
+            auto& timing = outputTimings[i];
+            timing = {};
+            timing.beforeEmissionRecorder = steady_clock::now();
+            detail::syncdebug::emitted(outputTraces[i], outputGroup, timing);
+            timing.afterEmissionRecorder = steady_clock::now();
+        }
 
         {
             auto blockEvent = this->outputBlockEvent();
-            out.send(outputGroup);
+            const auto beforeSend = outputTraces.empty() ? time_point<steady_clock>{} : steady_clock::now();
+            try {
+                out.send(outputGroup);
+                const auto afterSend = outputTraces.empty() ? time_point<steady_clock>{} : steady_clock::now();
+                for(auto& timing : outputTimings) {
+                    timing.beforeOutputSend = beforeSend;
+                    timing.afterOutputSend = afterSend;
+                }
+            } catch(...) {
+                const auto failedAt = outputTraces.empty() ? time_point<steady_clock>{} : steady_clock::now();
+                for(std::size_t i = 0; i < outputTraces.size(); ++i) {
+                    auto& timing = outputTimings[i];
+                    timing.beforeOutputSend = beforeSend;
+                    timing.outputSendException = failedAt;
+                    detail::syncdebug::delivered(outputTraces[i], timing);
+                }
+                throw;
+            }
         }
+        for(std::size_t i = 0; i < outputTraces.size(); ++i) detail::syncdebug::delivered(outputTraces[i], outputTimings[i]);
         auto tAbsoluteEnd = steady_clock::now();
         this->logTiming(logger, tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }

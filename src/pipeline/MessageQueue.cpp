@@ -139,14 +139,18 @@ bool MessageQueue::removeNotifier(int notifierId) {
 }
 
 void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
+    detail::syncdebug::SendOperation operation(this, msg);
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
-    const auto trace = detail::syncdebug::find(this);
+    const auto& trace = operation.trace;
     if(trace) detail::syncdebug::arrival(trace, msg);
+    if(operation) operation.timing.beforeCallbacks = std::chrono::steady_clock::now();
     callCallbacks(msg);
-    detail::SyncDebugQueueAccess::Diagnostics diagnostics;
+    if(operation) operation.timing.afterCallbacks = std::chrono::steady_clock::now();
+    auto& diagnostics = operation.diagnostics;
+    if(operation) operation.timing.beforePush = std::chrono::steady_clock::now();
     auto queueNotClosed = detail::SyncDebugQueueAccess::push(
         queue,
         msg,
@@ -166,20 +170,29 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
             }
         },
         trace ? &diagnostics : nullptr);
+    if(operation) {
+        operation.timing.afterPush = std::chrono::steady_clock::now();
+        operation.timing.accepted = queueNotClosed;
+    }
     if(trace) detail::syncdebug::pushed(trace, msg, diagnostics, queueNotClosed);
+    if(operation) operation.timing.afterPushRecording = std::chrono::steady_clock::now();
     notifyListeners();
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
 }
 
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
+    detail::syncdebug::SendOperation operation(this, msg, true);
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
-    const auto trace = detail::syncdebug::find(this);
+    const auto& trace = operation.trace;
     if(trace) detail::syncdebug::arrival(trace, msg);
+    if(operation) operation.timing.beforeCallbacks = std::chrono::steady_clock::now();
     callCallbacks(msg);
+    if(operation) operation.timing.afterCallbacks = std::chrono::steady_clock::now();
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
-    detail::SyncDebugQueueAccess::Diagnostics diagnostics;
+    auto& diagnostics = operation.diagnostics;
+    if(operation) operation.timing.beforePush = std::chrono::steady_clock::now();
     auto ret = detail::SyncDebugQueueAccess::push(
         queue,
         msg,
@@ -200,7 +213,12 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
             }
         },
         trace ? &diagnostics : nullptr);
+    if(operation) {
+        operation.timing.afterPush = std::chrono::steady_clock::now();
+        operation.timing.accepted = ret;
+    }
     if(trace) detail::syncdebug::pushed(trace, msg, diagnostics, ret);
+    if(operation) operation.timing.afterPushRecording = std::chrono::steady_clock::now();
     if(ret) notifyListeners();
     return ret;
 }

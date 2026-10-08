@@ -3,6 +3,7 @@
 // Private, host-only flight recorder. Not installed or exposed as SDK API.
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -46,6 +47,51 @@ struct Input {
     std::string deviceId;
 };
 
+// Zero time points mean an unpublished checkpoint, not evidence that the phase never ran.
+struct SyncTiming {
+    std::uint64_t recordId = 0;
+    std::chrono::steady_clock::time_point beforeEmissionRecorder{};
+    std::chrono::steady_clock::time_point afterEmissionRecorder{};
+    std::chrono::steady_clock::time_point beforeOutputSend{};
+    std::chrono::steady_clock::time_point afterOutputSend{};
+    std::chrono::steady_clock::time_point outputSendException{};
+};
+
+struct SendTiming {
+    std::uint64_t recordId = 0;
+    std::chrono::steady_clock::time_point entry{};
+    std::chrono::steady_clock::time_point beforeCallbacks{};
+    std::chrono::steady_clock::time_point afterCallbacks{};
+    std::chrono::steady_clock::time_point beforePush{};
+    std::chrono::steady_clock::time_point afterPush{};
+    std::chrono::steady_clock::time_point afterPushRecording{};
+    std::chrono::steady_clock::time_point exit{};
+    QueuePushTiming queue;
+    std::chrono::steady_clock::time_point enqueueCompleted{};
+    bool timed = false;
+    bool accepted = false;
+    bool exception = false;
+};
+
+// Stack-only operation, retaining no payload in the recorder. Destruction also records exceptions.
+class SendOperation {
+   public:
+    SendOperation(const MessageQueue* queue, const std::shared_ptr<ADatatype>& message, bool timed = false) noexcept;
+    ~SendOperation() noexcept;
+    SendOperation(const SendOperation&) = delete;
+    SendOperation& operator=(const SendOperation&) = delete;
+    explicit operator bool() const noexcept {
+        return enabled;
+    }
+    Handle trace;
+    SendTiming timing;
+    SyncDebugQueueAccess::Diagnostics diagnostics;
+
+   private:
+    int exceptionsOnEntry = 0;
+    bool enabled = false;
+};
+
 // Lookup is a single atomic check when no session is registered.
 bool requested() noexcept;
 Handle find(const MessageQueue* queue) noexcept;
@@ -57,7 +103,8 @@ void discarded(const Handle& handle,
                const char* reason,
                std::chrono::nanoseconds spread,
                std::chrono::nanoseconds threshold) noexcept;
-void emitted(const Handle& output, const std::shared_ptr<ADatatype>& group) noexcept;
+void emitted(const Handle& output, const std::shared_ptr<ADatatype>& group, SyncTiming& timing) noexcept;
+void delivered(const Handle& output, const SyncTiming& timing) noexcept;
 void dequeued(const Handle& output, const std::shared_ptr<ADatatype>& group) noexcept;
 void context(const Handle& handle,
              const char* phase,
@@ -77,7 +124,7 @@ class Session {
     Session(Session&&) = delete;
     Session& operator=(Session&&) = delete;
     void freeze() noexcept;
-    // Failure: all bounded histories. Success: configuration and counters only. Never masks the test failure.
+    // Failure: all bounded histories. Success: configuration, counters and timing maxima. Never masks the test failure.
     void finish(bool success, const char* reason) noexcept;
 
    private:

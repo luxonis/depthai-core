@@ -12,6 +12,17 @@
 namespace dai {
 
 namespace detail {
+// Scalar checkpoints only; no recorder locks/callbacks are introduced under the queue guard.
+struct QueuePushTiming {
+    bool enabled = false;
+    std::chrono::steady_clock::time_point lockWaitStartedAt{};
+    std::chrono::steady_clock::time_point lockAcquiredAt{};
+    std::chrono::steady_clock::time_point capacityWaitStartedAt{};
+    std::chrono::steady_clock::time_point capacityWaitFinishedAt{};
+    std::chrono::steady_clock::time_point enqueueStartedAt{};
+    std::chrono::steady_clock::time_point guardReleasedAt{};
+};
+
 // Private host diagnostics: collect identities while locked, inspect them only after push returns.
 template <typename T>
 struct QueuePushDiagnostics {
@@ -24,6 +35,7 @@ struct QueuePushDiagnostics {
     bool blocking = false;
     bool discardedIncoming = false;
     std::chrono::steady_clock::time_point completedAt{};
+    QueuePushTiming timing;
 };
 struct SyncDebugQueueAccess;
 }  // namespace detail
@@ -196,13 +208,35 @@ class LockingQueue {
    private:
     friend struct detail::SyncDebugQueueAccess;
 
+    struct PushTimingScope {
+        detail::QueuePushDiagnostics<T>* diagnostics;
+        explicit PushTimingScope(detail::QueuePushDiagnostics<T>* diagnostics) : diagnostics(diagnostics) {
+            if(diagnostics && diagnostics->timing.enabled) diagnostics->timing.lockWaitStartedAt = std::chrono::steady_clock::now();
+        }
+        ~PushTimingScope() {
+            // Declared before the lock, so this runs after unlocking, including early returns/exceptions.
+            if(diagnostics && diagnostics->timing.enabled) diagnostics->timing.guardReleasedAt = std::chrono::steady_clock::now();
+        }
+    };
+
     void beginPushDiagnostics(detail::QueuePushDiagnostics<T>* diagnostics) {
         if(!diagnostics) return;
+        if(diagnostics->timing.enabled) diagnostics->timing.lockAcquiredAt = std::chrono::steady_clock::now();
         diagnostics->sizeBefore = queue.size();
         diagnostics->sizeAfter = queue.size();
         diagnostics->capacity = maxSize;
         diagnostics->blocking = blocking;
         diagnostics->discardedIncoming = maxSize == 0;
+    }
+
+    void capacityWaitDiagnostics(detail::QueuePushDiagnostics<T>* diagnostics, bool finished) {
+        if(!diagnostics || !diagnostics->timing.enabled) return;
+        auto& checkpoint = finished ? diagnostics->timing.capacityWaitFinishedAt : diagnostics->timing.capacityWaitStartedAt;
+        checkpoint = std::chrono::steady_clock::now();
+    }
+
+    void enqueueDiagnostics(detail::QueuePushDiagnostics<T>* diagnostics) {
+        if(diagnostics && diagnostics->timing.enabled) diagnostics->timing.enqueueStartedAt = std::chrono::steady_clock::now();
     }
 
     void popEvicted(detail::QueuePushDiagnostics<T>* diagnostics) {
@@ -231,9 +265,11 @@ class LockingQueue {
 
     bool pushImpl(T const& data, std::function<void(LockingQueueState, size_t)> callback, detail::QueuePushDiagnostics<T>* diagnostics) {
         {
+            PushTimingScope timingScope(diagnostics);
             std::unique_lock<std::mutex> lock(guard);
             beginPushDiagnostics(diagnostics);
             if(maxSize == 0) {
+                enqueueDiagnostics(diagnostics);
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
                     popEvicted(diagnostics);
@@ -251,10 +287,13 @@ class LockingQueue {
                 if(queue.size() >= maxSize) {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
+                capacityWaitDiagnostics(diagnostics, false);
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                capacityWaitDiagnostics(diagnostics, true);
                 if(destructed) return false;
             }
 
+            enqueueDiagnostics(diagnostics);
             queue.push(data);
             endPushDiagnostics(diagnostics);
 
@@ -266,9 +305,11 @@ class LockingQueue {
 
     bool pushImpl(T&& data, std::function<void(LockingQueueState, size_t)> callback, detail::QueuePushDiagnostics<T>* diagnostics) {
         {
+            PushTimingScope timingScope(diagnostics);
             std::unique_lock<std::mutex> lock(guard);
             beginPushDiagnostics(diagnostics);
             if(maxSize == 0) {
+                enqueueDiagnostics(diagnostics);
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
                     popEvicted(diagnostics);
@@ -286,10 +327,13 @@ class LockingQueue {
                 if(queue.size() >= maxSize) {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
+                capacityWaitDiagnostics(diagnostics, false);
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                capacityWaitDiagnostics(diagnostics, true);
                 if(destructed) return false;
             }
 
+            enqueueDiagnostics(diagnostics);
             queue.push(std::move(data));
             endPushDiagnostics(diagnostics);
 
@@ -305,9 +349,11 @@ class LockingQueue {
                             std::function<void(LockingQueueState, size_t)> callback,
                             detail::QueuePushDiagnostics<T>* diagnostics) {
         {
+            PushTimingScope timingScope(diagnostics);
             std::unique_lock<std::mutex> lock(guard);
             beginPushDiagnostics(diagnostics);
             if(maxSize == 0) {
+                enqueueDiagnostics(diagnostics);
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
                     popEvicted(diagnostics);
@@ -326,7 +372,9 @@ class LockingQueue {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
                 // First checks predicate, then waits
+                capacityWaitDiagnostics(diagnostics, false);
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
+                capacityWaitDiagnostics(diagnostics, true);
                 if(!pred) {
                     callback(LockingQueueState::CANCELLED, queue.size());
                 }
@@ -334,6 +382,7 @@ class LockingQueue {
                 if(destructed) return false;
             }
 
+            enqueueDiagnostics(diagnostics);
             queue.push(data);
             endPushDiagnostics(diagnostics);
 
@@ -349,9 +398,11 @@ class LockingQueue {
                             std::function<void(LockingQueueState, size_t)> callback,
                             detail::QueuePushDiagnostics<T>* diagnostics) {
         {
+            PushTimingScope timingScope(diagnostics);
             std::unique_lock<std::mutex> lock(guard);
             beginPushDiagnostics(diagnostics);
             if(maxSize == 0) {
+                enqueueDiagnostics(diagnostics);
                 // necessary if maxSize was changed
                 while(!queue.empty()) {
                     popEvicted(diagnostics);
@@ -370,7 +421,9 @@ class LockingQueue {
                 if(queue.size() >= maxSize) {
                     callback(LockingQueueState::BLOCKED, queue.size());
                 }
+                capacityWaitDiagnostics(diagnostics, false);
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
+                capacityWaitDiagnostics(diagnostics, true);
                 if(!pred) {
                     callback(LockingQueueState::CANCELLED, queue.size());
                 }
@@ -378,6 +431,7 @@ class LockingQueue {
                 if(destructed) return false;
             }
 
+            enqueueDiagnostics(diagnostics);
             queue.push(std::move(data));
             endPushDiagnostics(diagnostics);
 
