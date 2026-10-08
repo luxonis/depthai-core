@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Tune RVC2 S5K33D/S5K63D ToF controls with OpenCV sliders.
 
-Toggle trackbars use 0 for off and 1 for on. Unwrap level 0 also disables
-phase unwrapping. The level range 0-5 and threshold range 0-500 mm are
-example tuning ranges. Burst mode reduces output FPS by a factor of four.
-Correction toggles use the sensor calibration when available.
+Unwrap level 0 disables phase unwrapping. The level range 0-5 and threshold range 0-500 mm are
+example tuning ranges.
 S5K63D/s5k63d are aliases of S5K33D/s5k33d, sharing the same settings.
 Press q to quit.
 """
@@ -23,13 +21,6 @@ def configFromTrackbars(sensorName: str) -> dai.ToFConfig:
     params = config.s5k63d if sensorName == "S5K63D" else config.s5k33d
     params.phaseUnwrappingLevel = cv2.getTrackbarPos("unwrap level", WINDOW)
     params.phaseUnwrapErrorThreshold = cv2.getTrackbarPos("unwrap threshold mm", WINDOW)
-    params.enablePhaseShuffleTemporalFilter = bool(cv2.getTrackbarPos("phase shuffle", WINDOW))
-    params.enableBurstMode = bool(cv2.getTrackbarPos("burst mode", WINDOW))
-    params.enableFPPNCorrection = bool(cv2.getTrackbarPos("FPPN correction", WINDOW))
-    params.enableOpticalCorrection = bool(cv2.getTrackbarPos("optical correction", WINDOW))
-    params.enableTemperatureCorrection = bool(cv2.getTrackbarPos("temperature correction", WINDOW))
-    params.enableWiggleCorrection = bool(cv2.getTrackbarPos("wiggle correction", WINDOW))
-    params.enablePhaseUnwrapping = bool(cv2.getTrackbarPos("phase unwrapping", WINDOW))
     return config
 
 
@@ -52,13 +43,6 @@ def main() -> None:
         controls = (
             ("unwrap level", 5, 4),
             ("unwrap threshold mm", 500, 75),  # MID_RANGE preset threshold.
-            ("phase shuffle", 1, 1),
-            ("burst mode", 1, 0),
-            ("FPPN correction", 1, 1),
-            ("optical correction", 1, 1),
-            ("temperature correction", 1, 1),
-            ("wiggle correction", 1, 1),
-            ("phase unwrapping", 1, 1),
         )
         for name, maximum, initial in controls:
             cv2.createTrackbar(name, WINDOW, initial, maximum, lambda _: None)
