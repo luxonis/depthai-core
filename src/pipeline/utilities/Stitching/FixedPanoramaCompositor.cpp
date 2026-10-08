@@ -9,7 +9,6 @@
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
-namespace beta {
 namespace utilities {
 
 void FixedPanoramaCompositor::setConfig(const Config& config) {
@@ -202,5 +201,4 @@ cv::Mat FixedPanoramaCompositor::compose(const std::vector<cv::Mat>& images) {
 }
 
 }  // namespace utilities
-}  // namespace beta
 }  // namespace dai

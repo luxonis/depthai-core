@@ -22,7 +22,9 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    // Full camera model of the image (projection surface + distortion model, see dai::CameraModel), not only its distortion. The name is historical.
     CameraModel distortionModel = CameraModel::Perspective;
+    // Coefficients of the distortion model that `distortionModel` selects; empty or all-zero for an undistorted image
     std::vector<float> distortionCoefficients;
     Extrinsics extrinsics = {};
 
@@ -136,8 +138,9 @@ struct ImgTransformation {
      */
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
     /**
-     * Retrieve the distortion model of the source sensor
-     * @return Distortion model
+     * Retrieve the camera model of the source sensor. Despite the name it is the full dai::CameraModel: the projection surface the image is rendered on
+     * (pinhole plane, sphere or cylinder) together with the distortion model its coefficients parametrize. Panorama models carry no distortion at all.
+     * @return Camera model, see dai::CameraModel for the table of projections and distortions
      */
     CameraModel getDistortionModel() const;
     /**
@@ -269,6 +272,10 @@ struct ImgTransformation {
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
     ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
+    /**
+     * Set the camera model of the source sensor: projection surface and distortion model in one dai::CameraModel value. The name is historical, see
+     * getDistortionModel().
+     */
     ImgTransformation& setDistortionModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
 
@@ -277,7 +284,9 @@ struct ImgTransformation {
      * intrinsics to remap the point.
      * @param to Transformation to remap to
      * @param point Point to remap
-     * @note This function assumes both transformations have the same source (eg. same source camera socket). If they don't, remapping will be inaccurate.
+     * @note Uses intrinsics, distortion and relative rotation, without object depth or camera translation.
+     * Perspective, Equirectangular and Cylindrical destinations are supported. An unprojectable point has non-finite coordinates.
+     * Different cameras must share an extrinsics coordinate system; near objects can be displaced by parallax.
      */
     dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point) const;
     /**
@@ -292,6 +301,7 @@ struct ImgTransformation {
      * intrinsics to remap the rect.
      * @param to Transformation to remap to
      * @param rect RotatedRect to remap
+     * @return Minimum enclosing rectangle with an angle in (-45, 45] degrees.
      */
     dai::RotatedRect remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const;
     /**

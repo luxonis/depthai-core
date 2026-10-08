@@ -601,21 +601,19 @@ dai_set_test_labels(model_slug_test onhost ci)
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
-if(DEPTHAI_BUILD_BETA)
-    # Stitching device-node configuration tests (must not require host OpenCV support)
-    dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
-    dai_set_test_labels(stitching_device_node_test onhost ci)
+# Stitching device-node configuration tests (must not require host OpenCV support)
+dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+dai_set_test_labels(stitching_device_node_test onhost ci)
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
-        dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
-        target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
-        dai_set_test_labels(stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+    target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+    dai_set_test_labels(stitching_node_test onhost ci)
+endif()
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING)
-        dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
-        dai_set_test_labels(planar_stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+    dai_set_test_labels(planar_stitching_node_test onhost ci)
 endif()
 
 # Remote connection tests
@@ -1045,3 +1043,10 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
+
+dai_add_test(img_detections_filter_test src/onhost_tests/pipeline/node/img_detections_filter_test.cpp)
+target_include_directories(img_detections_filter_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+dai_set_test_labels(img_detections_filter_test onhost ci)
+
+dai_add_test(img_detections_filter_device_test src/ondevice_tests/img_detections_filter_device_test.cpp)
+dai_set_test_labels(img_detections_filter_device_test ondevice rvc2_all rvc4 ci)

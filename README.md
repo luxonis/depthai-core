@@ -23,6 +23,10 @@ cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
 
+## Detection filtering and calibrated panoramas
+
+Use `dai::node::ImgDetectionsFilter` / `dai.node.ImgDetectionsFilter` to filter detections or combine synchronized camera detections on a calibrated panorama. See the [node guide and multi-device examples](docs/ImgDetectionsFilter.md).
+
 ## Beta features
 The `beta` namespace is a staging area for experimental DepthAI features. It
 allows new features to be developed and iterated on quickly before they are
@@ -33,13 +37,13 @@ Beta features are well-developed, but minor API and behavioral changes may occur
 In C++, beta nodes are available under `dai::beta::node`:
 
 ```cpp
-auto node = pipeline.create<dai::beta::node::ImgDetectionsFilter>();
+auto node = pipeline.create<dai::beta::node::ClassificationParser>();
 ```
 
 In Python, they are available under `dai.beta.node`:
 
 ```python
-node = pipeline.create(dai.beta.node.ImgDetectionsFilter)
+node = pipeline.create(dai.beta.node.ClassificationParser)
 ```
 
 On-device execution of Beta nodes is supported only on RVC4. If running Beta nodes on RVC2, DepthAI

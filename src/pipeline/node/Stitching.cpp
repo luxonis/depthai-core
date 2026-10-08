@@ -1,13 +1,13 @@
-#include "depthai/beta/node/Stitching.hpp"
+#include "depthai/pipeline/node/Stitching.hpp"
 
 #include <stdexcept>
 #include <utility>
 
 #include "fmt/format.h"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
-namespace beta {
 
 StitchingProperties::~StitchingProperties() = default;
 
@@ -15,7 +15,7 @@ namespace node {
 
 Stitching::Stitching() = default;
 
-Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties>(std::move(props)) {
+Stitching::Stitching(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperties>(std::move(props)) {
     initializeInputNames(properties.numInputs);
     // The same node implementation is used by the RVC4 gate node. Device nodes are
     // constructed from deserialized properties and do not go through buildInternal(),
@@ -29,6 +29,14 @@ void Stitching::buildInternal() {
     initializeHostState();
     sync->out.link(inSync);
     sync->setRunOnHost(runOnHostVar);
+}
+
+void Stitching::buildStage1() {
+    auto device = getDevice();
+    if(device && device->getPlatform() == Platform::RVC2 && !runOnHost()) {
+        setRunOnHost(true);
+        pimpl->logger->info("Stitching cannot run on-device on RVC2. Running on host.");
+    }
 }
 
 std::shared_ptr<Stitching> Stitching::build(size_t numInputs) {
@@ -257,5 +265,4 @@ void Stitching::run() {
 #endif
 
 }  // namespace node
-}  // namespace beta
 }  // namespace dai
