@@ -897,6 +897,10 @@ dai_add_test(regression_boot_test src/ondevice_tests/regression/boot.cpp)
 dai_set_test_labels(regression_boot_test ondevice rvc2 rvc4 usb ci noreplayci)
 
 # Sync test
+# Synthetic messages through host Sync: no device discovery or camera/IMU required.
+dai_add_test(sync_individual_reports_test src/onhost_tests/pipeline/node/sync_individual_reports_test.cpp)
+dai_set_test_labels(sync_individual_reports_test onhost ci)
+set_tests_properties(sync_individual_reports_test PROPERTIES TIMEOUT 30)
 dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
 dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 
@@ -969,6 +973,11 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci noreplayci)
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
+dai_add_test(imu_rate_alignment_test src/ondevice_tests/pipeline/node/imu_rate_alignment_test.cpp)
+dai_set_test_labels(imu_rate_alignment_test ondevice rvc4 rvc4rgb ci noreplayci)
+# 21 alignment pipelines plus two IMU rate cases, with bounded startup and 15s measurement each.
+set_tests_properties(imu_rate_alignment_test PROPERTIES TIMEOUT 1500)
+set_property(TEST imu_rate_alignment_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # ObjectTracker tests
 if(DEPTHAI_FETCH_ARTIFACTS)
