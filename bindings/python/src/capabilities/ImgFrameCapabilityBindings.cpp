@@ -22,8 +22,8 @@ void ImgFrameCapabilityBindings::bind(pybind11::module& m, void* pCallstack) {
     imgResizeMode.value("CROP", ImgResizeMode::CROP).value("STRETCH", ImgResizeMode::STRETCH).value("LETTERBOX", ImgResizeMode::LETTERBOX);
 
     // ImgFrameCapability
-    imgFrameCapability.def_readwrite("ispOutput", &dai::ImgFrameCapability::ispOutput, DOC(dai, ImgFrameCapability, ispOutput))
-        .def(py::init<>())
+    imgFrameCapability.def(py::init<>())
+        .def_readwrite("ispOutput", &dai::ImgFrameCapability::ispOutput, DOC(dai, ImgFrameCapability, ispOutput))
         .def_readwrite("size", &ImgFrameCapability::size)
         .def_readwrite("fps", &ImgFrameCapability::fps)
         .def_readwrite("type", &ImgFrameCapability::type)
