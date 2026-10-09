@@ -1,16 +1,13 @@
-// A custom host node consuming streams from several devices in ONE dai::Pipeline.
-//
-// The node discovers which device feeds each of its inputs with
-// InputMap::getSourceDevices() (resolved at pipeline build) and composes a mosaic.
-// It keeps running when a device disappears: the lost device's tile freezes and is
-// labeled OFFLINE while the other tiles keep updating (partial operation).
 
+
+#include <algorithm>
 #include <chrono>
 #include <csignal>
-#include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <opencv2/opencv.hpp>
+#include <sstream>
 #include <string>
 
 #include "depthai/depthai.hpp"
@@ -27,13 +24,17 @@ class MosaicNode : public dai::node::CustomThreadedNode<MosaicNode> {
         auto sourceDevices = inputs.getSourceDevices();
         auto pipeline = getParentPipeline();
 
-        std::map<std::string, cv::Mat> latest;
+        struct Latest {
+            cv::Mat image;
+            std::chrono::steady_clock::time_point timestamp;
+        };
+        std::map<std::string, Latest> latest;
         while(mainLoop()) {
             bool anyNew = false;
             for(auto& entry : inputs) {
                 const auto& name = entry.first.second;
                 if(auto frame = entry.second.tryGet<dai::ImgFrame>()) {
-                    latest[name] = frame->getCvFrame();
+                    latest[name] = {frame->getCvFrame(), frame->getTimestamp()};
                     anyNew = true;
                 }
             }
@@ -43,20 +44,32 @@ class MosaicNode : public dai::node::CustomThreadedNode<MosaicNode> {
             }
 
             std::vector<cv::Mat> tiles;
+            std::vector<std::chrono::steady_clock::time_point> liveTimestamps;
             for(auto& entry : latest) {
-                auto tile = entry.second.clone();
+                auto tile = entry.second.image.clone();
+                const auto timestamp = entry.second.timestamp;
                 auto device = sourceDevices[entry.first];
-                std::string label = entry.first;
+                std::ostringstream label;
+                label << entry.first << "  " << std::fixed << std::setprecision(3) << std::chrono::duration<double>(timestamp.time_since_epoch()).count()
+                      << " s";
                 if(device != nullptr && pipeline.getDeviceState(device) != dai::DeviceState::RUNNING) {
-                    label += " [OFFLINE]";
+                    label << " [OFFLINE]";
                     cv::cvtColor(tile, tile, cv::COLOR_BGR2GRAY);
                     cv::cvtColor(tile, tile, cv::COLOR_GRAY2BGR);
+                } else {
+                    liveTimestamps.push_back(timestamp);
                 }
-                cv::putText(tile, label, {20, 40}, cv::FONT_HERSHEY_SIMPLEX, 0.6, {0, 127, 255}, 2, cv::LINE_AA);
+                cv::putText(tile, label.str(), {20, 40}, cv::FONT_HERSHEY_SIMPLEX, 0.6, {0, 127, 255}, 2, cv::LINE_AA);
                 tiles.push_back(tile);
             }
             cv::Mat mosaic;
             cv::hconcat(tiles, mosaic);
+            if(liveTimestamps.size() >= 2) {
+                const auto [minTs, maxTs] = std::minmax_element(liveTimestamps.begin(), liveTimestamps.end());
+                std::ostringstream diff;
+                diff << "max diff = " << std::fixed << std::setprecision(2) << std::chrono::duration<double, std::milli>(*maxTs - *minTs).count() << " ms";
+                cv::putText(mosaic, diff.str(), {20, 80}, cv::FONT_HERSHEY_SIMPLEX, 0.6, {0, 255, 0}, 2, cv::LINE_AA);
+            }
 
             auto outFrame = std::make_shared<dai::ImgFrame>();
             outFrame->setCvFrame(mosaic, dai::ImgFrame::Type::BGR888i);
@@ -68,10 +81,18 @@ class MosaicNode : public dai::node::CustomThreadedNode<MosaicNode> {
 int main(int argc, char** argv) {
     signal(SIGINT, [](int) { running = false; });
 
+    // Usage: multi_device_stream [--stop-on-device-loss] [device_1 device_2 ...]
+    bool stopOnDeviceLoss = false;
     std::vector<dai::DeviceInfo> deviceInfos;
-    if(argc >= 2) {
-        for(int i = 1; i < argc; i++) deviceInfos.emplace_back(argv[i]);
-    } else {
+    for(int i = 1; i < argc; i++) {
+        const std::string arg = argv[i];
+        if(arg == "--stop-on-device-loss") {
+            stopOnDeviceLoss = true;
+        } else {
+            deviceInfos.emplace_back(arg);
+        }
+    }
+    if(deviceInfos.empty()) {
         deviceInfos = dai::Device::getAllAvailableDevices();
     }
     if(deviceInfos.size() < 2) {
@@ -80,6 +101,8 @@ int main(int argc, char** argv) {
     }
 
     dai::Pipeline pipeline(false);
+    // Off by default (partial operation)
+    pipeline.setStopOnDeviceLoss(stopOnDeviceLoss);
     auto mosaic = pipeline.create<MosaicNode>();
 
     for(auto& info : deviceInfos) {
@@ -91,18 +114,19 @@ int main(int argc, char** argv) {
     auto queue = mosaic->out.createOutputQueue();
     pipeline.start();
 
-    const char* displayEnv = std::getenv("DISPLAY");
-    const bool display = displayEnv != nullptr && displayEnv[0] != '\0';
     while(running && pipeline.isRunning()) {
         bool hasTimedOut = false;
-        auto frame = queue->get<dai::ImgFrame>(std::chrono::milliseconds(500), hasTimedOut);
-        if(frame == nullptr) continue;
-        if(display) {
-            cv::imshow("multi_device_host_node", frame->getCvFrame());
-            if(cv::waitKey(1) == 'q') break;
-        } else {
-            std::cout << "Mosaic frame " << frame->getWidth() << "x" << frame->getHeight() << std::endl;
+        std::shared_ptr<dai::ImgFrame> frame;
+        try {
+            frame = queue->get<dai::ImgFrame>(std::chrono::milliseconds(500), hasTimedOut);
+        } catch(const dai::MessageQueue::QueueException&) {
+            // The pipeline stopped itself after a device loss
+            std::cout << "Pipeline stopped - a device was lost" << std::endl;
+            break;
         }
+        if(frame == nullptr) continue;
+        cv::imshow("multi_device_stream", frame->getCvFrame());
+        if(cv::waitKey(1) == 'q') break;
     }
 
     pipeline.stop();

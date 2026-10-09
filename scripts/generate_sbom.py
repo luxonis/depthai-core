@@ -18,6 +18,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import uuid
@@ -1034,4 +1035,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except subprocess.CalledProcessError as error:
+        # run() captures the output, and vcpkg writes its errors to stdout
+        print(f"{error.stdout or ''}{error.stderr or ''}", file=sys.stderr)
+        raise
