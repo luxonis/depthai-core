@@ -83,11 +83,20 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+
+    - name: Restore vcpkg binary cache
+      uses: actions/cache/restore@v4
+      with:
+        path: /home/runner/.vcpkg
+        key: vcpkg-lint-ubuntu-24.04-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+        restore-keys: vcpkg-lint-ubuntu-24.04-
 
     - name: Install format dependencies
       run: |
@@ -95,7 +104,21 @@ jobs:
         sudo apt-get install clang-format-18 libopencv-dev libudev-dev
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=/usr/bin/clang-format-18
+      run: |
+        touch "$RUNNER_TEMP/vcpkg-cache-marker"
+        cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=/usr/bin/clang-format-18
+
+    - name: Prune vcpkg binary cache
+      id: vcpkg-cache
+      continue-on-error: true
+      run: bash ci/prune_vcpkg_binary_cache.sh /home/runner/.vcpkg build/vcpkg_installed "$RUNNER_TEMP/vcpkg-cache-marker"
+
+    - name: Save vcpkg binary cache
+      if: steps.vcpkg-cache.outputs.changed == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: /home/runner/.vcpkg
+        key: vcpkg-lint-ubuntu-24.04-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
 
     - name: check style
       run: ci/check_format.sh build
@@ -105,11 +128,20 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+
+    - name: Restore vcpkg binary cache
+      uses: actions/cache/restore@v4
+      with:
+        path: /home/runner/.vcpkg
+        key: vcpkg-lint-ubuntu-24.04-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+        restore-keys: vcpkg-lint-ubuntu-24.04-
 
     - name: Install dependencies
       run: |
@@ -117,7 +149,21 @@ jobs:
         sudo apt-get install clang-tidy-18 libopencv-dev libudev-dev
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=/usr/bin/clang-tidy-18
+      run: |
+        touch "$RUNNER_TEMP/vcpkg-cache-marker"
+        cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=/usr/bin/clang-tidy-18
+
+    - name: Prune vcpkg binary cache
+      id: vcpkg-cache
+      continue-on-error: true
+      run: bash ci/prune_vcpkg_binary_cache.sh /home/runner/.vcpkg build/vcpkg_installed "$RUNNER_TEMP/vcpkg-cache-marker"
+
+    - name: Save vcpkg binary cache
+      if: steps.vcpkg-cache.outputs.changed == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: /home/runner/.vcpkg
+        key: vcpkg-lint-ubuntu-24.04-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
 
     - name: Run clang-tidy
       run: cmake --build build --parallel 4
