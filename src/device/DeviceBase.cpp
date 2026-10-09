@@ -757,6 +757,10 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
             return;
         }
 
+        // Retrieval succeeded. Callback or archive failures must not cause this
+        // crash dump to be retrieved and delivered again.
+        crashDumpHandled.store(true);
+
         decltype(crashdumpCallback) callbackCopy;
 
         // Create a copy of the callback function to avoid race conditions
@@ -775,7 +779,6 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
         } else {
             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
         }
-        crashDumpHandled.store(true);
     }
 }
 
@@ -799,7 +802,25 @@ void DeviceBase::waitForGateAndCollectCrashDump() {
     pimpl->logger.warn("FW crashed - trying to get out the crash dump");
     std::this_thread::sleep_for(std::chrono::seconds(5));  // Allow for the generation of the crash dump and the log file
     pimpl->logger.warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
-    collectAndLogCrashDump();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(getCrashdumpTimeout(deviceInfo.protocol));
+    // A CRASHED session does not guarantee its core dump is available yet. The
+    // gate can return 404 while the dump is being generated; do not reconnect
+    // and replace the session after a single unsuccessful retrieval.
+    do {
+        try {
+            collectAndLogCrashDump();
+        } catch(const std::exception& ex) {
+            if(crashDumpHandled.load()) {
+                pimpl->logger.warn("Crash dump was retrieved, but callback delivery or archive persistence failed: {}", ex.what());
+                return;
+            }
+            pimpl->logger.debug("Crash dump retrieval attempt failed: {}", ex.what());
+        }
+        if(crashDumpHandled.load() || !isCrashDumpCollectionEnabled()) return;
+        if(std::chrono::steady_clock::now() >= deadline) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    } while(std::chrono::steady_clock::now() < deadline);
+    pimpl->logger.warn("Crash dump was not available before the collection timeout");
 }
 
 void DeviceBase::waitForRebootAndCollectCrashDump() {
