@@ -28,6 +28,12 @@ struct SyncDebugQueueAccess {
     static bool push(LockingQueue<Message>& queue, const Message& message, std::chrono::milliseconds timeout, Callback callback, Diagnostics* diagnostics) {
         return queue.tryWaitAndPushImpl(message, timeout, std::move(callback), diagnostics);
     }
+
+    template <class T, typename Rep, typename Period>
+    static std::shared_ptr<T> get(
+        MessageQueue& queue, std::chrono::duration<Rep, Period> timeout, bool& hasTimedout, QueueReadTiming* timing, Message* popped) {
+        return queue.getImpl<T>(timeout, hasTimedout, timing, popped);
+    }
 };
 
 namespace syncdebug {
@@ -60,11 +66,16 @@ struct SyncTiming {
 struct SendTiming {
     std::uint64_t recordId = 0;
     std::chrono::steady_clock::time_point entry{};
+    std::chrono::steady_clock::time_point afterLookup{};
+    std::chrono::steady_clock::time_point beforeArrivalRecorder{};
+    std::chrono::steady_clock::time_point afterArrivalRecorder{};
     std::chrono::steady_clock::time_point beforeCallbacks{};
     std::chrono::steady_clock::time_point afterCallbacks{};
     std::chrono::steady_clock::time_point beforePush{};
     std::chrono::steady_clock::time_point afterPush{};
     std::chrono::steady_clock::time_point afterPushRecording{};
+    std::chrono::steady_clock::time_point beforeListeners{};
+    std::chrono::steady_clock::time_point afterListeners{};
     std::chrono::steady_clock::time_point exit{};
     QueuePushTiming queue;
     std::chrono::steady_clock::time_point enqueueCompleted{};
@@ -92,6 +103,65 @@ class SendOperation {
     bool enabled = false;
 };
 
+// One serial GroupReader owns this context; the cached handle avoids a registry lookup
+// before queue get. The post-get lookup is measured independently at its original site.
+struct ReaderContext {
+    Handle trace;
+    const char* phase = "setup";
+    std::optional<std::size_t> sampleIndex;
+    std::uint64_t contextId = 0;
+    std::chrono::steady_clock::time_point contextEntry{};
+    std::chrono::steady_clock::time_point contextReturned{};
+};
+
+struct ReadTiming {
+    std::uint64_t recordId = 0;
+    std::uint64_t groupId = 0;
+    std::uint64_t deliveryRecordId = 0;
+    std::uint64_t contextId = 0;
+    std::chrono::steady_clock::time_point contextEntry{};
+    std::chrono::steady_clock::time_point contextReturned{};
+    std::chrono::steady_clock::time_point entry{};
+    std::chrono::steady_clock::time_point deadline{};
+    std::chrono::steady_clock::time_point startPublished{};
+    std::chrono::steady_clock::time_point deadlineChecked{};
+    QueueReadTiming get;
+    std::chrono::steady_clock::time_point typedGetReturned{};
+    std::chrono::steady_clock::time_point beforeLookup{};
+    std::chrono::steady_clock::time_point afterLookup{};
+    std::chrono::steady_clock::time_point beforeDequeueRecorder{};
+    std::chrono::steady_clock::time_point dequeueMetadataFinished{};
+    std::chrono::steady_clock::time_point afterDequeueRecorder{};
+    std::chrono::steady_clock::time_point beforeAnalysis{};
+    std::chrono::steady_clock::time_point analysisFinished{};
+    std::chrono::steady_clock::time_point exit{};
+    bool deadlineExpired = false;
+    bool timedOut = false;
+    bool lookupFound = false;
+    bool exception = false;
+};
+
+std::shared_ptr<ReaderContext> readerContext(const MessageQueue* queue) noexcept;
+
+class ReadOperation {
+   public:
+    ReadOperation(const std::shared_ptr<ReaderContext>& context, std::chrono::steady_clock::time_point deadline) noexcept;
+    ~ReadOperation() noexcept;
+    ReadOperation(const ReadOperation&) = delete;
+    ReadOperation& operator=(const ReadOperation&) = delete;
+    explicit operator bool() const noexcept {
+        return static_cast<bool>(trace);
+    }
+    void recordDequeue(const MessageQueue* queue) noexcept;
+    ReadTiming timing;
+    // Exact popped identity, including a failed typed cast; released with this stack operation.
+    std::shared_ptr<ADatatype> popped;
+
+   private:
+    Handle trace;
+    int exceptionsOnEntry = 0;
+};
+
 // Lookup is a single atomic check when no session is registered.
 bool requested() noexcept;
 Handle find(const MessageQueue* queue) noexcept;
@@ -105,13 +175,14 @@ void discarded(const Handle& handle,
                std::chrono::nanoseconds threshold) noexcept;
 void emitted(const Handle& output, const std::shared_ptr<ADatatype>& group, SyncTiming& timing) noexcept;
 void delivered(const Handle& output, const SyncTiming& timing) noexcept;
-void dequeued(const Handle& output, const std::shared_ptr<ADatatype>& group) noexcept;
+void dequeued(const Handle& output, const std::shared_ptr<ADatatype>& group, ReadTiming* timing = nullptr) noexcept;
 void context(const Handle& handle,
              const char* phase,
              std::optional<std::size_t> sampleIndex = std::nullopt,
              std::optional<std::chrono::system_clock::duration> gap = std::nullopt,
              std::optional<double> limitSec = std::nullopt,
-             bool freeze = false) noexcept;
+             bool freeze = false,
+             ReaderContext* reader = nullptr) noexcept;
 
 class Session {
    public:

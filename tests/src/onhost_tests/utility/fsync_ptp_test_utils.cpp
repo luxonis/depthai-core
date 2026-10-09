@@ -179,7 +179,7 @@ namespace {
 }
 
 GroupReader::GroupReader(dai::MessageQueue& queue, std::vector<std::string> inputNames, SyncType syncType)
-    : queue(queue), inputNames(std::move(inputNames)), expectedFsync(convertSyncType(syncType)) {
+    : queue(queue), inputNames(std::move(inputNames)), expectedFsync(convertSyncType(syncType)), debug(dai::detail::syncdebug::readerContext(&queue)) {
     std::sort(this->inputNames.begin(), this->inputNames.end());
     INFO("GroupReader requires nonempty, unique expected stream names");
     CAPTURE(this->inputNames);
@@ -189,26 +189,39 @@ GroupReader::GroupReader(dai::MessageQueue& queue, std::vector<std::string> inpu
 }
 
 std::optional<GroupReadResult> GroupReader::read(std::chrono::steady_clock::time_point deadline) const {
+    dai::detail::syncdebug::ReadOperation operation(debug, deadline);
     const auto now = std::chrono::steady_clock::now();
+    if(operation) {
+        operation.timing.deadlineChecked = now;
+        operation.timing.deadlineExpired = now >= deadline;
+    }
     if(now >= deadline) return std::nullopt;
 
     bool hasTimedOut = false;
-    const auto group = queue.get<dai::MessageGroup>(deadline - now, hasTimedOut);
+    const auto group = dai::detail::SyncDebugQueueAccess::get<dai::MessageGroup>(
+        queue, deadline - now, hasTimedOut, operation ? &operation.timing.get : nullptr, operation ? &operation.popped : nullptr);
+    if(operation) {
+        operation.timing.typedGetReturned = std::chrono::steady_clock::now();
+        operation.timing.timedOut = hasTimedOut;
+    }
     if(hasTimedOut) return std::nullopt;
-    if(auto trace = dai::detail::syncdebug::find(&queue)) dai::detail::syncdebug::dequeued(trace, group);
+    operation.recordDequeue(&queue);
     INFO("GroupReader expected a non-null MessageGroup");
     REQUIRE(group != nullptr);
-    return analyze(*group);
+    if(operation) operation.timing.beforeAnalysis = std::chrono::steady_clock::now();
+    auto result = analyze(*group);
+    if(operation) operation.timing.analysisFinished = std::chrono::steady_clock::now();
+    return result;
 }
 
 void GroupReader::setDebugContext(const char* phase,
                                   std::optional<std::size_t> sampleIndex,
                                   std::optional<std::chrono::system_clock::duration> gap,
                                   std::optional<double> limitSec) const {
-    if(auto trace = dai::detail::syncdebug::find(&queue)) {
+    if(debug) {
         // Freeze at the detected interval violation, before Catch2 prints the assertion or teardown begins.
         const bool invalidGap = gap && limitSec && (*gap <= std::chrono::system_clock::duration::zero() || *gap > std::chrono::duration<double>(*limitSec));
-        dai::detail::syncdebug::context(trace, phase, sampleIndex, gap, limitSec, invalidGap);
+        dai::detail::syncdebug::context(debug->trace, phase, sampleIndex, gap, limitSec, invalidGap, debug.get());
     }
 }
 

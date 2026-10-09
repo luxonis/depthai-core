@@ -316,20 +316,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::shared_ptr<T> get() {
-        std::shared_ptr<ADatatype> val = nullptr;
-        auto getInput = [this, &val]() {
-            if(!this->queue.waitAndPop(val)) {
-                throw QueueException(CLOSED_QUEUE_MESSAGE);
-            }
-        };
-        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
-            auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
-            getInput();
-            blockEvent.setQueueSize(getSize());
-        } else {
-            getInput();
-        }
-        return std::dynamic_pointer_cast<T>(val);
+        return getImpl<T>(nullptr, nullptr);
     }
 
     /**
@@ -374,21 +361,71 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+        return getImpl<T>(timeout, hasTimedout, nullptr, nullptr);
+    }
+
+   private:
+    friend struct detail::SyncDebugQueueAccess;
+
+    template <class T>
+    std::shared_ptr<T> getImpl(detail::QueueReadTiming* timing, std::shared_ptr<ADatatype>* popped) {
+        if(timing) timing->entry = std::chrono::steady_clock::now();
+        std::shared_ptr<ADatatype> val = nullptr;
+        auto getInput = [this, &val, timing, popped]() {
+            if(timing) timing->beforePop = std::chrono::steady_clock::now();
+            const bool accepted = this->queue.waitAndPopImpl(val, timing ? &timing->pop : nullptr);
+            if(timing) timing->afterPop = std::chrono::steady_clock::now();
+            if(popped && accepted) *popped = val;
+            if(!accepted) throw QueueException(CLOSED_QUEUE_MESSAGE);
+        };
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
+            auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
+            getInput();
+            blockEvent.setQueueSize(getSize());
+        } else {
+            getInput();
+        }
+        auto result = std::dynamic_pointer_cast<T>(val);
+        if(timing) {
+            timing->castFinished = std::chrono::steady_clock::now();
+            timing->nullCast = !result;
+            timing->returnReady = std::chrono::steady_clock::now();
+        }
+        return result;
+    }
+
+    template <class T, typename Rep, typename Period>
+    std::shared_ptr<T> getImpl(std::chrono::duration<Rep, Period> timeout,
+                               bool& hasTimedout,
+                               detail::QueueReadTiming* timing,
+                               std::shared_ptr<ADatatype>* popped) {
+        if(timing) timing->entry = std::chrono::steady_clock::now();
         if(queue.isDestroyed()) {
+            if(timing) timing->pop.outcome = detail::QueuePopOutcome::CLOSED;
             throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
         auto getInput = [&, this]() -> std::shared_ptr<T> {
             std::shared_ptr<ADatatype> val = nullptr;
-            if(!this->queue.tryWaitAndPop(val, timeout)) {
+            if(timing) timing->beforePop = std::chrono::steady_clock::now();
+            const bool accepted = this->queue.tryWaitAndPopImpl(val, timeout, timing ? &timing->pop : nullptr);
+            if(timing) timing->afterPop = std::chrono::steady_clock::now();
+            if(popped && accepted) *popped = val;
+            if(!accepted) {
                 hasTimedout = true;
                 // Check again after the timeout
                 if(this->queue.isDestroyed()) {
+                    if(timing) timing->pop.outcome = detail::QueuePopOutcome::CLOSED;
                     throw QueueException(CLOSED_QUEUE_MESSAGE);
                 }
                 return nullptr;
             }
             hasTimedout = false;
-            return std::dynamic_pointer_cast<T>(val);
+            auto result = std::dynamic_pointer_cast<T>(val);
+            if(timing) {
+                timing->castFinished = std::chrono::steady_clock::now();
+                timing->nullCast = !result;
+            }
+            return result;
         };
         if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
@@ -397,12 +434,16 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
             if(!result || hasTimedout) {
                 blockEvent.cancel();
             }
+            if(timing) timing->returnReady = std::chrono::steady_clock::now();
             return result;
         } else {
-            return getInput();
+            auto result = getInput();
+            if(timing) timing->returnReady = std::chrono::steady_clock::now();
+            return result;
         }
     }
 
+   public:
     /**
      * Block until a message is available with a timeout.
      *

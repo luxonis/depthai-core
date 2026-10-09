@@ -49,6 +49,14 @@ struct GroupReadResult {
     std::chrono::system_clock::time_point medianTimestamp;
 };
 
+namespace dai {
+namespace detail {
+namespace syncdebug {
+struct ReaderContext;
+}
+}  // namespace detail
+}  // namespace dai
+
 // Reads and validates groups for the sync tests. The queue must outlive the reader.
 class GroupReader {
    public:
@@ -68,6 +76,7 @@ class GroupReader {
     dai::MessageQueue& queue;
     std::vector<std::string> inputNames;
     dai::ImgFrame::Fsync expectedFsync;
+    std::shared_ptr<dai::detail::syncdebug::ReaderContext> debug;
 
     std::chrono::system_clock::time_point readTimestamp(const dai::MessageGroup& group, const std::string& name) const;
     GroupReadResult analyze(const dai::MessageGroup& group) const;

@@ -11,6 +11,8 @@
 
 namespace dai {
 
+class MessageQueue;
+
 namespace detail {
 // Scalar checkpoints only; no recorder locks/callbacks are introduced under the queue guard.
 struct QueuePushTiming {
@@ -21,6 +23,30 @@ struct QueuePushTiming {
     std::chrono::steady_clock::time_point capacityWaitFinishedAt{};
     std::chrono::steady_clock::time_point enqueueStartedAt{};
     std::chrono::steady_clock::time_point guardReleasedAt{};
+    std::chrono::steady_clock::time_point notifyStartedAt{};
+    std::chrono::steady_clock::time_point notifyFinishedAt{};
+};
+
+enum class QueuePopOutcome { UNKNOWN, POPPED, TIMEOUT, CLOSED };
+struct QueuePopTiming {
+    std::chrono::steady_clock::time_point lockWaitStartedAt{};
+    std::chrono::steady_clock::time_point lockAcquiredAt{};
+    std::chrono::steady_clock::time_point waitStartedAt{};
+    std::chrono::steady_clock::time_point waitFinishedAt{};
+    std::chrono::steady_clock::time_point popCompletedAt{};
+    std::chrono::steady_clock::time_point guardReleasedAt{};
+    QueuePopOutcome outcome = QueuePopOutcome::UNKNOWN;
+};
+
+// Used only by the private test-reader bridge; no SDK object acquires new fields.
+struct QueueReadTiming {
+    std::chrono::steady_clock::time_point entry{};
+    std::chrono::steady_clock::time_point beforePop{};
+    std::chrono::steady_clock::time_point afterPop{};
+    std::chrono::steady_clock::time_point castFinished{};
+    std::chrono::steady_clock::time_point returnReady{};
+    bool nullCast = false;
+    QueuePopTiming pop;
 };
 
 // Private host diagnostics: collect identities while locked, inspect them only after push returns.
@@ -263,6 +289,12 @@ class LockingQueue {
         diagnostics->completedAt = std::chrono::steady_clock::now();
     }
 
+    void notifyPush(detail::QueuePushDiagnostics<T>* diagnostics) {
+        if(diagnostics && diagnostics->timing.enabled) diagnostics->timing.notifyStartedAt = std::chrono::steady_clock::now();
+        signalPush.notify_all();
+        if(diagnostics && diagnostics->timing.enabled) diagnostics->timing.notifyFinishedAt = std::chrono::steady_clock::now();
+    }
+
     bool pushImpl(T const& data, std::function<void(LockingQueueState, size_t)> callback, detail::QueuePushDiagnostics<T>* diagnostics) {
         {
             PushTimingScope timingScope(diagnostics);
@@ -299,7 +331,7 @@ class LockingQueue {
 
             callback(LockingQueueState::SUCCESS, queue.size());
         }
-        signalPush.notify_all();
+        notifyPush(diagnostics);
         return true;
     }
 
@@ -339,7 +371,7 @@ class LockingQueue {
 
             callback(LockingQueueState::SUCCESS, queue.size());
         }
-        signalPush.notify_all();
+        notifyPush(diagnostics);
         return true;
     }
 
@@ -388,7 +420,7 @@ class LockingQueue {
 
             callback(LockingQueueState::SUCCESS, queue.size());
         }
-        signalPush.notify_all();
+        notifyPush(diagnostics);
         return true;
     }
 
@@ -437,7 +469,7 @@ class LockingQueue {
 
             callback(LockingQueueState::SUCCESS, queue.size());
         }
-        signalPush.notify_all();
+        notifyPush(diagnostics);
         return true;
     }
 
@@ -472,35 +504,12 @@ class LockingQueue {
     }
 
     bool waitAndPop(T& value) {
-        {
-            std::unique_lock<std::mutex> lock(guard);
-
-            signalPush.wait(lock, [this]() { return (!queue.empty() || destructed); });
-            if(queue.empty()) return false;
-            if(destructed) return false;
-
-            value = std::move(queue.front());
-            queue.pop();
-        }
-        signalPop.notify_all();
-        return true;
+        return waitAndPopImpl(value, nullptr);
     }
 
     template <typename Rep, typename Period>
     bool tryWaitAndPop(T& value, std::chrono::duration<Rep, Period> timeout) {
-        {
-            std::unique_lock<std::mutex> lock(guard);
-
-            // First checks predicate, then waits
-            bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
-            if(!pred) return false;
-            if(destructed) return false;
-
-            value = std::move(queue.front());
-            queue.pop();
-        }
-        signalPop.notify_all();
-        return true;
+        return tryWaitAndPopImpl(value, timeout, nullptr);
     }
 
     void waitEmpty() {
@@ -509,6 +518,72 @@ class LockingQueue {
     }
 
    private:
+    friend class MessageQueue;
+
+    struct PopTimingScope {
+        detail::QueuePopTiming* timing;
+        explicit PopTimingScope(detail::QueuePopTiming* timing) : timing(timing) {
+            if(timing) timing->lockWaitStartedAt = std::chrono::steady_clock::now();
+        }
+        ~PopTimingScope() {
+            // Runs after guard destruction, also on timeout/closure/unwinding.
+            if(timing && timing->lockAcquiredAt != std::chrono::steady_clock::time_point{}) timing->guardReleasedAt = std::chrono::steady_clock::now();
+        }
+    };
+
+    bool waitAndPopImpl(T& value, detail::QueuePopTiming* timing) {
+        {
+            PopTimingScope timingScope(timing);
+            std::unique_lock<std::mutex> lock(guard);
+            if(timing) timing->lockAcquiredAt = std::chrono::steady_clock::now();
+
+            if(timing) timing->waitStartedAt = std::chrono::steady_clock::now();
+            signalPush.wait(lock, [this]() { return (!queue.empty() || destructed); });
+            if(timing) timing->waitFinishedAt = std::chrono::steady_clock::now();
+            if(queue.empty() || destructed) {
+                if(timing) timing->outcome = detail::QueuePopOutcome::CLOSED;
+                return false;
+            }
+
+            value = std::move(queue.front());
+            queue.pop();
+            if(timing) {
+                timing->popCompletedAt = std::chrono::steady_clock::now();
+                timing->outcome = detail::QueuePopOutcome::POPPED;
+            }
+        }
+        signalPop.notify_all();
+        return true;
+    }
+
+    template <typename Rep, typename Period>
+    bool tryWaitAndPopImpl(T& value, std::chrono::duration<Rep, Period> timeout, detail::QueuePopTiming* timing) {
+        {
+            PopTimingScope timingScope(timing);
+            std::unique_lock<std::mutex> lock(guard);
+            if(timing) timing->lockAcquiredAt = std::chrono::steady_clock::now();
+
+            // First checks predicate, then waits
+            if(timing) timing->waitStartedAt = std::chrono::steady_clock::now();
+            bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
+            if(timing) {
+                timing->waitFinishedAt = std::chrono::steady_clock::now();
+                timing->outcome = !pred ? detail::QueuePopOutcome::TIMEOUT : (destructed ? detail::QueuePopOutcome::CLOSED : detail::QueuePopOutcome::UNKNOWN);
+            }
+            if(!pred) return false;
+            if(destructed) return false;
+
+            value = std::move(queue.front());
+            queue.pop();
+            if(timing) {
+                timing->popCompletedAt = std::chrono::steady_clock::now();
+                timing->outcome = detail::QueuePopOutcome::POPPED;
+            }
+        }
+        signalPop.notify_all();
+        return true;
+    }
+
     unsigned maxSize = std::numeric_limits<unsigned>::max();
     bool blocking = true;
     std::queue<T> queue;

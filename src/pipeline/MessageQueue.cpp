@@ -145,7 +145,9 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     const auto& trace = operation.trace;
+    if(operation) operation.timing.beforeArrivalRecorder = std::chrono::steady_clock::now();
     if(trace) detail::syncdebug::arrival(trace, msg);
+    if(operation) operation.timing.afterArrivalRecorder = std::chrono::steady_clock::now();
     if(operation) operation.timing.beforeCallbacks = std::chrono::steady_clock::now();
     callCallbacks(msg);
     if(operation) operation.timing.afterCallbacks = std::chrono::steady_clock::now();
@@ -176,7 +178,9 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     }
     if(trace) detail::syncdebug::pushed(trace, msg, diagnostics, queueNotClosed);
     if(operation) operation.timing.afterPushRecording = std::chrono::steady_clock::now();
+    if(operation) operation.timing.beforeListeners = std::chrono::steady_clock::now();
     notifyListeners();
+    if(operation) operation.timing.afterListeners = std::chrono::steady_clock::now();
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
 }
 
@@ -184,7 +188,9 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
     detail::syncdebug::SendOperation operation(this, msg, true);
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     const auto& trace = operation.trace;
+    if(operation) operation.timing.beforeArrivalRecorder = std::chrono::steady_clock::now();
     if(trace) detail::syncdebug::arrival(trace, msg);
+    if(operation) operation.timing.afterArrivalRecorder = std::chrono::steady_clock::now();
     if(operation) operation.timing.beforeCallbacks = std::chrono::steady_clock::now();
     callCallbacks(msg);
     if(operation) operation.timing.afterCallbacks = std::chrono::steady_clock::now();
@@ -219,7 +225,11 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
     }
     if(trace) detail::syncdebug::pushed(trace, msg, diagnostics, ret);
     if(operation) operation.timing.afterPushRecording = std::chrono::steady_clock::now();
-    if(ret) notifyListeners();
+    if(ret) {
+        if(operation) operation.timing.beforeListeners = std::chrono::steady_clock::now();
+        notifyListeners();
+        if(operation) operation.timing.afterListeners = std::chrono::steady_clock::now();
+    }
     return ret;
 }
 

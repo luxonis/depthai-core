@@ -76,12 +76,6 @@ struct History {
     }
 };
 
-struct Stream {
-    explicit Stream(Input input) : input(std::move(input)) {}
-    Input input;
-    std::array<History, static_cast<std::size_t>(Stage::COUNT)> histories;
-};
-
 struct Queue {
     MessageQueue* address = nullptr;
     std::string name;
@@ -116,6 +110,7 @@ struct ContextEvent {
     std::uint64_t lastDequeuedGroupId = 0;
     std::optional<std::int64_t> gapNs;
     std::optional<double> limitSec;
+    std::uint64_t id = 0;
 };
 
 using TimePoint = std::chrono::steady_clock::time_point;
@@ -141,6 +136,7 @@ struct TimingRecord {
     TimePoint sendSummaryPublished{};
     TimePoint dequeueRecorderBegin{};
     TimePoint dequeueMetadataFinished{};
+    std::uint64_t readerRecordId = 0;
 };
 
 // Starts are announced before waiting for State::mutex. Freeze copies these atomics once;
@@ -178,6 +174,13 @@ enum class Duration {
     PRODUCER_PUSH_RECORDING,
     SEND_TAIL,
     SEND_SUMMARY_PUBLICATION,
+    SEND_REGISTRY_LOOKUP,
+    LOOKUP_TO_ARRIVAL_RECORDER,
+    ARRIVAL_RECORDER,
+    UNLOCK_TO_NOTIFY,
+    PUSH_NOTIFY,
+    NOTIFY_TO_PUSH_RETURN,
+    LISTENER_NOTIFICATION,
     DEQUEUE_RECORDING,
     COUNT
 };
@@ -196,6 +199,13 @@ constexpr std::array<const char*, static_cast<std::size_t>(Duration::COUNT)> DUR
                                                                                             "producer_push_recording_ns",
                                                                                             "send_tail_ns",
                                                                                             "send_summary_publication_ns",
+                                                                                            "send_registry_lookup_ns",
+                                                                                            "lookup_to_arrival_recorder_ns",
+                                                                                            "arrival_recorder_ns",
+                                                                                            "unlock_to_notify_ns",
+                                                                                            "push_notify_ns",
+                                                                                            "notify_to_push_return_ns",
+                                                                                            "listener_notification_ns",
                                                                                             "dequeue_recording_ns"};
 
 std::int64_t elapsedNs(TimePoint begin, TimePoint end) {
@@ -224,6 +234,13 @@ std::array<std::int64_t, DURATION_NAMES.size()> durations(const TimingRecord& re
             elapsedNs(send.afterPush, send.afterPushRecording),
             elapsedNs(send.afterPushRecording, send.exit),
             elapsedNs(send.exit, record.sendSummaryPublished),
+            elapsedNs(send.entry, send.afterLookup),
+            elapsedNs(send.afterLookup, send.beforeArrivalRecorder),
+            elapsedNs(send.beforeArrivalRecorder, send.afterArrivalRecorder),
+            elapsedNs(queue.guardReleasedAt, queue.notifyStartedAt),
+            elapsedNs(queue.notifyStartedAt, queue.notifyFinishedAt),
+            elapsedNs(queue.notifyFinishedAt, send.afterPush),
+            elapsedNs(send.beforeListeners, send.afterListeners),
             elapsedNs(record.dequeueRecorderBegin, record.dequeueMetadataFinished)};
 }
 
@@ -231,6 +248,127 @@ struct DurationSummary {
     std::uint64_t samples = 0;
     std::int64_t maxNs = 0;
 };
+
+// Reuse the same bounded, preallocated metadata/final-summary pattern for selected
+// input sends and reader operations. Stable IDs survive independent producer/consumer updates.
+template <typename Record, std::size_t N>
+struct OperationHistory {
+    utility::CircularBuffer<Record> records{HISTORY_CAPACITY};
+    TimingStarts starts;
+    std::uint64_t total = 0;
+    std::uint64_t startRecords = 0;
+    std::uint64_t summaries = 0;
+    std::uint64_t overwrittenPending = 0;
+    std::uint64_t completionsWithoutRecord = 0;
+    std::array<DurationSummary, N> maxima{};
+
+    Record& add(const char* phase, std::optional<std::size_t> sampleIndex) {
+        if(records.size() == HISTORY_CAPACITY) overwrittenPending += !records.at(0).complete;
+        Record record;
+        record.id = ++total;
+        record.phase = phase;
+        record.sampleIndex = sampleIndex;
+        ++startRecords;
+        return records.add(std::move(record));
+    }
+    Record* find(std::uint64_t id) {
+        if(id == 0) return nullptr;
+        for(auto it = records.rbegin(); it != records.rend(); ++it) {
+            if(it->id == id) return &*it;
+        }
+        return nullptr;
+    }
+    void summarize(const std::array<std::int64_t, N>& values) {
+        for(std::size_t i = 0; i < N; ++i) {
+            if(values[i] < 0) continue;
+            ++maxima[i].samples;
+            maxima[i].maxNs = std::max(maxima[i].maxNs, values[i]);
+        }
+    }
+};
+
+struct InputTimingRecord {
+    std::uint64_t id = 0;
+    const char* phase = "setup";
+    std::optional<std::size_t> sampleIndex;
+    Frame frame;
+    SendTiming send;
+    TimePoint startPublished{};
+    TimePoint summaryPublished{};
+    bool complete = false;
+};
+using InputTimings = OperationHistory<InputTimingRecord, DURATION_NAMES.size()>;
+
+struct Stream {
+    explicit Stream(Input input) : input(std::move(input)), delivery(std::make_unique<InputTimings>()) {}
+    Input input;
+    std::array<History, static_cast<std::size_t>(Stage::COUNT)> histories;
+    // Separate allocations keep the per-stream announcement atomics stable as streams move.
+    std::unique_ptr<InputTimings> delivery;
+};
+
+constexpr std::array<const char*, 22> READ_DURATION_NAMES{"context_call_ns",
+                                                          "context_return_to_reader_entry_ns",
+                                                          "reader_start_publication_ns",
+                                                          "reader_entry_to_deadline_check_ns",
+                                                          "deadline_check_to_get_ns",
+                                                          "get_entry_to_pop_call_ns",
+                                                          "pop_lock_wait_ns",
+                                                          "pop_wait_ns",
+                                                          "wake_to_pop_ns",
+                                                          "pop_to_guard_release_ns",
+                                                          "guard_release_to_pop_return_ns",
+                                                          "pop_return_to_cast_ns",
+                                                          "cast_to_typed_get_return_ns",
+                                                          "typed_get_return_to_lookup_ns",
+                                                          "reader_registry_lookup_ns",
+                                                          "lookup_to_dequeue_recorder_ns",
+                                                          "dequeue_recorder_ns",
+                                                          "recorder_to_analysis_ns",
+                                                          "reader_analysis_ns",
+                                                          "reader_tail_ns",
+                                                          "reader_entry_to_exit_ns",
+                                                          "reader_summary_publication_ns"};
+
+struct ReadRecord {
+    std::uint64_t id = 0;
+    const char* phase = "setup";
+    std::optional<std::size_t> sampleIndex;
+    ReadTiming timing;
+    Frame frame;
+    TimePoint startPublished{};
+    TimePoint summaryPublished{};
+    bool complete = false;
+};
+using ReadTimings = OperationHistory<ReadRecord, READ_DURATION_NAMES.size()>;
+
+std::array<std::int64_t, READ_DURATION_NAMES.size()> readDurations(const ReadRecord& record) {
+    const auto& read = record.timing;
+    const auto& get = read.get;
+    const auto& pop = get.pop;
+    return {elapsedNs(read.contextEntry, read.contextReturned),
+            elapsedNs(read.contextReturned, read.entry),
+            elapsedNs(read.entry, record.startPublished),
+            elapsedNs(read.entry, read.deadlineChecked),
+            elapsedNs(read.deadlineChecked, get.entry),
+            elapsedNs(get.entry, get.beforePop),
+            elapsedNs(pop.lockWaitStartedAt, pop.lockAcquiredAt),
+            elapsedNs(pop.waitStartedAt, pop.waitFinishedAt),
+            elapsedNs(pop.waitFinishedAt, pop.popCompletedAt),
+            elapsedNs(pop.popCompletedAt, pop.guardReleasedAt),
+            elapsedNs(pop.guardReleasedAt, get.afterPop),
+            elapsedNs(get.afterPop, get.castFinished),
+            elapsedNs(get.castFinished, read.typedGetReturned),
+            elapsedNs(read.typedGetReturned, read.beforeLookup),
+            elapsedNs(read.beforeLookup, read.afterLookup),
+            elapsedNs(read.afterLookup, read.beforeDequeueRecorder),
+            elapsedNs(read.beforeDequeueRecorder, read.afterDequeueRecorder),
+            elapsedNs(read.afterDequeueRecorder, read.beforeAnalysis),
+            elapsedNs(read.beforeAnalysis, read.analysisFinished),
+            elapsedNs(read.analysisFinished, read.exit),
+            elapsedNs(read.entry, read.exit),
+            elapsedNs(read.exit, record.summaryPublished)};
+}
 
 struct Registry {
     std::atomic<bool> active{false};
@@ -285,6 +423,7 @@ struct State {
     std::uint64_t overwrittenPendingTimings = 0;
     std::uint64_t completionUpdatesWithoutRecord = 0;
     std::array<DurationSummary, DURATION_NAMES.size()> durationSummaries{};
+    ReadTimings reads;
     utility::CircularBuffer<ContextEvent> contexts{HISTORY_CAPACITY};
     std::uint64_t contextTotal = 0;
     std::int64_t startedSteadyNs = steadyNs();
@@ -340,6 +479,8 @@ struct State {
         frozen.store(true, std::memory_order_relaxed);
         syncStarts.freeze(frozenSteadyNs);
         sendStarts.freeze(frozenSteadyNs);
+        reads.starts.freeze(frozenSteadyNs);
+        for(auto& stream : streams) stream.delivery->starts.freeze(frozenSteadyNs);
     }
 
     std::uint64_t identify(const std::shared_ptr<ADatatype>& message) {
@@ -454,7 +595,8 @@ nlohmann::json groupHistoriesJson(const State& state, bool success) {
 nlohmann::json contextHistoryJson(const State& state) {
     auto result = nlohmann::json::array();
     for(const auto& event : state.contexts.getBuffer()) {
-        nlohmann::json value = {{"steady_ns", event.steadyNs}, {"phase", event.phase}, {"last_dequeued_group_id", event.lastDequeuedGroupId}};
+        nlohmann::json value = {
+            {"steady_ns", event.steadyNs}, {"context_id", event.id}, {"phase", event.phase}, {"last_dequeued_group_id", event.lastDequeuedGroupId}};
         value["sample_index"] = event.sampleIndex ? nlohmann::json(*event.sampleIndex) : nlohmann::json(nullptr);
         value["gap_ns"] = event.gapNs ? nlohmann::json(*event.gapNs) : nlohmann::json(nullptr);
         value["limit_seconds"] = event.limitSec ? nlohmann::json(*event.limitSec) : nlohmann::json(nullptr);
@@ -465,6 +607,160 @@ nlohmann::json contextHistoryJson(const State& state) {
 
 nlohmann::json checkpointJson(TimePoint time) {
     return time == TimePoint{} ? nlohmann::json(nullptr) : nlohmann::json(timeNs(time));
+}
+
+nlohmann::json sendJson(const SendTiming& send, bool complete, TimePoint startPublished, TimePoint summaryPublished) {
+    const auto& queue = send.queue;
+    return {{"entry_ns", checkpointJson(send.entry)},
+            {"after_registry_lookup_ns", checkpointJson(send.afterLookup)},
+            {"before_arrival_recorder_ns", checkpointJson(send.beforeArrivalRecorder)},
+            {"after_arrival_recorder_ns", checkpointJson(send.afterArrivalRecorder)},
+            {"before_callbacks_ns", checkpointJson(send.beforeCallbacks)},
+            {"after_callbacks_ns", checkpointJson(send.afterCallbacks)},
+            {"before_push_ns", checkpointJson(send.beforePush)},
+            {"after_push_ns", checkpointJson(send.afterPush)},
+            {"after_push_recording_ns", checkpointJson(send.afterPushRecording)},
+            {"before_listeners_ns", checkpointJson(send.beforeListeners)},
+            {"after_listeners_ns", checkpointJson(send.afterListeners)},
+            {"exit_ns", checkpointJson(send.exit)},
+            {"lock_wait_started_ns", checkpointJson(queue.lockWaitStartedAt)},
+            {"lock_acquired_ns", checkpointJson(queue.lockAcquiredAt)},
+            {"capacity_wait_started_ns", checkpointJson(queue.capacityWaitStartedAt)},
+            {"capacity_wait_finished_ns", checkpointJson(queue.capacityWaitFinishedAt)},
+            {"enqueue_started_ns", checkpointJson(queue.enqueueStartedAt)},
+            {"enqueue_completed_ns", checkpointJson(send.enqueueCompleted)},
+            {"guard_released_ns", checkpointJson(queue.guardReleasedAt)},
+            {"notify_started_ns", checkpointJson(queue.notifyStartedAt)},
+            {"notify_finished_ns", checkpointJson(queue.notifyFinishedAt)},
+            {"timed", send.timed},
+            {"accepted", send.afterPush != TimePoint{} ? nlohmann::json(send.accepted) : nlohmann::json(nullptr)},
+            {"exception", complete ? nlohmann::json(send.exception) : nlohmann::json(nullptr)},
+            {"start_published_ns", checkpointJson(startPublished)},
+            {"summary_published_ns", checkpointJson(summaryPublished)}};
+}
+
+template <typename Record, std::size_t N>
+nlohmann::json operationHistoryJson(const OperationHistory<Record, N>& history,
+                                    const std::array<const char*, N>& names,
+                                    std::size_t first = 0,
+                                    std::size_t end = N) {
+    nlohmann::json result = {{"total", history.total},
+                             {"history_overwrites", history.total - history.records.size()},
+                             {"starts", history.starts.frozenTotal},
+                             {"start_records", history.startRecords},
+                             {"summaries_published", history.summaries},
+                             {"starts_without_record", history.starts.frozenTotal - history.startRecords},
+                             {"without_summary", history.starts.frozenTotal - history.summaries},
+                             {"overwritten_pending_records", history.overwrittenPending},
+                             {"completion_updates_without_retained_record", history.completionsWithoutRecord}};
+    result["last_start_ns"] = history.starts.frozenLastStartNs ? nlohmann::json(history.starts.frozenLastStartNs) : nlohmann::json(nullptr);
+    result["duration_maxima"] = nlohmann::json::object();
+    for(auto i = first; i < end; ++i) {
+        const auto& summary = history.maxima[i];
+        result["duration_maxima"][names[i]] = {{"samples", summary.samples},
+                                               {"max_ns", summary.samples ? nlohmann::json(summary.maxNs) : nlohmann::json(nullptr)}};
+    }
+    return result;
+}
+
+nlohmann::json inputTimingHistoryJson(const Stream& stream, bool success) {
+    const auto& history = *stream.delivery;
+    const auto first = static_cast<std::size_t>(Duration::SEND_ENTRY_TO_CALLBACKS);
+    const auto end = static_cast<std::size_t>(Duration::DEQUEUE_RECORDING);
+    auto result = operationHistoryJson(history, DURATION_NAMES, first, end);
+    result["queue_name"] = stream.input.name;
+    if(success) return result;
+    result["events"] = nlohmann::json::array();
+    for(const auto& record : history.records.getBuffer()) {
+        nlohmann::json entry = {
+            {"record_id", record.id}, {"phase", record.phase}, {"started", true}, {"complete", record.complete}, {"inflight", !record.complete}};
+        entry["sample_index"] = record.sampleIndex ? nlohmann::json(*record.sampleIndex) : nlohmann::json(nullptr);
+        entry["frame"] = frameJson(record.frame);
+        entry["message_queue"] = sendJson(record.send, record.complete, record.startPublished, record.summaryPublished);
+        TimingRecord delivery;
+        delivery.send = record.send;
+        delivery.sendSummaryPublished = record.summaryPublished;
+        const auto values = durations(delivery);
+        entry["durations"] = nlohmann::json::object();
+        for(auto i = first; i < end; ++i) entry["durations"][DURATION_NAMES[i]] = values[i] < 0 ? nlohmann::json(nullptr) : nlohmann::json(values[i]);
+        result["events"].push_back(std::move(entry));
+    }
+    return result;
+}
+
+nlohmann::json popOutcomeJson(QueuePopOutcome outcome) {
+    switch(outcome) {
+        case QueuePopOutcome::POPPED:
+            return "popped";
+        case QueuePopOutcome::TIMEOUT:
+            return "timeout";
+        case QueuePopOutcome::CLOSED:
+            return "closed";
+        case QueuePopOutcome::UNKNOWN:
+            return nullptr;
+    }
+    return nullptr;
+}
+
+nlohmann::json readTimingHistoryJson(const State& state, bool success) {
+    auto result = operationHistoryJson(state.reads, READ_DURATION_NAMES);
+    result["queue_name"] = state.queues.back().name;
+    if(success) return result;
+    result["events"] = nlohmann::json::array();
+    for(const auto& record : state.reads.records.getBuffer()) {
+        const auto& read = record.timing;
+        const auto& get = read.get;
+        const auto& pop = get.pop;
+        nlohmann::json entry = {{"record_id", record.id},
+                                {"group_id", read.groupId},
+                                {"delivery_record_id", read.deliveryRecordId},
+                                {"context_id", read.contextId},
+                                {"phase", record.phase},
+                                {"started", true},
+                                {"complete", record.complete},
+                                {"inflight", !record.complete},
+                                {"context_entry_ns", checkpointJson(read.contextEntry)},
+                                {"context_returned_ns", checkpointJson(read.contextReturned)},
+                                {"entry_ns", checkpointJson(read.entry)},
+                                {"deadline_ns", checkpointJson(read.deadline)},
+                                {"deadline_checked_ns", checkpointJson(read.deadlineChecked)},
+                                {"deadline_expired", read.deadlineChecked != TimePoint{} ? nlohmann::json(read.deadlineExpired) : nlohmann::json(nullptr)},
+                                {"typed_get_returned_ns", checkpointJson(read.typedGetReturned)},
+                                {"timed_out", read.typedGetReturned != TimePoint{} ? nlohmann::json(read.timedOut) : nlohmann::json(nullptr)},
+                                {"before_registry_lookup_ns", checkpointJson(read.beforeLookup)},
+                                {"after_registry_lookup_ns", checkpointJson(read.afterLookup)},
+                                {"registry_lookup_found", read.afterLookup != TimePoint{} ? nlohmann::json(read.lookupFound) : nlohmann::json(nullptr)},
+                                {"before_dequeue_recorder_ns", checkpointJson(read.beforeDequeueRecorder)},
+                                {"dequeue_metadata_finished_ns", checkpointJson(read.dequeueMetadataFinished)},
+                                {"after_dequeue_recorder_ns", checkpointJson(read.afterDequeueRecorder)},
+                                {"before_analysis_ns", checkpointJson(read.beforeAnalysis)},
+                                {"analysis_finished_ns", checkpointJson(read.analysisFinished)},
+                                {"exit_ns", checkpointJson(read.exit)},
+                                {"exception", record.complete ? nlohmann::json(read.exception) : nlohmann::json(nullptr)},
+                                {"start_published_ns", checkpointJson(record.startPublished)},
+                                {"summary_published_ns", checkpointJson(record.summaryPublished)}};
+        entry["sample_index"] = record.sampleIndex ? nlohmann::json(*record.sampleIndex) : nlohmann::json(nullptr);
+        entry["popped_frame"] = frameJson(record.frame);
+        entry["get"] = {{"entry_ns", checkpointJson(get.entry)},
+                        {"before_pop_ns", checkpointJson(get.beforePop)},
+                        {"lock_wait_started_ns", checkpointJson(pop.lockWaitStartedAt)},
+                        {"lock_acquired_ns", checkpointJson(pop.lockAcquiredAt)},
+                        {"wait_started_ns", checkpointJson(pop.waitStartedAt)},
+                        {"wait_finished_ns", checkpointJson(pop.waitFinishedAt)},
+                        {"pop_completed_ns", checkpointJson(pop.popCompletedAt)},
+                        {"guard_released_ns", checkpointJson(pop.guardReleasedAt)},
+                        {"after_pop_ns", checkpointJson(get.afterPop)},
+                        {"cast_finished_ns", checkpointJson(get.castFinished)},
+                        {"return_ready_ns", checkpointJson(get.returnReady)},
+                        {"null_cast", get.castFinished != TimePoint{} ? nlohmann::json(get.nullCast) : nlohmann::json(nullptr)},
+                        {"pop_result", popOutcomeJson(pop.outcome)}};
+        entry["durations"] = nlohmann::json::object();
+        const auto values = readDurations(record);
+        for(std::size_t i = 0; i < values.size(); ++i)
+            entry["durations"][READ_DURATION_NAMES[i]] = values[i] < 0 ? nlohmann::json(nullptr) : nlohmann::json(values[i]);
+        result["events"].push_back(std::move(entry));
+    }
+    return result;
 }
 
 nlohmann::json timingHistoryJson(const State& state, bool success) {
@@ -496,9 +792,9 @@ nlohmann::json timingHistoryJson(const State& state, bool success) {
     for(const auto& record : state.timings.getBuffer()) {
         const auto& sync = record.sync;
         const auto& send = record.send;
-        const auto& queue = send.queue;
         nlohmann::json entry = {{"record_id", record.id},
                                 {"group_id", record.groupId},
+                                {"reader_record_id", record.readerRecordId},
                                 {"phase", record.phase},
                                 {"sync_started", record.syncStarted},
                                 {"sync_complete", record.syncComplete},
@@ -514,25 +810,7 @@ nlohmann::json timingHistoryJson(const State& state, bool success) {
                          {"output_send_exception_ns", checkpointJson(sync.outputSendException)},
                          {"start_published_ns", checkpointJson(record.syncStartPublished)},
                          {"summary_published_ns", checkpointJson(record.syncSummaryPublished)}};
-        entry["message_queue"] = {{"entry_ns", checkpointJson(send.entry)},
-                                  {"before_callbacks_ns", checkpointJson(send.beforeCallbacks)},
-                                  {"after_callbacks_ns", checkpointJson(send.afterCallbacks)},
-                                  {"before_push_ns", checkpointJson(send.beforePush)},
-                                  {"after_push_ns", checkpointJson(send.afterPush)},
-                                  {"after_push_recording_ns", checkpointJson(send.afterPushRecording)},
-                                  {"exit_ns", checkpointJson(send.exit)},
-                                  {"lock_wait_started_ns", checkpointJson(queue.lockWaitStartedAt)},
-                                  {"lock_acquired_ns", checkpointJson(queue.lockAcquiredAt)},
-                                  {"capacity_wait_started_ns", checkpointJson(queue.capacityWaitStartedAt)},
-                                  {"capacity_wait_finished_ns", checkpointJson(queue.capacityWaitFinishedAt)},
-                                  {"enqueue_started_ns", checkpointJson(queue.enqueueStartedAt)},
-                                  {"enqueue_completed_ns", checkpointJson(send.enqueueCompleted)},
-                                  {"guard_released_ns", checkpointJson(queue.guardReleasedAt)},
-                                  {"timed", send.timed},
-                                  {"accepted", send.afterPush != TimePoint{} ? nlohmann::json(send.accepted) : nlohmann::json(nullptr)},
-                                  {"exception", record.sendComplete ? nlohmann::json(send.exception) : nlohmann::json(nullptr)},
-                                  {"start_published_ns", checkpointJson(record.sendStartPublished)},
-                                  {"summary_published_ns", checkpointJson(record.sendSummaryPublished)}};
+        entry["message_queue"] = sendJson(send, record.sendComplete, record.sendStartPublished, record.sendSummaryPublished);
         entry["dequeue_recorder"] = {{"begin_ns", checkpointJson(record.dequeueRecorderBegin)},
                                      {"metadata_finished_ns", checkpointJson(record.dequeueMetadataFinished)}};
         entry["durations"] = nlohmann::json::object();
@@ -569,10 +847,13 @@ nlohmann::json snapshot(const State& state, bool success, const char* reason) {
         for(std::size_t stage = 0; stage < STAGE_NAMES.size(); ++stage) {
             value[STAGE_NAMES[stage]] = historyJson(stream.histories[stage], success);
         }
+        value["input_delivery_timings"] = inputTimingHistoryJson(stream, success);
         result["streams"].push_back(std::move(value));
     }
     result["groups"] = groupHistoriesJson(state, success);
     result["output_timings"] = timingHistoryJson(state, success);
+    result["reader_timings"] = readTimingHistoryJson(state, success);
+    result["diagnostic_extensions"] = {"output_notify_boundaries_v1", "reader_boundaries_v1", "input_delivery_boundaries_v1"};
     result["context_history_overwrites"] = state.contextTotal - state.contexts.size();
     if(!success) result["contexts"] = contextHistoryJson(state);
     return result;
@@ -602,14 +883,29 @@ SendOperation::SendOperation(const MessageQueue* queue, const std::shared_ptr<AD
     if(!registry().active.load(std::memory_order_relaxed)) return;
     const auto entry = std::chrono::steady_clock::now();
     trace = find(queue);
-    if(!trace || trace.queueIndex != trace.state->streams.size() || trace.state->frozen.load(std::memory_order_relaxed)) return;
+    if(!trace) return;
+    const auto afterLookup = std::chrono::steady_clock::now();
+    if(trace.state->frozen.load(std::memory_order_relaxed)) return;
     enabled = true;
     exceptionsOnEntry = std::uncaught_exceptions();
     timing.entry = entry;
+    timing.afterLookup = afterLookup;
     timing.timed = timed;
     diagnostics.timing.enabled = true;
-    trace.state->sendStarts.announce(entry);
+    const bool output = trace.queueIndex == trace.state->streams.size();
+    if(output)
+        trace.state->sendStarts.announce(entry);
+    else
+        trace.state->streams.at(trace.queueIndex).delivery->starts.announce(entry);
     update(trace, [&](State& state) {
+        if(!output) {
+            auto& record = state.streams.at(trace.queueIndex).delivery->add(state.phase, state.sampleIndex);
+            timing.recordId = record.id;
+            record.send = timing;
+            if(message) record.frame = metadata(*message);
+            record.startPublished = std::chrono::steady_clock::now();
+            return;
+        }
         const auto groupId = dynamic_cast<const MessageGroup*>(message.get()) ? state.identify(message) : 0;
         auto* record = state.findGroupTiming(groupId, true);
         if(!record) record = &state.addTiming(groupId);
@@ -630,6 +926,24 @@ SendOperation::~SendOperation() noexcept {
     timing.queue = diagnostics.timing;
     timing.enqueueCompleted = diagnostics.completedAt;
     update(trace, [&](State& state) {
+        if(trace.queueIndex < state.streams.size()) {
+            auto& history = *state.streams.at(trace.queueIndex).delivery;
+            InputTimingRecord unretained;
+            auto* record = history.find(timing.recordId);
+            if(!record) {
+                ++history.completionsWithoutRecord;
+                record = &unretained;
+            }
+            record->send = timing;
+            record->complete = true;
+            record->summaryPublished = std::chrono::steady_clock::now();
+            ++history.summaries;
+            TimingRecord delivery;
+            delivery.send = timing;
+            delivery.sendSummaryPublished = record->summaryPublished;
+            history.summarize(durations(delivery));
+            return;
+        }
         TimingRecord unretained;
         auto* record = state.findTiming(timing.recordId);
         if(!record) {
@@ -642,6 +956,72 @@ SendOperation::~SendOperation() noexcept {
         ++state.sendSummaries;
         state.summarize(*record, Duration::SEND_ENTRY_TO_CALLBACKS, Duration::DEQUEUE_RECORDING);
     });
+}
+
+std::shared_ptr<ReaderContext> readerContext(const MessageQueue* queue) noexcept {
+    const auto trace = find(queue);
+    if(!trace || trace.queueIndex != trace.state->streams.size()) return {};
+    try {
+        auto result = std::make_shared<ReaderContext>();
+        result->trace = trace;
+        return result;
+    } catch(...) {
+        ++trace.state->recordingErrors;
+        return {};
+    }
+}
+
+ReadOperation::ReadOperation(const std::shared_ptr<ReaderContext>& context, TimePoint deadline) noexcept {
+    if(!context || !context->trace || context->trace.state->frozen.load(std::memory_order_relaxed)) return;
+    // Cached selection lets this precede both the existing deadline check and any registry lookup.
+    timing.entry = std::chrono::steady_clock::now();
+    trace = context->trace;
+    exceptionsOnEntry = std::uncaught_exceptions();
+    timing.deadline = deadline;
+    timing.contextId = context->contextId;
+    timing.contextEntry = context->contextEntry;
+    timing.contextReturned = context->contextReturned;
+    trace.state->reads.starts.announce(timing.entry);
+    update(trace, [&](State& state) {
+        auto& record = state.reads.add(context->phase, context->sampleIndex);
+        timing.recordId = record.id;
+        record.timing = timing;
+        record.startPublished = std::chrono::steady_clock::now();
+        timing.startPublished = record.startPublished;
+    });
+}
+
+ReadOperation::~ReadOperation() noexcept {
+    if(!trace) return;
+    timing.exit = std::chrono::steady_clock::now();
+    timing.exception = std::uncaught_exceptions() > exceptionsOnEntry;
+    update(trace, [&](State& state) {
+        ReadRecord unretained;
+        auto* record = state.reads.find(timing.recordId);
+        if(!record) {
+            ++state.reads.completionsWithoutRecord;
+            record = &unretained;
+        }
+        record->timing = timing;
+        record->startPublished = timing.startPublished;
+        if(popped) record->frame = metadata(*popped);
+        record->complete = true;
+        record->summaryPublished = std::chrono::steady_clock::now();
+        ++state.reads.summaries;
+        state.reads.summarize(readDurations(*record));
+    });
+}
+
+void ReadOperation::recordDequeue(const MessageQueue* queue) noexcept {
+    if(!trace) return;
+    timing.beforeLookup = std::chrono::steady_clock::now();
+    const auto output = find(queue);
+    timing.afterLookup = std::chrono::steady_clock::now();
+    timing.lookupFound = static_cast<bool>(output);
+    if(!output) return;
+    timing.beforeDequeueRecorder = std::chrono::steady_clock::now();
+    dequeued(output, popped, &timing);
+    timing.afterDequeueRecorder = std::chrono::steady_clock::now();
 }
 
 void arrival(const Handle& handle, const std::shared_ptr<ADatatype>& message) noexcept {
@@ -721,16 +1101,22 @@ void delivered(const Handle& output, const SyncTiming& timing) noexcept {
     });
 }
 
-void dequeued(const Handle& output, const std::shared_ptr<ADatatype>& group) noexcept {
+void dequeued(const Handle& output, const std::shared_ptr<ADatatype>& group, ReadTiming* timing) noexcept {
     if(!output || output.state->frozen.load(std::memory_order_relaxed)) return;
     const auto begin = std::chrono::steady_clock::now();
     update(output, [&](State& state) {
         const auto id = state.recordGroup(Stage::DEQUEUED, group, timeNs(begin));
+        if(timing) timing->groupId = id;
         if(auto* record = state.findGroupTiming(id)) {
+            if(timing) {
+                timing->deliveryRecordId = record->id;
+                record->readerRecordId = timing->recordId;
+            }
             record->dequeueRecorderBegin = begin;
             record->dequeueMetadataFinished = std::chrono::steady_clock::now();
             state.summarize(*record, Duration::DEQUEUE_RECORDING, Duration::COUNT);
         }
+        if(timing) timing->dequeueMetadataFinished = std::chrono::steady_clock::now();
     });
 }
 
@@ -739,18 +1125,26 @@ void context(const Handle& handle,
              std::optional<std::size_t> sampleIndex,
              std::optional<std::chrono::system_clock::duration> gap,
              std::optional<double> limitSec,
-             bool freeze) noexcept {
+             bool freeze,
+             ReaderContext* reader) noexcept {
+    if(reader) reader->contextEntry = std::chrono::steady_clock::now();
     update(handle, [&](State& state) {
         state.phase = phase;
         state.sampleIndex = sampleIndex;
         state.gapNs = gap ? std::optional<std::int64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(*gap).count()) : std::nullopt;
         state.limitSec = limitSec;
-        state.contexts.add({steadyNs(), phase, sampleIndex, state.lastDequeuedGroupId, state.gapNs, limitSec});
-        ++state.contextTotal;
+        const auto id = ++state.contextTotal;
+        state.contexts.add({steadyNs(), phase, sampleIndex, state.lastDequeuedGroupId, state.gapNs, limitSec, id});
+        if(reader) {
+            reader->contextId = id;
+            reader->phase = phase;
+            reader->sampleIndex = sampleIndex;
+        }
         if(freeze) {
             state.freezeRecording();
         }
     });
+    if(reader) reader->contextReturned = std::chrono::steady_clock::now();
 }
 
 Session::Session(std::shared_ptr<State> state) : state(std::move(state)) {}
