@@ -15,7 +15,8 @@ namespace node {
 /**
  * Filter detections or combine already synchronized camera detections into a reference image.
  * Linked keys are consumed once per round in lexicographic order. Use Sync and MessageDemux upstream.
- * Multiple inputs run on the host. One input runs on RVC4, or on the host for RVC2 and device-free pipelines.
+ * Multiple inputs or linked source masks run on the host. One input otherwise runs on RVC4, or on the host for RVC2
+ * and device-free pipelines.
  * Remapping uses calibration and rotation without depth or camera translation. For panorama alignment,
  * use Stitching PANORAMA with setUseInputCalibration(true); full 360 degree seam-crossing boxes are unsupported.
  */
@@ -34,6 +35,12 @@ class ImgDetectionsFilter : public DeviceNodeCRTP<DeviceNode, ImgDetectionsFilte
     std::shared_ptr<ImgDetectionsFilterConfig> initialConfig = std::make_shared<ImgDetectionsFilterConfig>();
     /** Synchronized ImgDetections inputs. Only linked keys participate; keys are fixed at pipeline start. */
     InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, true, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgDetections, false}}}, true}};
+    /**
+     * Optional GRAY8 visibility masks in reference coordinates, keyed like inputs. Zero at a remapped box center rejects
+     * that detection before duplicate removal. The newest mask is latched; linked masks must arrive before processing.
+     * Use Stitching.outSourceMasks for calibrated panoramas. Linking masks requires host execution.
+     */
+    InputMap inputSourceMasks{*this, "inputSourceMasks", {"", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ImgFrame, false}}}, false}};
     /** Optional reference frame. Pixels are ignored; the newest valid transformation is latched. */
     Input inputReference{*this, {"inputReference", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ImgFrame, false}}}, false}};
     /** Optional runtime config. The last queued message is checked once a round has been collected. */
@@ -41,7 +48,7 @@ class ImgDetectionsFilter : public DeviceNodeCRTP<DeviceNode, ImgDetectionsFilte
     /** One ImgDetections per round, with metadata from the newest host timestamp (earlier key wins ties). */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, false}}}}};
 
-    /** Override automatic placement. Device execution with multiple linked keys is rejected. */
+    /** Override automatic placement. Device execution with multiple linked keys or source masks is rejected. */
     ImgDetectionsFilter& setRunOnHost(bool runOnHost);
     /** Return the selected execution placement. RVC2 and device-free pipelines always run on the host. */
     bool runOnHost() const override;
@@ -53,6 +60,7 @@ class ImgDetectionsFilter : public DeviceNodeCRTP<DeviceNode, ImgDetectionsFilte
    private:
     std::optional<bool> runOnHostVar;
     std::vector<std::pair<std::string, Input*>> linkedInputs;
+    std::vector<Input*> linkedSourceMasks;
 };
 }  // namespace node
 }  // namespace dai

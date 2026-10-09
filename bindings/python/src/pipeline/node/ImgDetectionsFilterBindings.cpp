@@ -13,6 +13,7 @@ void bind_imgdetectionsfilter(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     properties.def_readwrite("initialConfig", &ImgDetectionsFilterProperties::initialConfig, DOC(dai, ImgDetectionsFilterProperties, initialConfig));
     node.def_readonly("inputs", &ImgDetectionsFilter::inputs, DOC(dai, node, ImgDetectionsFilter, inputs))
+        .def_readonly("inputSourceMasks", &ImgDetectionsFilter::inputSourceMasks, DOC(dai, node, ImgDetectionsFilter, inputSourceMasks))
         .def_readonly("inputReference", &ImgDetectionsFilter::inputReference, DOC(dai, node, ImgDetectionsFilter, inputReference))
         .def_readonly("inputConfig", &ImgDetectionsFilter::inputConfig, DOC(dai, node, ImgDetectionsFilter, inputConfig))
         .def_readonly("out", &ImgDetectionsFilter::out, DOC(dai, node, ImgDetectionsFilter, out))

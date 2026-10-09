@@ -63,6 +63,7 @@ inline FilterSettings nondefaultSettings() {
 class FilterHarness {
    public:
     dai::Pipeline pipeline;
+    std::shared_ptr<dai::node::ImgDetectionsFilter> node;
 
     explicit FilterHarness(const FilterSettings& settings = {},
                            const std::vector<std::string>& keys = {"cam"},
@@ -146,7 +147,6 @@ class FilterHarness {
     }
 
    private:
-    std::shared_ptr<dai::node::ImgDetectionsFilter> node;
     std::map<std::string, std::shared_ptr<dai::InputQueue>> inputs;
     std::shared_ptr<dai::InputQueue> referenceQueue;
     std::shared_ptr<dai::MessageQueue> output;

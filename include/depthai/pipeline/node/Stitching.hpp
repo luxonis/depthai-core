@@ -103,6 +103,14 @@ class Stitching : public DeviceNodeCRTP<DeviceNode, Stitching, StitchingProperti
      * class documentation.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    /**
+     * Optional GRAY8 visibility masks, keyed input0..inputN-1 in source order, with the panorama transformation.
+     * Nonzero pixels identify each source's seam region, or the pixels retained after direct copying in input order.
+     * Linked outputs emit once when the composition is prepared, and again after it is reset. Available on the host
+     * in PANORAMA mode with input calibration. Link to ImgDetectionsFilter.inputSourceMasks using the detection key
+     * for the corresponding camera. Multiband blending can mix sources near seams beyond these regions.
+     */
+    OutputMap outSourceMasks{*this, "outSourceMasks", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Build the node with a fixed set of sources. The number of inputs cannot change afterwards.

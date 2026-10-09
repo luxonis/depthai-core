@@ -80,6 +80,7 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "inputs", [](Stitching& node) { return &node.inputs; }, py::return_value_policy::reference_internal, DOC(dai, node, Stitching, inputs))
         .def_readonly("out", &Stitching::out, DOC(dai, node, Stitching, out))
+        .def_readonly("outSourceMasks", &Stitching::outSourceMasks, DOC(dai, node, Stitching, outSourceMasks))
         .def("build",
              static_cast<std::shared_ptr<Stitching> (Stitching::*)(const std::vector<Node::Output*>&)>(&Stitching::build),
              py::arg("sources"),

@@ -110,3 +110,44 @@ TEST_CASE("ImgDetectionsFilter X-6: valid messages keep pipeline running", "[Img
     }
     REQUIRE(h.pipeline.isRunning());
 }
+
+TEST_CASE("ImgDetectionsFilter validates source mask links", "[ImgDetectionsFilter][Stitching]") {
+    FilterHarness h;
+    SECTION("mask key must have a linked detection input") {
+        h.node->inputSourceMasks["missing"].createInputQueue();
+    }
+    SECTION("masks require host execution") {
+        h.node->inputSourceMasks["cam"].createInputQueue();
+        h.setRunOnHost(false);
+    }
+    REQUIRE_THROWS(h.pipeline.start());
+}
+
+TEST_CASE("ImgDetectionsFilter validates source mask payloads", "[ImgDetectionsFilter][Stitching]") {
+    FilterSettings settings;
+    settings.reference = transformation();
+    FilterHarness h(settings);
+    const auto masks = h.node->inputSourceMasks["cam"].createInputQueue();
+    auto mask = std::make_shared<dai::ImgFrame>();
+    mask->setWidth(512);
+    mask->setHeight(512);
+    mask->setType(dai::ImgFrame::Type::GRAY8);
+    mask->setTransformation(transformation());
+    mask->setData(std::vector<std::uint8_t>(512 * 512, 255));
+    SECTION("truncated payload") {
+        mask->setData(std::vector<std::uint8_t>(1, 255));
+    }
+    SECTION("incorrect dimensions") {
+        mask->setHeight(256);
+    }
+    SECTION("incorrect pixel type") {
+        mask->setType(dai::ImgFrame::Type::BGR888i);
+    }
+    SECTION("offset beyond payload") {
+        mask->fb.p1Offset = 512 * 512 + 1;
+    }
+    h.pipeline.start();
+    masks->send(mask);
+    h.send(message());
+    h.requireStopped();
+}

@@ -58,6 +58,7 @@ class DetectionRound {
     const std::vector<std::shared_ptr<ImgDetections>>& messages;
     const ImgDetectionsFilterConfig& config;
     const std::optional<ImgTransformation>& reference;
+    const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks;
     const bool geometry;
     std::shared_ptr<ImgDetections> output = std::make_shared<ImgDetections>();
     std::pair<std::size_t, std::size_t> size{0, 0};
@@ -106,19 +107,38 @@ class DetectionRound {
         output->setBufferMetadataFrom(newest.get());
         output->transformation = reference ? reference : messages.front()->getTransformation();
         if(output->transformation) size = output->transformation->getSize();
+        if(!sourceMasks.empty() && sourceMasks.size() != messages.size()) throw std::invalid_argument("ImgDetectionsFilter source mask count mismatch");
+        for(const auto& mask : sourceMasks) {
+            if(!mask) continue;
+            if(mask->getType() != ImgFrame::Type::GRAY8 || mask->getWidth() != size.first || mask->getHeight() != size.second || !output->transformation
+               || !mask->getTransformation().isEqualTransformation(*output->transformation))
+                throw std::invalid_argument("ImgDetectionsFilter source masks must be GRAY8 frames matching the output transformation and dimensions");
+            const auto dataSize = mask->getData().size();
+            const std::size_t offset = mask->fb.p1Offset, stride = mask->getStride();
+            if(stride < size.first || stride == 0 || offset > dataSize || size.second > (dataSize - offset) / stride)
+                throw std::invalid_argument("ImgDetectionsFilter source mask payload is too small");
+        }
     }
     bool remap(Candidate& candidate, const ImgTransformation& source, bool pixels) const {
         auto& detection = candidate.detection;
         const bool identity = source.isEqualTransformation(*reference);
         if(!identity) {
-            std::vector<std::array<float, 2>> corners;
-            corners.reserve(4);
-            for(const auto& corner : candidate.box.getPoints()) {
-                const auto mapped = source.remapPointTo(*reference, corner);
-                if(!std::isfinite(mapped.x) || !std::isfinite(mapped.y)) return false;
-                corners.push_back({mapped.x, mapped.y});
+            const auto model = reference->getDistortionModel();
+            // Panorama projections curve straight box edges; corners alone can underestimate the bounds and shift their center.
+            const std::size_t edgeSamples = model == CameraModel::Cylindrical || model == CameraModel::Equirectangular ? 16 : 1;
+            const auto corners = candidate.box.getPoints();
+            std::vector<std::array<float, 2>> points;
+            points.reserve(corners.size() * edgeSamples);
+            for(std::size_t edge = 0; edge < corners.size(); ++edge) {
+                const auto a = corners[edge], b = corners[(edge + 1) % corners.size()];
+                for(std::size_t sample = 0; sample < edgeSamples; ++sample) {
+                    const float t = static_cast<float>(sample) / edgeSamples;
+                    const auto mapped = source.remapPointTo(*reference, Point2f(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y), false));
+                    if(!std::isfinite(mapped.x) || !std::isfinite(mapped.y)) return false;
+                    points.push_back({mapped.x, mapped.y});
+                }
             }
-            candidate.box = standardize(getOuterRotatedRect(corners));
+            candidate.box = standardize(getOuterRotatedRect(points));
             candidate.box.center.hasNormalized = candidate.box.size.hasNormalized = true;
             candidate.box.center.normalized = candidate.box.size.normalized = false;
         }
@@ -161,6 +181,15 @@ class DetectionRound {
                     const auto sourceSize = message->transformation->getSize();
                     candidate.box = standardize(box.denormalize(sourceSize.first, sourceSize.second));
                     if(reference && !remap(candidate, *message->transformation, pixels)) continue;
+                }
+                if(!sourceMasks.empty() && sourceMasks[key]) {
+                    const auto& center = candidate.box.center;
+                    if(!std::isfinite(center.x) || !std::isfinite(center.y) || center.x < 0 || center.y < 0 || center.x >= size.first
+                       || center.y >= size.second)
+                        continue;
+                    const auto& mask = sourceMasks[key];
+                    const auto offset = mask->fb.p1Offset + static_cast<std::size_t>(center.y) * mask->getStride() + static_cast<std::size_t>(center.x);
+                    if(mask->getData()[offset] == 0) continue;
                 }
                 candidates.push_back(std::move(candidate));
             }
@@ -318,8 +347,13 @@ class DetectionRound {
    public:
     DetectionRound(const std::vector<std::shared_ptr<ImgDetections>>& messages,
                    const ImgDetectionsFilterConfig& config,
-                   const std::optional<ImgTransformation>& reference)
-        : messages(messages), config(config), reference(reference), geometry(config.hasGeometryFilters()) {}
+                   const std::optional<ImgTransformation>& reference,
+                   const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks)
+        : messages(messages),
+          config(config),
+          reference(reference),
+          sourceMasks(sourceMasks),
+          geometry(config.hasGeometryFilters() || std::any_of(sourceMasks.begin(), sourceMasks.end(), [](const auto& mask) { return mask != nullptr; })) {}
     std::shared_ptr<ImgDetections> process() {
         prepare();
         collect();
@@ -333,8 +367,9 @@ class DetectionRound {
 
 std::shared_ptr<ImgDetections> filterDetectionRound(const std::vector<std::shared_ptr<ImgDetections>>& messages,
                                                     const ImgDetectionsFilterConfig& config,
-                                                    const std::optional<ImgTransformation>& reference) {
-    return DetectionRound(messages, config, reference).process();
+                                                    const std::optional<ImgTransformation>& reference,
+                                                    const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks) {
+    return DetectionRound(messages, config, reference, sourceMasks).process();
 }
 }  // namespace impl
 }  // namespace dai

@@ -25,6 +25,7 @@ ImgDetectionsFilter& ImgDetectionsFilter::setRunOnHost(bool runOnHost) {
 bool ImgDetectionsFilter::runOnHost() const {
     if(getDevice() == nullptr || getDevice()->getPlatform() == Platform::RVC2) return true;
     if(runOnHostVar.has_value()) return *runOnHostVar;
+    if(std::any_of(inputSourceMasks.begin(), inputSourceMasks.end(), [](const auto& entry) { return entry.second.isConnected(); })) return true;
     return std::count_if(inputs.begin(), inputs.end(), [](const auto& entry) { return entry.second.isConnected(); }) > 1;
 }
 void ImgDetectionsFilter::buildStage1() {
@@ -32,6 +33,14 @@ void ImgDetectionsFilter::buildStage1() {
     for(auto& entry : inputs)
         if(entry.second.isConnected()) linkedInputs.emplace_back(entry.second.getName(), &entry.second);
     std::sort(linkedInputs.begin(), linkedInputs.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    linkedSourceMasks.assign(linkedInputs.size(), nullptr);
+    for(auto& entry : inputSourceMasks) {
+        if(!entry.second.isConnected()) continue;
+        const auto input = std::find_if(linkedInputs.begin(), linkedInputs.end(), [&](const auto& input) { return input.first == entry.second.getName(); });
+        if(input == linkedInputs.end()) throw std::invalid_argument("ImgDetectionsFilter source mask requires a matching linked detection input");
+        if(runOnHostVar == false) throw std::invalid_argument("ImgDetectionsFilter source masks require host execution");
+        linkedSourceMasks[std::distance(linkedInputs.begin(), input)] = &entry.second;
+    }
     if(linkedInputs.empty()) throw std::invalid_argument("ImgDetectionsFilter requires at least one linked input");
     if(!initialConfig->validate()) throw std::invalid_argument("ImgDetectionsFilter requires minimum < maximum for confidence, area, width and height ranges");
     if(linkedInputs.size() > 1 && runOnHostVar == false) throw std::invalid_argument("ImgDetectionsFilter device execution supports only one linked input");
@@ -42,6 +51,7 @@ void ImgDetectionsFilter::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     auto config = getProperties().initialConfig;
     auto reference = config.reference;
+    std::vector<std::shared_ptr<ImgFrame>> sourceMasks(linkedInputs.size());
     bool inputReferenceReceived = false, dropping = false;
     while(mainLoop()) {
         const auto beginning = std::chrono::steady_clock::now();
@@ -77,13 +87,21 @@ void ImgDetectionsFilter::run() {
             inputReferenceReceived = true;
             if(!reference || !reference->isEqualTransformation(next)) reference = next;
         }
+        bool masksReady = true;
+        const auto& target = reference ? reference : messages.front()->transformation;
+        for(std::size_t key = 0; key < linkedSourceMasks.size(); ++key) {
+            if(!linkedSourceMasks[key]) continue;
+            while(auto mask = linkedSourceMasks[key]->tryGet<ImgFrame>()) sourceMasks[key] = std::move(mask);
+            if(!sourceMasks[key] || !target || !sourceMasks[key]->getTransformation().isEqualTransformation(*target)) masksReady = false;
+        }
         if(!reference && inputReference.isConnected()) {
             if(!dropping) logger->warn("ImgDetectionsFilter dropping rounds until a valid reference arrives");
             dropping = true;
             continue;
         }
         dropping = false;
-        auto output = impl::filterDetectionRound(messages, config, reference);
+        if(!masksReady) continue;
+        auto output = impl::filterDetectionRound(messages, config, reference, sourceMasks);
         if(output->detections.size() > 255 && output->getSegmentationMaskWidth() > 0)
             logger->warn("ImgDetectionsFilter mask represents only output detections 0 through 254; all detections remain in the list");
         const auto processed = std::chrono::steady_clock::now();

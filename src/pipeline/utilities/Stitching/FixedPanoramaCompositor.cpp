@@ -44,6 +44,21 @@ double FixedPanoramaCompositor::getWarperScale() const {
     return warperScale;
 }
 
+cv::Mat FixedPanoramaCompositor::getSourceMask(size_t sourceIndex) const {
+    DAI_CHECK_V(prepared && sourceIndex < sources.size(), "The fixed panorama source {} is unavailable", sourceIndex);
+    cv::Mat mask = cv::Mat::zeros(canvas.size(), CV_8U);
+    const auto& source = sources[sourceIndex];
+    const auto& region = config.composition == Composition::BLENDED ? source.seamMask : source.mask;
+    region.copyTo(mask(cv::Rect(source.roi.tl() - canvas.tl(), region.size())));
+    if(config.composition == Composition::DIRECT) {
+        for(size_t i = sourceIndex + 1; i < sources.size(); ++i) {
+            const auto& later = sources[i];
+            mask(cv::Rect(later.roi.tl() - canvas.tl(), later.mask.size())).setTo(0, later.mask);
+        }
+    }
+    return mask;
+}
+
 void FixedPanoramaCompositor::prepare(const std::vector<cv::Mat>& images, const std::vector<cv::detail::CameraParams>& cameras, double registrationScale) {
     reset();
     DAI_CHECK_V(!images.empty(), "A fixed panorama needs at least one image");

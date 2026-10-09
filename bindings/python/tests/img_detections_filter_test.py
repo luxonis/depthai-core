@@ -79,7 +79,7 @@ def test_p1_public_api(_case):
         node = pipeline.create(dai.node.ImgDetectionsFilter)
         config = dai.ImgDetectionsFilterConfig()
         assert config is not None
-        for name in ("inputs", "inputReference", "inputConfig", "out", "initialConfig"):
+        for name in ("inputs", "inputSourceMasks", "inputReference", "inputConfig", "out", "initialConfig"):
             assert hasattr(node, name)
         # Exercise the public node as well as inspecting its shape.
         queue = node.inputs["cam"].createInputQueue()
@@ -183,3 +183,26 @@ def test_p6_average_mask_union(_case):
             [255, 0, 0, 0, 0, 0, 255, 255],
             [255, 0, 0, 255, 0, 0, 255, 255],
         ], tolerance=1e-3)
+
+
+def test_source_mask_rejects_hidden_detection_before_nms():
+    with dai.Pipeline(False) as pipeline:
+        node = pipeline.create(dai.node.ImgDetectionsFilter)
+        t = transformation(8, 4)
+        node.initialConfig.reference = t
+        in_a = node.inputs["a"].createInputQueue()
+        in_b = node.inputs["b"].createInputQueue()
+        masks = node.inputSourceMasks["a"].createInputQueue()
+        output = node.out.createOutputQueue()
+        mask = dai.ImgFrame()
+        mask.setType(dai.ImgFrame.Type.GRAY8)
+        mask.setWidth(8)
+        mask.setHeight(4)
+        mask.setData(np.zeros(32, dtype=np.uint8))
+        mask.setTransformation(t)
+        pipeline.start()
+        masks.send(mask)
+        for _ in range(2):
+            in_a.send(message(t, [(1, 0.9, 3, 2, 4, 4)]))
+            in_b.send(message(t, [(1, 0.8, 4, 2, 4, 4)]))
+            require_output(output.get(timeout=timedelta(seconds=1)), t, [(1, 0.8, 4, 2, 4, 4)])
