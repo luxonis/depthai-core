@@ -108,6 +108,7 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
 else()
     option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" OFF)
 endif()
+option(DEPTHAI_UPDATE_VISUALIZER_LICENSE "Overwrite notices/depthai-visualizer-LICENSE with the license extracted from the bundled visualizer instead of failing on mismatch" OFF)
 
 # ---------- Embedded firmware  ---------------------------
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)

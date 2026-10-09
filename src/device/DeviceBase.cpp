@@ -1674,8 +1674,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
     }
-    // Device is gone for good: idle its streams; the pipeline stops only when this
-    // was the last device or a fatal one (a device consuming other devices' streams)
     notifyPipelineDeviceState(DeviceState::FAILED);
 }
 

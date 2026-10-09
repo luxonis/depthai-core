@@ -74,7 +74,10 @@ Key behaviors:
   the pipeline keeps running; the lost device reconnects on its own. Observe this via
   `pipeline.getDeviceState(device)` and `pipeline.setDeviceStateCallback(...)`. The
   pipeline stops itself only when the last device is gone or when a device that
-  consumes another device's streams is lost for good.
+  consumes another device's streams is lost for good. Call
+  `pipeline.setStopOnDeviceLoss(True)` to stop when any device that runs a node is
+  lost for good (reconnection exhausted); with `device.setMaxReconnectionAttempts(0)`
+  it stops as soon as the disconnect is detected.
 - **Time.** `getTimestamp()` values are host-clock based and comparable across
   devices; per-device `getTimestampDevice()` values are not (a host `Sync` node
   rejects the DEVICE timestamp source across devices at build).
