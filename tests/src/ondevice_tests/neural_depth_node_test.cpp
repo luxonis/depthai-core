@@ -101,6 +101,27 @@ void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
 }
 }  // namespace
 
+TEST_CASE("NeuralDepth defaults preserve explicit inference overrides") {
+    auto genericNetwork = dai::node::NeuralNetwork::create();
+    REQUIRE(genericNetwork->getNumInferenceThreads() == 0);
+    REQUIRE(static_cast<const dai::NeuralNetworkProperties&>(genericNetwork->getProperties()).backendProperties.empty());
+
+    auto neuralDepth = dai::node::NeuralDepth::create();
+    REQUIRE(neuralDepth->neuralNetwork->getNumInferenceThreads() == 2);
+    REQUIRE(static_cast<const dai::NeuralNetworkProperties&>(neuralDepth->neuralNetwork->getProperties()).backendProperties.at("performance_profile")
+            == "burst");
+
+    neuralDepth->neuralNetwork->setNumInferenceThreads(1);
+    neuralDepth->neuralNetwork->setBackendProperties({{"performance_profile", "sustained_high_performance"}});
+    auto left = dai::node::ImageManip::create();
+    auto right = dai::node::ImageManip::create();
+    neuralDepth->build(left->out, right->out, dai::DeviceModelZoo::NEURAL_DEPTH_1248X780);
+
+    REQUIRE(neuralDepth->neuralNetwork->getNumInferenceThreads() == 1);
+    REQUIRE(static_cast<const dai::NeuralNetworkProperties&>(neuralDepth->neuralNetwork->getProperties()).backendProperties.at("performance_profile")
+            == "sustained_high_performance");
+}
+
 constexpr size_t FRAMES_TO_SAMPLE = 12;
 
 struct DepthStats {

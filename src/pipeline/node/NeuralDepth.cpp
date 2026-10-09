@@ -72,6 +72,8 @@ void NeuralDepth::buildInternal() {
     }
     auto defaultModel = DeviceModelZoo::NEURAL_DEPTH_480X300;
     neuralNetwork->setModelFromDeviceZoo(defaultModel);
+    neuralNetwork->setNumInferenceThreads(2);
+    neuralNetwork->setBackendProperties({{"performance_profile", "burst"}});
     rectification->setOutputSize(getInputSize(defaultModel));
     // Link sync outputs to message demux inputs
     sync->out.link(messageDemux->input);
