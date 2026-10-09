@@ -43,11 +43,12 @@ TEST_CASE("Boot while enumerating devices") {
             rethrowWorkerException();
             {
                 dai::Device dev;
-                (void)dev;
+                // Close immediately while startup notification RPCs may still be running.
+                dev.close();
+                REQUIRE(dev.isClosed());
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(BOOT_SLEEP_MS));
             rethrowWorkerException();
-            REQUIRE(true);
         }
     } catch(...) {
         running = false;

@@ -4,6 +4,7 @@
 
     #include <XLink/XLinkPublicDefines.h>
 
+    #include <atomic>
     #include <nlohmann/json_fwd.hpp>
     #include <string>
     #include <vector>
@@ -13,7 +14,7 @@
 namespace dai {
 namespace utility {
 
-nlohmann::json getStartupNotifications(const std::string& url);
+nlohmann::json getStartupNotifications(const std::string& url, const std::atomic<bool>* cancel = nullptr);
 
 std::vector<std::string> collectMessages(const nlohmann::json& json,
                                          const std::string& depthaiVersion,
@@ -22,8 +23,12 @@ std::vector<std::string> collectMessages(const nlohmann::json& json,
                                          const std::string& osVersion,
                                          const std::string& deviceSKU);
 
-void printStartupNotifications(
-    const std::string& depthaiVersion, Platform platform, XLinkProtocol_t protocol, const std::string& osVersion, const std::string& deviceSKU);
+void printStartupNotifications(const std::string& depthaiVersion,
+                               Platform platform,
+                               XLinkProtocol_t protocol,
+                               const std::string& osVersion,
+                               const std::string& deviceSKU,
+                               const std::atomic<bool>* cancel = nullptr);
 
 }  // namespace utility
 }  // namespace dai

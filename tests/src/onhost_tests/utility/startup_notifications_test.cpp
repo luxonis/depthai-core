@@ -1,6 +1,11 @@
+#include <httplib.h>
+
 #include <array>
+#include <atomic>
 #include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <future>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -22,6 +27,40 @@ const json ALL_USERS = {{"message", "All users"},
 constexpr std::array<const char*, 5> FILTER_KEYS = {"depthaiVersions", "platforms", "protocols", "osVersions", "deviceSKUs"};
 
 }  // namespace
+
+TEST_CASE("startup notification requests can be canceled while waiting for a response", "[startup_notifications]") {
+    httplib::Server server;
+    std::promise<void> requestReceived;
+    auto received = requestReceived.get_future();
+    std::promise<void> releaseResponse;
+    auto release = releaseResponse.get_future();
+    server.Get("/notifications", [&](const httplib::Request&, httplib::Response& response) {
+        requestReceived.set_value();
+        release.wait();
+        response.set_content(json{{"messages", {ALL_USERS}}}.dump(), "application/json");
+    });
+    const auto port = server.bind_to_any_port("127.0.0.1");
+    REQUIRE(port > 0);
+    auto listener = std::async(std::launch::async, [&]() { return server.listen_after_bind(); });
+    server.wait_until_ready();
+    std::atomic<bool> cancel{false};
+    auto request = std::async(std::launch::async,
+                              [&]() { return dai::utility::getStartupNotifications("http://127.0.0.1:" + std::to_string(port) + "/notifications", &cancel); });
+
+    const auto receivedStatus = received.wait_for(std::chrono::seconds(2));
+    cancel.store(true);
+    const auto canceledStatus = request.wait_for(std::chrono::seconds(2));
+    // Release the response and stop the server before asserting, including on failure.
+    releaseResponse.set_value();
+    server.stop();
+    const auto listeningSucceeded = listener.get();
+    const auto result = request.get();
+
+    REQUIRE(listeningSucceeded);
+    REQUIRE(receivedStatus == std::future_status::ready);
+    REQUIRE(canceledStatus == std::future_status::ready);
+    REQUIRE(result == json::object());
+}
 
 TEST_CASE("empty startup filters match all devices and preserve message order", "[startup_notifications]") {
     auto second = ALL_USERS;

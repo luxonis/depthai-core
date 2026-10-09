@@ -558,6 +558,7 @@ add_dependencies(platform_test fslock_dummy)
 # Startup notification filtering
 if(DEPTHAI_ENABLE_CURL)
     dai_add_test(startup_notifications_test src/onhost_tests/utility/startup_notifications_test.cpp)
+    target_link_libraries(startup_notifications_test PRIVATE httplib::httplib)
     target_compile_definitions(startup_notifications_test PRIVATE DEPTHAI_ENABLE_CURL)
     dai_set_test_labels(startup_notifications_test onhost ci)
 endif()

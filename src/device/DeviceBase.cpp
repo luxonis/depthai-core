@@ -1471,14 +1471,21 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             try {
                 const auto disableNotificationsEnv = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS", "");
                 if(disableNotificationsEnv != "1" && disableNotificationsEnv != "true") {
-                    pimpl->startupNotificationsThread =
-                        std::thread([this, platform = getPlatform(), protocol = getProtocol(), osVersion = getOSVersion(), deviceSKU = getProductName()]() {
-                            try {
-                                utility::printStartupNotifications(build::VERSION, platform, protocol, osVersion, deviceSKU);
-                            } catch(const std::exception& ex) {
+                    pimpl->startupNotificationsThread = std::thread([this, platform = getPlatform(), protocol = getProtocol()]() {
+                        try {
+                            if(isClosing) return;
+                            // getOSVersion() locks closedMtx, which close() holds while joining this thread.
+                            const auto osVersion = pimpl->rpcCallChecked<std::string>("getOSVersion");
+                            if(isClosing) return;
+                            const auto deviceSKU = getProductName();
+                            if(isClosing) return;
+                            utility::printStartupNotifications(build::VERSION, platform, protocol, osVersion, deviceSKU, &isClosing);
+                        } catch(const std::exception& ex) {
+                            if(!isClosing) {
                                 pimpl->logger.debug("Startup notification print failed: {}", ex.what());
                             }
-                        });
+                        }
+                    });
                 }
             } catch(const std::exception& ex) {
                 pimpl->logger.debug("Startup notification print failed: {}", ex.what());
