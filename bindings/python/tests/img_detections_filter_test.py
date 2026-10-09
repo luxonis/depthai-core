@@ -206,3 +206,38 @@ def test_source_mask_rejects_hidden_detection_before_nms():
             in_a.send(message(t, [(1, 0.9, 3, 2, 4, 4)]))
             in_b.send(message(t, [(1, 0.8, 4, 2, 4, 4)]))
             require_output(output.get(timeout=timedelta(seconds=1)), t, [(1, 0.8, 4, 2, 4, 4)])
+
+
+@pytest.mark.parametrize("mode", list(dai.ImgDetectionsFilterConfig.OverlapMode.__members__.values()))
+def test_seam_crossing_person_survives_hidden_box_centers(mode):
+    with dai.Pipeline(False) as pipeline:
+        node = pipeline.create(dai.node.ImgDetectionsFilter)
+        t = transformation(128, 128)
+        node.initialConfig.reference = t
+        node.initialConfig.overlapMode = mode
+        inputs = [node.inputs[key].createInputQueue() for key in ("a", "b")]
+        masks = [node.inputSourceMasks[key].createInputQueue() for key in ("a", "b")]
+        output = node.out.createOutputQueue()
+        pipeline.start()
+        data = [(0, 0.93, 70, 64, 40, 110), (0, 0.95, 58, 64, 40, 110)]
+        for index, center in enumerate((70, 58)):
+            pixels = np.zeros((128, 128), dtype=np.uint8)
+            pixels[:, :64] = 255 if index == 0 else 0
+            pixels[:, 64:] = 255 if index == 1 else 0
+            assert pixels[64, center] == 0
+            mask = dai.ImgFrame()
+            mask.setType(dai.ImgFrame.Type.GRAY8)
+            mask.setWidth(128)
+            mask.setHeight(128)
+            mask.setData(pixels.ravel())
+            mask.setTransformation(t)
+            masks[index].send(mask)
+        expected = [data[1]]
+        if mode == dai.ImgDetectionsFilterConfig.OverlapMode.OFF:
+            expected = data
+        elif mode == dai.ImgDetectionsFilterConfig.OverlapMode.AVERAGE:
+            expected = [(0, 0.95, (70 * 0.93 + 58 * 0.95) / 1.88, 64, 40, 110)]
+        for _ in range(2):
+            for queue, detection in zip(inputs, data):
+                queue.send(message(t, [detection]))
+            require_output(output.get(timeout=timedelta(seconds=1)), t, expected, tolerance=1e-3)

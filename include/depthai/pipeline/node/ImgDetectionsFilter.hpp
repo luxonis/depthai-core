@@ -36,8 +36,9 @@ class ImgDetectionsFilter : public DeviceNodeCRTP<DeviceNode, ImgDetectionsFilte
     /** Synchronized ImgDetections inputs. Only linked keys participate; keys are fixed at pipeline start. */
     InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, true, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgDetections, false}}}, true}};
     /**
-     * Optional GRAY8 visibility masks in reference coordinates, keyed like inputs. Zero at a remapped box center rejects
-     * that detection before duplicate removal. The newest mask is latched; linked masks must arrive before processing.
+     * Optional GRAY8 visibility masks in reference coordinates, keyed like inputs. Boxes with no visible pixel centers
+     * in their rotated footprint are rejected. Visible box fraction takes precedence over confidence for duplicate leaders
+     * and scales confidence weights when averaging. The newest mask is latched; linked masks must arrive before processing.
      * Use Stitching.outSourceMasks for calibrated panoramas. Linking masks requires host execution.
      */
     InputMap inputSourceMasks{*this, "inputSourceMasks", {"", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ImgFrame, false}}}, false}};

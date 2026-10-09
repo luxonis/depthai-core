@@ -1,3 +1,4 @@
+#include <limits>
 #include <opencv2/imgproc.hpp>
 
 #include "depthai/pipeline/node/Stitching.hpp"
@@ -214,4 +215,113 @@ TEST_CASE("ImgDetectionsFilter latches and updates optional source masks", "[Img
     masks->send(replacement);
     h.send(message(transformation(), {{400, 100, 64, 64, .8f, 2}}));
     REQUIRE(h.receive()->detections.empty());
+}
+
+TEST_CASE("ImgDetectionsFilter retains a person spanning a seam with both centers hidden", "[ImgDetectionsFilter][Stitching]") {
+    FilterSettings settings;
+    settings.reference = transformation();
+    settings.mode = Mode::OFF;
+    SECTION("duplicates off") {}
+    SECTION("NMS") {
+        settings.mode = Mode::NMS;
+    }
+    SECTION("average") {
+        settings.mode = Mode::AVERAGE;
+    }
+    FilterHarness h(settings, {"a", "b"});
+    const std::array masks = {h.node->inputSourceMasks["a"].createInputQueue(), h.node->inputSourceMasks["b"].createInputQueue()};
+    h.pipeline.start();
+    for(std::size_t i = 0; i < masks.size(); ++i) {
+        cv::Mat pixels(512, 512, CV_8U, cv::Scalar(0));
+        pixels(cv::Rect(i == 0 ? 0 : 256, 0, 256, 512)).setTo(255);
+        // Parallax puts each box center on the other camera's side of the seam.
+        REQUIRE(pixels.at<std::uint8_t>(256, i == 0 ? 280 : 232) == 0);
+        auto mask = std::make_shared<dai::ImgFrame>();
+        mask->setCvFrame(pixels, dai::ImgFrame::Type::GRAY8);
+        mask->setTransformation(*settings.reference);
+        masks[i]->send(mask);
+    }
+    for(int round = 0; round < 2; ++round) {
+        h.send(message(transformation(), {{280, 256, 120, 400, .93f, 0, 0, "person"}}), "a");
+        h.send(message(transformation(), {{232, 256, 120, 400, .95f, 0, 0, "person"}}), "b");
+        std::vector<ExpectedDetection> expected = {{232, 256, 120, 400, .95f, 0, 0, "person"}};
+        if(settings.mode == Mode::OFF)
+            expected.insert(expected.begin(), {280, 256, 120, 400, .93f, 0, 0, "person"});
+        else if(settings.mode == Mode::AVERAGE)
+            expected[0].x = (280 * .93f + 232 * .95f) / (.93f + .95f);
+        requireOutput(*h.receive(), *settings.reference, expected);
+    }
+}
+
+TEST_CASE("ImgDetectionsFilter uses visible area for duplicates and confidence for count limits", "[ImgDetectionsFilter][Stitching]") {
+    FilterSettings settings;
+    settings.reference = transformation();
+    settings.mode = Mode::NMS;
+    float confidenceA = .95f, confidenceB = .6f, expectedX = 240;
+    SECTION("NMS prefers visibility over confidence") {}
+    SECTION("average weights visibility and confidence") {
+        settings.mode = Mode::AVERAGE;
+        expectedX = (260 * confidenceA * .25f + 240 * confidenceB) / (confidenceA * .25f + confidenceB);
+    }
+    SECTION("zero-confidence average weights visibility") {
+        settings.mode = Mode::AVERAGE;
+        confidenceA = confidenceB = 0;
+        expectedX = 244;
+    }
+    SECTION("very small confidence retains finite averaging weights") {
+        settings.mode = Mode::AVERAGE;
+        confidenceA = confidenceB = std::numeric_limits<float>::denorm_min();
+        expectedX = 244;
+    }
+    SECTION("maximum count still selects highest confidence") {
+        settings.mode = Mode::OFF;
+        settings.maxDetections = 1;
+        expectedX = 260;
+    }
+    FilterHarness h(settings, {"a", "b"});
+    const auto masks = h.node->inputSourceMasks["a"].createInputQueue();
+    auto mask = std::make_shared<dai::ImgFrame>();
+    cv::Mat pixels(512, 512, CV_8U, cv::Scalar(0));
+    pixels(cv::Rect(250, 0, 20, 512)).setTo(255);
+    mask->setCvFrame(pixels, dai::ImgFrame::Type::GRAY8);
+    mask->setTransformation(*settings.reference);
+    h.pipeline.start();
+    masks->send(mask);
+    h.send(message(transformation(), {{260, 256, 80, 160, confidenceA, 0}}), "a");
+    h.send(message(transformation(), {{240, 256, 80, 160, confidenceB, 0}}), "b");
+    requireOutput(*h.receive(), *settings.reference, {{expectedX, 256, 80, 160, settings.mode == Mode::OFF ? confidenceA : confidenceB, 0}});
+}
+
+TEST_CASE("ImgDetectionsFilter source visibility respects rotated and clipped footprints", "[ImgDetectionsFilter][Stitching]") {
+    FilterSettings settings;
+    settings.reference = transformation();
+    FilterHarness h(settings);
+    const auto masks = h.node->inputSourceMasks["cam"].createInputQueue();
+    cv::Mat pixels(512, 512, CV_8U, cv::Scalar(0));
+    ExpectedDetection detection{256, 256, 80, 40, .9f, 0, 45};
+    bool visible = true;
+    SECTION("visible away from the center") {
+        pixels.at<std::uint8_t>(256, 270) = 255;
+    }
+    SECTION("pixel in enclosing bounds but outside the rotated box") {
+        pixels.at<std::uint8_t>(220, 220) = 255;
+        visible = false;
+    }
+    SECTION("center outside image but part of the box remains visible") {
+        pixels.setTo(255);
+        detection = {-16, 256, 128, 128, .9f, 0};
+    }
+    auto mask = std::make_shared<dai::ImgFrame>();
+    mask->setCvFrame(pixels, dai::ImgFrame::Type::GRAY8);
+    mask->setTransformation(*settings.reference);
+    // Exercise stride and plane offsets for every section, including clipping at x=0.
+    mask->setStride(520);
+    mask->fb.p1Offset = 3;
+    std::vector<std::uint8_t> data(3 + 520 * 512, 0);
+    for(int y = 0; y < pixels.rows; ++y) std::copy_n(pixels.ptr<std::uint8_t>(y), pixels.cols, data.begin() + 3 + y * 520);
+    mask->setData(data);
+    h.pipeline.start();
+    masks->send(mask);
+    h.send(message(transformation(), {detection}));
+    requireOutput(*h.receive(), *settings.reference, visible ? std::vector<ExpectedDetection>{detection} : std::vector<ExpectedDetection>{});
 }

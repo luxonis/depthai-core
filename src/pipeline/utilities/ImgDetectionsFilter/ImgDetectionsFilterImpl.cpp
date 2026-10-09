@@ -52,6 +52,7 @@ struct Candidate {
     RotatedRect box;
     std::size_t key;
     std::vector<std::pair<std::size_t, std::size_t>> maskMembers;
+    double visibility = 1.0;
 };
 
 class DetectionRound {
@@ -182,18 +183,40 @@ class DetectionRound {
                     candidate.box = standardize(box.denormalize(sourceSize.first, sourceSize.second));
                     if(reference && !remap(candidate, *message->transformation, pixels)) continue;
                 }
-                if(!sourceMasks.empty() && sourceMasks[key]) {
-                    const auto& center = candidate.box.center;
-                    if(!std::isfinite(center.x) || !std::isfinite(center.y) || center.x < 0 || center.y < 0 || center.x >= size.first
-                       || center.y >= size.second)
-                        continue;
-                    const auto& mask = sourceMasks[key];
-                    const auto offset = mask->fb.p1Offset + static_cast<std::size_t>(center.y) * mask->getStride() + static_cast<std::size_t>(center.x);
-                    if(mask->getData()[offset] == 0) continue;
-                }
                 candidates.push_back(std::move(candidate));
             }
         }
+        for(auto& candidate : candidates) {
+            if(sourceMasks.empty() || !sourceMasks[candidate.key]) continue;
+            candidate.visibility = 0;
+            const auto& box = candidate.box;
+            const auto outer = box.getOuterRect();
+            if(box.size.width <= 0 || box.size.height <= 0 || !std::all_of(outer.begin(), outer.end(), [](float value) { return std::isfinite(value); }))
+                continue;
+            const auto& mask = sourceMasks[candidate.key];
+            const auto data = mask->getData();
+            const auto xBegin = static_cast<std::size_t>(std::clamp(std::floor(static_cast<double>(outer[0])), 0.0, static_cast<double>(size.first)));
+            const auto yBegin = static_cast<std::size_t>(std::clamp(std::floor(static_cast<double>(outer[1])), 0.0, static_cast<double>(size.second)));
+            const auto xEnd = static_cast<std::size_t>(std::clamp(std::ceil(static_cast<double>(outer[2])), 0.0, static_cast<double>(size.first)));
+            const auto yEnd = static_cast<std::size_t>(std::clamp(std::ceil(static_cast<double>(outer[3])), 0.0, static_cast<double>(size.second)));
+            const double radians = box.angle * std::acos(-1.0) / 180.0;
+            const double cosine = std::cos(radians), sine = std::sin(radians);
+            const std::size_t stride = mask->getStride();
+            std::size_t visiblePixels = 0;
+            // A seam can hide the center while leaving much of the object visible. Check the whole rotated footprint.
+            for(auto y = yBegin; y < yEnd; ++y) {
+                const double dy = static_cast<double>(y) + 0.5 - box.center.y;
+                const auto row = mask->fb.p1Offset + y * stride;
+                for(auto x = xBegin; x < xEnd; ++x) {
+                    const double dx = static_cast<double>(x) + 0.5 - box.center.x;
+                    visiblePixels += data[row + x] != 0 && std::abs(dx * cosine + dy * sine) <= box.size.width / 2
+                                     && std::abs(dy * cosine - dx * sine) <= box.size.height / 2;
+                }
+            }
+            candidate.visibility = std::min(1.0, visiblePixels / (static_cast<double>(box.size.width) * box.size.height));
+        }
+        candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [](const auto& candidate) { return candidate.visibility == 0; }),
+                         candidates.end());
         ranked.resize(candidates.size());
         std::iota(ranked.begin(), ranked.end(), 0);
         std::stable_sort(
@@ -202,9 +225,9 @@ class DetectionRound {
     }
     void average(const std::vector<std::size_t>& members) {
         auto& leader = candidates[members.front()];
-        float totalWeight = 0;
-        for(const auto index : members) totalWeight += candidates[index].detection.confidence;
         const bool equalWeights = std::all_of(members.begin(), members.end(), [this](auto i) { return candidates[i].detection.confidence == 0; });
+        double totalWeight = 0;
+        for(const auto index : members) totalWeight += (equalWeights ? 1.0f : candidates[index].detection.confidence) * candidates[index].visibility;
         RotatedRect mean(Point2f(0, 0, false), Size2f(0, 0, false), 0);
         for(const auto index : members) {
             auto box = candidates[index].box;
@@ -216,7 +239,8 @@ class DetectionRound {
                 box.angle += 90;
                 std::swap(box.size.width, box.size.height);
             }
-            const float weight = equalWeights ? 1.0f / members.size() : candidates[index].detection.confidence / totalWeight;
+            const auto& candidate = candidates[index];
+            const float weight = static_cast<float>((equalWeights ? 1.0f : candidate.detection.confidence) * candidate.visibility / totalWeight);
             mean.center.x += weight * box.center.x;
             mean.center.y += weight * box.center.y;
             mean.size.width += weight * box.size.width;
@@ -230,8 +254,11 @@ class DetectionRound {
     }
     void suppress() {
         if(messages.size() == 1 || config.overlapMode == ImgDetectionsFilterConfig::OverlapMode::OFF) return;
+        auto leaders = ranked;
+        // Prefer the camera contributing more of the object; ranked remains confidence-based for output sorting/count limits.
+        std::stable_sort(leaders.begin(), leaders.end(), [this](auto a, auto b) { return candidates[a].visibility > candidates[b].visibility; });
         std::vector<bool> grouped(candidates.size(), false);
-        for(const auto leaderIndex : ranked) {
+        for(const auto leaderIndex : leaders) {
             if(grouped[leaderIndex]) continue;
             grouped[leaderIndex] = true;
             const auto& leader = candidates[leaderIndex];
