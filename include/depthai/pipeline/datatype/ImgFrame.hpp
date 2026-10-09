@@ -494,6 +494,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
 
 #endif
    public:
+    /// Get the storage element size in bytes used for frame strides. RGB888i/BGR888i elements include all three channels; NONE returns zero.
     static constexpr int typeToBpp(Type type) {
         switch(type) {
             case Type::YUV422i:
@@ -602,6 +603,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         return 0;
     }
 
+    /// Return whether the format uses an interleaved channel layout.
     static constexpr bool isInterleaved(Type type) {
         switch(type) {
             case Type::YUV422i:
@@ -644,6 +646,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         return false;
     }
 
+    /// Get the corresponding planar format, or the original format if no conversion applies.
     static constexpr Type toPlanar(Type type) {
         switch(type) {
             case Type::YUV422i:
@@ -691,6 +694,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         return type;
     }
 
+    /// Get the corresponding interleaved format, or the original format if no conversion applies.
     static constexpr Type toInterleaved(Type type) {
         switch(type) {
             case Type::YUV422p:

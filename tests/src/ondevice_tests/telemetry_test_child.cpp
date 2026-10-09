@@ -26,9 +26,8 @@ int main() {
             fail("No connected cameras were detected");
         }
 
-        const auto selectedCamera = std::find_if(cameraFeatures.begin(), cameraFeatures.end(), [](const dai::CameraFeatures& feature) {
-            return feature.socket != dai::CameraBoardSocket::AUTO;
-        });
+        const auto selectedCamera = std::find_if(
+            cameraFeatures.begin(), cameraFeatures.end(), [](const dai::CameraFeatures& feature) { return feature.socket != dai::CameraBoardSocket::AUTO; });
         if(selectedCamera == cameraFeatures.end()) {
             fail("No concrete camera socket was reported by the device");
         }

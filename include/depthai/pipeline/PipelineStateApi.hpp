@@ -62,6 +62,7 @@ class NodeStateApi {
     }
     std::unordered_map<std::string, NodeState::OutputQueueState> outputs(const std::vector<std::string>& outputNames);
     NodeState::OutputQueueState outputs(const std::string& outputName);
+    /// Request duration events for this node and wait for the response.
     std::vector<NodeState::DurationEvent> events();
     std::unordered_map<std::string, NodeState::InputQueueState> inputs(const std::vector<std::string>& inputNames);
     NodeState::InputQueueState inputs(const std::string& inputName);
@@ -91,6 +92,23 @@ class PipelineStateApi {
     NodeStateApi nodes(Node::Id nodeId) {
         return NodeStateApi(nodeId, pipelineStateOut, pipelineStateRequest);
     }
+    /**
+     * Register a callback and request pipeline state without waiting for the response.
+     * Enable pipeline debugging before starting the pipeline to receive state updates.
+     *
+     * Each call adds a callback retained by the state output queue. It is not
+     * automatically removed after a response, even for a single request, and this
+     * method does not return a callback ID for removal. Captured objects must remain
+     * valid while the callback is registered.
+     *
+     * @param callback Called on the thread delivering each PipelineState to the shared
+     * state output queue, including responses to other state requests. Return promptly;
+     * do not issue blocking state queries or add/remove callbacks on that queue from
+     * within the callback. The C++ state reference is valid only during the call.
+     * @param config Aggregation settings. If omitted, request updates every second for
+     * the nodes captured by this API, without individual duration events. An explicit
+     * configuration with no repeatIntervalSeconds requests a single response.
+     */
     void stateAsync(std::function<void(const PipelineState&)> callback, const std::optional<PipelineEventAggregationConfig>& config = std::nullopt);
 };
 

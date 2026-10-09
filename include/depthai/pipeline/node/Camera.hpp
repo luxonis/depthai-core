@@ -271,8 +271,11 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
     void buildStage1() override;
 
+    /// Get the maximum requested output frame rate, defaulting to 30 FPS.
     float getMaxRequestedFps() const;
+    /// Get the maximum requested output width in pixels, defaulting to the maximum camera width.
     uint32_t getMaxRequestedWidth() const;
+    /// Get the maximum requested output height in pixels, defaulting to the maximum camera height.
     uint32_t getMaxRequestedHeight() const;
 
    protected:

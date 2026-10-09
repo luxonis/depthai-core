@@ -25,19 +25,26 @@ struct Version {
             const std::optional<uint16_t>& preReleaseVersion = std::nullopt,
             const std::string& buildInfo = "");
 
+    /// Construct Version from major, minor, patch, and build information, with no pre-release suffix.
     Version(unsigned major, unsigned minor, unsigned patch, const std::string& buildInfo)
         : Version(major, minor, patch, PreReleaseType::NONE, std::nullopt, buildInfo) {}
+    /// Return whether the versions have equal semantic version precedence.
     bool operator==(const Version& other) const;
+    /// Return whether this version precedes the other version.
     bool operator<(const Version& other) const;
+    /// Return whether the versions have different semantic version precedence.
     inline bool operator!=(const Version& rhs) const {
         return !(*this == rhs);
     }
+    /// Return whether this version follows the other version.
     inline bool operator>(const Version& rhs) const {
         return rhs < *this;
     }
+    /// Return whether this version precedes or equals the other version.
     inline bool operator<=(const Version& rhs) const {
         return !(*this > rhs);
     }
+    /// Return whether this version follows or equals the other version.
     inline bool operator>=(const Version& rhs) const {
         return !(*this < rhs);
     }

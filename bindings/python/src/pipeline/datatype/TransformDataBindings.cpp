@@ -14,6 +14,7 @@
 void bind_transformdata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
+    py::class_<Transform> transform(m, "Transform", DOC(dai, Transform));
     py::class_<TransformData, Py<TransformData>, Buffer, std::shared_ptr<TransformData>> transformData(m, "TransformData", DOC(dai, TransformData));
 
     ///////////////////////////////////////////////////////////////////////
@@ -30,7 +31,29 @@ void bind_transformdata(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
-    transformData.def(py::init<>())
+    transform.def(py::init<>()).def_readwrite("matrix", &Transform::matrix, DOC(dai, Transform, matrix));
+
+    transformData.def(py::init<>(), DOC(dai, TransformData, TransformData))
+        .def(py::init<const Transform&>(), py::arg("transform"), DOC(dai, TransformData, TransformData, 2))
+        .def(py::init<const std::array<std::array<double, 4>, 4>&>(), py::arg("data"), DOC(dai, TransformData, TransformData, 3))
+        .def(py::init<double, double, double, double, double, double, double>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("qx"),
+             py::arg("qy"),
+             py::arg("qz"),
+             py::arg("qw"),
+             DOC(dai, TransformData, TransformData, 4))
+        .def(py::init<double, double, double, double, double, double>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("roll"),
+             py::arg("pitch"),
+             py::arg("yaw"),
+             DOC(dai, TransformData, TransformData, 5))
+        .def_readwrite("transform", &TransformData::transform, DOC(dai, TransformData, transform))
         .def("__repr__", &TransformData::str)
         .def("getTranslation", &TransformData::getTranslation, DOC(dai, TransformData, getTranslation))
         .def("getRotationEuler", &TransformData::getRotationEuler, DOC(dai, TransformData, getRotationEuler))

@@ -1,9 +1,9 @@
 #include "fsync_ptp_test_utils.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -34,78 +34,73 @@
 
 namespace {
 
-    double calculate_mean(std::vector<std::uint64_t> values) {
-        std::uint64_t sum = std::accumulate(values.begin(), values.end(), 0);
-        return double(sum) / double(values.size());
+double calculate_mean(std::vector<std::uint64_t> values) {
+    std::uint64_t sum = std::accumulate(values.begin(), values.end(), 0);
+    return double(sum) / double(values.size());
+}
+
+double percentile_linear(std::vector<std::uint64_t> values, double q) {
+    if(values.empty()) {
+        throw std::invalid_argument("percentile_linear: input vector must not be empty");
     }
 
-    double percentile_linear(std::vector<std::uint64_t> values, double q)
-    {
-        if (values.empty()) {
-            throw std::invalid_argument("percentile_linear: input vector must not be empty");
-        }
-
-        if (!std::isfinite(q) || q < 0.0 || q > 100.0) {
-            throw std::invalid_argument("percentile_linear: q must be a finite value in [0, 100]");
-        }
-
-        std::sort(values.begin(), values.end());
-
-        if (values.size() == 1) {
-            return static_cast<double>(values[0]);
-        }
-
-        const double pos = (q / 100.0) * static_cast<double>(values.size() - 1);
-        const std::size_t lower = static_cast<std::size_t>(std::floor(pos));
-        const std::size_t upper = static_cast<std::size_t>(std::ceil(pos));
-        const double fraction = pos - static_cast<double>(lower);
-
-        const double lower_value = static_cast<double>(values[lower]);
-        const double upper_value = static_cast<double>(values[upper]);
-
-        return lower_value + (upper_value - lower_value) * fraction;
+    if(!std::isfinite(q) || q < 0.0 || q > 100.0) {
+        throw std::invalid_argument("percentile_linear: q must be a finite value in [0, 100]");
     }
 
-    double calculate_max_outlier(std::vector<std::uint64_t>& values) {
-        auto max_itr = std::max_element(values.begin(), values.end());
-        
-        REQUIRE_MSG(max_itr != values.end(), "Outlier not found");
-        return *max_itr;
+    std::sort(values.begin(), values.end());
+
+    if(values.size() == 1) {
+        return static_cast<double>(values[0]);
     }
 
-    void expect_percentile(
-        const std::vector<uint64_t>& values,
-        double q,
-        double expected)
-    {
-        using Catch::Matchers::WithinAbs;
-        REQUIRE_THAT(percentile_linear(values, q), WithinAbs(expected, 1e-12));
-    }
+    const double pos = (q / 100.0) * static_cast<double>(values.size() - 1);
+    const std::size_t lower = static_cast<std::size_t>(std::floor(pos));
+    const std::size_t upper = static_cast<std::size_t>(std::ceil(pos));
+    const double fraction = pos - static_cast<double>(lower);
 
-    std::string toString(dai::ImgFrame::Fsync fsync) {
-        switch(fsync) {
-            case dai::ImgFrame::Fsync::NONE:
-                return "NONE";
-            case dai::ImgFrame::Fsync::INPUT:
-                return "INPUT";
-            case dai::ImgFrame::Fsync::OUTPUT:
-                return "OUTPUT";
-            case dai::ImgFrame::Fsync::PTP:
-                return "PTP";
-        }
-        return "UNKNOWN";
-    }
+    const double lower_value = static_cast<double>(values[lower]);
+    const double upper_value = static_cast<double>(values[upper]);
 
-    dai::ImgFrame::Fsync convertSyncType(SyncType syncType) {
-        if(syncType == SyncType::EXTERNAL) {
-            return dai::ImgFrame::Fsync::INPUT;
-        } else if(syncType == SyncType::PTP) {
-            return dai::ImgFrame::Fsync::PTP;
-        } else {
-            throw std::runtime_error("Unknown sync type");
-        }
+    return lower_value + (upper_value - lower_value) * fraction;
+}
+
+double calculate_max_outlier(std::vector<std::uint64_t>& values) {
+    auto max_itr = std::max_element(values.begin(), values.end());
+
+    REQUIRE_MSG(max_itr != values.end(), "Outlier not found");
+    return *max_itr;
+}
+
+void expect_percentile(const std::vector<uint64_t>& values, double q, double expected) {
+    using Catch::Matchers::WithinAbs;
+    REQUIRE_THAT(percentile_linear(values, q), WithinAbs(expected, 1e-12));
+}
+
+std::string toString(dai::ImgFrame::Fsync fsync) {
+    switch(fsync) {
+        case dai::ImgFrame::Fsync::NONE:
+            return "NONE";
+        case dai::ImgFrame::Fsync::INPUT:
+            return "INPUT";
+        case dai::ImgFrame::Fsync::OUTPUT:
+            return "OUTPUT";
+        case dai::ImgFrame::Fsync::PTP:
+            return "PTP";
+    }
+    return "UNKNOWN";
+}
+
+dai::ImgFrame::Fsync convertSyncType(SyncType syncType) {
+    if(syncType == SyncType::EXTERNAL) {
+        return dai::ImgFrame::Fsync::INPUT;
+    } else if(syncType == SyncType::PTP) {
+        return dai::ImgFrame::Fsync::PTP;
+    } else {
+        throw std::runtime_error("Unknown sync type");
     }
 }
+}  // namespace
 
 std::string toString(SyncType syncType) {
     if(syncType == SyncType::EXTERNAL) {
@@ -308,7 +303,6 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
 }
 
 int testFsync(float targetFps, struct FsyncTestParameters parameters) {
-
     std::cout << "=================================\x1B[1;32mTest started\x1B[0m================================" << std::endl;
     std::cout << "Sync type: " << toString(parameters.syncType) << std::endl;
     std::cout << "FPS: " << targetFps << std::endl;
@@ -341,8 +335,8 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
         throw std::runtime_error("No slaves detected!");
     }
 
-    auto sync =
-        createSyncNode(masterPipeline, *masterNode, *masterName, std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))), outputNames, slaveQueues, inputQueues);
+    auto sync = createSyncNode(
+        masterPipeline, *masterNode, *masterName, std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))), outputNames, slaveQueues, inputQueues);
     auto queue = sync->out.createOutputQueue();
 
     masterPipeline->start();
@@ -361,7 +355,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
 
     bool waitingForInitialSync = true;
     bool waitingForInitialTimeout = true;
-    if (parameters.initialTimeoutSec == 0) {
+    if(parameters.initialTimeoutSec == 0) {
         waitingForInitialTimeout = false;
     }
     std::atomic_bool running{true};
@@ -434,7 +428,8 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
             for(auto name : outputNames) {
                 auto frame = latestFrameGroup.value()->get<dai::ImgFrame>(name);
                 REQUIRE_MSG(frame != nullptr, "Frame pointer is null");
-                REQUIRE_MSG(frame->getFsync() == convertSyncType(parameters.syncType),
+                REQUIRE_MSG(
+                    frame->getFsync() == convertSyncType(parameters.syncType),
                     "Frame sync type doesn't match: expected " << toString(convertSyncType(parameters.syncType)) << ", got " << toString(frame->getFsync()));
                 tsValues.emplace(name, frame->getTimestamp(dai::CameraExposureOffset::END));
             }
@@ -449,15 +444,15 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
 
             bool syncStatus = abs(deltaUs) < parameters.syncThresholdSec * 1e6;
 
-            if (waitingForInitialTimeout) {
+            if(waitingForInitialTimeout) {
                 auto endTime = std::chrono::steady_clock::now();
                 auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
-                if (elapsedSec >= parameters.initialTimeoutSec) {
+                if(elapsedSec >= parameters.initialTimeoutSec) {
                     waitingForInitialTimeout = false;
                 }
             }
 
-            if (syncStatus && !waitingForInitialSync && !waitingForInitialTimeout) {
+            if(syncStatus && !waitingForInitialSync && !waitingForInitialTimeout) {
                 deltas.emplace_back(deltaUs);
             }
 
@@ -481,7 +476,8 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
         }
     }
 
-    REQUIRE_MSG(deltas.size() > 100, "[FPS=" << targetFps << "] Not enough frames left after stabilization period (expected at least 100, got " << deltas.size() << ").");
+    REQUIRE_MSG(deltas.size() > 100,
+                "[FPS=" << targetFps << "] Not enough frames left after stabilization period (expected at least 100, got " << deltas.size() << ").");
 
     double meanDelta_us = calculate_mean(deltas);
     double p99Delta_us = percentile_linear(deltas, 99.0);
@@ -489,12 +485,15 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
 
     std::cout << "=== Stats" << std::endl;
     std::cout << "   [FPS=" << targetFps << "] # of frames used for stats caluculation: " << deltas.size() << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] Mean frame delta: " << meanDelta_us/1e3 << " ms" << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] p99 frame delta: " << p99Delta_us/1e3 << " ms" << std::endl;
-    std::cout << "   [FPS=" << targetFps << "] Max outlier frame delta: " << maxDelta_us/1e3 << " ms" << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] Mean frame delta: " << meanDelta_us / 1e3 << " ms" << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] p99 frame delta: " << p99Delta_us / 1e3 << " ms" << std::endl;
+    std::cout << "   [FPS=" << targetFps << "] Max outlier frame delta: " << maxDelta_us / 1e3 << " ms" << std::endl;
 
-    REQUIRE_MSG(meanDelta_us/1e6 < parameters.deltaMeanThreshold, "[FPS=" << targetFps << "] Mean value of frame deltas above " << parameters.deltaMeanThreshold*1e3 << " ms (" << meanDelta_us/1e3 << " ms)");
-    REQUIRE_MSG(p99Delta_us/1e6 < parameters.deltaP99Threshold, "[FPS=" << targetFps << "] p99 metric does not meet " << parameters.deltaP99Threshold*1e3 << " ms (" << p99Delta_us/1e3 << " ms)");
+    REQUIRE_MSG(
+        meanDelta_us / 1e6 < parameters.deltaMeanThreshold,
+        "[FPS=" << targetFps << "] Mean value of frame deltas above " << parameters.deltaMeanThreshold * 1e3 << " ms (" << meanDelta_us / 1e3 << " ms)");
+    REQUIRE_MSG(p99Delta_us / 1e6 < parameters.deltaP99Threshold,
+                "[FPS=" << targetFps << "] p99 metric does not meet " << parameters.deltaP99Threshold * 1e3 << " ms (" << p99Delta_us / 1e3 << " ms)");
 
     return 0;
 }

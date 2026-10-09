@@ -183,6 +183,12 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("description"),
              py::arg("useCached") = false,
              DOC(dai, node, DetectionNetwork, setFromModelZoo))
+        .def("setFromModelZoo",
+             py::overload_cast<NNModelDescription, int, bool>(&DetectionNetwork::setFromModelZoo),
+             py::arg("description"),
+             py::arg("numShaves"),
+             py::arg("useCached") = true,
+             DOC(dai, node, DetectionNetwork, setFromModelZoo, 2))
         .def("setBlob", py::overload_cast<const dai::OpenVINO::Blob&>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob",
              py::overload_cast<const std::filesystem::path&>(&DetectionNetwork::setBlob),

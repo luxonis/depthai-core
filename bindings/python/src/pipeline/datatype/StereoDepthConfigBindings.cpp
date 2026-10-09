@@ -288,7 +288,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("p1Config", &StereoDepthConfig::CostAggregation::p1Config, DOC(dai, StereoDepthConfig, CostAggregation, p1Config))
         .def_readwrite("p2Config", &StereoDepthConfig::CostAggregation::p2Config, DOC(dai, StereoDepthConfig, CostAggregation, p2Config));
 
-    stereoDepthConfig.def(py::init<>())
+    stereoDepthConfig.def_readwrite("filtersBackend", &dai::StereoDepthConfig::filtersBackend, DOC(dai, StereoDepthConfig, filtersBackend))
+        .def(py::init<>())
         .def_readwrite("algorithmControl", &StereoDepthConfig::algorithmControl, DOC(dai, StereoDepthConfig, algorithmControl))
         .def_readwrite("postProcessing", &StereoDepthConfig::postProcessing, DOC(dai, StereoDepthConfig, postProcessing))
         .def_readwrite("censusTransform", &StereoDepthConfig::censusTransform, DOC(dai, StereoDepthConfig, censusTransform))

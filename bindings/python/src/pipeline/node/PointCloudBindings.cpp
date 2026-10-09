@@ -32,6 +32,7 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
     // Node
     node.def_readonly("inputConfig", &PointCloud::inputConfig, DOC(dai, node, PointCloud, inputConfig), DOC(dai, node, PointCloud, inputConfig))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+        .def("getColorInput", &PointCloud::getColorInput, py::return_value_policy::reference_internal, DOC(dai, node, PointCloud, getColorInput))
         .def_property_readonly(
             "inputDepth", [](PointCloud& node) -> Node::Input* { return &node.inputDepth; }, py::return_value_policy::reference_internal)
         .def_property_readonly(

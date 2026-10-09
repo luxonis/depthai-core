@@ -27,7 +27,14 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    tofProperties.def_readwrite("initialConfig", &ToFProperties::initialConfig, DOC(dai, ToFProperties, initialConfig))
+    tofProperties.def(py::init<>());
+
+    tofProperties.def_readwrite("boardSocket", &dai::ToFProperties::boardSocket, DOC(dai, ToFProperties, boardSocket))
+        .def_readwrite("cameraName", &dai::ToFProperties::cameraName, DOC(dai, ToFProperties, cameraName))
+        .def_readwrite("fps", &dai::ToFProperties::fps, DOC(dai, ToFProperties, fps))
+        .def_readwrite("imageOrientation", &dai::ToFProperties::imageOrientation, DOC(dai, ToFProperties, imageOrientation))
+        .def_readwrite("numFramesPoolRaw", &dai::ToFProperties::numFramesPoolRaw, DOC(dai, ToFProperties, numFramesPoolRaw))
+        .def_readwrite("initialConfig", &ToFProperties::initialConfig, DOC(dai, ToFProperties, initialConfig))
         .def_readwrite("numFramesPool", &ToFProperties::numFramesPool, DOC(dai, ToFProperties, numFramesPool))
         .def_readwrite("numShaves", &ToFProperties::numShaves, DOC(dai, ToFProperties, numShaves))
         .def_readwrite("warpHwIds", &ToFProperties::warpHwIds, DOC(dai, ToFProperties, warpHwIds))
@@ -86,7 +93,12 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     tof.def_property_readonly(
-           "rawDepth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.rawDepth; }, DOC(dai, node, ToF, rawDepth))
+           "inputConfig",
+           [](ToF& self) -> Node::Input& { return self.inputConfig; },
+           py::return_value_policy::reference_internal,
+           DOC(dai, node, ToF, inputConfig))
+        .def_property_readonly(
+            "rawDepth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.rawDepth; }, DOC(dai, node, ToF, rawDepth))
         .def_property_readonly(
             "depth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.depth; }, DOC(dai, node, ToF, depth))
         .def_property_readonly(

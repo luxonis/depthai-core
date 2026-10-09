@@ -37,6 +37,13 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
+    tracklet.def("transform",
+                 &dai::Tracklet::transform,
+                 py::arg("source"),
+                 py::arg("target"),
+                 py::arg("lengthUnit") = LengthUnit::MILLIMETER,
+                 DOC(dai, Tracklet, transform));
+
     tracklet.def(py::init<>())
         .def("__repr__", &Tracklet::str)
         .def_readwrite("roi", &Tracklet::roi)

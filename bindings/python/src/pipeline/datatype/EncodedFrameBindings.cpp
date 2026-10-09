@@ -72,6 +72,25 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .value("Unknown", EncodedFrame::FrameType::Unknown);
 
     // Message
+    encodedFrame.def_readwrite("cam", &dai::EncodedFrame::cam, DOC(dai, EncodedFrame, cam))
+        .def_readwrite("frameOffset", &dai::EncodedFrame::frameOffset, DOC(dai, EncodedFrame, frameOffset))
+        .def_readwrite("frameSize", &dai::EncodedFrame::frameSize, DOC(dai, EncodedFrame, frameSize))
+        .def_readwrite("width", &dai::EncodedFrame::width, DOC(dai, EncodedFrame, width))
+        .def_readwrite("height", &dai::EncodedFrame::height, DOC(dai, EncodedFrame, height))
+        .def_readwrite("quality", &dai::EncodedFrame::quality, DOC(dai, EncodedFrame, quality))
+        .def_readwrite("bitrate", &dai::EncodedFrame::bitrate, DOC(dai, EncodedFrame, bitrate))
+        .def_readwrite("profile", &dai::EncodedFrame::profile, DOC(dai, EncodedFrame, profile))
+        .def_readwrite("lossless", &dai::EncodedFrame::lossless, DOC(dai, EncodedFrame, lossless))
+        .def_readwrite("type", &dai::EncodedFrame::type, DOC(dai, EncodedFrame, type))
+        .def_readwrite("instanceNum", &dai::EncodedFrame::instanceNum, DOC(dai, EncodedFrame, instanceNum))
+        .def_readwrite("transformation", &dai::EncodedFrame::transformation, DOC(dai, EncodedFrame, transformation))
+        .def("setInstanceNum",
+             &dai::EncodedFrame::setInstanceNum,
+             py::arg("instance"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, EncodedFrame, setInstanceNum))
+        .def("getImgFrameMeta", &dai::EncodedFrame::getImgFrameMeta, DOC(dai, EncodedFrame, getImgFrameMeta));
+
     encodedFrame.def(py::init<>())
         .def("__repr__", &EncodedFrame::str)
         // getters
@@ -104,11 +123,11 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
              static_cast<EncodedFrame& (EncodedFrame::*)(std::tuple<unsigned int, unsigned int>)>(&EncodedFrame::setSize),
              py::arg("sizer"),
              DOC(dai, EncodedFrame, setSize, 2))
-        .def("setQuality", &EncodedFrame::setQuality, DOC(dai, EncodedFrame, getQuality))
-        .def("setBitrate", &EncodedFrame::setBitrate, DOC(dai, EncodedFrame, getBitrate))
-        .def("setFrameType", &EncodedFrame::setFrameType, DOC(dai, EncodedFrame, getFrameType))
-        .def("setLossless", &EncodedFrame::setLossless, DOC(dai, EncodedFrame, getLossless))
-        .def("setProfile", &EncodedFrame::setProfile, DOC(dai, EncodedFrame, getProfile))
+        .def("setQuality", &EncodedFrame::setQuality, py::arg("quality"), DOC(dai, EncodedFrame, setQuality))
+        .def("setBitrate", &EncodedFrame::setBitrate, py::arg("bitrate"), DOC(dai, EncodedFrame, setBitrate))
+        .def("setFrameType", &EncodedFrame::setFrameType, py::arg("frameType"), DOC(dai, EncodedFrame, setFrameType))
+        .def("setLossless", &EncodedFrame::setLossless, py::arg("lossless"), DOC(dai, EncodedFrame, setLossless))
+        .def("setProfile", &EncodedFrame::setProfile, py::arg("profile"), DOC(dai, EncodedFrame, setProfile))
         .def("setTransformation", [](EncodedFrame& msg, const ImgTransformation& transformation) { msg.transformation = transformation; });
     //   // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
     //   m.attr("EncodedFrame").attr("FrameType") =

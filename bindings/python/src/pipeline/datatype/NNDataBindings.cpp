@@ -73,7 +73,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
     //     .def_readwrite("sequenceNum", &RawNNData::sequenceNum)
     //     ;
 
-    tensorInfo.def(py::init<>())
+    tensorInfo.def("validateStorageOrder", &dai::TensorInfo::validateStorageOrder, DOC(dai, TensorInfo, validateStorageOrder))
+        .def(py::init<>())
         .def("getTensorSize", &TensorInfo::getTensorSize)
         .def_readwrite("order", &TensorInfo::order)
         .def_readwrite("dataType", &TensorInfo::dataType)
@@ -118,7 +119,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
 
     // Message
 
-    nnData.def(py::init<>(), DOC(dai, NNData, NNData))
+    nnData.def("getFirstTensorDatatype", &dai::NNData::getFirstTensorDatatype, DOC(dai, NNData, getFirstTensorDatatype))
+        .def(py::init<>(), DOC(dai, NNData, NNData))
         .def(py::init<size_t>(), py::arg("size"), DOC(dai, NNData, NNData, 2))
         .def("__repr__", &NNData::str)
         // // setters
@@ -152,6 +154,15 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         .def("hasLayer", &NNData::hasLayer, py::arg("name"), DOC(dai, NNData, hasLayer))
         .def("getAllLayerNames", &NNData::getAllLayerNames, DOC(dai, NNData, getAllLayerNames))
         .def("getAllLayers", &NNData::getAllLayers, DOC(dai, NNData, getAllLayers))
+        .def(
+            "getLayerDatatype",
+            [](const NNData& self, const std::string& name) -> std::optional<TensorInfo::DataType> {
+                TensorInfo::DataType datatype;
+                if(!self.getLayerDatatype(name, datatype)) return std::nullopt;
+                return datatype;
+            },
+            py::arg("name"),
+            DOC(dai, NNData, getLayerDatatype))
         .def("getLayerDatatype", &NNData::getLayerDatatype, py::arg("name"), py::arg("datatype"), DOC(dai, NNData, getLayerDatatype))
         // .def("getLayerUInt8", [](NNData& obj, const std::string& name){
         //     PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'getTensor()'
@@ -286,9 +297,12 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
             "getTensor",
             [](NNData& obj, const std::string name, TensorInfo::StorageOrder order, bool dequantize) -> py::object {
                 const auto datatype = obj.getTensorDatatype(name);
-                if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                if((datatype == dai::TensorInfo::DataType::U8F || datatype == dai::TensorInfo::DataType::I8 || datatype == dai::TensorInfo::DataType::INT)
+                   && !dequantize) {
                     // In case of dequantization, we should always return float
                     return py::cast(obj.getTensor<int>(name, order));
+                } else if(datatype == dai::TensorInfo::DataType::FP64) {
+                    return py::cast(obj.getTensor<double>(name, order, dequantize));
                 } else {
                     return py::cast(obj.getTensor<float>(name, order, dequantize));
                 }
@@ -301,9 +315,12 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
             "getFirstTensor",
             [](NNData& obj, bool dequantize) -> py::object {
                 const auto datatype = obj.getFirstTensorDatatype();
-                if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                if((datatype == dai::TensorInfo::DataType::U8F || datatype == dai::TensorInfo::DataType::I8 || datatype == dai::TensorInfo::DataType::INT)
+                   && !dequantize) {
                     // In case of dequantization, we should always return float
                     return py::cast(obj.getFirstTensor<int>());
+                } else if(datatype == dai::TensorInfo::DataType::FP64) {
+                    return py::cast(obj.getFirstTensor<double>(dequantize));
                 } else {
                     return py::cast(obj.getFirstTensor<float>(dequantize));
                 }
@@ -315,9 +332,12 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
             "getFirstTensor",
             [](NNData& obj, TensorInfo::StorageOrder order, bool dequantize) -> py::object {
                 const auto datatype = obj.getFirstTensorDatatype();
-                if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                if((datatype == dai::TensorInfo::DataType::U8F || datatype == dai::TensorInfo::DataType::I8 || datatype == dai::TensorInfo::DataType::INT)
+                   && !dequantize) {
                     // In case of dequantization, we should always return float
                     return py::cast(obj.getFirstTensor<int>(order));
+                } else if(datatype == dai::TensorInfo::DataType::FP64) {
+                    return py::cast(obj.getFirstTensor<double>(order, dequantize));
                 } else {
                     return py::cast(obj.getFirstTensor<float>(order, dequantize));
                 }

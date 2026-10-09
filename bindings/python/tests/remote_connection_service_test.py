@@ -4,6 +4,7 @@ import asyncio
 import json
 import websockets
 import struct
+import numpy as np
 
 uri = "ws://localhost:8765"
 async def call_service(ws, service_id):
@@ -81,12 +82,18 @@ def test_remote_connection_services():
     remoteConnection.registerService("custom_service", custom_service)
     remoteConnection.registerBinaryService("custom_binary_service", custom_binary_service)
 
+    values = np.array([0x1234, 0x5678, 0x9ABC], dtype=np.uint16)
+    remoteConnection.registerBinaryService("typed_buffer", lambda _: values)
+    remoteConnection.registerBinaryService("strided_buffer", lambda _: memoryview(values[::-1]))
+
     results = asyncio.run(get_available_services())
     assert(json.loads(results["custom_service"]) == {"result": "custom_service_result"})
     assert(results["libraryVersion"] in dai.__version__)
     assert(results["topicGroups"] == "{}")
     assert(results["keyPressed"] == None)
     assert(results["custom_binary_service"] == b"\x04\x03\x02\x01")
+    assert results["typed_buffer"] == values.tobytes()
+    assert results["strided_buffer"] == values[::-1].tobytes()
 
 
 if __name__ == '__main__':

@@ -128,7 +128,6 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("blocking") = true,
              DOC(dai, MessageQueue, MessageQueue, 2))
         .def("getName", &MessageQueue::getName, DOC(dai, MessageQueue, getName))
-        .def("getName", &MessageQueue::getName, DOC(dai, MessageQueue, getName))
         .def("setName", &MessageQueue::setName, py::arg("name"), DOC(dai, MessageQueue, setName))
         .def("isClosed", &MessageQueue::isClosed, DOC(dai, MessageQueue, isClosed))
         .def("close", &MessageQueue::close, DOC(dai, MessageQueue, close))
@@ -184,7 +183,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                 std::shared_ptr<ADatatype> d = nullptr;
                 bool timedout = true;
                 milliseconds timeoutLeft = timeout;
-                while(timedout && timeoutLeft.count() > 0) {
+                do {
                     {
                         auto toSleep = std::min(milliseconds(100), timeoutLeft);
                         py::gil_scoped_release release;
@@ -192,7 +191,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                         timeoutLeft -= toSleep;
                     }
                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
-                }
+                } while(timedout && timeoutLeft.count() > 0);
                 if(PyErr_CheckSignals() != 0) throw py::error_already_set();
                 return d;
             },
@@ -233,7 +232,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
             [](MessageQueue& obj, const std::shared_ptr<ADatatype>& msg, milliseconds timeout) {
                 bool sent = false;
                 milliseconds timeoutLeft = timeout;
-                while(!sent && timeoutLeft.count() > 0) {
+                do {
                     {
                         auto toSleep = std::min(milliseconds(100), timeoutLeft);
                         py::gil_scoped_release release;
@@ -241,13 +240,13 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                         timeoutLeft -= toSleep;
                     }
                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
-                }
+                } while(!sent && timeoutLeft.count() > 0);
                 return sent;
             },
             py::arg("msg"),
             py::arg("timeout"),
             DOC(dai, MessageQueue, send))
-        .def("trySend", &MessageQueue::trySend, py::arg("msg"), DOC(dai, MessageQueue, trySend))
+        .def("trySend", &MessageQueue::trySend, py::arg("msg"), py::call_guard<py::gil_scoped_release>(), DOC(dai, MessageQueue, trySend))
         .def_static(
             "waitAny",
             [](const std::vector<std::shared_ptr<MessageQueue>>& queues) {
@@ -270,7 +269,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                 auto queueRefs = dai::mq_utils::toQueueRefs(queues);
                 bool hasMessages = false;
                 milliseconds timeoutLeft = timeout;
-                while(!hasMessages && timeoutLeft.count() > 0 && !dai::mq_utils::allClosed(queues)) {
+                do {
                     {
                         auto toSleep = std::min(milliseconds(100), timeoutLeft);
                         py::gil_scoped_release release;
@@ -278,7 +277,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                         timeoutLeft -= toSleep;
                     }
                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
-                }
+                } while(!hasMessages && timeoutLeft.count() > 0 && !dai::mq_utils::allClosed(queues));
                 if(PyErr_CheckSignals() != 0) throw py::error_already_set();
                 return hasMessages;
             },
@@ -307,7 +306,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                 auto queueRefs = dai::mq_utils::toQueueRefMap(queues);
                 std::unordered_map<std::string, std::shared_ptr<ADatatype>> messages;
                 milliseconds timeoutLeft = timeout;
-                while(messages.empty() && timeoutLeft.count() > 0 && !dai::mq_utils::allClosed(queues)) {
+                do {
                     {
                         auto toSleep = std::min(milliseconds(100), timeoutLeft);
                         py::gil_scoped_release release;
@@ -315,7 +314,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                         timeoutLeft -= toSleep;
                     }
                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
-                }
+                } while(messages.empty() && timeoutLeft.count() > 0 && !dai::mq_utils::allClosed(queues));
                 if(PyErr_CheckSignals() != 0) throw py::error_already_set();
                 return messages;
             },

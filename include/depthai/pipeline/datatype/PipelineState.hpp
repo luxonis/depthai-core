@@ -118,6 +118,7 @@ class PipelineState : public Buffer {
         return DatatypeEnum::PipelineState;
     }
 
+    /// Convert the pipeline state to JSON. Python returns the corresponding dictionary.
     nlohmann::json toJson() const;
 
     DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeStates, configSequenceNum);

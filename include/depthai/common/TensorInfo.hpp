@@ -39,6 +39,7 @@ struct TensorInfo {
         U16F = 6,  // Unsigned short (16 bit)
     };
 
+    /// Validate the storage order and its dimension count; throw std::runtime_error if either is invalid.
     void validateStorageOrder() const {
         switch(order) {
             case StorageOrder::NHWC:

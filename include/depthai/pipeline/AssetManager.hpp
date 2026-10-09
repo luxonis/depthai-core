@@ -19,10 +19,15 @@ struct Asset {
     const std::string key;
     std::vector<std::uint8_t> data;
     std::uint32_t alignment = 1;
+    /// Get asset bytes, loading the backing file if needed. Python returns a copy.
     std::vector<std::uint8_t>& getData();
+    /// Get asset bytes, loading the backing file if needed. Python returns a copy.
     const std::vector<std::uint8_t>& getData() const;
+    /// Replace the asset bytes and clear any backing file.
     void setData(std::vector<std::uint8_t> data);
+    /// Get the asset size in bytes without loading its backing file.
     std::size_t getSize() const;
+    /// Get the asset URI in the form "asset:<key>".
     std::string getRelativeUri();
 
     /// Set the backing file and its expected size. The file must remain available and unchanged until the asset is materialized or serialized.

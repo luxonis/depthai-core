@@ -26,17 +26,37 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bindings
-    calibrationHandler.def(py::init<>(), DOC(dai, CalibrationHandler, CalibrationHandler))
-        .def(py::init<std::filesystem::path, bool>(),
+    calibrationHandler.def(
+        "getExtrinsicsToOrigin",
+        [](const CalibrationHandler& self, CameraBoardSocket cameraId, bool useSpecTranslation) {
+            CameraBoardSocket originSocket;
+            auto matrix = self.getExtrinsicsToOrigin(cameraId, useSpecTranslation, originSocket);
+            return py::make_tuple(matrix, originSocket);
+        },
+        py::arg("cameraId"),
+        py::arg("useSpecTranslation") = false,
+        DOC(dai, CalibrationHandler, getExtrinsicsToOrigin));
+
+    calibrationHandler
+        .def("updateCameraExtrinsics",
+             &dai::CalibrationHandler::updateCameraExtrinsics,
+             py::arg("srcCameraId"),
+             py::arg("destCameraId"),
+             py::arg("rotationMatrix"),
+             py::arg("translation"),
+             DOC(dai, CalibrationHandler, updateCameraExtrinsics))
+        .def("validateCameraArray", &dai::CalibrationHandler::validateCameraArray, DOC(dai, CalibrationHandler, validateCameraArray))
+        .def(py::init<>(), DOC(dai, CalibrationHandler, CalibrationHandler))
+        .def(py::init<std::filesystem::path, std::optional<bool>>(),
              py::arg("eepromDataPath"),
              py::arg("validateExtrinsics") = std::nullopt,
              DOC(dai, CalibrationHandler, CalibrationHandler, 2))
-        .def(py::init<std::filesystem::path, std::filesystem::path, bool>(),
+        .def(py::init<std::filesystem::path, std::filesystem::path, std::optional<bool>>(),
              py::arg("calibrationDataPath"),
              py::arg("boardConfigPath"),
              py::arg("validateExtrinsics") = std::nullopt,
              DOC(dai, CalibrationHandler, CalibrationHandler, 3))
-        .def(py::init<EepromData, bool>(),
+        .def(py::init<EepromData, std::optional<bool>>(),
              py::arg("eepromData"),
              py::arg("validateExtrinsics") = std::nullopt,
              DOC(dai, CalibrationHandler, CalibrationHandler, 4))

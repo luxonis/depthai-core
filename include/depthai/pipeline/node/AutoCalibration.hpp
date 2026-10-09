@@ -46,6 +46,10 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void run() override;
 
+    /**
+     * Selects whether calibration processing runs on the host.
+     * An associated device is still required for camera calibration access.
+     */
     void setRunOnHost(bool runOnHost);
 
     bool runOnHost() const override;

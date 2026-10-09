@@ -266,9 +266,7 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
         };
     pipeline.start();
 
-    auto requireAligned = [&](const std::shared_ptr<dai::ImgFrame>& aligned,
-                              const dai::ImgTransformation& currentAlignToTransformation,
-                              int64_t sequenceNum) {
+    auto requireAligned = [&](const std::shared_ptr<dai::ImgFrame>& aligned, const dai::ImgTransformation& currentAlignToTransformation, int64_t sequenceNum) {
         const auto [alignWidth, alignHeight] = currentAlignToTransformation.getSize();
         CAPTURE(sequenceNum);
         REQUIRE(aligned != nullptr);
@@ -292,8 +290,7 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
     };
 
     int64_t sequenceNum = 0;
-    auto sendAndRequireAligned = [&](const dai::ImgTransformation& currentInputTransformation,
-                                     const dai::ImgTransformation& currentAlignToTransformation) {
+    auto sendAndRequireAligned = [&](const dai::ImgTransformation& currentInputTransformation, const dai::ImgTransformation& currentAlignToTransformation) {
         const auto [alignWidth, alignHeight] = currentAlignToTransformation.getSize();
         for(int attempt = 0; attempt < 10; ++attempt) {
             ++sequenceNum;
@@ -302,8 +299,7 @@ void runImageAlignRuntimeTransformationTest(bool runOnHost, dai::ImgFrame::Type 
             auto aligned = outputQueue->get<dai::ImgFrame>();
             REQUIRE(aligned != nullptr);
             REQUIRE(aligned->getSequenceNum() == sequenceNum);
-            if(aligned->getWidth() == alignWidth && aligned->getHeight() == alignHeight
-               && aligned->transformation.isAlignedTo(currentAlignToTransformation)) {
+            if(aligned->getWidth() == alignWidth && aligned->getHeight() == alignHeight && aligned->transformation.isAlignedTo(currentAlignToTransformation)) {
                 return requireAligned(aligned, currentAlignToTransformation, sequenceNum);
             }
         }

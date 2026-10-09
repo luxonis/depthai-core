@@ -684,7 +684,7 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(const std::string& group);
 
-    // For record and replay
+    /// Return whether this node is a source for recording and replay.
     virtual bool isSourceNode() const;
 
    protected:
@@ -723,7 +723,7 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Add existing node to nodeMap
     void add(const std::shared_ptr<Node>& node);
 
-    // Access to nodes
+    /// Get all child nodes registered with this node.
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);

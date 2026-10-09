@@ -9,11 +9,18 @@ endif()
 
 set(PYBIND11_TEST_FILES
     "test.py"
+    "api_binding_coverage_test.py"
+    "api_binding_device_test.py"
+    "queue_gil_test.py"
     "xlink_exceptions_test.cpp"
     "xlink_protocol_test.py"
     "utf8_support_test.py"
-    # "dai_path_conversion_test.py" requires device
+    "dai_path_conversion_test.py"
     "nndata_tensor_test.py"
+    "nndata_dtype_test.py"
+    "buffer_lifetime_test.py"
+    "calibration_constructor_test.py"
+    "openvino_version_test.py"
     "pcldata_set_points_test.py"
     "remote_connection_service_test.py"
     "messsage_queue_test.py"

@@ -1,6 +1,8 @@
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <deque>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -13,6 +15,9 @@
 #include "depthai/depthai.hpp"
 
 namespace {
+
+static_assert(std::atomic<bool>::is_always_lock_free, "Signal flag must be lock-free");
+std::atomic<bool> quitEvent{false};
 
 const char* algorithmName(dai::node::Depth::Algorithm algorithm) {
     switch(algorithm) {
@@ -77,6 +82,10 @@ void updateBlendWeights(int percentRgb, void*) {
 }  // namespace
 
 int main() {
+    const auto signalHandler = [](int) { quitEvent.store(true, std::memory_order_relaxed); };
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
     dai::Pipeline pipeline;
     auto device = pipeline.getDefaultDevice();
     if(device == nullptr) {
@@ -125,7 +134,7 @@ int main() {
 
     pipeline.start();
 
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent.load(std::memory_order_relaxed)) {
         auto messageGroup = queue->get<dai::MessageGroup>();
         fpsCounter.tick();
 
@@ -153,5 +162,6 @@ int main() {
     }
 
     pipeline.stop();
+    pipeline.wait();
     return 0;
 }

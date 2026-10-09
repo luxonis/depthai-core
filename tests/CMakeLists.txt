@@ -494,6 +494,9 @@ endif()
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
 dai_set_test_labels(naming_test onhost ci)
 
+dai_add_test(color_camera_test src/onhost_tests/pipeline/node/color_camera_test.cpp)
+dai_set_test_labels(color_camera_test onhost ci)
+
 # Image transformations test
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
 if(DEPTHAI_ENABLE_PROTOBUF)

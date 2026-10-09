@@ -73,7 +73,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getIPv4", &DeviceBootloader::Config::getIPv4)
         .def("getIPv4Mask", &DeviceBootloader::Config::getIPv4Mask)
         .def("getIPv4Gateway", &DeviceBootloader::Config::getIPv4Gateway)
-        .def("setDnsIPv4", &DeviceBootloader::Config::setDnsIPv4)
+        .def("setDnsIPv4", &DeviceBootloader::Config::setDnsIPv4, py::arg("dns"), py::arg("dnsAlt") = "", DOC(dai, DeviceBootloader, Config, setDnsIPv4))
         .def("getDnsIPv4", &DeviceBootloader::Config::getDnsIPv4)
         .def("getDnsAltIPv4", &DeviceBootloader::Config::getDnsAltIPv4)
         .def("setUsbTimeout", &DeviceBootloader::Config::setUsbTimeout)
@@ -87,7 +87,8 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("toJson", &DeviceBootloader::Config::toJson)
         .def("fromJson", &DeviceBootloader::Config::fromJson);
 
-    deviceBootloderApplicationInfo.def(py::init<>())
+    deviceBootloderApplicationInfo.def_readwrite("memory", &dai::DeviceBootloader::ApplicationInfo::memory, DOC(dai, DeviceBootloader, ApplicationInfo, memory))
+        .def(py::init<>())
         .def_readwrite("hasApplication", &DeviceBootloader::ApplicationInfo::hasApplication)
         .def_readwrite("firmwareVersion", &DeviceBootloader::ApplicationInfo::firmwareVersion)
         .def_readwrite("applicationName", &DeviceBootloader::ApplicationInfo::applicationName);
@@ -96,6 +97,8 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("available", &DeviceBootloader::MemoryInfo::available)
         .def_readwrite("size", &DeviceBootloader::MemoryInfo::size)
         .def_readwrite("info", &DeviceBootloader::MemoryInfo::info);
+
+    deviceBootloader.def("isClosed", &dai::DeviceBootloader::isClosed, DOC(dai, DeviceBootloader, isClosed));
 
     deviceBootloader
         // Python only methods
@@ -108,7 +111,10 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_static("getFirstAvailableDevice", &DeviceBootloader::getFirstAvailableDevice, DOC(dai, DeviceBootloader, getFirstAvailableDevice))
         .def_static("getAllAvailableDevices", &DeviceBootloader::getAllAvailableDevices, DOC(dai, DeviceBootloader, getAllAvailableDevices))
         .def_static("getEmbeddedBootloaderVersion", &DeviceBootloader::getEmbeddedBootloaderVersion, DOC(dai, DeviceBootloader, getEmbeddedBootloaderVersion))
-        .def_static("getEmbeddedBootloaderBinary", &DeviceBootloader::getEmbeddedBootloaderBinary, DOC(dai, DeviceBootloader, getEmbeddedBootloaderBinary))
+        .def_static("getEmbeddedBootloaderBinary",
+                    &DeviceBootloader::getEmbeddedBootloaderBinary,
+                    py::arg("type") = DeviceBootloader::DEFAULT_TYPE,
+                    DOC(dai, DeviceBootloader, getEmbeddedBootloaderBinary))
 
         .def(py::init<const DeviceInfo&, bool>(),
              py::arg("devInfo"),

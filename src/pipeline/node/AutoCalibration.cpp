@@ -64,6 +64,7 @@ constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2
 constexpr int PACKET_SIZE_DEFAULT = 100000;
 
 bool areLensesWide(const std::shared_ptr<Device>& device) {
+    if(!device) throw std::invalid_argument("AutoCalibration requires a device to determine its lens configuration");
     auto handler = device->getCalibration();
     auto eepromData = handler.getEepromData();
     const auto& hardwareConf = eepromData.hardwareConf;

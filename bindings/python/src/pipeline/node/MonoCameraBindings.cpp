@@ -38,7 +38,14 @@ void bind_monocamera(pybind11::module& m, void* pCallstack) {
         .value("THE_4000X3000", MonoCameraProperties::SensorResolution::THE_4000X3000)
         .value("THE_4224X3136", MonoCameraProperties::SensorResolution::THE_4224X3136);
 
-    monoCameraProperties.def_readwrite("initialControl", &MonoCameraProperties::initialControl)
+    monoCameraProperties.def(py::init<>());
+
+    monoCameraProperties.def_readwrite("cameraName", &dai::MonoCameraProperties::cameraName, DOC(dai, MonoCameraProperties, cameraName))
+        .def_readwrite("imageOrientation", &dai::MonoCameraProperties::imageOrientation, DOC(dai, MonoCameraProperties, imageOrientation))
+        .def_readwrite("mockIspHeight", &dai::MonoCameraProperties::mockIspHeight, DOC(dai, MonoCameraProperties, mockIspHeight))
+        .def_readwrite("mockIspWidth", &dai::MonoCameraProperties::mockIspWidth, DOC(dai, MonoCameraProperties, mockIspWidth))
+        .def_readwrite("rawPacked", &dai::MonoCameraProperties::rawPacked, DOC(dai, MonoCameraProperties, rawPacked))
+        .def_readwrite("initialControl", &MonoCameraProperties::initialControl)
         .def_readwrite("boardSocket", &MonoCameraProperties::boardSocket)
         .def_readwrite("resolution", &MonoCameraProperties::resolution)
         .def_readwrite("fps", &MonoCameraProperties::fps)
@@ -48,6 +55,9 @@ void bind_monocamera(pybind11::module& m, void* pCallstack) {
         .def_readwrite("eventFilter", &MonoCameraProperties::eventFilter);
 
     // Node
+    monoCamera.def_readonly("mockIsp", &dai::node::MonoCamera::mockIsp, DOC(dai, node, MonoCamera, mockIsp))
+        .def("setMockIspSize", &dai::node::MonoCamera::setMockIspSize, py::arg("width"), py::arg("height"), DOC(dai, node, MonoCamera, setMockIspSize));
+
     monoCamera.def_readonly("inputControl", &MonoCamera::inputControl, DOC(dai, node, MonoCamera, inputControl))
         .def_readonly("out", &MonoCamera::out, DOC(dai, node, MonoCamera, out))
         .def_readonly("raw", &MonoCamera::raw, DOC(dai, node, MonoCamera, raw))

@@ -10,6 +10,28 @@
 
 using namespace dai;
 
+TEST_CASE("State callback receives an immediate one-shot response") {
+    Pipeline pipeline(false);
+    auto sync = pipeline.create<node::Sync>();
+    auto request = sync->inputs["request"].createInputQueue();
+    auto output = std::make_shared<MessageQueue>();
+    Node::Input* requestInput = nullptr;
+    for(const auto& node : pipeline.getAllNodes()) {
+        if(std::string(node->getName()) == "InputQueue") requestInput = node->getInputRefs().at(0);
+    }
+    REQUIRE(requestInput != nullptr);
+    requestInput->addCallback([output]() { output->send(std::make_shared<PipelineState>()); });
+    PipelineStateApi api(output, request, {});
+    bool called = false;
+    api.stateAsync([&](const PipelineState&) { called = true; }, PipelineEventAggregationConfig{});
+    REQUIRE(called);
+
+    requestInput->close();
+    const auto callbackCount = output->callbacks.size();
+    REQUIRE_THROWS(api.stateAsync([](const PipelineState&) {}));
+    REQUIRE(output->callbacks.size() == callbackCount);
+}
+
 /**
  * 1. invalid pipeline (no state yet)
  * 2. pipeline with predictable timings
