@@ -288,9 +288,10 @@ Camera& Camera::setMockIsp(ReplayVideo& replay) {
         properties.mockIspHeight = height;
         properties.mockIspFps = fps;
 
-        auto device = getParentPipeline().getDefaultDevice();
-        if(device) {
-            if(device->getPlatform() == Platform::RVC2) {
+        // Pick the frame type for the platform of the device this camera runs on (falls back to the pipeline default device when the node has none)
+        auto mockDevice = device ? device : getParentPipeline().getDefaultDevice();
+        if(mockDevice) {
+            if(mockDevice->getPlatform() == Platform::RVC2) {
                 replay.setOutFrameType(ImgFrame::Type::YUV420p);
             } else {
                 replay.setOutFrameType(ImgFrame::Type::NV12);

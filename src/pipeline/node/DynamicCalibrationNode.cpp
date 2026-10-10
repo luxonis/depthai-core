@@ -5,6 +5,7 @@
 #endif
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -20,6 +21,7 @@
 #include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"
+#include "pipeline/node/DynamicCalibrationTransforms.hpp"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
 #include "utility/Telemetry.hpp"
 
@@ -29,7 +31,9 @@ namespace node {
 namespace {
 
 bool isExpectedCalibrationInfoMessage(const std::string& message) {
-    return message == "Not enough coverage" || message == "Not enough data" || message == "Requested sensors are not connected by measurement pairs";
+    return message == "Not enough coverage" || message == "Not enough data" || message == "No data"
+           || message == "Requested sensors are not connected by measurement pairs"
+           || message == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more";
 }
 
 struct DynamicCalibrationTelemetryAggregateState {
@@ -148,6 +152,16 @@ void addDynamicCalibrationResultTelemetry(DynamicCalibrationTelemetryAggregateSt
     }
 }
 
+// Modular boards (OAK FFC and similar) carry user-mounted cameras, so the baseline is not designed to be
+// perpendicular to the optical axes and DCL must not force it to be. Names come from the EEPROM.
+bool isModularCameraBoard(const std::string& productName, const std::string& boardName) {
+    const auto containsFfc = [](std::string name) {
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+        return name.find("FFC") != std::string::npos;
+    };
+    return containsFfc(productName) || containsFfc(boardName);
+}
+
 }  // namespace
 
 std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
@@ -231,6 +245,8 @@ class DynamicCalibration::Impl {
      */
     std::shared_ptr<dcl::Device> device;
     dcl::DynamicCalibration dynCalibImpl;
+    std::optional<CalibrationHandler> factoryCalibration;
+    std::optional<bool> perpendicularOpticalAxis;
     std::shared_ptr<DynamicCalibrationTelemetryAggregateState> telemetryAggregateState = std::make_shared<DynamicCalibrationTelemetryAggregateState>();
     utility::Telemetry::AggregateMetricsHandle telemetryAggregateMetricsHandle = 0;
 };
@@ -447,12 +463,6 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
     }
     calibrationHandler = handler;
 
-    socketToSensorExtrinsics.clear();
-    socketToSensorExtrinsics.reserve(socketsInHandler.size());
-    for(const auto& socket : socketsInHandler) {
-        socketToSensorExtrinsics.push_back(DclUtils::computeBaseToSocketTransform(handler, daiSocketBase, socket));
-    }
-
     for(const auto& sensor : connectedSensors) {
         auto calibration =
             DclUtils::convertDaiCalibrationToDcl(handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel);
@@ -528,21 +538,42 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
             }
         }
     }
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges);
-    if(!dclResult.passed()) {
-        auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
-        if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
-            logger->info("Calibration failed: {}", dclResult.errorMessage());
-        } else {
-            logger->warn("Calibration failed: {}", dclResult.errorMessage());
-        }
-
-        calibrationOutput.send(result);
+    // Publishes a failed calibration result and records it in telemetry.
+    const auto reportCalibrationFailure = [this](const std::string& message) {
+        calibrationOutput.send(std::make_shared<DynamicCalibrationResult>(message));
         auto& telemetryState = *pimplDCL->telemetryAggregateState;
         std::lock_guard<std::mutex> lock(telemetryState.mutex);
         telemetryState.calibrationResultCallbacks += 1;
         telemetryState.failedCalibrations += 1;
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
+    };
+
+    // Have DCL fix the pair's otherwise unobservable orientation itself: the common optical axis is made
+    // perpendicular to the baseline, so the rectified frame does not swing between calibrations. Modular
+    // boards are exempt, since nothing guarantees their baseline is perpendicular to begin with.
+    if(!pimplDCL->perpendicularOpticalAxis) {
+        std::string productName;
+        std::string boardName;
+        try {
+            productName = device->getProductName();
+            boardName = device->readCalibrationOrDefault().getEepromData().boardName;
+        } catch(const std::exception& ex) {
+            logger->warn("DynamicCalibration could not read the device name, assuming a non-modular board: {}", ex.what());
+        }
+        pimplDCL->perpendicularOpticalAxis = !isModularCameraBoard(productName, boardName);
+        logger->debug("DynamicCalibration perpendicular optical axis {} (product '{}', board '{}')",
+                      *pimplDCL->perpendicularOpticalAxis ? "enabled" : "disabled",
+                      productName,
+                      boardName);
+    }
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges, *pimplDCL->perpendicularOpticalAxis);
+    if(!dclResult.passed()) {
+        if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
+            logger->info("Calibration failed: {}", dclResult.errorMessage());
+        } else {
+            logger->warn("Calibration failed: {}", dclResult.errorMessage());
+        }
+        return reportCalibrationFailure(dclResult.errorMessage());
     }
 
     if(dclResult.value.calibrations.size() != syncedSensors.size()) {
@@ -551,34 +582,39 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
     }
 
-    auto newCalibrationHandler = currentHandler;
-    auto candidateSocketToSensorExtrinsics = socketToSensorExtrinsics;
-
+    std::map<CameraBoardSocket, std::vector<std::vector<float>>> calibratedPoses;
     for(size_t idx = 0; idx < connectedSensors.size(); ++idx) {
-        const auto& calibration = dclResult.value.calibrations[idx];
-        const auto& sensor = connectedSensors[idx];
-        candidateSocketToSensorExtrinsics[sensor.connectionOrder] = DclUtils::calibrationHandleToTransform(calibration);
+        calibratedPoses.emplace(connectedSensors[idx].socket, DclUtils::calibrationHandleToTransform(dclResult.value.calibrations[idx]));
     }
 
-    for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
-        auto transformCurrentToBase = candidateSocketToSensorExtrinsics[idx];
-        matrix::invertSe3Matrix4x4InPlace(transformCurrentToBase);
-        const auto transformCurrentToNext = matrix::matMul(candidateSocketToSensorExtrinsics[idx + 1], transformCurrentToBase);
-        auto translationCurrentToNext = matrix::extractTranslationVector(transformCurrentToNext);
-        for(auto& val : translationCurrentToNext) {
-            val *= 100.0f;
+    // Factory data is only needed to place cameras that DCL did not observe.
+    // Metrics-only use and fully observed rigs do not require factory EEPROM.
+    const bool hasUnobservedCameras = calibratedPoses.size() < socketsInHandler.size();
+    std::vector<StereoPair> stereoPairs;
+    if(hasUnobservedCameras) {
+        if(!pimplDCL->factoryCalibration) {
+            try {
+                pimplDCL->factoryCalibration = device->readFactoryCalibration();
+            } catch(const std::exception& ex) {
+                return reportCalibrationFailure(std::string("Failed to read factory calibration from EEPROM: ") + ex.what());
+            }
         }
-        newCalibrationHandler.updateCameraExtrinsics(
-            socketsInHandler[idx], socketsInHandler[idx + 1], matrix::extractRotationMatrix(transformCurrentToNext), translationCurrentToNext);
+        // getStereoPairs() never throws; it returns an empty list when no calibration is available,
+        // which assembleDynamicCalibration() reports explicitly.
+        stereoPairs = device->getStereoPairs();
     }
 
-    if(std::holds_alternative<HousingCoordinateSystem>(daiSocketBase)) {
-        const auto housingOriginSocket = currentHandler.getEepromData().housingExtrinsics.toCameraSocket;
-        const auto housingOriginIt = std::find(socketsInHandler.begin(), socketsInHandler.end(), housingOriginSocket);
-        if(housingOriginIt != socketsInHandler.end()) {
-            const auto housingOriginIndex = static_cast<size_t>(std::distance(socketsInHandler.begin(), housingOriginIt));
-            DclUtils::setHousingToDai(newCalibrationHandler, candidateSocketToSensorExtrinsics[housingOriginIndex]);
-        }
+    CalibrationHandler newCalibrationHandler;
+    try {
+        newCalibrationHandler = detail::assembleDynamicCalibration(currentHandler,
+                                                                   pimplDCL->factoryCalibration.value_or(CalibrationHandler{}),
+                                                                   socketsInHandler,
+                                                                   calibratedPoses,
+                                                                   std::holds_alternative<HousingCoordinateSystem>(daiSocketBase),
+                                                                   stereoPairs,
+                                                                   device->getPlatform());
+    } catch(const std::exception& ex) {
+        return reportCalibrationFailure(std::string("Failed to assemble calibration: ") + ex.what());
     }
 
     CalibrationQuality::Data qualityData{};
@@ -740,7 +776,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     connectedSensors.reserve(names.size());
 
     socketsInHandler.clear();
-    socketToSensorExtrinsics.clear();
     leftQueueSocket.reset();
     rightQueueSocket.reset();
 
@@ -797,13 +832,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
             return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
         }
 
-        connectedSensors.push_back({socket,
-                                    frameIntrinsics,
-                                    frameDistortion,
-                                    frameDistortionModel,
-                                    static_cast<size_t>(std::distance(socketsInHandler.begin(), socketIt)),
-                                    resolution,
-                                    nullptr});
+        connectedSensors.push_back({socket, frameIntrinsics, frameDistortion, frameDistortionModel, resolution, nullptr});
 
         if(name == leftInputName) {
             leftQueueSocket = socket;
@@ -821,14 +850,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     }
     // set up the dynamic calibration
     pimplDCL->device = pimplDCL->dynCalibImpl.addDevice();
-    socketToSensorExtrinsics.clear();
-    socketToSensorExtrinsics.reserve(socketsInHandler.size());
-
-    for(const auto& socket : socketsInHandler) {
-        const auto baseToSocketTransform = DclUtils::computeBaseToSocketTransform(calibrationHandler, daiSocketBase, socket);
-        socketToSensorExtrinsics.push_back(baseToSocketTransform);
-    }
-
     for(auto& sensor : connectedSensors) {
         dcl::resolution_t resolutionDcl{static_cast<unsigned>(sensor.resolution.first), static_cast<unsigned>(sensor.resolution.second)};
         auto calibration = DclUtils::convertDaiCalibrationToDcl(

@@ -28,10 +28,20 @@ struct DeviceInfo {
     DeviceInfo() = default;
     DeviceInfo(std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status);
     /**
-     * Creates a DeviceInfo by checking whether supplied parameter is a DeviceID or IP/USB name
+     * Creates a DeviceInfo by checking whether supplied parameter is a DeviceID or IP/USB name.
+     * A dotted-quad name ("10.12.234.143") sets protocol TCP_IP, any other name keeps ANY_PROTOCOL.
+     * See XLinkConnection::findFirstSuitableDevice for how a USB port path that looks like an
+     * IPv4 address ("1.2.1.4") is still found.
      * @param deviceIdOrName Either DeviceId, IP Address or USB port name
      */
     explicit DeviceInfo(std::string deviceIdOrName);
+
+    /**
+     * DeviceInfo of the local device reachable over shared memory (a pipeline process
+     * running on the device itself). Booted state and LOCAL_SHDMEM protocol are set,
+     * so constructing a Device from it skips the network device search.
+     */
+    static DeviceInfo local();
     explicit DeviceInfo(const deviceDesc_t& desc);
     deviceDesc_t getXLinkDeviceDesc() const;
     [[deprecated("Use getDeviceId() instead")]] std::string getMxId() const;
@@ -81,6 +91,20 @@ class XLinkConnection {
     static std::tuple<bool, DeviceInfo> getDeviceById(const std::string& deviceId, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
 
     /**
+     * Finds the first device matching the given DeviceInfo (a single XLink search pass).
+     *
+     * A name-only DeviceInfo whose dotted-quad name was read as an IPv4 address
+     * (DeviceInfo(std::string) sets protocol TCP_IP) is retried as a USB port path
+     * ("<bus>.<port>...", e.g. "1.2.1.4") when no network device answers, so a device
+     * behind USB hubs stays reachable by its port path. Device ids, hostnames and any
+     * other protocol are searched exactly as given.
+     * @param deviceInfo Requirements the device has to match (name, deviceId, state, protocol, platform)
+     * @param foundDesc Description of the found device, valid on X_LINK_SUCCESS
+     * @returns X_LINK_SUCCESS if a device was found, X_LINK_DEVICE_NOT_FOUND otherwise
+     */
+    static XLinkError_t findFirstSuitableDevice(const DeviceInfo& deviceInfo, deviceDesc_t& foundDesc);
+
+    /**
      * Tries booting the given device into bootloader state
      *
      * @param devInfo Information of device which it should boot into bootloader state
@@ -105,6 +129,12 @@ class XLinkConnection {
     bool getRebootOnDestruction() const;
 
     int getLinkId() const;
+
+    /**
+     * Get device information of this connection. The protocol reflects the actually
+     * negotiated protocol (e.g. TCP_IP_OR_LOCAL_SHDMEM resolves to the transport in use).
+     */
+    DeviceInfo getDeviceInfo() const;
 
     /**
      * Explicitly closes xlink connection.

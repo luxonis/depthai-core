@@ -11,7 +11,9 @@
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
 #include "utility/Resources.hpp"
-#include "utility/Telemetry.hpp"
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
+    #include "utility/Telemetry.hpp"
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "utility/XLinkGlobalProfilingLogger.hpp"
 
 // libraries
@@ -157,7 +159,9 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
 
         logger::debug("Initialize - finished");
 
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
         utility::Telemetry::getInstance().init();
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 
         return true;
     }();

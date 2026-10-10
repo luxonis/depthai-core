@@ -6,11 +6,13 @@
     #include <cmath>
     #include <limits>
     #include <mutex>
+    #include <numeric>
     #include <opencv2/core.hpp>
     #include <opencv2/imgproc.hpp>
     #include <opencv2/stitching.hpp>
     #include <optional>
     #include <stdexcept>
+    #include <string>
     #include <utility>
 
     #include "beta/utilities/Stitching/FixedPanoramaCompositor.hpp"
@@ -18,6 +20,7 @@
     #include "beta/utilities/Stitching/StitchingCompositing.hpp"
     #include "depthai/pipeline/datatype/ImgFrame.hpp"
     #include "depthai/pipeline/datatype/MessageGroup.hpp"
+    #include "depthai/utility/matrixOps.hpp"
     #include "pipeline/ThreadedNodeImpl.hpp"
     #include "utility/ErrorMacros.hpp"
 
@@ -43,6 +46,119 @@ std::string statusToString(cv::Stitcher::Status status) {
             return "camera parameters adjustment failed";
     }
     return "unknown error";
+}
+
+bool isUndistorted(const ImgTransformation& transformation) {
+    const auto coefficients = transformation.getDistortionCoefficients();
+    return std::all_of(coefficients.begin(), coefficients.end(), [](float coefficient) {
+        return std::isfinite(coefficient) && std::abs(coefficient) <= matrix::MATRIX_EQ_EPSILON;
+    });
+}
+
+/**
+ * Rotate the registered cameras so that the panorama Y axis is the mean camera Y axis.
+ * @return The rotation applied to every camera, i.e. from the frame the cameras were expressed in to the panorama frame
+ */
+cv::Matx33d alignCamerasToMeanYAxis(std::vector<cv::detail::CameraParams>& cameras) {
+    constexpr double AXIS_EPSILON = 1e-6;
+    DAI_CHECK_V(!cameras.empty(), "Calibrated panorama needs at least one camera to determine its mean Y axis");
+
+    cv::Vec3d meanYAxis(0.0, 0.0, 0.0);
+    for(const auto& camera : cameras) {
+        cv::Mat rotation;
+        camera.R.convertTo(rotation, CV_64F);
+        meanYAxis += cv::Vec3d(rotation.at<double>(0, 1), rotation.at<double>(1, 1), rotation.at<double>(2, 1));
+    }
+    meanYAxis /= static_cast<double>(cameras.size());
+
+    const double meanNorm = cv::norm(meanYAxis);
+    DAI_CHECK_V(meanNorm > AXIS_EPSILON, "Calibrated panorama camera Y axes have no well-defined mean direction");
+    meanYAxis /= meanNorm;
+
+    const cv::Vec3d panoramaYAxis(0.0, 1.0, 0.0);
+    const cv::Vec3d cross = meanYAxis.cross(panoramaYAxis);
+    const double sineSquared = cross.dot(cross);
+    const double cosine = meanYAxis.dot(panoramaYAxis);
+
+    cv::Mat alignment = cv::Mat::eye(3, 3, CV_64F);
+    if(sineSquared > AXIS_EPSILON * AXIS_EPSILON) {
+        const cv::Mat crossMatrix = (cv::Mat_<double>(3, 3) << 0.0, -cross[2], cross[1], cross[2], 0.0, -cross[0], -cross[1], cross[0], 0.0);
+        alignment += crossMatrix + crossMatrix * crossMatrix * ((1.0 - cosine) / sineSquared);
+    } else if(cosine < 0.0) {
+        alignment = (cv::Mat_<double>(3, 3) << 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0);
+    }
+
+    for(auto& camera : cameras) {
+        cv::Mat rotation;
+        camera.R.convertTo(rotation, CV_64F);
+        const cv::Mat aligned = alignment * rotation;
+        aligned.convertTo(camera.R, CV_32F);
+    }
+    const cv::Matx33d applied = alignment;
+    return applied;
+}
+
+/// 4x4 pose of a camera in a reference frame: `rotation` maps camera directions to reference directions, `center` is the camera position.
+std::array<std::array<float, 4>, 4> toPose(const cv::Matx33d& rotation, const cv::Vec3d& center) {
+    const cv::Matx33f rotation32 = rotation;
+    const Point3f translation(static_cast<float>(center[0]), static_cast<float>(center[1]), static_cast<float>(center[2]));
+    return matrix::createTransformationMatrix(matrix::cvMatToMatrix3x3(cv::Mat(rotation32)), translation);
+}
+
+Extrinsics toExtrinsics(const std::array<std::array<float, 4>, 4>& pose, CameraBoardSocket toCameraSocket, const std::string& toDeviceId) {
+    Extrinsics extrinsics(pose, toCameraSocket, LengthUnit::CENTIMETER);
+    extrinsics.toDeviceId = toDeviceId;
+    return extrinsics;
+}
+
+/**
+ * Extrinsics of the virtual camera of a panorama composed from the input calibration. The panorama frame is the destination frame of the inputs rotated
+ * by `alignment`, and since the composition ignores the input translations, the camera is placed at the mean of the input camera centers.
+ */
+Extrinsics calibratedPanoramaExtrinsics(const std::vector<ImgTransformation>& transformations, const cv::Matx33d& alignment) {
+    cv::Vec3d center(0.0, 0.0, 0.0);
+    for(const auto& transformation : transformations) {
+        const auto translation = transformation.getExtrinsics().getTranslationVector(false, LengthUnit::CENTIMETER);
+        center += cv::Vec3d(translation[0], translation[1], translation[2]);
+    }
+    center /= static_cast<double>(transformations.size());
+
+    const auto destination = transformations.front().getExtrinsics();
+    return toExtrinsics(toPose(alignment.t(), center), destination.toCameraSocket, destination.toDeviceId);
+}
+
+/**
+ * Extrinsics of the virtual camera of a visually registered panorama. The registration only relates the panorama to its inputs, so the panorama is
+ * expressed through the reference input: in the destination frame of its extrinsics when it carries some, relative to its camera otherwise.
+ * @param referenceCamera Registered camera of the reference input; its rotation maps the input's directions to the panorama frame
+ */
+Extrinsics estimatedPanoramaExtrinsics(const cv::detail::CameraParams& referenceCamera, const ImgTransformation& referenceInput) {
+    cv::Mat rotation;
+    referenceCamera.R.convertTo(rotation, CV_64F);
+    const cv::Matx33d cameraToPanorama = rotation;
+    const auto panoramaToCamera = toPose(cameraToPanorama.t(), cv::Vec3d(0.0, 0.0, 0.0));
+
+    const auto inputExtrinsics = referenceInput.getExtrinsics();
+    if(!referenceInput.isValid() || !inputExtrinsics.hasValidRotationMatrix()) {
+        return toExtrinsics(panoramaToCamera, CameraBoardSocket::AUTO, "");
+    }
+    const auto cameraToDestination = inputExtrinsics.getTransformationMatrix(false, LengthUnit::CENTIMETER);
+    return toExtrinsics(matrix::matMul(cameraToDestination, panoramaToCamera), inputExtrinsics.toCameraSocket, inputExtrinsics.toDeviceId);
+}
+
+/**
+ * Metadata of a panorama rendered by an OpenCV rotation warper. The pixel (0, 0) of the panorama is the top-left corner of `canvas` in the warper's
+ * coordinate system, and the warper projects the way the corresponding dai::CameraModel does, up to a constant offset.
+ * @param scale Scale of the warper, the radius of the projection surface in pixels
+ */
+ImgTransformation panoramaTransformation(const cv::Rect& canvas, double scale, CameraModel model, const Extrinsics& extrinsics) {
+    // OpenCV's spherical warper measures the polar angle from the -Y axis, the equirectangular latitude is measured from the XZ plane
+    const double offsetY = model == CameraModel::Equirectangular ? scale * CV_PI / 2.0 : 0.0;
+    const auto focal = static_cast<float>(scale);
+    const auto cx = static_cast<float>(-canvas.x);
+    const auto cy = static_cast<float>(offsetY - canvas.y);
+    const std::array<std::array<float, 3>, 3> intrinsics = {{{focal, 0.0f, cx}, {0.0f, focal, cy}, {0.0f, 0.0f, 1.0f}}};
+    return {static_cast<size_t>(canvas.width), static_cast<size_t>(canvas.height), intrinsics, model, {}, extrinsics};
 }
 
 /** Decorates OpenCV's matcher and scores a candidate by confidence weighted by geometrically consistent inliers. */
@@ -113,17 +229,30 @@ class Stitching::Impl {
     cv::Ptr<ScoringFeaturesMatcher> scoringMatcher;
     std::optional<RegistrationCandidate> bestCandidate;
     uint32_t candidatesEvaluated = 0;
+    bool registrationWarningEmitted = false;
     bool transformFixed = false;
     FixedPanoramaCompositor fixedPanorama;
+    std::vector<ImgTransformation> fixedPanoramaTransformations;
+    /// Metadata of the panoramas `fixedPanorama` composes, describing their virtual camera. Set when the composition is prepared.
+    ImgTransformation fixedPanoramaView;
     PlanarStitcher planar;
+
+    struct PanoramaGeometry {
+        /// Region of the warper's coordinate system the panorama covers; its top-left corner is the panorama's pixel (0, 0)
+        cv::Rect canvas;
+        /// Scale of the warper, the radius of the projection surface in pixels
+        double scale = 0.0;
+    };
 
     void invalidate() {
         stitcher.release();
         scoringMatcher.release();
         bestCandidate.reset();
         candidatesEvaluated = 0;
+        registrationWarningEmitted = false;
         transformFixed = false;
         fixedPanorama.reset();
+        fixedPanoramaTransformations.clear();
         planar.reset();
     }
 
@@ -160,8 +289,7 @@ class Stitching::Impl {
         stitcher->setSeamEstimationResol(stitching::SEAM_ESTIMATION_RESOLUTION);
         stitcher->setCompositingResol(stitching::COMPOSITING_RESOLUTION);
         stitcher->setPanoConfidenceThresh(properties.panoConfidenceThreshold);
-        const bool waveCorrection =
-            properties.cameraModel == Stitching::CameraModel::SPHERICAL || properties.cameraModel == Stitching::CameraModel::CYLINDRICAL;
+        const bool waveCorrection = properties.cameraModel == CameraModel::Equirectangular || properties.cameraModel == CameraModel::Cylindrical;
         stitcher->setWaveCorrection(waveCorrection);
         if(waveCorrection) {
             stitcher->setWaveCorrectKind(cv::detail::WAVE_CORRECT_HORIZ);
@@ -178,18 +306,121 @@ class Stitching::Impl {
         stitcher->setBlender(stitching::createBlender(panoSizeHint));
     }
 
-    void prepareFixedPanorama(const std::vector<cv::Mat>& images, const StitchingProperties& properties) {
+    void validateInputCalibrationOrigins(const std::vector<ImgTransformation>& transformations) const {
+        DAI_CHECK_V(!transformations.empty(), "Calibrated panorama stitching needs at least one input transformation");
+        DAI_CHECK_V(transformations.front().isValid(), "Calibrated panorama input 0 carries no valid image transformation");
+
+        const auto firstExtrinsics = transformations.front().getExtrinsics();
+        DAI_CHECK_V(!firstExtrinsics.toDeviceId.empty(), "Calibrated panorama stitching needs a destination device ID, but input 0 has none");
+        DAI_CHECK_V(firstExtrinsics.toCameraSocket != CameraBoardSocket::AUTO,
+                    "Calibrated panorama stitching needs a concrete destination camera socket, but input 0 uses AUTO");
+
+        for(size_t i = 0; i < transformations.size(); ++i) {
+            const auto& transformation = transformations[i];
+            DAI_CHECK_V(transformation.isValid(), "Calibrated panorama input {} carries no valid image transformation", i);
+
+            const auto extrinsics = transformation.getExtrinsics();
+            DAI_CHECK_V(extrinsics.toDeviceId == firstExtrinsics.toDeviceId && extrinsics.toCameraSocket == firstExtrinsics.toCameraSocket,
+                        "Calibrated panorama inputs must share one destination coordinate system, but input 0 uses {}/{} and input {} uses {}/{}",
+                        firstExtrinsics.toDeviceId,
+                        toString(firstExtrinsics.toCameraSocket),
+                        i,
+                        extrinsics.toDeviceId,
+                        toString(extrinsics.toCameraSocket));
+        }
+    }
+
+    std::vector<cv::detail::CameraParams> camerasFromInputCalibration(const std::vector<ImgTransformation>& transformations) const {
+        validateInputCalibrationOrigins(transformations);
+
+        std::vector<cv::detail::CameraParams> cameras;
+        cameras.reserve(transformations.size());
+        for(size_t i = 0; i < transformations.size(); ++i) {
+            const auto& transformation = transformations[i];
+            DAI_CHECK_V(isUndistorted(transformation), "Calibrated panorama input {} is distorted; request an undistorted camera output", i);
+            const auto extrinsics = transformation.getExtrinsics();
+            matrix::validateRotationMatrix3x3(extrinsics.rotationMatrix);
+
+            const auto intrinsics = transformation.getIntrinsicMatrix();
+            const float fx = intrinsics[0][0];
+            const float fy = intrinsics[1][1];
+            const float ppx = intrinsics[0][2];
+            const float ppy = intrinsics[1][2];
+            DAI_CHECK_V(std::isfinite(fx) && std::isfinite(fy) && std::isfinite(ppx) && std::isfinite(ppy) && fx > 0.0f && fy > 0.0f,
+                        "Calibrated panorama input {} carries invalid intrinsics",
+                        i);
+
+            cv::detail::CameraParams camera;
+            camera.focal = fx;
+            camera.aspect = fy / fx;
+            camera.ppx = ppx;
+            camera.ppy = ppy;
+            camera.R = cv::Mat(3, 3, CV_32F);
+            for(int row = 0; row < 3; ++row) {
+                for(int column = 0; column < 3; ++column) camera.R.at<float>(row, column) = extrinsics.rotationMatrix[row][column];
+            }
+            camera.t = cv::Mat::zeros(3, 1, CV_64F);
+            cameras.push_back(std::move(camera));
+        }
+        return cameras;
+    }
+
+    void validatePreparedInputCalibration(const std::vector<ImgTransformation>& transformations) const {
+        validateInputCalibrationOrigins(transformations);
+        DAI_CHECK_V(transformations.size() == fixedPanoramaTransformations.size(),
+                    "Calibrated panorama was prepared for {} inputs, but the current group has {}",
+                    fixedPanoramaTransformations.size(),
+                    transformations.size());
+        for(size_t i = 0; i < transformations.size(); ++i) {
+            const auto currentExtrinsics = transformations[i].getExtrinsics();
+            const auto preparedExtrinsics = fixedPanoramaTransformations[i].getExtrinsics();
+            DAI_CHECK_V(isUndistorted(transformations[i])
+                            && matrix::mateq(transformations[i].getIntrinsicMatrix(), fixedPanoramaTransformations[i].getIntrinsicMatrix())
+                            && matrix::mateq(currentExtrinsics.rotationMatrix, preparedExtrinsics.rotationMatrix)
+                            && transformations[i].getSize() == fixedPanoramaTransformations[i].getSize(),
+                        "Calibrated panorama input {} became distorted or changed its intrinsics, rotation, or size after preparation",
+                        i);
+        }
+    }
+
+    /**
+     * @param extrinsics Extrinsics of the virtual camera of the composed panoramas
+     */
+    void prepareFixedPanorama(const std::vector<cv::Mat>& images,
+                              const std::vector<cv::detail::CameraParams>& cameras,
+                              double registrationScale,
+                              FixedPanoramaCompositor::Composition composition,
+                              const StitchingProperties& properties,
+                              const Extrinsics& extrinsics) {
         FixedPanoramaCompositor::Config config;
         config.cameraModel = properties.cameraModel;
         config.seamFinder = properties.seamFinder;
         config.compositingResolution = stitching::COMPOSITING_RESOLUTION;
         config.seamEstimationResolution = stitching::SEAM_ESTIMATION_RESOLUTION;
+        config.composition = composition;
         fixedPanorama.setConfig(config);
-        fixedPanorama.prepare(images, stitcher->cameras(), stitcher->workScale());
+        fixedPanorama.prepare(images, cameras, registrationScale);
+        fixedPanoramaView = panoramaTransformation(fixedPanorama.getCanvas(), fixedPanorama.getWarperScale(), properties.cameraModel, extrinsics);
     }
 
-    cv::Size panoramaSize(const std::vector<cv::Mat>& images) const {
-        const auto cameras = stitcher->cameras();
+    /**
+     * @param referenceInput Transformation of the first input, the panorama is expressed through it
+     */
+    void prepareEstimatedPanorama(const std::vector<cv::Mat>& images, const StitchingProperties& properties, const ImgTransformation& referenceInput) {
+        const auto& cameras = stitcher->cameras();
+        prepareFixedPanorama(images,
+                             cameras,
+                             stitcher->workScale(),
+                             FixedPanoramaCompositor::Composition::BLENDED,
+                             properties,
+                             estimatedPanoramaExtrinsics(cameras.front(), referenceInput));
+    }
+
+    /// Geometry the panorama is composed with from the registered cameras, the way cv::Stitcher and FixedPanoramaCompositor derive it.
+    PanoramaGeometry panoramaGeometry(const std::vector<cv::Mat>& images,
+                                      const std::vector<cv::detail::CameraParams>& cameras,
+                                      double registrationScale,
+                                      const StitchingProperties& properties) const {
         DAI_CHECK_V(cameras.size() == images.size(), "Stitching camera and image counts differ");
 
         std::vector<double> focals;
@@ -203,10 +434,11 @@ class Stitching::Impl {
         if(stitching::COMPOSITING_RESOLUTION > 0.0) {
             composeScale = std::min(1.0, std::sqrt(stitching::COMPOSITING_RESOLUTION * 1e6 / static_cast<double>(images.front().size().area())));
         }
-        const double composeWorkAspect = composeScale / stitcher->workScale();
-        auto warper = stitcher->warper()->create(static_cast<float>(warpedImageScale * composeWorkAspect));
+        const double composeWorkAspect = composeScale / registrationScale;
+        PanoramaGeometry geometry;
+        geometry.scale = warpedImageScale * composeWorkAspect;
+        auto warper = stitching::createWarper(properties.cameraModel)->create(static_cast<float>(geometry.scale));
 
-        cv::Rect canvas;
         for(size_t i = 0; i < images.size(); ++i) {
             auto camera = cameras[i];
             camera.focal *= composeWorkAspect;
@@ -216,15 +448,16 @@ class Stitching::Impl {
             camera.K().convertTo(intrinsics, CV_32F);
             const cv::Size imageSize(cvRound(images[i].cols * composeScale), cvRound(images[i].rows * composeScale));
             const auto roi = warper->warpRoi(imageSize, intrinsics, camera.R);
-            canvas = i == 0 ? roi : canvas | roi;
+            geometry.canvas = i == 0 ? roi : geometry.canvas | roi;
         }
-        return canvas.size();
+        return geometry;
     }
 
-    bool panoramaFits(const std::vector<cv::Mat>& images, cv::Size& size, const StitchingProperties& properties) const {
-        if(properties.maxPanoramaWidth == std::numeric_limits<uint32_t>::max() && properties.maxPanoramaHeight == std::numeric_limits<uint32_t>::max())
-            return true;
-        size = panoramaSize(images);
+    PanoramaGeometry estimatedPanoramaGeometry(const std::vector<cv::Mat>& images, const StitchingProperties& properties) const {
+        return panoramaGeometry(images, stitcher->cameras(), stitcher->workScale(), properties);
+    }
+
+    bool panoramaFits(const cv::Size& size, const StitchingProperties& properties) const {
         return size.width > 0 && size.height > 0 && static_cast<uint32_t>(size.width) <= properties.maxPanoramaWidth
                && static_cast<uint32_t>(size.height) <= properties.maxPanoramaHeight;
     }
@@ -259,7 +492,9 @@ void Stitching::run() {
             impl->invalidate();
         }
         if(!modeLogged && logger && currentProperties.mode == Mode::PANORAMA) {
-            if(currentProperties.continuous) {
+            if(currentProperties.useInputCalibration) {
+                logger->info("Panorama stitching using input calibration and coincident camera centers");
+            } else if(currentProperties.continuous) {
                 logger->info("Panorama stitching running in continuous estimation mode");
             } else {
                 logger->info("Panorama stitching running in best-of-{} mode; waiting for {} valid candidates before emitting panoramas",
@@ -327,39 +562,122 @@ void Stitching::run() {
             continue;
         }
 
+        if(currentProperties.useInputCalibration) {
+            cv::Mat pano;
+            try {
+                if(!impl->fixedPanorama.isPrepared()) {
+                    auto cameras = impl->camerasFromInputCalibration(transformations);
+                    cv::Matx33d alignment = cv::Matx33d::eye();
+                    if(currentProperties.cameraModel == CameraModel::Cylindrical) {
+                        alignment = alignCamerasToMeanYAxis(cameras);
+                    }
+                    const auto geometry = impl->panoramaGeometry(images, cameras, 1.0, currentProperties);
+                    if(!impl->panoramaFits(geometry.canvas.size(), currentProperties)) {
+                        if(logger) {
+                            logger->debug("Stitching rejected a {}x{} calibrated panorama exceeding the configured {}x{} maximum",
+                                          geometry.canvas.width,
+                                          geometry.canvas.height,
+                                          currentProperties.maxPanoramaWidth,
+                                          currentProperties.maxPanoramaHeight);
+                        }
+                        continue;
+                    }
+                    const auto composition = currentProperties.seamFinder == SeamFinder::NONE ? FixedPanoramaCompositor::Composition::DIRECT
+                                                                                              : FixedPanoramaCompositor::Composition::BLENDED;
+                    impl->prepareFixedPanorama(images, cameras, 1.0, composition, currentProperties, calibratedPanoramaExtrinsics(transformations, alignment));
+                    impl->fixedPanoramaTransformations = transformations;
+                    if(logger) {
+                        const auto size = impl->fixedPanorama.getCanvasSize();
+                        const auto* compositionName = composition == FixedPanoramaCompositor::Composition::DIRECT ? "direct" : "blended";
+                        logger->info(
+                            "Calibrated panorama composition fixed at {}x{}; reusing warp maps with {} composition", size.width, size.height, compositionName);
+                    }
+                } else {
+                    impl->validatePreparedInputCalibration(transformations);
+                }
+                pano = impl->fixedPanorama.compose(images);
+            } catch(const cv::Exception& e) {
+                if(logger) logger->warn("Calibrated panorama stitching failed: {}", e.what());
+                impl->fixedPanorama.reset();
+                impl->fixedPanoramaTransformations.clear();
+                continue;
+            } catch(const std::exception& e) {
+                if(logger) logger->warn("Calibrated panorama stitching rejected the current input group: {}", e.what());
+                impl->fixedPanorama.reset();
+                impl->fixedPanoramaTransformations.clear();
+                continue;
+            }
+
+            auto stitched = std::make_shared<ImgFrame>();
+            stitched->setCvFrame(pano, ImgFrame::Type::BGR888i);
+            stitched->setBufferMetadataFrom(first);
+            stitched->setTransformation(impl->fixedPanoramaView);
+            out.send(stitched);
+            continue;
+        }
+
         if(!impl->stitcher) {
             impl->createPanoramaStitcher(cv::Size(images.front().cols * static_cast<int>(images.size()), images.front().rows), currentProperties);
         }
 
         cv::Mat pano;
+        ImgTransformation view;
         cv::Stitcher::Status status = cv::Stitcher::OK;
-        const auto composePanorama = [&](const std::vector<cv::Mat>& contributing) -> std::optional<cv::Stitcher::Status> {
-            cv::Size panoramaSize;
-            if(!impl->panoramaFits(contributing, panoramaSize, currentProperties)) {
+        bool usedAllInputs = true;
+        const auto recordRegistrationFailure = [&](const std::string& reason) {
+            if(logger && !impl->registrationWarningEmitted) {
+                impl->registrationWarningEmitted = true;
+                logger->warn(
+                    "Panorama stitching could not register all inputs from image content (reason: {}). Ensure neighboring views overlap and contain distinct "
+                    "visual features. For calibrated fixed cameras, request undistorted outputs and call setUseInputCalibration(true).",
+                    reason);
+            }
+        };
+        // referenceInput is the index of the input the panorama is expressed through, the first contributing one
+        const auto composePanorama = [&](const std::vector<cv::Mat>& contributing, size_t referenceInput) -> std::optional<cv::Stitcher::Status> {
+            const auto geometry = impl->estimatedPanoramaGeometry(contributing, currentProperties);
+            if(!impl->panoramaFits(geometry.canvas.size(), currentProperties)) {
                 if(logger) {
                     logger->debug("Stitching rejected a {}x{} panorama exceeding the configured {}x{} maximum",
-                                  panoramaSize.width,
-                                  panoramaSize.height,
+                                  geometry.canvas.width,
+                                  geometry.canvas.height,
                                   currentProperties.maxPanoramaWidth,
                                   currentProperties.maxPanoramaHeight);
                 }
                 return std::nullopt;
             }
+            // Described from the registered cameras before composing, which cv::Stitcher may rescale to the compositing resolution
+            view = panoramaTransformation(geometry.canvas,
+                                          geometry.scale,
+                                          currentProperties.cameraModel,
+                                          estimatedPanoramaExtrinsics(impl->stitcher->cameras().front(), transformations[referenceInput]));
             return impl->stitcher->composePanorama(contributing, pano);
         };
         const auto estimateAndComposePanorama = [&](std::vector<cv::Mat> contributing) -> std::optional<cv::Stitcher::Status> {
+            std::vector<size_t> contributingInputs(contributing.size());
+            std::iota(contributingInputs.begin(), contributingInputs.end(), size_t{0});
             while(true) {
                 const auto estimationStatus = impl->stitcher->estimateTransform(contributing);
                 if(estimationStatus != cv::Stitcher::OK) return estimationStatus;
 
                 const auto component = impl->stitcher->component();
-                if(component.size() == contributing.size()) return composePanorama(contributing);
+                if(component.size() == contributing.size()) return composePanorama(contributing, contributingInputs.front());
                 if(logger) logger->debug("Stitching used {} of {} inputs, the rest did not match confidently", component.size(), contributing.size());
+                if(usedAllInputs) {
+                    recordRegistrationFailure("some inputs did not match confidently");
+                    usedAllInputs = false;
+                }
 
                 std::vector<cv::Mat> matched;
+                std::vector<size_t> matchedInputs;
                 matched.reserve(component.size());
-                for(auto index : component) matched.push_back(contributing[index]);
+                matchedInputs.reserve(component.size());
+                for(auto index : component) {
+                    matched.push_back(contributing[index]);
+                    matchedInputs.push_back(contributingInputs[index]);
+                }
                 contributing = std::move(matched);
+                contributingInputs = std::move(matchedInputs);
             }
         };
         try {
@@ -370,6 +688,7 @@ void Stitching::run() {
                 status = *stitchingStatus;
             } else if(impl->transformFixed) {
                 pano = impl->fixedPanorama.compose(images);
+                view = impl->fixedPanoramaView;
             } else {
                 impl->scoringMatcher->resetScore();
                 status = impl->stitcher->estimateTransform(images);
@@ -379,15 +698,16 @@ void Stitching::run() {
                         if(logger) {
                             logger->debug("Stitching used {} of {} inputs, the rest did not match confidently", component.size(), images.size());
                         }
+                        recordRegistrationFailure("some inputs did not match confidently");
                         continue;
                     }
 
-                    cv::Size candidateSize;
-                    if(!impl->panoramaFits(images, candidateSize, currentProperties)) {
+                    const auto candidateGeometry = impl->estimatedPanoramaGeometry(images, currentProperties);
+                    if(!impl->panoramaFits(candidateGeometry.canvas.size(), currentProperties)) {
                         if(logger) {
                             logger->debug("Stitching rejected a {}x{} panorama exceeding the configured {}x{} maximum",
-                                          candidateSize.width,
-                                          candidateSize.height,
+                                          candidateGeometry.canvas.width,
+                                          candidateGeometry.canvas.height,
                                           currentProperties.maxPanoramaWidth,
                                           currentProperties.maxPanoramaHeight);
                         }
@@ -403,8 +723,9 @@ void Stitching::run() {
 
                     status = impl->stitcher->setTransform(images, impl->bestCandidate->cameras);
                     if(status == cv::Stitcher::OK) {
-                        impl->prepareFixedPanorama(images, currentProperties);
+                        impl->prepareEstimatedPanorama(images, currentProperties, transformations.front());
                         pano = impl->fixedPanorama.compose(images);
+                        view = impl->fixedPanoramaView;
                         impl->transformFixed = true;
                         if(logger) {
                             const auto size = impl->fixedPanorama.getCanvasSize();
@@ -426,6 +747,9 @@ void Stitching::run() {
         }
 
         if(status != cv::Stitcher::OK || pano.empty()) {
+            if(status != cv::Stitcher::OK) {
+                if(usedAllInputs) recordRegistrationFailure(statusToString(status));
+            }
             if(logger) logger->debug("Stitching failed: {}", statusToString(status));
             continue;
         }
@@ -437,6 +761,7 @@ void Stitching::run() {
         auto stitched = std::make_shared<ImgFrame>();
         stitched->setCvFrame(pano, ImgFrame::Type::BGR888i);
         stitched->setBufferMetadataFrom(first);
+        stitched->setTransformation(view);
         out.send(stitched);
     }
 }

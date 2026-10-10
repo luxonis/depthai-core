@@ -96,6 +96,8 @@ const char* algorithmName(Depth::Algorithm algorithm) {
             return "NEURAL_ASSISTED_STEREO";
         case Depth::Algorithm::TOF:
             return "TOF";
+        case Depth::Algorithm::TOF_STEREO_FUSION:
+            return "TOF_STEREO_FUSION";
         case Depth::Algorithm::GPU_STEREO:
             return "GPU_STEREO";
     }
@@ -185,6 +187,7 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
         case Depth::Algorithm::NEURAL_ASSISTED_STEREO:
         case Depth::Algorithm::GPU_STEREO:
         case Depth::Algorithm::TOF:
+        case Depth::Algorithm::TOF_STEREO_FUSION:
             DAI_CHECK_V(std::holds_alternative<std::monostate>(config), "Depth config for {} must be empty (std::monostate).", algorithmName(algorithm));
             break;
         case Depth::Algorithm::AUTO:
@@ -314,7 +317,9 @@ float targetFpsWithDefault(float targetFps) {
     return targetFps > 0.f ? targetFps : DEFAULT_TARGET_FPS;
 }
 
-std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
+std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline,
+                                                                               const StereoPair& pair,
+                                                                               const std::shared_ptr<Device>& device) {
     std::shared_ptr<Camera> left;
     std::shared_ptr<Camera> right;
     for(const auto& node : pipeline.getAllNodes()) {
@@ -322,6 +327,10 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
             continue;
         }
         auto cam = std::static_pointer_cast<Camera>(node);
+        // Only reuse cameras of the device this Depth node runs on; the same socket on another pipeline device is unrelated.
+        if(device != nullptr && cam->getDevice() != nullptr && cam->getDevice() != device) {
+            continue;
+        }
         const auto socket = cam->getBoardSocket();
         if(socket == pair.left) {
             left = std::move(cam);
@@ -541,6 +550,9 @@ std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_pt
     if(cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
         supported.push_back(Algorithm::TOF);
     }
+    if(isRvc4 && !device->getStereoPairs().empty() && cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
+        supported.push_back(Algorithm::TOF_STEREO_FUSION);
+    }
 
     return supported;
 }
@@ -618,7 +630,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         Config config = std::monostate{};
         if(chosen == Algorithm::STEREO) {
             const auto pair = requireFirstStereoPair(device);
-            const auto [left, right] = findCamerasForPair(pipeline, pair);
+            const auto [left, right] = findCamerasForPair(pipeline, pair, device);
             const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
             if(inputs.resolution) {
                 validateStereoDepthResolution(inputs.resolution->first, inputs.resolution->second);
@@ -630,7 +642,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 
     const auto pair = requireFirstStereoPair(device);
-    const auto [left, right] = findCamerasForPair(pipeline, pair);
+    const auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
     const float targetFps = inputs.targetFps;
     const auto& resolution = inputs.resolution;
@@ -678,6 +690,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         case Algorithm::NEURAL_ASSISTED_STEREO:
         case Algorithm::GPU_STEREO:
         case Algorithm::TOF:
+        case Algorithm::TOF_STEREO_FUSION:
         case Algorithm::AUTO:
             break;
     }
@@ -687,15 +700,16 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
                                                const StereoPair& pair,
                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                const std::optional<float>& fps) {
-    auto [left, right] = findCamerasForPair(pipeline, pair);
+    auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const bool stereoCamerasPreexist = left && right;
 
-    // Create missing cameras on the sockets from the device's stereo pair.
+    // Create missing cameras on the sockets from the device's stereo pair, on the same device this node runs on
+    // (pipeline.create<Camera>() without a device would bind them to the master device).
     if(!left) {
-        left = pipeline.create<Camera>()->build(pair.left);
+        left = (device ? pipeline.create<Camera>(device) : pipeline.create<Camera>())->build(pair.left);
     }
     if(!right) {
-        right = pipeline.create<Camera>()->build(pair.right);
+        right = (device ? pipeline.create<Camera>(device) : pipeline.create<Camera>())->build(pair.right);
     }
 
     // When @p frameSize is unset and both stereo cameras already exist, match their sensor resolution.
@@ -790,6 +804,38 @@ void Depth::buildInternal() {
             confidenceOut_ = &tofBackend_->confidence;
 #endif
             break;
+        case Algorithm::TOF_STEREO_FUSION: {
+            const auto pair = requireFirstStereoPair(device);
+            auto [left, right] = findCamerasForPair(pipeline, pair, device);
+            float fps = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_).targetFps;
+            if(!stereoOutputFps_) {
+                // Inferred output FPS must not exceed either preconfigured sensor rate.
+                for(const auto& camera : {left, right}) {
+                    if(camera && camera->properties.fps != CameraProperties::AUTO) {
+                        fps = std::min(fps, camera->properties.fps);
+                    }
+                }
+            }
+            for(const auto& camera : {left, right}) {
+                if(camera) {
+                    DAI_CHECK_V(camera->properties.fps == CameraProperties::AUTO || camera->properties.fps >= fps,
+                                "Depth: TOF_STEREO_FUSION camera {} FPS ({}) must not be below fusion FPS ({}).",
+                                camera == left ? "left" : "right",
+                                camera->properties.fps,
+                                fps);
+                }
+            }
+            if(!left) left = pipeline.create<Camera>(device)->build(pair.left, std::nullopt, fps);
+            if(!right) right = pipeline.create<Camera>(device)->build(pair.right, std::nullopt, fps);
+            tofStereoFusionBackend_ = beta::node::ToFStereoFusion::create(device);
+            add(tofStereoFusionBackend_);
+            tofStereoFusionBackend_->build(left, right, fps);
+            depthOut_ = &tofStereoFusionBackend_->depth;
+            confidenceOut_ = &tofStereoFusionBackend_->confidence;
+            wiredResolution = {left->getMaxRequestedWidth(), left->getMaxRequestedHeight()};
+            wiredFps = fps;
+            break;
+        }
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);

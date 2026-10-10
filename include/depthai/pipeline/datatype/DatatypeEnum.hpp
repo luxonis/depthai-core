@@ -79,6 +79,10 @@ enum class DatatypeEnum : std::int32_t {
     MapOutputParserConfig,
     XFeatMonoParserConfig,
     XFeatStereoParserConfig,
+    DetectionParserConfig,
+    Odometry,
+    MultiDeviceCalibrationControl,
+    MultiDeviceCalibrationResult,
     COUNT  // Sentinel used by consistency checks; must remain the last enum entry.
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);

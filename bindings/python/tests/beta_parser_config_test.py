@@ -60,7 +60,6 @@ def test_map_output_parser_accepts_and_applies_a_runtime_config():
         parser.inputConfig.setWaitForMessage(True)
 
         input_queue = parser.input.createInputQueue()
-        config_queue = parser.inputConfig.createInputQueue()
         output_queue = parser.out.createOutputQueue()
 
         config = dai.beta.MapOutputParserConfig()
@@ -69,7 +68,7 @@ def test_map_output_parser_accepts_and_applies_a_runtime_config():
         nn_data = dai.NNData()
         nn_data.addTensor("map", np.array([[2.0, 4.0]], dtype=np.float32))
 
-        config_queue.send(config)
+        parser.inputConfig.send(config)
         pipeline.start()
         input_queue.send(nn_data)
         output = output_queue.get(timeout=1.0)

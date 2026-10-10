@@ -62,12 +62,14 @@ bool isCreatingNodeFromPipelineCreate() {
 }
 
 // Map of python node classes and call to pipeline to create it
-std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
+std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const std::shared_ptr<dai::Device>& device)>>>
+    pyNodeCreateMap;
 py::handle daiNodeModule;
 py::handle daiNodeInternalModule;
 py::handle daiBetaNodeModule;
 
-std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
+std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const std::shared_ptr<dai::Device>& device)>>>
+NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
 }
 
@@ -207,6 +209,9 @@ void bind_beta_lanedetectionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack);
+    #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+void bind_beta_multi_device_calibration(pybind11::module& m, void* pCallstack);
+    #endif
 void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_regressionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack);
@@ -290,6 +295,9 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_mapoutputparser);
     callstack.push_front(bind_beta_mlsdparser);
     callstack.push_front(bind_beta_mppalmdetectionparser);
+    #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    callstack.push_front(bind_beta_multi_device_calibration);
+    #endif
     callstack.push_front(bind_beta_pptextdetectionparser);
     callstack.push_front(bind_beta_regressionparser);
     callstack.push_front(bind_beta_rfdetrparser);
@@ -350,7 +358,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     // Node::Connection bindings
     py::class_<Node::Connection> nodeConnection(pyNode, "Connection", DOC(dai, Node, Connection));
     // Node::InputMap bindings
-    bindNodeMap<Node::InputMap>(pyNode, "InputMap");
+    bindNodeMap<Node::InputMap>(pyNode, "InputMap").def("getSourceDevices", &Node::InputMap::getSourceDevices, DOC(dai, Node, InputMap, getSourceDevices));
     // Node::OutputMap bindings
     bindNodeMap<Node::OutputMap>(pyNode, "OutputMap");
 
@@ -494,7 +502,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("maxSize") = Node::Input::INPUT_QUEUE_DEFAULT_MAX_SIZE,
              py::arg("blocking") = Node::Input::INPUT_QUEUE_DEFAULT_BLOCKING,
              DOC(dai, Node, Input, createInputQueue))
-        .def("getXLinkBridge", &Node::Input::getXLinkBridge, DOC(dai, Node, Input, getXLinkBridge));
+        .def("getXLinkBridge", &Node::Input::getXLinkBridge, DOC(dai, Node, Input, getXLinkBridge))
+        .def("getSourceDevice", &Node::Input::getSourceDevice, DOC(dai, Node, Input, getSourceDevice));
 
     // Node::Output bindings
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
@@ -613,6 +622,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("type"),
             py::arg("source"),
             DOC(dai, ThreadedNode, blockEvent));
+
+    pyDeviceNode.def("getDevice", &DeviceNode::getDevice, DOC(dai, DeviceNode, getDevice));
 
     pyBlockEvent.def("cancel", &BlockPipelineEvent::cancel, DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent, cancel))
         .def("setQueueSize",

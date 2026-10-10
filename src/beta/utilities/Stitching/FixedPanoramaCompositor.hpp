@@ -17,16 +17,19 @@ using node::Stitching;
 /**
  * Composes a panorama whose registered camera geometry does not change.
  *
- * Projection maps, image regions, validity and seam masks, and exposure parameters are prepared from the first image
- * group and reused. Later groups only resize (when requested), remap, compensate and blend.
+ * Projection maps and image regions are prepared once and reused. The compositor can either perform the full seam,
+ * exposure, and blending pipeline or directly copy warped inputs into the panorama.
  */
 class FixedPanoramaCompositor {
    public:
+    enum class Composition { BLENDED, DIRECT };
+
     struct Config {
-        Stitching::CameraModel cameraModel = Stitching::CameraModel::SPHERICAL;
+        CameraModel cameraModel = CameraModel::Equirectangular;
         Stitching::SeamFinder seamFinder = Stitching::SeamFinder::GRAPHCUT_COLOR;
         double compositingResolution = -1.0;
         double seamEstimationResolution = 0.1;
+        Composition composition = Composition::BLENDED;
     };
 
     void setConfig(const Config& config);
@@ -40,6 +43,12 @@ class FixedPanoramaCompositor {
     cv::Mat compose(const std::vector<cv::Mat>& images);
 
     cv::Size getCanvasSize() const;
+
+    /** Region of the warper's coordinate system the panorama covers; its top-left corner is the panorama's pixel (0, 0). */
+    cv::Rect getCanvas() const;
+
+    /** Scale of the rotation warper the panorama is rendered with, i.e. the radius of the projection surface in pixels. */
+    double getWarperScale() const;
 
    private:
     struct Source {
@@ -58,6 +67,7 @@ class FixedPanoramaCompositor {
     Config config;
     bool prepared = false;
     double composeScale = 1.0;
+    double warperScale = 0.0;
     cv::Rect canvas;
     std::vector<Source> sources;
     cv::Ptr<cv::detail::ExposureCompensator> compensator;

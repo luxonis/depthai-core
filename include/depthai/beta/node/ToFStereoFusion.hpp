@@ -52,11 +52,12 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
      * @note This node is supported on RVC4 devices only.
      * @param left Left camera node.
      * @param right Right camera node.
+     * @param fps Frame rate for the neural-depth camera inputs and ToF subnode. Must be finite and positive. Defaults to 30 FPS.
      * @return This node.
      */
-    std::shared_ptr<ToFStereoFusion> build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right);
+    std::shared_ptr<ToFStereoFusion> build(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right, float fps = 30.0f);
 
-    /** Initial fusion configuration. Depth pixels below this confidence are returned as zero. */
+    /** Initial confidence threshold and optional geometric-overlap crop configuration. */
     std::shared_ptr<ToFStereoFusionConfig> initialConfig;
 
    public:
@@ -71,10 +72,10 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     Subnode<dai::node::Sync> sync{*this, "sync"};
 
    public:
-    /** Fused depth output, aligned to the ToF sensor. */
+    /** Fused depth output, aligned to the ToF sensor. Optional cropping updates intrinsics and preserves the ToF camera pose. */
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-    /** Confidence output produced by the ToF-neural fusion network. */
-    Output neuralConfidence{*this, {"neuralConfidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    /** Confidence output produced by the ToF-neural fusion network, with the same optional crop and transformation as depth. */
+    Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /** Left camera input used when the node runs outside the RVC4 device build. */

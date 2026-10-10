@@ -32,6 +32,17 @@ namespace node {
  *  - `Mode::PLANAR_PROJECTION` projects the images onto a plane given in the common origin frame of the inputs
  *    (bird's-eye view), driven purely by the calibration carried in the messages, so it also works without overlap.
  *    All input transformations must have the same origin camera socket.
+ *
+ * The stitched frame carries an ImgTransformation describing the virtual camera that rendered it, so that the image can
+ * be placed in space, e.g. wrapped onto a cylinder next to a point cloud. In `Mode::PLANAR_PROJECTION` that is the
+ * pinhole view of `setView()`, relative to the common origin of the inputs. In `Mode::PANORAMA` the camera model follows
+ * `setCameraModel()`: dai::CameraModel::Perspective, Cylindrical or Equirectangular (see dai::CameraModel for their
+ * projection formulas), the focal length is the radius of the projection surface in pixels and the principal point is the
+ * pixel the panorama Z axis projects to. A panorama composed from the input calibration is expressed in the destination
+ * coordinate system of the inputs, centered at the mean of their camera centers. A visually registered panorama is only
+ * known relative to its inputs, so it is expressed through the first contributing input: in the destination coordinate
+ * system of that input's extrinsics when it carries some, and relative to that input's camera, with an AUTO socket,
+ * otherwise.
  */
 class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties> {
    public:
@@ -52,11 +63,6 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
      * The pinhole camera `Mode::PLANAR_PROJECTION` renders the plane from.
      */
     using VirtualCamera = StitchingProperties::VirtualCamera;
-
-    /**
-     * Camera projection model the images are warped onto.
-     */
-    using CameraModel = StitchingProperties::CameraModel;
 
     /**
      * Seam estimation method.
@@ -90,7 +96,8 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     InputMap& inputs = configuredInputs ? *configuredInputs : sync->inputs;
 
     /**
-     * Stitched image, ImgFrame of type BGR888i.
+     * Stitched image, ImgFrame of type BGR888i. Its transformation describes the virtual camera that rendered it, see the
+     * class documentation.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
@@ -176,11 +183,31 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     float getMinIncidenceAngle() const;
 
     /**
-     * Set the projection surface the images are warped onto. Defaults to SPHERICAL, same as OpenCV.
+     * Set the projection surface the images are warped onto. Defaults to Equirectangular (a sphere), same as OpenCV.
      * Only used in `Mode::PANORAMA`.
+     * @param model dai::CameraModel::Equirectangular, Cylindrical or Perspective
+     * @throws std::invalid_argument for any other model
      */
     void setCameraModel(CameraModel model);
     CameraModel getCameraModel() const;
+
+    /**
+     * Use the intrinsics and rotations carried by the input ImgTransformations to compose a panorama.
+     *
+     * All inputs must be expressed relative to exactly the same destination device ID and camera socket. Translation
+     * is ignored, so all camera centers are treated as coincident. Cylindrical panoramas use the normalized mean input
+     * camera Y axis as the cylinder axis. When enabled, panorama composition starts from the first synchronized group
+     * without feature matching or bundle adjustment. With `SeamFinder::NONE`, warped inputs are copied in order and
+     * later inputs replace earlier ones in overlapping regions. Other seam finders enable seam estimation, exposure
+     * compensation, and multiband blending. The prepared composition is reused for subsequent groups. Only undistorted
+     * inputs are accepted. Only used in `Mode::PANORAMA`.
+     */
+    void setUseInputCalibration(bool useInputCalibration);
+
+    /**
+     * Return whether panorama composition uses the calibration carried by the input ImgTransformations.
+     */
+    bool getUseInputCalibration() const;
 
     /**
      * Re-estimate the camera parameters on every frame. Only used in `Mode::PANORAMA`.
@@ -220,6 +247,10 @@ class Stitching : public DeviceNodeCRTP<BetaNode, Stitching, StitchingProperties
     void setPanoConfidenceThreshold(double threshold);
     double getPanoConfidenceThreshold() const;
 
+    /**
+     * Set the panorama seam finder. In calibrated panorama mode, `NONE` selects direct composition; other values also
+     * enable exposure compensation and multiband blending.
+     */
     void setSeamFinder(SeamFinder finder);
     SeamFinder getSeamFinder() const;
 

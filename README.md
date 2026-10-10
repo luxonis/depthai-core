@@ -1,7 +1,7 @@
 # DepthAI Library
 
 [![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
-[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://stg.docs.luxonis.com/software/v3/)
+[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://docs.luxonis.com/software-v3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
@@ -44,6 +44,66 @@ node = pipeline.create(dai.beta.node.ImgDetectionsFilter)
 
 On-device execution of Beta nodes is supported only on RVC4. If running Beta nodes on RVC2, DepthAI
 automatically configures beta nodes to run on the host.
+
+## Multiple devices in one pipeline
+
+A single `dai::Pipeline` can drive several devices. Devices become part of the pipeline
+explicitly with `addDevice(...)` or implicitly when a node is created with an explicit
+device; the first device becomes the master (default device) used by nodes created
+without one.
+
+```python
+pipeline = dai.Pipeline(False)                    # no implicit device
+devA = pipeline.addDevice("10.0.0.10")            # promoted to master
+devB = pipeline.addDevice("10.0.0.11")
+
+camA = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)          # master
+camB = pipeline.create(dai.node.Camera, device=devB).build(dai.CameraBoardSocket.CAM_A)
+
+sync = pipeline.create(dai.node.Sync)             # host Sync aligns both streams
+sync.setRunOnHost(True)
+camA.requestOutput((640, 400)).link(sync.inputs["a"])
+camB.requestOutput((640, 400)).link(sync.inputs["b"])
+```
+
+Key behaviors:
+
+- **Device-to-device links.** Linking an output on device A to an input on device B
+  inserts a host relay automatically at build time.
+- **Partial operation.** Losing one device leaves its streams idle while the rest of
+  the pipeline keeps running; the lost device reconnects on its own. Observe this via
+  `pipeline.getDeviceState(device)` and `pipeline.setDeviceStateCallback(...)`. The
+  pipeline stops itself only when the last device is gone or when a device that
+  consumes another device's streams is lost for good. Call
+  `pipeline.setStopOnDeviceLoss(True)` to stop when any device that runs a node is
+  lost for good (reconnection exhausted); with `device.setMaxReconnectionAttempts(0)`
+  it stops as soon as the disconnect is detected.
+- **Time.** `getTimestamp()` values are host-clock based and comparable across
+  devices; per-device `getTimestampDevice()` values are not (a host `Sync` node
+  rejects the DEVICE timestamp source across devices at build).
+- **Source devices.** After build, a host node can ask `input.getSourceDevice()` /
+  `inputs.getSourceDevices()` which device produces each of its inputs.
+- **Per-device configuration.** Every pipeline-level device setter/getter has a
+  `(device, ...)` overload; the form without a device targets the master.
+- Holistic record/replay is not supported with more than one device yet.
+
+See `examples/{cpp,python}/.../MultiDevice/` for frame sync, a device-to-device relay
+and a multi-device host node.
+
+### Running on the device (standalone)
+
+The pipeline process may itself run on an RVC4 and use the local device over shared
+memory, with further devices attached over the network:
+
+```python
+local = pipeline.addDevice(dai.DeviceInfo.local())   # this RVC4, no search timeout
+remote = pipeline.addDevice("10.0.0.11")             # a remote device over TCP
+```
+
+Requirements: outbound TCP to each remote device's gate (port 11492) and XLink ports,
+and `/tmp` shared with the device runtime for the local socket. Note that
+`DEPTHAI_PROTOCOL` and `DEPTHAI_DEVICE_ID_LIST` are process-wide discovery filters -
+leave them unset (`any`) when mixing local and remote devices.
 
 ## Dependencies
 - CMake >= 3.20
@@ -189,7 +249,7 @@ cmake --build build
 
 To integrate into a different build system than CMake, the preferred way is to compile as a dynamic library and set the correct build options.
 1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
-2. Then install: [Installing](#installing)
+2. Then install: [Installing](#installation-and-integration)
 
 In your non-CMake project (new Visual Studio project, ...)
 1. Set needed library directories:

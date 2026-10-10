@@ -769,9 +769,13 @@ void PointCloud::run() {
     // On device, apply the deserialized config from properties
     *initialConfig = properties.initialConfig;
 
-    pimpl->logger->info("PointCloud node started (colorMode={})", colorMode);
+    auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
-    uint32_t currentEepromId = getParentPipeline().getEepromId();
+    // EEPROM id of the device this node runs on (falls back to the pipeline default device when the node has none),
+    // so calibration changes are tracked on the node's own device rather than the master's.
+    auto readEepromId = [&]() -> uint32_t { return device ? device->getProperties().eepromId : getParentPipeline().getEepromId(); };
+    uint32_t currentEepromId = readEepromId();
     auto latestConfig = initialConfig;
 
     while(mainLoop()) {
@@ -780,6 +784,7 @@ void PointCloud::run() {
             continue;
         }
 
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         // Get synced frames from MessageGroup
         std::shared_ptr<MessageGroup> group;
         {
@@ -802,11 +807,12 @@ void PointCloud::run() {
             latestConfig = newConfig;
             initialized = false;
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // Read organized mode from config
         const bool organized = latestConfig->getOrganized();
 
-        const uint32_t latestEepromId = getParentPipeline().getEepromId();
+        const uint32_t latestEepromId = readEepromId();
         if(latestEepromId > currentEepromId) {
             pimpl->logger->debug("Calibration data changed (ID: {} -> {}), reinitializing...", currentEepromId, latestEepromId);
             initialized = false;
@@ -855,6 +861,7 @@ void PointCloud::run() {
 
         pc->updateBoundingBox();
 
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             outputPointCloud.send(pc);
@@ -863,6 +870,8 @@ void PointCloud::run() {
                 passthroughDepth.send(depthFrame);
             }
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

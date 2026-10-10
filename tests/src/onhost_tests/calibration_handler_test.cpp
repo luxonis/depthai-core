@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include "../../../src/device/StereoPairUtils.hpp"
+
 using namespace dai;
 
 namespace {
@@ -18,7 +20,165 @@ struct CalibrationHandlerTestAccess : CalibrationHandler {
     using CalibrationHandler::getCameraZAxisAngle;
 };
 
+void addTestCamera(CalibrationHandler& calibration, CameraBoardSocket socket) {
+    calibration.setCameraIntrinsics(socket, {{1000, 0, 640}, {0, 1000, 400}, {0, 0, 1}}, 1280, 800);
+}
+
+CameraFeatures makeStereoFeature(CameraBoardSocket socket, const std::string& sensorName) {
+    CameraFeatures feature;
+    feature.socket = socket;
+    feature.sensorName = sensorName;
+    feature.width = 1280;
+    feature.height = 800;
+    feature.supportedTypes = {CameraSensorType::MONO};
+    return feature;
+}
+
 }  // namespace
+
+TEST_CASE("Stereo pair ordering follows viewing direction in a common frame", "[stereo-pair-ordering]") {
+    using Transform = dai::detail::StereoPairTransform;
+    const Transform forwardFirst = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    const Transform forwardSecond = {{1, 0, 0, 9.5f}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    const auto forwardDelta = dai::detail::stereoPairPositionDeltaInView(forwardFirst, forwardSecond, false);
+    REQUIRE(forwardDelta);
+    REQUIRE(*forwardDelta > 0);
+
+    // The second camera is to the common-frame right of the first, but both look backward.
+    // Looking with the cameras reverses the pair's horizontal direction, so the second camera is stereo-left.
+    const Transform backwardFirst = {{1, 0, 0, -3.25f}, {0, -1, 0, -0.18f}, {0, 0, -1, -3.26f}, {0, 0, 0, 1}};
+    const Transform backwardSecond = {{1, 0, 0, 13.17f}, {0, -1, 0, 0.72f}, {0, 0, -1, -1.98f}, {0, 0, 0, 1}};
+    const auto backwardDelta = dai::detail::stereoPairPositionDeltaInView(backwardFirst, backwardSecond, false);
+    REQUIRE(backwardDelta);
+    REQUIRE(*backwardDelta < 0);
+}
+
+TEST_CASE("Stereo pair common-frame ordering can fall back for a degenerate view", "[stereo-pair-ordering]") {
+    using Transform = dai::detail::StereoPairTransform;
+    // Optical Z is parallel to common-frame down, so a stable horizontal right axis cannot be constructed.
+    const Transform first = {{1, 0, 0, 0}, {0, 0, 1, 0}, {0, -1, 0, 0}, {0, 0, 0, 1}};
+    auto second = first;
+    second[0][3] = 5;
+    REQUIRE_FALSE(dai::detail::stereoPairPositionDeltaInView(first, second, false));
+}
+
+TEST_CASE("Connected forward and backward stereo pairs use their shared calibration frame", "[stereo-pair-ordering]") {
+    const auto identity = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const auto backward = std::vector<std::vector<float>>{{1, 0, 0}, {0, -1, 0}, {0, 0, -1}};
+    const auto zero = std::vector<float>{0, 0, 0};
+
+    CalibrationHandler calibration;
+    for(const auto socket : {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_E}) {
+        addTestCamera(calibration, socket);
+    }
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, identity, {-10, 0, 0});
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO, identity, zero);
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_E, identity, {-16, 0, 0});
+    // This bridge expresses that the D/E pair faces backward relative to the B-rooted rig.
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_E, CameraBoardSocket::CAM_B, backward, {20, 0, 0});
+
+    const auto pairs = dai::detail::StereoPairCalculator::find(calibration,
+                                                               {makeStereoFeature(CameraBoardSocket::CAM_A, "front"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_B, "front"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_D, "rear"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_E, "rear")});
+    REQUIRE(pairs.size() == 2);
+    REQUIRE(pairs[0].left == CameraBoardSocket::CAM_E);
+    REQUIRE(pairs[0].right == CameraBoardSocket::CAM_D);
+    REQUIRE(pairs[0].baseline == Catch::Approx(16));
+    REQUIRE(pairs[1].left == CameraBoardSocket::CAM_A);
+    REQUIRE(pairs[1].right == CameraBoardSocket::CAM_B);
+    REQUIRE(pairs[1].baseline == Catch::Approx(10));
+}
+
+TEST_CASE("Disconnected stereo components retain component-local ordering", "[stereo-pair-ordering]") {
+    const auto identity = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const auto zero = std::vector<float>{0, 0, 0};
+
+    CalibrationHandler calibration;
+    for(const auto socket : {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_E}) {
+        addTestCamera(calibration, socket);
+    }
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, identity, {-10, 0, 0});
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO, identity, zero);
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_E, identity, {-16, 0, 0});
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_E, CameraBoardSocket::AUTO, identity, zero);
+
+    CameraBoardSocket frontRoot = CameraBoardSocket::AUTO;
+    CameraBoardSocket rearRoot = CameraBoardSocket::AUTO;
+    calibration.getExtrinsicsToOrigin(CameraBoardSocket::CAM_A, false, frontRoot);
+    calibration.getExtrinsicsToOrigin(CameraBoardSocket::CAM_D, false, rearRoot);
+    REQUIRE(frontRoot != rearRoot);
+
+    const auto pairs = dai::detail::StereoPairCalculator::find(calibration,
+                                                               {makeStereoFeature(CameraBoardSocket::CAM_A, "front"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_B, "front"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_D, "rear"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_E, "rear")});
+    REQUIRE(pairs.size() == 2);
+    // Without a bridge, nothing in calibration identifies the D/E component as backward-facing.
+    REQUIRE(pairs[0].left == CameraBoardSocket::CAM_D);
+    REQUIRE(pairs[0].right == CameraBoardSocket::CAM_E);
+    REQUIRE(pairs[1].left == CameraBoardSocket::CAM_A);
+    REQUIRE(pairs[1].right == CameraBoardSocket::CAM_B);
+    // Comparing cameras across disconnected components cannot establish a common frame and uses the legacy sign.
+    REQUIRE_FALSE(dai::detail::stereoPairFirstCameraIsLeft(calibration, CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_D, false, 5));
+}
+
+TEST_CASE("Cameras without an extrinsics link do not form a stereo pair", "[stereo-pair-ordering]") {
+    const auto identity = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const auto zero = std::vector<float>{0, 0, 0};
+
+    CalibrationHandler calibration;
+    addTestCamera(calibration, CameraBoardSocket::CAM_A);
+    addTestCamera(calibration, CameraBoardSocket::CAM_B);
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::AUTO, identity, zero);
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO, identity, zero);
+
+    const auto pairs = dai::detail::StereoPairCalculator::find(
+        calibration, {makeStereoFeature(CameraBoardSocket::CAM_A, "same-sensor"), makeStereoFeature(CameraBoardSocket::CAM_B, "same-sensor")});
+    REQUIRE(pairs.empty());
+}
+
+TEST_CASE("Three stereo pairs can be ordered in one calibration graph", "[stereo-pair-ordering]") {
+    const auto identity = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const auto backward = std::vector<std::vector<float>>{{1, 0, 0}, {0, -1, 0}, {0, 0, -1}};
+    const auto zero = std::vector<float>{0, 0, 0};
+
+    CalibrationHandler calibration;
+    for(const auto socket : {CameraBoardSocket::CAM_A,
+                             CameraBoardSocket::CAM_B,
+                             CameraBoardSocket::CAM_C,
+                             CameraBoardSocket::CAM_D,
+                             CameraBoardSocket::CAM_E,
+                             CameraBoardSocket::CAM_F}) {
+        addTestCamera(calibration, socket);
+    }
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, identity, {-10, 0, 0});
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO, identity, zero);
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, identity, {-12, 0, 0});
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_B, identity, {0, 8, 0});
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_E, CameraBoardSocket::CAM_F, identity, {-16, 0, 0});
+    calibration.setCameraExtrinsics(CameraBoardSocket::CAM_F, CameraBoardSocket::CAM_B, backward, {20, 0, 0});
+
+    const auto pairs = dai::detail::StereoPairCalculator::find(calibration,
+                                                               {makeStereoFeature(CameraBoardSocket::CAM_A, "pair-1"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_B, "pair-1"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_C, "pair-2"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_D, "pair-2"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_E, "pair-3"),
+                                                                makeStereoFeature(CameraBoardSocket::CAM_F, "pair-3")});
+    REQUIRE(pairs.size() == 3);
+    REQUIRE(pairs[0].left == CameraBoardSocket::CAM_F);
+    REQUIRE(pairs[0].right == CameraBoardSocket::CAM_E);
+    REQUIRE(pairs[0].baseline == Catch::Approx(16));
+    REQUIRE(pairs[1].left == CameraBoardSocket::CAM_C);
+    REQUIRE(pairs[1].right == CameraBoardSocket::CAM_D);
+    REQUIRE(pairs[1].baseline == Catch::Approx(12));
+    REQUIRE(pairs[2].left == CameraBoardSocket::CAM_A);
+    REQUIRE(pairs[2].right == CameraBoardSocket::CAM_B);
+    REQUIRE(pairs[2].baseline == Catch::Approx(10));
+}
 
 static ImuNoiseParameters makeImuNoiseParams() {
     ImuNoiseParameters params;
@@ -761,10 +921,23 @@ TEST_CASE("Dangling extrinsic reference throws", "[setCameraExtrinsics]") {
     REQUIRE_THROWS_WITH(handler.validateCalibrationHandler(), Catch::Matchers::ContainsSubstring("Dangling extrinsic reference"));
 }
 
+TEST_CASE("CalibrationHandler exposes transform to local calibration origin", "[getExtrinsicsToOrigin]") {
+    const auto handler = loadValidHandler();
+    CameraBoardSocket originSocket = CameraBoardSocket::AUTO;
+
+    const auto transform = handler.getExtrinsicsToOrigin(CameraBoardSocket::CAM_A, false, originSocket);
+
+    REQUIRE(originSocket == CameraBoardSocket::CAM_D);
+    REQUIRE(transform.size() == 4);
+    for(const auto& row : transform) {
+        REQUIRE(row.size() == 4);
+    }
+}
+
 TEST_CASE("Long chain extrinsics composition", "[getCameraExtrinsics]") {
     dai::CalibrationHandler handler = loadValidHandler();
 
-    auto R3 = std::vector<std::vector<float>>{{0.4f, 0.0f, 0.0f}, {0.0f, 0.3f, 0.0f}, {0.0f, 0.0f, 1.1f}};
+    auto R3 = std::vector<std::vector<float>>{{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
 
     auto zeros3 = std::vector<float>{0.0f, 0.0f, 0.0f};
 
@@ -776,8 +949,7 @@ TEST_CASE("Long chain extrinsics composition", "[getCameraExtrinsics]") {
 
     auto M = handler.getCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_D, false);
 
-    std::vector<std::vector<float>> expected = {
-        {0.064000003f, 0.0f, 0.0f, 0.400000006f}, {0.0f, 0.027000003f, 0.0f, 4.879999638f}, {0.0f, 0.0f, 1.33100009f, 3.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    std::vector<std::vector<float>> expected = {{0.0f, 1.0f, 0.0f, 1.0f}, {-1.0f, 0.0f, 0.0f, 4.0f}, {0.0f, 0.0f, 1.0f, 3.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
 
     REQUIRE(M == expected);
 }

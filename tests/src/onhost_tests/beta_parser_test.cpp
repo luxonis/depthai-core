@@ -297,7 +297,6 @@ std::pair<std::shared_ptr<Output>, std::shared_ptr<Output>> runParserBeforeAndAf
     parser->inputConfig.setWaitForMessage(true);
 
     auto inputQueue = parser->input.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
 
     auto initial = std::make_shared<Config>(*parser->initialConfig);
@@ -321,11 +320,11 @@ std::pair<std::shared_ptr<Output>, std::shared_ptr<Output>> runParserBeforeAndAf
         pipeline.start();
         started = true;
 
-        configQueue->send(initial);
+        parser->inputConfig.send(initial);
         inputQueue->send(fixture.input);
         auto before = getOutput();
 
-        configQueue->send(std::make_shared<Config>(changed));
+        parser->inputConfig.send(std::make_shared<Config>(changed));
         inputQueue->send(fixture.input);
         auto after = getOutput();
 

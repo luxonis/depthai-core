@@ -326,6 +326,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::DetectionParserConfig:
         case DatatypeEnum::SegmentationParserConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
@@ -343,6 +344,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::MapData:
         case DatatypeEnum::MessageGroup:
         case DatatypeEnum::TransformData:
+        case DatatypeEnum::Odometry:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::AlignConfig:
@@ -352,6 +354,8 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::MultiDeviceCalibrationControl:
+        case DatatypeEnum::MultiDeviceCalibrationResult:
         case DatatypeEnum::AutoCalibrationConfig:
         case DatatypeEnum::AutoCalibrationResult:
         case DatatypeEnum::CalibrationQuality:

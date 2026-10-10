@@ -42,6 +42,8 @@ class DeviceGate {
     bool destroySession();
     SessionState getState();
 
+    std::string getLastError() const;
+
     // Waits for the gate session to end
     void waitForSessionEnd();
 
@@ -58,6 +60,7 @@ class DeviceGate {
     class GateImpl {
        public:
         virtual ~GateImpl();
+        std::string lastError;
         virtual bool isOkay() = 0;
         virtual bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) = 0;
         virtual bool startSession(std::string sessionId) = 0;

@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "fmt/format.h"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -166,14 +167,28 @@ float Stitching::getMinIncidenceAngle() const {
 }
 
 void Stitching::setCameraModel(CameraModel model) {
+    if(model != CameraModel::Equirectangular && model != CameraModel::Cylindrical && model != CameraModel::Perspective) {
+        throw std::invalid_argument(fmt::format("Stitching supports Equirectangular, Cylindrical and Perspective camera models, not {}", toString(model)));
+    }
     std::lock_guard<std::mutex> lock(hostPropertiesMutex);
     properties.cameraModel = model;
     invalidateHostState();
 }
 
-Stitching::CameraModel Stitching::getCameraModel() const {
+CameraModel Stitching::getCameraModel() const {
     std::lock_guard<std::mutex> lock(hostPropertiesMutex);
     return properties.cameraModel;
+}
+
+void Stitching::setUseInputCalibration(bool useInputCalibration) {
+    std::lock_guard<std::mutex> lock(hostPropertiesMutex);
+    properties.useInputCalibration = useInputCalibration;
+    invalidateHostState();
+}
+
+bool Stitching::getUseInputCalibration() const {
+    std::lock_guard<std::mutex> lock(hostPropertiesMutex);
+    return properties.useInputCalibration;
 }
 
 void Stitching::setContinuous(bool continuous) {

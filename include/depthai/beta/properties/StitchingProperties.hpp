@@ -5,6 +5,7 @@
 #include <limits>
 #include <optional>
 
+#include "depthai/common/CameraModel.hpp"
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/optional.hpp"
@@ -21,16 +22,6 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
         PANORAMA,
         /// Projection of calibrated views onto a plane.
         PLANAR_PROJECTION,
-    };
-
-    /** Camera projection model the panorama images are warped onto. */
-    enum class CameraModel : std::uint8_t {
-        /// Spherical surface, the OpenCV default.
-        SPHERICAL,
-        /// Plane, appropriate for a pinhole camera and small fields of view.
-        PINHOLE,
-        /// Cylindrical surface.
-        CYLINDRICAL,
     };
 
     /** Seam estimation method. */
@@ -61,7 +52,8 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
     };
 
     Mode mode = Mode::PANORAMA;
-    CameraModel cameraModel = CameraModel::SPHERICAL;
+    /// Projection model the panorama images are warped onto: Equirectangular (the OpenCV default), Cylindrical or Perspective.
+    CameraModel cameraModel = CameraModel::Equirectangular;
     /// Number of image inputs configured by Stitching::build().
     std::uint32_t numInputs = 0;
     bool continuous = false;
@@ -78,6 +70,8 @@ struct StitchingProperties : PropertiesSerializable<Properties, StitchingPropert
     /// Maximum planar projection range, stored in centimeters.
     float maxRange = 1000.0f;
     float minIncidenceAngle = 5.0f;
+    /// Use the rotations and intrinsics carried by the input frames instead of visually registering a panorama.
+    bool useInputCalibration = false;
 
     ~StitchingProperties() override;
 };
@@ -99,7 +93,8 @@ DEPTHAI_SERIALIZE_EXT(StitchingProperties,
                       maxViewHeight,
                       maxRange,
                       minIncidenceAngle,
-                      numInputs);
+                      numInputs,
+                      useInputCalibration);
 
 }  // namespace beta
 }  // namespace dai

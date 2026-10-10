@@ -28,10 +28,10 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
     }
     // Take the first stereo pair
     auto stereoPair = stereoPairs[0];
-    // Create the two cameras
+    // Create the two cameras on the same device this node runs on
     auto pipeline = getParentPipeline();
-    auto left = pipeline.create<dai::node::Camera>()->build(stereoPair.left);
-    auto right = pipeline.create<dai::node::Camera>()->build(stereoPair.right);
+    auto left = pipeline.create<dai::node::Camera>(device)->build(stereoPair.left);
+    auto right = pipeline.create<dai::node::Camera>(device)->build(stereoPair.right);
 
     return build(
         *left->requestOutput(size, std::nullopt, ImgResizeMode::CROP, fps), *right->requestOutput(size, std::nullopt, ImgResizeMode::CROP, fps), presetMode);

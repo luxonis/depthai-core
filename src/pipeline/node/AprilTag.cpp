@@ -183,6 +183,7 @@ void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagPropertie
 
 void AprilTag::run() {
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     // Retrieve properties and initial config
     const dai::AprilTagProperties& properties = getProperties();
     dai::AprilTagConfig config = properties.initialConfig;
@@ -219,6 +220,7 @@ void AprilTag::run() {
     handleErrors(errno);
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         // Preallocate data on stack for AprilTag detection
         int32_t width = 0;
         int32_t height = 0;
@@ -248,6 +250,7 @@ void AprilTag::run() {
             // Prepare data for AprilTag detection based on input frame type
             frameType = inFrame->getType();
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::NV12) {
             width = static_cast<int32_t>(inFrame->getWidth());
@@ -271,11 +274,7 @@ void AprilTag::run() {
         image_u8_t aprilImg{width, height, stride, imgbuf};
 
         // Detect AprilTags
-        auto now = std::chrono::system_clock::now();
         std::unique_ptr<zarray_t, void (*)(zarray_t*)> detections(apriltag_detector_detect(td.get(), &aprilImg), apriltag_detections_destroy);
-        auto end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsedSeconds = end - now;
-        logger->trace("April detections took {} ms", elapsedSeconds.count() / 1000.0);
 
         std::shared_ptr<dai::AprilTags> aprilTags = std::make_shared<dai::AprilTags>();
 
@@ -323,6 +322,7 @@ void AprilTag::run() {
         aprilTags->setBufferMetadataFrom(inFrame);
         aprilTags->setTransformation(inFrame->transformation);
 
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
 
@@ -330,6 +330,8 @@ void AprilTag::run() {
             out.send(aprilTags);
             passthroughInputImage.send(inFrame);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
 
         // Logging
         logger->trace("Detected {} april tags", zarray_size(detections.get()));

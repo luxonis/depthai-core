@@ -29,7 +29,7 @@ struct Extrinsics {
 
     Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 
-    Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
+    Extrinsics(const std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 
     std::vector<std::vector<float>> rotationMatrix;
     /**
@@ -140,12 +140,25 @@ struct Extrinsics {
     std::vector<float> getTranslationVector(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
+     * Get a copy of these extrinsics with the translation and specification translation expressed in another unit.
+     * @param unit Length unit of the returned copy
+     * @return Copy of these extrinsics in the given unit
+     */
+    Extrinsics withLengthUnit(LengthUnit unit) const;
+
+    /**
      * Two Extrinsics objects are equal if their rotation matrices and translation vectors are equal (within a small epsilon).
      * @param other The other Extrinsics object to compare with
      * @param epsilon The tolerance for comparing floating-point values
      * @return true if the Extrinsics objects are equal, false otherwise
      */
     bool isEqualExtrinsics(const Extrinsics& other, float epsilon = 1e-6f) const;
+
+    /**
+     * Check whether the rotation matrix is a finite, proper 3x3 rotation matrix.
+     * @return true if the rotation matrix is valid, false otherwise
+     */
+    bool hasValidRotationMatrix() const;
 
     /**
      * Check whether these extrinsics can be expressed relative to the same target coordinate system as another Extrinsics object.
@@ -168,5 +181,20 @@ struct Extrinsics {
 
     DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit, toDeviceId);
 };
+
+/**
+ * A directed cross-device calibration edge.
+ *
+ * The source coordinate system is identified by fromDeviceId/fromSocket. The
+ * destination coordinate system is identified by extrinsics.toDeviceId and
+ * extrinsics.toCameraSocket.
+ */
+struct MultiDeviceExtrinsics {
+    std::string fromDeviceId;
+    CameraBoardSocket fromSocket = CameraBoardSocket::AUTO;
+    Extrinsics extrinsics;
+};
+
+DEPTHAI_SERIALIZE_EXT(MultiDeviceExtrinsics, fromDeviceId, fromSocket, extrinsics);
 
 }  // namespace dai

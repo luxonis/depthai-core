@@ -18,14 +18,25 @@ on:
         required: true
       CI_TELEMETRY_API_KEY:
         required: true
+      INFLUXDB_TEST_REPORT_BUCKET:
+        required: true
+      INFLUXDB_ORG:
+        required: true
+      INFLUXDB_TOKEN:
+        required: true
+      INFLUXDB_URL:
+        required: true
 
 jobs:
   build_windows_tests:
-    runs-on: windows-2022
+    runs-on: windows-2025
     outputs:
         artifact_id: ${{ steps.reuse.outputs.artifact_id || steps.artifact-upload-step.outputs.artifact-id }}
     env:
       BUILD_TYPE: Release
+      CMAKE_GENERATOR: Visual Studio 18 2026
+      CMAKE_GENERATOR_PLATFORM: x64
+      CMAKE_GENERATOR_TOOLSET: v143
       VCPKG_ROOT: C:\vcpkg
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
       VCPKG_DEFAULT_TRIPLET: x64-windows
@@ -98,13 +109,19 @@ jobs:
         Write-Host "Copying source from $env:GITHUB_WORKSPACE to C:\depthai-core ..."
         Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
 
+    - name: Setup cmake
+      if: steps.reuse.outputs.skip_build != 'true'
+      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+      with:
+        cmake-version: '4.2.x'
+
     - name: Restore vcpkg cache
       if: steps.reuse.outputs.skip_build != 'true'
       uses: actions/cache/restore@v4
       id: vcpkg-restore
       with:
         path: C:\vcpkg_binaries
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        key: vcpkg-archives-windows-2025-v143-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
       if: steps.reuse.outputs.skip_build != 'true'
@@ -161,7 +178,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: C:\vcpkg_binaries
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        key: vcpkg-archives-windows-2025-v143-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Upload artifact
       if: steps.reuse.outputs.skip_build != 'true'
@@ -222,7 +239,7 @@ jobs:
     name: Report Windows test results
     needs: [run_windows_tests_rvc4, run_windows_tests_rvc4_usb]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ['self-hosted', 'testbed-runner']
     permissions:
       contents: read
     steps:
@@ -233,6 +250,16 @@ jobs:
         pattern: ctest-log-windows-*
         path: ctest-logs
     - name: Generate combined summary
+      env:
+        INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
+        INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
+        INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
+        INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_SHA: ${{ github.sha }}
+        GITHUB_REF: ${{ github.ref }}
+        GITHUB_HEAD_REF: ${{ github.head_ref }}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
       run: |
         if ! command -v python3 >/dev/null 2>&1; then
           echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
@@ -244,6 +271,7 @@ jobs:
         first_summary=1
         mkdir -p ctest-reports
         artifact_prefix="ctest-log-windows-"
+        current_time_stamp=$(date +%Y-%m-%dT%H:%M:%S)
         for dir in ctest-logs/${artifact_prefix}*; do
           [ -d "$dir" ] || continue
           log_files=("$dir"/*.log)
@@ -261,6 +289,7 @@ jobs:
           report_context="${context//\//_}"
           report_context="${report_context// /_}"
           python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
+          python3 scripts/ci/junit_to_influxdb.py "$current_time_stamp" "windows" "ctest-reports/${report_context}.xml"
           echo "" >> "$GITHUB_STEP_SUMMARY"
         done
 
