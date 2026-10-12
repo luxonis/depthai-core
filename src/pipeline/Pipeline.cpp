@@ -2047,10 +2047,12 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
 
     bool shouldStop = false;
     const bool fatal = fatalDevices.count(devicePtr.get()) > 0;
+    const bool strict = stopOnDeviceLoss;
     if(state == DeviceState::FAILED) {
-        // Fatal device (consumes other devices' streams) or last device running any node ->
-        // stop. A device that carries no node (added with addDevice but unused, or the
-        // implicit device of a host-only pipeline) does not affect the streams.
+        // Fatal device (consumes other devices' streams), last device running any node or
+        // any device running a node in strict mode -> stop. A device that carries no node
+        // (added with addDevice but unused, or the implicit device of a host-only pipeline)
+        // does not affect the streams.
         const auto assignedDevices = getAllAssignedDevices();
         bool carriesNodes = false;
         bool anyAlive = false;
@@ -2064,7 +2066,7 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
                 }
             }
         }
-        shouldStop = fatal || (carriesNodes && !anyAlive);
+        shouldStop = fatal || (carriesNodes && (strict || !anyAlive));
     }
     if(callback) {
         try {
@@ -2076,7 +2078,9 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
     if(shouldStop) {
         Logging::getInstance().logger.warn("Stopping pipeline - device {} is gone for good and was {}",
                                            devicePtr->getDeviceInfo().getDeviceId(),
-                                           fatal ? "a fatal device" : "the last device alive");
+                                           fatal    ? "a fatal device"
+                                           : strict ? "running nodes with stopOnDeviceLoss set"
+                                                    : "the last device alive");
         // Stop from a separate thread: this runs on the device's monitor thread, which
         // stop() joins indirectly when closing the devices. The thread owns no reference to
         // the pipeline - wait(), start() and the destructor join it - so the pipeline can

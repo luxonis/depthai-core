@@ -193,3 +193,12 @@ TEST_CASE("Host-only pipeline run() returns once stopped from another thread") {
     stopper.join();
     REQUIRE_FALSE(p.isRunning());
 }
+
+TEST_CASE("Pipeline stopOnDeviceLoss is off by default and can be toggled") {
+    dai::Pipeline p(false);
+    REQUIRE_FALSE(p.getStopOnDeviceLoss());
+    p.setStopOnDeviceLoss(true);
+    REQUIRE(p.getStopOnDeviceLoss());
+    p.setStopOnDeviceLoss(false);
+    REQUIRE_FALSE(p.getStopOnDeviceLoss());
+}

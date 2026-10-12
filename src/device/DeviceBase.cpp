@@ -1211,12 +1211,17 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
         // Create and start session
         // TODO Tie create and start session together. Split for now, since in some cases starting the session works, even if creating failed.
+        std::string createError;
         if(!gate->createSession()) {
+            createError = gate->getLastError();
             spdlog::error("Could not create the session on gate!");
         }
 
         if(!gate->startSession()) {
-            spdlog::error("Could not start the session on gate!");
+            std::string reason = gate->getLastError();
+            if(!createError.empty()) reason = createError + "; " + reason;
+            throw std::runtime_error(
+                fmt::format("Device '{}' is reachable, but its gate could not start the DepthAI firmware session ({}). ", deviceInfo.name, reason));
         }
         // Connect with XLinkConnection (skip checking if booted)
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);
@@ -1674,8 +1679,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
     }
-    // Device is gone for good: idle its streams; the pipeline stops only when this
-    // was the last device or a fatal one (a device consuming other devices' streams)
     notifyPipelineDeviceState(DeviceState::FAILED);
 }
 
