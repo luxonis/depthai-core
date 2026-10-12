@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.10.0" LANGUAGES CXX C)
+project(depthai VERSION "3.11.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -777,6 +777,7 @@ include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
 include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
 include(DepthaiVisualizerDownloader)        # depthai-visualizer downloader
+include(DepthaiVisualizerLicense)           # depthai-visualizer license extraction and verification
 
 # depthai-shared enforce commit hash match if CI
 if($ENV{CI})
@@ -880,6 +881,11 @@ if(DEPTHAI_EMBED_FRONTEND)
     )
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_VISUALIZER_RESOURCE_LIST}) # TODO - Handle the case non debug case
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_VISUALIZER_VERSION="${DEPTHAI_VISUALIZER_COMMIT}")
+    # Extract LICENSE + THIRD_PARTY_NOTICES.md from the archive and verify against the committed notice
+    DepthaiVisualizerLicense(
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}/depthai-visualizer-${DEPTHAI_VISUALIZER_COMMIT}.tar.xz"
+        "${CMAKE_CURRENT_SOURCE_DIR}/notices/depthai-visualizer-LICENSE"
+    )
 endif()
 
 message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
