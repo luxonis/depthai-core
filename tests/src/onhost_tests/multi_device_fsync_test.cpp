@@ -74,3 +74,38 @@ TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-6
     auto p = getDefaultParameters();
     testSync(fps, p);
 }
+
+TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60][ov9282][og05]") {
+    float fps = 60.0f;
+    auto p = getDefaultParameters();
+    p.allowedSensors = std::set<std::string>{"OV9282", "OG05B10"};
+    testSync(fps, p);
+}
+
+TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60][ov9282][imx586]") {
+    float fps = 60.0f;
+    auto p = getDefaultParameters();
+    p.allowedSensors = std::set<std::string>{"OV9282", "IMX586"};
+    testSync(fps, p);
+}
+
+TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60][og05][imx586]") {
+    float fps = 60.0f;
+    auto p = getDefaultParameters();
+    p.allowedSensors = std::set<std::string>{"OG05B10", "IMX586"};
+    testSync(fps, p);
+}
+
+TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60][imx586]") {
+    float fps = 60.0f;
+    auto p = getDefaultParameters();
+    p.allowedSensors = std::set<std::string>{"IMX586"};
+    testSync(fps, p);
+}
+
+TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60][ov9282]") {
+    float fps = 60.0f;
+    auto p = getDefaultParameters();
+    p.allowedSensors = std::set<std::string>{"OV9282"};
+    testSync(fps, p);
+}
