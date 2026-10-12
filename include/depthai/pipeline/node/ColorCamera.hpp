@@ -181,7 +181,6 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     /// Set still output size, as a tuple <width, height>
     void setStillSize(const std::tuple<int, int>& size);
 
-    /// Set the mock ISP output width and height in pixels.
     void setMockIspSize(int width, int height);
 
     /// Set number of frames in preview pool

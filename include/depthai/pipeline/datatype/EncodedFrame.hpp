@@ -193,7 +193,6 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
      */
     EncodedFrame& setProfile(Profile profile);
 
-    /// Return frame metadata as a BITSTREAM ImgFrame with an empty data buffer.
     ImgFrame getImgFrameMeta() const;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
