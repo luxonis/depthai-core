@@ -102,25 +102,25 @@ jobs:
         with:
           cmake-version : '3.31.x'
       - name: Cache vcpkg folder
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: /home/runner/.vcpkg
           key: vcpkg-ubuntu-latest
       - name: List vcpkg cache directory
         run: ls -a -l /home/runner/.vcpkg || true
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
-          python-version: 3.8
+          python-version: '3.12'
       - name: Install dependencies
         run: |
           sudo apt update
@@ -146,7 +146,7 @@ jobs:
         run: bash ./bindings/python/ci/show_vcpkg_logs.sh
 
       - name: Upload docstring artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docstrings
           path: bindings/python/docstrings/
@@ -173,36 +173,36 @@ jobs:
 
       - name: Cache vcpkg folder
         if: runner.os != 'Windows'
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: /home/runner/.vcpkg/
           key: vcpkg-${{ matrix.os }}
       - name: Cache vcpkg folder
         if: runner.os == 'Windows'
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: C:/.vcpkg/
           key: vcpkg-${{ matrix.os }}
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10"
 
@@ -270,21 +270,21 @@ jobs:
         with:
           cmake-version : '4.2.x'
       - name: Cache vcpkg folder
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: C:/.vcpkg
           key: vcpkg-windows-2025-v143-gfortran
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
@@ -301,7 +301,7 @@ jobs:
             ForEach-Object { Rename-Item -LiteralPath $_.FullName -NewName "$($_.Name).disabled" -Verbose }
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.python-architecture }}
@@ -340,7 +340,7 @@ jobs:
         shell: bash
         run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-windows-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
@@ -366,7 +366,7 @@ jobs:
         with:
           cmake-version : '3.31.x'
       - name: Cache vcpkg folder
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: /Users/runner/.vcpkg
           key: vcpkg-${{ matrix.os }}
@@ -375,17 +375,17 @@ jobs:
           ls -a -l /Users/runner/.vcpkg || true
           echo "PATH=$PATH"
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
@@ -393,7 +393,7 @@ jobs:
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Append build hash if not a tagged commit
@@ -419,7 +419,7 @@ jobs:
         shell: bash
         run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-macos-${{ matrix.os }}-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
@@ -432,12 +432,12 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Download audited wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-macos-${{ matrix.os }}-*
           path: bindings/python/wheelhouse/audited/
@@ -448,7 +448,7 @@ jobs:
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-combined-macos-${{ matrix.os }}
           path: bindings/python/wheelhouse/audited/*
@@ -492,17 +492,17 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
       - name: Cache vcpkg folder
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: /home/runner/.vcpkg
           key: vcpkg-manylinux-x86_64
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
@@ -510,7 +510,7 @@ jobs:
       - name: Create folder structure
         run: cd bindings/python && mkdir -p wheelhouse/audited/
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
@@ -541,7 +541,7 @@ jobs:
       - name: Verify repaired wheel license files
         run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-linux-x86_64-${{ matrix.python-set }}
           path: bindings/python/wheelhouse/audited/*
@@ -554,9 +554,9 @@ jobs:
       env:
         PLAT: manylinux_2_28_x86_64
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Download audited wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-linux-x86_64-*
           path: bindings/python/wheelhouse/audited/
@@ -570,7 +570,7 @@ jobs:
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-combined-linux-x86_64
           path: bindings/python/wheelhouse/audited/*
@@ -620,17 +620,17 @@ jobs:
       DEPTHAI_BUILD_KOMPUTE: ON
     steps:
       - name: Cache vcpkg folder
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: /home/runner/.vcpkg
           key: vcpkg-manylinux-arm64
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
@@ -645,7 +645,7 @@ jobs:
       - name: Create folder structure
         run: cd bindings/python && mkdir -p wheelhouse/audited/
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
@@ -669,7 +669,7 @@ jobs:
       - name: Verify repaired wheel license files
         run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-linux-arm64-${{ matrix.python-set }}
           path: bindings/python/wheelhouse/audited/*
@@ -683,9 +683,9 @@ jobs:
       env:
         PLAT: manylinux_2_28_aarch64
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Download audited wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-linux-arm64-*
           path: bindings/python/wheelhouse/audited/
@@ -699,7 +699,7 @@ jobs:
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-combined-linux-arm64
           path: bindings/python/wheelhouse/audited/*
@@ -731,15 +731,15 @@ jobs:
     needs: build-windows-x86_64
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Download audited wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-windows-*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Combine wheels
@@ -751,7 +751,7 @@ jobs:
           echo "Combining repaired wheels into one master wheel"
           python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-combined-windows-x86_64
           path: bindings/python/wheelhouse/audited/*
@@ -805,9 +805,9 @@ jobs:
     needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-combined-*
           merge-multiple: true
@@ -824,11 +824,11 @@ jobs:
     needs: [upload-wheels-to-ak]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.8'
+          python-version: '3.12'
 
       - name: Send Slack notification
         env:
@@ -844,10 +844,10 @@ jobs:
 
           # Determine the version and the install command
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_version())")
             INSTALL_COMMAND="\`python3 -m pip install depthai==$VERSION\`"
           else
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
             INSTALL_COMMAND="\`python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==$VERSION\`"
           fi
 
@@ -873,16 +873,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v7
       with:
-        python-version: '3.8'
+        python-version: '3.12'
 
     - name: Check if version matches
-      run: cd bindings/python && python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
+      run: cd bindings/python && python -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
 
   # Deploy to PyPI and Artifact Keeper. Only when a commit is tagged
   deploy:
@@ -890,10 +890,10 @@ jobs:
     needs: [release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-combined-*
           merge-multiple: true
@@ -920,26 +920,26 @@ jobs:
     outputs:
       runner_conclusion: ${{ steps.get_runner.outputs.runner_conclusion }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.8'
+          python-version: '3.12'
 
       - name: Get dev version from script
         id: get_version
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_version())")
           else
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
           fi
           echo "VERSION=$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
 
       - name: Dispatch action and get run ID
-        uses: codex-/return-dispatch@v2
+        uses: codex-/return-dispatch@v4.0.1
         id: return_dispatch
         with:
           token: ${{ secrets.BOM_GITHUB_TOKEN }}
@@ -947,8 +947,6 @@ jobs:
           repo: "luxonis-bom"
           owner: "luxonis"
           workflow: "dispatch_main.yml"
-          workflow_timeout_seconds: 120
-          workflow_job_steps_retry_seconds: 2
           workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
 
       - name: Wait for the dispatched workflow to complete

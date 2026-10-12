@@ -12,7 +12,7 @@ try:
     from setuptools.command.bdist_wheel import bdist_wheel
 except ImportError:  # setuptools < 70.1
     from wheel.bdist_wheel import bdist_wheel
-from distutils.version import LooseVersion
+from packaging.version import Version
 from pathlib import Path
 
 ### NAME
@@ -215,8 +215,8 @@ class CMakeBuild(build_ext):
                                ", ".join(e.name for e in self.extensions))
 
         if platform.system() == "Windows":
-            cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
-            if cmake_version < '3.2.0':
+            cmake_version = Version(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+            if cmake_version < Version('3.2.0'):
                 raise RuntimeError("CMake >= 3.2.0 is required on Windows")
 
         for ext in self.extensions:
@@ -413,7 +413,6 @@ setup(
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
         "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: MacOS",
         "Operating System :: Microsoft :: Windows",
         "Operating System :: Unix",
