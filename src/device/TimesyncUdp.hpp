@@ -14,7 +14,7 @@ namespace dai {
  * receive stamp of the REQ, FUP the host send stamp of the RESP, both on the host's steady clock. On Linux these are
  * kernel software timestamps (SO_TIMESTAMPING), so the responder thread's scheduling does not enter the estimate;
  * elsewhere application stamps. Until the first REQ arrives, HELLO (with the session token the firmware got over
- * RPC) goes out every 20 ms: the device learns the host's address from it, and host firewalls / NAT see the
+ * RPC) goes out every 2 ms: the device learns the host's address from it, and host firewalls / NAT see the
  * device's packets as replies.
  */
 class TimesyncUdpResponder {

@@ -51,7 +51,8 @@ struct UdpMsg {
     #pragma pack(pop)
 static_assert(sizeof(UdpMsg) == 48, "wire format");
 
-constexpr auto HELLO_FAST = std::chrono::milliseconds(20);  // until the first REQ, for the first few seconds
+constexpr auto HELLO_FAST = std::chrono::milliseconds(2);  // until the first REQ, for the first few seconds: the firmware
+                                                           // opens its socket after setTimesync and waits for a HELLO
 constexpr auto HELLO_FAST_FOR = std::chrono::seconds(3);
 constexpr auto HELLO_SLOW = std::chrono::milliseconds(500);  // no REQ yet: the firmware may still pick the UDP path up
 
@@ -233,7 +234,9 @@ void TimesyncUdpResponder::run() {
     while(!stopRequested) {
         auto now = steady_clock::now();
         if(!gotReq && now >= nextHello) {
-            sendMsg(fd, hello, false);  // ECONNREFUSED until the firmware opens its socket: ignored
+            // Before the firmware opens its socket, a HELLO comes back as ICMP port unreachable, which the next send on
+            // this connected socket reports instead of sending: send that one again
+            if(!sendMsg(fd, hello, false) && errno == ECONNREFUSED) sendMsg(fd, hello, false);
             nextHello = now + (now - start < HELLO_FAST_FOR ? duration_cast<steady_clock::duration>(HELLO_FAST) : duration_cast<steady_clock::duration>(HELLO_SLOW));
         }
         int timeoutMs = 100;
@@ -242,6 +245,9 @@ void TimesyncUdpResponder::run() {
         if(poll(&p, 1, timeoutMs) <= 0) continue;
     #ifdef __linux__
         if(!(p.revents & POLLIN)) {
+            int err = 0;
+            socklen_t len = sizeof(err);
+            getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len);  // clears a pending ICMP error, else poll returns at once
             uint32_t stale = 0;
             if(kernelStamps) txStamp(fd, txKey, 0, stale);  // only a late TX stamp is pending: drop it
             continue;
