@@ -107,41 +107,6 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
 
         .def_static("getFirstAvailableDevice", &DeviceBootloader::getFirstAvailableDevice, DOC(dai, DeviceBootloader, getFirstAvailableDevice))
         .def_static("getAllAvailableDevices", &DeviceBootloader::getAllAvailableDevices, DOC(dai, DeviceBootloader, getAllAvailableDevices))
-        .def_static("saveDepthaiApplicationPackage",
-                    py::overload_cast<const std::filesystem::path&, const Pipeline&, const std::filesystem::path&, bool, const std::string&, bool>(
-                        &DeviceBootloader::saveDepthaiApplicationPackage),
-                    py::arg("path"),
-                    py::arg("pipeline"),
-                    py::arg("pathToCmd") = std::filesystem::path(),
-                    py::arg("compress") = false,
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage))
-        .def_static(
-            "saveDepthaiApplicationPackage",
-            py::overload_cast<const std::filesystem::path&, const Pipeline&, bool, const std::string&, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
-            py::arg("path"),
-            py::arg("pipeline"),
-            py::arg("compress"),
-            py::arg("applicationName") = "",
-            py::arg("checkChecksum") = false,
-            DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage, 2))
-        .def_static(
-            "createDepthaiApplicationPackage",
-            py::overload_cast<const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
-            py::arg("pipeline"),
-            py::arg("pathToCmd") = std::filesystem::path(),
-            py::arg("compress") = false,
-            py::arg("applicationName") = "",
-            py::arg("checkChecksum") = false,
-            DOC(dai, DeviceBootloader, createDepthaiApplicationPackage))
-        .def_static("createDepthaiApplicationPackage",
-                    py::overload_cast<const Pipeline&, bool, const std::string&, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
-                    py::arg("pipeline"),
-                    py::arg("compress"),
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, createDepthaiApplicationPackage, 2))
         .def_static("getEmbeddedBootloaderVersion", &DeviceBootloader::getEmbeddedBootloaderVersion, DOC(dai, DeviceBootloader, getEmbeddedBootloaderVersion))
         .def_static("getEmbeddedBootloaderBinary", &DeviceBootloader::getEmbeddedBootloaderBinary, DOC(dai, DeviceBootloader, getEmbeddedBootloaderBinary))
 
@@ -158,43 +123,6 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("nameOrDeviceId"),
              py::arg("allowFlashingBootloader") = false,
              DOC(dai, DeviceBootloader, DeviceBootloader, 6))
-
-        .def(
-            "flash",
-            [](DeviceBootloader& db,
-               std::function<void(float)> progressCallback,
-               const Pipeline& pipeline,
-               bool compress,
-               std::string applicationName,
-               DeviceBootloader::Memory memory,
-               bool checkChecksum) {
-                py::gil_scoped_release release;
-                return db.flash(progressCallback, pipeline, compress, applicationName, memory, checkChecksum);
-            },
-            py::arg("progressCallback"),
-            py::arg("pipeline"),
-            py::arg("compress") = false,
-            py::arg("applicationName") = "",
-            py::arg("memory") = DeviceBootloader::Memory::AUTO,
-            py::arg("checkChecksum") = false,
-            DOC(dai, DeviceBootloader, flash))
-        .def(
-            "flash",
-            [](DeviceBootloader& db,
-               const Pipeline& pipeline,
-               bool compress,
-               std::string applicationName,
-               DeviceBootloader::Memory memory,
-               bool checkChecksum) {
-                py::gil_scoped_release release;
-                return db.flash(pipeline, compress, applicationName, memory, checkChecksum);
-            },
-            py::arg("pipeline"),
-            py::arg("compress") = false,
-            py::arg("applicationName") = "",
-            py::arg("memory") = DeviceBootloader::Memory::AUTO,
-            py::arg("checkChecksum") = false,
-            DOC(dai, DeviceBootloader, flash, 2))
 
         .def(
             "readApplicationInfo",
@@ -226,25 +154,6 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBootloader, isUserBootloaderSupported))
 
-        .def(
-            "flashDepthaiApplicationPackage",
-            [](DeviceBootloader& db, std::function<void(float)> progressCallback, std::vector<uint8_t> package, DeviceBootloader::Memory memory) {
-                py::gil_scoped_release release;
-                return db.flashDepthaiApplicationPackage(progressCallback, package);
-            },
-            py::arg("progressCallback"),
-            py::arg("package"),
-            py::arg("memory") = DeviceBootloader::Memory::AUTO,
-            DOC(dai, DeviceBootloader, flashDepthaiApplicationPackage))
-        .def(
-            "flashDepthaiApplicationPackage",
-            [](DeviceBootloader& db, std::vector<uint8_t> package, DeviceBootloader::Memory memory) {
-                py::gil_scoped_release release;
-                return db.flashDepthaiApplicationPackage(package);
-            },
-            py::arg("package"),
-            py::arg("memory") = DeviceBootloader::Memory::AUTO,
-            DOC(dai, DeviceBootloader, flashDepthaiApplicationPackage, 2))
         .def(
             "flashBootloader",
             [](DeviceBootloader& db, std::function<void(float)> progressCallback, const std::filesystem::path& path) {

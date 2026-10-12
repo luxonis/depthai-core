@@ -24,21 +24,21 @@ def printSystemInformationRVC4(info: dai.SystemInformationRVC4):
     print("----------------------------------------")
 
 # Create pipeline
-pipeline = dai.Pipeline()
+with dai.Pipeline() as pipeline:
 
-# Create system logger node
-sysLog = pipeline.create(dai.node.SystemLogger)
-sysLog.setRate(1)  # 1 Hz
+    # Create system logger node
+    sysLog = pipeline.create(dai.node.SystemLogger)
+    sysLog.setRate(1)  # 1 Hz
 
-# Create output
-sysLogQueue = sysLog.out.createOutputQueue(maxSize=4, blocking=False)
+    # Create output
+    sysLogQueue = sysLog.out.createOutputQueue(maxSize=4, blocking=False)
 
-# Start pipeline
-pipeline.start()
-platform = pipeline.getDefaultDevice().getPlatform()
-while pipeline.isRunning():
-    sysInfo = sysLogQueue.get() # Blocking call, will wait until a new data has arrived
-    if platform == dai.Platform.RVC2:
-        printSystemInformation(sysInfo)
-    else:
-        printSystemInformationRVC4(sysInfo)
+    # Start pipeline
+    pipeline.start()
+    platform = pipeline.getDefaultDevice().getPlatform()
+    while pipeline.isRunning():
+        sysInfo = sysLogQueue.get() # Blocking call, will wait until a new data has arrived
+        if platform == dai.Platform.RVC2:
+            printSystemInformation(sysInfo)
+        else:
+            printSystemInformationRVC4(sysInfo)

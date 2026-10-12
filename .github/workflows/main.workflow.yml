@@ -133,7 +133,7 @@ jobs:
         submodules: 'recursive'
 
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
       with:
         cmake-version: '3.29.x'
 
@@ -143,14 +143,10 @@ jobs:
     - name: Build minimal target set
       run: cmake --build --preset minimal
 
-  build:
-    runs-on: ${{ matrix.os }}
+  device-manager-build:
+    runs-on: ubuntu-24.04
     needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
-    strategy:
-      matrix:
-        os: [macos-latest, windows-2022, ubuntu-latest]
-        cmake: ['3.22.x', '4.0.x']
 
     steps:
     - uses: actions/checkout@v4
@@ -158,7 +154,41 @@ jobs:
         submodules: 'recursive'
 
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+      with:
+        cmake-version: '3.29.x'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libudev-dev libusb-1.0-0-dev
+
+    - name: Configure device-manager build
+      run: cmake --preset device-manager
+
+    - name: Build depthai::device-manager
+      run: cmake --build --preset device-manager
+
+  build:
+    runs-on: ${{ matrix.os }}
+    needs: [precheck, consistency]
+    if: needs.precheck.outputs.should_run == 'true'
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        cmake: ['3.22.x', '4.0.x']
+        include:
+          # The Windows 2025 image uses VS 2026, which requires CMake 4.2+.
+          - os: windows-2025
+            cmake: '4.2.x'
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
       with:
         cmake-version: ${{ matrix.cmake }}
 
@@ -174,10 +204,14 @@ jobs:
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: |
         choco install opencv --version=4.13.0 --yes
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR=Visual Studio 18 2026" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR_PLATFORM=x64" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        # Match the v143 toolset used by the pinned vcpkg baseline.
+        echo "CMAKE_GENERATOR_TOOLSET=v143" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Build
       run: |
@@ -190,7 +224,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-2022, ubuntu-latest]
+        os: [macos-latest, windows-2025, ubuntu-latest]
         build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
@@ -198,11 +232,11 @@ jobs:
         # TODO(Morato) - add back Win32 and shared builds to CI
         # include:
         #   - platform: Win32
-        #     os: windows-latest
+        #     os: windows-2025
         #     shared: true
         #     build-type: Debug
         #   - platform: Win32
-        #     os: windows-latest
+        #     os: windows-2025
         #     shared: true
         #     build-type: Release
     steps:
@@ -222,23 +256,24 @@ jobs:
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: |
         choco install opencv --version=4.13.0 --yes
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "CMAKE_GENERATOR=Visual Studio 17 2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR=Visual Studio 18 2026" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CMAKE_GENERATOR_PLATFORM=${{ matrix.platform }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR_TOOLSET=v143" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
       with:
-        cmake-version: '3.29.x'
+        cmake-version: ${{ runner.os == 'Windows' && '4.2.x' || '3.29.x' }}
 
     - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX="${{ github.workspace }}/depthai_install" ${{ env.CMAKE_ARGS }}
 
     - name: Set path to shared library dll (Windows)
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: echo "${{ github.workspace }}/depthai_install/bin/" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Build and install
@@ -248,15 +283,31 @@ jobs:
       shell: bash
       run: python scripts/verify_license_artifact.py install-tree "${{ github.workspace }}/depthai_install"
 
+    - name: Generate SBOM of the install tree
+      if: matrix.build-type == 'Release'
+      shell: bash
+      run: python scripts/generate_sbom.py build --build-dir build --output-dir "${{ github.workspace }}/depthai_install/share/depthai/sbom"
+
+    - name: Generate source SBOM
+      if: runner.os == 'Linux' && matrix.build-type == 'Release'
+      run: python3 scripts/generate_sbom.py source --build-dir build --output-dir sbom-source
+
+    - name: Upload source SBOM
+      if: runner.os == 'Linux' && matrix.build-type == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom-source
+        path: sbom-source/
+
     - name: Upload Win64 shared library
-      if: matrix.os == 'windows-2022' && matrix.shared && matrix.platform == 'x64'
+      if: runner.os == 'Windows' && matrix.shared && matrix.platform == 'x64'
       uses: actions/upload-artifact@v4
       with:
         name: windows-prebuilt-win64-${{ matrix.build-type }}
         path: ${{ github.workspace }}/depthai_install/
     # TODO(Morato) - add back Win32 and shared builds to CI
     # - name: Upload Win32 shared library
-    #   if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
+    #   if: runner.os == 'Windows' && matrix.shared && matrix.platform == 'Win32'
     #   uses: actions/upload-artifact@v4
     #   with:
     #     name: windows-prebuilt-win32-no-opencv-${{ matrix.build-type }}
@@ -285,7 +336,7 @@ jobs:
 
   required_core_ci_report:
     name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Core CI report (not applicable)' }}
-    needs: [precheck, consistency, style, tidy, minimal-build, build, integration]
+    needs: [precheck, consistency, style, tidy, minimal-build, device-manager-build, build, integration]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -344,11 +395,21 @@ jobs:
     #     merge-multiple: true
     #     path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
+    - name: Download source SBOM
+      uses: actions/download-artifact@v4
+      with:
+        name: sbom-source
+        path: sbom-source
+
     - name: Create release assets
       run: |
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.tar.gz
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.zip
         zip -r depthai-core-${{ steps.tag.outputs.version }}-win64.zip depthai-core-${{ steps.tag.outputs.version }}-win64
+        for format in spdx cdx; do
+          cp sbom-source/depthai-core.$format.json depthai-core-${{ steps.tag.outputs.version }}.$format.json
+          cp depthai-core-${{ steps.tag.outputs.version }}-win64/share/depthai/sbom/depthai-core.$format.json depthai-core-${{ steps.tag.outputs.version }}-win64.$format.json
+        done
         # zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     # Create GitHub release
@@ -399,6 +460,46 @@ jobs:
         asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win64.zip
         asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.zip
         asset_content_type: application/octet-stream
+
+    - name: Upload source SBOM (SPDX)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.spdx.json
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}.spdx.json
+        asset_content_type: application/json
+
+    - name: Upload source SBOM (CycloneDX)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.cdx.json
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}.cdx.json
+        asset_content_type: application/json
+
+    - name: Upload Win64 SBOM (SPDX)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win64.spdx.json
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.spdx.json
+        asset_content_type: application/json
+
+    - name: Upload Win64 SBOM (CycloneDX)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win64.cdx.json
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.cdx.json
+        asset_content_type: application/json
 
     # - name: Upload Win32 package (zip)
     #   uses: actions/upload-release-asset@v1.0.1

@@ -1,11 +1,13 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <utility>
 
 // shared
 #include <depthai/properties/ImageAlignProperties.hpp>
 
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {
 namespace node {
@@ -19,6 +21,20 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
+    struct ImageAlignInputState {
+        ImgTransformation depthTransformation;
+        ImgTransformation ontoTransformation;
+        std::pair<unsigned int, unsigned int> depthResolution{};
+        std::pair<unsigned int, unsigned int> ontoResolution{};
+        ImgFrame::Type depthType = ImgFrame::Type::RAW16;
+
+        bool differsFrom(const ImageAlignInputState& previous) const {
+            return depthResolution != previous.depthResolution || ontoResolution != previous.ontoResolution || depthType != previous.depthType
+                   || !depthTransformation.isEqualTransformation(previous.depthTransformation)
+                   || !ontoTransformation.isEqualTransformation(previous.ontoTransformation);
+        }
+    };
+
     Properties& getProperties() override;
 
    public:

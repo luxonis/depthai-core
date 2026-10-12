@@ -165,6 +165,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getDistortionModel", &ImgTransformation::getDistortionModel, DOC(dai, ImgTransformation, getDistortionModel))
         .def("getDistortionCoefficients", &ImgTransformation::getDistortionCoefficients, DOC(dai, ImgTransformation, getDistortionCoefficients))
         .def("getExtrinsics", &ImgTransformation::getExtrinsics, DOC(dai, ImgTransformation, getExtrinsics))
+        .def("rebaseExtrinsics", &ImgTransformation::rebaseExtrinsics, py::arg("localOriginToTarget"), DOC(dai, ImgTransformation, rebaseExtrinsics))
         .def("getSrcCrops", &ImgTransformation::getSrcCrops, DOC(dai, ImgTransformation, getSrcCrops))
         .def("getSrcMaskPt", &ImgTransformation::getSrcMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getSrcMaskPt))
         .def("getDstMaskPt", &ImgTransformation::getDstMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getDstMaskPt))

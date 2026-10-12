@@ -2,6 +2,71 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.11.0 (2026-10-12)
+-------------------
+## Features
+
+* **Multi-device pipelines**
+  * A single `Pipeline` can now build and run nodes on multiple devices. Add a device with `pipeline.addDevice(...)` or create a node with an explicit `device` argument
+  * Links between nodes on different devices are automatically relayed through the host
+  * If one device disconnects, the other devices continue to run and the lost device reconnects automatically. Use `pipeline.setDeviceStateCallback(...)` to monitor the device state
+  * A [frame sync example](https://github.com/luxonis/depthai-core/blob/main/examples/python/MultiDevice/multi_device_frame_sync.py) and a [device-to-device relay example](https://github.com/luxonis/depthai-core/blob/main/examples/python/MultiDevice/device_to_device_relay.py) are available
+* **[_RVC4_] IFE sharing across camera sensors**
+  * Allows for running up to 5 cameras at once.
+  * Different stream configurations are possible:
+    * five concurrent cameras at up to 2.3 Gpix/s aggregate processing
+    * 2×48MP @ ≤6.5fps + three others (≤20MP*)
+    * 1×48MP @ ≤13.5fps + four others (≤20MP*) 
+  * Requires OS >= 1.44.0
+* **[_Beta_] MultiDeviceCalibration node**
+  * Calculates the extrinsics between multiple devices from synchronized camera frames
+  * The result can be saved to JSON or applied with `pipeline.setMultiDeviceCalibration`, which puts all devices in one shared coordinate system
+  * A [Python example](https://github.com/luxonis/depthai-core/blob/main/examples/python/MultiDeviceCalibration/multi_device_calibration.py) and a [C++ example](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/MultiDeviceCalibration/multi_device_calibration.cpp) are available
+* **[*RVC4*] ToFStereoFusion updates**
+  * Available in the `Depth` node as the `TOF_STEREO_FUSION` algorithm
+  * `cropToOverlap` crops the depth and confidence outputs to the overlap of the ToF and stereo cameras
+* **[*RVC4*] VPP accepts depth input**
+  * VPP can use aligned depth (for example, from a ToF sensor) instead of disparity
+  * A [Python example](https://github.com/luxonis/depthai-core/blob/main/examples/python/Vpp/tof_stereo_vpp.py) and a [C++ example](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/Vpp/tof_stereo_vpp.cpp) are available
+* **[_Beta_] Calibrated panorama stitching**
+  * `setUseInputCalibration(true)` creates the panorama from the calibration of the input frames and skips feature matching
+  * The output `ImgTransformation` now describes the virtual camera of the panorama. A new `Cylindrical` camera model is added for this
+* New `Odometry` message extends `TransformData` with linear velocity. The Basalt and RTAB-Map VIO nodes now output it
+* DetectionParser confidence and IoU thresholds can now be changed at runtime through `inputConfig` messages
+* [RVC4] Added support for `priority_hint` argument to SNPE backend properties
+
+## Bug fixes
+
+* **Dynamic calibration**
+  * Results with a translation-direction change of 15° or more are rejected with an explanatory message
+  * The perpendicular optical-axis constraint is no longer applied to modular and FFC boards
+* [RVC4] Better ToF filtering to reduce sensor bleeding 
+* [RVC4] Reduced ToF processing overhead 
+* `getStereoPairs` now orders left and right cameras correctly, also for vertical and backward-facing pairs
+* ImageAlign now uses the `ImgTransformation` of the input frames instead of the EEPROM calibration.
+* `InputQueue.send` in Python now releases the GIL, which prevents a deadlock when the device queue is full
+* Python exceptions in host nodes keep their original type, so `KeyboardInterrupt` exits cleanly
+* Added missing Python bindings for `MessageDemux.setRunOnHost` and `setOtherModelFormat`, which now accepts `bytes` and NumPy arrays
+* [RVC4] Resolved an issue with memory filling up in repeated reconnects to the device if the host dies first
+* [RVC4] Resolved an issue in GPU ImgManip where it could reuse memory blocks before the operation would finish, resulting in missordered outputs
+* [RVC4] 
+* [RVC2 PoE] Decreased network stack loads which can result in up to 20% lower CPU usage when streaming 1920x1080@30FPS BGR streams
+* [RVC2] Device lifetime improvements should result in better stability 
+
+## Misc
+
+* Removed the obsolete DepthAI application packages (`.dap`) for RVC2 standalone mode
+* A warning is shown when the Ethernet link speed is 100 Mbit/s or lower
+* Release builds now include SPDX and CycloneDX SBOMs
+* Message save and load examples are available in [Python](https://github.com/luxonis/depthai-core/blob/main/examples/python/Misc/save_load.py) and [C++](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/Misc/save_load.cpp)
+* Standerdized logging between RVC2 and RVC4
+* Embedded visualizer updated to 4.1.6:
+  * Improved stability and performance at large streaming resolutions
+  * UX improvements and polishing
+
+## [**RVC4**] Luxonis OS compatibility
+Integration tested with Luxonis OS 1.30.1, 1.35.0, and 1.40.0.
+
 3.10.0 (2026-09-07)
 -------------------
 ## Features

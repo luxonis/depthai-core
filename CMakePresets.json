@@ -31,6 +31,31 @@
         "DEPTHAI_GENERATE_HOUSING_COORDS": "OFF",
         "VCPKG_INSTALL_OPTIONS": "--clean-buildtrees-after-build;--clean-packages-after-build"
       }
+    },
+    {
+      "name": "device-manager",
+      "displayName": "Device manager library build",
+      "description": "Build depthai::device-manager, the bootloader/XLink-only library with the embedded bootloader firmware and no pipeline.",
+      "binaryDir": "${sourceDir}/build-device-manager",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "DEPTHAI_OPENCV_SUPPORT": "OFF",
+        "DEPTHAI_XTENSOR_SUPPORT": "OFF",
+        "DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT": "OFF",
+        "DEPTHAI_ENABLE_LIBUSB": "ON",
+        "DEPTHAI_ENABLE_APRIL_TAG": "OFF",
+        "DEPTHAI_ENABLE_PROTOBUF": "OFF",
+        "DEPTHAI_ENABLE_CURL": "OFF",
+        "DEPTHAI_ENABLE_MP4V2": "OFF",
+        "DEPTHAI_ENABLE_BACKWARD": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_FW": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW": "ON",
+        "DEPTHAI_ENABLE_DEVICE_RVC4_FW": "OFF",
+        "DEPTHAI_BINARIES_RESOURCE_COMPILE": "ON",
+        "DEPTHAI_GENERATE_HOUSING_COORDS": "OFF",
+        "VCPKG_INSTALL_OPTIONS": "--clean-buildtrees-after-build;--clean-packages-after-build",
+        "DEPTHAI_BUILD_DEVICE_MANAGER": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -38,6 +63,15 @@
       "name": "minimal",
       "configurePreset": "minimal",
       "configuration": "Release",
+      "jobs": 4
+    },
+    {
+      "name": "device-manager",
+      "configurePreset": "device-manager",
+      "configuration": "Release",
+      "targets": [
+        "depthai-device-manager"
+      ],
       "jobs": 4
     }
   ]

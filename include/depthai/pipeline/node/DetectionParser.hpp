@@ -12,6 +12,7 @@
 #include <string>
 
 #include "depthai/common/YoloDecodingFamily.hpp"
+#include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -28,6 +29,17 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     ~DetectionParser() override;
+
+    /** Initial runtime thresholds. Send a config to inputConfig to change them after startup. */
+    std::shared_ptr<DetectionParserConfig> initialConfig = [this] {
+        auto config = std::make_shared<DetectionParserConfig>();
+        config->confidenceThreshold = properties.parser.confidenceThreshold;
+        config->iouThreshold = properties.parser.iouThreshold;
+        return config;
+    }();
+
+    /** Runtime threshold configuration. Non-blocking queue of size 4; does not wait by default. */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::DetectionParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * @brief Build DetectionParser node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
@@ -139,6 +151,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Specifies confidence threshold at which to filter the rest of the detections.
      * @param thresh Detection confidence must be greater than specified threshold to be added to the list
+     * @note Sets startup configuration. Send DetectionParserConfig to inputConfig for runtime updates.
      */
     void setConfidenceThreshold(float thresh);
 
@@ -188,6 +201,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Set IOU threshold for non-maxima suppression
      * @param thresh IOU threshold
+     * @note Sets startup configuration. Send DetectionParserConfig to inputConfig for runtime updates.
      */
     void setIouThreshold(float thresh);
 
@@ -298,6 +312,9 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     void run() override;
 
+    /** Get serialized startup properties, including initialConfig thresholds. */
+    Properties& getProperties() override;
+
     /**
      * @brief Decode Mobilenet-SSD detections from NNData
      */
@@ -317,7 +334,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void checkKptExtraParams(DetectionParserOptions& parser, const nlohmann::json& extraParams);
     // host runnable requirements
     void buildStage1() override;
-    void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections);
+    void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections, DetectionParserProperties& runtimeProperties);
     std::vector<dai::TensorInfo> inTensorInfo;
     uint32_t imgWidth;
     uint32_t imgHeight;

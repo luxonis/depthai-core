@@ -1,0 +1,27 @@
+name: Weekly Python Wheels and Stability
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  build_wheels:
+    uses: ./.github/workflows/python-main.yml
+    with:
+      concurrency_suffix: weekly-stability
+    secrets: inherit
+
+  dispatch_stability:
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weekly stability runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WHEEL_RUN_ID: ${{ github.run_id }}
+        run: |
+          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=tcpip -f timeout=168
+          gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=usb -f timeout=168

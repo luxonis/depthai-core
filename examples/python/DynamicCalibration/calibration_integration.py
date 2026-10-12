@@ -88,6 +88,12 @@ with dai.Pipeline() as pipeline:
                 print("Applying new calibration")
                 dynCalibInputControl.send(dai.DynamicCalibrationControl.applyCalibration(calibrationData.newCalibration))
 
+        invalidTranslation = (
+            dynCalibrationResult is not None
+            and dynCalibrationResult.info
+            == "A multisensor pairwise recalibration changed the translation direction by 15 degrees or more"
+        )
+        if calibrationData or invalidTranslation:
             dynCalibInputControl.send(dai.DynamicCalibrationControl.resetData())
 
         cv2.imshow("depth", colorizedDepth)
