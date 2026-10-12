@@ -2,8 +2,8 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.11.0 (2026-10-12)
+-------------------
 ## Features
 
 * **Multi-device pipelines**
