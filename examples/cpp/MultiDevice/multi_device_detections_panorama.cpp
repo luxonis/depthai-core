@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
         return argc > 1 && std::string(argv[1]) == "--help" ? 0 : 1;
     }
     constexpr int FPS = 30;
-    constexpr int PREVIEW_WIDTH = 640, PREVIEW_HEIGHT = 400, PANORAMA_WIDTH = 1280;
+    constexpr int PREVIEW_WIDTH = 640, PREVIEW_HEIGHT = 400, PANORAMA_WIDTH = 1280, PANORAMA_HEIGHT = 800, HEADER_HEIGHT = 60;
     std::vector<std::string> identifiers;
     bool average = false;
     bool blend = true;
@@ -128,22 +128,22 @@ int main(int argc, char** argv) {
     filter->out.link(display->inputs["detections"]);
     const std::string windowName = "Multi-device detections panorama";
     displayQueues.emplace_back(windowName, display->out.createOutputQueue(1, false));
-    cv::Mat combined = cv::Mat::zeros(PREVIEW_HEIGHT * static_cast<int>(identifiers.size()), PREVIEW_WIDTH + PANORAMA_WIDTH, CV_8UC3);
-    cv::namedWindow(windowName, cv::WINDOW_NORMAL);
-    const double windowScale = std::min(1600.0 / combined.cols, 900.0 / combined.rows);
-    cv::resizeWindow(windowName, cvRound(combined.cols * windowScale), cvRound(combined.rows * windowScale));
+    for(const auto& [viewName, queue] : displayQueues) {
+        const bool isPanorama = viewName == windowName;
+        cv::namedWindow(viewName, cv::WINDOW_NORMAL);
+        cv::resizeWindow(viewName, isPanorama ? PANORAMA_WIDTH : PREVIEW_WIDTH, isPanorama ? PANORAMA_HEIGHT + HEADER_HEIGHT : PREVIEW_HEIGHT);
+    }
     pipeline.start();
     while(pipeline.isRunning()) {
-        bool updated = false;
-        for(size_t index = 0; index < displayQueues.size(); ++index) {
-            auto group = displayQueues[index].second->tryGet<dai::MessageGroup>();
+        for(const auto& [viewName, queue] : displayQueues) {
+            auto group = queue->tryGet<dai::MessageGroup>();
             if(!group) continue;
-            const bool isPanorama = index == identifiers.size();
+            const bool isPanorama = viewName == windowName;
             const auto image = group->get<dai::ImgFrame>("image");
             auto frame = image->getCvFrame();
             auto detections = group->get<dai::ImgDetections>("detections");
             if(isPanorama) {
-                const double scale = std::min(static_cast<double>(PANORAMA_WIDTH) / frame.cols, static_cast<double>(combined.rows) / frame.rows);
+                const double scale = std::min(static_cast<double>(PANORAMA_WIDTH) / frame.cols, static_cast<double>(PANORAMA_HEIGHT) / frame.rows);
                 cv::resize(frame, frame, cv::Size(cvRound(frame.cols * scale), cvRound(frame.rows * scale)), 0, 0, cv::INTER_AREA);
             } else {
                 detections = std::make_shared<dai::ImgDetections>(detections->transformTo(image->getTransformation()));
@@ -165,9 +165,8 @@ int main(int argc, char** argv) {
                             cv::Scalar(0, 255, 0),
                             1);
             }
-            int x = 0, y = static_cast<int>(index) * PREVIEW_HEIGHT;
             if(isPanorama) {
-                cv::rectangle(frame, cv::Point(0, 0), cv::Point(frame.cols, 60), cv::Scalar(0, 0, 0), cv::FILLED);
+                cv::copyMakeBorder(frame, frame, HEADER_HEIGHT, 0, 0, 0, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
                 cv::putText(frame,
                             cv::format("Duplicates: %s | IoU: %.2f", modeNames[modeIndex], iouThreshold),
                             cv::Point(10, 23),
@@ -182,17 +181,9 @@ int main(int argc, char** argv) {
                             .5,
                             cv::Scalar(255, 255, 255),
                             1);
-                combined(cv::Rect(PREVIEW_WIDTH, 0, PANORAMA_WIDTH, combined.rows)).setTo(cv::Scalar(0, 0, 0));
-                x = PREVIEW_WIDTH + (PANORAMA_WIDTH - frame.cols) / 2;
-                y = (combined.rows - frame.rows) / 2;
-            } else {
-                cv::rectangle(frame, cv::Point(0, 0), cv::Point(frame.cols, 28), cv::Scalar(0, 0, 0), cv::FILLED);
-                cv::putText(frame, displayQueues[index].first, cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, .5, cv::Scalar(255, 255, 255), 1);
             }
-            frame.copyTo(combined(cv::Rect(x, y, frame.cols, frame.rows)));
-            updated = true;
+            cv::imshow(viewName, frame);
         }
-        if(updated) cv::imshow(windowName, combined);
         const int key = cv::waitKey(1) & 0xFF;
         if(key == 'q' || key == 'Q') break;
         if(key >= '1' && key <= '3') {

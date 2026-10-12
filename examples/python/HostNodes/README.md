@@ -75,6 +75,11 @@ directly under the rig, which no camera sees:
 
 ![Bird's-eye view of the square from the same five cameras](../../../images/stitching/planar_projection_city_square.webp)
 
+For multiple devices and detections, use the separate
+[multi-device planar projection example](../MultiDevice/multi_device_detections_planar_projection.py).
+It accepts a calibration JSON, model slug, and at least two device IDs or IP addresses; see the
+[detection filtering guide](../../../docs/ImgDetectionsFilter.md#planar-projection-example) for usage and controls.
+
 ### Output metadata
 
 The stitched `ImgFrame` (type `BGR888i`) carries an `ImgTransformation` describing the virtual camera that rendered
