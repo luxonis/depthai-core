@@ -314,7 +314,8 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     Input& getColorInput(const std::string& name);
 
     /**
-     * Names of the depth streams linked to this node, the default (unnamed) stream first.
+     * Names of the depth streams of this node (inputDepth and every getDepthInput(name) call), the default
+     * (unnamed) stream first. Streams that are never linked are left out of the synchronization by the Sync subnode.
      */
     std::vector<std::string> getDepthInputNames() const;
 
@@ -322,12 +323,6 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
      * Moves the Sync subnode to the host when depth streams come from more than one device.
      */
     void buildStage1() override;
-
-    /**
-     * Drops Sync entries nobody linked (an unused default depth input next to named depth
-     * streams, unused color inputs) so that the Sync subnode does not wait for them.
-     */
-    void postBuildStage() override;
 #endif
 
     /**

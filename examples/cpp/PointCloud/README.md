@@ -153,8 +153,7 @@ Rules of the merged output:
   at its default, the Sync subnode is moved to the host at build time.
 - Streams only have to be linked, not named in any particular way: a default `inputDepth` that
   stays unlinked next to named streams (and color inputs that were created but never linked)
-  are dropped from the Sync subnode when the pipeline starts, so they do not stall the
-  synchronization.
+  are left out of the synchronization by the Sync subnode, so they do not stall it.
 
-A single depth stream behaves exactly as before. See
+A single depth stream behaves exactly as before. See `MultiDevicePointCloud.cpp` here and
 `examples/python/PointCloud/multi_device_point_cloud.py` for a merged point cloud from several devices.

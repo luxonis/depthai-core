@@ -333,8 +333,11 @@ TEST_CASE_METHOD(HostPointCloudFixture, "Unlinked default depth and color inputs
     auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
     REQUIRE(pc->getDepthInputNames() == std::vector<std::string>{"", "a", "b"});
     pipeline.start();
-    REQUIRE(pc->getDepthInputNames() == std::vector<std::string>{"a", "b"});
-    REQUIRE_FALSE(pc->syncInputs.has("color/a"));
+    // The unlinked inputs stay alive (references to them remain valid), the Sync subnode leaves them out
+    REQUIRE(pc->getDepthInputNames() == std::vector<std::string>{"", "a", "b"});
+    REQUIRE(pc->syncInputs.has("color/a"));
+    REQUIRE(pc->inputDepth.getName() == "depth");
+    REQUIRE_FALSE(pc->inputDepth.isConnected());
 
     const auto now = std::chrono::steady_clock::now();
     const auto extrinsics = makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0");

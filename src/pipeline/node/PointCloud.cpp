@@ -662,31 +662,6 @@ void PointCloud::buildStage1() {
     }
 }
 
-void PointCloud::postBuildStage() {
-    DeviceNodeCRTP::postBuildStage();
-
-    // The Sync subnode waits for every one of its inputs. Entries that exist but were never linked
-    // (the default depth input when only named streams are used, color inputs created but not linked)
-    // are removed so that they do not stall the synchronization. Erasing invalidates the references
-    // to those inputs (inputDepth for the default stream), which is why this only happens at build time.
-    std::vector<std::pair<std::string, std::string>> unused;
-    size_t connectedDepthStreams = 0;
-    for(const auto& entry : syncInputs) {
-        const auto& key = entry.first.second;
-        const bool isDepth = streamNameFromDepthKey(key).has_value();
-        if(entry.second.isConnected()) {
-            if(isDepth) ++connectedDepthStreams;
-            continue;
-        }
-        unused.push_back(entry.first);
-    }
-    if(connectedDepthStreams == 0) return;  // Nothing linked yet (e.g. inputs fed later); keep the default behaviour
-    for(const auto& key : unused) {
-        pimpl->logger->debug("PointCloud: ignoring unlinked input '{}'", key.second);
-        syncInputs.erase(key);
-    }
-}
-
 void PointCloud::buildInternal() {
     // Wire Sync subnode output to our private inSync input.
     // Color mode detection happens in run() because buildInternal() is called
