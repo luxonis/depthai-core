@@ -37,7 +37,7 @@ TEST_CASE("Test Multi-device external frame sync with at 30 FPS on IMX586 sensor
     testSync(fps, p);
 }
 
-TEST_CASE("Test Multi-device external frame sync with at 10 FPS", "[fsync][fps-10]") {
+TEST_CASE("Test Multi-device external frame sync with at 10 FPS", "[fsync][fps-10][ov9282][imx586][og05]") {
     float fps = 10.0f;
     auto p = getDefaultParameters();
     // Keep the 101-sample minimum comfortably inside the measurement window at 10 FPS.
@@ -45,31 +45,31 @@ TEST_CASE("Test Multi-device external frame sync with at 10 FPS", "[fsync][fps-1
     testSync(fps, p);
 }
 
-TEST_CASE("Test Multi-device external frame sync with at 13 FPS", "[fsync][fps-13]") {
+TEST_CASE("Test Multi-device external frame sync with at 13 FPS", "[fsync][fps-13][ov9282][imx586][og05]") {
     float fps = 13.0f;
     auto p = getDefaultParameters();
     testSync(fps, p);
 }
 
-TEST_CASE("Test Multi-device external frame sync with at 18.5 FPS", "[fsync][fps-18.5]") {
+TEST_CASE("Test Multi-device external frame sync with at 18.5 FPS", "[fsync][fps-18.5][ov9282][imx586][og05]") {
     float fps = 18.5f;
     auto p = getDefaultParameters();
     testSync(fps, p);
 }
 
-TEST_CASE("Test Multi-device external frame sync with at 30 FPS", "[fsync][fps-30]") {
+TEST_CASE("Test Multi-device external frame sync with at 30 FPS", "[fsync][fps-30][ov9282][imx586][og05]") {
     float fps = 30.0f;
     auto p = getDefaultParameters();
     testSync(fps, p);
 }
 
-TEST_CASE("Test Multi-device external frame sync with at 45 FPS", "[fsync][fps-45]") {
+TEST_CASE("Test Multi-device external frame sync with at 45 FPS", "[fsync][fps-45][ov9282][imx586][og05]") {
     float fps = 45.0f;
     auto p = getDefaultParameters();
     testSync(fps, p);
 }
 
-TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60]") {
+TEST_CASE("Test Multi-device external frame sync with at 60 FPS", "[fsync][fps-60][ov9282][imx586][og05]") {
     float fps = 60.0f;
     auto p = getDefaultParameters();
     testSync(fps, p);
