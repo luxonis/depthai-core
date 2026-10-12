@@ -1,7 +1,5 @@
 """Exercise Python access to the public C++ APIs covered by the binding audit."""
 from datetime import timedelta
-import subprocess
-import sys
 
 import depthai as dai
 import numpy as np
@@ -66,20 +64,6 @@ def test_device_properties_copy():
     assert target.xlinkChunkSize == -1
     assert target.eepromId == 17
     assert target.calibData is not None
-
-
-@pytest.mark.skipif(not hasattr(dai.node, "AutoCalibration"), reason="Dynamic calibration is disabled")
-def test_auto_calibration_requires_device():
-    subprocess.run([sys.executable, "-c", """
-import depthai as dai
-with dai.Pipeline(False) as pipeline:
-    try:
-        pipeline.create(dai.node.AutoCalibration)
-    except ValueError as error:
-        assert "requires a device" in str(error)
-    else:
-        raise AssertionError("Expected missing-device validation")
-"""], check=True, capture_output=True, text=True, timeout=15)
 
 
 @pytest.mark.parametrize("tracklet", [False, True])

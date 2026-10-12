@@ -270,18 +270,14 @@ void PipelineStateApi::stateAsync(std::function<void(const PipelineState&)> call
         }
     }
 
-    const auto callbackId = pipelineStateOut->addCallback([callback](const std::shared_ptr<ADatatype>& data) {
+    pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+
+    pipelineStateOut->addCallback([callback](const std::shared_ptr<ADatatype>& data) {
         if(data) {
             const auto state = std::dynamic_pointer_cast<const PipelineState>(data);
             if(state) callback(*state);
         }
     });
-    try {
-        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
-    } catch(...) {
-        pipelineStateOut->removeCallback(callbackId);
-        throw;
-    }
 }
 
 }  // namespace dai

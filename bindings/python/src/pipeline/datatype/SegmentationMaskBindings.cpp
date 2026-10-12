@@ -61,6 +61,10 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
             "prepareMask",
             [](py::object self, size_t width, size_t height) {
                 auto& mask = self.cast<SegmentationMask&>();
+                if(mask.data.use_count() > 1) {
+                    const auto previous = mask.getData();
+                    mask.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
                 mask.prepareMask(width, height);
                 return self.attr("getData")();
             },
@@ -88,16 +92,28 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
                     }
                     converted.push_back(static_cast<std::uint8_t>(value));
                 }
+                if(self.data.use_count() > 1) {
+                    const auto previous = self.getData();
+                    self.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
                 self.setMask(converted, width, height);
             },
             py::arg("mask"),
             py::arg("width"),
             py::arg("height"),
             DOC(dai, SegmentationMask, setMask))
-        .def("setMask",
-             static_cast<void (SegmentationMask::*)(dai::ImgFrame&)>(&SegmentationMask::setMask),
-             py::arg("frame"),
-             DOC(dai, SegmentationMask, setMask, 2))
+        .def(
+            "setMask",
+            [](SegmentationMask& self, ImgFrame& frame) {
+                if(self.data.use_count() > 1) {
+                    const auto previous = self.getData();
+                    self.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
+                self.setMask(frame);
+                self.setSize(frame.getWidth(), frame.getHeight());
+            },
+            py::arg("frame"),
+            DOC(dai, SegmentationMask, setMask, 2))
         .def(
             "getMaskData", [](SegmentationMask& self) { return toNumpyMask(self, self.getMaskData()); }, DOC(dai, SegmentationMask, getMaskData))
         .def("getFrame", &SegmentationMask::getFrame, DOC(dai, SegmentationMask, getFrame))
