@@ -1,6 +1,7 @@
 #pragma once
 
 // Private, host-only flight recorder. Not installed or exposed as SDK API.
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -51,6 +52,81 @@ struct Input {
     MessageQueue* queue = nullptr;
     std::string name;
     std::string deviceId;
+};
+
+struct RelayContext {
+    // Built once in XLinkInHost::run from canonical connected queues. No payloads.
+    struct Selection {
+        Handle handle;
+        std::size_t source = 0;
+        std::shared_ptr<void> nativeProgress;  // Stable private scalar slot; source vectors can grow at setup.
+    };
+    std::vector<Selection> inputs;
+};
+struct RelayTiming {
+    std::chrono::steady_clock::time_point entry{}, readReturned{}, metadataAvailable{}, metadataFinished{}, beforeSendRecorder{}, beforeSend{}, afterSend{},
+        exit{};
+    std::chrono::steady_clock::time_point packetBegin{}, packetEnd{}, parseBegin{}, parseEnd{};
+    std::chrono::steady_clock::time_point packetRecorderBegin{}, parseRecorderBegin{};
+    std::int64_t packetWaitNs = 0, parseNs = 0;
+    std::int64_t packetStartRecordingNs = 0, parseStartRecordingNs = 0;
+    std::uint64_t packets = 0, parses = 0;
+    std::uint64_t packetExceptions = 0, parseExceptions = 0;
+    bool exception = false;
+};
+enum class RelayBoundary {
+    NONE,
+    OPERATION_ENTRY,
+    PACKET_READ_ENTRY,
+    PACKET_READ_EXIT,
+    PARSE_ENTRY,
+    PARSE_EXIT,
+    READ_RETURN,
+    METADATA_READY,
+    OUT_SEND_ENTRY,
+    OUT_SEND_RETURN,
+    OPERATION_EXIT
+};
+// Source mapping takes canonical Input/MessageQueue addresses at run setup only.
+std::shared_ptr<RelayContext> relayContext(const std::vector<const MessageQueue*>& queues, const std::string& stream, std::int64_t node) noexcept;
+void relaySetupFailed() noexcept;
+class RelayOperation {
+   public:
+    explicit RelayOperation(const std::shared_ptr<RelayContext>& context, const char* operation = "read_and_send") noexcept;
+    ~RelayOperation() noexcept;
+    RelayOperation(const RelayOperation&) = delete;
+    RelayOperation& operator=(const RelayOperation&) = delete;
+    explicit operator bool() const noexcept {
+        return enabled;
+    }
+    void checkpoint(const ADatatype* message = nullptr) noexcept;
+    // Scalar, lock-free native boundary publication; freeze samples it once.
+    void nativeCheckpoint(RelayBoundary boundary, std::chrono::steady_clock::time_point time) noexcept;
+    RelayTiming timing;
+
+   private:
+    std::shared_ptr<RelayContext> trace;
+    std::array<std::uint64_t, 64> recordIds{};
+    const char* operation;
+    int exceptionsOnEntry = 0;
+    bool enabled = false;
+    RelayOperation* previous = nullptr;
+};
+// Thread-local operation hooks split the actual readMove API from parser calls,
+// including nested MessageGroup/PacketizedData reads without changing signatures.
+enum class RelayPart { PACKET_READ, PARSE };
+class RelayPartOperation {
+   public:
+    explicit RelayPartOperation(RelayPart part) noexcept;
+    ~RelayPartOperation() noexcept;
+    RelayPartOperation(const RelayPartOperation&) = delete;
+    RelayPartOperation& operator=(const RelayPartOperation&) = delete;
+
+   private:
+    RelayOperation* operation = nullptr;
+    RelayPart part;
+    std::chrono::steady_clock::time_point start{};
+    int exceptionsOnEntry = 0;
 };
 
 // Zero time points mean an unpublished checkpoint, not evidence that the phase never ran.

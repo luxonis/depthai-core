@@ -5,6 +5,7 @@
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
+#include "pipeline/SyncDebug.hpp"
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
 
@@ -68,12 +69,16 @@ bool XLinkInHost::parkUntilReconnect(const std::shared_ptr<XLinkConnection>& los
 }
 
 StreamPacketDesc XLinkInHost::readStreamMessage() const {
+    detail::syncdebug::RelayPartOperation timing(detail::syncdebug::RelayPart::PACKET_READ);
     return stream->readMove();
 }
 
 std::shared_ptr<ADatatype> XLinkInHost::readData() const {
     auto packet = readStreamMessage();
-    const auto msg = StreamMessageParser::parseMessage(std::move(packet));
+    const auto msg = [&]() {
+        detail::syncdebug::RelayPartOperation timing(detail::syncdebug::RelayPart::PARSE);
+        return StreamMessageParser::parseMessage(std::move(packet));
+    }();
     if(auto messageGroup = std::dynamic_pointer_cast<MessageGroup>(msg)) {
         parseMessageGroup(messageGroup);
     }
@@ -109,6 +114,7 @@ std::shared_ptr<ADatatype> XLinkInHost::parsePacketizedData(const std::shared_pt
     packet.length = static_cast<uint32_t>(payload.size());
     packet.fd = -1;
 
+    detail::syncdebug::RelayPartOperation timing(detail::syncdebug::RelayPart::PARSE);
     return StreamMessageParser::parseMessage(&packet);
 }
 
@@ -119,6 +125,21 @@ void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& message
 }
 
 void XLinkInHost::run() {
+    std::shared_ptr<detail::syncdebug::RelayContext> relay;
+    if(detail::syncdebug::requested()) {
+        try {
+            std::vector<const MessageQueue*> queues;
+            for(const auto& connection : out.getConnections()) {
+                if(connection.in) queues.push_back(connection.in);
+            }
+            for(const auto& connection : out.getQueueConnections()) {
+                if(connection.queue) queues.push_back(connection.queue.get());
+            }
+            relay = detail::syncdebug::relayContext(queues, streamName, id);
+        } catch(...) {
+            detail::syncdebug::relaySetupFailed();
+        }
+    }
     {
         // Consume a connection refresh recorded before the node started (build time)
         std::lock_guard<std::mutex> lock(mtx);
@@ -135,11 +156,13 @@ void XLinkInHost::run() {
             currentConn = conn;
         }
         try {
+            detail::syncdebug::RelayOperation open(relay, "stream_open");
             stream = std::make_unique<XLinkStream>(currentConn, streamName, 1);
         } catch(const std::exception& ex) {
             // Connection unusable (e.g. closed while waking up) - park until it is
             // refreshed or the device is declared gone
             logger::error("Cannot open stream '{}': {}", streamName, ex.what());
+            detail::syncdebug::RelayOperation park(relay, "reconnect_wait_after_open_failure");
             if(!parkUntilReconnect(currentConn, true)) {
                 return;
             }
@@ -148,10 +171,17 @@ void XLinkInHost::run() {
         }
         while(mainLoop()) {
             try {
+                detail::syncdebug::RelayOperation receive(relay);
                 // Blocking -- parse packet and gather timing information
                 const auto t1Parse = std::chrono::steady_clock::now();
                 auto msg = readData();
                 const auto t2Parse = std::chrono::steady_clock::now();
+                if(receive) {
+                    receive.timing.readReturned = t2Parse;
+                    receive.nativeCheckpoint(detail::syncdebug::RelayBoundary::READ_RETURN, t2Parse);
+                    receive.timing.metadataAvailable = std::chrono::steady_clock::now();
+                    receive.checkpoint(msg.get());
+                }
 
                 // Trace level debugging
                 if(logger::get_level() == spdlog::level::trace) {
@@ -168,7 +198,18 @@ void XLinkInHost::run() {
 
                 {
                     auto blockEvent = this->outputBlockEvent();
+                    if(receive) {
+                        receive.timing.beforeSendRecorder = std::chrono::steady_clock::now();
+                        receive.checkpoint();
+                        receive.timing.beforeSend = std::chrono::steady_clock::now();
+                        receive.nativeCheckpoint(detail::syncdebug::RelayBoundary::OUT_SEND_ENTRY, receive.timing.beforeSend);
+                    }
                     out.send(msg);
+                    if(receive) {
+                        receive.timing.afterSend = std::chrono::steady_clock::now();
+                        receive.nativeCheckpoint(detail::syncdebug::RelayBoundary::OUT_SEND_RETURN, receive.timing.afterSend);
+                        receive.checkpoint();
+                    }
                 }
                 // // Add 'data' to queue
                 // if(!queue.push(msg)) {
@@ -195,6 +236,7 @@ void XLinkInHost::run() {
                     auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                     logger::error(exceptionMessage);
                     logger::info("Waiting for reconnect (XLINKINHOST)\n");
+                    detail::syncdebug::RelayOperation park(relay, "reconnect_wait_after_read_failure");
                     if(!parkUntilReconnect(currentConn, false)) {
                         return;
                     }

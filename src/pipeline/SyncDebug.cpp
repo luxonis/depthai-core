@@ -299,12 +299,92 @@ struct InputTimingRecord {
 };
 using InputTimings = OperationHistory<InputTimingRecord, DURATION_NAMES.size()>;
 
+constexpr std::array<const char*, 12> RELAY_DURATION_NAMES{"entry_to_read_return_ns",
+                                                           "packet_read_api_total_ns",
+                                                           "parse_total_ns",
+                                                           "packet_start_recording_total_ns",
+                                                           "parse_start_recording_total_ns",
+                                                           "read_return_to_metadata_ns",
+                                                           "metadata_extraction_ns",
+                                                           "before_send_recording_ns",
+                                                           "metadata_to_send_ns",
+                                                           "out_send_ns",
+                                                           "entry_to_exit_ns",
+                                                           "summary_publication_ns"};
+struct RelayRecord {
+    std::uint64_t id = 0;
+    const char* phase = "setup";
+    std::optional<std::size_t> sampleIndex;
+    std::size_t source = 0;
+    const char* operation = "read_and_send";
+    Frame frame;
+    RelayTiming timing;
+    TimePoint startPublished{}, summaryPublished{};
+    bool complete = false;
+};
+using RelayTimings = OperationHistory<RelayRecord, RELAY_DURATION_NAMES.size()>;
+struct RelayProgress {
+    std::atomic<std::uint64_t> revision{0}, recordId{0};
+    std::atomic<std::int64_t> boundaryNs{0};
+    std::atomic<unsigned> boundary{0};
+    std::uint64_t frozenRecordId = 0;
+    std::int64_t frozenBoundaryNs = 0;
+    unsigned frozenBoundary = 0;
+    bool frozenCoherent = false;
+    const bool lockFree = revision.is_lock_free() && recordId.is_lock_free() && boundaryNs.is_lock_free() && boundary.is_lock_free();
+    void publish(std::uint64_t id, RelayBoundary value, TimePoint time) noexcept {
+        if(!lockFree) return;
+        // SC across the scalar tuple makes a racing single-sample freeze
+        // conservative on every C++17 memory model, not just x86 ordering.
+        revision.fetch_add(1, std::memory_order_seq_cst);
+        recordId.store(id, std::memory_order_seq_cst);
+        boundaryNs.store(timeNs(time), std::memory_order_seq_cst);
+        boundary.store(static_cast<unsigned>(value), std::memory_order_seq_cst);
+        revision.fetch_add(1, std::memory_order_seq_cst);
+    }
+    void freeze(std::int64_t cutoff) noexcept {
+        // One bounded sample, never spin while a native worker is being scheduled.
+        if(!lockFree) return;
+        const auto before = revision.load(std::memory_order_seq_cst);
+        frozenRecordId = recordId.load(std::memory_order_seq_cst);
+        frozenBoundaryNs = boundaryNs.load(std::memory_order_seq_cst);
+        frozenBoundary = boundary.load(std::memory_order_seq_cst);
+        const auto after = revision.load(std::memory_order_seq_cst);
+        frozenCoherent = before == after && (after % 2 == 0) && frozenBoundaryNs <= cutoff;
+    }
+};
+struct RelaySource {
+    std::string stream;
+    std::int64_t node = -1;
+    std::shared_ptr<RelayProgress> progress;
+};
+thread_local RelayOperation* activeRelay = nullptr;
+
+std::array<std::int64_t, RELAY_DURATION_NAMES.size()> relayDurations(const RelayRecord& record) {
+    const auto& t = record.timing;
+    return {elapsedNs(t.entry, t.readReturned),
+            t.packets ? t.packetWaitNs : -1,
+            t.parses ? t.parseNs : -1,
+            t.packets ? t.packetStartRecordingNs : -1,
+            t.parses ? t.parseStartRecordingNs : -1,
+            elapsedNs(t.readReturned, t.metadataAvailable),
+            elapsedNs(t.metadataAvailable, t.metadataFinished),
+            elapsedNs(t.beforeSendRecorder, t.beforeSend),
+            elapsedNs(t.metadataFinished, t.beforeSend),
+            elapsedNs(t.beforeSend, t.afterSend),
+            elapsedNs(t.entry, t.exit),
+            elapsedNs(t.exit, record.summaryPublished)};
+}
+
 struct Stream {
-    explicit Stream(Input input) : input(std::move(input)), delivery(std::make_unique<InputTimings>()) {}
+    explicit Stream(Input input) : input(std::move(input)), delivery(std::make_unique<InputTimings>()), relay(std::make_unique<RelayTimings>()) {}
     Input input;
     std::array<History, static_cast<std::size_t>(Stage::COUNT)> histories;
     // Separate allocations keep the per-stream announcement atomics stable as streams move.
     std::unique_ptr<InputTimings> delivery;
+    std::unique_ptr<RelayTimings> relay;
+    std::vector<RelaySource> relaySources;
+    std::uint64_t relayExceptions = 0, relaySendReturns = 0;
 };
 
 constexpr std::array<const char*, 22> READ_DURATION_NAMES{"context_call_ns",
@@ -480,7 +560,11 @@ struct State {
         syncStarts.freeze(frozenSteadyNs);
         sendStarts.freeze(frozenSteadyNs);
         reads.starts.freeze(frozenSteadyNs);
-        for(auto& stream : streams) stream.delivery->starts.freeze(frozenSteadyNs);
+        for(auto& stream : streams) {
+            stream.delivery->starts.freeze(frozenSteadyNs);
+            stream.relay->starts.freeze(frozenSteadyNs);
+            for(auto& source : stream.relaySources) source.progress->freeze(frozenSteadyNs);
+        }
     }
 
     std::uint64_t identify(const std::shared_ptr<ADatatype>& message) {
@@ -688,6 +772,78 @@ nlohmann::json inputTimingHistoryJson(const Stream& stream, bool success) {
     return result;
 }
 
+nlohmann::json relayHistoryJson(const Stream& stream, bool success) {
+    const auto& history = *stream.relay;
+    auto result = operationHistoryJson(history, RELAY_DURATION_NAMES);
+    result["exceptions"] = stream.relayExceptions;
+    result["out_send_returns"] = stream.relaySendReturns;
+    result["sources"] = nlohmann::json::array();
+    static constexpr std::array<const char*, 11> BOUNDARY_NAMES{"none",
+                                                                "operation_entry",
+                                                                "packet_read_entry",
+                                                                "packet_read_exit",
+                                                                "parse_entry",
+                                                                "parse_exit",
+                                                                "read_return",
+                                                                "metadata_ready",
+                                                                "out_send_entry",
+                                                                "out_send_return",
+                                                                "operation_exit"};
+    for(const auto& source : stream.relaySources) {
+        const auto& progress = *source.progress;
+        result["sources"].push_back(
+            {{"stream_name", source.stream},
+             {"relay_node_id", source.node},
+             {"device_id", stream.input.deviceId},
+             {"native_boundary_sample_coherent", progress.frozenCoherent},
+             {"native_boundary_available", progress.lockFree},
+             {"native_record_id", progress.frozenCoherent ? nlohmann::json(progress.frozenRecordId) : nlohmann::json(nullptr)},
+             {"native_boundary", progress.frozenCoherent ? nlohmann::json(BOUNDARY_NAMES.at(progress.frozenBoundary)) : nlohmann::json(nullptr)},
+             {"native_boundary_ns",
+              progress.frozenCoherent && progress.frozenBoundaryNs ? nlohmann::json(progress.frozenBoundaryNs) : nlohmann::json(nullptr)}});
+    }
+    if(success) return result;
+    result["events"] = nlohmann::json::array();
+    for(const auto& record : history.records.getBuffer()) {
+        const auto& t = record.timing;
+        nlohmann::json entry = {{"record_id", record.id},
+                                {"source_index", record.source},
+                                {"operation", record.operation},
+                                {"phase", record.phase},
+                                {"complete", record.complete},
+                                {"inflight", !record.complete},
+                                {"exception", t.exception},
+                                {"frame", frameJson(record.frame)},
+                                {"entry_ns", checkpointJson(t.entry)},
+                                {"read_returned_ns", checkpointJson(t.readReturned)},
+                                {"metadata_available_ns", checkpointJson(t.metadataAvailable)},
+                                {"before_out_send_ns", checkpointJson(t.beforeSend)},
+                                {"metadata_extraction_finished_ns", checkpointJson(t.metadataFinished)},
+                                {"before_send_recorder_ns", checkpointJson(t.beforeSendRecorder)},
+                                {"after_out_send_ns", checkpointJson(t.afterSend)},
+                                {"exit_ns", checkpointJson(t.exit)},
+                                {"last_packet_begin_ns", checkpointJson(t.packetBegin)},
+                                {"last_packet_end_ns", checkpointJson(t.packetEnd)},
+                                {"last_parse_begin_ns", checkpointJson(t.parseBegin)},
+                                {"last_parse_end_ns", checkpointJson(t.parseEnd)},
+                                {"last_packet_recorder_begin_ns", checkpointJson(t.packetRecorderBegin)},
+                                {"last_parse_recorder_begin_ns", checkpointJson(t.parseRecorderBegin)},
+                                {"packet_read_exits", t.packets},
+                                {"parse_exits", t.parses},
+                                {"packet_read_exceptions", t.packetExceptions},
+                                {"parse_exceptions", t.parseExceptions},
+                                {"start_published_ns", checkpointJson(record.startPublished)},
+                                {"summary_published_ns", checkpointJson(record.summaryPublished)}};
+        entry["sample_index"] = record.sampleIndex ? nlohmann::json(*record.sampleIndex) : nlohmann::json(nullptr);
+        entry["durations"] = nlohmann::json::object();
+        const auto values = relayDurations(record);
+        for(std::size_t i = 0; i < values.size(); ++i)
+            entry["durations"][RELAY_DURATION_NAMES[i]] = values[i] < 0 ? nlohmann::json(nullptr) : nlohmann::json(values[i]);
+        result["events"].push_back(std::move(entry));
+    }
+    return result;
+}
+
 nlohmann::json popOutcomeJson(QueuePopOutcome outcome) {
     switch(outcome) {
         case QueuePopOutcome::POPPED:
@@ -848,12 +1004,13 @@ nlohmann::json snapshot(const State& state, bool success, const char* reason) {
             value[STAGE_NAMES[stage]] = historyJson(stream.histories[stage], success);
         }
         value["input_delivery_timings"] = inputTimingHistoryJson(stream, success);
+        value["relay_timing"] = relayHistoryJson(stream, success);
         result["streams"].push_back(std::move(value));
     }
     result["groups"] = groupHistoriesJson(state, success);
     result["output_timings"] = timingHistoryJson(state, success);
     result["reader_timings"] = readTimingHistoryJson(state, success);
-    result["diagnostic_extensions"] = {"output_notify_boundaries_v1", "reader_boundaries_v1", "input_delivery_boundaries_v1"};
+    result["diagnostic_extensions"] = {"output_notify_boundaries_v1", "reader_boundaries_v1", "input_delivery_boundaries_v1", "relay_boundaries_v1"};
     result["context_history_overwrites"] = state.contextTotal - state.contexts.size();
     if(!success) result["contexts"] = contextHistoryJson(state);
     return result;
@@ -875,6 +1032,181 @@ Handle find(const MessageQueue* queue) noexcept {
     } catch(...) {
         return {};
     }
+}
+
+std::shared_ptr<RelayContext> relayContext(const std::vector<const MessageQueue*>& queues, const std::string& stream, std::int64_t node) noexcept {
+    if(!registry().active.load(std::memory_order_relaxed)) return {};
+    try {
+        auto context = std::make_shared<RelayContext>();
+        for(const auto* queue : queues) {
+            auto handle = find(queue);
+            if(!handle || handle.queueIndex >= handle.state->streams.size()) continue;
+            if(std::any_of(context->inputs.begin(), context->inputs.end(), [&](const auto& entry) {
+                   return entry.handle.state == handle.state && entry.handle.queueIndex == handle.queueIndex;
+               }))
+                continue;
+            if(context->inputs.size() == 64) {
+                ++handle.state->recordingErrors;
+                continue;
+            }
+            update(handle, [&](State& state) {
+                auto& sources = state.streams.at(handle.queueIndex).relaySources;
+                if(sources.size() == 64) {
+                    ++state.recordingErrors;
+                    return;
+                }
+                const auto index = sources.size();
+                auto progress = std::make_shared<RelayProgress>();
+                sources.push_back({stream, node, progress});
+                context->inputs.push_back({handle, index, std::move(progress)});
+            });
+        }
+        return context->inputs.empty() ? nullptr : context;
+    } catch(...) {
+        relaySetupFailed();
+        return {};
+    }
+}
+
+void relaySetupFailed() noexcept {
+    auto& entries = registry();
+    if(!entries.active.load(std::memory_order_relaxed)) return;
+    try {
+        std::lock_guard<std::mutex> lock(entries.mutex);
+        // Setup failure can precede source resolution. Count once per selected
+        // Session using only its existing registry, with no allocation/callback.
+        for(auto it = entries.queues.begin(); it != entries.queues.end(); ++it) {
+            const bool seen = std::any_of(entries.queues.begin(), it, [&](const auto& entry) { return entry.second.state == it->second.state; });
+            if(!seen) ++it->second.state->recordingErrors;
+        }
+    } catch(...) { /* Best-effort diagnostics; preserve the original SDK operation. */
+    }
+}
+
+RelayOperation::RelayOperation(const std::shared_ptr<RelayContext>& context, const char* operation) noexcept : trace(context), operation(operation) {
+    if(!trace) return;
+    enabled =
+        std::any_of(trace->inputs.begin(), trace->inputs.end(), [](const auto& entry) { return !entry.handle.state->frozen.load(std::memory_order_relaxed); });
+    if(!enabled) return;
+    timing.entry = std::chrono::steady_clock::now();  // Before any State lock/publication.
+    exceptionsOnEntry = std::uncaught_exceptions();
+    previous = activeRelay;
+    activeRelay = this;
+    for(std::size_t i = 0; i < trace->inputs.size(); ++i) {
+        const auto& selection = trace->inputs[i];
+        selection.handle.state->streams.at(selection.handle.queueIndex).relay->starts.announce(timing.entry);
+        update(selection.handle, [&](State& state) {
+            auto& record = state.streams.at(selection.handle.queueIndex).relay->add(state.phase, state.sampleIndex);
+            recordIds[i] = record.id;
+            record.source = selection.source;
+            record.operation = operation;
+            record.timing = timing;
+            record.startPublished = std::chrono::steady_clock::now();
+        });
+    }
+    nativeCheckpoint(RelayBoundary::OPERATION_ENTRY, timing.entry);
+}
+
+void RelayOperation::nativeCheckpoint(RelayBoundary boundary, TimePoint time) noexcept {
+    if(!enabled) return;
+    for(std::size_t i = 0; i < trace->inputs.size(); ++i) {
+        if(recordIds[i] == 0) continue;
+        const auto& selection = trace->inputs[i];
+        if(auto* progress = static_cast<RelayProgress*>(selection.nativeProgress.get())) progress->publish(recordIds[i], boundary, time);
+    }
+}
+
+void RelayOperation::checkpoint(const ADatatype* message) noexcept {
+    if(!enabled) return;
+    const auto frame = message ? metadata(*message) : Frame{};  // Metadata access outside State::mutex.
+    if(message) {
+        timing.metadataFinished = std::chrono::steady_clock::now();
+        nativeCheckpoint(RelayBoundary::METADATA_READY, timing.metadataFinished);
+    }
+    for(std::size_t i = 0; i < trace->inputs.size(); ++i) {
+        const auto& handle = trace->inputs[i].handle;
+        update(handle, [&](State& state) {
+            auto& history = *state.streams.at(handle.queueIndex).relay;
+            if(auto* record = history.find(recordIds[i])) {
+                record->timing = timing;
+                if(message) record->frame = frame;
+            }
+        });
+    }
+}
+
+RelayOperation::~RelayOperation() noexcept {
+    if(!enabled) return;
+    timing.exit = std::chrono::steady_clock::now();
+    timing.exception = std::uncaught_exceptions() > exceptionsOnEntry;
+    nativeCheckpoint(RelayBoundary::OPERATION_EXIT, timing.exit);
+    activeRelay = previous;
+    for(std::size_t i = 0; i < trace->inputs.size(); ++i) {
+        const auto& handle = trace->inputs[i].handle;
+        update(handle, [&](State& state) {
+            auto& history = *state.streams.at(handle.queueIndex).relay;
+            auto* record = history.find(recordIds[i]);
+            if(!record) {
+                ++history.completionsWithoutRecord;
+                return;
+            }
+            record->timing = timing;
+            record->complete = true;
+            record->summaryPublished = std::chrono::steady_clock::now();
+            ++history.summaries;
+            history.summarize(relayDurations(*record));
+            auto& stream = state.streams.at(handle.queueIndex);
+            stream.relayExceptions += timing.exception;
+            stream.relaySendReturns += timing.afterSend != TimePoint{};
+        });
+    }
+}
+
+RelayPartOperation::RelayPartOperation(RelayPart part) noexcept : operation(activeRelay), part(part) {
+    if(!operation) return;
+    exceptionsOnEntry = std::uncaught_exceptions();
+    const auto beforeRecording = std::chrono::steady_clock::now();
+    if(part == RelayPart::PACKET_READ) {
+        operation->timing.packetRecorderBegin = beforeRecording;
+        operation->timing.packetBegin = {};
+        operation->timing.packetEnd = {};
+    } else {
+        operation->timing.parseRecorderBegin = beforeRecording;
+        operation->timing.parseBegin = {};
+        operation->timing.parseEnd = {};
+    }
+    operation->checkpoint();
+    start = std::chrono::steady_clock::now();  // Actual API boundary excludes start-recorder State lock.
+    const auto recordingNs = std::chrono::duration_cast<std::chrono::nanoseconds>(start - beforeRecording).count();
+    if(part == RelayPart::PACKET_READ) {
+        operation->timing.packetBegin = start;
+        operation->timing.packetStartRecordingNs += recordingNs;
+        operation->nativeCheckpoint(RelayBoundary::PACKET_READ_ENTRY, start);
+    } else {
+        operation->timing.parseBegin = start;
+        operation->timing.parseStartRecordingNs += recordingNs;
+        operation->nativeCheckpoint(RelayBoundary::PARSE_ENTRY, start);
+    }
+}
+
+RelayPartOperation::~RelayPartOperation() noexcept {
+    if(!operation) return;
+    const auto end = std::chrono::steady_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    if(part == RelayPart::PACKET_READ) {
+        operation->timing.packetEnd = end;
+        operation->timing.packetWaitNs += duration;
+        ++operation->timing.packets;
+        operation->timing.packetExceptions += std::uncaught_exceptions() > exceptionsOnEntry;
+        operation->nativeCheckpoint(RelayBoundary::PACKET_READ_EXIT, end);
+    } else {
+        operation->timing.parseEnd = end;
+        operation->timing.parseNs += duration;
+        ++operation->timing.parses;
+        operation->timing.parseExceptions += std::uncaught_exceptions() > exceptionsOnEntry;
+        operation->nativeCheckpoint(RelayBoundary::PARSE_EXIT, end);
+    }
+    operation->checkpoint();
 }
 
 SendOperation::SendOperation(const MessageQueue* queue, const std::shared_ptr<ADatatype>& message, bool timed) noexcept {
@@ -1173,6 +1505,7 @@ std::unique_ptr<Session> Session::create(const std::vector<Input>& inputs, Messa
 }
 
 Session::~Session() {
+    freeze();  // Cached relay handles remain safe and inert after Session teardown.
     auto& entries = registry();
     std::lock_guard<std::mutex> lock(entries.mutex);
     for(const auto& queue : state->queues) {

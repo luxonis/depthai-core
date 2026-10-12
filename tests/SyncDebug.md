@@ -393,3 +393,233 @@ arrival/capture timelines before assigning a cause.
 This recorder adds bounded CPU/mutex overhead when enabled. It does not establish
 that every sequence number corresponds to a physical sensor trigger. Compare
 with device-side capture/output evidence and passing counter summaries.
+
+## Per-attempt host/device capture loop
+
+Use `tests/capture_multi_device_sync_attempts.py` for a locally run batch that
+preserves completed device JSONs **after every attempt, before launching the next
+attempt**, including successful attempts and Catch failures. This implements the
+first next step in `multidevicesync-combined-analysis-20261009T121708Z.md`: collecting
+only after a batch left device sessions for just 5 of its 14 failing attempts,
+because subsequent firmware launches reused the PID-modulo-16 destinations.
+
+The standalone loop accepts the existing direct test command; the existing
+`run_multi_device_sync_tests.py` / CTest entrypoint keeps its current behavior.
+Requirements are Python **3.8+**, a POSIX host, an already available `adb` client
+on `PATH` (or `--adb /path/to/adb`), and the user's existing instrumented executable
+and firmware. No Python package installation is needed.
+
+### User-run example on the HIL host
+
+From the host checkout's `tests/` directory, inside the existing environment:
+
+```bash
+source ~/.hil/bin/activate
+python3 -u capture_multi_device_sync_attempts.py \
+  --cwd "$PWD" \
+  --consecutive-successes 50 --max-attempts 200 \
+  --output-dir test-logs \
+  --enable-host-debug --archive \
+  -- ../build/tests/multi_device_fsync_test '[fps-60]'
+```
+
+Everything after `--` is forwarded as an argument vector without a shell. Quote
+the Catch filter as shown. Replace that command with an existing executable and
+its arguments as needed. Without a command, the default is this checkout's
+`build/tests/multi_device_fsync_test '[fps-60]'`, resolved from the script's
+location. The test working directory defaults to the caller's current directory;
+`--cwd` sets it explicitly. Relative paths printed by the test are resolved against
+that directory. No device IDs or camera counts are embedded in the collector.
+
+`--enable-host-debug` sets `DEPTHAI_SYNC_DEBUG=1` and
+`DEPTHAI_SYNC_DEBUG_DIR=<attempt>/host-debug-live` **only in the test's environment**.
+An inherited `DEPTHAI_SYNC_DEBUG=1` also selects that attempt-owned directory,
+overriding the child's inherited debug-directory value. Other environment values,
+including the user's existing firmware override/discovery settings, are inherited.
+The collector does not dump the environment or collect authentication files.
+
+**Device prerequisite:** the firmware launcher must already supply these values
+to the actual firmware process on each participating board:
+
+```text
+DEPTHAI_CAMERA_DEBUG=1
+DEPTHAI_CAMERA_DEBUG_DIR=/tmp/depthai-camera-debug
+DEPTHAI_CAMERA_DEBUG_STALL_MS=50
+```
+
+Host exports do not establish firmware enablement. The collector reports that
+enablement as unverified and reads the existing device directory. Refer to the
+device repository's `CameraDebug.md` for the firmware-launch contract. Matching
+PID/process/camera-session headers are evidence of recorder operation; old files
+alone do not confirm enablement for the current attempt.
+
+### Layout and provenance
+
+`--output-dir` is a parent directory. Every invocation creates a unique
+`sync-attempts-<UTC>-<random>/` batch underneath it. Every attempt has an index and
+UTC start in its directory name. Existing batches and raw snapshots are never
+overwritten. Example layout:
+
+```text
+test-logs/sync-attempts-<UTC>-<random>/
+  metadata.txt
+  metadata.json
+  summary.tsv
+  attempt_0001_<UTC>/
+    attempt.log
+    metadata.json
+    collection.jsonl
+    host-debug-live/<test-written JSONs>
+    host-debug/<copied JSONs>
+    device/<ADB serial>/camera-<id>-slot-<slot>-<role>.json
+    device/<ADB serial>/versions/<SHA256>/<same camera basename>.json
+```
+
+`attempt.log` stores the full merged stdout/stderr byte stream and streams it to
+the console as it arrives. Batch `metadata.txt` and `summary.tsv` provide the familiar
+command/streak/result overview; logs now live inside attempt directories rather
+than flat `attempt_N.log` files. The summary is flushed and synced after each
+attempt. Progress metadata is written before launch and after test exit; finalized
+metadata records the actual test exit independently of collection errors.
+
+The collector inventories completed filenames/stat information before launch, then
+enumerates `adb devices -l` afresh at finish and copies **all** matching completed
+`camera-*-slot-*-{latest,stall-first,stall,fatal}.json` destinations from every online
+serial. It ignores `.json.tmp`. Older PID slots are retained and explicitly
+classified, since a slot's stall/fatal file can belong to a different launch than
+its latest file. Serial folder names are filesystem-escaped if necessary; the
+original serial is always in the manifest. Firmware `hostname` is informational,
+never the unique board identity.
+
+Before a test launches, a missing debug directory or an empty directory is an
+expected, valid empty baseline: new firmware may not have created either yet.
+The inventory records the directory's absence and baseline completeness, allowing
+paths first seen after launch to be marked `new_path`. This does not verify firmware
+recorder enablement. Missing/empty capture during polling or final collection still
+reports an error, as do ADB availability/permission and inventory parsing failures.
+
+Final collection inventories all online serials first, then reads new/changed
+destinations across **all devices** before any unchanged older slots. Older files
+remain queued for copying; if the collection deadline expires, the manifest lists
+the remaining known serial/path pairs and any devices still awaiting inventory.
+Polling uses the same inventory-first workflow and reads only new/changed paths.
+
+`collection.jsonl` and attempt `metadata.json` record remote serial/path, local
+destination, collection time, exact received-byte SHA-256, JSON PID,
+`process_session`, camera `session`/ID/socket/sensor, filename role/slot, and read
+status. A remote read records inode/size/mtime/ctime both before and after `cat`.
+Equal observations and the received byte count are marked `stable_observation`;
+they do **not** make the separate pathname opens an atomic snapshot. Changing or
+partial reads, malformed JSONs and unsupported schemas are explicitly reported;
+received bytes are retained. Duplicate content is stored once per source basename
+within an attempt; subsequent content gets a hash-versioned path. The manifest's
+`phase` and destination identify the final versus polled observation.
+
+Attribution is conservative:
+
+- `host_frame_correlated`: exact sequence + DEVICE timestamp + SYSTEM timestamp
+  joins a firmware event to a recorded host stream; stream device ID/name and
+  host-log FSYNC master/slave role, when available, accompany the join.
+- `host_correlated_process_session`: same ADB serial, PID and nonempty process
+  session as a directly correlated snapshot.
+- `current_attempt_time_candidate` / `existing_time_candidate`: the JSON
+  `system_start_ns` falls inside / before the host launch-to-exit clock window.
+  Device clock correction/skew can affect this evidence.
+- `changed_or_new_unknown_session`: a filename/stat changed since the baseline,
+  without a stronger session join. A changed destination alone is not proof that
+  the current test owns the session.
+- `unknown`: attribution cannot be established. Unchanged existing files are not
+  promoted to current-session evidence from their filename or copy time.
+
+All raw copies survive regardless of attribution. Per-serial classification counts
+are in `device_session_coverage`. Successful host summaries omit frame histories,
+so they may support only time/baseline candidates. The collector does not read gate
+logs automatically; use preserved session identities for a later gate-log join.
+
+Every `Sync debug artifact:` path in the merged log is collected, including multiple
+cases per invocation and quoted `std::filesystem` paths containing spaces. The
+attempt-owned host directory is also scanned for JSONs. `--host-debug-dir DIR`
+adds a baseline/new-or-changed scan of a custom **local** directory, useful for a
+command that supplies its own recorder directory; unchanged old files from that
+directory are not swept into the attempt. Same-basename snapshots with different
+content receive hash-versioned paths and retain their source-path provenance.
+
+### Optional bounded capture during the test
+
+Add `--poll-interval 1` to preserve new/changed completed destinations while the
+test is running. This is particularly useful for a command that runs all eight
+cases, or for retaining intermediate `stall` / `latest` versions before a live
+writer replaces them. The first observed version keeps the camera basename;
+additional content hashes are saved under `versions/`.
+
+Polling is disabled by default. Defaults when enabled:
+
+| Option | Default / meaning |
+|---|---|
+| `--poll-interval` | `0` disabled; otherwise at least 1 second between cycles |
+| `--poll-budget` | 20 seconds maximum ADB collection budget per cycle |
+| `--poll-max-copies` | 512 in-test file reads per attempt |
+| `--poll-max-bytes` | 268435456 received JSON bytes per attempt |
+| `--adb-timeout` | 5 seconds per ADB subprocess |
+| `--collection-timeout` | 180 seconds for each baseline/final device collection |
+| `--test-timeout` | unset; optional test duration limit in seconds |
+| `--interrupt-grace` | 10 seconds after forwarded SIGINT |
+
+The byte limit checks the inventoried size before reading; a concurrent replacement
+can make the last read exceed that estimate. The polling thread is managed, uses a
+stop event, checks it between reads, and is joined before final collection. Final
+collection has its own budget and still runs after a polling limit/error. A limit,
+timeout or incomplete cycle is recorded explicitly. Polling uses stat changes to
+select reads; it is not a filesystem watch and cannot promise every intermediate
+publication. Cycles are sequential, not overlapping, and can take longer than the
+chosen interval. Copying all old slots on every attempt and optional versions can
+produce a substantial batch; choose bounds and output storage accordingly.
+
+### Termination, errors and archive
+
+Positive streak/attempt bounds are required, with `max-attempts >=
+consecutive-successes`. A nonzero SDK exit, including Catch's `42`, resets the
+streak and the loop continues after collection. Process-launch failure has a null
+test exit and stops the batch after collection. Collection errors never replace
+the SDK result or count a failed test as a pass.
+
+SIGINT (also SIGTERM to the runner) requests a graceful interruption: forward
+SIGINT to the test's own process group, wait `--interrupt-grace`, then SIGTERM and,
+after five more seconds, SIGKILL if needed. If it still has not exited after five
+seconds, record `termination_unreaped` and stop the batch. Final collection and
+optional archiving still run. Signals target only the process group created for
+this test, not unrelated host or device processes. An inherited output pipe still
+open two seconds after the test exits is closed and reported as incomplete output.
+
+Missing ADB is reported before tests start; the command can still run with device
+capture marked incomplete. Missing debug directories after launch,
+offline/unauthorized or disappeared devices, read return statuses/timeouts,
+parse failures and collection
+budget exhaustion are explicit per-attempt errors. The collector issues only ADB
+enumeration and read-only shell/stat/file commands. It performs no device writes,
+root/reboot operations, deployment or launcher/service changes.
+
+Runner exit codes describe the **batch**, with per-attempt SDK exits in the summary:
+
+| Exit | Meaning |
+|---|---|
+| `0` | Requested success streak reached; no observed collection errors |
+| `1` | Maximum attempts exhausted before the requested streak |
+| `2` | Streak reached but capture/archive has observed errors |
+| `3` | Test process launch/supervision failed or termination could not reap it |
+| `130` | Runner interrupted; takes precedence over other batch results |
+
+Even error-free reads report `completed_reads_session_coverage_unverified`, not
+proof that every test session or failure-time history was retained. An SDK test
+can use a board that is absent from ADB; this tool cannot inventory that board.
+End-of-attempt capture prevents subsequent **attempts** from overwriting the saved
+slots, but cannot recover an already overwritten ring/version, a killed writer's
+unpublished tail, or a session replaced within the same multi-case invocation.
+Polling improves those opportunities without guaranteeing failure-window coverage.
+
+`--archive` writes a `sha256-manifest.jsonl` (relative path + SHA-256 for every
+regular batch file except the manifest itself), then publishes a sibling
+`<batch>.tar.xz` containing only this batch. It includes attempt logs, summaries,
+metadata and host/device JSONs, skips symlinks, and never recursively packages the
+archive into itself. Failed archive writes leave a `.partial` file and are reported.
+Completed attempts are not reopened or reused by a subsequent invocation.
