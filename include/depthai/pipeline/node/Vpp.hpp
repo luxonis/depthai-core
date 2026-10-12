@@ -2,6 +2,7 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
+#include <unordered_map>
 
 // shared
 #include "depthai/pipeline/Subnode.hpp"
@@ -13,7 +14,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief Vpp node. Apply Virtual Projection Pattern algorithm to stereo images based on disparity.
+ * @brief Vpp node. Apply Virtual Projection Pattern algorithm to stereo images based on disparity or depth.
  */
 class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
    protected:
@@ -33,6 +34,9 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput);
 
     void buildInternal() override;
+    /// Detect direct MessageGroup producers before pipeline transport bridges are inserted.
+    void buildStage1() override;
+    void postBuildStage() override;
 
     /**
      * Initial config to use for VPP.
@@ -41,14 +45,24 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 
     Subnode<node::Sync> sync{*this, "sync"};
 
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+   private:
+    // Own inactive inputs without exposing them to Sync; public references keep their addresses.
+    std::unordered_map<InputMap::key_type, Input, InputMap::hasher> unusedSyncInputs;
+    bool hasDirectSyncedInput = false;
+
+   public:
+#endif
+
     /**
-     *"Synchronised Left Img, Right Img, Dispatiy and confidence input."
+     * Synchronised left and right images with either disparity or depth, and optional confidence.
      */
     Input syncedInputs{*this, {"syncedInputs", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::MessageGroup, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     const std::string leftInputName = "left";
     const std::string rightInputName = "right";
     const std::string disparityName = "disparity";
+    const std::string depthName = "depth";
     const std::string confidenceName = "confidence";
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -66,6 +80,13 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
      * Low resolution disparity in pixels (in integers - 16 times bigger)
      */
     Input& disparity{sync->inputs["disparity"]};
+
+    /**
+     * Depth input, used instead of disparity. Expects RAW16 millimetres aligned to the
+     * full rectified left image, with stereo intrinsics and extrinsics on the image frames.
+     * Requires RVC4 firmware with VPP depth-input support.
+     */
+    Input& depth{sync->inputs["depth"]};
 
     /**
      * Confidence of the dispatiry (in integers - 16 times bigger).

@@ -69,6 +69,7 @@ enum CameraModel {
     FISHEYE = 1;
     EQUIRECTANGULAR = 2;
     RADIALDIVISION = 3;
+    CYLINDRICAL = 4;
 }
 
 enum CameraBoardSocket {

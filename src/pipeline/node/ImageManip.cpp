@@ -16,12 +16,17 @@ ImageManip::ImageManip(std::unique_ptr<Properties> props)
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 void ImageManip::run() {
-    impl::ImageManipOperations<impl::_ImageManipMemory, impl::ColorChangeH, impl::WarpH> manip(properties, pimpl->logger);
+    auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
+    impl::ImageManipOperations<impl::_ImageManipMemory, impl::ColorChangeH, impl::WarpH> manip(properties, logger);
     auto iConf = runOnHost() ? *initialConfig : properties.initialConfig;
     impl::loop<ImageManip>(
         *this,
         iConf,
-        pimpl->logger,
+        logger,
+        [this, &logger](auto tAbsoluteBeginning, auto tGotInput, auto tProcessed, auto tAbsoluteEnd) {
+            this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
+        },
         [&](const ImageManipConfig& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());

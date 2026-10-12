@@ -21,8 +21,10 @@ constexpr double kPi = 3.14159265358979323846;
 
 std::atomic<bool> quitEvent(false);
 
-const std::vector<std::vector<float>> kYZSwapRotation = {
-    {0.0f, 1.0f, 0.0f},
+// 90 degree rotation about Z: x' = -y, y' = x, z' = z.
+// Must be a proper rotation (orthonormal, det = +1); setImuExtrinsics rejects reflections such as a plain axis swap.
+const std::vector<std::vector<float>> kRotationZ90 = {
+    {0.0f, -1.0f, 0.0f},
     {1.0f, 0.0f, 0.0f},
     {0.0f, 0.0f, 1.0f},
 };
@@ -114,14 +116,14 @@ int main() {
     const auto& imuExtrinsics = eepromData.imuExtrinsics;
     const auto destinationSocket = resolveImuExtrinsicsDestination(eepromData);
     calibration.setImuExtrinsics(destinationSocket,
-                                 kYZSwapRotation,
+                                 kRotationZ90,
                                  {imuExtrinsics.translation.x, imuExtrinsics.translation.y, imuExtrinsics.translation.z},
                                  {imuExtrinsics.specTranslation.x, imuExtrinsics.specTranslation.y, imuExtrinsics.specTranslation.z});
     device->setCalibration(calibration);
 
     pipeline.start();
-    std::cout << "Applied runtime IMU extrinsics Y/Z swap relative to " << destinationSocket << "." << std::endl;
-    std::cout << "Rotation matrix: [[0, 1, 0], [1, 0, 0], [0, 0, 1]]" << std::endl;
+    std::cout << "Applied runtime IMU extrinsics 90 degree Z rotation relative to " << destinationSocket << "." << std::endl;
+    std::cout << "Rotation matrix: [[0, -1, 0], [1, 0, 0], [0, 0, 1]]" << std::endl;
     std::cout << "Rotation vector stream started on IMU " << imuName << "." << std::endl;
     std::cout << "Move the device around each axis and watch the rolling XYZ angle spans respond." << std::endl;
 

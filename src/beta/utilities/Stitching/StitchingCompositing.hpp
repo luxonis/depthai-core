@@ -10,6 +10,8 @@
 #include <opencv2/stitching/detail/motion_estimators.hpp>
 #include <opencv2/stitching/detail/seam_finders.hpp>
 #include <opencv2/stitching/warpers.hpp>
+#include <stdexcept>
+#include <string>
 
 #include "depthai/beta/node/Stitching.hpp"
 
@@ -47,16 +49,19 @@ inline cv::Ptr<cv::detail::BundleAdjusterBase> createBundleAdjuster() {
     return cv::makePtr<cv::detail::BundleAdjusterRay>();
 }
 
-inline cv::Ptr<cv::WarperCreator> createWarper(Stitching::CameraModel model) {
+inline cv::Ptr<cv::WarperCreator> createWarper(CameraModel model) {
     switch(model) {
-        case Stitching::CameraModel::SPHERICAL:
+        case CameraModel::Equirectangular:
             return cv::makePtr<cv::SphericalWarper>();
-        case Stitching::CameraModel::PINHOLE:
+        case CameraModel::Perspective:
             return cv::makePtr<cv::PlaneWarper>();
-        case Stitching::CameraModel::CYLINDRICAL:
+        case CameraModel::Cylindrical:
             return cv::makePtr<cv::CylindricalWarper>();
+        case CameraModel::Fisheye:
+        case CameraModel::RadialDivision:
+            break;
     }
-    return cv::makePtr<cv::SphericalWarper>();
+    throw std::invalid_argument(std::string("Stitching cannot warp onto the ") + std::string(toString(model)) + " camera model");
 }
 
 inline cv::Ptr<cv::detail::SeamFinder> createSeamFinder(Stitching::SeamFinder finder) {

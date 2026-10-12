@@ -30,6 +30,12 @@ This document describes the changes between the v2 and v3 APIs of DepthAI and ho
 * Replace any `.getOutputQueue()` calls with `output.createOutputQueue()`.
 * Replace any `.getInputQueue()` calls with `input.createInputQueue()`.
 
+## RVC2 standalone applications
+
+RVC2 standalone application packages (`.dap`) are unsupported in v3. The `DeviceBootloader.createDepthaiApplicationPackage`, `saveDepthaiApplicationPackage`, `flashDepthaiApplicationPackage`, and `flash` APIs have been removed from C++ and Python, along with application flashing in the device manager. Use RVC2 in peripheral mode or OAK Apps on RVC4 instead.
+
+`DeviceBootloader.readApplicationInfo` and `flashClear` remain available to inspect and remove applications already flashed on a device.
+
 ---
 
 ## Quick port: simple RGB stream example
@@ -114,7 +120,7 @@ monoOut = mono.requestOutput((1280, 720), type=dai.ImgFrame.Type.GRAY8)
 ## Porting the old `ImageManip` to the new API
 
 The new API tracks every transformation in sequence and separates *how* the final image is resized.
-See the [official documentation](https://docs.luxonis.com/software/v3/depthai-components/nodes/image_manip/) for full details.
+See the [official documentation](https://docs.luxonis.com/software-v3/depthai/depthai-components/nodes/image_manip/) for full details.
 
 ### v2 example
 

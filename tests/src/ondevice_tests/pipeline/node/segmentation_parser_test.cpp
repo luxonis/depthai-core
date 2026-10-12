@@ -206,7 +206,6 @@ std::vector<std::shared_ptr<dai::SegmentationMask>> processSegmentationFrames(
     }
 
     auto inputQueue = parser->input.createInputQueue();
-    auto configQueue = parser->inputConfig.createInputQueue();
     auto outputQueue = parser->out.createOutputQueue();
 
     pipeline.start();
@@ -217,9 +216,12 @@ std::vector<std::shared_ptr<dai::SegmentationMask>> processSegmentationFrames(
     for(size_t i = 0; i < frames.size(); ++i) {
         if(syncConfig) {
             const auto& cfg = (i < runtimeConfigs.size() && runtimeConfigs[i].has_value()) ? *runtimeConfigs[i] : initialConfig;
-            configQueue->send(std::make_shared<dai::SegmentationParserConfig>(cfg));
+            parser->inputConfig.send(std::make_shared<dai::SegmentationParserConfig>(cfg));
         } else if(i < runtimeConfigs.size() && runtimeConfigs[i].has_value()) {
-            configQueue->send(std::make_shared<dai::SegmentationParserConfig>(*runtimeConfigs[i]));
+            parser->inputConfig.send(std::make_shared<dai::SegmentationParserConfig>(*runtimeConfigs[i]));
+            // Wake a parser that may already be blocked on its primary input.
+            inputQueue->send(frames[i]);
+            REQUIRE(outputQueue->get<dai::SegmentationMask>() != nullptr);
         }
         inputQueue->send(frames[i]);
         auto mask = outputQueue->get<dai::SegmentationMask>();

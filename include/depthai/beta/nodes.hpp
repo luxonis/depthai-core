@@ -14,6 +14,9 @@
 #include "node/MLSDParser.hpp"
 #include "node/MPPalmDetectionParser.hpp"
 #include "node/MapOutputParser.hpp"
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    #include "node/MultiDeviceCalibration.hpp"
+#endif
 #include "node/PPTextDetectionParser.hpp"
 #include "node/RFDETRParser.hpp"
 #include "node/RegressionParser.hpp"

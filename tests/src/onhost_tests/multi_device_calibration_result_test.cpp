@@ -1,0 +1,178 @@
+#include <catch2/catch_all.hpp>
+#include <depthai/depthai.hpp>
+#include <depthai/utility/Serialization.hpp>
+
+#include "beta/node/MultiDeviceCalibrationUtils.hpp"
+
+using namespace dai;
+using dai::beta::MultiDeviceCalibrationControl;
+using dai::beta::MultiDeviceCalibrationHandler;
+using dai::beta::MultiDeviceCalibrationResult;
+
+namespace {
+
+Extrinsics makeExtrinsics(const std::string& toDeviceId, CameraBoardSocket toSocket, const Point3f& translation) {
+    Extrinsics result({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}, translation, toSocket, LengthUnit::METER);
+    result.toDeviceId = toDeviceId;
+    return result;
+}
+
+}  // namespace
+
+TEST_CASE("Multi-device calibration control exposes only lifecycle commands") {
+    const auto start = MultiDeviceCalibrationControl::start();
+    const auto stop = MultiDeviceCalibrationControl::stop();
+    const auto reset = MultiDeviceCalibrationControl::reset();
+
+    REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Start>(start->command));
+    REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Stop>(stop->command));
+    REQUIRE(std::holds_alternative<MultiDeviceCalibrationControl::Commands::Reset>(reset->command));
+}
+
+#if defined(DEPTHAI_HAVE_BETA) && defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+TEST_CASE("Multi-device calibration addCamera(output) rejects outputs that are not from a Camera") {
+    Pipeline pipeline(false);
+    auto calibration = pipeline.create<dai::beta::node::MultiDeviceCalibration>();
+    auto sync = pipeline.create<dai::node::Sync>();
+    REQUIRE_THROWS_WITH(calibration->addCamera(sync->out), Catch::Matchers::ContainsSubstring("Camera node"));
+}
+
+TEST_CASE("Multi-device calibration initial guesses accept any socket pair and are validated on set") {
+    Pipeline pipeline(false);
+    auto calibration = pipeline.create<dai::beta::node::MultiDeviceCalibration>();
+
+    MultiDeviceExtrinsics guess;
+    guess.fromDeviceId = "device-a";
+    guess.fromSocket = CameraBoardSocket::CAM_B;
+    guess.extrinsics = makeExtrinsics("device-b", CameraBoardSocket::CAM_C, Point3f(0.5f, 0.0f, 0.0f));
+    REQUIRE_NOTHROW(calibration->setInitialGuess(guess));
+
+    // A previous result (or a handler built from it) seeds the next run
+    REQUIRE_NOTHROW(calibration->setInitialGuesses(std::vector<MultiDeviceExtrinsics>{guess}));
+    REQUIRE_NOTHROW(calibration->setInitialGuesses(MultiDeviceCalibrationHandler({guess})));
+
+    auto sameDevice = guess;
+    sameDevice.extrinsics.toDeviceId = "device-a";
+    REQUIRE_THROWS_WITH(calibration->setInitialGuess(sameDevice), Catch::Matchers::ContainsSubstring("different devices"));
+
+    auto customUnit = guess;
+    customUnit.extrinsics.lengthUnit = LengthUnit::CUSTOM;
+    REQUIRE_THROWS_WITH(calibration->setInitialGuess(customUnit), Catch::Matchers::ContainsSubstring("CUSTOM"));
+
+    auto autoSocket = guess;
+    autoSocket.fromSocket = CameraBoardSocket::AUTO;
+    REQUIRE_THROWS_WITH(calibration->setInitialGuess(autoSocket), Catch::Matchers::ContainsSubstring("concrete"));
+}
+#endif
+
+TEST_CASE("Multi-device calibration result round-trips calibration graph and aggregate quality") {
+    MultiDeviceExtrinsics edge;
+    edge.fromDeviceId = "device-b";
+    edge.fromSocket = CameraBoardSocket::CAM_A;
+    edge.extrinsics = makeExtrinsics("device-a", CameraBoardSocket::CAM_A, {1.0f, 2.0f, 3.0f});
+
+    MultiDeviceCalibrationResult source;
+    source.graph = MultiDeviceCalibrationHandler({edge}).getGraph();
+    source.passed = true;
+    source.dataConfidence = 0.75;
+    source.sampsonError = 0.125;
+    source.info = "one accepted edge";
+
+    for(const auto serializationType : {SerializationType::LIBNOP, SerializationType::JSON}) {
+        const auto serialized = utility::serialize(source, serializationType);
+        MultiDeviceCalibrationResult roundTrip;
+        REQUIRE(utility::deserialize(serialized, roundTrip, serializationType));
+        REQUIRE(roundTrip.graph.has_value());
+        REQUIRE(roundTrip.graph->size() == 1);
+        REQUIRE(roundTrip.passed);
+        REQUIRE(roundTrip.dataConfidence == Catch::Approx(source.dataConfidence));
+        REQUIRE(roundTrip.sampsonError == Catch::Approx(source.sampsonError));
+        REQUIRE(roundTrip.info == source.info);
+
+        const auto handler = roundTrip.getHandler();
+        REQUIRE(handler.has_value());
+        const auto resolved = handler->getExtrinsicsToOrigin("device-b", CameraBoardSocket::CAM_A);
+        REQUIRE(resolved.has_value());
+        REQUIRE(resolved->translation.x == Catch::Approx(1.0f));
+    }
+}
+
+TEST_CASE("Pairwise initial guesses retain rotated and disconnected components") {
+    using beta::node::detail::MultiDeviceTransform;
+    using beta::node::detail::PairwiseDeviceTransform;
+
+    const MultiDeviceTransform referenceToE{{1.0f, 0.0f, 0.0f, 4.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    const MultiDeviceTransform bToC{{0.0f, -1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    const MultiDeviceTransform cToD{{1.0f, 0.0f, 0.0f, 2.0f}, {0.0f, 1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    const std::vector<PairwiseDeviceTransform> guesses{
+        {"device-b", "device-c", bToC},
+        {"device-c", "device-d", cToD},
+        {"device-a", "device-e", referenceToE},
+    };
+
+    const auto referenceToDevice = beta::node::detail::makeReferenceRelativeTransforms("device-a", guesses);
+
+    REQUIRE(referenceToDevice.size() == 5);
+    REQUIRE(referenceToDevice.at("device-b") == beta::node::detail::identityTransform());
+    REQUIRE(referenceToDevice.at("device-c") == bToC);
+    const auto& referenceToD = referenceToDevice.at("device-d");
+    REQUIRE(referenceToD[0][0] == Catch::Approx(0.0f));
+    REQUIRE(referenceToD[0][1] == Catch::Approx(-1.0f));
+    REQUIRE(referenceToD[1][0] == Catch::Approx(1.0f));
+    REQUIRE(referenceToD[0][3] == Catch::Approx(3.0f));
+    REQUIRE(referenceToD[1][3] == Catch::Approx(1.0f));
+    REQUIRE(referenceToDevice.at("device-e") == referenceToE);
+
+    const auto deviceDToReference = beta::node::detail::inverseRigidTransform(referenceToD);
+    MultiDeviceExtrinsics edge;
+    edge.fromDeviceId = "device-d";
+    edge.fromSocket = CameraBoardSocket::CAM_A;
+    const auto translation = matrix::extractTranslationVector(deviceDToReference);
+    edge.extrinsics = Extrinsics(matrix::extractRotationMatrix(deviceDToReference),
+                                 Point3f(translation[0], translation[1], translation[2]),
+                                 CameraBoardSocket::CAM_A,
+                                 LengthUnit::METER);
+    edge.extrinsics.toDeviceId = "device-a";
+
+    const MultiDeviceCalibrationHandler handler({edge});
+    const auto resolved = handler.getExtrinsicsToOrigin("device-d", CameraBoardSocket::CAM_A);
+    REQUIRE(resolved.has_value());
+    REQUIRE(resolved->translation.x == Catch::Approx(-1.0f));
+    REQUIRE(resolved->translation.y == Catch::Approx(3.0f));
+    REQUIRE(resolved->rotationMatrix[0][1] == Catch::Approx(1.0f));
+    REQUIRE(resolved->rotationMatrix[1][0] == Catch::Approx(-1.0f));
+}
+
+#if defined(DEPTHAI_HAVE_BETA) && defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+TEST_CASE("Multi-device calibration node defaults and validates idle configuration") {
+    Pipeline pipeline(false);
+    auto node = pipeline.create<beta::node::MultiDeviceCalibration>();
+
+    REQUIRE(node->getSampleCount() == 10);
+    REQUIRE_THROWS_AS(node->setSampleCount(0), std::runtime_error);
+    REQUIRE_NOTHROW(node->setSampleCount(3));
+    REQUIRE(node->getSampleCount() == 3);
+
+    REQUIRE_THROWS_AS(node->setKnownDistance("device-a", CameraBoardSocket::CAM_A, "device-b", CameraBoardSocket::CAM_B, 0.0f), std::runtime_error);
+    REQUIRE_THROWS_AS(node->setKnownDistance("device-a", CameraBoardSocket::CAM_A, "device-a", CameraBoardSocket::CAM_B, 1.0f), std::runtime_error);
+
+    MultiDeviceExtrinsics missingDestination;
+    missingDestination.fromDeviceId = "device-a";
+    missingDestination.fromSocket = CameraBoardSocket::CAM_A;
+    missingDestination.extrinsics = Extrinsics({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}, {0.0f, 0.0f, 0.0f}, CameraBoardSocket::CAM_C);
+    REQUIRE_THROWS_AS(node->setInitialGuess(missingDestination), std::runtime_error);
+
+    MultiDeviceExtrinsics forwardGuess;
+    forwardGuess.fromDeviceId = "device-a";
+    forwardGuess.fromSocket = CameraBoardSocket::CAM_A;
+    forwardGuess.extrinsics = makeExtrinsics("device-b", CameraBoardSocket::CAM_B, Point3f(0.25f, 0.0f, 0.0f));
+    REQUIRE_NOTHROW(node->setInitialGuess(forwardGuess));
+
+    // A guess for the same device pair in the opposite direction replaces the previous one
+    MultiDeviceExtrinsics reverseGuess;
+    reverseGuess.fromDeviceId = "device-b";
+    reverseGuess.fromSocket = CameraBoardSocket::CAM_B;
+    reverseGuess.extrinsics = makeExtrinsics("device-a", CameraBoardSocket::CAM_A, Point3f(-0.25f, 0.0f, 0.0f));
+    REQUIRE_NOTHROW(node->setInitialGuess(reverseGuess));
+}
+#endif

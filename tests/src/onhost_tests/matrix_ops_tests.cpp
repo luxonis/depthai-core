@@ -2,10 +2,23 @@
 #include <catch2/catch_all.hpp>
 #include <depthai/common/Point2f.hpp>
 #include <depthai/utility/matrixOps.hpp>
+#include <limits>
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/imgproc.hpp>
 #endif
+
+TEST_CASE("Rotation matrix validation accepts proper rotations") {
+    REQUIRE_NOTHROW(dai::matrix::validateRotationMatrix3x3({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}));
+    REQUIRE_NOTHROW(dai::matrix::validateRotationMatrix3x3({{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}));
+}
+
+TEST_CASE("Rotation matrix validation rejects invalid rotations") {
+    REQUIRE_THROWS(dai::matrix::validateRotationMatrix3x3({{1.0f, 0.0f}, {0.0f, 1.0f}}));
+    REQUIRE_THROWS(dai::matrix::validateRotationMatrix3x3({{2.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}));
+    REQUIRE_THROWS(dai::matrix::validateRotationMatrix3x3({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}}));
+    REQUIRE_THROWS(dai::matrix::validateRotationMatrix3x3({{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}));
+}
 
 namespace {
 
@@ -71,6 +84,18 @@ void compareWithOpenCV(const std::array<dai::Point2f, 4>& srcPoints,
 #endif
 
 }  // namespace
+
+TEST_CASE("Small rotation conversion preserves camera center", "[rotation]") {
+    const double originalVector[3] = {0, 0, 0.001};
+    const auto original = dai::matrix::rvecToRotationMatrix(originalVector);
+    const auto rotationVector = dai::matrix::rotationMatrixToVector(original);
+    const double convertedVector[3] = {rotationVector[0], rotationVector[1], rotationVector[2]};
+    const auto converted = dai::matrix::rvecToRotationMatrix(convertedVector);
+    // For t = (5.134, 0, 0) cm, the camera center's Y component is (-R^T t)[1].
+    const double originalCenter = -original[0][1] * 5.134;
+    const double convertedCenter = -converted[0][1] * 5.134;
+    REQUIRE_THAT(convertedCenter, Catch::Matchers::WithinAbs(originalCenter, 1e-7));
+}
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 TEST_CASE("Homography matches OpenCV for rectangular warp") {

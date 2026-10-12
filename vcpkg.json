@@ -7,7 +7,6 @@
             "default-features": false
         },
         "yaml-cpp",
-        "zlib",
         "bzip2",
         "lz4",
         "liblzma",

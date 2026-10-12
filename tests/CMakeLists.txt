@@ -408,6 +408,9 @@ function(dai_set_test_labels test_name)
         endif()
     endforeach()
     set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
+    if("ci_nightly" IN_LIST expanded_labels)
+        set_tests_properties(${test_name} PROPERTIES TIMEOUT 3000)
+    endif()
     if(test_env_overrides)
         set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "${test_env_overrides}")
     endif()
@@ -454,14 +457,27 @@ endif()
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
 
+dai_add_test(board_imu_rotation_test src/onhost_tests/board_imu_rotation_test.cpp)
+target_compile_definitions(board_imu_rotation_test PRIVATE DEPTHAI_BOARDS_PATH="${PROJECT_SOURCE_DIR}/shared/depthai_boards/boards")
+dai_set_test_labels(board_imu_rotation_test onhost ci)
+
+# Board catalog stereo-pair compatibility test
+dai_add_test(stereo_pair_board_compatibility_test src/onhost_tests/stereo_pair_board_compatibility_test.cpp)
+target_compile_definitions(stereo_pair_board_compatibility_test PRIVATE DEPTHAI_BOARDS_PATH="${PROJECT_SOURCE_DIR}/shared/depthai_boards/boards")
+dai_set_test_labels(stereo_pair_board_compatibility_test onhost ci)
+
 # Calibration CBA merge test
 dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_test.cpp)
 dai_set_test_labels(calibration_cba_merge_test onhost)
 set_property(TEST calibration_cba_merge_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_ALLOW_FACTORY_FLASHING=868632271")
 
-# XLInkInHost test 
+# XLInkInHost test
 dai_add_test(xlink_in_host_test src/onhost_tests/pipeline/node/internal/XLinkInHostTest.cpp)
 dai_set_test_labels(xlink_in_host_test onhost ci)
+
+# Multi-device pipeline API test (host only)
+dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
+dai_set_test_labels(multi_device_pipeline_test onhost)
 
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -489,6 +505,8 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     target_link_libraries(image_transformations_test PRIVATE messages)
 endif()
 dai_set_test_labels(image_transformations_test onhost ci)
+dai_add_test(img_transformation_rebase_test src/onhost_tests/img_transformation_rebase_test.cpp)
+dai_set_test_labels(img_transformation_rebase_test onhost ci)
 
 # Matrix operations tests
 dai_add_test(matrix_ops_tests src/onhost_tests/matrix_ops_tests.cpp)
@@ -659,7 +677,11 @@ dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
     dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
-    target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
+    target_compile_definitions(
+        dynamic_calibration_test
+        PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}"
+                HOLISTIC_RECORDING_PATH="${holistic_recording}"
+    )
 endif()
 
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
@@ -761,6 +783,12 @@ if(DEPTHAI_ENABLE_PROTOBUF)
 endif()
 
 if(DEPTHAI_BUILD_BETA)
+    dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
+    dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
+
+    dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
+    dai_set_test_labels(multi_device_calibration_result_test onhost ci)
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 
@@ -798,6 +826,15 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
     )
     dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
+endif()
+
+# Synthetic DetectionParser runtime tests do not require model downloads.
+if(DEPTHAI_XTENSOR_SUPPORT)
+    dai_add_test(detection_parser_runtime_test src/onhost_tests/detection_parser_runtime_test.cpp)
+    dai_set_test_labels(detection_parser_runtime_test onhost ci)
+    dai_add_test(detection_parser_runtime_device_test src/onhost_tests/detection_parser_runtime_test.cpp)
+    target_compile_definitions(detection_parser_runtime_device_test PRIVATE DETECTION_PARSER_TEST_DEVICE)
+    dai_set_test_labels(detection_parser_runtime_device_test ondevice rvc2_all rvc4 ci)
 endif()
 
 # DetectionParser test
@@ -960,12 +997,8 @@ dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
-dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci noreplayci)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
-
-dai_add_test(camera_fps_config_part_2_test src/ondevice_tests/pipeline/node/camera_fps_config_test_part_2.cpp)
-dai_set_test_labels(camera_fps_config_part_2_test ondevice rvc2_all rvc4 ci noreplayci)
-set_property(TEST camera_fps_config_part_2_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
