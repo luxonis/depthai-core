@@ -22,6 +22,20 @@ cmake --build build --target pointcloud_showcase -j$(nproc)
 ./build/examples/cpp/PointCloud/pointcloud_showcase
 ```
 
+## MultiDevicePointCloud.cpp
+
+One `PointCloud` node fed by the depth (and color) of every device in the pipeline, merged into a
+single cloud in the common origin of a multi-device calibration and shown in the DepthAI visualizer.
+Needs at least two devices and a calibration JSON from `examples/cpp/MultiDeviceCalibration`
+(`DEPTHAI_BUILD_BETA` and `DEPTHAI_ENABLE_REMOTE_CONNECTION`). See *Merging several depth streams*
+below for the rules of the merged output.
+
+```bash
+cmake --build build --target MultiDevicePointCloud -j$(nproc)
+./build/examples/cpp/PointCloud/MultiDevicePointCloud -d <device_1> <device_2> -c multi_device_calibration.json
+./build/examples/cpp/PointCloud/MultiDevicePointCloud --target-device <id> --target-socket CAM_A   # cloud in a camera of one device
+```
+
 ---
 
 ## Coordinate-system transforms
