@@ -39,6 +39,7 @@
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "device/DeviceGate.hpp"
 #include "device/StereoPairUtils.hpp"
+#include "device/TimesyncUdp.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "properties/GlobalProperties.hpp"
 #include "utility/EepromDataParser.hpp"
@@ -408,6 +409,9 @@ class DeviceBase::Impl {
     std::mutex rpcMutex;
     std::shared_ptr<XLinkStream> rpcStream;
     std::shared_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
+
+    // RVC4 UDP timesync responder (null: XLink timesync)
+    std::unique_ptr<TimesyncUdpResponder> timesyncUdp;
 
     void setLogLevel(LogLevel level);
     LogLevel getLogLevel();
@@ -928,6 +932,7 @@ void DeviceBase::closeImpl() {
 
     // Then stop timesync
     if(timesyncThread.joinable()) timesyncThread.join();
+    pimpl->timesyncUdp.reset();
     // And at the end stop logging thread
     if(loggingThread.joinable()) loggingThread.join();
     // And at the end stop profiling thread
@@ -1446,6 +1451,26 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
         // Below can throw - make sure to gracefully exit threads
         try {
+            // RVC4 over Ethernet: timesync on its own UDP socket with kernel timestamps instead of the XLink stream, which
+            // waits behind frames under load. The firmware falls back to XLink when the hello or the replies do not arrive.
+            pimpl->timesyncUdp.reset();
+            const auto tsInfo = connection->getDeviceInfo();
+            if(tsInfo.platform == X_LINK_RVC4 && tsInfo.protocol == X_LINK_TCP_IP && TimesyncUdpResponder::supported()
+               && utility::getEnvAs<bool>("DEPTHAI_TIMESYNC_UDP", true)) {
+                try {
+                    // int64 on the RPC: a uint64 argument would select nanorpc's call(name, id) overload and become the id
+                    std::random_device rd;
+                    const int64_t token = static_cast<int64_t>(((static_cast<uint64_t>(rd()) << 32) | rd()) >> 1) | 1;
+                    auto responder = std::make_unique<TimesyncUdpResponder>(tsInfo.name, static_cast<uint64_t>(token));
+                    if(responder->ok()) {
+                        pimpl->rpcCallCheckedVoid("setTimesyncUdp", token);
+                        pimpl->timesyncUdp = std::move(responder);
+                    }
+                } catch(const std::exception& ex) {
+                    pimpl->logger.debug("UDP timesync not available, using XLink: {}", ex.what());
+                }
+            }
+
             // Starts and waits for initial timesync
             setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
             pimpl->rpcCallCheckedVoid("onInit");
@@ -1539,6 +1564,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
             loggingRunning = false;
             profilingRunning = false;
             if(timesyncThread.joinable()) timesyncThread.join();
+            pimpl->timesyncUdp.reset();
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
             if(gate) {
@@ -1609,6 +1635,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
                 profilingRunning = false;
                 if(watchdogThread.joinable()) watchdogThread.join();
                 if(timesyncThread.joinable()) timesyncThread.join();
+                pimpl->timesyncUdp.reset();
                 if(loggingThread.joinable()) loggingThread.join();
                 if(profilingThread.joinable()) profilingThread.join();
                 if(gate && gate.get() != gateBefore) {

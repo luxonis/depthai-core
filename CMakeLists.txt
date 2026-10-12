@@ -308,6 +308,7 @@ set(TARGET_CORE_SOURCES
     src/device/CrashDumpManager.cpp
     src/device/Device.cpp
     src/device/DeviceBase.cpp
+    src/device/TimesyncUdp.cpp
     src/device/HealthCheck.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
