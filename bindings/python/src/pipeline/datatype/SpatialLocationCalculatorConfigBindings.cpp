@@ -50,9 +50,8 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .value("MODE", SpatialLocationCalculatorAlgorithm::MODE)
         .value("MEDIAN", SpatialLocationCalculatorAlgorithm::MEDIAN);
 
-    spatialLocationCalculatorConfigData
+    spatialLocationCalculatorConfigData.def(py::init<>())
         .def_readwrite("stepSize", &dai::SpatialLocationCalculatorConfigData::stepSize, DOC(dai, SpatialLocationCalculatorConfigData, stepSize))
-        .def(py::init<>())
         .def_readwrite("roi", &SpatialLocationCalculatorConfigData::roi, DOC(dai, SpatialLocationCalculatorConfigData, roi))
         .def_readwrite("depthThresholds", &SpatialLocationCalculatorConfigData::depthThresholds, DOC(dai, SpatialLocationCalculatorConfigData, depthThresholds))
         .def_readwrite("calculationAlgorithm",
@@ -60,7 +59,7 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
                        DOC(dai, SpatialLocationCalculatorConfigData, calculationAlgorithm));
 
     // Message
-    spatialLocationCalculatorConfig
+    spatialLocationCalculatorConfig.def(py::init<>())
         .def_readwrite("bBoxScaleFactor", &dai::SpatialLocationCalculatorConfig::bBoxScaleFactor, DOC(dai, SpatialLocationCalculatorConfig, bBoxScaleFactor))
         .def_readwrite("config", &dai::SpatialLocationCalculatorConfig::config, DOC(dai, SpatialLocationCalculatorConfig, config))
         .def_readwrite("globalCalculationAlgorithm",
@@ -72,7 +71,6 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .def_readwrite("segmentationPassthrough",
                        &dai::SpatialLocationCalculatorConfig::segmentationPassthrough,
                        DOC(dai, SpatialLocationCalculatorConfig, segmentationPassthrough))
-        .def(py::init<>())
         .def("__repr__", &SpatialLocationCalculatorConfig::str)
         .def_readwrite("globalStepSize", &SpatialLocationCalculatorConfig::globalStepSize)
         .def_readwrite("globalLowerThreshold", &SpatialLocationCalculatorConfig::globalLowerThreshold)

@@ -41,9 +41,9 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
 
     // Message
 
-    imageManipConfig.def("getReusePreviousImage", &dai::ImageManipConfig::getReusePreviousImage, DOC(dai, ImageManipConfig, getReusePreviousImage))
+    imageManipConfig.def(py::init<>())
+        .def("getReusePreviousImage", &dai::ImageManipConfig::getReusePreviousImage, DOC(dai, ImageManipConfig, getReusePreviousImage))
         .def("getSkipCurrentImage", &dai::ImageManipConfig::getSkipCurrentImage, DOC(dai, ImageManipConfig, getSkipCurrentImage))
-        .def(py::init<>())
         .def("__repr__", &ImageManipConfig::str)
         // New API Setters
         .def("clearOps", &ImageManipConfig::clearOps, DOC(dai, ImageManipConfig, clearOps))

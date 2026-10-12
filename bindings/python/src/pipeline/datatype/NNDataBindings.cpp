@@ -73,8 +73,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
     //     .def_readwrite("sequenceNum", &RawNNData::sequenceNum)
     //     ;
 
-    tensorInfo.def("validateStorageOrder", &dai::TensorInfo::validateStorageOrder, DOC(dai, TensorInfo, validateStorageOrder))
-        .def(py::init<>())
+    tensorInfo.def(py::init<>())
+        .def("validateStorageOrder", &dai::TensorInfo::validateStorageOrder, DOC(dai, TensorInfo, validateStorageOrder))
         .def("getTensorSize", &TensorInfo::getTensorSize)
         .def_readwrite("order", &TensorInfo::order)
         .def_readwrite("dataType", &TensorInfo::dataType)
@@ -143,9 +143,9 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
 
     // Message
 
-    nnData.def("getFirstTensorDatatype", &dai::NNData::getFirstTensorDatatype, DOC(dai, NNData, getFirstTensorDatatype))
-        .def(py::init<>(), DOC(dai, NNData, NNData))
+    nnData.def(py::init<>(), DOC(dai, NNData, NNData))
         .def(py::init<size_t>(), py::arg("size"), DOC(dai, NNData, NNData, 2))
+        .def("getFirstTensorDatatype", &dai::NNData::getFirstTensorDatatype, DOC(dai, NNData, getFirstTensorDatatype))
         .def("__repr__", &NNData::str)
         // // setters
         // .def("setLayer", [](NNData& obj, const std::string& name,

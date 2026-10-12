@@ -222,19 +222,19 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, DeviceBase, setCameraSocketTuningBlobs))
         .def_static("getDefaultSearchTime", &dai::DeviceBase::getDefaultSearchTime, DOC(dai, DeviceBase, getDefaultSearchTime));
 
-    boardCamera.def_readwrite("name", &dai::BoardConfig::Camera::name, DOC(dai, BoardConfig, Camera, name))
+    boardCamera.def(py::init<>())
+        .def_readwrite("name", &dai::BoardConfig::Camera::name, DOC(dai, BoardConfig, Camera, name))
         .def_readwrite("sensorType", &dai::BoardConfig::Camera::sensorType, DOC(dai, BoardConfig, Camera, sensorType))
         .def_readwrite("orientation", &dai::BoardConfig::Camera::orientation, DOC(dai, BoardConfig, Camera, orientation));
 
-    boardCamera.def(py::init<>());
-    boardImu.def_readwrite("bus", &dai::BoardConfig::IMU::bus, DOC(dai, BoardConfig, IMU, bus))
+    boardImu.def(py::init<>())
+        .def_readwrite("bus", &dai::BoardConfig::IMU::bus, DOC(dai, BoardConfig, IMU, bus))
         .def_readwrite("interrupt", &dai::BoardConfig::IMU::interrupt, DOC(dai, BoardConfig, IMU, interrupt))
         .def_readwrite("wake", &dai::BoardConfig::IMU::wake, DOC(dai, BoardConfig, IMU, wake))
         .def_readwrite("csGpio", &dai::BoardConfig::IMU::csGpio, DOC(dai, BoardConfig, IMU, csGpio))
         .def_readwrite("boot", &dai::BoardConfig::IMU::boot, DOC(dai, BoardConfig, IMU, boot))
         .def_readwrite("reset", &dai::BoardConfig::IMU::reset, DOC(dai, BoardConfig, IMU, reset));
 
-    boardImu.def(py::init<>());
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -322,13 +322,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     enumReconnectionStatus.value("RECONNECTING", Device::ReconnectionStatus::RECONNECTING);
 
     // Bind BoardConfig
-    boardConfig.def_readwrite("camera", &dai::BoardConfig::camera, DOC(dai, BoardConfig, camera))
+    boardConfig.def(py::init<>())
+        .def_readwrite("camera", &dai::BoardConfig::camera, DOC(dai, BoardConfig, camera))
         .def_readwrite("imu", &dai::BoardConfig::imu, DOC(dai, BoardConfig, imu))
         .def_readwrite("defaultImuExtr", &dai::BoardConfig::defaultImuExtr, DOC(dai, BoardConfig, defaultImuExtr))
         .def_readwrite("nonExclusiveMode", &dai::BoardConfig::nonExclusiveMode, DOC(dai, BoardConfig, nonExclusiveMode));
 
-    boardConfig.def(py::init<>())
-        .def_readwrite("usb", &BoardConfig::usb, DOC(dai, BoardConfig, usb))
+    boardConfig.def_readwrite("usb", &BoardConfig::usb, DOC(dai, BoardConfig, usb))
         .def_readwrite("network", &BoardConfig::network, DOC(dai, BoardConfig, network))
         .def_readwrite("sysctl", &BoardConfig::sysctl, DOC(dai, BoardConfig, sysctl))
         .def_readwrite("watchdogTimeoutMs", &BoardConfig::watchdogTimeoutMs, DOC(dai, BoardConfig, watchdogTimeoutMs))

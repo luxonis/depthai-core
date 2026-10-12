@@ -157,10 +157,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion)
         .def_readwrite("multiDeviceCalibration", &GlobalProperties::multiDeviceCalibration);
 
-    deviceProperties.def_readwrite("calibData", &dai::DeviceProperties::calibData, DOC(dai, DeviceProperties, calibData))
+    deviceProperties.def(py::init<>())
+        .def_readwrite("calibData", &dai::DeviceProperties::calibData, DOC(dai, DeviceProperties, calibData))
         .def("setFrom", &DeviceProperties::setFrom, py::arg("other"), DOC(dai, DeviceProperties, setFrom))
         .def_readwrite("eepromId", &dai::DeviceProperties::eepromId, DOC(dai, DeviceProperties, eepromId))
-        .def(py::init<>())
         .def_readwrite("leonCssFrequencyHz", &DeviceProperties::leonCssFrequencyHz)
         .def_readwrite("leonMssFrequencyHz", &DeviceProperties::leonMssFrequencyHz)
         .def_readwrite("cameraTuningBlobSize", &DeviceProperties::cameraTuningBlobSize, DOC(dai, DeviceProperties, cameraTuningBlobSize))
@@ -265,15 +265,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              py::call_guard<py::gil_scoped_release>());
 
     // bind pipeline
-    pipeline.def("getSourceNodes", &dai::Pipeline::getSourceNodes, DOC(dai, Pipeline, getSourceNodes))
-        .def("getConnections", &dai::Pipeline::getConnections, DOC(dai, Pipeline, getConnections))
-        .def("setGlobalProperties", &dai::Pipeline::setGlobalProperties, py::arg("globalProperties"), DOC(dai, Pipeline, setGlobalProperties))
-        .def("setOpenVINOVersion", &dai::Pipeline::setOpenVINOVersion, py::arg("version"), DOC(dai, Pipeline, setOpenVINOVersion))
-        .def("isHolisticRecordEnabled", &dai::Pipeline::isHolisticRecordEnabled, DOC(dai, Pipeline, isHolisticRecordEnabled))
-        .def("isHolisticReplayEnabled", &dai::Pipeline::isHolisticReplayEnabled, DOC(dai, Pipeline, isHolisticReplayEnabled))
-        .def("isPipelineDebuggingEnabled", &dai::Pipeline::isPipelineDebuggingEnabled, DOC(dai, Pipeline, isPipelineDebuggingEnabled))
-        .def("getPipelineStateOut", &dai::Pipeline::getPipelineStateOut, DOC(dai, Pipeline, getPipelineStateOut))
-        .def("getPipelineStateRequest", &dai::Pipeline::getPipelineStateRequest, DOC(dai, Pipeline, getPipelineStateRequest))
+    pipeline
         .def(py::init([](bool createImplicitDevice) {
                  // If createImplicitDevice is true, use deviceSearchHelper to find a device
                  // as it periodically checks for python interrupts
@@ -289,6 +281,15 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("createImplicitDevice") = true,
              DOC(dai, Pipeline, Pipeline))
         .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
+        .def("getSourceNodes", &dai::Pipeline::getSourceNodes, DOC(dai, Pipeline, getSourceNodes))
+        .def("getConnections", &dai::Pipeline::getConnections, DOC(dai, Pipeline, getConnections))
+        .def("setGlobalProperties", &dai::Pipeline::setGlobalProperties, py::arg("globalProperties"), DOC(dai, Pipeline, setGlobalProperties))
+        .def("setOpenVINOVersion", &dai::Pipeline::setOpenVINOVersion, py::arg("version"), DOC(dai, Pipeline, setOpenVINOVersion))
+        .def("isHolisticRecordEnabled", &dai::Pipeline::isHolisticRecordEnabled, DOC(dai, Pipeline, isHolisticRecordEnabled))
+        .def("isHolisticReplayEnabled", &dai::Pipeline::isHolisticReplayEnabled, DOC(dai, Pipeline, isHolisticReplayEnabled))
+        .def("isPipelineDebuggingEnabled", &dai::Pipeline::isPipelineDebuggingEnabled, DOC(dai, Pipeline, isPipelineDebuggingEnabled))
+        .def("getPipelineStateOut", &dai::Pipeline::getPipelineStateOut, DOC(dai, Pipeline, getPipelineStateOut))
+        .def("getPipelineStateRequest", &dai::Pipeline::getPipelineStateRequest, DOC(dai, Pipeline, getPipelineStateRequest))
         // Python only methods
         .def("__enter__",
              [](Pipeline& p) -> Pipeline& {

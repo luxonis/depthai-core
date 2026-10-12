@@ -41,8 +41,8 @@ void bind_objecttrackerconfig(pybind11::module& m, void* pCallstack) {
     //     ;
 
     // Message
-    config.def_readwrite("trackletIdsToRemove", &dai::ObjectTrackerConfig::trackletIdsToRemove, DOC(dai, ObjectTrackerConfig, trackletIdsToRemove))
-        .def(py::init<>())
+    config.def(py::init<>())
+        .def_readwrite("trackletIdsToRemove", &dai::ObjectTrackerConfig::trackletIdsToRemove, DOC(dai, ObjectTrackerConfig, trackletIdsToRemove))
         .def("__repr__", &ObjectTrackerConfig::str)
 
         // .def("set", &ObjectTrackerConfig::set, py::arg("config"), DOC(dai, ObjectTrackerConfig, set))

@@ -24,15 +24,14 @@ void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind Asset
-    asset.def("getData", [](Asset& self) { return self.getData(); }, DOC(dai, Asset, getData));
+    asset.def(py::init<>()).def(py::init<std::string>()).def("getData", [](Asset& self) { return self.getData(); }, DOC(dai, Asset, getData));
 
     asset.def("setData", &dai::Asset::setData, py::arg("data"), DOC(dai, Asset, setData))
         .def("getSize", &dai::Asset::getSize, DOC(dai, Asset, getSize))
         .def("getRelativeUri", &dai::Asset::getRelativeUri, DOC(dai, Asset, getRelativeUri))
         .def("setFile", &dai::Asset::setFile, py::arg("path"), py::arg("size"), DOC(dai, Asset, setFile));
 
-    asset.def(py::init<>())
-        .def(py::init<std::string>())
+    asset
         .def_readonly("key", &Asset::key)
         // Mutable view; replacing the asset storage invalidates existing views.
         .def_property(
@@ -50,14 +49,14 @@ void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("alignment", &Asset::alignment);
 
     // Bind AssetManager
-    assetManager.def("setLazy", &AssetManager::setLazy, py::arg("key"), py::arg("path"), py::arg("alignment") = 64, DOC(dai, AssetManager, setLazy))
+    assetManager.def(py::init<>())
+        .def(py::init<std::string>())
+        .def("setLazy", &AssetManager::setLazy, py::arg("key"), py::arg("path"), py::arg("alignment") = 64, DOC(dai, AssetManager, setLazy))
         .def("getSerializedSize", &AssetManager::getSerializedSize, py::arg("offset") = 0, DOC(dai, AssetManager, getSerializedSize));
 
     assetManager.def("setRootPath", &dai::AssetManager::setRootPath, py::arg("rootPath"), DOC(dai, AssetManager, setRootPath));
 
-    assetManager.def(py::init<>())
-        .def(py::init<std::string>())
-        .def("addExisting", &AssetManager::addExisting, py::arg("assets"), DOC(dai, AssetManager, addExisting))
+    assetManager.def("addExisting", &AssetManager::addExisting, py::arg("assets"), DOC(dai, AssetManager, addExisting))
         .def("set", static_cast<std::shared_ptr<dai::Asset> (AssetManager::*)(Asset)>(&AssetManager::set), py::arg("asset"), DOC(dai, AssetManager, set))
         .def("set",
              static_cast<std::shared_ptr<dai::Asset> (AssetManager::*)(const std::string&, Asset)>(&AssetManager::set),

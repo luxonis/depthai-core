@@ -87,8 +87,8 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("toJson", &DeviceBootloader::Config::toJson)
         .def("fromJson", &DeviceBootloader::Config::fromJson);
 
-    deviceBootloderApplicationInfo.def_readwrite("memory", &dai::DeviceBootloader::ApplicationInfo::memory, DOC(dai, DeviceBootloader, ApplicationInfo, memory))
-        .def(py::init<>())
+    deviceBootloderApplicationInfo.def(py::init<>())
+        .def_readwrite("memory", &dai::DeviceBootloader::ApplicationInfo::memory, DOC(dai, DeviceBootloader, ApplicationInfo, memory))
         .def_readwrite("hasApplication", &DeviceBootloader::ApplicationInfo::hasApplication)
         .def_readwrite("firmwareVersion", &DeviceBootloader::ApplicationInfo::firmwareVersion)
         .def_readwrite("applicationName", &DeviceBootloader::ApplicationInfo::applicationName);
@@ -98,7 +98,21 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("size", &DeviceBootloader::MemoryInfo::size)
         .def_readwrite("info", &DeviceBootloader::MemoryInfo::info);
 
-    deviceBootloader.def("isClosed", &dai::DeviceBootloader::isClosed, DOC(dai, DeviceBootloader, isClosed));
+    deviceBootloader
+        .def(py::init<const DeviceInfo&, bool>(),
+             py::arg("devInfo"),
+             py::arg("allowFlashingBootloader") = false,
+             DOC(dai, DeviceBootloader, DeviceBootloader, 4))
+        .def(py::init<const DeviceInfo&, const std::filesystem::path&, bool>(),
+             py::arg("devInfo"),
+             py::arg("pathToCmd"),
+             py::arg("allowFlashingBootloader") = false,
+             DOC(dai, DeviceBootloader, DeviceBootloader, 5))
+        .def(py::init<std::string, bool>(),
+             py::arg("nameOrDeviceId"),
+             py::arg("allowFlashingBootloader") = false,
+             DOC(dai, DeviceBootloader, DeviceBootloader, 6))
+        .def("isClosed", &dai::DeviceBootloader::isClosed, DOC(dai, DeviceBootloader, isClosed));
 
     deviceBootloader
         // Python only methods
@@ -115,20 +129,6 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
                     &DeviceBootloader::getEmbeddedBootloaderBinary,
                     py::arg("type") = DeviceBootloader::DEFAULT_TYPE,
                     DOC(dai, DeviceBootloader, getEmbeddedBootloaderBinary))
-
-        .def(py::init<const DeviceInfo&, bool>(),
-             py::arg("devInfo"),
-             py::arg("allowFlashingBootloader") = false,
-             DOC(dai, DeviceBootloader, DeviceBootloader, 4))
-        .def(py::init<const DeviceInfo&, const std::filesystem::path&, bool>(),
-             py::arg("devInfo"),
-             py::arg("pathToCmd"),
-             py::arg("allowFlashingBootloader") = false,
-             DOC(dai, DeviceBootloader, DeviceBootloader, 5))
-        .def(py::init<std::string, bool>(),
-             py::arg("nameOrDeviceId"),
-             py::arg("allowFlashingBootloader") = false,
-             DOC(dai, DeviceBootloader, DeviceBootloader, 6))
 
         .def(
             "readApplicationInfo",

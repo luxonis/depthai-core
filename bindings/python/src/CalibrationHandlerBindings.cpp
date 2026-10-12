@@ -26,27 +26,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bindings
-    calibrationHandler.def(
-        "getExtrinsicsToOrigin",
-        [](const CalibrationHandler& self, CameraBoardSocket cameraId, bool useSpecTranslation) {
-            CameraBoardSocket originSocket;
-            auto matrix = self.getExtrinsicsToOrigin(cameraId, useSpecTranslation, originSocket);
-            return py::make_tuple(matrix, originSocket);
-        },
-        py::arg("cameraId"),
-        py::arg("useSpecTranslation") = false,
-        DOC(dai, CalibrationHandler, getExtrinsicsToOrigin));
-
-    calibrationHandler
-        .def("updateCameraExtrinsics",
-             &dai::CalibrationHandler::updateCameraExtrinsics,
-             py::arg("srcCameraId"),
-             py::arg("destCameraId"),
-             py::arg("rotationMatrix"),
-             py::arg("translation"),
-             DOC(dai, CalibrationHandler, updateCameraExtrinsics))
-        .def("validateCameraArray", &dai::CalibrationHandler::validateCameraArray, DOC(dai, CalibrationHandler, validateCameraArray))
-        .def(py::init<>(), DOC(dai, CalibrationHandler, CalibrationHandler))
+    calibrationHandler.def(py::init<>(), DOC(dai, CalibrationHandler, CalibrationHandler))
         .def(py::init<std::filesystem::path, std::optional<bool>>(),
              py::arg("eepromDataPath"),
              py::arg("validateExtrinsics") = std::nullopt,
@@ -60,6 +40,26 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("eepromData"),
              py::arg("validateExtrinsics") = std::nullopt,
              DOC(dai, CalibrationHandler, CalibrationHandler, 4))
+        .def(
+            "getExtrinsicsToOrigin",
+            [](const CalibrationHandler& self, CameraBoardSocket cameraId, bool useSpecTranslation) {
+                CameraBoardSocket originSocket;
+                auto matrix = self.getExtrinsicsToOrigin(cameraId, useSpecTranslation, originSocket);
+                return py::make_tuple(matrix, originSocket);
+            },
+            py::arg("cameraId"),
+            py::arg("useSpecTranslation") = false,
+            DOC(dai, CalibrationHandler, getExtrinsicsToOrigin));
+
+    calibrationHandler
+        .def("updateCameraExtrinsics",
+             &dai::CalibrationHandler::updateCameraExtrinsics,
+             py::arg("srcCameraId"),
+             py::arg("destCameraId"),
+             py::arg("rotationMatrix"),
+             py::arg("translation"),
+             DOC(dai, CalibrationHandler, updateCameraExtrinsics))
+        .def("validateCameraArray", &dai::CalibrationHandler::validateCameraArray, DOC(dai, CalibrationHandler, validateCameraArray))
 
         .def_static("fromJson",
                     &CalibrationHandler::fromJson,

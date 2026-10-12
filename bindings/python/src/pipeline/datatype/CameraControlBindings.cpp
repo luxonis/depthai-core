@@ -67,7 +67,9 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def_readwrite("activeLevel", &CameraControl::StrobeConfig::activeLevel, DOC(dai, CameraControl, StrobeConfig, activeLevel))
         .def_readwrite("gpioNumber", &CameraControl::StrobeConfig::gpioNumber, DOC(dai, CameraControl, StrobeConfig, gpioNumber));
 
-    cameraControl.def_readwrite("aeRegion", &CameraControl::aeRegion, DOC(dai, CameraControl, aeRegion))
+    cameraControl.def(py::init<>())
+        .def(py::init<>(), DOC(dai, CameraControl, CameraControl))
+        .def_readwrite("aeRegion", &CameraControl::aeRegion, DOC(dai, CameraControl, aeRegion))
         .def_readwrite("aeMaxISO", &CameraControl::aeMaxISO, DOC(dai, CameraControl, aeMaxISO))
         .def_readwrite("enableHdr", &CameraControl::enableHdr, DOC(dai, CameraControl, enableHdr))
         .def_readwrite("frameSyncMode", &CameraControl::frameSyncMode, DOC(dai, CameraControl, frameSyncMode))
@@ -203,8 +205,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .value("INPUT", CameraControl::FrameSyncMode::INPUT)
         .value("TIME_PTP", CameraControl::FrameSyncMode::TIME_PTP);
 
-    cameraControl.def(py::init<>())
-        .def_readwrite("cmdMask", &CameraControl::cmdMask)
+    cameraControl.def_readwrite("cmdMask", &CameraControl::cmdMask)
         .def_readwrite("autoFocusMode", &CameraControl::autoFocusMode)
         .def_readwrite("lensPosition", &CameraControl::lensPosition)
         .def_readwrite("expManual", &CameraControl::expManual)
@@ -231,7 +232,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def("getCommand", &CameraControl::getCommand);
 
     // Message
-    cameraControl.def(py::init<>(), DOC(dai, CameraControl, CameraControl))
+    cameraControl
         .def("__repr__", &CameraControl::str)
         // setters
         .def("setCaptureStill", &CameraControl::setCaptureStill, py::arg("capture"), DOC(dai, CameraControl, setCaptureStill))

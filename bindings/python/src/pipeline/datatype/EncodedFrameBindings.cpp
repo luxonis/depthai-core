@@ -72,7 +72,8 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .value("Unknown", EncodedFrame::FrameType::Unknown);
 
     // Message
-    encodedFrame.def_readwrite("cam", &dai::EncodedFrame::cam, DOC(dai, EncodedFrame, cam))
+    encodedFrame.def(py::init<>())
+        .def_readwrite("cam", &dai::EncodedFrame::cam, DOC(dai, EncodedFrame, cam))
         .def_readwrite("frameOffset", &dai::EncodedFrame::frameOffset, DOC(dai, EncodedFrame, frameOffset))
         .def_readwrite("frameSize", &dai::EncodedFrame::frameSize, DOC(dai, EncodedFrame, frameSize))
         .def_readwrite("width", &dai::EncodedFrame::width, DOC(dai, EncodedFrame, width))
@@ -91,7 +92,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
              DOC(dai, EncodedFrame, setInstanceNum))
         .def("getImgFrameMeta", &dai::EncodedFrame::getImgFrameMeta, DOC(dai, EncodedFrame, getImgFrameMeta));
 
-    encodedFrame.def(py::init<>())
+    encodedFrame
         .def("__repr__", &EncodedFrame::str)
         // getters
         .def("getInstanceNum", &EncodedFrame::getInstanceNum, DOC(dai, EncodedFrame, getInstanceNum))

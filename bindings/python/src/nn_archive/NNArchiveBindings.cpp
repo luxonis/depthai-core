@@ -65,21 +65,21 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind NNArchive
-    nnArchive.def(
-        "getVersionedConfig", &dai::NNArchive::getVersionedConfig, py::return_value_policy::reference_internal, DOC(dai, NNArchive, getVersionedConfig));
+    nnArchive
+        .def(py::init([](const std::filesystem::path& archivePath, NNArchiveEntry::Compression compression) {
+                 NNArchiveOptions options;
+                 options.compression(compression);
+                 return NNArchive(archivePath, options);
+             }),
+             py::arg("archivePath"),
+             py::arg("compression") = NNArchiveEntry::Compression::AUTO,
+             DOC(dai, NNArchive, NNArchive))
+        .def(py::init<const std::filesystem::path&, NNArchiveOptions>(),
+             py::arg("archivePath"),
+             py::arg("options") = NNArchiveOptions(),
+             DOC(dai, NNArchive, NNArchive))
+        .def("getVersionedConfig", &dai::NNArchive::getVersionedConfig, py::return_value_policy::reference_internal, DOC(dai, NNArchive, getVersionedConfig));
 
-    nnArchive.def(py::init([](const std::filesystem::path& archivePath, NNArchiveEntry::Compression compression) {
-                      NNArchiveOptions options;
-                      options.compression(compression);
-                      return NNArchive(archivePath, options);
-                  }),
-                  py::arg("archivePath"),
-                  py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                  DOC(dai, NNArchive, NNArchive));
-    nnArchive.def(py::init<const std::filesystem::path&, NNArchiveOptions>(),
-                  py::arg("archivePath"),
-                  py::arg("options") = NNArchiveOptions(),
-                  DOC(dai, NNArchive, NNArchive));
     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getSuperBlob));
     nnArchive.def(

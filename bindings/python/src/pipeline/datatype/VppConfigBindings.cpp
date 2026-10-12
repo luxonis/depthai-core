@@ -31,7 +31,8 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
         .value("MAXDIST", VppConfig::PatchColoringType::MAXDIST, "Color with most distant color")
         .export_values();
 
-    injectionParameters.def("getUseInjection", &dai::VppConfig::InjectionParameters::getUseInjection, DOC(dai, VppConfig, InjectionParameters, getUseInjection))
+    injectionParameters.def(py::init<>())
+        .def("getUseInjection", &dai::VppConfig::InjectionParameters::getUseInjection, DOC(dai, VppConfig, InjectionParameters, getUseInjection))
         .def("setUseInjection",
              &dai::VppConfig::InjectionParameters::setUseInjection,
              py::arg("value"),
@@ -62,7 +63,6 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
              &dai::VppConfig::InjectionParameters::setUseMorphology,
              py::arg("value"),
              DOC(dai, VppConfig, InjectionParameters, setUseMorphology))
-        .def(py::init<>())
         .def_readwrite("useInjection", &VppConfig::InjectionParameters::useInjection, DOC(dai, VppConfig, InjectionParameters, useInjection))
         .def_readwrite("kernelSize", &VppConfig::InjectionParameters::kernelSize, DOC(dai, VppConfig, InjectionParameters, kernelSize))
         .def_readwrite("textureThreshold", &VppConfig::InjectionParameters::textureThreshold, DOC(dai, VppConfig, InjectionParameters, textureThreshold))
@@ -76,7 +76,8 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
         });
 
     // VppConfig methods and properties
-    vppConfig.def("getBlending", &dai::VppConfig::getBlending, DOC(dai, VppConfig, getBlending))
+    vppConfig.def(py::init<>())
+        .def("getBlending", &dai::VppConfig::getBlending, DOC(dai, VppConfig, getBlending))
         .def("setBlending", &dai::VppConfig::setBlending, py::arg("value"), DOC(dai, VppConfig, setBlending))
         .def("getDistanceGamma", &dai::VppConfig::getDistanceGamma, DOC(dai, VppConfig, getDistanceGamma))
         .def("setDistanceGamma", &dai::VppConfig::setDistanceGamma, py::arg("value"), DOC(dai, VppConfig, setDistanceGamma))
@@ -92,7 +93,6 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
         .def("setMaxNumThreads", &dai::VppConfig::setMaxNumThreads, py::arg("value"), DOC(dai, VppConfig, setMaxNumThreads))
         .def("getMaxFPS", &dai::VppConfig::getMaxFPS, DOC(dai, VppConfig, getMaxFPS))
         .def("setMaxFPS", &dai::VppConfig::setMaxFPS, py::arg("value"), DOC(dai, VppConfig, setMaxFPS))
-        .def(py::init<>())
         .def("__repr__", &VppConfig::str)
         .def_readwrite("blending", &VppConfig::blending, DOC(dai, VppConfig, blending))
         .def_readwrite("distanceGamma", &VppConfig::distanceGamma, DOC(dai, VppConfig, distanceGamma))

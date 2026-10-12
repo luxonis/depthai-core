@@ -108,7 +108,8 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .value("OUTPUT", ImgFrame::Fsync::OUTPUT)
         .value("PTP", ImgFrame::Fsync::PTP);
 
-    cameraSettings.def_readwrite("exposureTimeUs", &dai::ImgFrame::CameraSettings::exposureTimeUs, DOC(dai, ImgFrame, CameraSettings, exposureTimeUs))
+    cameraSettings.def(py::init<>())
+        .def_readwrite("exposureTimeUs", &dai::ImgFrame::CameraSettings::exposureTimeUs, DOC(dai, ImgFrame, CameraSettings, exposureTimeUs))
         .def_readwrite("sensitivityIso", &dai::ImgFrame::CameraSettings::sensitivityIso, DOC(dai, ImgFrame, CameraSettings, sensitivityIso))
         .def_readwrite("lensPosition", &dai::ImgFrame::CameraSettings::lensPosition, DOC(dai, ImgFrame, CameraSettings, lensPosition))
         .def_readwrite("wbColorTemp", &dai::ImgFrame::CameraSettings::wbColorTemp, DOC(dai, ImgFrame, CameraSettings, wbColorTemp))
@@ -116,8 +117,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def_readwrite("fsync", &dai::ImgFrame::CameraSettings::fsync, DOC(dai, ImgFrame, CameraSettings, fsync))
         .def_readwrite("sensorMode", &dai::ImgFrame::CameraSettings::sensorMode, DOC(dai, ImgFrame, CameraSettings, sensorMode))
         .def_readwrite("fps", &dai::ImgFrame::CameraSettings::fps, DOC(dai, ImgFrame, CameraSettings, fps))
-        .def_readwrite("sensorTemperatureC", &dai::ImgFrame::CameraSettings::sensorTemperatureC, DOC(dai, ImgFrame, CameraSettings, sensorTemperatureC))
-        .def(py::init<>());
+        .def_readwrite("sensorTemperatureC", &dai::ImgFrame::CameraSettings::sensorTemperatureC, DOC(dai, ImgFrame, CameraSettings, sensorTemperatureC));
 
     imgFrameSpecs.def(py::init<>())
         .def_readwrite("type", &ImgFrame::Specs::type)
@@ -129,22 +129,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def_readwrite("p2Offset", &ImgFrame::Specs::p2Offset)
         .def_readwrite("p3Offset", &ImgFrame::Specs::p3Offset);
 
-    imgTransformation
-        .def("getTranslationVectorTo",
-             &ImgTransformation::getTranslationVectorTo,
-             py::arg("to"),
-             py::arg("useSpecTranslation") = false,
-             py::arg("sourceUnit") = LengthUnit::CENTIMETER,
-             DOC(dai, ImgTransformation, getTranslationVectorTo))
-        .def("projectRectTo",
-             &dai::ImgTransformation::projectRectTo,
-             py::arg("to"),
-             py::arg("rect"),
-             py::arg("depth"),
-             DOC(dai, ImgTransformation, projectRectTo));
-
-    imgTransformation.def("getRotationMatrixTo", &dai::ImgTransformation::getRotationMatrixTo, py::arg("to"), DOC(dai, ImgTransformation, getRotationMatrixTo))
-        .def(py::init<>(), DOC(dai, ImgTransformation, ImgTransformation))
+    imgTransformation.def(py::init<>(), DOC(dai, ImgTransformation, ImgTransformation))
         .def(py::init<size_t, size_t>(), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, ImgTransformation, 2))
         .def(py::init<size_t, size_t, size_t, size_t>(),
              py::arg("srcWidth"),
@@ -172,6 +157,21 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("distortionCoefficients"),
              py::arg("extrinsics"),
              DOC(dai, ImgTransformation, ImgTransformation, 6))
+        .def("getTranslationVectorTo",
+             &ImgTransformation::getTranslationVectorTo,
+             py::arg("to"),
+             py::arg("useSpecTranslation") = false,
+             py::arg("sourceUnit") = LengthUnit::CENTIMETER,
+             DOC(dai, ImgTransformation, getTranslationVectorTo))
+        .def("projectRectTo",
+             &dai::ImgTransformation::projectRectTo,
+             py::arg("to"),
+             py::arg("rect"),
+             py::arg("depth"),
+             DOC(dai, ImgTransformation, projectRectTo));
+
+    imgTransformation
+        .def("getRotationMatrixTo", &dai::ImgTransformation::getRotationMatrixTo, py::arg("to"), DOC(dai, ImgTransformation, getRotationMatrixTo))
 
         .def("getTransformationMatrix", &ImgTransformation::getTransformationMatrix, DOC(dai, ImgTransformation, getTransformationMatrix))
         .def("__repr__", &ImgTransformation::str)
@@ -251,7 +251,9 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
     // TODO add RawImgFrame::CameraSettings
 
     // Message
-    imgFrame.def_readwrite("cam", &dai::ImgFrame::cam, DOC(dai, ImgFrame, cam))
+    imgFrame.def(py::init<>())
+        .def(py::init<size_t>())
+        .def_readwrite("cam", &dai::ImgFrame::cam, DOC(dai, ImgFrame, cam))
         .def_readwrite("fb", &dai::ImgFrame::fb, DOC(dai, ImgFrame, fb))
         .def_readwrite("sourceFb", &dai::ImgFrame::sourceFb, DOC(dai, ImgFrame, sourceFb))
         .def_readwrite("category", &dai::ImgFrame::category, DOC(dai, ImgFrame, category))
@@ -301,8 +303,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def_static("toPlanar", &dai::ImgFrame::toPlanar, py::arg("type"), DOC(dai, ImgFrame, toPlanar))
         .def_static("toInterleaved", &dai::ImgFrame::toInterleaved, py::arg("type"), DOC(dai, ImgFrame, toInterleaved));
 
-    imgFrame.def(py::init<>())
-        .def(py::init<size_t>())
+    imgFrame
         .def("__repr__", &ImgFrame::str)
         // getters
         .def("getTimestamp", py::overload_cast<>(&ImgFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))

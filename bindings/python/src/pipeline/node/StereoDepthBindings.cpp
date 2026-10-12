@@ -86,7 +86,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .value("ACCURACY", StereoDepth::PresetMode::ACCURACY);
 
     // Node
-    stereoDepth.def("setFrameSync", &dai::node::StereoDepth::setFrameSync, py::arg("enableFrameSync"), DOC(dai, node, StereoDepth, setFrameSync))
+    stereoDepth
         .def(py::init([](Node::Output& left, Node::Output& right, StereoDepth::PresetMode presetMode) {
                  auto self = getImplicitPipeline()->create<StereoDepth>();
                  self->build(left, right, presetMode);
@@ -102,6 +102,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              }),
              py::arg("autoCreateCameras"),
              py::arg("presetMode") = StereoDepth::PresetMode::DEFAULT)
+        .def("setFrameSync", &dai::node::StereoDepth::setFrameSync, py::arg("enableFrameSync"), DOC(dai, node, StereoDepth, setFrameSync))
         .def("build",
              static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(Node::Output&, Node::Output&, StereoDepth::PresetMode)>(&StereoDepth::build),
              py::arg("left"),

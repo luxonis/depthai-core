@@ -56,7 +56,13 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    segmentationMask.def("setSize", &dai::SegmentationMask::setSize, py::arg("width"), py::arg("height"), DOC(dai, SegmentationMask, setSize))
+    segmentationMask.def(py::init<>())
+        .def(py::init<const std::vector<std::uint8_t>&, size_t, size_t>(),
+             py::arg("mask"),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, SegmentationMask, SegmentationMask))
+        .def("setSize", &dai::SegmentationMask::setSize, py::arg("width"), py::arg("height"), DOC(dai, SegmentationMask, setSize))
         .def(
             "prepareMask",
             [](py::object self, size_t width, size_t height) {
@@ -71,12 +77,6 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
             py::arg("width"),
             py::arg("height"),
             DOC(dai, SegmentationMask, prepareMask))
-        .def(py::init<>())
-        .def(py::init<const std::vector<std::uint8_t>&, size_t, size_t>(),
-             py::arg("mask"),
-             py::arg("width"),
-             py::arg("height"),
-             DOC(dai, SegmentationMask, SegmentationMask))
         .def("__repr__", &SegmentationMask::str)
         .def("getWidth", &SegmentationMask::getWidth, DOC(dai, SegmentationMask, getWidth))
         .def("getHeight", &SegmentationMask::getHeight, DOC(dai, SegmentationMask, getHeight))

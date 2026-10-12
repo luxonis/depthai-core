@@ -109,7 +109,12 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def_readwrite("warpMeshStepHeight", &ColorCameraProperties::warpMeshStepHeight)
         .def_readwrite("eventFilter", &ColorCameraProperties::eventFilter);
     // ColorCamera node
-    colorCamera.def_readonly("mockIsp", &dai::node::ColorCamera::mockIsp, DOC(dai, node, ColorCamera, mockIsp))
+    colorCamera
+        .def(py::init([]() {
+            auto camera = getImplicitPipeline()->create<ColorCamera>();
+            return camera;
+        }))
+        .def_readonly("mockIsp", &dai::node::ColorCamera::mockIsp, DOC(dai, node, ColorCamera, mockIsp))
         .def("setPreviewType", &dai::node::ColorCamera::setPreviewType, py::arg("type"), DOC(dai, node, ColorCamera, setPreviewType))
         .def("getPreviewType", &dai::node::ColorCamera::getPreviewType, DOC(dai, node, ColorCamera, getPreviewType))
         .def(
@@ -128,12 +133,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, ColorCamera, getScaledSize))
         .def("setMockIspSize", &dai::node::ColorCamera::setMockIspSize, py::arg("width"), py::arg("height"), DOC(dai, node, ColorCamera, setMockIspSize));
 
-    colorCamera
-        .def(py::init([]() {
-            auto camera = getImplicitPipeline()->create<ColorCamera>();
-            return camera;
-        }))
-        .def_readonly("inputControl", &ColorCamera::inputControl, DOC(dai, node, ColorCamera, inputControl))
+    colorCamera.def_readonly("inputControl", &ColorCamera::inputControl, DOC(dai, node, ColorCamera, inputControl))
         .def_readonly("initialControl", &ColorCamera::initialControl, DOC(dai, node, ColorCamera, initialControl))
         .def_readonly("video", &ColorCamera::video, DOC(dai, node, ColorCamera, video))
         .def_readonly("preview", &ColorCamera::preview, DOC(dai, node, ColorCamera, preview))

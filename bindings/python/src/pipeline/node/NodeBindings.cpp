@@ -455,10 +455,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     // Node::Input bindings
     nodeInputType.value("SReceiver", Node::Input::Type::SReceiver).value("MReceiver", Node::Input::Type::MReceiver);
 
-    pyInput.def("getGroup", &dai::Node::Input::getGroup, DOC(dai, Node, Input, getGroup))
-        .def("setGroup", &dai::Node::Input::setGroup, py::arg("group"), DOC(dai, Node, Input, setGroup))
-        .def("getType", &dai::Node::Input::getType, DOC(dai, Node, Input, getType))
-        .def("isConnected", &dai::Node::Input::isConnected, DOC(dai, Node, Input, isConnected))
+    pyInput
         .def(py::init([](Node& parent,
                          const std::string& name,
                          const std::string& group,
@@ -477,6 +474,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("types") = Node::InputDescription{}.types,
              py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
              py::keep_alive<1, 0>())
+        .def("getGroup", &dai::Node::Input::getGroup, DOC(dai, Node, Input, getGroup))
+        .def("setGroup", &dai::Node::Input::setGroup, py::arg("group"), DOC(dai, Node, Input, setGroup))
+        .def("getType", &dai::Node::Input::getType, DOC(dai, Node, Input, getType))
+        .def("isConnected", &dai::Node::Input::isConnected, DOC(dai, Node, Input, isConnected))
         .def_readwrite("possibleDatatypes", &Node::Input::possibleDatatypes, DOC(dai, Node, Input, possibleDatatypes))
         .def("getParent",
              static_cast<const Node& (Node::Input::*)() const>(&Node::Input::getParent),
@@ -514,10 +515,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Node::Output bindings
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
-    pyOutput.def("getGroup", &dai::Node::Output::getGroup, DOC(dai, Node, Output, getGroup))
-        .def("setGroup", &dai::Node::Output::setGroup, py::arg("group"), DOC(dai, Node, Output, setGroup))
-        .def("getType", &dai::Node::Output::getType, DOC(dai, Node, Output, getType))
-        .def("setName", &dai::Node::Output::setName, py::arg("name"), DOC(dai, Node, Output, setName))
+    pyOutput
         .def(py::init([](Node& parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {
                  PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing Output explicitly is deprecated, use createOutput method instead.", 1);
                  return std::shared_ptr<Node::Output>(new Node::Output(parent, {name, group, std::move(types)}));
@@ -527,6 +525,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("group") = Node::OutputDescription{}.group,
              py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
              py::keep_alive<1, 0>())
+        .def("getGroup", &dai::Node::Output::getGroup, DOC(dai, Node, Output, getGroup))
+        .def("setGroup", &dai::Node::Output::setGroup, py::arg("group"), DOC(dai, Node, Output, setGroup))
+        .def("getType", &dai::Node::Output::getType, DOC(dai, Node, Output, getType))
+        .def("setName", &dai::Node::Output::setName, py::arg("name"), DOC(dai, Node, Output, setName))
         .def("getPossibleDatatypes", &Node::Output::getPossibleDatatypes, DOC(dai, Node, Output, getPossibleDatatypes))
         .def("setPossibleDatatypes", &Node::Output::setPossibleDatatypes, py::arg("types"), DOC(dai, Node, Output, setPossibleDatatypes))
         .def(
