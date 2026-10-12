@@ -625,6 +625,10 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
 endif()
 ### On-device tests ###########################################################
 
+# CBA EEPROM shared-bus regression
+dai_add_test(cba_eeprom_access_test src/ondevice_tests/cba_eeprom_access_test.cpp)
+dai_set_test_labels(cba_eeprom_access_test ondevice rvc2 usb ci cba_eeprom noreplayci)
+
 # Camera stream restart test
 dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
 dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci)
