@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <atomic>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <exception>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -292,11 +294,18 @@ TEST_CASE("On-device point cloud compute rate, GPU vs CPU, synthetic 1280x800 de
 
         const auto start = std::chrono::steady_clock::now();
         std::atomic<bool> stopSending{false};
+        // The queue is closed when the pipeline stops on the failure path: send() then throws, which must not
+        // escape the thread (std::terminate); the exception is rethrown on the normal path instead
+        std::exception_ptr senderError;
         std::thread sender([&] {
-            for(int i = 0; i < FRAMES && !stopSending; ++i) {
-                frame->setTimestamp(std::chrono::steady_clock::now());
-                frame->setSequenceNum(i + 1);
-                inQ->send(frame);
+            try {
+                for(int i = 0; i < FRAMES && !stopSending; ++i) {
+                    frame->setTimestamp(std::chrono::steady_clock::now());
+                    frame->setSequenceNum(i + 1);
+                    inQ->send(frame);
+                }
+            } catch(...) {
+                senderError = std::current_exception();
             }
         });
         // A failed assertion below must not leave the thread joinable (std::terminate); the pipeline stop unblocks the sender
@@ -319,6 +328,7 @@ TEST_CASE("On-device point cloud compute rate, GPU vs CPU, synthetic 1280x800 de
         }
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
         sender.join();
+        if(senderError) std::rethrow_exception(senderError);
         std::optional<double> computeMs;
         for(int i = 0; i < 50 && !(computeMs = logs.averageAfter(COMPUTE_TIME_LOG)); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if(useGpu) requireGpuPathAsExpected(*pipeline.getDefaultDevice(), logs);
