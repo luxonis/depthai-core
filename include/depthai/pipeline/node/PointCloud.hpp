@@ -175,7 +175,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         void computePointCloudDenseColoredCPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points);
         void computePointCloudDenseColoredCPUMT(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points);
 
-        enum class ComputeMethod { CPU, CPU_MT, GPU };
+        using ComputeMethod = PointCloudProperties::ComputeMethod;
         ComputeMethod computeMethod = ComputeMethod::CPU;
 
 #ifdef DEPTHAI_ENABLE_KOMPUTE
@@ -469,6 +469,8 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     };
 
     void run() override;
+    /// Entry `key` of syncInputs, created (non-blocking, queue of 4) when it does not exist yet
+    Input& getSyncInput(const std::string& key);
     /// Apply properties.computeMethod to an Impl, falling back to the CPU when the GPU is unavailable
     void applyComputeSettings(Impl& impl);
     DepthStream& getDepthStream(const std::string& name);

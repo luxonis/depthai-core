@@ -65,15 +65,19 @@ void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, std::vec
             computePointCloudDenseCPUMT(depthData, points);
             break;
         case ComputeMethod::GPU:
-            // A platform backend is used through computeDenseOnGpu; this is the Kompute path
             if(hasDistortion) {
                 if(!gpuDistortionFallbackWarned) {
                     if(logger) logger->warn("GPU compute does not support depth undistortion yet, falling back to CPU");
                     gpuDistortionFallbackWarned = true;
                 }
                 computePointCloudDenseCPU(depthData, points);
-            } else {
+                break;
+            }
+            try {
                 computePointCloudDenseGPU(depthData, points);
+            } catch(const std::exception& ex) {
+                dropGpuBackend(ex.what());
+                computePointCloudDenseCPU(depthData, points);
             }
             break;
     }
@@ -94,7 +98,6 @@ void PointCloud::Impl::computePointCloudDenseColored(const uint8_t* depthData, c
             computePointCloudDenseColoredCPUMT(depthData, colorData, points);
             break;
         case ComputeMethod::GPU:
-            // Kompute path doesn't support color yet, fall back to CPU
             if(logger) logger->warn("GPU compute does not support colorization yet, falling back to CPU");
             computePointCloudDenseColoredCPU(depthData, colorData, points);
             break;
@@ -609,30 +612,26 @@ std::string PointCloud::getColorInputKey(const std::string& name) {
 }
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+Node::Input& PointCloud::getSyncInput(const std::string& key) {
+    const bool created = !syncInputs.has(key);
+    auto& input = syncInputs[key];
+    if(created) {
+        input.setBlocking(false);
+        input.setMaxSize(4);
+    }
+    return input;
+}
+
 Node::Input& PointCloud::getColorInput() {
     return getColorInput("");
 }
 
 Node::Input& PointCloud::getDepthInput(const std::string& name) {
-    const auto key = getDepthInputKey(name);
-    const bool created = !syncInputs.has(key);
-    auto& input = syncInputs[key];
-    if(created) {
-        input.setBlocking(false);
-        input.setMaxSize(4);
-    }
-    return input;
+    return getSyncInput(getDepthInputKey(name));
 }
 
 Node::Input& PointCloud::getColorInput(const std::string& name) {
-    const auto key = getColorInputKey(name);
-    const bool created = !syncInputs.has(key);
-    auto& input = syncInputs[key];
-    if(created) {
-        input.setBlocking(false);
-        input.setMaxSize(4);
-    }
-    return input;
+    return getSyncInput(getColorInputKey(name));
 }
 
 std::vector<std::string> PointCloud::getDepthInputNames() const {
