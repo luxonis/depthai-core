@@ -91,10 +91,9 @@ python3 -c "import depthai as dai; print(dai.__file__)"
 
 ### Checking new Python bindings without a build
 
-The Python workflow's precheck checks new public C++ declarations on PR creation
-and updates, before any requested wheel builds. It compares the PR base with the
-checkout; push events compare against the previous commit from the event. Manual
-runs and new branches/tags compare against `HEAD^`.
+The Python workflow's precheck checks new public C++ declarations only on PR and
+PR-review events, before any requested wheel builds. It compares the PR base with
+the checkout.
 
 Run the same check locally from the repository root (including uncommitted files):
 
