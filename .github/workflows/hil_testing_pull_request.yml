@@ -9,6 +9,7 @@ on:
     types: [labeled]
 
 permissions:
+  actions: read
   contents: read
 
 # Cancel older runs for the same PR and trigger.

@@ -64,7 +64,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
@@ -85,7 +85,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
@@ -107,7 +107,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
@@ -128,7 +128,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
@@ -149,7 +149,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
@@ -183,7 +183,7 @@ jobs:
             cmake: '4.2.x'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
@@ -240,7 +240,7 @@ jobs:
         #     shared: true
         #     build-type: Release
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
@@ -294,21 +294,21 @@ jobs:
 
     - name: Upload source SBOM
       if: runner.os == 'Linux' && matrix.build-type == 'Release'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: sbom-source
         path: sbom-source/
 
     - name: Upload Win64 shared library
       if: runner.os == 'Windows' && matrix.shared && matrix.platform == 'x64'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: windows-prebuilt-win64-${{ matrix.build-type }}
         path: ${{ github.workspace }}/depthai_install/
     # TODO(Morato) - add back Win32 and shared builds to CI
     # - name: Upload Win32 shared library
     #   if: runner.os == 'Windows' && matrix.shared && matrix.platform == 'Win32'
-    #   uses: actions/upload-artifact@v4
+    #   uses: actions/upload-artifact@v7
     #   with:
     #     name: windows-prebuilt-win32-no-opencv-${{ matrix.build-type }}
     #     path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
@@ -358,45 +358,46 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, style, integration, minimal-build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     # Clone repository
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
     # Get tag version
-    # TODO(themarpe) - Node12, has to be updated
     - name: Get latest release version number
       id: tag
-      uses: battila7/get-version-action@v2
+      run: echo "version=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
 
     # Check if version matches (TODO)
     #- name: Check if version matches
     #   run: |
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v7
       with:
-        python-version: '3.8'
+        python-version: '3.12'
     - name: Install dependencies
-      run: python3.8 -m pip install git-archive-all
+      run: python -m pip install git-archive-all
 
     - name: Download Win64 artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         pattern: windows-prebuilt-win64*
         merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win64
 
     # - name: Download Win32 artifacts
-    #   uses: actions/download-artifact@v4
+    #   uses: actions/download-artifact@v8
     #   with:
     #     pattern: windows-prebuilt-win32-no-opencv*
     #     merge-multiple: true
     #     path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     - name: Download source SBOM
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: sbom-source
         path: sbom-source
@@ -412,101 +413,23 @@ jobs:
         done
         # zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
-    # Create GitHub release
-    - uses: actions/create-release@master
-      id: createRelease
-      name: Create ${{ steps.tag.outputs.version }} depthai-core release
+    - name: Create draft release and upload assets
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        body: |
-          ## Features
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_VERSION: ${{ steps.tag.outputs.version }}
+      run: |
+        gh release create "$GITHUB_REF_NAME" --verify-tag --draft \
+          --title "Release $GITHUB_REF" --notes-file - \
+          "depthai-core-$RELEASE_VERSION.zip" \
+          "depthai-core-$RELEASE_VERSION.tar.gz" \
+          "depthai-core-$RELEASE_VERSION-win64.zip" \
+          "depthai-core-$RELEASE_VERSION.spdx.json" \
+          "depthai-core-$RELEASE_VERSION.cdx.json" \
+          "depthai-core-$RELEASE_VERSION-win64.spdx.json" \
+          "depthai-core-$RELEASE_VERSION-win64.cdx.json" <<'EOF'
+        ## Features
 
-          ## Bug fixes
+        ## Bug fixes
 
-          ## Misc
-
-        draft: true
-
-    # Upload release assets
-    - name: Upload source package (zip)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.zip
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}.zip
-        asset_content_type: application/octet-stream
-
-    - name: Upload source package (tar.gz)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.tar.gz
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}.tar.gz
-        asset_content_type: application/octet-stream
-
-    - name: Upload Win64 package (zip)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win64.zip
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.zip
-        asset_content_type: application/octet-stream
-
-    - name: Upload source SBOM (SPDX)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.spdx.json
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}.spdx.json
-        asset_content_type: application/json
-
-    - name: Upload source SBOM (CycloneDX)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.cdx.json
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}.cdx.json
-        asset_content_type: application/json
-
-    - name: Upload Win64 SBOM (SPDX)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win64.spdx.json
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.spdx.json
-        asset_content_type: application/json
-
-    - name: Upload Win64 SBOM (CycloneDX)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win64.cdx.json
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.cdx.json
-        asset_content_type: application/json
-
-    # - name: Upload Win32 package (zip)
-    #   uses: actions/upload-release-asset@v1.0.1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.createRelease.outputs.upload_url }}
-    #     asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
-    #     asset_name: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
-    #     asset_content_type: application/octet-stream
+        ## Misc
+        EOF

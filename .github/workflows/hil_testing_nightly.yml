@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 # Only allow latest nightly run on same branch to be tested
