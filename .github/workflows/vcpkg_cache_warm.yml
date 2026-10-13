@@ -6,7 +6,7 @@ name: Warm vcpkg binary caches
 # pushes at releases. Scheduled runs always execute on the default branch, so the entries saved here get
 # the main scope. The jobs run the configure step of the real jobs on the given ref (default: develop),
 # which builds the missing ports; the save action then prunes unused archives and saves only on change.
-# Families and measurements: docs/ci/vcpkg-binary-cache.md. The configure commands must match the real
+# The configure commands must match the real
 # jobs in main.workflow.yml, python-main.yml and bindings/python/setup.py.
 
 on:
@@ -34,7 +34,7 @@ jobs:
         family: [core, core-tests]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.WARM_REF }}
           submodules: 'recursive'
@@ -99,7 +99,7 @@ jobs:
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.WARM_REF }}
           submodules: 'recursive'
@@ -114,7 +114,7 @@ jobs:
         with:
           family: ${{ matrix.family }}
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -182,7 +182,7 @@ jobs:
       - name: Save vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/save
         with:
-          vcpkg-installed-dir: ${{ startsWith(matrix.family, 'wheel') && 'bindings/python/build/temp.*/vcpkg_installed' || 'build/vcpkg_installed' }}
+          vcpkg-installed-dir: ${{ startsWith(matrix.family, 'wheel') && 'bindings/python/build/temp.*/vcpkg_installed bindings/python/build/temp.*/Release/vcpkg_installed' || 'build/vcpkg_installed' }}
 
   # python-main.yml: build-linux-x86_64 and build-linux-arm64 (manylinux containers).
   manylinux:
@@ -206,7 +206,7 @@ jobs:
       DEPTHAI_BUILD_KOMPUTE: ON
       DEPTHAI_CONFIGURE_ONLY: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.WARM_REF }}
           submodules: 'recursive'
@@ -244,4 +244,4 @@ jobs:
       - name: Save vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/save
         with:
-          vcpkg-installed-dir: bindings/python/build/temp.*/vcpkg_installed
+          vcpkg-installed-dir: bindings/python/build/temp.*/vcpkg_installed bindings/python/build/temp.*/Release/vcpkg_installed

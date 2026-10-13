@@ -27,13 +27,13 @@ jobs:
       HEAD_REF: ${{ github.event.workflow_run.head_branch }}
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.8'
+          python-version: '3.12'
 
       - name: Get dev version from script
         id: get_version
@@ -42,15 +42,15 @@ jobs:
           # (v2_stable), so require a tag of that name that points at the commit.
           if git fetch -q --depth 1 origin "refs/tags/$HEAD_REF" 2>/dev/null \
              && [[ "$(git rev-parse 'FETCH_HEAD^{commit}')" == "$HEAD_SHA" ]]; then
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_version())")
           else
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('$HEAD_SHA'))")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_dev_version('$HEAD_SHA'))")
           fi
           echo "VERSION=$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Dispatch action and get run ID
-        uses: codex-/return-dispatch@v2
+        uses: codex-/return-dispatch@v4.0.1
         id: return_dispatch
         with:
           token: ${{ secrets.BOM_GITHUB_TOKEN }}
@@ -58,8 +58,6 @@ jobs:
           repo: "luxonis-bom"
           owner: "luxonis"
           workflow: "dispatch_main.yml"
-          workflow_timeout_seconds: 120
-          workflow_job_steps_retry_seconds: 2
           workflow_inputs: '{"depthai": "${{ github.event.workflow_run.head_branch }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
 
       - name: Wait for the dispatched workflow to complete

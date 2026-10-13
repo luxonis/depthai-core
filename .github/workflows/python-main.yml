@@ -292,7 +292,8 @@ jobs:
       - name: Save vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/save
         with:
-          vcpkg-installed-dir: bindings/python/build/temp.*/vcpkg_installed
+          # setuptools builds under temp.win-*/Release on Windows (one level deeper than on Linux and macOS)
+          vcpkg-installed-dir: bindings/python/build/temp.*/Release/vcpkg_installed
           save: ${{ strategy.job-index == 0 }}
       - name: Verify wheel license files
         shell: bash

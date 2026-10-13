@@ -4,11 +4,12 @@ description: >
   content changed, this job is the family's designated saver, the event is not a pull request and
   the build is not a tag build (tag builds run without a cache, see the restore action).
   Must follow .github/actions/vcpkg-cache/restore and the vcpkg install (CMake configure) step.
-  Design, key scheme and measurements: docs/ci/vcpkg-binary-cache.md
 
 inputs:
   vcpkg-installed-dir:
-    description: Directory that holds vcpkg/status for this build (shell glob allowed, first match is used).
+    description: >
+      Directory that holds vcpkg/status for this build. Shell globs allowed, several separated by spaces;
+      the first match is used (setuptools on Windows builds under temp.win-*/Release, one level deeper).
     required: true
   save:
     description: >
@@ -61,7 +62,7 @@ runs:
         EVENT: ${{ github.event_name }}
       run: |
         if [[ -n "${VCPKG_CACHE_RESTORED_KEY:-}" && "${ADDED:-0}" -gt 0 ]]; then
-          echo "::warning::vcpkg built $ADDED package(s) from source although cache '$VCPKG_CACHE_RESTORED_KEY' was restored. This is expected once after a port, compiler, runner image or vcpkg tool change; if it repeats, the family's saver no longer produces the ABIs this job needs (docs/ci/vcpkg-binary-cache.md)."
+          echo "::warning::vcpkg built $ADDED package(s) from source although cache '$VCPKG_CACHE_RESTORED_KEY' was restored. This is expected once after a port, compiler, runner image or vcpkg tool change; if it repeats, the family's saver no longer produces the ABIs this job needs."
         fi
         if [[ "$CHANGED" == "true" && ( "$SAVE" != "true" || "$EVENT" == pull_request* ) ]]; then
           echo "::notice::vcpkg binary cache content changed but this job does not save it (save=$SAVE, event=$EVENT)."
@@ -69,7 +70,7 @@ runs:
 
     - name: Save vcpkg binary cache
       if: inputs.save == 'true' && steps.prune.outputs.changed == 'true' && !startsWith(github.event_name, 'pull_request') && !startsWith(github.ref, 'refs/tags/')
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ${{ env.VCPKG_CACHE_DIR }}
         key: ${{ env.VCPKG_CACHE_KEY }}

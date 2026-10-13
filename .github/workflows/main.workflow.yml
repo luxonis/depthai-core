@@ -217,7 +217,7 @@ jobs:
           - os: windows-2025
             cmake: '4.2.x'
             cache-saver: true
-          # One job per OS saves the 'core-tests' vcpkg binary cache (docs/ci/vcpkg-binary-cache.md).
+          # One job per OS saves the 'core-tests' vcpkg binary cache.
           # vcpkg uses its own CMake on Linux/macOS, so both CMake matrix entries have the same package ABIs.
           - os: macos-latest
             cmake: '3.22.x'
@@ -287,7 +287,7 @@ jobs:
         shared: [true]
         platform: [x64]
         include:
-          # One job per OS saves the 'core' vcpkg binary cache (docs/ci/vcpkg-binary-cache.md).
+          # One job per OS saves the 'core' vcpkg binary cache.
           # The default triplets build Debug and Release of every port, so both build types share the ABIs.
           - os: macos-latest
             build-type: Release

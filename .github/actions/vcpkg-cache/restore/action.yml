@@ -4,7 +4,6 @@ description: >
   Pair with .github/actions/vcpkg-cache/save after the configure step.
   Tag builds (refs/tags/*) are clean builds: the action sets VCPKG_BINARY_SOURCES=clear, restores
   nothing and pins no tools, so every port is built from source and the save action saves nothing.
-  Design, key scheme and measurements: docs/ci/vcpkg-binary-cache.md
 
 inputs:
   family:
@@ -81,7 +80,7 @@ runs:
     - name: Restore vcpkg binary cache
       id: restore
       if: steps.prepare.outputs.clean != 'true'
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ${{ env.VCPKG_CACHE_DIR }}
         key: ${{ env.VCPKG_CACHE_KEY }}
