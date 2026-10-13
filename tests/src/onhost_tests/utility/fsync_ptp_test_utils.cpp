@@ -26,6 +26,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/pipeline/node/ToF.hpp"
 #include "depthai/properties/SyncProperties.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
@@ -440,37 +441,68 @@ void setUpCameraSocket(dai::Pipeline& pipeline,
     auto &input = syncNode->inputs[fullSocketName];
     input.setMaxSize(32);
 
-    if (ccmName.value() == "VD55H1") {
-        std::cout << "Using script node to bypas scaling issues for VD55H1" << std::endl;
-        auto script = pipeline.create<dai::node::Script>();
-        script->setScript(R"(
-            in = node.inputs["in"]
-            out = node.outputs["out"]
-            while True:
-                if in.has():
-                    inframe = in.get()
-                    outframe = dai.ImgFrame()
-                    outframe.settimestampSystem(inframe.getTimestampSystem())
-                    out.send(outframe)
-                else:
-                    time.sleep(0.001)
-                    continue
-        )");
+    // This is to ensure hil can handle so many streams even at higher fps.
+    int width = 10;
+    int height = 10;
+    cam->requestOutput(std::make_pair(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP)->link(input);
 
-        // Create input and output queues
-        auto &scriptNodeInput = script->inputs["in"];
-        scriptNodeInput.setMaxSize(32);
-        auto &scriptNodeOutput = script->outputs["out"];
+    inputNames.push_back(fullSocketName);
+}
 
-        cam->requestFullResolutionOutput()->link(scriptNodeInput);
-        scriptNodeOutput.link(input);
-
+void setUpToFSocket(dai::Pipeline& pipeline,
+                       std::shared_ptr<dai::Device> device,
+                       std::shared_ptr<dai::node::Sync> syncNode,
+                       dai::CameraBoardSocket socket,
+                       std::string& deviceName,
+                       float targetFps,
+                       SyncType syncType,
+                       std::optional<dai::ExternalFrameSyncRole> role,
+                       std::vector<std::string>& inputNames) {
+    std::shared_ptr<dai::node::ToF> tof;
+    auto profile = dai::ToFConfig::Profile::MID_RANGE;
+    if(syncType == SyncType::PTP || role == dai::ExternalFrameSyncRole::MASTER) {
+        tof = pipeline.create<dai::node::ToF>(device)->build(socket, profile, targetFps);
+    } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
+        tof = pipeline.create<dai::node::ToF>(device)->build(socket, profile);
     } else {
-        // This is to ensure hil can handle so many streams even at higher fps.
-        int width = 10;
-        int height = 10;
-        cam->requestOutput(std::make_pair(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP)->link(input);
+        throw std::runtime_error("Don't know how to handle role");
     }
+
+    // if(syncType == SyncType::PTP) {
+    //     tof->initialControl.setFrameSyncMode(dai::CameraControl::FrameSyncMode::TIME_PTP);
+    //     std::cout << "Setting PTP for " << dai::toString(socket) << std::endl;
+    // }
+
+    auto ccmName = getCameraSensorName(device, socket);
+    REQUIRE_MSG(ccmName.has_value(), "Camera sensor name not found for socket " + dai::toString(socket));
+    std::string fullSocketName = deviceName + "_" +dai::toString(socket) + "[" + ccmName.value() + "]";
+
+    auto &input = syncNode->inputs[fullSocketName];
+    input.setMaxSize(32);
+
+    std::cout << "Using script node to bypas scaling issues for VD55H1" << std::endl;
+    auto script = pipeline.create<dai::node::Script>();
+    script->setScript(R"(
+        in = node.inputs["in"]
+        out = node.outputs["out"]
+        while True:
+            if in.has():
+                inframe = in.get()
+                outframe = dai.ImgFrame()
+                outframe.settimestampSystem(inframe.getTimestampSystem())
+                out.send(outframe)
+            else:
+                time.sleep(0.001)
+                continue
+    )");
+
+    // Create input and output queues
+    auto &scriptNodeInput = script->inputs["in"];
+    scriptNodeInput.setMaxSize(32);
+    auto &scriptNodeOutput = script->outputs["out"];
+
+    tof->depth.link(scriptNodeInput);
+    scriptNodeOutput.link(input);
 
     inputNames.push_back(fullSocketName);
 }
@@ -538,6 +570,12 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
         }
 
         auto sensorName = sensorNames.at(socket);
+
+        if (sensorName == "VD55H1" && syncType == SyncType::PTP) {
+            std::cout << "Skipping VD55H1 because it does not support PTP" << std::endl;
+            return false;
+        }
+
         for (const auto& allowedSensor : allowedSensors.value()) {
             if (sensorName == allowedSensor) {
                 return true;
@@ -552,7 +590,13 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
             continue;
         }
         std::cout << "Setting up socker " << dai::toString(socket) << std::endl;
-        setUpCameraSocket(pipeline, device, syncNode, socket, name, targetFps, syncType, role, inputNames);
+        auto ccmName = getCameraSensorName(device, socket);
+        REQUIRE_MSG(ccmName.has_value(), "Camera sensor name not found for socket " + dai::toString(socket));
+        if (ccmName.value() == "VD55H1") {
+            setUpToFSocket(pipeline, device, syncNode, socket, name, targetFps, syncType, role, inputNames);
+        } else {
+            setUpCameraSocket(pipeline, device, syncNode, socket, name, targetFps, syncType, role, inputNames);
+        }
     }
 
     setUpIrLeds(device);
