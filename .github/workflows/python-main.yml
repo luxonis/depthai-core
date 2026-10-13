@@ -535,6 +535,21 @@ jobs:
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+      # The committed notices are installed with the C++ library, so they must match this build (all options ON)
+      - name: Archive generated third-party notices
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: third-party-notices-linux-x86_64-${{ matrix.python-set }}
+          path: bindings/python/generated/wheel_licenses/THIRD_PARTY_NOTICES
+          if-no-files-found: ignore
+      - name: Check committed third-party notices
+        run: |
+          if ! cmp -s notices/THIRD_PARTY_NOTICES bindings/python/generated/wheel_licenses/THIRD_PARTY_NOTICES; then
+            diff -u notices/THIRD_PARTY_NOTICES bindings/python/generated/wheel_licenses/THIRD_PARTY_NOTICES | head -n 300 || true
+            echo "::error file=notices/THIRD_PARTY_NOTICES::Committed notices do not match this build. Copy the file from the 'third-party-notices-linux-x86_64-${{ matrix.python-set }}' artifact to notices/THIRD_PARTY_NOTICES, then review and commit it."
+            exit 1
+          fi
 
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
