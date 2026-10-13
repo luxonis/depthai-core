@@ -923,6 +923,10 @@ dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
+# MDK hardware warp regression tests (camera-independent synthetic frames)
+dai_add_test(warp_node_test src/ondevice_tests/warp_node_test.cpp)
+dai_set_test_labels(warp_node_test ondevice rvc2_all ci noreplayci)
+
 # Align test
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
 dai_set_test_labels(align_node_test ondevice rvc4 ci)
