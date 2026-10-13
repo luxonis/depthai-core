@@ -265,7 +265,7 @@ bool DeviceGate::HTTPImpl::createSession(
             }
 
             // TODO(themarpe) - Inefficient
-            httplib::MultipartFormDataItems items = {
+            httplib::UploadFormDataItems items = {
                 {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
             };
 

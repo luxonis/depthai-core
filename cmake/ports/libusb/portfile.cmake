@@ -5,6 +5,8 @@ vcpkg_from_github(
     REF 745c272a2f0305c4ab162b7fb1b2edc7578c6b77
     SHA512 1ddf278e9f82061f77043400164d98e8e24a6627d1bcf9a1a8e57e9b032b3a183730b2651de1b66ab953cac8b49d1a399e1d3476ee9c07922be9e5a17ee396ff
     HEAD_REF bugfix/win_claimed_if_corruption
+    PATCHES
+        fix-descriptor-cves.patch
 )
 
 if(VCPKG_TARGET_IS_WINDOWS)

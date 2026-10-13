@@ -1,0 +1,81 @@
+Backport of upstream libusb bc088617 (in 1.0.30) to the luxonis/libusb fork:
+- CVE-2026-23679: NULL endpoint array when an interface has bNumEndpoints > 0
+  and a short class-specific descriptor follows.
+- CVE-2026-47104: one-byte out-of-bounds read in parse_iad_array().
+parse_iad_array() also gets the bLength checks of upstream 1.0.27+, so bLength 0
+no longer loops forever.
+
+diff --git a/libusb/descriptor.c b/libusb/descriptor.c
+index 43b5b407..369fcd39 100644
+--- a/libusb/descriptor.c
++++ b/libusb/descriptor.c
+@@ -25,6 +25,11 @@
+ 
+ #define DESC_HEADER_LENGTH	2
+ 
++/* This fork's libusb.h does not define it. Value from upstream libusb 1.0.30. */
++#ifndef LIBUSB_DT_INTERFACE_ASSOCIATION_SIZE
++#define LIBUSB_DT_INTERFACE_ASSOCIATION_SIZE	8
++#endif
++
+ /** @defgroup libusb_desc USB descriptors
+  * This page details how to examine the various standard USB descriptors
+  * for detected devices
+@@ -260,6 +265,10 @@ static int parse_interface(libusb_context *ctx,
+ 				usbi_warn(ctx,
+ 					  "short extra intf desc read %d/%u",
+ 					  size, header->bLength);
++				/* Keep the invariant: bNumEndpoints > 0 implies
++				 * endpoint != NULL. The endpoint array isn't
++				 * allocated yet on this early return. */
++				ifp->bNumEndpoints = 0;
+ 				return parsed;
+ 			}
+ 
+@@ -1156,8 +1165,18 @@ static int parse_iad_array(struct libusb_context *ctx,
+ 
+ 	//first pass. iterate through desc list, count number of IAD's
+ 	iad_array->length = 0;
+-	while (consumed < size) {
++	while (size - consumed >= DESC_HEADER_LENGTH) {
+ 		parse_descriptor(buf, "bb", &header);
++		if (header.bLength < DESC_HEADER_LENGTH) {
++			usbi_err(ctx, "invalid descriptor bLength %d",
++				 header.bLength);
++			return LIBUSB_ERROR_IO;
++		}
++		else if (header.bLength > size - consumed) {
++			usbi_warn(ctx, "short config descriptor read %d/%u",
++					  size - consumed, header.bLength);
++			return LIBUSB_ERROR_IO;
++		}
+ 		if (header.bDescriptorType == LIBUSB_DT_INTERFACE_ASSOCIATION)
+ 			iad_array->length++;
+ 		buf += header.bLength;
+@@ -1173,15 +1192,18 @@ static int parse_iad_array(struct libusb_context *ctx,
+ 		iad_array->iad = iad;
+ 
+ 		//second pass. iterate through desc list, fill IAD structures
+-		consumed = 0;
++		//the first pass checked every bLength, so stay inside these bounds
++		int remaining = size;
+ 		i = 0;
+-		while (consumed < size) {
+-		   parse_descriptor(buffer, "bb", &header);
+-		   if (header.bDescriptorType == LIBUSB_DT_INTERFACE_ASSOCIATION)
+-			  parse_descriptor(buffer, "bbbbbbbb", &iad[i++]);
+-		   buffer += header.bLength;
+-		   consumed += header.bLength;
+-		}
++		do {
++			parse_descriptor(buffer, "bb", &header);
++			if (header.bDescriptorType == LIBUSB_DT_INTERFACE_ASSOCIATION && remaining >= LIBUSB_DT_INTERFACE_ASSOCIATION_SIZE)
++				parse_descriptor(buffer, "bbbbbbbb", &iad[i++]);
++			remaining -= header.bLength;
++			if (remaining < DESC_HEADER_LENGTH)
++				break;
++			buffer += header.bLength;
++		} while (1);
+ 	}
+ 
+ 	return LIBUSB_SUCCESS;
