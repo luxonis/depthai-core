@@ -37,10 +37,6 @@
         "version": "1.9.0"
     },
     {
-        "name": "openssl",
-        "version": "3.6.5"
-    },
-    {
         "name": "curl",
         "version": "8.22.0"
     },
