@@ -380,6 +380,11 @@ class CMakeBuild(build_ext):
 
         # Configure and build
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
+        if os.environ.get('DEPTHAI_CONFIGURE_ONLY') == '1':
+            # CI warms the vcpkg binary cache with the exact dependency set of the wheel build; the
+            # configure step installs the dependencies, so stop here (.github/workflows/vcpkg_cache_warm.yml).
+            print('DEPTHAI_CONFIGURE_ONLY=1: dependencies installed and project configured, not building')
+            return
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp, env=env)
         _generate_wheel_license_notices(self.build_temp)
         _generate_wheel_sbom(self.build_temp)

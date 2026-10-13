@@ -8,20 +8,46 @@ permissions:
   contents: read
 
 jobs:
+  find_wheels:
+    runs-on: ubuntu-latest
+    outputs:
+      run_id: ${{ steps.find.outputs.run_id }}
+    steps:
+      - name: Find the newest successful develop wheel build
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          run_id=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/python-main.yml/runs" \
+            -f branch=develop -f event=push -f status=success -f "created=>=$since" -F per_page=1 \
+            --jq '.workflow_runs[0].id // empty' 2>/dev/null || true)
+          if [[ -n "$run_id" ]] && gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" \
+               -f name=audited-wheels-combined-linux-x86_64 \
+               --jq '.artifacts[] | select(.expired == false) | .id' 2>/dev/null | grep -q .; then
+            echo "Reusing the wheels of run https://github.com/$GITHUB_REPOSITORY/actions/runs/$run_id"
+            echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          else
+            echo "No successful develop wheel build with artifacts in the last 7 days; building the wheels"
+          fi
+
   build_wheels:
+    needs: find_wheels
+    if: needs.find_wheels.outputs.run_id == ''
     uses: ./.github/workflows/python-main.yml
     with:
       concurrency_suffix: weekly-stability
     secrets: inherit
 
   dispatch_stability:
-    needs: build_wheels
+    needs: [find_wheels, build_wheels]
+    if: always() && needs.find_wheels.result == 'success' && (needs.build_wheels.result == 'success' || needs.build_wheels.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Trigger weekly stability runs
         env:
           GH_TOKEN: ${{ github.token }}
-          WHEEL_RUN_ID: ${{ github.run_id }}
+          WHEEL_RUN_ID: ${{ needs.find_wheels.outputs.run_id || github.run_id }}
         run: |
           gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=tcpip -f timeout=168
           gh workflow run stability.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop -f wheel_run_id="$WHEEL_RUN_ID" -f protocol=usb -f timeout=168
