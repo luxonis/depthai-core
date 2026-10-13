@@ -27,6 +27,7 @@
 
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>);
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::UART>);
+PYBIND11_MAKE_OPAQUE(std::unordered_map<dai::CameraBoardSocket, dai::BoardConfig::Camera>);
 
 // static std::vector<std::string> deviceGetQueueEventsHelper(dai::Device& d, const std::vector<std::string>& queueNames, std::size_t maxNumEvents,
 // std::chrono::microseconds timeout){
@@ -161,6 +162,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::bind_map<std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>>(boardConfig, "GPIOMap");
     py::bind_map<std::unordered_map<std::int8_t, dai::BoardConfig::UART>>(boardConfig, "UARTMap");
+    using CameraMap = std::unordered_map<CameraBoardSocket, BoardConfig::Camera>;
+    auto boardCameraMap = py::bind_map<CameraMap>(boardConfig, "CameraMap");
 
     // pybind11 limitation of having actual classes as exceptions
     // Possible but requires a larger workaround
@@ -226,6 +229,15 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("name", &dai::BoardConfig::Camera::name, DOC(dai, BoardConfig, Camera, name))
         .def_readwrite("sensorType", &dai::BoardConfig::Camera::sensorType, DOC(dai, BoardConfig, Camera, sensorType))
         .def_readwrite("orientation", &dai::BoardConfig::Camera::orientation, DOC(dai, BoardConfig, Camera, orientation));
+
+    boardCameraMap.def(py::init([](const py::dict& cameras) {
+        CameraMap map;
+        for(auto item : cameras) {
+            map.emplace(item.first.cast<CameraBoardSocket>(), item.second.cast<BoardConfig::Camera>());
+        }
+        return map;
+    }));
+    py::implicitly_convertible<py::dict, CameraMap>();
 
     boardImu.def(py::init<>())
         .def_readwrite("bus", &dai::BoardConfig::IMU::bus, DOC(dai, BoardConfig, IMU, bus))

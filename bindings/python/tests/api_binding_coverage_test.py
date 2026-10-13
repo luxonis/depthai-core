@@ -230,6 +230,15 @@ def test_board_camera_and_imu_configuration():
     config.imu.bus = 2
     config.nonExclusiveMode = True
     assert config.camera[dai.CameraBoardSocket.CAM_I].name == "color"
+    config.camera[dai.CameraBoardSocket.CAM_A] = camera
+    assert config.camera[dai.CameraBoardSocket.CAM_A].name == "color"
+    camera.name = "left"
+    config.camera[dai.CameraBoardSocket.CAM_A] = camera
+    assert config.camera[dai.CameraBoardSocket.CAM_A].name == "left"
+    config.camera[dai.CameraBoardSocket.CAM_A].name = "updated"
+    assert config.camera[dai.CameraBoardSocket.CAM_A].name == "updated"
+    del config.camera[dai.CameraBoardSocket.CAM_A]
+    assert dai.CameraBoardSocket.CAM_A not in config.camera
     assert config.imu.bus == 2
     assert config.nonExclusiveMode
     config.imu = None
