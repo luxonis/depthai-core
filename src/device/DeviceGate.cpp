@@ -36,6 +36,8 @@ const std::string API_ROOT{"/api/v1"};
 const auto sessionsEndpoint = API_ROOT + "/sessions";
 const int DEFAULT_PORT{11492};
 const int gateTimeout = 2000;
+// Largest file (crash dump) that the host downloads from the gate. cpp-httplib limits responses to 100 MB by default.
+constexpr size_t maxDownloadSize = 1024ULL * 1024 * 1024;
 
 enum USBRequestID_t {
     RESPONSE_OK,
@@ -94,6 +96,7 @@ DeviceGate::HTTPImpl::HTTPImpl(DeviceInfo deviceInfo) {
     // Discover and connect
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
+    pimpl->cli->set_payload_max_length(maxDownloadSize);
     // pimpl->cli->set_connection_timeout(2);
 }
 
