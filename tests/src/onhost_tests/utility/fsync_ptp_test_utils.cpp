@@ -559,6 +559,14 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
     auto isSensorAllowed = [&](dai::CameraBoardSocket socket) -> bool {
+        auto sensorNames = device->getCameraSensorNames();
+        if(sensorNames.find(socket) == sensorNames.end()) {
+            std::cout << "Skipping socket " << dai::toString(socket) << " because it does not have associated sensor name!" << std::endl;
+            return false;
+        }
+
+        auto sensorName = sensorNames.at(socket);
+        
         if (sensorName == "VD55H1") {
             std::cout << "Skipping ToF" << std::endl;
             return false;
@@ -571,14 +579,6 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
         if (!allowedSensors.has_value()) {
             return true;
         }
-
-        auto sensorNames = device->getCameraSensorNames();
-        if(sensorNames.find(socket) == sensorNames.end()) {
-            std::cout << "Skipping socket " << dai::toString(socket) << " because it does not have associated sensor name!" << std::endl;
-            return false;
-        }
-
-        auto sensorName = sensorNames.at(socket);
 
         for (const auto& allowedSensor : allowedSensors.value()) {
             if (sensorName == allowedSensor) {
