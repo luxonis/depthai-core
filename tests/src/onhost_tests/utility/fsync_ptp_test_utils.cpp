@@ -481,28 +481,18 @@ void setUpToFSocket(dai::Pipeline& pipeline,
     input.setMaxSize(32);
 
     std::cout << "Using script node to bypas scaling issues for VD55H1" << std::endl;
-    auto script = pipeline.create<dai::node::Script>();
+    auto script = pipeline.create<dai::node::Script>(device);
     script->setScript(R"(
-        in = node.inputs["in"]
-        out = node.outputs["out"]
         while True:
-            if in.has():
-                inframe = in.get()
-                outframe = dai.ImgFrame()
-                outframe.settimestampSystem(inframe.getTimestampSystem())
-                out.send(outframe)
-            else:
-                time.sleep(0.001)
-                continue
+            frame = node.inputs["in"].get()
+            # bytes selects the binding that replaces the payload with an empty buffer.
+            # Keep timestamps, sequence number, exposure and fsync metadata intact.
+            frame.setData(b"")
+            node.outputs["out"].send(frame)
     )");
-
-    // Create input and output queues
-    auto &scriptNodeInput = script->inputs["in"];
-    scriptNodeInput.setMaxSize(32);
-    auto &scriptNodeOutput = script->outputs["out"];
-
-    tof->depth.link(scriptNodeInput);
-    scriptNodeOutput.link(input);
+    script->inputs["in"].setMaxSize(32);
+    tof->depth.link(script->inputs["in"]);
+    script->outputs["out"].link(input);
 
     inputNames.push_back(fullSocketName);
 }
@@ -567,14 +557,10 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
 
         auto sensorName = sensorNames.at(socket);
         
-        if (sensorName == "VD55H1") {
-            std::cout << "Skipping ToF" << std::endl;
+        if (sensorName == "VD55H1" && syncType == SyncType::PTP) {
+            std::cout << "Skipping VD55H1 because it does not support PTP" << std::endl;
             return false;
         }
-        // if (sensorName == "VD55H1" && syncType == SyncType::PTP) {
-        //     std::cout << "Skipping VD55H1 because it does not support PTP" << std::endl;
-        //     return false;
-        // }
         
         if (!allowedSensors.has_value()) {
             return true;
