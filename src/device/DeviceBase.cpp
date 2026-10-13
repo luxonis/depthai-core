@@ -757,6 +757,10 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
             return;
         }
 
+        // Retrieval succeeded. Callback or archive failures must not cause this
+        // crash dump to be retrieved and delivered again.
+        crashDumpHandled.store(true);
+
         decltype(crashdumpCallback) callbackCopy;
 
         // Create a copy of the callback function to avoid race conditions
@@ -775,7 +779,6 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
         } else {
             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
         }
-        crashDumpHandled.store(true);
     }
 }
 
@@ -799,7 +802,25 @@ void DeviceBase::waitForGateAndCollectCrashDump() {
     pimpl->logger.warn("FW crashed - trying to get out the crash dump");
     std::this_thread::sleep_for(std::chrono::seconds(5));  // Allow for the generation of the crash dump and the log file
     pimpl->logger.warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
-    collectAndLogCrashDump();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(getCrashdumpTimeout(deviceInfo.protocol));
+    // A CRASHED session does not guarantee its core dump is available yet. The
+    // gate can return 404 while the dump is being generated; do not reconnect
+    // and replace the session after a single unsuccessful retrieval.
+    do {
+        try {
+            collectAndLogCrashDump();
+        } catch(const std::exception& ex) {
+            if(crashDumpHandled.load()) {
+                pimpl->logger.warn("Crash dump was retrieved, but callback delivery or archive persistence failed: {}", ex.what());
+                return;
+            }
+            pimpl->logger.debug("Crash dump retrieval attempt failed: {}", ex.what());
+        }
+        if(crashDumpHandled.load() || !isCrashDumpCollectionEnabled()) return;
+        if(std::chrono::steady_clock::now() >= deadline) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    } while(std::chrono::steady_clock::now() < deadline);
+    pimpl->logger.warn("Crash dump was not available before the collection timeout");
 }
 
 void DeviceBase::waitForRebootAndCollectCrashDump() {
@@ -1211,12 +1232,17 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
         // Create and start session
         // TODO Tie create and start session together. Split for now, since in some cases starting the session works, even if creating failed.
+        std::string createError;
         if(!gate->createSession()) {
+            createError = gate->getLastError();
             spdlog::error("Could not create the session on gate!");
         }
 
         if(!gate->startSession()) {
-            spdlog::error("Could not start the session on gate!");
+            std::string reason = gate->getLastError();
+            if(!createError.empty()) reason = createError + "; " + reason;
+            throw std::runtime_error(
+                fmt::format("Device '{}' is reachable, but its gate could not start the DepthAI firmware session ({}). ", deviceInfo.name, reason));
         }
         // Connect with XLinkConnection (skip checking if booted)
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);
@@ -1674,8 +1700,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
     }
-    // Device is gone for good: idle its streams; the pipeline stops only when this
-    // was the last device or a fatal one (a device consuming other devices' streams)
     notifyPipelineDeviceState(DeviceState::FAILED);
 }
 
