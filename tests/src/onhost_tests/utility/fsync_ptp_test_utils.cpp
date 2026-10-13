@@ -441,10 +441,8 @@ void setUpCameraSocket(dai::Pipeline& pipeline,
     input.setMaxSize(32);
 
     if (ccmName.value() == "VD55H1") {
-        // Create script node
+        std::cout << "Using script node to bypas scaling issues for VD55H1" << std::endl;
         auto script = pipeline.create<dai::node::Script>();
-
-        // Set the script content
         script->setScript(R"(
             in = node.inputs["in"]
             out = node.outputs["out"]
