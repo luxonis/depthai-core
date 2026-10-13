@@ -559,6 +559,15 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
     auto isSensorAllowed = [&](dai::CameraBoardSocket socket) -> bool {
+        if (sensorName == "VD55H1") {
+            std::cout << "Skipping ToF" << std::endl;
+            return false;
+        }
+        // if (sensorName == "VD55H1" && syncType == SyncType::PTP) {
+        //     std::cout << "Skipping VD55H1 because it does not support PTP" << std::endl;
+        //     return false;
+        // }
+        
         if (!allowedSensors.has_value()) {
             return true;
         }
@@ -570,15 +579,6 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
         }
 
         auto sensorName = sensorNames.at(socket);
-
-        if (sensorName == "VD55H1") {
-            std::cout << "Skipping ToF" << std::endl;
-            return false;
-        }
-        // if (sensorName == "VD55H1" && syncType == SyncType::PTP) {
-        //     std::cout << "Skipping VD55H1 because it does not support PTP" << std::endl;
-        //     return false;
-        // }
 
         for (const auto& allowedSensor : allowedSensors.value()) {
             if (sensorName == allowedSensor) {
