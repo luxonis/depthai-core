@@ -440,10 +440,39 @@ void setUpCameraSocket(dai::Pipeline& pipeline,
     auto &input = syncNode->inputs[fullSocketName];
     input.setMaxSize(32);
 
-    // This is to ensure hil can handle so many streams even at higher fps.
-    int width = 10;
-    int height = 10;
-    cam->requestOutput(std::make_pair(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP)->link(input);
+    if (ccmName.value() == "VD55H1") {
+        // Create script node
+        auto script = pipeline.create<dai::node::Script>();
+
+        // Set the script content
+        script->setScript(R"(
+            in = node.inputs["in"]
+            out = node.outputs["out"]
+            while True:
+                if in.has():
+                    inframe = in.get()
+                    outframe = dai.ImgFrame()
+                    outframe.settimestampSystem(inframe.getTimestampSystem())
+                    out.send(outframe)
+                else:
+                    time.sleep(0.001)
+                    continue
+        )");
+
+        // Create input and output queues
+        auto &scriptNodeInput = script->inputs["in"];
+        scriptNodeInput.setMaxSize(32);
+        auto &scriptNodeOutput = script->outputs["out"];
+
+        cam->requestFullResolutionOutput()->link(scriptNodeInput);
+        scriptNodeOutput.link(input);
+
+    } else {
+        // This is to ensure hil can handle so many streams even at higher fps.
+        int width = 10;
+        int height = 10;
+        cam->requestOutput(std::make_pair(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP)->link(input);
+    }
 
     inputNames.push_back(fullSocketName);
 }
