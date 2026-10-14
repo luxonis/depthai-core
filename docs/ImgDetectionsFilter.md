@@ -72,17 +72,3 @@ The default compositor uses seam estimation, exposure compensation and multiband
 The cameras run at 30 FPS. Free-running cameras can have a steady capture offset even with valid geometric calibration. The example accepts a timestamp spread below 33 ms by default; `--sync-threshold-ms` changes the tolerance for detection grouping, stitching and display. Values must be positive and no greater than one frame period (33.3 ms). An overly tight tolerance can repeatedly discard frames and stall the panorama. A wider tolerance pairs frames taken at different moments and can misalign moving objects. For tighter timing, synchronize camera capture using PTP or wired FSYNC as shown in the [frame synchronization example](../examples/python/MultiDevice/multi_device_frame_sync.py), then reduce the tolerance.
 
 Alignment follows the stitched image when `Stitching` uses `PANORAMA` and `setUseInputCalibration(true)`. Known limits are parallax for nearby objects, visual feature-estimated panoramas, planar projections (whose plane is absent from reference metadata), full-360-degree boxes crossing the panorama join, and curved outlines approximated by sampled enclosing rectangles. Label IDs must agree between models, and synchronization is the caller's responsibility.
-
-## Planar projection example
-
-The [Python planar projection example](../examples/python/MultiDevice/multi_device_detections_planar_projection.py) uses the same calibration JSON, model and devices, camera previews, and duplicate-removal controls, with `Stitching.Mode.PLANAR_PROJECTION`:
-
-```sh
-python3 examples/python/MultiDevice/multi_device_detections_planar_projection.py \
-    multi_device_calibration.json yolov6-nano DEVICE_1 DEVICE_2 \
-    --plane-point 0 0 1.3 --plane-normal 0 1 1 --max-range 10 --average
-```
-
-Set the plane for your rig. `--plane-point` is in metres and `--plane-normal` is a direction, both in the calibration graph's common origin frame (the lowest device ID/socket pair in the connected component; X right, Y down, Z forward). The default plane matches the single-device planar stitching example, with a maximum range of 2 metres. The automatic virtual camera fits the inputs' footprints, bounded by `--max-range` and `--min-incidence-angle` (default 5 degrees). `--view-scale` replaces `--panorama-scale`, with a default of 1 and range of 1–4; it scales the 640 × 400 camera views and 1280 × 720 maximum stitched view. The example runs at 10 FPS with a default synchronization tolerance of 100 ms; `--sync-threshold-ms` can reduce it. `--no-blend` selects direct copying.
-
-A host node intersects each detection box's corner rays with the plane, including camera translation, and projects the intersections into the stitched frame before `ImgDetectionsFilter` merges them. Each camera still has its own filter input, so duplicate removal applies across cameras. Boxes with a corner behind a camera, beyond the maximum range, or below the minimum incidence angle are skipped. This example projects boxes only; keypoints and segmentation masks are omitted. Objects above the plane are displaced because the projection assumes their box corners lie on the plane. Planar stitching does not emit source visibility masks, so duplicate selection uses confidence.

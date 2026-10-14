@@ -27,6 +27,8 @@ class ImgDetectionsFilter : public DeviceNodeCRTP<DeviceNode, ImgDetectionsFilte
    public:
     constexpr static const char* NAME = "ImgDetectionsFilter";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    /** Construct with the default filter configuration. */
+    ImgDetectionsFilter() = default;
     /** Construct from serialized properties (also used by the device runtime). */
     explicit ImgDetectionsFilter(std::unique_ptr<Properties> props);
     ~ImgDetectionsFilter() override;
