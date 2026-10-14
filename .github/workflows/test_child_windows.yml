@@ -41,8 +41,6 @@ jobs:
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
       VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
-      VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
-      VCPKG_BINARY_SOURCES: clear;files,C:\vcpkg_binaries,readwrite
     steps:
     - name: Decide kind of test (long/short)
       id: kind
@@ -68,29 +66,17 @@ jobs:
         Write-Host "ArtifactName: $env:ARTIFACT_NAME"
         Write-Host ""
 
-        $jsonLines = gh api --paginate "repos/$env:REPO/actions/artifacts?per_page=100" `
-          --jq '.artifacts[] | @json' |
-          Select-Object -First 2500
-
-        $match = $null
-        foreach ($line in $jsonLines) {
-          $a = $line | ConvertFrom-Json
-
-          # Optional micro-filter to reduce comparisons
-          if ($a.name -notlike "depthai-core-win-*") { continue }
-
-          if ($a.name -eq $env:ARTIFACT_NAME -and $a.expired -eq $false) {
-            $match = $a
-            break
-          }
-        }
+        # The artifacts API filters by name server-side; one request instead of paging through
+        # up to 2500 artifacts (the repository holds ~9000).
+        $match = gh api "repos/$env:REPO/actions/artifacts?name=$env:ARTIFACT_NAME&per_page=10" `
+          --jq '[.artifacts[] | select(.expired == false)][0] | @json' | ConvertFrom-Json
 
         if ($match) {
           Write-Host "Found artifact id=$($match.id); skipping build."
           "skip_build=true"  >> $env:GITHUB_OUTPUT
           "artifact_id=$($match.id)" >> $env:GITHUB_OUTPUT
         } else {
-          Write-Host "No existing non-expired artifact named $env:ARTIFACT_NAME found in newest 2500 artifacts."
+          Write-Host "No existing non-expired artifact named $env:ARTIFACT_NAME found."
           "skip_build=false" >> $env:GITHUB_OUTPUT
         }
 
@@ -100,11 +86,10 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Ensure cache dirs and build dir
+    - name: Ensure build dir
       shell: powershell
       if: steps.reuse.outputs.skip_build != 'true'
       run: |
-        New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
         New-Item -ItemType Directory -Force -Path "C:\depthai-core" | Out-Null
         Write-Host "Copying source from $env:GITHUB_WORKSPACE to C:\depthai-core ..."
         Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
@@ -115,13 +100,11 @@ jobs:
       with:
         cmake-version: '4.2.x'
 
-    - name: Restore vcpkg cache
+    - name: Restore vcpkg binary cache
       if: steps.reuse.outputs.skip_build != 'true'
-      uses: actions/cache/restore@v6
-      id: vcpkg-restore
+      uses: ./.github/actions/vcpkg-cache/restore
       with:
-        path: C:\vcpkg_binaries
-        key: vcpkg-archives-windows-2025-v143-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        family: hil-windows-${{ steps.kind.outputs.test_kind }}
 
     - name: Configure and Build
       if: steps.reuse.outputs.skip_build != 'true'
@@ -169,16 +152,16 @@ jobs:
         Write-Host "cmake args:`n$($cmakeArgs -join ' ')"
         & cmake @cmakeArgs
 
-        $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 2 --config Release"
+        # windows-2025 runners have 4 vCPUs; the integration job of main.workflow.yml builds with 4 as well.
+        $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 4 --config Release"
         Write-Host "Running: $cmakeBuildCommand"
         Invoke-Expression $cmakeBuildCommand
 
-    - name: Save vcpkg cache (refresh)
-      if: ${{ github.event_name != 'pull_request' && steps.reuse.outputs.skip_build != 'true' }}
-      uses: actions/cache/save@v6
+    - name: Save vcpkg binary cache
+      if: steps.reuse.outputs.skip_build != 'true'
+      uses: ./.github/actions/vcpkg-cache/save
       with:
-        path: C:\vcpkg_binaries
-        key: vcpkg-archives-windows-2025-v143-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        vcpkg-installed-dir: C:/depthai-core/build/vcpkg_installed
 
     - name: Upload artifact
       if: steps.reuse.outputs.skip_build != 'true'
@@ -186,7 +169,15 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: depthai-core-win-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
-        path: C:\depthai-core
+        path: |
+          C:\depthai-core
+          !C:\depthai-core\.git
+          !C:\depthai-core\build\vcpkg\.git
+          !C:\depthai-core\build\vcpkg\buildtrees
+          !C:\depthai-core\build\vcpkg\packages
+          !C:\depthai-core\build\vcpkg\downloads
+          !C:\depthai-core\build\**\*.obj
+          !C:\depthai-core\winpython.zip
         retention-days: 1
 
   run_windows_tests_rvc4:

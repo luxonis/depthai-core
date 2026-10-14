@@ -2,6 +2,7 @@
 import platform
 import sys, os, subprocess
 import argparse
+import shutil
 import re
 import platform
 
@@ -73,19 +74,27 @@ ARTIFACTORY_URL = 'https://artifacts.luxonis.com/artifactory/luxonis-python-snap
 
 # Check if in virtual environment
 in_venv = getattr(sys, "real_prefix", getattr(sys, "base_prefix", sys.prefix)) != sys.prefix
-pip_call = [sys.executable, "-m", "pip"]
-pip_installed = True
-pip_install = pip_call + ["install", "-U"]
-pip_package_install = pip_install + ["--prefer-binary"]
 
-try:
-    subprocess.check_call(pip_call + ["--version"])
-except subprocess.CalledProcessError as ex:
-    pip_installed = False
-
-if not pip_installed:
-    err_str = "Issues with \"pip\" package detected! Follow the official instructions to install - https://pip.pypa.io/en/stable/installation/"
-    raise RuntimeError(err_str)
+use_uv = os.environ.get("DEPTHAI_USE_UV") == "1"
+if use_uv:
+    uv_path = shutil.which("uv")
+    if not uv_path:
+        raise RuntimeError("DEPTHAI_USE_UV=1 is set but 'uv' was not found in PATH")
+    if not in_venv:
+        raise RuntimeError("DEPTHAI_USE_UV=1 needs a virtual environment (uv has no --user install)")
+    # "--python" is an option of the "install" subcommand, not of "uv pip" (uv 0.13: "uv pip --python" exits 2)
+    pip_call = [uv_path, "pip"]
+    pip_install = pip_call + ["install", "--upgrade", "--python", sys.executable]
+    pip_package_install = list(pip_install)
+else:
+    pip_call = [sys.executable, "-m", "pip"]
+    pip_install = pip_call + ["install", "-U"]
+    pip_package_install = pip_install + ["--prefer-binary"]
+    try:
+        subprocess.check_call(pip_call + ["--version"])
+    except subprocess.CalledProcessError as ex:
+        err_str = "Issues with \"pip\" package detected! Follow the official instructions to install - https://pip.pypa.io/en/stable/installation/"
+        raise RuntimeError(err_str)
 
 if sys.version_info[0] != 3:
     raise RuntimeError("Examples require Python 3 to run (detected: Python {})".format(sys.version_info[0]))
@@ -100,11 +109,12 @@ if not in_venv:
     pip_package_install.append("--user")
 
 # Update pip
-pip_update_cmd = [*pip_install, "pip"]
-if args.dry_run:
-    prettyPrint(pip_update_cmd)
-else:
-    subprocess.check_call(pip_update_cmd)
+if not use_uv:
+    pip_update_cmd = [*pip_install, "pip"]
+    if args.dry_run:
+        prettyPrint(pip_update_cmd)
+    else:
+        subprocess.check_call(pip_update_cmd)
 # Install python dependencies
 python_dependencies_cmd = [*pip_package_install, *DEPENDENCIES]
 if args.dry_run:
