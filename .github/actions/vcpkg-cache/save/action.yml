@@ -53,6 +53,15 @@ runs:
         [[ -f "$script" ]] || script="$GITHUB_WORKSPACE/ci/prune_vcpkg_binary_cache.sh"
         bash "$script" "$VCPKG_CACHE_DIR" "${matches[0]}" "$VCPKG_CACHE_MARKER"
 
+    # A reader may continue after a failed prune (it changes nothing), the family's saver may not:
+    # a saver that cannot prune saves nothing and the family stays cold without anyone noticing.
+    - name: Fail the designated saver when the prune failed
+      if: inputs.save == 'true' && steps.prune.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::error::vcpkg binary cache: the prune failed in the designated saver of this family, so no entry would be saved. Check the vcpkg-installed-dir input and the vcpkg status file."
+        exit 1
+
     - name: Report cache state
       shell: bash
       env:
