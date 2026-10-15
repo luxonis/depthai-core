@@ -67,11 +67,23 @@ TEST_CASE("ImgDetectionsFilter V-6: all config options roundtrip through hardwar
     dai::Pipeline pipeline;
     REQUIRE(pipeline.getDefaultDevice() != nullptr);
     auto script = pipeline.create<dai::node::Script>();
-    script->setScript("while True:\n    node.outputs['out'].send(node.inputs['in'].get())\n");
+    script->setScript(R"(
+while True:
+    config = node.inputs['in'].get()
+    assert config.getSequenceNum() == 42
+    config.setSequenceNum(43)
+    node.outputs['out'].send(config)
+)");
     const auto input = script->inputs["in"].createInputQueue();
     const auto output = script->outputs["out"].createOutputQueue();
     const auto config = makeConfig(nondefaultSettings());
-    const auto expected = dai::utility::serialize(*config);
+    config->setSequenceNum(42);
+    // Set both clocks explicitly to exercise metadata preservation.
+    config->ts = {10, 123456000};
+    config->tsDevice = {9, 987654000};
+    config->tsSystem = dai::Timestamp{1700000000, 123456000};
+    auto expected = *config;
+    expected.setSequenceNum(43);
     pipeline.start();
     input->send(config);
     bool timedOut = false;
@@ -79,5 +91,6 @@ TEST_CASE("ImgDetectionsFilter V-6: all config options roundtrip through hardwar
     REQUIRE_FALSE(timedOut);
     REQUIRE(result != nullptr);
     REQUIRE(result->getDatatype() == config->getDatatype());
-    REQUIRE(dai::utility::serialize(*result) == expected);
+    REQUIRE(result->getSequenceNum() == 43);
+    REQUIRE(dai::utility::serialize(*result) == dai::utility::serialize(expected));
 }
