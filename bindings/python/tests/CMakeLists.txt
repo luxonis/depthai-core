@@ -25,6 +25,7 @@ set(PYBIND11_TEST_FILES
     "pipeline_create_device_arg_test.py"
     "stitching_test.py"
     "img_detections_filter_test.py"
+    "neural_network_model_test.cpp"
 )
 
 if(DEPTHAI_BUILD_BETA)
