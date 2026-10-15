@@ -201,7 +201,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgcodecs" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
     if(DEPTHAI_BUILD_BETA)
         list(APPEND REQUIRED_OPENCV_LIBRARIES "opencv_features2d" "opencv_stitching")
     endif()
@@ -557,6 +557,7 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/HostCamera.cpp
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/host/VideoDecoder.cpp
     src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp

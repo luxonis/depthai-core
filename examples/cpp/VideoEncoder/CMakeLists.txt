@@ -5,3 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 dai_add_example(video_encode video_encode.cpp OFF OFF)
+
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_example(video_decode video_decode.cpp OFF OFF)
+endif()
