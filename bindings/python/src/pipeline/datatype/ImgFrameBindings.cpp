@@ -105,7 +105,8 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
     imgFrameFsync.value("NONE", ImgFrame::Fsync::NONE)
         .value("INPUT", ImgFrame::Fsync::INPUT)
         .value("OUTPUT", ImgFrame::Fsync::OUTPUT)
-        .value("PTP", ImgFrame::Fsync::PTP);
+        .value("PTP", ImgFrame::Fsync::PTP)
+        .value("DAI", ImgFrame::Fsync::DAI);
 
     imgFrameSpecs.def(py::init<>())
         .def_readwrite("type", &ImgFrame::Specs::type)

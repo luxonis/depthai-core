@@ -380,6 +380,10 @@ class CameraControl : public Buffer {
         OUTPUT,
         INPUT,
         TIME_PTP,
+        /**
+         * Like TIME_PTP, but the frames are aligned in DepthAI timesync time (the host clock) instead of PTP time
+         */
+        TIME_DAI,
         // TODO soft sync modes?
     };
 
