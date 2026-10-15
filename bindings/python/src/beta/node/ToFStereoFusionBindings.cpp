@@ -12,7 +12,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
         .def_readwrite("confidenceThreshold", &beta::ToFStereoFusionConfig::confidenceThreshold)
         .def("setConfidenceThreshold", &beta::ToFStereoFusionConfig::setConfidenceThreshold, py::arg("threshold"));
 
-    m.def_submodule("beta", "Experimental APIs");
+    m.def_submodule("beta", "Experimental APIs").attr("ToFStereoFusionConfig") = m.attr("ToFStereoFusionConfig");
     auto node = addBetaNode<ToFStereoFusion>("ToFStereoFusion", DOC(dai, beta, node, ToFStereoFusion));
 
     Callstack* callstack = (Callstack*)pCallstack;

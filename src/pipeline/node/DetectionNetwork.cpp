@@ -140,6 +140,15 @@ void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useC
     setModelPath(path);
 }
 
+void DetectionNetwork::setFromModelZoo(NNModelDescription description, int numShaves, bool useCached) {
+    if(description.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
+        description.platform = getDevice()->getPlatformAsString();
+    }
+    const auto path = getModelFromZoo(description, useCached);
+    setNNArchive(NNArchive(path), numShaves);
+}
+
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
     neuralNetwork->setNNArchive(nnArchive);

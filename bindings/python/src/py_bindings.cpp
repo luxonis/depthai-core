@@ -89,6 +89,7 @@ PYBIND11_MODULE(depthai, m)
     NodeBindings::addToCallstack(callstack);
     callstack.push_front(&AssetManagerBindings::bind);
     callstack.push_front(&PipelineBindings::bind);
+    callstack.push_front(bind_pipeline_schema);
     callstack.push_front(&XLinkBindings::bind);
     callstack.push_front(&PlatformBindings::bind);
     callstack.push_front(&CrashDumpBindings::bind);

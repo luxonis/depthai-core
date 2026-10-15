@@ -60,6 +60,7 @@ set(SOURCE_LIST
     src/DatatypeBindings.cpp
     src/MessageQueueBindings.cpp
     src/pipeline/PipelineBindings.cpp
+    src/pipeline/PipelineSchemaBindings.cpp
     src/pipeline/CommonBindings.cpp
     src/pipeline/AssetManagerBindings.cpp
     src/openvino/OpenVINOBindings.cpp
@@ -74,6 +75,8 @@ set(SOURCE_LIST
 
     src/pipeline/node/ColorCameraBindings.cpp
     src/pipeline/node/CameraBindings.cpp
+    src/pipeline/node/HostCameraBindings.cpp
+    src/pipeline/node/DisplayBindings.cpp
     src/pipeline/node/MonoCameraBindings.cpp
     src/pipeline/node/StereoDepthBindings.cpp
     src/pipeline/node/NeuralNetworkBindings.cpp
@@ -155,6 +158,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudConfigBindings.cpp
     src/pipeline/datatype/ObjectTrackerConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
+    src/pipeline/datatype/PipelineEventAggregationConfigBindings.cpp
     src/pipeline/datatype/PipelineEventBindings.cpp
     src/pipeline/datatype/PipelineStateBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
