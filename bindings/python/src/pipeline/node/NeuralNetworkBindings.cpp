@@ -82,7 +82,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -104,7 +104,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("modelDesc"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -116,7 +116,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -128,7 +128,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
