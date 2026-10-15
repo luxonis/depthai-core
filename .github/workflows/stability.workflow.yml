@@ -69,6 +69,15 @@ jobs:
         github-token: ${{ github.token }}
         run-id: ${{ github.event.inputs.wheel_run_id }}
 
+    - name: Download Python wheel
+      if: github.event.inputs.wheel_run_id != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: audited-wheels-combined-linux-x86_64
+        path: stability-wheels
+        github-token: ${{ github.token }}
+        run-id: ${{ github.event.inputs.wheel_run_id }}
+
     - name: Test
       env:
         INPUT_DEPTHAI_VERSION: ${{ github.event.inputs.depthai }}

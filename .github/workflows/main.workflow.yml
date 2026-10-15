@@ -225,6 +225,40 @@ jobs:
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
       with:
+        cmake-version: '3.29.x'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libudev-dev libusb-1.0-0-dev
+
+    - name: Configure device-manager build
+      run: cmake --preset device-manager
+
+    - name: Build depthai::device-manager
+      run: cmake --build --preset device-manager
+
+  build:
+    runs-on: ${{ matrix.os }}
+    needs: [precheck, consistency]
+    if: needs.precheck.outputs.should_run == 'true'
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        cmake: ['3.22.x', '4.0.x']
+        include:
+          # The Windows 2025 image uses VS 2026, which requires CMake 4.2+.
+          - os: windows-2025
+            cmake: '4.2.x'
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+      with:
         cmake-version: ${{ matrix.cmake }}
 
     - name: Restore vcpkg binary cache
