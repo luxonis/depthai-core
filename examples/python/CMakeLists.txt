@@ -439,9 +439,8 @@ dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
 # (they need at least two devices; the CI test wrapper pins to a single device)
 add_python_example(multi_device_cam_sync MultiDevice/multi_device_cam_sync.py)
 add_python_example(multi_device_frame_sync MultiDevice/multi_device_frame_sync.py --ptp-sync)
-add_python_example(multi_device_host_node MultiDevice/multi_device_host_node.py)
+add_python_example(multi_device_stream MultiDevice/multi_device_stream.py)
 add_python_example(device_to_device_relay MultiDevice/device_to_device_relay.py)
-add_python_example(multi_device_system_logger MultiDevice/multi_device_system_logger.py)
 
 # Multi-device calibration examples: also multi-device, so no CI labels
 if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
