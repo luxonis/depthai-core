@@ -32,7 +32,7 @@ namespace {
 
 // Wire format, keep in sync with the firmware (Timesync.cpp)
 constexpr uint32_t UDP_MAGIC = 0x55535444;  // "DTSU"
-constexpr uint16_t UDP_VERSION = 1;
+constexpr uint16_t UDP_VERSION = 2;
 enum UdpMsgType : uint16_t { UDP_HELLO = 1, UDP_REQ = 2, UDP_RESP = 3, UDP_FUP = 4 };
 constexpr uint32_t UDP_FLAG_KERNEL_STAMPS = 1;  // FUP: t2/t3 are kernel stamps (else application stamps)
 constexpr uint32_t UDP_FLAG_INVALID = 2;        // FUP: this exchange could not be stamped
@@ -47,9 +47,10 @@ struct UdpMsg {
     int64_t t3;  // FUP
     uint32_t flags;
     uint32_t reserved;
+    int64_t streamStart;  // host: steady clock ns the app wants the cameras to start at (same for all its devices), 0 = none
 };
     #pragma pack(pop)
-static_assert(sizeof(UdpMsg) == 48, "wire format");
+static_assert(sizeof(UdpMsg) == 56, "wire format");
 
 constexpr auto HELLO_FAST = std::chrono::milliseconds(2);  // until the first REQ, for the first few seconds: the firmware
                                                            // opens its socket after setTimesync and waits for a HELLO
@@ -230,7 +231,11 @@ void TimesyncUdpResponder::run() {
     auto nextHello = start;
     bool gotReq = false;
     uint32_t txKey = 0;  // SOF_TIMESTAMPING_OPT_ID numbers the packets that request a TX stamp from 0
-    UdpMsg hello = {UDP_MAGIC, UDP_VERSION, UDP_HELLO, token, 0, 0, 0, 0, 0};
+    // DEPTHAI_STREAM_START_HOST_NS: host steady clock (CLOCK_MONOTONIC) ns at which the cameras should start; give every
+    // device of the app the same value and they start together
+    const char* startEnv = std::getenv("DEPTHAI_STREAM_START_HOST_NS");
+    const int64_t streamStart = startEnv != nullptr ? std::strtoll(startEnv, nullptr, 10) : 0;
+    UdpMsg hello = {UDP_MAGIC, UDP_VERSION, UDP_HELLO, token, 0, 0, 0, 0, 0, streamStart};
     while(!stopRequested) {
         auto now = steady_clock::now();
         if(!gotReq && now >= nextHello) {
@@ -286,6 +291,7 @@ void TimesyncUdpResponder::run() {
         resp.t2 = t2;
         resp.t3 = 0;
         resp.flags = 0;
+        resp.streamStart = streamStart;
         const int64_t t3app = steadyNs();
         const bool stamped = (flags & UDP_FLAG_KERNEL_STAMPS) != 0;
         if(!sendMsg(fd, resp, stamped)) continue;
@@ -308,6 +314,7 @@ void TimesyncUdpResponder::run() {
         fup.t2 = t2;
         fup.t3 = t3;
         fup.flags = flags;
+        fup.streamStart = streamStart;
         sendMsg(fd, fup, false);
         answeredCount++;
     }
