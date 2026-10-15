@@ -13,8 +13,13 @@ namespace node {
 /**
  * @brief Decode VideoEncoder EncodedFrames on the host. Requires OpenCV support.
  *
- * Currently supports JPEG (MJPEG) only. Unsupported profiles or invalid frames
- * stop the pipeline with an error. Each input must contain one complete encoded image.
+ * Supports JPEG (MJPEG), and H.264 when built with DEPTHAI_ENABLE_OPENH264.
+ * H.264 input must be an Annex B access unit per message, with SPS/PPS supplied
+ * before the first picture. One node decodes one stream, with even image dimensions.
+ * Header-only inputs may produce no output. Output metadata follows the decoded picture,
+ * including when pictures are reordered. Buffered pictures are discarded on pipeline stop
+ * or when switching to JPEG; a subsequent H.264 stream must start with SPS/PPS and an IDR.
+ * Unsupported profiles or invalid frames stop the pipeline with an error.
  * A nonzero frameSize selects that many bytes at frameOffset; zero uses the remaining payload.
  */
 class VideoDecoder : public NodeCRTP<ThreadedHostNode, VideoDecoder> {

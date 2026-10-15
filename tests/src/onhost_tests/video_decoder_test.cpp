@@ -117,3 +117,156 @@ TEST_CASE("VideoDecoder rejects invalid frames without terminating the process",
     pipeline.wait();
     REQUIRE_FALSE(pipeline.isRunning());
 }
+
+#ifdef DEPTHAI_HAVE_OPENH264_SUPPORT
+    #include <wels/codec_api.h>
+
+namespace {
+struct EncoderDeleter {
+    void operator()(ISVCEncoder* encoder) const {
+        encoder->Uninitialize();
+        WelsDestroySVCEncoder(encoder);
+    }
+};
+
+std::vector<std::shared_ptr<dai::EncodedFrame>> makeH264Frames() {
+    ISVCEncoder* instance = nullptr;
+    const auto result = WelsCreateSVCEncoder(&instance);
+    std::unique_ptr<ISVCEncoder, EncoderDeleter> encoder(instance);
+    REQUIRE(result == 0);
+    REQUIRE(encoder);
+    SEncParamBase params{};
+    params.iUsageType = CAMERA_VIDEO_REAL_TIME;
+    params.iPicWidth = 32;
+    params.iPicHeight = 24;
+    params.iTargetBitrate = 1000000;
+    params.iRCMode = RC_OFF_MODE;
+    params.fMaxFrameRate = 30;
+    REQUIRE(encoder->Initialize(&params) == 0);
+    std::vector<std::shared_ptr<dai::EncodedFrame>> frames;
+    for(int i = 0; i < 20; ++i) {
+        std::vector<uint8_t> pixels(32 * 24 * 3 / 2, 128);
+        std::fill_n(pixels.begin(), 32 * 24, 40 + i * 5);
+        SSourcePicture picture{};
+        picture.iColorFormat = videoFormatI420;
+        picture.iPicWidth = 32;
+        picture.iPicHeight = 24;
+        picture.iStride[0] = 32;
+        picture.iStride[1] = picture.iStride[2] = 16;
+        picture.pData[0] = pixels.data();
+        picture.pData[1] = pixels.data() + 32 * 24;
+        picture.pData[2] = pixels.data() + 32 * 24 * 5 / 4;
+        picture.uiTimeStamp = i * 33;
+        SFrameBSInfo info{};
+        REQUIRE(encoder->EncodeFrame(&picture, &info) == 0);
+        REQUIRE(info.eFrameType == (i == 0 ? videoFrameTypeIDR : videoFrameTypeP));
+        std::vector<uint8_t> bytes(7, 0);
+        for(int layer = 0; layer < info.iLayerNum; ++layer) {
+            const auto& data = info.sLayerInfo[layer];
+            int size = 0;
+            for(int nal = 0; nal < data.iNalCount; ++nal) size += data.pNalLengthInByte[nal];
+            bytes.insert(bytes.end(), data.pBsBuf, data.pBsBuf + size);
+        }
+        auto frame = makeFrame();
+        frame->setProfile(dai::EncodedFrame::Profile::AVC);
+        frame->setSequenceNum(i);
+        frame->frameOffset = 7;
+        frame->frameSize = static_cast<uint32_t>(bytes.size() - 7);
+        bytes.insert(bytes.end(), 5, 0);
+        frame->setData(bytes);
+        frames.push_back(frame);
+    }
+    return frames;
+}
+}  // namespace
+
+TEST_CASE("VideoDecoder decodes H264 reference frames and preserves metadata", "[video-decoder][h264]") {
+    const auto frames = makeH264Frames();
+    dai::Pipeline pipeline(false);
+    auto decoder = pipeline.create<dai::node::VideoDecoder>();
+    auto input = decoder->input.createInputQueue();
+    auto output = decoder->out.createOutputQueue();
+    pipeline.start();
+    using Type = dai::ImgFrame::Type;
+    const std::array<Type, 9> types = {
+        Type::BGR888i, Type::RGB888i, Type::BGR888p, Type::RGB888p, Type::GRAY8, Type::RAW8, Type::YUV420p, Type::NV12, Type::NV21};
+    const auto firstData = frames.front()->getData();
+    const std::array<uint8_t, 5> idrStart = {0, 0, 0, 1, 0x65};
+    const auto idr = std::search(firstData.begin() + 7, firstData.end(), idrStart.begin(), idrStart.end());
+    REQUIRE(idr != firstData.end());
+    auto headers = std::make_shared<dai::EncodedFrame>(*frames.front());
+    headers->setData(std::vector<uint8_t>(firstData.begin() + 7, idr));
+    headers->frameOffset = 0;
+    headers->frameSize = 0;
+    headers->setSequenceNum(999);
+    // Switching through JPEG resets decoder references; the next IDR starts a fresh stream.
+    for(int stream = 0; stream < 2; ++stream) {
+        input->send(headers);
+        bool headersTimedOut = false;
+        REQUIRE_FALSE(output->get<dai::ImgFrame>(std::chrono::milliseconds(100), headersTimedOut));
+        REQUIRE(headersTimedOut);
+        for(size_t i = 0; i < frames.size(); ++i) {
+            const auto type = types[i % types.size()];
+            decoder->setOutFrameType(type);
+            input->send(frames[i]);
+            bool timedOut = false;
+            auto decoded = output->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+            REQUIRE_FALSE(timedOut);
+            REQUIRE(decoded);
+            REQUIRE(decoded->getType() == type);
+            REQUIRE(decoded->getWidth() == 32);
+            REQUIRE(decoded->getHeight() == 24);
+            REQUIRE(decoded->getSequenceNum() == frames[i]->getSequenceNum());
+            REQUIRE(decoded->getTimestamp() == frames[i]->getTimestamp());
+            REQUIRE(decoded->getTimestampDevice() == frames[i]->getTimestampDevice());
+            REQUIRE(decoded->getTimestampSystem() == frames[i]->getTimestampSystem());
+            REQUIRE(decoded->cam.sensitivityIso == 200);
+            REQUIRE(decoded->transformation.getTransformationMatrix() == frames[i]->transformation.getTransformationMatrix());
+            const double expected = (40 + i * 5 - 16) * 255.0 / 219.0;
+            REQUIRE(std::abs(cv::mean(decoded->getCvFrame())[0] - expected) < 5);
+        }
+        input->send(makeFrame());
+        bool timedOut = false;
+        REQUIRE(output->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut));
+        REQUIRE_FALSE(timedOut);
+    }
+    pipeline.stop();
+    pipeline.wait();
+}
+#endif
+
+#ifdef DEPTHAI_HAVE_OPENH264_SUPPORT
+    #include "VideoDecoderH264Fixture.hpp"
+
+TEST_CASE("VideoDecoder preserves H264 B-frame presentation order and metadata", "[video-decoder][h264]") {
+    using namespace video_decoder_test;
+    dai::Pipeline pipeline(false);
+    auto decoder = pipeline.create<dai::node::VideoDecoder>();
+    auto input = decoder->input.createInputQueue();
+    auto output = decoder->out.createOutputQueue();
+    const auto timestamp = std::chrono::steady_clock::now();
+    pipeline.start();
+    size_t offset = 0;
+    for(size_t i = 0; i < PACKET_SIZES.size(); ++i) {
+        auto frame = makeFrame(32, 32);
+        frame->setProfile(dai::EncodedFrame::Profile::AVC);
+        frame->setSequenceNum(DISPLAY_ORDER[i]);
+        frame->setTimestamp(timestamp + std::chrono::milliseconds(DISPLAY_ORDER[i] * 33));
+        frame->setData(std::vector<uint8_t>(B_FRAME_STREAM.begin() + offset, B_FRAME_STREAM.begin() + offset + PACKET_SIZES[i]));
+        offset += PACKET_SIZES[i];
+        input->send(frame);
+    }
+    // The final reordered pictures remain buffered until more input arrives or the stream is drained.
+    for(int i = 0; i < 10; ++i) {
+        bool timedOut = false;
+        auto decoded = output->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(decoded);
+        REQUIRE(decoded->getSequenceNum() == i);
+        REQUIRE(decoded->getTimestamp() == timestamp + std::chrono::milliseconds(i * 33));
+        REQUIRE(std::abs(cv::mean(decoded->getCvFrame())[0] - (40 + i * 5 - 16) * 255.0 / 219.0) < 5);
+    }
+    pipeline.stop();
+    pipeline.wait();
+}
+#endif

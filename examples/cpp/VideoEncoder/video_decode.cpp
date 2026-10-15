@@ -8,10 +8,11 @@ int main() {
     auto camera = pipeline.create<dai::node::Camera>()->build();
     // Encode camera frames as MJPEG on the device before transferring them to the host.
     auto encoder = pipeline.create<dai::node::VideoEncoder>();
+    // Use H264_BASELINE, H264_MAIN or H264_HIGH with DEPTHAI_ENABLE_OPENH264.
     encoder->setDefaultProfilePreset(30, dai::VideoEncoderProperties::Profile::MJPEG);
     camera->requestOutput({640, 400}, dai::ImgFrame::Type::NV12)->link(encoder->input);
 
-    // MJPEG is decoded on the host using the SDK's OpenCV support.
+    // The encoded stream is decoded on the host using the SDK's OpenCV support.
     auto decoder = pipeline.create<dai::node::VideoDecoder>();
     decoder->setOutFrameType(dai::ImgFrame::Type::BGR888i);
     encoder->out.link(decoder->input);
