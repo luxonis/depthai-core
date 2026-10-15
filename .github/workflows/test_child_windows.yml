@@ -100,19 +100,11 @@ jobs:
       with:
         cmake-version: '4.2.x'
 
-    - name: Restore vcpkg cache
-      if: steps.reuse.outputs.skip_build != 'true'
-      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
-      with:
-        cmake-version: '4.2.x'
-
     - name: Restore vcpkg binary cache
       if: steps.reuse.outputs.skip_build != 'true'
       uses: ./.github/actions/vcpkg-cache/restore
       with:
         family: hil-windows-${{ steps.kind.outputs.test_kind }}
-        path: C:\vcpkg_binaries
-        key: vcpkg-archives-windows-2025-v143-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
       if: steps.reuse.outputs.skip_build != 'true'
