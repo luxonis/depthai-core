@@ -16,6 +16,8 @@ Examples of nodes that run on the host instead of the device:
 
 ## Stitching
 
+For a rig with several devices, use the separate [multi-device stitching examples](../MultiDevice/README.md).
+
 `dai.node.Stitching` combines N time-synchronized image streams into one image. It runs on the host by default
 (DepthAI built with OpenCV support) and can run on an RVC4 device with `setRunOnHost(False)`. Both examples stitch
 `CAM_B` and `CAM_C` of one device; pass `--deviceIp <ip>` to pick a device, otherwise the first one found is used.
@@ -54,10 +56,6 @@ Where inputs overlap, `setSeamFinder()` picks how the seam is found. `SeamFinder
 the fastest; any other value (`VORONOI`, `DP_COLOR`, `DP_COLOR_GRAD`, `GRAPHCUT_COLOR` (default), `GRAPHCUT_COLOR_GRAD`)
 also enables exposure compensation and multiband blending. `setMaxPanoramaSize()` bounds the canvas.
 
-Five OAK4 devices in a ring on a city square, composed from their calibration:
-
-![Panorama of a city square from five cameras](../../../images/stitching/panorama_city_square.webp)
-
 ### Planar projection (`stitching_planar_projection.py`)
 
 The inputs are projected onto a plane given in the coordinate system of the origin camera (`setPlane(point, normal,
@@ -69,11 +67,6 @@ need to be undistorted, and the cameras do not need to overlap.
   `setMaxViewSize()`; pass a `Stitching.VirtualCamera` to render a fixed region at a fixed resolution.
 - `setMaxRange()` and `setMinIncidenceAngle()` cut off the part of the plane near the horizon, where a few pixels would
   be stretched over a large area.
-
-The same five cameras as above, projected onto the pavement of the square. The hole in the middle is the ground
-directly under the rig, which no camera sees:
-
-![Bird's-eye view of the square from the same five cameras](../../../images/stitching/planar_projection_city_square.webp)
 
 ### Output metadata
 
