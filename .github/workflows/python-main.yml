@@ -2,7 +2,7 @@ name: Depthai Python CI/CD
 
 # Controls when the action will run. Triggers the workflow on push
 concurrency:
-  group: depthai-python-${{ github.event.pull_request.number || github.ref }}-${{ inputs.concurrency_suffix || 'default' }}-${{ (github.event_name == 'pull_request_review' && github.event.review.state != 'approved') && 'review' || 'full' }}
+  group: depthai-python-${{ github.event.pull_request.number || github.ref }}-${{ inputs.concurrency_suffix || 'default' }}
   cancel-in-progress: true
 
 on:
@@ -25,8 +25,6 @@ on:
       - main
       - develop
     types: [labeled]
-  pull_request_review:
-    types: [submitted]
 
 ###################################
 ###################################
@@ -51,12 +49,9 @@ jobs:
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
         CHECK_GITHUB_REF: ${{ github.ref }}
-        CHECK_REVIEW_STATE: ${{ github.event.review.state }}
-        CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
         GITHUB_REF="$CHECK_GITHUB_REF"
-        REVIEW_STATE="$CHECK_REVIEW_STATE"
 
         RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
         if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
@@ -74,12 +69,10 @@ jobs:
           WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
         fi
 
-        if [[ "$EVENT_NAME" == "pull_request" || "$EVENT_NAME" == "pull_request_review" ]]; then
+        if [[ "$EVENT_NAME" == "pull_request" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
-          if [[ "$EVENT_NAME" == "pull_request" ]] && ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
-            SHOULD_RUN="false"
-          elif [[ "$EVENT_NAME" == "pull_request_review" && ("$REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop")) ]]; then
+          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
             SHOULD_RUN="false"
           fi
         fi
