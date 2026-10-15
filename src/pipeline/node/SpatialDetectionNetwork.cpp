@@ -125,10 +125,17 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
                                                                         const Model& model,
                                                                         std::optional<float> fps,
                                                                         std::optional<dai::ImgResizeMode> resizeMode) {
+    NNArchive archive = decodeModel(model);
+
     ImgFrameCapability cap;
     if(fps.has_value()) cap.fps.value = *fps;
+    if(resizeMode.has_value()) {
+        cap.resizeMode = *resizeMode;
+    } else {
+        cap.resizeMode = archive.getInputResizeMode().value_or(ImgResizeMode::CROP);
+    }
     cap.enableUndistortion = true;  // default for SpatialDetectionNetwork
-    neuralNetwork->buildCamera(inputRgb, model, cap, resizeMode);
+    neuralNetwork->build(inputRgb, archive, cap);
     auto nnArchive = neuralNetwork->getNNArchive();
     DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
     detectionParser->setNNArchive(nnArchive.value());
@@ -162,6 +169,24 @@ NNArchive SpatialDetectionNetwork::createNNArchive(NNModelDescription& modelDesc
               "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
     auto nnArchive = dai::NNArchive(path);
     return nnArchive;
+}
+
+NNArchive SpatialDetectionNetwork::decodeModel(const Model& model) {
+    std::optional<NNArchive> nnArchive;
+
+    if(const auto* s = std::get_if<std::string>(&model)) {
+        NNModelDescription description;
+        description.model = *s;
+        nnArchive = createNNArchive(description);
+    } else if(const auto* desc = std::get_if<NNModelDescription>(&model)) {
+        NNModelDescription tmpDesc = *desc;
+        nnArchive = createNNArchive(tmpDesc);
+    } else if(const auto* archive = std::get_if<NNArchive>(&model)) {
+        nnArchive = *archive;
+    }
+
+    DAI_CHECK(nnArchive.has_value(), "Unsupported model type passed to SpatialDetectionNetwork::build");
+    return *nnArchive;
 }
 
 void SpatialDetectionNetwork::alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera) {

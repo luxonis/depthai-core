@@ -43,7 +43,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @param input: Camera node
      * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps: Desired frames per second
-     * @param resizeMode: Override the archive's resize mode. If omitted, use preprocessing.resize_mode, or CROP if unspecified.
+     * @param resizeMode: Override the archive's resize mode. If omitted, CROP resize mode is used.
      *
      * @returns Shared pointer to NeuralNetwork node
      */
@@ -55,7 +55,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @brief Build NeuralNetwork node. Connect Camera output to this node's input and configure the inference model.
      * @param input: Camera node
      * @param model: Neural network model description, NNArchive or HubAI model id string
-     * @param capability: Camera capabilities. Its resizeMode overrides the archive's resize mode.
+     * @param capability: Camera capabilities override
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability);
@@ -226,12 +226,6 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
-    // SpatialDetectionNetwork supplies its undistortion default while preserving an optional resize override.
-    friend class SpatialDetectionNetwork;
-    std::shared_ptr<NeuralNetwork> buildCamera(const std::shared_ptr<Camera>& input,
-                                               const Model& model,
-                                               const ImgFrameCapability& capability,
-                                               std::optional<dai::ImgResizeMode> resizeMode);
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
