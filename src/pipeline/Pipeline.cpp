@@ -7,6 +7,7 @@
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "device/Platform.hpp"
+#include "device/TimesyncUdp.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
 #endif
@@ -1835,6 +1836,18 @@ void PipelineImpl::start() {
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
         DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(),
                     "Number of devices assigned to device nodes does not match the number of master and slave devices");
+        // A multi-device pipeline starts the cameras of all its devices at one time (RVC4 with the UDP timesync)
+        if(devices.size() > 1) {
+            std::vector<std::pair<const void*, uint16_t>> cameras;
+            for(const auto& d : devices) {
+                uint16_t n = 0;
+                for(const auto& node : getAllNodes()) {
+                    if(std::string_view(node->getName()) == dai::node::Camera::NAME && getAssignedDevice(node) == d) ++n;
+                }
+                cameras.emplace_back(static_cast<const DeviceBase*>(d.get()), n);
+            }
+            SyncStartGroup::begin(this, cameras);
+        }
         // Start masters before slaves, in parallel within each group. If either
         // group fails, roll back every device that started in either group.
         // Each thread writes only its own index; read after join
@@ -1892,6 +1905,7 @@ void PipelineImpl::start() {
                     }
                 }
             };
+            SyncStartGroup::end(this);
             closeStartedDevices(slaveDevices, slaveStarted);
             closeStartedDevices(masterDevices, masterStarted);
             throw;
@@ -2140,6 +2154,7 @@ void PipelineImpl::joinDeviceLossStop() {
 
 void PipelineImpl::stop() {
     std::lock_guard<std::mutex> lock(stateMtx);
+    SyncStartGroup::end(this);
     if(!running) {
         return;
     }

@@ -1461,7 +1461,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
                     // int64 on the RPC: a uint64 argument would select nanorpc's call(name, id) overload and become the id
                     std::random_device rd;
                     const int64_t token = static_cast<int64_t>(((static_cast<uint64_t>(rd()) << 32) | rd()) >> 1) | 1;
-                    auto responder = std::make_unique<TimesyncUdpResponder>(tsInfo.name, static_cast<uint64_t>(token));
+                    auto responder = std::make_unique<TimesyncUdpResponder>(tsInfo.name, static_cast<uint64_t>(token), static_cast<const DeviceBase*>(this));
                     if(responder->ok()) {
                         pimpl->rpcCallCheckedVoid("setTimesyncUdp", token);
                         pimpl->timesyncUdp = std::move(responder);
