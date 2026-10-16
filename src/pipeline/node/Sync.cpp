@@ -5,6 +5,8 @@
 #include <unordered_set>
 
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
@@ -33,6 +35,14 @@ void Sync::setTimestampSource(TimestampSource source) {
 
 Sync::TimestampSource Sync::getTimestampSource() const {
     return properties.timestampSource;
+}
+
+void Sync::setSyncOnIndividualReports(bool enabled) {
+    properties.syncOnIndividualReports = enabled;
+}
+
+bool Sync::getSyncOnIndividualReports() const {
+    return properties.syncOnIndividualReports;
 }
 
 std::chrono::nanoseconds Sync::getSyncThreshold() const {
@@ -215,6 +225,47 @@ class TimestampCompare {
             }
         }
     }
+
+    void compareIndividualReports(const std::string& name, const dai::Buffer& buffer) {
+        if(const auto* imu = dynamic_cast<const IMUData*>(&buffer)) {
+            bool populated = false;
+            for(const auto& packet : imu->packets) {
+                for(const IMUReport* report : {static_cast<const IMUReport*>(&packet.acceleroMeter),
+                                               static_cast<const IMUReport*>(&packet.gyroscope),
+                                               static_cast<const IMUReport*>(&packet.magneticField),
+                                               static_cast<const IMUReport*>(&packet.rotationVector)}) {
+                    if(report->getTimestampDevice() <= std::chrono::steady_clock::time_point{}) continue;
+                    populated = true;
+                    if(source == Sync::TimestampSource::SYSTEM) {
+                        const auto timestamp = report->getTimestampSystem();
+                        if(!timestamp.has_value()) {
+                            throw InvalidTimestampException("Sync: a populated IMU report does not have the selected system timestamp.");
+                        }
+                        std::get<TimestampCompareGeneric<std::chrono::system_clock>>(impl)(name, *timestamp);
+                    } else {
+                        const auto timestamp = source == Sync::TimestampSource::DEVICE ? report->getTimestampDevice() : report->getTimestamp();
+                        if(timestamp == std::chrono::steady_clock::time_point{}) {
+                            throw InvalidTimestampException("Sync: a populated IMU report does not have the selected timestamp.");
+                        }
+                        std::get<TimestampCompareGeneric<std::chrono::steady_clock>>(impl)(name, timestamp);
+                    }
+                }
+            }
+            if(!populated) throw InvalidTimestampException("Sync: IMUData has no populated reports to synchronize.");
+        } else if(const auto* image = dynamic_cast<const ImgFrame*>(&buffer)) {
+            if(source == Sync::TimestampSource::SYSTEM) {
+                const auto timestamp = image->getTimestampSystem(CameraExposureOffset::MIDDLE);
+                if(!timestamp.has_value()) throw InvalidTimestampException("Sync: image does not have the selected system timestamp.");
+                std::get<TimestampCompareGeneric<std::chrono::system_clock>>(impl)(name, *timestamp);
+            } else {
+                const auto timestamp = source == Sync::TimestampSource::DEVICE ? image->getTimestampDevice(CameraExposureOffset::MIDDLE)
+                                                                               : image->getTimestamp(CameraExposureOffset::MIDDLE);
+                std::get<TimestampCompareGeneric<std::chrono::steady_clock>>(impl)(name, timestamp);
+            }
+        } else {
+            (*this)(name, buffer);
+        }
+    }
     std::string getMinName() const {
         switch(source) {
             case Sync::TimestampSource::DEFAULT:
@@ -375,7 +426,11 @@ void Sync::run() {
                 TimestampCompare tsCompare(timestampSource);
 
                 for(const auto& frame : inputFrames) {
-                    tsCompare(frame.first, *frame.second);
+                    if(properties.syncOnIndividualReports) {
+                        tsCompare.compareIndividualReports(frame.first, *frame.second);
+                    } else {
+                        tsCompare(frame.first, *frame.second);
+                    }
                 }
 
                 logger->debug("Diff: {} ms", tsCompare.getDifference<milliseconds>().count());
