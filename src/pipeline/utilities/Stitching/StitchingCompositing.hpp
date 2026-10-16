@@ -13,10 +13,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "depthai/beta/node/Stitching.hpp"
+#include "depthai/pipeline/node/Stitching.hpp"
 
 namespace dai {
-namespace beta {
 namespace utilities {
 
 using node::Stitching;
@@ -49,6 +48,11 @@ inline cv::Ptr<cv::detail::BundleAdjusterBase> createBundleAdjuster() {
     return cv::makePtr<cv::detail::BundleAdjusterRay>();
 }
 
+/**
+ * OpenCV rotation warper rendering onto the projection surface of `model`. A dai::CameraModel combines a projection surface with a distortion model
+ * (see CameraModel.hpp); the warper only realizes the surface, the panorama it produces is undistorted. Fisheye and RadialDivision differ from
+ * Perspective only in the distortion of the pinhole plane, so there is no surface to warp onto and they are rejected.
+ */
 inline cv::Ptr<cv::WarperCreator> createWarper(CameraModel model) {
     switch(model) {
         case CameraModel::Equirectangular:
@@ -98,5 +102,4 @@ inline cv::Ptr<cv::detail::Blender> createBlender(const cv::Size& panoSizeHint) 
 
 }  // namespace stitching
 }  // namespace utilities
-}  // namespace beta
 }  // namespace dai

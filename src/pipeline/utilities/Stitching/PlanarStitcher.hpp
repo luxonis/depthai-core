@@ -6,11 +6,10 @@
 #include <optional>
 #include <vector>
 
-#include "depthai/beta/node/Stitching.hpp"
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/pipeline/node/Stitching.hpp"
 
 namespace dai {
-namespace beta {
 namespace utilities {
 
 using node::Stitching;
@@ -131,5 +130,4 @@ class PlanarStitcher {
 };
 
 }  // namespace utilities
-}  // namespace beta
 }  // namespace dai
