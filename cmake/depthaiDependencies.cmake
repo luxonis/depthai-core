@@ -50,6 +50,14 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     find_package(liblzma ${_QUIET} CONFIG REQUIRED)
     # httplib for Gate communication
     find_package(httplib ${_QUIET} CONFIG REQUIRED)
+    # httplib calls getaddrinfo_a on Linux. Before glibc 2.34 (for example manylinux_2_28) it is in libanl, not in libc.
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        include(CheckFunctionExists)
+        check_function_exists(getaddrinfo_a DEPTHAI_LIBC_HAS_GETADDRINFO_A)
+        if(NOT DEPTHAI_LIBC_HAS_GETADDRINFO_A)
+            set_property(TARGET httplib::httplib APPEND PROPERTY INTERFACE_LINK_LIBRARIES anl)
+        endif()
+    endif()
     find_package(Eigen3 ${_QUIET} CONFIG REQUIRED)
 
     # spdlog for library and device logging

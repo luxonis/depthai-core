@@ -163,6 +163,9 @@ def _generate_wheel_license_notices(build_dir):
     ]
     subprocess.check_call(cmd)
     _stage_license_files()
+    # Ship the notices of this build. The committed notices/THIRD_PARTY_NOTICES describes the x64-linux build only.
+    os.makedirs(packaged_notices_dir, exist_ok=True)
+    shutil.copy2(os.path.join(wheel_license_output_dir, "THIRD_PARTY_NOTICES"), os.path.join(packaged_notices_dir, "THIRD_PARTY_NOTICES"))
 
 def _generate_wheel_sbom(build_dir):
     if os.path.isdir(wheel_sbom_output_dir):

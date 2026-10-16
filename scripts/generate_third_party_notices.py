@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import re
 from pathlib import Path
 
 
@@ -60,6 +61,10 @@ VENDORED_COMPONENTS_WITH_INLINE_NOTICES = (
     ),
 )
 
+VCPKG_NOTICE_FILES = {
+    "libarchive": {"files": ("COPYING", "archive_blake2.h"), "keep": "COPYING"},
+}
+
 OPTION_CACHE_KEYS = (
     "DEPTHAI_OPENCV_SUPPORT",
     "DEPTHAI_PCL_SUPPORT",
@@ -115,6 +120,18 @@ def read_cmake_cache(build_dir: Path) -> dict[str, str]:
         key = key_type.split(":", 1)[0]
         values[key] = value
     return values
+
+
+def select_notice_file(text: str, package: str, files: tuple[str, ...], keep: str) -> str:
+    """One file of a copyright file that vcpkg_install_copyright joined from several files."""
+    labels = "|".join(re.escape(name) for name in files)
+    parts = re.split(rf"^({labels}):\n\n", text, flags=re.M)
+    if parts[0].strip() or parts[1::2] != list(files):
+        raise ValueError(
+            f"The copyright file of {package} is not {', '.join(files)} joined by vcpkg_install_copyright. "
+            "Update VCPKG_NOTICE_FILES in scripts/generate_third_party_notices.py."
+        )
+    return dict(zip(parts[1::2], parts[2::2]))[keep].strip()
 
 
 def find_notice_file(directory: Path) -> Path | None:
@@ -217,7 +234,10 @@ def main() -> int:
 
     section(lines, "vcpkg Components")
     for name, path in vcpkg_notices:
-        append_notice(lines, name, path.relative_to(install_root), read_text(path))
+        notice_text = read_text(path)
+        if name in VCPKG_NOTICE_FILES:
+            notice_text = select_notice_file(notice_text, name, **VCPKG_NOTICE_FILES[name])
+        append_notice(lines, name, path.relative_to(install_root), notice_text)
 
     output_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
     if args.check_file:

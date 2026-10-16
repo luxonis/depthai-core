@@ -3893,7 +3893,7 @@ COPYING:
 
 COPYRIGHT AND PERMISSION NOTICE
 
-Copyright (c) 1996 - 2025, Daniel Stenberg, <daniel@haxx.se>, and many
+Copyright (c) 1996 - 2026, Daniel Stenberg, <daniel@haxx.se>, and many
 contributors, see the THANKS file.
 
 All rights reserved.
@@ -3915,46 +3915,6 @@ be used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization of the copyright holder.
 
 
-krb5.c Notice:
-
-/* GSSAPI/krb5 support for FTP - loosely based on old krb4.c
- *
- * Copyright (c) 1995, 1996, 1997, 1998, 1999 Kungliga Tekniska Högskolan
- * (Royal Institute of Technology, Stockholm, Sweden).
- * Copyright (C) Daniel Stenberg
- * All rights reserved.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * 3. Neither the name of the Institute nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.  */
-
-
-
 inet_ntop.c and inet_pton.c Notice:
 
 /*
@@ -3974,9 +3934,6 @@ inet_ntop.c and inet_pton.c Notice:
  * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * SPDX-License-Identifier: ISC
- */
-/*
- * Original code by Paul Vixie. "curlified" by Gisle Vanem.
  */
 
 eigen3
@@ -4762,7 +4719,7 @@ the actual statements in the files are controlling.
    libarchive/mtree.5
 
 * The following source files are in the public domain:
-   libarchive/archive_getdate.c
+   libarchive/archive_parse_date.c
 
 * The following source files are triple-licensed with the ability to choose
   from CC0 1.0 Universal, OpenSSL or Apache 2.0 licenses:
@@ -5032,8 +4989,8 @@ COPYRIGHT NOTICE, DISCLAIMER, and LICENSE
 PNG Reference Library License version 2
 ---------------------------------------
 
- * Copyright (c) 1995-2025 The PNG Reference Library Authors.
- * Copyright (c) 2018-2025 Cosmin Truta.
+ * Copyright (c) 1995-2026 The PNG Reference Library Authors.
+ * Copyright (c) 2018-2026 Cosmin Truta.
  * Copyright (c) 2000-2002, 2004, 2006-2018 Glenn Randers-Pehrson.
  * Copyright (c) 1996-1997 Andreas Dilger.
  * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
@@ -6921,6 +6878,32 @@ WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF
 LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
 OF THIS SOFTWARE.
 
+# Lempel-Ziv & Welch Compression (tif_lzw.c) license
+The code of tif_lzw.c is derived from the compress program whose code is
+derived from software contributed to Berkeley by James A. Woods,
+derived from original work by Spencer Thomas and Joseph Orost.
+
+The original Berkeley copyright notice appears below in its entirety:
+
+Copyright (c) 1985, 1986 The Regents of the University of California.
+All rights reserved.
+
+This code is derived from software contributed to Berkeley by
+James A. Woods, derived from original work by Spencer Thomas
+and Joseph Orost.
+
+Redistribution and use in source and binary forms are permitted
+provided that the above copyright notice and this paragraph are
+duplicated in all such forms and that any documentation,
+advertising materials, and other materials related to such
+distribution and use acknowledge that the software was developed
+by the University of California, Berkeley.  The name of the
+University may not be used to endorse or promote products derived
+from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
 utf8-range
 ----------
 
@@ -7394,7 +7377,7 @@ Source notice: x64-linux/share/zlib/copyright
 
 Copyright notice:
 
- (C) 1995-2022 Jean-loup Gailly and Mark Adler
+ (C) 1995-2026 Jean-loup Gailly and Mark Adler
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
