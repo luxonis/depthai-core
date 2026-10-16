@@ -1088,14 +1088,8 @@ endif()
 macro(add_runtime_dependencies depending_target dependency)
     set(dlls "")
     if(TARGET ${dependency})
-        get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-        message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
-        foreach(cfg ${imported_configs})
-            message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
-            get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
-            list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
-        endforeach()
+        # Let CMake resolve imported configuration mappings and fallbacks.
+        set(dlls "$<TARGET_FILE:${dependency}>")
         message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
     endif()
     # Create a list of required dll files
@@ -1257,6 +1251,17 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
 endif()
 
+
+if(DEPTHAI_HAVE_OPENH264_SUPPORT)
+    get_target_property(openh264_library_type OpenH264::OpenH264 TYPE)
+    if(openh264_library_type STREQUAL "SHARED_LIBRARY")
+        if(DEPTHAI_MERGED_TARGET)
+            add_runtime_dependencies(${TARGET_CORE_NAME} OpenH264::OpenH264)
+        else()
+            add_runtime_dependencies(${TARGET_OPENCV_NAME} OpenH264::OpenH264)
+        endif()
+    endif()
+endif()
 
 ########################
 # PCL Support 2
