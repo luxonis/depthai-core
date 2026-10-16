@@ -601,21 +601,19 @@ dai_set_test_labels(model_slug_test onhost ci)
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
-if(DEPTHAI_BUILD_BETA)
-    # Stitching device-node configuration tests (must not require host OpenCV support)
-    dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
-    dai_set_test_labels(stitching_device_node_test onhost ci)
+# Stitching device-node configuration tests (must not require host OpenCV support)
+dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+dai_set_test_labels(stitching_device_node_test onhost ci)
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
-        dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
-        target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
-        dai_set_test_labels(stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+    target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+    dai_set_test_labels(stitching_node_test onhost ci)
+endif()
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING)
-        dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
-        dai_set_test_labels(planar_stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+    dai_set_test_labels(planar_stitching_node_test onhost ci)
 endif()
 
 # Remote connection tests
@@ -1049,3 +1047,25 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
+
+set(FILTER_TEST_DIR src/onhost_tests/pipeline/node)
+dai_add_test(img_detections_filter_helpers_test ${FILTER_TEST_DIR}/img_detections_filter_helpers_test.cpp)
+dai_set_test_labels(img_detections_filter_helpers_test onhost ci)
+set_tests_properties(img_detections_filter_helpers_test PROPERTIES FIXTURES_SETUP img_detections_filter_fixtures)
+
+foreach(name img_detections_filter_test img_detections_filter_panorama_test img_detections_filter_errors_test)
+    dai_add_test(${name} ${FILTER_TEST_DIR}/${name}.cpp)
+    dai_set_test_labels(${name} onhost ci)
+    set_tests_properties(${name} PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+endforeach()
+
+# Stitching is public (not beta) in this tree; this fixture needs no downloaded assets.
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(img_detections_filter_stitching_test ${FILTER_TEST_DIR}/img_detections_filter_stitching_test.cpp)
+    dai_set_test_labels(img_detections_filter_stitching_test onhost ci)
+    set_tests_properties(img_detections_filter_stitching_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+endif()
+
+dai_add_test(img_detections_filter_device_test src/ondevice_tests/pipeline/node/img_detections_filter_device_test.cpp)
+dai_set_test_labels(img_detections_filter_device_test ondevice rvc2_all rvc4 ci)
+set_tests_properties(img_detections_filter_device_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)

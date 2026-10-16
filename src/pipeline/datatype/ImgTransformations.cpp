@@ -412,6 +412,7 @@ bool ImgTransformation::isValid() const {
 }
 
 dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::Point2f point) const {
+    if(isEqualTransformation(to)) return point;
     bool normalized = point.isNormalized();
     if(normalized) {
         point.x *= width;
@@ -445,6 +446,16 @@ dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai
         vPoints[i] = {point.x, point.y};
     }
     auto transformed = impl::getOuterRotatedRect(vPoints);
+    transformed.center.hasNormalized = transformed.size.hasNormalized = true;
+    transformed.center.normalized = transformed.size.normalized = false;
+    while(transformed.angle <= -45.0f) {
+        transformed.angle += 90.0f;
+        std::swap(transformed.size.width, transformed.size.height);
+    }
+    while(transformed.angle > 45.0f) {
+        transformed.angle -= 90.0f;
+        std::swap(transformed.size.width, transformed.size.height);
+    }
     if(normalized) {
         transformed = transformed.normalize(to.width, to.height);
     }

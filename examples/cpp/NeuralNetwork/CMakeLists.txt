@@ -25,3 +25,5 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_example(neural_network_multi_input_combined neural_network_multi_input_combined.cpp ON OFF)
     target_compile_definitions(neural_network_multi_input_combined PRIVATE LENNA_PATH="${lenna}")
 endif()
+
+dai_add_example(img_detections_filter img_detections_filter.cpp OFF OFF)

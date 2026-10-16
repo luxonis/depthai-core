@@ -52,6 +52,7 @@
 #endif
 #include "ThreadedHostNode.hpp"
 #include "node/ImageAlign.hpp"
+#include "node/Stitching.hpp"
 #include "node/host/HostNode.hpp"
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     #include "depthai/rtabmap/RTABMapSLAM.hpp"
@@ -62,6 +63,7 @@
 #endif
 
 // Internal nodes
+#include "node/ImgDetectionsFilter.hpp"
 #include "node/internal/XLinkIn.hpp"
 #include "node/internal/XLinkInHost.hpp"
 #include "node/internal/XLinkOut.hpp"
