@@ -1604,7 +1604,16 @@ if(DEPTHAI_INSTALL)
             set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_BINDIR}")
         endif()
         message(STATUS "Required dlls for core are: ${required_dll_files} and they will be installed to ${DLL_INSTALLATION_DIR}")
-        install(FILES ${required_dll_files} DESTINATION "${DLL_INSTALLATION_DIR}")
+        if(IS_ABSOLUTE "${DLL_INSTALLATION_DIR}")
+            set(runtime_install_destination "${DLL_INSTALLATION_DIR}")
+        else()
+            set(runtime_install_destination "\${CMAKE_INSTALL_PREFIX}/${DLL_INSTALLATION_DIR}")
+        endif()
+        foreach(runtime_file IN LISTS required_dll_files)
+            # Include the SONAME links and versioned library selected by the imported target.
+            install(CODE "file(INSTALL DESTINATION \"${runtime_install_destination}\"
+                TYPE FILE FOLLOW_SYMLINK_CHAIN FILES \"${runtime_file}\")")
+        endforeach()
     endif()
 
     # Install export group (information about targets)
