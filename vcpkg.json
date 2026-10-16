@@ -38,6 +38,10 @@
     }
     ],
     "features": {
+        "openh264-support": {
+            "description": "H.264 host decoding",
+            "dependencies": ["openh264"]
+        },
         "opencv-support": {
             "description": "Enable OpenCV support",
             "dependencies": [
