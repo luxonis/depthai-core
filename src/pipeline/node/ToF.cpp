@@ -164,6 +164,7 @@ ToFBase::ToFBase(std::unique_ptr<Properties> props)
 
 ToFBase::Properties& ToFBase::getProperties() {
     properties.initialConfig = *initialConfig;
+    properties.initialConfig.applyLegacyConfig();
     return properties;
 }
 
