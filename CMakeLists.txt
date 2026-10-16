@@ -515,6 +515,12 @@ if(DEPTHAI_BUILD_BETA)
     )
 endif()
 
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/StartupNotifications.cpp
+    )
+endif()
+
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
     list(APPEND TARGET_CORE_SOURCES
         src/utility/EventsManager.cpp
