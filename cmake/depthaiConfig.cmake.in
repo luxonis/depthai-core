@@ -22,7 +22,7 @@ if(DEPTHAI_XTENSOR_SUPPORT)
     find_dependency(xtensor CONFIG REQUIRED)
 endif()
 
-if(@DEPTHAI_HAVE_OPENH264_SUPPORT@)
+if("@DEPTHAI_HAVE_OPENH264_SUPPORT@" AND NOT "@BUILD_SHARED_LIBS@")
     find_dependency(OpenH264 CONFIG)
 endif()
 

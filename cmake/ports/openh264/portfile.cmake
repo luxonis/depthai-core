@@ -58,5 +58,5 @@ endif()
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
 
 # Supply a CMake package for consumers; upstream only installs pkg-config metadata.
-file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/OpenH264Config.cmake"
-    DESTINATION "${CURRENT_PACKAGES_DIR}/share/openh264")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/OpenH264Config.cmake"
+    "${CURRENT_PACKAGES_DIR}/share/openh264/OpenH264Config.cmake" @ONLY)
