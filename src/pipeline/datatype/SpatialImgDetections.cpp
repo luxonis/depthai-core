@@ -109,6 +109,10 @@ void SpatialImgDetection::setSpatialCoordinate(Point3f spatialCoordinates) {
 
 dai::ImgDetection SpatialImgDetection::getImgDetection() const {
     dai::ImgDetection imgDetection(getBoundingBox(), labelName, confidence, label);
+    imgDetection.xmin = xmin;
+    imgDetection.ymin = ymin;
+    imgDetection.xmax = xmax;
+    imgDetection.ymax = ymax;
 
     if(keypoints.has_value()) {
         dai::KeypointsList converted;
@@ -214,6 +218,16 @@ void SpatialImgDetection::transform(const ImgTransformation& source, const ImgTr
         setSpatialCoordinate(matrix::transformPoint3f(transMatrix, spatialCoordinates));
     } else {
         setBoundingBox(source.remapRectTo(target, rect));
+    }
+    // Expand rotated boxes in pixels before normalizing their axis-aligned bounds.
+    const auto transformedBox = getBoundingBox();
+    if(transformedBox.isNormalized()) {
+        const auto size = target.getSize();
+        const auto bounds = transformedBox.denormalize(size.first, size.second).getOuterRect();
+        xmin = bounds[0] / size.first;
+        ymin = bounds[1] / size.second;
+        xmax = bounds[2] / size.first;
+        ymax = bounds[3] / size.second;
     }
 
     if(keypoints.has_value()) {
