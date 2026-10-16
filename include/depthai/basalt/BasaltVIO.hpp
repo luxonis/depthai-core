@@ -125,6 +125,8 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
 
     /**
      * Output odometry data.
+     * getTimestamp() is the estimated state's stereo measurement time in the host steady-clock domain,
+     * not the time at which processing finished. Device and system timestamps are not populated.
      */
     Output transform{*this, {"transform", DEFAULT_GROUP, {{DatatypeEnum::Odometry, true}}}};
     /**

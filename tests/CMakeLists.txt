@@ -947,6 +947,15 @@ dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
+if(DEPTHAI_HAVE_BASALT_SUPPORT)
+    dai_add_test(basalt_vio_timestamp_test src/ondevice_tests/basalt_vio_timestamp_test.cpp)
+    if(NOT DEPTHAI_MERGED_TARGET)
+        target_link_libraries(basalt_vio_timestamp_test PRIVATE depthai::basalt)
+    endif()
+    dai_set_test_labels(basalt_vio_timestamp_test ondevice rvc2_all rvc4 noreplayci)
+    set_tests_properties(basalt_vio_timestamp_test PROPERTIES TIMEOUT 60)
+endif()
+
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)

@@ -1,5 +1,7 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 
+#include <chrono>
+
 #include "../utility/PimplImpl.hpp"
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
@@ -85,6 +87,10 @@ void BasaltVIO::run() {
         const auto velocity = pimpl->localTransform->unit_quaternion() * data->vel_w_i;
         auto out =
             std::make_shared<Odometry>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w(), Point3d(velocity.x(), velocity.y(), velocity.z()));
+        // Basalt state time comes from ImgFrame::getTimestamp(), in the host steady-clock domain.
+        // Preserve measurement time even when estimation or output delivery is delayed.
+        out->setTimestamp(
+            std::chrono::steady_clock::time_point{std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::nanoseconds{data->t_ns})});
         transform.send(out);
         std::lock_guard<std::mutex> lck(imgMtx);
         passthrough.send(leftImg);
