@@ -56,7 +56,8 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
                        std::optional<dai::ExternalFrameSyncRole> role,
                        std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
                        std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                       std::vector<std::string>& camSockets);
+                       std::vector<std::string>& camSockets,
+                       std::string &ptpMasterDeviceName);
 
 void setUpIrLeds(std::shared_ptr<dai::Device> device);
 
@@ -68,6 +69,7 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                  std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
                  std::vector<std::string>& camSockets,
                  float targetFps,
-                 SyncType syncType);
+                 SyncType syncType,
+                 std::string &ptpMasterDeviceName);
 
 int testFsync(float targetFps, struct FsyncTestParameters parameters);
