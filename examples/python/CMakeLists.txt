@@ -17,6 +17,7 @@ set(TARGET_NAME "depthai")
 # Regexes for example test failure
 set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\\\[warning\\\\];\\\\[error\\\\];\\\\[critical\\\\]")
 set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
+set(NO_IMU_SKIP_REGEX "IMU not detected\\. Your board doesn't have IMU")
 set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\\\[error\\\\];\\\\[critical\\\\]")
 
 # Add a target to install_requirements (added to ALL)
@@ -149,6 +150,15 @@ function(dai_example_test_relax_fail_regex example_name)
     set(example_name "py_${example_name}")
     if(DEPTHAI_PYTHON_TEST_EXAMPLES AND TEST ${example_name})
         set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
+    endif()
+endfunction()
+
+# Skip (instead of fail) an IMU example test when the device has no IMU.
+# The RVC2 test devices are not all the same model and some of them have no IMU.
+function(dai_example_test_skip_without_imu example_name)
+    set(example_name "py_${example_name}")
+    if(DEPTHAI_PYTHON_TEST_EXAMPLES AND TEST ${example_name})
+        set_tests_properties(${example_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX};${NO_IMU_SKIP_REGEX}")
     endif()
 endfunction()
 
@@ -381,9 +391,11 @@ add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.p
 dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 rvc4rgb ci)
 # On slow hosts the examples warns that batch size is too small
 dai_example_test_relax_fail_regex(imu_gyroscope_accelerometer)
+dai_example_test_skip_without_imu(imu_gyroscope_accelerometer)
 
 add_python_example(imu_rotation_vector IMU/imu_rotation_vector.py)
 dai_set_example_test_labels(imu_rotation_vector ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_example_test_skip_without_imu(imu_rotation_vector)
 
 # Warp node
 add_python_example(warp_mesh Warp/warp_mesh.py)
