@@ -147,6 +147,16 @@ class Depth : public DeviceNodeGroup {
     }
 
     /**
+     * Get depth methods supported by a device and its connected sensors.
+     * Can be called before creating a pipeline or Depth node.
+     * Availability does not guarantee a particular FPS or resolution.
+     * @param device Device to query; must not be null.
+     * @return Supported concrete algorithms (AUTO is excluded); empty if none are supported.
+     * @throws std::runtime_error If device is null.
+     */
+    [[nodiscard]] static std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device);
+
+    /**
      * Set the requested algorithm before wiring.
      * @param algorithm Backend to use; AUTO re-enables auto-selection
      */
@@ -200,8 +210,6 @@ class Depth : public DeviceNodeGroup {
     };
 
     void requireNotBuilt(const char* method) const;
-
-    std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device, const std::vector<DeviceModelZoo>& supportedModels) const;
 
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
