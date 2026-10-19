@@ -371,12 +371,6 @@ std::optional<std::pair<uint32_t, uint32_t>> sizeFromDeviceFeatures(const std::s
     return std::make_pair(std::min(leftSize->first, rightSize->first), std::min(leftSize->second, rightSize->second));
 }
 
-StereoPair requireFirstStereoPair(const std::shared_ptr<Device>& device) {
-    const auto pairs = device->getStereoPairs();
-    DAI_CHECK_V(!pairs.empty(), "Device has no stereo camera pair for Depth node.");
-    return pairs[0];
-}
-
 bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) {
     for(const auto& cf : features) {
         for(const auto sensorType : cf.supportedTypes) {
@@ -521,6 +515,16 @@ std::shared_ptr<Depth> Depth::setConfig(Config config) {
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
+std::shared_ptr<Depth> Depth::setStereoPair(std::optional<StereoPair> stereoPair) {
+    requireNotBuilt("Depth::setStereoPair");
+    if(stereoPair) {
+        DAI_CHECK_V(stereoPair->left != CameraBoardSocket::AUTO && stereoPair->right != CameraBoardSocket::AUTO && stereoPair->left != stereoPair->right,
+                    "Depth: stereo pair requires two distinct, explicit camera sockets.");
+    }
+    stereoPairOverride_ = stereoPair;
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
 std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
     requireNotBuilt("Depth::setAlignTo");
     alignToOutput_ = &alignTo;
@@ -531,6 +535,17 @@ std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
 
 void Depth::requireNotBuilt(const char* method) const {
     DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first depth()/confidence() access).", method);
+}
+
+StereoPair Depth::selectStereoPair(const std::vector<StereoPair>& pairs, const std::optional<StereoPair>& requested) {
+    DAI_CHECK_V(!pairs.empty(), "Device has no stereo camera pair for Depth node.");
+    if(!requested) {
+        return pairs.front();
+    }
+    const auto selected =
+        std::find_if(pairs.begin(), pairs.end(), [&](const StereoPair& pair) { return pair.left == requested->left && pair.right == requested->right; });
+    DAI_CHECK_V(selected != pairs.end(), "Depth: requested stereo camera pair is not reported by Device::getStereoPairs().");
+    return *selected;
 }
 
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) {
@@ -631,12 +646,18 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         DAI_CHECK_V(supportsAlgorithm(supported, algorithmOverride_), "Depth algorithm {} is not supported on this device.", algorithmName(algorithmOverride_));
     }
 
+    // ToF uses its own sensor, regardless of any requested stereo pair.
+    if(algorithmOverride_ == Algorithm::TOF) {
+        resolved_ = {Algorithm::TOF, std::monostate{}};
+        return;
+    }
+
     if(!isRvc4) {
         const Algorithm chosen =
             (algorithmOverride_ == Algorithm::AUTO) ? (supportsAlgorithm(supported, Algorithm::TOF) ? Algorithm::TOF : Algorithm::STEREO) : algorithmOverride_;
         Config config = std::monostate{};
         if(chosen == Algorithm::STEREO) {
-            const auto pair = requireFirstStereoPair(device);
+            const auto pair = selectStereoPair(device->getStereoPairs(), stereoPairOverride_);
             const auto [left, right] = findCamerasForPair(pipeline, pair, device);
             const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
             if(inputs.resolution) {
@@ -648,7 +669,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         return;
     }
 
-    const auto pair = requireFirstStereoPair(device);
+    const auto pair = selectStereoPair(device->getStereoPairs(), stereoPairOverride_);
     const auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
     const float targetFps = inputs.targetFps;
@@ -791,6 +812,7 @@ void Depth::buildInternal() {
 
     resolveWiring(device, pipeline);
     const Algorithm active = resolved_.algorithm;
+    const auto stereoPair = active == Algorithm::TOF ? std::nullopt : std::make_optional(selectStereoPair(device->getStereoPairs(), stereoPairOverride_));
 
     std::optional<float> wiredFps = stereoOutputFps_;
     std::optional<std::pair<uint32_t, uint32_t>> wiredResolution;
@@ -812,7 +834,7 @@ void Depth::buildInternal() {
 #endif
             break;
         case Algorithm::TOF_STEREO_FUSION: {
-            const auto pair = requireFirstStereoPair(device);
+            const auto& pair = *stereoPair;
             auto [left, right] = findCamerasForPair(pipeline, pair, device);
             float fps = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_).targetFps;
             if(!stereoOutputFps_) {
@@ -846,7 +868,7 @@ void Depth::buildInternal() {
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, *stereoPair, sizeOverride_, stereoOutputFps_);
             nasBackend_->build(*stereo.left, *stereo.right, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
             depthOut_ = &(*nasBackend_->stereoDepth).depth;
@@ -862,7 +884,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::GPU_STEREO: {
             gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, *stereoPair, sizeOverride_, stereoOutputFps_);
             (*gpuStereoBackend_)->setRectification(true).build(*stereo.left, *stereo.right);
             depthOut_ = &(**gpuStereoBackend_).depth;
             confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
@@ -877,7 +899,7 @@ void Depth::buildInternal() {
             const auto is = NeuralDepth::getInputSize(model);
             const std::pair<uint32_t, uint32_t> monoSize{static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
             neuralBackend_ = std::make_unique<Subnode<NeuralDepth>>(*this, "neuralDepth");
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), monoSize, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, *stereoPair, monoSize, stereoOutputFps_);
             (*neuralBackend_)->build(*stereo.left, *stereo.right, model);
             depthOut_ = &(**neuralBackend_).depth;
             confidenceOut_ = &(**neuralBackend_).confidence;
@@ -889,7 +911,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, *stereoPair, sizeOverride_, stereoOutputFps_);
             validateStereoDepthResolution(stereo.resolution.first, stereo.resolution.second);
             (*stereoBackend_)->build(*stereo.left, *stereo.right, stereoPresetFromConfig(resolved_.config));
             depthOut_ = &(**stereoBackend_).depth;
@@ -923,6 +945,7 @@ void Depth::buildInternal() {
                             wiredResolution->second);
     }
 
+    resolvedStereoPair_ = stereoPair;
     graphBuilt_ = true;
 }
 
