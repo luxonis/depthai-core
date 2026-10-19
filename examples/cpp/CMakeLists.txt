@@ -16,6 +16,9 @@ target_link_libraries(utility ${OpenCV_LIBS})
 set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
+    # vcpkg dependencies are built without ASan: protobuf containers then give false container-overflow
+    # reports (inline code from instrumented objects annotates memory that libprotobuf.a then writes)
+    "ASAN_OPTIONS=detect_container_overflow=0"
     "RUNNING_AS_TEST=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=20000"
