@@ -8,7 +8,9 @@ import pytest
 
 
 @pytest.mark.parametrize("operation", ["get", "download"])
-def test_model_zoo_releases_gil(tmp_path, operation):
+@pytest.mark.parametrize("update_settings", [False, True])
+def test_model_zoo_releases_gil(tmp_path, operation, update_settings):
+    """Allow Python HTTP replies and concurrent settings updates during loading."""
     # Run in a child to isolate the global zoo endpoints and timeout a deadlock.
     script = r'''
 import json
@@ -22,10 +24,16 @@ import depthai as dai
 
 root = Path(sys.argv[1])
 operation = sys.argv[2]
+update_settings = sys.argv[3] == "True"
+settings_updated = threading.Event()
+stop_updates = threading.Event()
 model_bytes = b"local model payload"
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if update_settings:
+            settings_updated.clear()
+            assert settings_updated.wait(timeout=3), "Settings update blocked during HTTP I/O"
         path = urlsplit(self.path).path
         if path == "/health":
             body = b"ok"
@@ -53,6 +61,22 @@ thread = threading.Thread(target=server.serve_forever, daemon=True)
 thread.start()
 dai.modelzoo.setHealthEndpoint(base_url + "/health")
 dai.modelzoo.setDownloadEndpoint(base_url + "/download")
+
+def change_settings():
+    generation = 0
+    while not stop_updates.is_set():
+        suffix = "?generation=" + str(generation % 2)
+        dai.modelzoo.setHealthEndpoint(base_url + "/health" + suffix)
+        dai.modelzoo.setDownloadEndpoint(base_url + "/download" + suffix)
+        dai.modelzoo.setDefaultCachePath(root / ("unused-cache-" + str(generation % 2)))
+        dai.modelzoo.setDefaultModelsPath(root / ("unused-models-" + str(generation % 2)))
+        settings_updated.set()
+        generation += 1
+        stop_updates.wait(0.001)
+
+updater = threading.Thread(target=change_settings, daemon=True)
+if update_settings:
+    updater.start()
 description = dai.NNModelDescription(model="luxonis/gil-regression:model", platform="RVC4")
 cache = root / "cache"
 try:
@@ -66,6 +90,10 @@ try:
         assert dai.downloadModelsFromZoo(models, cacheDirectory=cache)
         assert [p.read_bytes() for p in cache.rglob("model.onnx")] == [model_bytes]
 finally:
+    stop_updates.set()
+    if update_settings:
+        updater.join(timeout=2)
+        assert not updater.is_alive(), "Settings updater did not finish"
     server.shutdown()
     thread.join(timeout=2)
     server.server_close()
@@ -79,10 +107,11 @@ finally:
         "no_proxy": "127.0.0.1,localhost",
     })
     result = subprocess.run(
-        [sys.executable, "-c", script, str(tmp_path), operation],
+        [sys.executable, "-c", script, str(tmp_path), operation, str(update_settings)],
         capture_output=True,
         text=True,
         timeout=15,
         env=env,
+        check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr

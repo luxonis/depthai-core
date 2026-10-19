@@ -10,6 +10,7 @@ import pytest
 @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="Requires POSIX named pipes")
 @pytest.mark.parametrize("overload", ["default", "compression", "options"])
 def test_archive_io_releases_gil(tmp_path, overload):
+    """Let a Python writer unblock each native constructor and preserve errors."""
     # A Python writer must run while the constructor waits for archive bytes.
     # With the GIL held, both threads deadlock. Isolate the call so a regression
     # fails with a bounded timeout rather than hanging the pytest process.
@@ -49,5 +50,6 @@ assert not writer.is_alive(), "Archive writer did not finish"
         capture_output=True,
         text=True,
         timeout=15,
+        check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
