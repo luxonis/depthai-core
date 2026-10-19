@@ -68,7 +68,10 @@ namespace {
 
 cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
     cv::Mat cvMat = cv::Mat(rows, cols, type);
-    memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
+    // An empty vector (e.g. no distortion coefficients) gives an empty cv::Mat with null data
+    if(!orig.empty()) {
+        memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
+    }
     return cvMat;
 }
 
