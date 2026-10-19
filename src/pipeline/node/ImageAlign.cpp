@@ -10,6 +10,8 @@
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
     #include <opencv2/imgproc/imgproc.hpp>
+
+    #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #endif
 
 namespace dai {
@@ -100,37 +102,6 @@ std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1,
     R2.convertTo(cv_R2, CV_32FC1);
 
     return std::make_pair(cv_R1, cv_R2);
-}
-
-// Keep both viewing cones in the intermediate image before applying the depth-dependent shift.
-cv::Rect rectifiedBounds(cv::Size sourceSize,
-                         const cv::Mat& sourceK,
-                         const cv::Mat& sourceDistortion,
-                         const cv::Mat& sourceRotation,
-                         cv::Size targetSize,
-                         const cv::Mat& targetK,
-                         const cv::Mat& targetRotation) {
-    cv::Rect bounds(0, 0, sourceSize.width, sourceSize.height);
-    const auto includeBorder = [&](cv::Size size, const cv::Mat& intrinsics, const cv::Mat& distortion, const cv::Mat& rotation) {
-        std::vector<cv::Point2f> border, rectified;
-        border.reserve(2 * (size.width + size.height + 2));
-        for(int x = 0; x <= size.width; ++x) {
-            border.emplace_back(x, 0);
-            border.emplace_back(x, size.height);
-        }
-        for(int y = 0; y <= size.height; ++y) {
-            border.emplace_back(0, y);
-            border.emplace_back(size.width, y);
-        }
-        cv::undistortPoints(border, rectified, intrinsics, distortion, rotation, sourceK);
-        for(const auto& point : rectified) {
-            if(!std::isfinite(point.x) || !std::isfinite(point.y)) throw std::runtime_error("ImageAlign: invalid rectified image bounds");
-        }
-        bounds |= cv::boundingRect(rectified);
-    };
-    includeBorder(sourceSize, sourceK, sourceDistortion, sourceRotation);
-    includeBorder(targetSize, targetK, cv::Mat{}, targetRotation);
-    return bounds;
 }
 
 std::string matToString(const cv::Mat& mat) {
@@ -228,13 +199,14 @@ void ImageAlign::run() {
         // dai::CameraModel cameraModel = dai::CameraModel::Perspective;  // todo
 
         auto cv_targetCamMatrix = cv_M1.clone();
-        const auto bounds = rectifiedBounds(imageSize, cv_M1, cv_d1, cv_R1, {alignWidth, alignHeight}, cv_M2, cv_R2);
+        const auto bounds = detail::rectifiedBounds(imageSize, cv_M1, cv_d1, cv_R1, {alignWidth, alignHeight}, cv_M2, cv_R2);
         auto rectifiedSize = bounds.size();
         // Chroma planes require even intermediate dimensions for NV12 and YUV420p.
         if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {
             rectifiedSize.width += rectifiedSize.width % 2;
             rectifiedSize.height += rectifiedSize.height % 2;
         }
+        detail::validateRectifiedSize(rectifiedSize.width, rectifiedSize.height);
         cv_targetCamMatrix.at<float>(0, 2) -= bounds.x;
         cv_targetCamMatrix.at<float>(1, 2) -= bounds.y;
         auto cv_meshSize = rectifiedSize;
