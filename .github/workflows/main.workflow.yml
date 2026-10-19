@@ -1,7 +1,7 @@
 name: DepthAI Core CI/CD
 
 concurrency:
-  group: depthai-core-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'pull_request' && github.event.action != 'labeled') && 'format' || (github.event_name == 'pull_request_review' && github.event.review.state != 'approved') && 'review' || 'full' }}
+  group: depthai-core-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'pull_request' && github.event.action != 'labeled') && 'format' || 'full' }}
   cancel-in-progress: true
 
 on:
@@ -18,8 +18,6 @@ on:
       - main
       - develop
     types: [opened, synchronize, reopened, labeled]
-  pull_request_review:
-    types: [submitted]
 
 jobs:
 
@@ -34,8 +32,6 @@ jobs:
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
         CHECK_ACTION: ${{ github.event.action }}
-        CHECK_REVIEW_STATE: ${{ github.event.review.state }}
-        CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
 
@@ -49,10 +45,6 @@ jobs:
         SHOULD_RUN="true"
         if [[ "$EVENT_NAME" == "pull_request" ]]; then
           if [[ "$CHECK_ACTION" != "labeled" ]] || ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
-            SHOULD_RUN="false"
-          fi
-        elif [[ "$EVENT_NAME" == "pull_request_review" ]]; then
-          if [[ "$CHECK_REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop") ]]; then
             SHOULD_RUN="false"
           fi
         fi
@@ -83,7 +75,6 @@ jobs:
   style:
     runs-on: ubuntu-24.04
     needs: [precheck]
-    if: github.event_name != 'pull_request_review' || needs.precheck.outputs.should_run == 'true'
 
     steps:
     - uses: actions/checkout@v7

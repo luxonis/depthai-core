@@ -29,6 +29,8 @@ RUN apt-get update && \
         cmake \
         git \
         python3 \
+        python3-pip \
+        python3-venv \
         python3-dev \
         libopencv-dev \
         xvfb \
@@ -77,11 +79,6 @@ RUN apt-get update && \
 
 RUN locale-gen en_US.UTF-8
 
-COPY --from=ghcr.io/astral-sh/uv:0.13.0 /uv /usr/local/bin/uv
-ENV UV_LINK_MODE=copy
-ENV UV_PYTHON_DOWNLOADS=never
-ENV DEPTHAI_USE_UV=1
-
 WORKDIR /workspace
 
 # Copy project files
@@ -98,9 +95,10 @@ RUN git init -q . && \
     git submodule update --init --recursive --depth 1
 
 # Create venv and install Python dependencies
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv venv --python /usr/bin/python3 venv && \
-    uv pip install --python venv/bin/python numpy pytest pytest-html adbutils==2.12.0 influxdb-client==1.50.0
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3 -m venv venv && \
+    venv/bin/pip install --upgrade pip && \
+    venv/bin/pip install numpy pytest pytest-html adbutils==2.12.0 influxdb-client==1.50.0
 
 ENV PATH="/workspace/venv/bin:$PATH"
 
@@ -142,7 +140,7 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
     --mount=type=cache,target=/opt/ccache \
-    --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,target=/root/.cache/pip \
     ccache --zero-stats && \
     cmake --build build --parallel $PARALLEL_JOBS --config Release && \
     ccache --show-stats && \
