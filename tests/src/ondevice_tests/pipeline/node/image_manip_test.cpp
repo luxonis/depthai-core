@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
+#include <cmath>
 #include <utility>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -32,15 +33,23 @@ TEST_CASE("ImageManip fractional crops at unit scale preserve pixels", "[imagema
     constexpr int outputWidth = 128, outputHeight = 256;
     using ResizeMode = dai::ImageManipConfig::ResizeMode;
     struct CropCase {
-        float x, y, height;
+        float x, y, width, height;
         ResizeMode mode;
     };
-    const std::array<CropCase, 6> cases = {{{74.f, 26.f, 256.f, ResizeMode::STRETCH},
-                                            {73.9375f, 26.75f, 256.f, ResizeMode::STRETCH},
-                                            {73.9375f, 26.75f, 256.f, ResizeMode::CENTER_CROP},
-                                            {74.f, 27.f, 257.f, ResizeMode::CENTER_CROP},
-                                            {74.f, 26.f, 258.f, ResizeMode::CENTER_CROP},
-                                            {75.f, 27.f, 256.f, ResizeMode::STRETCH}}};
+    // Keep scale 1 to exercise crop classification. NONE allows both dimensions
+    // to be fractional while centering the crop in the fixed-size output.
+    const std::array<CropCase, 12> cases = {{{74.f, 26.f, 128.f, 256.f, ResizeMode::STRETCH},
+                                             {73.9375f, 26.75f, 128.f, 256.f, ResizeMode::STRETCH},
+                                             {73.9375f, 26.75f, 128.f, 256.f, ResizeMode::CENTER_CROP},
+                                             {74.f, 27.f, 128.f, 257.f, ResizeMode::CENTER_CROP},
+                                             {74.f, 26.f, 128.f, 258.f, ResizeMode::CENTER_CROP},
+                                             {75.f, 27.f, 128.f, 256.f, ResizeMode::STRETCH},
+                                             {74.f, 26.f, 129.5f, 256.f, ResizeMode::CENTER_CROP},
+                                             {73.9375f, 26.75f, 129.5f, 256.f, ResizeMode::CENTER_CROP},
+                                             {74.f, 26.f, 128.f, 257.5f, ResizeMode::CENTER_CROP},
+                                             {73.9375f, 26.75f, 128.f, 257.5f, ResizeMode::CENTER_CROP},
+                                             {74.f, 26.f, 129.5f, 257.5f, ResizeMode::NONE},
+                                             {73.9375f, 26.75f, 129.5f, 257.5f, ResizeMode::NONE}}};
     const std::array<dai::ImgFrame::Type, 3> types = {dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::NV12};
 
     auto manip = pipeline.create<dai::node::ImageManip>();
@@ -59,13 +68,13 @@ TEST_CASE("ImageManip fractional crops at unit scale preserve pixels", "[imagema
             cv::Mat image(inputHeight, inputWidth, type == dai::ImgFrame::Type::GRAY8 ? CV_8UC1 : CV_8UC3);
             rng.fill(image, cv::RNG::UNIFORM, 0, 256);
             for(const auto& crop : cases) {
-                CAPTURE(iteration, type, crop.x, crop.y, crop.height, crop.mode);
+                CAPTURE(iteration, type, crop.x, crop.y, crop.width, crop.height, crop.mode);
                 auto input = std::make_shared<dai::ImgFrame>();
                 input->setCvFrame(image, type);
                 input->setSequenceNum(sequence);
                 auto config = std::make_shared<dai::ImageManipConfig>();
                 config->addCropRotatedRect(
-                    dai::RotatedRect(dai::Point2f(crop.x + outputWidth / 2.f, crop.y + crop.height / 2.f), dai::Size2f(outputWidth, crop.height), 0), false);
+                    dai::RotatedRect(dai::Point2f(crop.x + crop.width / 2.f, crop.y + crop.height / 2.f), dai::Size2f(crop.width, crop.height), 0), false);
                 config->setOutputSize(outputWidth, outputHeight, crop.mode);
                 config->setFrameType(type);
                 configQueue->send(config);
@@ -86,9 +95,15 @@ TEST_CASE("ImageManip fractional crops at unit scale preserve pixels", "[imagema
                 for(std::size_t plane = 0; plane < sourcePlanes.size(); ++plane) {
                     CAPTURE(plane);
                     const float ssF = plane == 0 ? 1.f : 2.f;
-                    // These CENTER_CROP cases retain scale 1 and remove the
-                    // excess height equally at the top and bottom.
-                    const cv::Matx23f transform(1, 0, -crop.x / ssF, 0, 1, -(crop.y + (crop.height - outputHeight) / 2.f) / ssF);
+                    // Crop dimensions become integer raster sizes before
+                    // centering. All cases retain scale 1 and split any excess
+                    // width and height equally on either side of the output.
+                    const cv::Matx23f transform(1,
+                                                0,
+                                                -(crop.x + (std::floor(crop.width) - outputWidth) / 2.f) / ssF,
+                                                0,
+                                                1,
+                                                -(crop.y + (std::floor(crop.height) - outputHeight) / 2.f) / ssF);
                     cv::Mat expected;
                     cv::warpAffine(sourcePlanes[plane], expected, transform, outputPlanes[plane].size(), cv::INTER_LINEAR);
                     // Check every pixel: an oversized row copy corrupts pixels
