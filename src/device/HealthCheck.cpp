@@ -48,15 +48,37 @@ constexpr auto POWER_SUPPLY_IR_RAMP_INTERVAL = std::chrono::milliseconds(100);
 constexpr auto POWER_SUPPLY_POLL_INTERVAL = std::chrono::milliseconds(100);
 constexpr auto BANDWIDTH_RECONNECT_TIMEOUT = std::chrono::seconds(10);
 constexpr auto BANDWIDTH_RECONNECT_POLL_INTERVAL = std::chrono::milliseconds(100);
+constexpr auto STOP_POLL_INTERVAL = std::chrono::milliseconds(100);
+
+// Thrown to leave the health check when a stop was requested. It does not derive from std::exception on purpose:
+// the handlers of the single steps catch std::exception and would report it as a failed check.
+struct HealthCheckStopRequested {};
+
+void throwIfStopRequested(const std::function<bool()>& shouldStop) {
+    if(shouldStop && shouldStop()) {
+        throw HealthCheckStopRequested{};
+    }
+}
 
 template <typename T>
-std::shared_ptr<T> getUntil(const std::shared_ptr<MessageQueue>& queue, std::chrono::steady_clock::time_point deadline, bool& timedOut) {
-    const auto now = std::chrono::steady_clock::now();
-    if(deadline <= now) {
-        timedOut = true;
-        return nullptr;
+std::shared_ptr<T> getUntil(const std::shared_ptr<MessageQueue>& queue,
+                            std::chrono::steady_clock::time_point deadline,
+                            bool& timedOut,
+                            const std::function<bool()>& shouldStop) {
+    while(true) {
+        throwIfStopRequested(shouldStop);
+        const auto now = std::chrono::steady_clock::now();
+        if(deadline <= now) {
+            timedOut = true;
+            return nullptr;
+        }
+        // Wait in short slices, so that a stop request is seen in time
+        const auto wait = std::min(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now), STOP_POLL_INTERVAL);
+        auto message = queue->get<T>(wait, timedOut);
+        if(!timedOut) {
+            return message;
+        }
     }
-    return queue->get<T>(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now), timedOut);
 }
 
 std::string socketToString(CameraBoardSocket socket) {
@@ -250,7 +272,10 @@ void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMet
     }
 }
 
-bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device, std::chrono::steady_clock::time_point deadline, HealthCheckMetrics& metrics) {
+bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device,
+                            std::chrono::steady_clock::time_point deadline,
+                            HealthCheckMetrics& metrics,
+                            const std::function<bool()>& shouldStop) {
     const auto isDeviceAvailable = [&]() {
         try {
             if(device->hasCrashed()) {
@@ -270,6 +295,7 @@ bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device, std::chrono::
     };
 
     while(std::chrono::steady_clock::now() < deadline) {
+        throwIfStopRequested(shouldStop);
         if(!isDeviceAvailable()) {
             return false;
         }
@@ -427,7 +453,8 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
                            const HealthCheckConfig& config,
                            const std::vector<CameraBoardSocket>& connectedCameras,
                            const std::string& imuName,
-                           HealthCheckMetrics& metrics) {
+                           HealthCheckMetrics& metrics,
+                           const std::function<bool()>& shouldStop) {
     Pipeline pipeline(device);
     std::vector<std::pair<CameraBoardSocket, std::shared_ptr<MessageQueue>>> cameraQueues;
     std::shared_ptr<MessageQueue> imuQueue;
@@ -484,7 +511,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             bool allCamerasStreaming = true;
             for(auto& socketAndQueue : cameraQueues) {
                 bool timedOut = false;
-                auto frame = getUntil<ImgFrame>(socketAndQueue.second, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut);
+                auto frame = getUntil<ImgFrame>(socketAndQueue.second, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut, shouldStop);
                 if(timedOut || frame == nullptr || frame->getData().empty()) {
                     allCamerasStreaming = false;
                     if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
@@ -509,7 +536,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
         // Verify IMU
         if(imuQueue) {
             bool timedOut = false;
-            auto imuData = getUntil<IMUData>(imuQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut);
+            auto imuData = getUntil<IMUData>(imuQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut, shouldStop);
             if(timedOut || imuData == nullptr || imuData->packets.empty()) {
                 metrics.imuFunctionality = HealthCheckResult::FAIL;
                 metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuFunctionality, "IMU did not stream packets.");
@@ -521,7 +548,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
         // Verify power supply
         if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
             enablePowerSupplyLoad(device, metrics, irGuard);
-            bool sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.powerSupplyCheckDuration, metrics);
+            bool sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.powerSupplyCheckDuration, metrics, shouldStop);
             if(!sufficientPower) {
                 metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
             }
@@ -561,7 +588,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     }
 }
 
-void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics& metrics) {
+void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics& metrics, const std::function<bool()>& shouldStop) {
     Pipeline pipeline(device);
 
     auto benchmarkOut = pipeline.create<node::BenchmarkOut>();
@@ -587,7 +614,7 @@ void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics&
         bandwidthInputQueue->send(frame);
 
         bool timedOut = false;
-        auto report = getUntil<BenchmarkReport>(bandwidthReportQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut);
+        auto report = getUntil<BenchmarkReport>(bandwidthReportQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut, shouldStop);
         if(timedOut || report == nullptr || report->fps <= 0.0f) {
             metrics.bandwidthMbps = 0.0f;
             metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, "Timed out waiting for bandwidth benchmark report.");
@@ -606,9 +633,7 @@ void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics&
     }
 }
 
-HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const HealthCheckConfig& config) {
-    HealthCheckMetrics metrics;
-
+HealthCheckMetrics runChecks(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop, HealthCheckMetrics& metrics) {
     // Create a device object for a health check, check its availability
     logger::info("Health check: Connecting to device and checking availability");
     std::shared_ptr<Device> device;
@@ -636,6 +661,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     }
 
     // USB speed and generation check
+    throwIfStopRequested(shouldStop);
     if(config.checkUsbGeneration) {
         logger::info("Health check: Checking USB generation");
         if(device->getDeviceInfo().protocol == X_LINK_TCP_IP || device->getDeviceInfo().protocol == X_LINK_TCP_IP_OR_LOCAL_SHDMEM
@@ -651,6 +677,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     }
 
     // Read the calibration
+    throwIfStopRequested(shouldStop);
     std::optional<CalibrationHandler> calibration;
     if(config.verifyCameraCalibration || config.verifyImuCalibration) {
         logger::info("Health check: Reading calibration");
@@ -673,6 +700,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     }
 
     // Query cameras for camera verification and power-supply load
+    throwIfStopRequested(shouldStop);
     std::vector<CameraBoardSocket> connectedCameras;
     std::vector<StereoPair> deviceStereoPairs;
     if(config.verifyCameraFunctionality || config.verifyCameraCalibration || config.verifyPowerSupply) {
@@ -719,6 +747,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     }
 
     // Verify IMU functionality and calibration metadata
+    throwIfStopRequested(shouldStop);
     std::string imuName;
     if(config.verifyImuFunctionality || config.verifyImuCalibration) {
         logger::info("Health check: Verifying IMU");
@@ -740,12 +769,14 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         }
     }
 
+    throwIfStopRequested(shouldStop);
     if(config.verifyCameraFunctionality || config.verifyImuFunctionality || config.verifyPowerSupply) {
         logger::info("Health check: Running diagnostic pipeline");
-        runDiagnosticPipeline(device, config, connectedCameras, imuName, metrics);
+        runDiagnosticPipeline(device, config, connectedCameras, imuName, metrics, shouldStop);
     }
 
     // Measure the bandwidth
+    throwIfStopRequested(shouldStop);
     if(config.measureBandwidth) {
         logger::info("Health check: Measuring bandwidth");
         device.reset();
@@ -753,6 +784,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         std::string lastErrorMessage;
         auto deadline = std::chrono::steady_clock::now() + BANDWIDTH_RECONNECT_TIMEOUT;
         while(std::chrono::steady_clock::now() < deadline) {
+            throwIfStopRequested(shouldStop);
             try {
                 device = std::make_shared<Device>(devInfo);
                 break;
@@ -767,9 +799,21 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
             metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, lastErrorMessage);
             return metrics;
         }
-        measureBandwidth(device, metrics);
+        throwIfStopRequested(shouldStop);
+        measureBandwidth(device, metrics, shouldStop);
     }
 
+    return metrics;
+}
+
+HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop) {
+    HealthCheckMetrics metrics;
+    try {
+        return runChecks(devInfo, config, shouldStop, metrics);
+    } catch(const HealthCheckStopRequested&) {
+        // Unwinding stopped the pipeline and the IR load (RAII) and closed the device
+        logger::info("Health check: Stopped on request, the remaining checks did not run");
+    }
     return metrics;
 }
 

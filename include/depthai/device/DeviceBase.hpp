@@ -201,6 +201,17 @@ class DeviceBase {
     static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 
     /**
+     * Performs a device health check, which can be stopped before it completes (e.g. on Ctrl+C).
+     *
+     * @param devInfo DeviceInfo which specifies which device to check
+     * @param config Health-check steps to execute
+     * @param shouldStop Called between the steps and at least every 100 ms while a step waits. If it returns true,
+     * the remaining steps are skipped. A step that connects to the device is not interrupted.
+     * @returns HealthCheckMetrics collected until the check completed or stopped. Steps that did not run are NOT_RUN
+     */
+    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop);
+
+    /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      */
