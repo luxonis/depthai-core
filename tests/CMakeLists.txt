@@ -601,21 +601,19 @@ dai_set_test_labels(model_slug_test onhost ci)
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
-if(DEPTHAI_BUILD_BETA)
-    # Stitching device-node configuration tests (must not require host OpenCV support)
-    dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
-    dai_set_test_labels(stitching_device_node_test onhost ci)
+# Stitching device-node configuration tests (must not require host OpenCV support)
+dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+dai_set_test_labels(stitching_device_node_test onhost ci)
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
-        dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
-        target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
-        dai_set_test_labels(stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+    target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+    dai_set_test_labels(stitching_node_test onhost ci)
+endif()
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING)
-        dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
-        dai_set_test_labels(planar_stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+    dai_set_test_labels(planar_stitching_node_test onhost ci)
 endif()
 
 # Remote connection tests
@@ -786,6 +784,9 @@ if(DEPTHAI_BUILD_BETA)
     dai_add_test(multi_device_calibration_handler_test src/onhost_tests/multi_device_calibration_handler_test.cpp)
     dai_set_test_labels(multi_device_calibration_handler_test onhost ci)
 
+    dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
+    dai_set_test_labels(multi_device_calibration_result_test onhost ci)
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 
@@ -863,6 +864,10 @@ dai_set_test_labels(segmentation_parser_test ondevice rvc4 ci)
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
 dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
+
+dai_add_test(neural_network_nnarchive_behavior_test src/ondevice_tests/pipeline/node/neural_network_nnarchive_behavior_test.cpp)
+target_link_libraries(neural_network_nnarchive_behavior_test PRIVATE LibArchive::LibArchive liblzma::liblzma BZip2::BZip2)
+dai_set_test_labels(neural_network_nnarchive_behavior_test ondevice rvc4 ci)
 
 # NeuralNetwork node test
 if(DEPTHAI_FETCH_ARTIFACTS)

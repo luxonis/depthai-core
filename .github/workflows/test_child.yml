@@ -72,7 +72,7 @@ jobs:
     outputs:
         tag: ${{ steps.build_and_push.outputs.tag }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
     - name: Build and push
       id: build_and_push
       env:
@@ -103,7 +103,7 @@ jobs:
     runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: ${{ inputs.rvc2_timeout_minutes }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
 
     - name: Run RVC2 tests
       run: |
@@ -118,7 +118,7 @@ jobs:
 
     - name: Upload test log
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc2_test
         path: rvc2_test_output.log
@@ -134,7 +134,7 @@ jobs:
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Run RVC4 tests
         run: |
@@ -149,7 +149,7 @@ jobs:
 
       - name: Upload test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_test_output.log
@@ -164,7 +164,7 @@ jobs:
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Run RVC4 tests
         run: |
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_usb_test_output.log
@@ -190,7 +190,7 @@ jobs:
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Run RVC4 tests
         run: |
@@ -201,7 +201,7 @@ jobs:
 
       - name: Upload test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_rgb_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_rgb_test_output.log
@@ -213,14 +213,33 @@ jobs:
     if: ${{ always() && inputs.run_standard_tests }}
     runs-on: ['self-hosted', 'testbed-runner']
     permissions:
+      actions: read
       contents: read
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
     - name: Download test logs
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         pattern: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-*
         path: ctest-logs
+    - name: Restore single-artifact log directory
+      if: hashFiles('ctest-logs/*.log') != ''
+      uses: actions/github-script@v9
+      env:
+        ARTIFACT_PREFIX: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-
+      with:
+        script: |
+          const fs = require('node:fs');
+          const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+            ...context.repo, run_id: context.runId
+          });
+          const artifact = artifacts.find(a => !a.expired && a.name.startsWith(process.env.ARTIFACT_PREFIX));
+          if (!artifact) throw new Error('Test log artifact not found');
+          const directory = `ctest-logs/${artifact.name}`;
+          fs.mkdirSync(directory, {recursive: true});
+          for (const file of fs.readdirSync('ctest-logs').filter(f => f.endsWith('.log'))) {
+            fs.renameSync(`ctest-logs/${file}`, `${directory}/${file}`);
+          }
     - name: Generate combined summary
       env:
         INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
@@ -270,7 +289,7 @@ jobs:
         fi
     - name: Upload JUnit XML reports
       if: always() && hashFiles('ctest-reports/*.xml') != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: junit-reports-${{ inputs.job_prefix || inputs.flavor }}
         path: ctest-reports/*.xml
@@ -285,7 +304,7 @@ jobs:
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Run RVC4 Fsync tests
         run: |
@@ -309,7 +328,7 @@ jobs:
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Run RVC4 PTP tests
         run: |

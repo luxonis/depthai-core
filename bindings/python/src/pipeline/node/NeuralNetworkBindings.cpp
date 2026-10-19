@@ -1,4 +1,5 @@
 #include <optional>
+#include <string_view>
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
@@ -81,7 +82,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -103,7 +104,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("modelDesc"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -115,7 +116,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -127,7 +128,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
@@ -170,6 +171,25 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
 #endif
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
         .def("setBlob", py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
+        .def(
+            "setOtherModelFormat",
+            [](NeuralNetwork& self, py::bytes model) {
+                const std::string_view data = model;
+                self.setOtherModelFormat(std::vector<uint8_t>(data.begin(), data.end()));
+            },
+            py::arg("model"),
+            DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def(
+            "setOtherModelFormat",
+            [](NeuralNetwork& self, py::array_t<uint8_t, py::array::c_style | py::array::forcecast> model) {
+                self.setOtherModelFormat(std::vector<uint8_t>(model.data(), model.data() + model.size()));
+            },
+            py::arg("model"),
+            DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def("setOtherModelFormat",
+             py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setOtherModelFormat),
+             py::arg("path"),
+             DOC(dai, node, NeuralNetwork, setOtherModelFormat, 2))
         .def("setModelPath", &NeuralNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, NeuralNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &NeuralNetwork::setNumShavesPerInferenceThread,

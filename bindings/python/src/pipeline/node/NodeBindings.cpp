@@ -186,6 +186,7 @@ void bind_record(pybind11::module& m, void* pCallstack);
 void bind_imagefilters(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
 void bind_imagealign(pybind11::module& m, void* pCallstack);
+void bind_stitching(pybind11::module& m, void* pCallstack);
 void bind_align(pybind11::module& m, void* pCallstack);
 void bind_rgbd(pybind11::module& m, void* pCallstack);
 void bind_rectification(pybind11::module& m, void* pCallstack);
@@ -209,12 +210,14 @@ void bind_beta_lanedetectionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mlsdparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mppalmdetectionparser(pybind11::module& m, void* pCallstack);
+    #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+void bind_beta_multi_device_calibration(pybind11::module& m, void* pCallstack);
+    #endif
 void bind_beta_pptextdetectionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_regressionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_rfdetrparser(pybind11::module& m, void* pCallstack);
 void bind_beta_scrfdparser(pybind11::module& m, void* pCallstack);
 void bind_beta_superanimalparser(pybind11::module& m, void* pCallstack);
-void bind_beta_stitching(pybind11::module& m, void* pCallstack);
 void bind_beta_xfeatmonoparser(pybind11::module& m, void* pCallstack);
 void bind_beta_xfeatstereoparser(pybind11::module& m, void* pCallstack);
 void bind_beta_yunetparser(pybind11::module& m, void* pCallstack);
@@ -269,6 +272,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imagefilters);
     callstack.push_front(bind_replay);
     callstack.push_front(bind_imagealign);
+    callstack.push_front(bind_stitching);
     callstack.push_front(bind_align);
     callstack.push_front(bind_rgbd);
     callstack.push_front(bind_rectification);
@@ -292,12 +296,14 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_mapoutputparser);
     callstack.push_front(bind_beta_mlsdparser);
     callstack.push_front(bind_beta_mppalmdetectionparser);
+    #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    callstack.push_front(bind_beta_multi_device_calibration);
+    #endif
     callstack.push_front(bind_beta_pptextdetectionparser);
     callstack.push_front(bind_beta_regressionparser);
     callstack.push_front(bind_beta_rfdetrparser);
     callstack.push_front(bind_beta_scrfdparser);
     callstack.push_front(bind_beta_superanimalparser);
-    callstack.push_front(bind_beta_stitching);
     callstack.push_front(bind_beta_xfeatmonoparser);
     callstack.push_front(bind_beta_xfeatstereoparser);
     callstack.push_front(bind_beta_yunetparser);
@@ -344,7 +350,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Node::DatatypeHierarchy> nodeDatatypeHierarchy(pyNode, "DatatypeHierarchy", DOC(dai, Node, DatatypeHierarchy));
 
     py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
-    pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send));
+    pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send), py::call_guard<py::gil_scoped_release>());
     pyInputQueue.def("trySend", &InputQueue::trySend, py::arg("msg"), DOC(dai, InputQueue, trySend));
 
     // Node::Id bindings

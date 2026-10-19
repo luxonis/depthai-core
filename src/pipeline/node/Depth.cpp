@@ -96,6 +96,8 @@ const char* algorithmName(Depth::Algorithm algorithm) {
             return "NEURAL_ASSISTED_STEREO";
         case Depth::Algorithm::TOF:
             return "TOF";
+        case Depth::Algorithm::TOF_STEREO_FUSION:
+            return "TOF_STEREO_FUSION";
         case Depth::Algorithm::GPU_STEREO:
             return "GPU_STEREO";
     }
@@ -185,6 +187,7 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
         case Depth::Algorithm::NEURAL_ASSISTED_STEREO:
         case Depth::Algorithm::GPU_STEREO:
         case Depth::Algorithm::TOF:
+        case Depth::Algorithm::TOF_STEREO_FUSION:
             DAI_CHECK_V(std::holds_alternative<std::monostate>(config), "Depth config for {} must be empty (std::monostate).", algorithmName(algorithm));
             break;
         case Depth::Algorithm::AUTO:
@@ -547,6 +550,9 @@ std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_pt
     if(cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
         supported.push_back(Algorithm::TOF);
     }
+    if(isRvc4 && !device->getStereoPairs().empty() && cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
+        supported.push_back(Algorithm::TOF_STEREO_FUSION);
+    }
 
     return supported;
 }
@@ -684,6 +690,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         case Algorithm::NEURAL_ASSISTED_STEREO:
         case Algorithm::GPU_STEREO:
         case Algorithm::TOF:
+        case Algorithm::TOF_STEREO_FUSION:
         case Algorithm::AUTO:
             break;
     }
@@ -797,6 +804,38 @@ void Depth::buildInternal() {
             confidenceOut_ = &tofBackend_->confidence;
 #endif
             break;
+        case Algorithm::TOF_STEREO_FUSION: {
+            const auto pair = requireFirstStereoPair(device);
+            auto [left, right] = findCamerasForPair(pipeline, pair, device);
+            float fps = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_).targetFps;
+            if(!stereoOutputFps_) {
+                // Inferred output FPS must not exceed either preconfigured sensor rate.
+                for(const auto& camera : {left, right}) {
+                    if(camera && camera->properties.fps != CameraProperties::AUTO) {
+                        fps = std::min(fps, camera->properties.fps);
+                    }
+                }
+            }
+            for(const auto& camera : {left, right}) {
+                if(camera) {
+                    DAI_CHECK_V(camera->properties.fps == CameraProperties::AUTO || camera->properties.fps >= fps,
+                                "Depth: TOF_STEREO_FUSION camera {} FPS ({}) must not be below fusion FPS ({}).",
+                                camera == left ? "left" : "right",
+                                camera->properties.fps,
+                                fps);
+                }
+            }
+            if(!left) left = pipeline.create<Camera>(device)->build(pair.left, std::nullopt, fps);
+            if(!right) right = pipeline.create<Camera>(device)->build(pair.right, std::nullopt, fps);
+            tofStereoFusionBackend_ = beta::node::ToFStereoFusion::create(device);
+            add(tofStereoFusionBackend_);
+            tofStereoFusionBackend_->build(left, right, fps);
+            depthOut_ = &tofStereoFusionBackend_->depth;
+            confidenceOut_ = &tofStereoFusionBackend_->confidence;
+            wiredResolution = {left->getMaxRequestedWidth(), left->getMaxRequestedHeight()};
+            wiredFps = fps;
+            break;
+        }
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
