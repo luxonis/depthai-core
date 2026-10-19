@@ -593,6 +593,10 @@ dai_set_test_labels(pointclouddata_test onhost ci)
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
 
+# Model zoo settings tests (also valid without libcurl)
+dai_add_test(model_zoo_settings_test src/onhost_tests/model_zoo_settings_test.cpp)
+dai_set_test_labels(model_zoo_settings_test onhost ci)
+
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
