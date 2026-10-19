@@ -13,6 +13,8 @@ set(PYBIND11_TEST_FILES
     "xlink_protocol_test.py"
     "utf8_support_test.py"
     # "dai_path_conversion_test.py" requires device
+    "model_zoo_gil_test.py"
+    "nn_archive_gil_test.py"
     "nndata_tensor_test.py"
     "pcldata_set_points_test.py"
     "remote_connection_service_test.py"
