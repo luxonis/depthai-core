@@ -1,5 +1,7 @@
+#include <array>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <utility>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -9,6 +11,94 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/properties/ImageManipProperties.hpp"
+
+namespace {
+
+std::vector<cv::Mat> fractionalCropPlanes(dai::ImgFrame& frame) {
+    if(frame.getType() != dai::ImgFrame::Type::NV12) return {frame.getFrame()};
+
+    auto* data = frame.getData().data();
+    return {cv::Mat(frame.getHeight(), frame.getWidth(), CV_8UC1, data, frame.getStride()),
+            cv::Mat(frame.getHeight() / 2, frame.getWidth() / 2, CV_8UC2, data + frame.getPlaneStride(0), frame.getStride())};
+}
+
+}  // namespace
+
+TEST_CASE("ImageManip fractional crops at unit scale preserve pixels", "[imagemanip][fractional-crop][rvc4]") {
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 crop fast-path regression");
+
+    constexpr int inputWidth = 512, inputHeight = 288;
+    constexpr int outputWidth = 128, outputHeight = 256;
+    using ResizeMode = dai::ImageManipConfig::ResizeMode;
+    struct CropCase {
+        float x, y, height;
+        ResizeMode mode;
+    };
+    const std::array<CropCase, 6> cases = {{{74.f, 26.f, 256.f, ResizeMode::STRETCH},
+                                            {73.9375f, 26.75f, 256.f, ResizeMode::STRETCH},
+                                            {73.9375f, 26.75f, 256.f, ResizeMode::CENTER_CROP},
+                                            {74.f, 27.f, 257.f, ResizeMode::CENTER_CROP},
+                                            {74.f, 26.f, 258.f, ResizeMode::CENTER_CROP},
+                                            {75.f, 27.f, 256.f, ResizeMode::STRETCH}}};
+    const std::array<dai::ImgFrame::Type, 3> types = {dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::NV12};
+
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->setBackend(dai::ImageManipProperties::Backend::CPU);
+    manip->setMaxOutputFrameSize(outputWidth * outputHeight * 3);
+    manip->inputConfig.setWaitForMessage(true);
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+    pipeline.start();
+
+    cv::RNG rng(7061);
+    int sequence = 0;
+    for(int iteration = 0; iteration < 3; ++iteration) {
+        for(const auto type : types) {
+            cv::Mat image(inputHeight, inputWidth, type == dai::ImgFrame::Type::GRAY8 ? CV_8UC1 : CV_8UC3);
+            rng.fill(image, cv::RNG::UNIFORM, 0, 256);
+            for(const auto& crop : cases) {
+                CAPTURE(iteration, type, crop.x, crop.y, crop.height, crop.mode);
+                auto input = std::make_shared<dai::ImgFrame>();
+                input->setCvFrame(image, type);
+                input->setSequenceNum(sequence);
+                auto config = std::make_shared<dai::ImageManipConfig>();
+                config->addCropRotatedRect(
+                    dai::RotatedRect(dai::Point2f(crop.x + outputWidth / 2.f, crop.y + crop.height / 2.f), dai::Size2f(outputWidth, crop.height), 0), false);
+                config->setOutputSize(outputWidth, outputHeight, crop.mode);
+                config->setFrameType(type);
+                configQueue->send(config);
+                inputQueue->send(input);
+
+                bool timedOut = false;
+                auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+                REQUIRE_FALSE(timedOut);
+                REQUIRE(output != nullptr);
+                REQUIRE(output->getWidth() == outputWidth);
+                REQUIRE(output->getHeight() == outputHeight);
+                REQUIRE(output->getType() == type);
+                REQUIRE(output->getSequenceNum() == sequence++);
+
+                const auto sourcePlanes = fractionalCropPlanes(*input);
+                const auto outputPlanes = fractionalCropPlanes(*output);
+                REQUIRE(sourcePlanes.size() == outputPlanes.size());
+                for(std::size_t plane = 0; plane < sourcePlanes.size(); ++plane) {
+                    CAPTURE(plane);
+                    const float ssF = plane == 0 ? 1.f : 2.f;
+                    // These CENTER_CROP cases retain scale 1 and remove the
+                    // excess height equally at the top and bottom.
+                    const cv::Matx23f transform(1, 0, -crop.x / ssF, 0, 1, -(crop.y + (crop.height - outputHeight) / 2.f) / ssF);
+                    cv::Mat expected;
+                    cv::warpAffine(sourcePlanes[plane], expected, transform, outputPlanes[plane].size(), cv::INTER_LINEAR);
+                    // Check every pixel: an oversized row copy corrupts pixels
+                    // even when an adjacent allocation conceals the overrun.
+                    REQUIRE(cv::norm(outputPlanes[plane], expected, cv::NORM_INF) <= 1.0);
+                }
+            }
+        }
+    }
+}
 
 void testManipBasic(bool runSyncOnHost) {
     // Create pipeline
