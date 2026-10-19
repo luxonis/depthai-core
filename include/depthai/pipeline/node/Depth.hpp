@@ -34,6 +34,7 @@ namespace node {
  * connected, otherwise StereoDepth.
  *
  * Use build() to pin algorithm, FPS, or resolution before the first depth() / confidence() access.
+ * Use setStereoPair() to select another pair reported by the device before wiring.
  * Use setAlignTo() to align depth to another camera output.
  */
 class Depth : public DeviceNodeGroup {
@@ -163,6 +164,31 @@ class Depth : public DeviceNodeGroup {
     std::shared_ptr<Depth> setAlgorithm(Algorithm algorithm);
 
     /**
+     * Select the stereo camera pair before wiring.
+     * Only the left/right sockets are used; the pair must be reported by Device::getStereoPairs().
+     * The selected pair is used for both AUTO selection and stereo-based backend wiring.
+     * Has no effect when the resolved algorithm is TOF.
+     * Must be called before first depth() or confidence() access.
+     * @param stereoPair Pair to use, or std::nullopt to use the device's first stereo pair
+     */
+    std::shared_ptr<Depth> setStereoPair(std::optional<StereoPair> stereoPair);
+
+    /**
+     * Get the requested stereo pair, or std::nullopt when using the device's first pair.
+     */
+    [[nodiscard]] std::optional<StereoPair> getRequestedStereoPair() const {
+        return stereoPairOverride_;
+    }
+
+    /**
+     * Get the stereo pair actually wired, including metadata reported by the device.
+     * Returns std::nullopt before successful wiring or when the resolved algorithm is TOF.
+     */
+    [[nodiscard]] std::optional<StereoPair> getResolvedStereoPair() const {
+        return resolvedStereoPair_;
+    }
+
+    /**
      * Get the requested config override, if any.
      * @return Config override, or std::nullopt when config is auto-picked
      */
@@ -211,6 +237,8 @@ class Depth : public DeviceNodeGroup {
 
     void requireNotBuilt(const char* method) const;
 
+    static StereoPair selectStereoPair(const std::vector<StereoPair>& pairs, const std::optional<StereoPair>& requested);
+
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
     static Selection selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
@@ -234,6 +262,8 @@ class Depth : public DeviceNodeGroup {
     std::optional<float> stereoOutputFps_{};
     std::optional<std::pair<uint32_t, uint32_t>> sizeOverride_{};
     std::optional<Config> configOverride_{};
+    std::optional<StereoPair> stereoPairOverride_{};
+    std::optional<StereoPair> resolvedStereoPair_{};
     Node::Output* alignToOutput_{nullptr};
 
     Node::Output* depthOut_{nullptr};

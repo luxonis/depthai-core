@@ -1,9 +1,11 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>
 #include <cstring>
 #include <limits>
 #include <optional>
+#include <set>
 #include <utility>
 #include <variant>
 
@@ -489,6 +491,60 @@ TEST_CASE("Depth: build(algorithm) exposes algorithm via getRequestedAlgorithm")
     (void)requireDefaultDevice(pipeline);
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
     REQUIRE(depth->getRequestedAlgorithm() == node::Depth::Algorithm::TOF);
+}
+
+TEST_CASE("Depth: selected stereo pair is used by every stereo backend", "[stereo-pair]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    const auto pairs = device->getStereoPairs();
+    if(pairs.empty()) {
+        SKIP("Requires a device with a stereo pair.");
+    }
+    auto supported = node::Depth::getSupportedAlgorithms(device);
+    supported.erase(std::remove(supported.begin(), supported.end(), node::Depth::Algorithm::TOF), supported.end());
+    if(device->getPlatform() != Platform::RVC2 || !deviceReportsTofSensor(device)) {
+        supported.push_back(node::Depth::Algorithm::AUTO);
+    }
+    const auto algorithm = GENERATE_COPY(Catch::Generators::from_range(supported));
+    // Exercise a non-default pair whenever the device offers more than one.
+    const auto pair = pairs.back();
+    const auto depth = pipeline.create<node::Depth>()->build(algorithm, 15.f, std::make_pair(640u, 400u));
+    depth->setStereoPair(pair);
+    REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
+    REQUIRE_NOTHROW((void)depth->depth());
+    const auto resolved = depth->getResolvedStereoPair();
+    REQUIRE(resolved.has_value());
+    REQUIRE(resolved->left == pair.left);
+    REQUIRE(resolved->right == pair.right);
+    REQUIRE(resolved->baseline == pair.baseline);
+    REQUIRE(resolved->isVertical == pair.isVertical);
+    std::set<CameraBoardSocket> cameraSockets;
+    for(const auto& node : pipeline.getAllNodes()) {
+        if(const auto camera = std::dynamic_pointer_cast<node::Camera>(node)) {
+            cameraSockets.insert(camera->getBoardSocket());
+        }
+    }
+    REQUIRE(cameraSockets.count(pair.left) == 1);
+    REQUIRE(cameraSockets.count(pair.right) == 1);
+    if(algorithm != node::Depth::Algorithm::TOF_STEREO_FUSION) {
+        REQUIRE(cameraSockets.size() == 2);
+    }
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+    REQUIRE_THROWS_WITH(depth->setStereoPair(pairs.front()), Catch::Matchers::ContainsSubstring("before the graph is wired"));
+    REQUIRE_THROWS_WITH(depth->setStereoPair(std::nullopt), Catch::Matchers::ContainsSubstring("before the graph is wired"));
+}
+
+TEST_CASE("Depth: ToF ignores a requested stereo pair", "[stereo-pair]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    if(!deviceReportsTofSensor(device)) {
+        SKIP("Requires a connected ToF sensor.");
+    }
+    const auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
+    depth->setStereoPair(StereoPair{CameraBoardSocket::CAM_G, CameraBoardSocket::CAM_H});
+    REQUIRE_NOTHROW((void)depth->depth());
+    REQUIRE(depth->getRequestedStereoPair().has_value());
+    REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
 }
 
 TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
