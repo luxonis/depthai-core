@@ -547,6 +547,27 @@ TEST_CASE("Depth: ToF ignores a requested stereo pair", "[stereo-pair]") {
     REQUIRE_FALSE(depth->getResolvedStereoPair().has_value());
 }
 
+TEST_CASE("Depth: native rectified images expose stereo depth decimation", "[native-alignment]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    const auto pair = requireFirstStereoPairForTest(device);
+    const auto socket = GENERATE_COPY(pair.left, pair.right);
+    const auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO, 15.f, std::make_pair(640u, 400u));
+    auto depthQueue = depth->depth().createOutputQueue(4, false);
+    const auto sockets = depth->getNativeAlignmentSockets();
+    REQUIRE(std::find(sockets.begin(), sockets.end(), socket) != sockets.end());
+    auto imageQueue = depth->getRectifiedImage(socket).createOutputQueue(4, false);
+    PipelineStopGuard guard(pipeline);
+    pipeline.start();
+    const auto depthFrame = requireStreamFrame(depthQueue, kDepthFrameTimeout);
+    const auto imageFrame = requireStreamFrame(imageQueue, kDepthFrameTimeout);
+    const auto factor = depth->getDecimationFactor();
+    REQUIRE(factor >= 1);
+    REQUIRE(imageFrame->getWidth() / factor == depthFrame->getWidth());
+    REQUIRE(imageFrame->getHeight() / factor == depthFrame->getHeight());
+    REQUIRE_THROWS_WITH(depth->getRectifiedImage(socket), Catch::Matchers::ContainsSubstring("cannot change while the pipeline is running"));
+}
+
 TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);

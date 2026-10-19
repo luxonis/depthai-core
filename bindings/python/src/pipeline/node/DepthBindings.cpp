@@ -51,6 +51,13 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .def("setStereoPair", &Depth::setStereoPair, py::arg("stereoPair"), DOC(dai, node, Depth, setStereoPair))
         .def("getRequestedStereoPair", &Depth::getRequestedStereoPair, DOC(dai, node, Depth, getRequestedStereoPair))
         .def("getResolvedStereoPair", &Depth::getResolvedStereoPair, DOC(dai, node, Depth, getResolvedStereoPair))
+        .def("getNativeAlignmentSockets", &Depth::getNativeAlignmentSockets, DOC(dai, node, Depth, getNativeAlignmentSockets))
+        .def("getDecimationFactor", &Depth::getDecimationFactor, DOC(dai, node, Depth, getDecimationFactor))
+        .def("getRectifiedImage",
+             &Depth::getRectifiedImage,
+             py::arg("socket"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, Depth, getRectifiedImage))
         .def(
             "getRequestedConfig",
             [configToPy](const Depth& d) -> py::object { return d.getRequestedConfig().has_value() ? configToPy(*d.getRequestedConfig()) : py::none(); },

@@ -189,6 +189,28 @@ class Depth : public DeviceNodeGroup {
     }
 
     /**
+     * Get camera sockets whose rectified images can share the native depth geometry.
+     * Valid after first depth() access. Empty for backends without native image access.
+     */
+    [[nodiscard]] std::vector<CameraBoardSocket> getNativeAlignmentSockets() const;
+
+    /**
+     * Get the depth downsampling factor relative to its rectified input image.
+     * Valid after first depth() access. Returns 1 for backends without decimation.
+     */
+    [[nodiscard]] std::uint32_t getDecimationFactor() const;
+
+    /**
+     * Get the rectified image matching depth and select its native depth reference.
+     * Call after first depth() access and before starting the pipeline.
+     * The image is not decimated; divide its dimensions by getDecimationFactor()
+     * when matching the native depth output dimensions.
+     * @param socket Camera from getNativeAlignmentSockets()
+     * @throws std::runtime_error If the socket is not a supported native depth reference
+     */
+    Node::Output& getRectifiedImage(CameraBoardSocket socket);
+
+    /**
      * Get the requested config override, if any.
      * @return Config override, or std::nullopt when config is auto-picked
      */

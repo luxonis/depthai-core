@@ -39,6 +39,10 @@ def test_depth_stereo_pair_selection_and_reset():
         assert (resolved.left, resolved.right) == (selected.left, selected.right)
         assert resolved.baseline == selected.baseline
         assert resolved.isVertical == selected.isVertical
+        sockets = depth.getNativeAlignmentSockets()
+        assert sockets == [selected.left, selected.right]
+        assert depth.getDecimationFactor() >= 1
+        assert depth.getRectifiedImage(sockets[0]) is not None
         for pair in (selected, None):
             with pytest.raises(RuntimeError, match="before the graph is wired"):
                 depth.setStereoPair(pair)

@@ -60,6 +60,13 @@ TEST_CASE("Depth::getSupportedAlgorithms requires a non-null device", "[Depth]")
     REQUIRE_THROWS_WITH(Depth::getSupportedAlgorithms(nullptr), Catch::Matchers::ContainsSubstring("requires a device"));
 }
 
+TEST_CASE("Depth native image access requires a wired backend", "[Depth]") {
+    const auto depth = Depth::create();
+    REQUIRE(depth->getNativeAlignmentSockets().empty());
+    REQUIRE_THROWS_WITH(depth->getDecimationFactor(), Catch::Matchers::ContainsSubstring("only available after wiring"));
+    REQUIRE_THROWS_WITH(depth->getRectifiedImage(dai::CameraBoardSocket::CAM_B), Catch::Matchers::ContainsSubstring("not a supported native depth reference"));
+}
+
 TEST_CASE("Depth stereo pair selection preserves the default and device metadata", "[Depth][stereo-pair]") {
     const dai::StereoPair first{dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, 7.5f, false};
     const dai::StereoPair second{dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_D, 12.f, true};

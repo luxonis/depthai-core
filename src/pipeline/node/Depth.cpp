@@ -531,6 +531,60 @@ std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
+std::vector<CameraBoardSocket> Depth::getNativeAlignmentSockets() const {
+    if(!resolvedStereoPair_ || alignToOutput_ != nullptr) return {};
+    const auto& pair = *resolvedStereoPair_;
+    switch(resolved_.algorithm) {
+        case Algorithm::STEREO:
+        case Algorithm::NEURAL_ASSISTED_STEREO:
+            return {pair.left, pair.right};
+        case Algorithm::NEURAL:
+            return {pair.left};
+        case Algorithm::AUTO:
+        case Algorithm::GPU_STEREO:
+        case Algorithm::TOF:
+        case Algorithm::TOF_STEREO_FUSION:
+            return {};
+    }
+    return {};
+}
+
+std::uint32_t Depth::getDecimationFactor() const {
+    DAI_CHECK_V(graphBuilt_, "Depth: decimation factor is only available after wiring.");
+    if(resolved_.algorithm == Algorithm::STEREO) {
+        return (*stereoBackend_)->initialConfig->postProcessing.decimationFilter.decimationFactor;
+    }
+    if(resolved_.algorithm == Algorithm::NEURAL_ASSISTED_STEREO) {
+        return nasBackend_->stereoDepth->initialConfig->postProcessing.decimationFilter.decimationFactor;
+    }
+    return 1;
+}
+
+Node::Output& Depth::getRectifiedImage(CameraBoardSocket socket) {
+    const auto sockets = getNativeAlignmentSockets();
+    DAI_CHECK_V(std::find(sockets.begin(), sockets.end(), socket) != sockets.end(), "Depth: camera is not a supported native depth reference.");
+    DAI_CHECK_V(!getParentPipeline().isRunning(), "Depth: native depth reference cannot change while the pipeline is running.");
+    const bool left = socket == resolvedStereoPair_->left;
+    const auto reference =
+        left ? StereoDepthConfig::AlgorithmControl::DepthAlign::RECTIFIED_LEFT : StereoDepthConfig::AlgorithmControl::DepthAlign::RECTIFIED_RIGHT;
+    switch(resolved_.algorithm) {
+        case Algorithm::STEREO:
+            (*stereoBackend_)->initialConfig->algorithmControl.depthAlign = reference;
+            return left ? (*stereoBackend_)->rectifiedLeft : (*stereoBackend_)->rectifiedRight;
+        case Algorithm::NEURAL_ASSISTED_STEREO:
+            nasBackend_->stereoDepth->initialConfig->algorithmControl.depthAlign = reference;
+            return left ? nasBackend_->rectification->output1 : nasBackend_->rectification->output2;
+        case Algorithm::NEURAL:
+            return (*neuralBackend_)->rectification->output1;
+        case Algorithm::AUTO:
+        case Algorithm::GPU_STEREO:
+        case Algorithm::TOF:
+        case Algorithm::TOF_STEREO_FUSION:
+            throw std::runtime_error("Depth: backend has no native rectified image.");
+    }
+    throw std::runtime_error("Depth: invalid backend.");
+}
+
 // --- Internal ---
 
 void Depth::requireNotBuilt(const char* method) const {
@@ -647,7 +701,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 
     // ToF uses its own sensor, regardless of any requested stereo pair.
-    if(algorithmOverride_ == Algorithm::TOF) {
+    if(algorithmOverride_ == Algorithm::TOF || (algorithmOverride_ == Algorithm::AUTO && supported == std::vector<Algorithm>{Algorithm::TOF})) {
         resolved_ = {Algorithm::TOF, std::monostate{}};
         return;
     }
