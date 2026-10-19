@@ -220,6 +220,50 @@ TEST_CASE("Test ImageAlign synthetic depth to image host device parity") {
     REQUIRE(std::equal(hostData.begin(), hostData.begin() + imageBytes, deviceData.begin()));
 }
 
+void runImageAlignRotatedCoverageTest(bool runOnHost) {
+    const std::array<std::array<float, 3>, 3> depthK = {{{64.0f, 0.0f, 32.0f}, {0.0f, 64.0f, 24.0f}, {0.0f, 0.0f, 1.0f}}};
+    auto imageK = depthK;
+    imageK[0][2] = 64.0f;
+    const std::vector<std::vector<float>> identity = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const dai::Extrinsics imageExtrinsics(identity, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+    const dai::ImgTransformation imageTransformation(128, 48, imageK, dai::CameraModel::Perspective, {}, imageExtrinsics);
+    for(const float sign : {-1.0f, 1.0f}) {
+        CAPTURE(sign);
+        const float angle = sign * 20.0f * 3.14159265f / 180.0f;
+        const std::vector<std::vector<float>> rotation = {
+            {std::cos(angle), 0.0f, std::sin(angle)}, {0.0f, 1.0f, 0.0f}, {-std::sin(angle), 0.0f, std::cos(angle)}};
+        const dai::Extrinsics depthExtrinsics(rotation, {sign * 70.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::ImgTransformation depthTransformation(64, 48, depthK, dai::CameraModel::Perspective, {}, depthExtrinsics);
+        const auto aligned = alignSyntheticDepth(runOnHost, depthTransformation, imageTransformation);
+
+        // Project a source point near the outer edge into the target independently of the rectification maps.
+        const auto r = depthTransformation.getRotationMatrixTo(imageTransformation);
+        const auto t = depthTransformation.getTranslationVectorTo(imageTransformation, false, dai::LengthUnit::MILLIMETER);
+        const float sourceX = sign > 0 ? 56.0f : 8.0f;
+        const float z = 1000.0f + 7.0f * sourceX + 11.0f * 24.0f;
+        const float x = (sourceX - 32.0f) * z / 64.0f;
+        const float targetX = r[0][0] * x + r[0][2] * z + t[0];
+        const float targetZ = r[2][0] * x + r[2][2] * z + t[2];
+        const int u = static_cast<int>(std::lround(64.0f * targetX / targetZ + 64.0f));
+        REQUIRE(u >= 2);
+        REQUIRE(u < 126);
+        const auto data = aligned->getData();
+        for(int dx = -1; dx <= 1; ++dx) {
+            const size_t offset = 2 * (24 * 128 + u + dx);
+            const uint16_t depth = data[offset] | (static_cast<uint16_t>(data[offset + 1]) << 8);
+            REQUIRE(depth > 1000);
+        }
+    }
+}
+
+TEST_CASE("Test ImageAlign preserves rotated depth coverage on host") {
+    runImageAlignRotatedCoverageTest(true);
+}
+
+TEST_CASE("Test ImageAlign preserves rotated depth coverage on device") {
+    runImageAlignRotatedCoverageTest(false);
+}
+
 // Feeds synthetic frames with hand-made ImgTransformations through ImageAlign and checks that a transformation change on
 // either input is picked up at runtime: the aligned output has to follow the alignTo transformation (including its size)
 // and the pixels have to change. Returning to the original transformations must reproduce the original output exactly.
