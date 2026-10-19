@@ -533,24 +533,31 @@ void Depth::requireNotBuilt(const char* method) const {
     DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first depth()/confidence() access).", method);
 }
 
-std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device, const std::vector<DeviceModelZoo>& supportedModels) const {
-    std::vector<Algorithm> supported = {Algorithm::STEREO};
+std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) {
+    DAI_CHECK_V(device != nullptr, "Depth::getSupportedAlgorithms requires a device.");
+    std::vector<Algorithm> supported;
+    const bool hasStereoPair = !device->getStereoPairs().empty();
+    const bool hasTof = cameraFeaturesIncludeTof(device->getConnectedCameraFeatures());
+    if(hasStereoPair) {
+        supported.push_back(Algorithm::STEREO);
+    }
 
     const bool isRvc4 = device->getPlatform() == Platform::RVC4;
-    if(isRvc4 && device->isNeuralDepthSupported()) {
+    if(hasStereoPair && isRvc4 && device->isNeuralDepthSupported()) {
         // NEURAL is only usable when the device actually has a model-zoo depth model available.
+        const auto supportedModels = device->getSupportedDeviceModels();
         if(!supportedModels.empty()) {
             supported.push_back(Algorithm::NEURAL);
         }
         supported.push_back(Algorithm::NEURAL_ASSISTED_STEREO);
     }
-    if(isRvc4 && device->isGpuStereoSupported() && !device->getStereoPairs().empty()) {
+    if(hasStereoPair && isRvc4 && device->isGpuStereoSupported()) {
         supported.push_back(Algorithm::GPU_STEREO);
     }
-    if(cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
+    if(hasTof) {
         supported.push_back(Algorithm::TOF);
     }
-    if(isRvc4 && !device->getStereoPairs().empty() && cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
+    if(isRvc4 && hasStereoPair && hasTof) {
         supported.push_back(Algorithm::TOF_STEREO_FUSION);
     }
 
@@ -608,7 +615,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     // getSupportedDeviceModels() is an RVC4-only RPC; on other platforms there is no model catalog.
     const auto supportedModels = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
-    const auto supported = getSupportedAlgorithms(device, supportedModels);
+    const auto supported = getSupportedAlgorithms(device);
 
     if(configOverride_) {
         validateExplicitConfig(
