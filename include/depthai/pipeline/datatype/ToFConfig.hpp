@@ -95,27 +95,27 @@ class ToFConfig : public Buffer {
          */
         bool enableBurstMode = false;
 
-        DEPTHAI_SERIALIZE(S5K33D,
-                          enablePhaseShuffleTemporalFilter,
-                          enableBurstMode,
-                          phaseUnwrappingLevel,
-                          phaseUnwrapErrorThreshold);
+        DEPTHAI_SERIALIZE(S5K33D, enablePhaseShuffleTemporalFilter, enableBurstMode, phaseUnwrappingLevel, phaseUnwrapErrorThreshold);
     };
 
     /** S5K63D uses the same processing controls as S5K33D. */
     using S5K63D = S5K33D;
 
-    /** Deprecated: use s5k33d.phaseUnwrappingLevel (or s5k63d). Unset by default; when set, overrides the nested value with a warning. */
-    std::optional<int> phaseUnwrappingLevel = std::nullopt;
+    /** Deprecated: use s5k33d.phaseUnwrappingLevel (or s5k63d). Legacy reads retain their original type and default. Changes are synchronized when preparing
+     * the config. */
+    int phaseUnwrappingLevel = 4;
 
-    /** Deprecated: use s5k33d.phaseUnwrapErrorThreshold (or s5k63d). Unset by default; when set, overrides the nested value with a warning. */
-    std::optional<uint16_t> phaseUnwrapErrorThreshold = std::nullopt;
+    /** Deprecated: use s5k33d.phaseUnwrapErrorThreshold (or s5k63d). Legacy reads retain their original type and default. Changes are synchronized when
+     * preparing the config. */
+    uint16_t phaseUnwrapErrorThreshold = 100;
 
-    /** Deprecated: use s5k33d.enablePhaseShuffleTemporalFilter (or s5k63d). Unset by default; when set, overrides the nested value with a warning. */
-    std::optional<bool> enablePhaseShuffleTemporalFilter = std::nullopt;
+    /** Deprecated: use s5k33d.enablePhaseShuffleTemporalFilter (or s5k63d). Legacy reads retain their original type and default. Changes are synchronized when
+     * preparing the config. */
+    bool enablePhaseShuffleTemporalFilter = true;
 
-    /** Deprecated: use s5k33d.enableBurstMode (or s5k63d). Unset by default; when set, overrides the nested value with a warning. */
-    std::optional<bool> enableBurstMode = std::nullopt;
+    /** Deprecated: use s5k33d.enableBurstMode (or s5k63d). Legacy reads retain their original type and default. Changes are synchronized when preparing the
+     * config. */
+    bool enableBurstMode = false;
 
     /** Deprecated: this debugging control was removed and is ignored. */
     std::optional<bool> enableFPPNCorrection = std::nullopt;
@@ -165,6 +165,8 @@ class ToFConfig : public Buffer {
         const auto rvc2Threshold = s5k33d.phaseUnwrapErrorThreshold;
         setProfilePreset(profile);
         s5k33d.phaseUnwrapErrorThreshold = rvc2Threshold;
+        phaseUnwrapErrorThreshold = rvc2Threshold;
+        synchronizedSamsungControls = s5k33d;
     }
     virtual ~ToFConfig();
 
@@ -173,7 +175,10 @@ class ToFConfig : public Buffer {
      */
     ToFConfig& setMedianFilter(filters::params::MedianFilter median);
 
-    /** @internal Apply legacy RVC2 fields and report deprecated or removed controls. */
+    /**
+     * @internal Synchronize legacy and nested RVC2 controls and report removed controls.
+     * Changes to legacy fields since the previous synchronization take precedence.
+     */
     void applyLegacyConfig();
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
@@ -190,19 +195,23 @@ class ToFConfig : public Buffer {
 
     DEPTHAI_SERIALIZE(ToFConfig,
                       profile,
-                      vd55h1,
-                      s5k33d,
                       median,
-                      enableDistortionCorrection,
-                      phaseUnwrappingLevel,
-                      phaseUnwrapErrorThreshold,
                       enablePhaseShuffleTemporalFilter,
                       enableBurstMode,
+                      enableDistortionCorrection,
                       enableFPPNCorrection,
                       enableOpticalCorrection,
                       enableTemperatureCorrection,
                       enableWiggleCorrection,
-                      enablePhaseUnwrapping);
+                      enablePhaseUnwrapping,
+                      phaseUnwrappingLevel,
+                      phaseUnwrapErrorThreshold,
+                      vd55h1,
+                      s5k33d);
+
+   private:
+    // Track the last synchronized values so unchanged legacy defaults cannot overwrite nested controls.
+    S5K33D synchronizedSamsungControls;
 };
 
 }  // namespace dai

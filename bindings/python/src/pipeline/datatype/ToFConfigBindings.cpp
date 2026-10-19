@@ -68,7 +68,11 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
             name,
             [member](const ToFConfig& self) { return self.*member; },
             [member, message](ToFConfig& self, Value value) {
-                if(value.has_value() && PyErr_WarnEx(PyExc_DeprecationWarning, message, 1) < 0) {
+                bool warn = true;
+                if constexpr(!std::is_arithmetic_v<Value>) {
+                    warn = value.has_value();
+                }
+                if(warn && PyErr_WarnEx(PyExc_DeprecationWarning, message, 1) < 0) {
                     throw py::error_already_set();
                 }
                 self.*member = value;

@@ -14,22 +14,27 @@ void ToFConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& dat
 }
 
 void ToFConfig::applyLegacyConfig() {
-    if(phaseUnwrappingLevel.has_value()) {
+    if(phaseUnwrappingLevel != synchronizedSamsungControls.phaseUnwrappingLevel) {
         spdlog::warn("ToFConfig.phaseUnwrappingLevel is deprecated; use ToFConfig.s5k33d.phaseUnwrappingLevel (or s5k63d) instead.");
-        s5k33d.phaseUnwrappingLevel = *phaseUnwrappingLevel;
+        s5k33d.phaseUnwrappingLevel = phaseUnwrappingLevel;
     }
-    if(phaseUnwrapErrorThreshold.has_value()) {
+    if(phaseUnwrapErrorThreshold != synchronizedSamsungControls.phaseUnwrapErrorThreshold) {
         spdlog::warn("ToFConfig.phaseUnwrapErrorThreshold is deprecated; use ToFConfig.s5k33d.phaseUnwrapErrorThreshold (or s5k63d) instead.");
-        s5k33d.phaseUnwrapErrorThreshold = *phaseUnwrapErrorThreshold;
+        s5k33d.phaseUnwrapErrorThreshold = phaseUnwrapErrorThreshold;
     }
-    if(enablePhaseShuffleTemporalFilter.has_value()) {
+    if(enablePhaseShuffleTemporalFilter != synchronizedSamsungControls.enablePhaseShuffleTemporalFilter) {
         spdlog::warn("ToFConfig.enablePhaseShuffleTemporalFilter is deprecated; use ToFConfig.s5k33d.enablePhaseShuffleTemporalFilter (or s5k63d) instead.");
-        s5k33d.enablePhaseShuffleTemporalFilter = *enablePhaseShuffleTemporalFilter;
+        s5k33d.enablePhaseShuffleTemporalFilter = enablePhaseShuffleTemporalFilter;
     }
-    if(enableBurstMode.has_value()) {
+    if(enableBurstMode != synchronizedSamsungControls.enableBurstMode) {
         spdlog::warn("ToFConfig.enableBurstMode is deprecated; use ToFConfig.s5k33d.enableBurstMode (or s5k63d) instead.");
-        s5k33d.enableBurstMode = *enableBurstMode;
+        s5k33d.enableBurstMode = enableBurstMode;
     }
+    phaseUnwrappingLevel = s5k33d.phaseUnwrappingLevel;
+    phaseUnwrapErrorThreshold = s5k33d.phaseUnwrapErrorThreshold;
+    enablePhaseShuffleTemporalFilter = s5k33d.enablePhaseShuffleTemporalFilter;
+    enableBurstMode = s5k33d.enableBurstMode;
+    synchronizedSamsungControls = s5k33d;
     if(enableFPPNCorrection.has_value()) {
         spdlog::warn("ToFConfig.enableFPPNCorrection is deprecated: this control was removed and its value is ignored.");
     }
@@ -68,6 +73,8 @@ void ToFConfig::setProfilePreset(Profile prof) {
             vd55h1 = {300.0f, true, 2.051f, true, 27, 0.8205f, true, 100.9f, 13.56f};
         } break;
     }
+    phaseUnwrapErrorThreshold = s5k33d.phaseUnwrapErrorThreshold;
+    synchronizedSamsungControls.phaseUnwrapErrorThreshold = phaseUnwrapErrorThreshold;
 }
 
 }  // namespace dai
