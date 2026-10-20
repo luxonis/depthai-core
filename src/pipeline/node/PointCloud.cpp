@@ -1219,7 +1219,7 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
     streams.reserve(count);
     for(const auto& stream : frames) streams.push_back(&getDepthStream(stream.name));
     auto bufferOf = [](DepthStream& stream) -> std::vector<PointT>& {
-        if constexpr(colored) {
+        if constexpr(std::is_same_v<PointT, Point3fRGBA>) {
             return stream.coloredPoints;
         } else {
             return stream.points;
@@ -1229,7 +1229,7 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
     // Each stream computes into its own scratch buffer so that the streams can be processed independently
     auto computeOne = [&](size_t i) {
         auto& stream = *streams[i];
-        if constexpr(colored) {
+        if constexpr(std::is_same_v<PointT, Point3fRGBA>) {
             computeColorized(getImpl(stream), *frames[i].depth, *frames[i].color, organized, stream.coloredPoints);
         } else {
             computeDepthOnly(getImpl(stream), *frames[i].depth, organized, stream.points);
