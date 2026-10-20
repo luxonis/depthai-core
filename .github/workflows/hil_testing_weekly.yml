@@ -150,7 +150,7 @@ jobs:
       - run_windows_tests
       - run_replay_tests
       - run_vanilla_mac_tests
-    if: github.ref_name == 'develop'
+    if: ${{ always() && github.ref_name == 'develop' }}
     runs-on: ['self-hosted', 'testbed-runner']
     steps:
       - uses: actions/checkout@v7
