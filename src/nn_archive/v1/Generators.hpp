@@ -10,6 +10,7 @@
 
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <stdexcept>
 
 #include "depthai/nn_archive/v1/Config.hpp"
 #include "depthai/nn_archive/v1/DataType.hpp"
@@ -125,6 +126,10 @@ inline void from_json(const json& j, PreprocessingBlock& x) {
     x.mean = get_stack_optional<std::vector<double>>(j, "mean");
     x.reverseChannels = get_stack_optional<bool>(j, "reverse_channels");
     x.scale = get_stack_optional<std::vector<double>>(j, "scale");
+    x.resizeMode = get_stack_optional<std::string>(j, "resize_mode");
+    if(x.resizeMode && *x.resizeMode != "CROP" && *x.resizeMode != "STRETCH" && *x.resizeMode != "LETTERBOX") {
+        throw std::runtime_error("Invalid preprocessing resize_mode: " + *x.resizeMode);
+    }
 }
 
 inline void to_json(json& j, const PreprocessingBlock& x) {
@@ -134,6 +139,7 @@ inline void to_json(json& j, const PreprocessingBlock& x) {
     j["mean"] = x.mean;
     j["reverse_channels"] = x.reverseChannels;
     j["scale"] = x.scale;
+    j["resize_mode"] = x.resizeMode;
 }
 
 inline void from_json(const json& j, Input& x) {

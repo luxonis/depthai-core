@@ -150,10 +150,10 @@ jobs:
       - run_windows_tests
       - run_replay_tests
       - run_vanilla_mac_tests
-    if: github.event_name != 'workflow_dispatch'
+    if: ${{ always() && github.ref_name == 'develop' }}
     runs-on: ['self-hosted', 'testbed-runner']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Send Slack test summary
         continue-on-error: true
         env:
