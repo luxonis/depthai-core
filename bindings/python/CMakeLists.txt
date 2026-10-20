@@ -476,7 +476,7 @@ if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
         endif()
     endif()
     # UBSan reports have no stack trace by default
-    if(ASAN_ENVIRONMENT_VARS)
+    if(SANITIZE_UNDEFINED)
         list(APPEND ASAN_ENVIRONMENT_VARS "UBSAN_OPTIONS=print_stacktrace=1")
     endif()
     message(STATUS "ASAN environment variables: ${ASAN_ENVIRONMENT_VARS}")
