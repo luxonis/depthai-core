@@ -124,6 +124,10 @@ void shiftDepthImg(const cv::Mat& input, cv::Mat& output, const std::array<int, 
         for(int j = shiftPositive ? width - 1 : 0; j >= 0 && j < width; j += shiftPositive ? -1 : 1) {
             const uint16_t depth = currentLine[j];
             if(depth == 0) continue;
+            if(depthLut[depth] == 0) {
+                alignedLine[j] = depth;
+                continue;
+            }
             const int u = j + depthLut[depth];
             for(const int x : {u, u + (shiftPositive ? 1 : -1)}) {
                 if(x >= 0 && x < width) alignedLine[x] = depth;
