@@ -33,7 +33,8 @@ inline cv::Rect rectifiedBounds(cv::Size sourceSize,
     cv::Rect bounds(0, 0, sourceSize.width, sourceSize.height);
     const auto includeBorder = [&](cv::Size size, const cv::Mat& intrinsics, const cv::Mat& distortion, const cv::Mat& rotation) {
         validateRectifiedSize(size.width, size.height);
-        std::vector<cv::Point2f> border, rectified;
+        std::vector<cv::Point2d> border, normalized;
+        std::vector<cv::Point2f> rectified;
         border.reserve(2 * (size.width + size.height + 2));
         for(int x = 0; x <= size.width; ++x) {
             border.emplace_back(x, 0);
@@ -43,12 +44,23 @@ inline cv::Rect rectifiedBounds(cv::Size sourceSize,
             border.emplace_back(0, y);
             border.emplace_back(size.width, y);
         }
-        cv::undistortPoints(border, rectified, intrinsics, distortion, rotation, sourceK, cv::TermCriteria(cv::TermCriteria::COUNT, 30, 0.01));
-        for(const auto& point : rectified) {
-            if(!std::isfinite(point.x) || !std::isfinite(point.y) || point.x <= -MAX_RECTIFIED_DIMENSION || point.x >= MAX_RECTIFIED_DIMENSION
-               || point.y <= -MAX_RECTIFIED_DIMENSION || point.y >= MAX_RECTIFIED_DIMENSION) {
+        cv::undistortPoints(border, normalized, intrinsics, distortion, cv::noArray(), cv::noArray(), cv::TermCriteria(cv::TermCriteria::COUNT, 30, 0.01));
+        cv::Matx33d rectification, projection;
+        rotation.convertTo(rectification, CV_64F);
+        sourceK.convertTo(projection, CV_64F);
+        rectified.reserve(normalized.size());
+        for(const auto& point : normalized) {
+            const cv::Vec3d ray = rectification * cv::Vec3d(point.x, point.y, 1.0);
+            if(!std::isfinite(ray[2]) || ray[2] <= 1e-6) {
                 throw std::runtime_error("Alignment: invalid rectified image bounds");
             }
+            const cv::Vec3d pixel = projection * ray;
+            const cv::Point2d projected(pixel[0] / pixel[2], pixel[1] / pixel[2]);
+            if(!std::isfinite(projected.x) || !std::isfinite(projected.y) || projected.x <= -MAX_RECTIFIED_DIMENSION || projected.x >= MAX_RECTIFIED_DIMENSION
+               || projected.y <= -MAX_RECTIFIED_DIMENSION || projected.y >= MAX_RECTIFIED_DIMENSION) {
+                throw std::runtime_error("Alignment: invalid rectified image bounds");
+            }
+            rectified.emplace_back(projected.x, projected.y);
         }
         bounds |= cv::boundingRect(rectified);
         validateRectifiedSize(bounds.width, bounds.height);

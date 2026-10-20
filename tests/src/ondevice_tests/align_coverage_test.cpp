@@ -114,3 +114,54 @@ TEST_CASE("Test alignment rejects unsafe rectified bounds") {
     REQUIRE_THROWS_AS(dai::detail::validateRectifiedSize(0, 48), std::runtime_error);
     REQUIRE_THROWS_AS(dai::detail::validateRectifiedSize(16385, 1), std::runtime_error);
 }
+
+TEST_CASE("Test alignment rejects rectified rays behind the camera") {
+    for(const int type : {CV_32F, CV_64F}) {
+        CAPTURE(type);
+        cv::Mat k = (cv::Mat_<double>(3, 3) << 64, 0, 32, 0, 64, 24, 0, 0, 1);
+        k.convertTo(k, type);
+        const cv::Mat identity = cv::Mat::eye(3, 3, type);
+        for(const double yaw : {120.0, 180.0}) {
+            CAPTURE(yaw);
+            const double angle = yaw * CV_PI / 180;
+            cv::Mat rotation = (cv::Mat_<double>(3, 3) << std::cos(angle), 0, std::sin(angle), 0, 1, 0, -std::sin(angle), 0, std::cos(angle));
+            rotation.convertTo(rotation, type);
+            REQUIRE_THROWS_AS(dai::detail::rectifiedBounds({64, 48}, k, {}, rotation, {64, 48}, k, identity), std::runtime_error);
+            REQUIRE_THROWS_AS(dai::detail::rectifiedBounds({64, 48}, k, {}, identity, {64, 48}, k, rotation), std::runtime_error);
+        }
+    }
+}
+
+TEST_CASE("Test alignment preserves bounds for forward rectified rays") {
+    const cv::Mat k = (cv::Mat_<double>(3, 3) << 64, 0, 32, 0, 64, 24, 0, 0, 1);
+    const cv::Mat identity = cv::Mat::eye(3, 3, CV_64F);
+    const cv::Mat distortion = (cv::Mat_<double>(1, 5) << -0.1, 0.01, 0.001, -0.002, 0);
+    std::vector<cv::Point2f> border;
+    for(int x = 0; x <= 64; ++x) {
+        border.emplace_back(x, 0);
+        border.emplace_back(x, 48);
+    }
+    for(int y = 0; y <= 48; ++y) {
+        border.emplace_back(0, y);
+        border.emplace_back(64, y);
+    }
+    for(const double yaw : {-20.0, 0.0, 20.0}) {
+        CAPTURE(yaw);
+        const double angle = yaw * CV_PI / 180;
+        const cv::Mat rotation = (cv::Mat_<double>(3, 3) << std::cos(angle), 0, std::sin(angle), 0, 1, 0, -std::sin(angle), 0, std::cos(angle));
+        std::vector<cv::Point2f> projected;
+        cv::undistortPoints(border, projected, k, distortion, rotation, k, cv::TermCriteria(cv::TermCriteria::COUNT, 30, 0.01));
+        const cv::Rect expected = cv::boundingRect(projected) | cv::Rect(0, 0, 65, 49);
+        REQUIRE(dai::detail::rectifiedBounds({64, 48}, k, distortion, rotation, {64, 48}, k, identity) == expected);
+    }
+}
+
+TEST_CASE("Test alignment rejects rectified rays too close to the horizon") {
+    const cv::Mat sourceK = (cv::Mat_<double>(3, 3) << 1e-6, 0, 32, 0, 1e-6, 24, 0, 0, 1);
+    const cv::Mat targetK = (cv::Mat_<double>(3, 3) << 1e9, 0, 32, 0, 1e9, 24, 0, 0, 1);
+    const cv::Mat identity = cv::Mat::eye(3, 3, CV_64F);
+    const double angle = std::acos(5e-7);
+    const cv::Mat rotation = (cv::Mat_<double>(3, 3) << std::cos(angle), 0, std::sin(angle), 0, 1, 0, -std::sin(angle), 0, std::cos(angle));
+    // The tiny projection focal length keeps pixel coordinates in range despite near-zero ray depth.
+    REQUIRE_THROWS_AS(dai::detail::rectifiedBounds({64, 48}, sourceK, {}, identity, {64, 48}, targetK, rotation), std::runtime_error);
+}
