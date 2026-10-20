@@ -794,9 +794,9 @@ dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
-# Pixel geometry regression: synthetic inputs, but the real RVC2 stereo/warp pipeline.
+# Pixel geometry regression: synthetic inputs through on-device stereo and alignment.
 dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
-dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all ci)
+dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
 
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)

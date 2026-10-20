@@ -5,11 +5,13 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
 namespace {
@@ -30,10 +32,12 @@ struct Square {
 // Asymmetric placement and different depths detect shifts, zoom, cropping and swaps.
 constexpr std::array<Square, 2> SQUARES = {{{256, 128, 128, 32}, {896, 448, 128, 16}}};
 
+/** Intrinsics for a scaled target, with an optional principal-point offset in target pixels. */
 Matrix intrinsics(float scale = 1.0f, float shiftX = 0.0f, float shiftY = 0.0f) {
     return {{{FOCAL * scale, 0, WIDTH * scale / 2 + shiftX}, {0, FOCAL * scale, HEIGHT * scale / 2 + shiftY}, {0, 0, 1}}};
 }
 
+/** Identity rectification and a 75 mm baseline, local to the pipeline (never EEPROM). */
 dai::CalibrationHandler calibration() {
     dai::CalibrationHandler result;
     const std::vector<std::vector<float>> identity = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
@@ -49,6 +53,7 @@ dai::CalibrationHandler calibration() {
     return result;
 }
 
+/** Deterministic textured planes rendered into left/right cameras with foreground occlusion. */
 std::array<std::vector<std::uint8_t>, 2> stereoImages() {
     std::array<std::vector<std::uint8_t>, 2> images;
     for(auto& image : images) image.resize(WIDTH * HEIGHT);
@@ -81,7 +86,9 @@ std::array<std::vector<std::uint8_t>, 2> stereoImages() {
     return images;
 }
 
-std::shared_ptr<dai::ImgFrame> frame(int width, int height, dai::CameraBoardSocket socket, const Matrix& k, const std::vector<std::uint8_t>& pixels) {
+/** Host input with explicit camera geometry and storage padding required by RVC4 stereo. */
+std::shared_ptr<dai::ImgFrame> frame(
+    int width, int height, dai::CameraBoardSocket socket, const Matrix& k, const std::vector<std::uint8_t>& pixels, bool padRows = false) {
     auto result = std::make_shared<dai::ImgFrame>();
     result->setType(dai::ImgFrame::Type::GRAY8);
     result->setWidth(width);
@@ -89,12 +96,21 @@ std::shared_ptr<dai::ImgFrame> frame(int width, int height, dai::CameraBoardSock
     result->setStride(width);
     result->setInstanceNum(static_cast<unsigned>(socket));
     result->setTransformation(dai::ImgTransformation(width, height, k));
-    result->setData(pixels);
+    if(padRows) {
+        auto data = pixels;
+        // RVC4 stereo reads complete 32-row blocks even when the logical image height
+        // is not a multiple of 32. Keep the dimensions/intrinsics at the logical size.
+        data.resize(width * ((height + 31) / 32 * 32), 0);
+        result->setData(std::move(data));
+    } else {
+        result->setData(pixels);
+    }
     result->setSequenceNum(1);
     result->setTimestamp(std::chrono::steady_clock::time_point(std::chrono::seconds(1)));
     return result;
 }
 
+/** Independent scene oracle: depth coverage, misplaced foreground and centroids. */
 void checkSquarePixels(const dai::ImgFrame& depth, bool right, float scale, int shiftX, int shiftY) {
     REQUIRE(depth.getType() == dai::ImgFrame::Type::RAW16);
     const auto& bytes = depth.getData();
@@ -140,12 +156,34 @@ void checkSquarePixels(const dai::ImgFrame& depth, bool right, float scale, int 
     }
 }
 
+/** Disable smoothing so pixel geometry is measured independently of post-processing. */
+void configureStereo(dai::node::StereoDepth& stereo, int decimation) {
+    stereo.setInputResolution(WIDTH, HEIGHT);
+    stereo.useHomographyRectification(true);
+    stereo.setLeftRightCheck(true);
+    stereo.setSubpixel(false);
+    stereo.setExtendedDisparity(false);
+    stereo.setDisparityToDepthUseSpecTranslation(false);
+    stereo.initialConfig->setConfidenceThreshold(245);
+    auto& post = stereo.initialConfig->postProcessing;
+    post.median = dai::StereoDepthConfig::MedianFilter::MEDIAN_OFF;
+    post.holeFilling.enable = false;
+    post.adaptiveMedianFilter.enable = false;
+    post.spatialFilter.enable = false;
+    post.temporalFilter.enable = false;
+    post.speckleFilter.enable = false;
+    post.decimationFilter.decimationFactor = decimation;
+    post.decimationFilter.decimationMode = dai::StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
+}
+
+/** Run the real device alignment path, sharing the same scene and pixel oracle on both platforms. */
 void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, bool shifted, bool socketOnly = false) {
     CAPTURE(decimation, right, explicitSize, fullSize, shifted, socketOnly);
     dai::Pipeline pipeline;
-    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC2) {
-        SKIP("StereoDepth inputAlignTo geometry is an RVC2 firmware test");
-    }
+    const auto platform = pipeline.getDefaultDevice()->getPlatform();
+    REQUIRE((platform == dai::Platform::RVC2 || platform == dai::Platform::RVC4));
+    const bool rvc4 = platform == dai::Platform::RVC4;
+    CAPTURE(platform);
     // Pipeline-local calibration only: never flash or modify the device's EEPROM.
     pipeline.setCalibrationData(calibration());
     const int divisor = fullSize ? 1 : decimation;
@@ -155,39 +193,36 @@ void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, 
     const auto socket = right ? dai::CameraBoardSocket::CAM_C : dai::CameraBoardSocket::CAM_B;
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    stereo->setInputResolution(WIDTH, HEIGHT);
-    stereo->useHomographyRectification(true);
-    stereo->setLeftRightCheck(true);
-    stereo->setSubpixel(false);
-    stereo->setExtendedDisparity(false);
-    stereo->setDisparityToDepthUseSpecTranslation(false);
-    stereo->initialConfig->setConfidenceThreshold(245);
-    auto& post = stereo->initialConfig->postProcessing;
-    post.median = dai::StereoDepthConfig::MedianFilter::MEDIAN_OFF;
-    post.holeFilling.enable = false;
-    post.adaptiveMedianFilter.enable = false;
-    post.spatialFilter.enable = false;
-    post.temporalFilter.enable = false;
-    post.speckleFilter.enable = false;
-    post.decimationFilter.decimationFactor = decimation;
-    post.decimationFilter.decimationMode = dai::StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
-    if(explicitSize) stereo->setOutputSize(width, height);
+    configureStereo(*stereo, decimation);
+    if(explicitSize && !rvc4) stereo->setOutputSize(width, height);
     auto leftQueue = stereo->left.createInputQueue();
     auto rightQueue = stereo->right.createInputQueue();
     std::shared_ptr<dai::InputQueue> alignQueue;
+    std::shared_ptr<dai::MessageQueue> output;
     if(socketOnly) {
         stereo->setDepthAlign(socket);
+        output = stereo->depth.createOutputQueue();
+    } else if(rvc4) {
+        // RVC4 aligns depth through ImageAlign. Align from the opposite stereo
+        // camera because ImageAlign rejects aligning a camera socket to itself.
+        using DepthAlign = dai::StereoDepthConfig::AlgorithmControl::DepthAlign;
+        stereo->setDepthAlign(right ? DepthAlign::RECTIFIED_LEFT : DepthAlign::RECTIFIED_RIGHT);
+        auto align = pipeline.create<dai::node::ImageAlign>();
+        stereo->depth.link(align->input);
+        alignQueue = align->inputAlignTo.createInputQueue();
+        if(explicitSize) align->setOutputSize(width, height);
+        output = align->outputAligned.createOutputQueue();
     } else {
         alignQueue = stereo->inputAlignTo.createInputQueue();
+        output = stereo->depth.createOutputQueue();
     }
-    auto output = stereo->depth.createOutputQueue();
     pipeline.start();
     const auto images = stereoImages();
     if(alignQueue) {
         alignQueue->send(frame(width, height, socket, intrinsics(scale, shiftX, shiftY), std::vector<std::uint8_t>(width * height)));
     }
-    leftQueue->send(frame(WIDTH, HEIGHT, dai::CameraBoardSocket::CAM_B, intrinsics(), images[0]));
-    rightQueue->send(frame(WIDTH, HEIGHT, dai::CameraBoardSocket::CAM_C, intrinsics(), images[1]));
+    leftQueue->send(frame(WIDTH, HEIGHT, dai::CameraBoardSocket::CAM_B, intrinsics(), images[0], rvc4));
+    rightQueue->send(frame(WIDTH, HEIGHT, dai::CameraBoardSocket::CAM_C, intrinsics(), images[1], rvc4));
     bool timedOut = false;
     auto depth = output->get<dai::ImgFrame>(std::chrono::seconds(15), timedOut);
     REQUIRE_FALSE(timedOut);
@@ -199,7 +234,7 @@ void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, 
 }
 }  // namespace
 
-TEST_CASE("RVC2 StereoDepth aligns synthetic depth squares to target pixels", "[stereo-alignment]") {
+TEST_CASE("StereoDepth aligns synthetic depth squares to target pixels", "[stereo-alignment]") {
     const auto decimation = GENERATE(1, 2, 4);
     const auto right = GENERATE(false, true);
     const auto explicitSize = GENERATE(false, true);
@@ -214,7 +249,7 @@ TEST_CASE("RVC2 StereoDepth aligns synthetic depth squares to target pixels", "[
     }
 }
 
-TEST_CASE("RVC2 StereoDepth socket alignment preserves synthetic depth squares", "[stereo-alignment]") {
+TEST_CASE("StereoDepth socket alignment preserves synthetic depth squares", "[stereo-alignment]") {
     const auto decimation = GENERATE(1, 2, 4);
     const auto right = GENERATE(false, true);
     runAlignment(decimation, right, true, false, false, true);
