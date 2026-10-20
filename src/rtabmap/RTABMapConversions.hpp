@@ -17,10 +17,9 @@ namespace dai {
 std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transformRTABMap);
 std::shared_ptr<Odometry> rtabmapToOdometry(rtabmap::Transform transformRTABMap, const Point3d& velocity);
 rtabmap::Transform getRTABMapTransform(const Transform& transform);
-// Build an RGB-D model from the current image geometry, relative to the camera
-// body whose pose is supplied on odom. referenceToBase maps the metadata's named
-// target camera into that body. Throws for missing or inconsistent metadata.
-rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image, const ImgFrame& depth, const rtabmap::Transform& referenceToBase);
+// Build an RGB-D model relative to the tracked frame described by odometry.
+// Both image and tracked frame extrinsics must name a compatible common reference.
+rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image, const ImgFrame& depth, const Extrinsics& trackedFrameExtrinsics);
 rtabmap::StereoCameraModel getRTABMapCameraModel(CameraBoardSocket cameraId,
                                                  int width,
                                                  int height,

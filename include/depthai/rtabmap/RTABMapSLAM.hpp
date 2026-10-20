@@ -165,14 +165,14 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * and extrinsics naming the same target camera/device. Missing or inconsistent
      * metadata raises an error. No additional image input or calibration lookup is used.
      *
-     * setLocalTransform must map the metadata's named target camera coordinates to
-     * the body coordinates whose pose is supplied on odom. The default optical-to-FLU
-     * transform is correct when that target is the original camera tracked by Basalt.
-     * Otherwise configure the target-to-body transform explicitly. Rectification rotation
-     * and translation come from frame metadata, with translation converted to meters.
-     * setAlphaScaling is ignored in this mode: the frames already define the projection.
+     * odom must supply Odometry messages with trackedFrameExtrinsics describing the
+     * tracked frame relative to the same calibration reference as the images. The
+     * camera-to-tracked-frame transform is derived automatically, in meters.
+     * Image processing waits for the first odometry metadata; missing metadata on
+     * an odometry message or changing the tracked frame during mapping raises an error.
+     * setLocalTransform and setAlphaScaling are ignored in this mode.
      * False by default, retaining the legacy calibration-based camera model.
-     * Call before starting the pipeline, as with setLocalTransform.
+     * Call before starting the pipeline.
      * @param use Whether to consume per-frame camera geometry.
      */
     void setUseFrameMetadata(bool use);

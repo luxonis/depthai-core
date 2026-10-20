@@ -1,3 +1,5 @@
+#include <pybind11/stl.h>
+
 #include <memory>
 
 #include "DatatypeBindings.hpp"
@@ -36,5 +38,6 @@ void bind_odometry(pybind11::module& m, void* pCallstack) {
              py::arg("velocity"),
              DOC(dai, Odometry, Odometry))
         .def("__repr__", &Odometry::str)
-        .def_readwrite("velocity", &Odometry::velocity);
+        .def_readwrite("velocity", &Odometry::velocity)
+        .def_readwrite("trackedFrameExtrinsics", &Odometry::trackedFrameExtrinsics, DOC(dai, Odometry, trackedFrameExtrinsics));
 }

@@ -1,6 +1,7 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 
 #include "../utility/PimplImpl.hpp"
+#include "BasaltVIOGeometry.hpp"
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
 #include "basalt/spline/se3_spline.h"
@@ -37,6 +38,7 @@ class BasaltVIO::Impl {
 
     std::vector<int64_t> vioTNSec;
     std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
+    std::optional<Extrinsics> trackedFrameExtrinsics = std::nullopt;
 };
 
 BasaltVIO::BasaltVIO() {}
@@ -85,6 +87,7 @@ void BasaltVIO::run() {
         const auto velocity = pimpl->localTransform->unit_quaternion() * data->vel_w_i;
         auto out =
             std::make_shared<Odometry>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w(), Point3d(velocity.x(), velocity.y(), velocity.z()));
+        out->trackedFrameExtrinsics = pimpl->trackedFrameExtrinsics;
         transform.send(out);
         std::lock_guard<std::mutex> lck(imgMtx);
         passthrough.send(leftImg);
@@ -202,6 +205,8 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     pimpl->calib->imu_update_rate = imuUpdateRate;
 
     auto calibHandler = pipeline.getDefaultDevice()->getCalibration();
+    if(frames.empty()) throw std::invalid_argument("BasaltVIO: at least one camera frame is required");
+    pimpl->trackedFrameExtrinsics = detail::getBasaltTrackedFrameExtrinsics(calibHandler, *frames.front(), pipeline.getDefaultDevice()->getDeviceId());
 
     for(const auto& frame : frames) {
         Eigen::Vector2i resolution;

@@ -1,6 +1,5 @@
 import time
 import depthai as dai
-import numpy as np
 from rerun_node import RerunNode
 
 # Create pipeline
@@ -20,15 +19,6 @@ with dai.Pipeline() as p:
             "Grid/3D": "true",
             "Rtabmap/SaveWMState": "true"}
     slam.setParams(params)
-    # Camera metadata is expressed relative to the lowest calibrated socket.
-    # Basalt tracks CAM_B in FLU coordinates: configure reference -> CAM_B -> FLU.
-    calibration = p.getDefaultDevice().getCalibration()
-    reference = calibration.getCameraWithLowestId()
-    reference_to_camera = np.array(
-        calibration.getCameraExtrinsics(reference, dai.CameraBoardSocket.CAM_B, False, dai.LengthUnit.METER)
-    )
-    optical_to_body = np.array([[0, 0, 1, 0], [-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
-    slam.setLocalTransform(dai.TransformData((optical_to_body @ reference_to_camera).tolist()))
     slam.setUseFrameMetadata(True)
 
     rerunViewer = p.create(RerunNode)

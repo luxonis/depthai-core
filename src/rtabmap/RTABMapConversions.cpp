@@ -38,7 +38,7 @@ void validateRectifiedFrame(const ImgFrame& frame) {
 }
 }  // namespace
 
-rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image, const ImgFrame& depth, const rtabmap::Transform& referenceToBase) {
+rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image, const ImgFrame& depth, const Extrinsics& trackedFrameExtrinsics) {
     validateRectifiedFrame(image);
     validateRectifiedFrame(depth);
     const auto k = image.transformation.getIntrinsicMatrix();
@@ -59,7 +59,7 @@ rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image, const Img
     }
     const auto imageExtrinsics = image.transformation.getExtrinsics();
     const auto depthExtrinsics = depth.transformation.getExtrinsics();
-    for(const auto& extrinsics : {imageExtrinsics, depthExtrinsics}) {
+    for(const auto& extrinsics : {imageExtrinsics, depthExtrinsics, trackedFrameExtrinsics}) {
         if(!isConvertibleLengthUnit(extrinsics.lengthUnit)) {
             throw std::invalid_argument("RTABMapSLAM: frame extrinsics require a known metric length unit.");
         }
@@ -73,17 +73,16 @@ rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image, const Img
     if(!imageExtrinsics.isEqualExtrinsics(depthExtrinsics, 1e-4f)) {
         throw std::invalid_argument("RTABMapSLAM: depth and rectified image must have the same optical frame.");
     }
-    // The image already carries its optical-frame-to-reference transform.
-    // The configured local transform maps that named reference into the odometry body.
+    // Resolve rectified optical -> common reference -> tracked frame using the
+    // metadata from the image and odometry message, including FLU/RDF conventions.
     Transform imageToReference;
-    const auto relative = imageExtrinsics.getTransformationMatrix(false, LengthUnit::METER);
+    const auto relative = imageExtrinsics.getExtrinsicsTransformationTo(trackedFrameExtrinsics, false, LengthUnit::METER);
     for(size_t row = 0; row < 4; ++row) {
         for(size_t col = 0; col < 4; ++col) {
             imageToReference.matrix[row][col] = relative[row][col];
         }
     }
-    return rtabmap::CameraModel(
-        k[0][0], k[1][1], k[0][2], k[1][2], referenceToBase * getRTABMapTransform(imageToReference), 0.0, cv::Size(image.getWidth(), image.getHeight()));
+    return rtabmap::CameraModel(k[0][0], k[1][1], k[0][2], k[1][2], getRTABMapTransform(imageToReference), 0.0, cv::Size(image.getWidth(), image.getHeight()));
 }
 
 std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transformRTABMap) {

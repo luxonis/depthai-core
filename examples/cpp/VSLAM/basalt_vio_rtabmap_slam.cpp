@@ -1,5 +1,4 @@
 #include "depthai/depthai.hpp"
-#include "depthai/utility/matrixOps.hpp"
 #include "rerun_node.hpp"
 
 int main() {
@@ -23,20 +22,6 @@ int main() {
     params.insert(std::make_pair<std::string, std::string>("Grid/3D", "true"));
     params.insert(std::make_pair<std::string, std::string>("Rtabmap/SaveWMState", "true"));
     slam->setParams(params);
-    // Camera metadata targets the lowest calibrated socket. Basalt tracks CAM_B
-    // in FLU coordinates: configure reference -> CAM_B -> FLU.
-    const auto calibration = pipeline.getDefaultDevice()->getCalibration();
-    const auto reference = calibration.getCameraWithLowestId();
-    const auto referenceToCamera = calibration.getCameraExtrinsics(reference, dai::CameraBoardSocket::CAM_B, false, dai::LengthUnit::METER);
-    const std::vector<std::vector<float>> opticalToBody{{0, 0, 1, 0}, {-1, 0, 0, 0}, {0, -1, 0, 0}, {0, 0, 0, 1}};
-    const auto referenceToBody = dai::matrix::matMul(opticalToBody, referenceToCamera);
-    dai::Transform local;
-    for(size_t row = 0; row < 4; ++row) {
-        for(size_t col = 0; col < 4; ++col) {
-            local.matrix[row][col] = referenceToBody[row][col];
-        }
-    }
-    slam->setLocalTransform(std::make_shared<dai::TransformData>(local));
     slam->setUseFrameMetadata(true);
     auto rerun = pipeline.create<RerunNode>();
 

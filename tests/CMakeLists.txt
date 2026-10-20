@@ -793,6 +793,12 @@ dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
 dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
 
 # Serialization test
+dai_add_test(odometry_frame_metadata_test src/onhost_tests/odometry_frame_metadata_test.cpp)
+dai_set_test_labels(odometry_frame_metadata_test onhost ci)
+
+dai_add_test(odometry_frame_metadata_device_test src/ondevice_tests/odometry_frame_metadata_device_test.cpp)
+dai_set_test_labels(odometry_frame_metadata_device_test ondevice rvc2_all rvc4 ci)
+
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 

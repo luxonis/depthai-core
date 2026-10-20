@@ -124,7 +124,11 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     Input imu{*this, {"inIMU", DEFAULT_GROUP, false, 0, {{DatatypeEnum::IMUData, true}}}};
 
     /**
-     * Output odometry data.
+     * Output odometry data. The pose tracks the first camera's physical origin
+     * with forward-left-up axes. Odometry.trackedFrameExtrinsics describes this
+     * tracked frame relative to the input's named calibration reference, allowing
+     * consumers to relate rectified camera geometry to the reported pose.
+     * setLocalTransform changes the world pose convention, not these extrinsics.
      */
     Output transform{*this, {"transform", DEFAULT_GROUP, {{DatatypeEnum::Odometry, true}}}};
     /**

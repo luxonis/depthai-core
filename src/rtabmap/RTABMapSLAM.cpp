@@ -1,5 +1,7 @@
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
 
+#include <mutex>
+
 #include "../utility/PimplImpl.hpp"
 #include "RTABMapConversions.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -118,6 +120,8 @@ class RTABMapSLAM::Impl {
     bool publishGroundCloud = true;
     bool publishGrid = true;
     bool useFrameMetadata = false;
+    std::mutex frameMetadataMutex;
+    std::optional<Extrinsics> trackedFrameExtrinsics = std::nullopt;
 };
 
 void RTABMapSLAM::buildInternal() {
@@ -210,7 +214,21 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
         const bool useFrameGeometry = pimplRtabmap->useFrameMetadata;
         rtabmap::CameraModel frameModel;
         if(useFrameGeometry) {
-            frameModel = getRTABMapFrameCameraModel(*imgFrame, *depthFrame, pimplRtabmap->localTransform);
+            std::optional<Extrinsics> trackedFrameExtrinsics;
+            {
+                std::lock_guard<std::mutex> lock(pimplRtabmap->frameMetadataMutex);
+                trackedFrameExtrinsics = pimplRtabmap->trackedFrameExtrinsics;
+            }
+            // Images may arrive before the estimator produces its first pose.
+            // Forward them for visualization, but do not initialize/process a map
+            // with guessed geometry while waiting for odometry frame metadata.
+            if(!trackedFrameExtrinsics) {
+                passthroughRect.send(imgFrame);
+                passthroughDepth.send(depthFrame);
+                if(useFeatures) passthroughFeatures.send(featuresFrame);
+                return;
+            }
+            frameModel = getRTABMapFrameCameraModel(*imgFrame, *depthFrame, *trackedFrameExtrinsics);
         }
         if(!initialized) {
             auto pipeline = getParentPipeline();
@@ -241,9 +259,27 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
 void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
     auto odomPose = std::dynamic_pointer_cast<dai::TransformData>(data);
+    if(!odomPose) throw std::invalid_argument("RTABMapSLAM: odom requires a pose message");
+    std::optional<Extrinsics> trackedFrameExtrinsics;
+    if(pimplRtabmap->useFrameMetadata) {
+        const auto odometry = std::dynamic_pointer_cast<dai::Odometry>(data);
+        if(!odometry || !odometry->trackedFrameExtrinsics) {
+            throw std::invalid_argument("RTABMapSLAM: metadata mode requires Odometry.trackedFrameExtrinsics");
+        }
+        trackedFrameExtrinsics = odometry->trackedFrameExtrinsics;
+    }
     // convert odom pose to rtabmap pose
     rtabmap::Transform p = getRTABMapTransform(odomPose->transform);
-    pimplRtabmap->currPose = p;
+    if(trackedFrameExtrinsics) {
+        std::lock_guard<std::mutex> lock(pimplRtabmap->frameMetadataMutex);
+        if(pimplRtabmap->trackedFrameExtrinsics && !pimplRtabmap->trackedFrameExtrinsics->isEqualExtrinsics(*trackedFrameExtrinsics, 1e-6f)) {
+            throw std::invalid_argument("RTABMapSLAM: tracked frame metadata changed during mapping; restart the pipeline");
+        }
+        pimplRtabmap->currPose = p;
+        pimplRtabmap->trackedFrameExtrinsics = trackedFrameExtrinsics;
+    } else {
+        pimplRtabmap->currPose = p;
+    }
 
     auto outTransform = rtabmapToTransformData(pimplRtabmap->odomCorr * pimplRtabmap->currPose);
     auto outCorrection = rtabmapToTransformData(pimplRtabmap->odomCorr);

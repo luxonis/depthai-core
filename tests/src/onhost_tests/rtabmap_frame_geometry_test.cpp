@@ -1,5 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include <cmath>
 #include <filesystem>
 #include <limits>
@@ -21,10 +22,19 @@ dai::ImgFrame frame(float cx = 683.89563f, int width = 640, int height = 400) {
     return image;
 }
 
+dai::Extrinsics trackedFrame(const rtabmap::Transform& referenceToBody = rtabmap::CameraModel::opticalRotation()) {
+    const auto inverse = referenceToBody.inverse();
+    std::vector<std::vector<float>> matrix(4, std::vector<float>(4, 0));
+    for(int row = 0; row < 3; ++row)
+        for(int col = 0; col < 4; ++col) matrix[row][col] = inverse.data()[row * 4 + col];
+    matrix[3][3] = 1;
+    return dai::Extrinsics(matrix, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::METER);
+}
+
 rtabmap::CameraModel model(const dai::ImgFrame& image,
                            const dai::ImgFrame& depth,
                            const rtabmap::Transform& referenceToBase = rtabmap::CameraModel::opticalRotation()) {
-    return dai::getRTABMapFrameCameraModel(image, depth, referenceToBase);
+    return dai::getRTABMapFrameCameraModel(image, depth, trackedFrame(referenceToBase));
 }
 }  // namespace
 
@@ -170,11 +180,6 @@ TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration 
                          {"Kp/DetectorStrategy", "6"}});
         auto rectQueue = slam->rect.createInputQueue();
         auto depthQueue = slam->depth.createInputQueue();
-        dai::Transform configured{};
-        configured.matrix[3][3] = 1;
-        for(int row = 0; row < 3; ++row)
-            for(int col = 0; col < 4; ++col) configured.matrix[row][col] = referenceToBody.data()[row * 4 + col];
-        slam->setLocalTransform(std::make_shared<dai::TransformData>(configured));
         slam->setUseFrameMetadata(true);
         REQUIRE_FALSE(slam->inputs.has("reference"));
         auto odomQueue = slam->odom.createInputQueue();
@@ -184,6 +189,17 @@ TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration 
         rng.fill(texture, cv::RNG::UNIFORM, 0, 255);
         const cv::Mat depthPixels(400, 640, CV_16UC1, cv::Scalar(2000));
         pipeline.start();
+        // Images before the first pose must remain visible without starting a map
+        // in an assumed frame. The odometry below is the only source of body geometry.
+        auto earlyImage = std::make_shared<dai::ImgFrame>(frame());
+        auto earlyDepth = std::make_shared<dai::ImgFrame>(*earlyImage);
+        earlyImage->setCvFrame(texture, dai::ImgFrame::Type::GRAY8);
+        earlyDepth->setCvFrame(depthPixels, dai::ImgFrame::Type::RAW16);
+        rectQueue->send(earlyImage);
+        depthQueue->send(earlyDepth);
+        bool earlyTimedOut = false;
+        REQUIRE(passthrough->get<dai::ImgFrame>(std::chrono::seconds(3), earlyTimedOut) != nullptr);
+        REQUIRE_FALSE(earlyTimedOut);
         for(int i = 0; i < 16; ++i) {
             const auto stamp = std::chrono::steady_clock::now();
             auto image = std::make_shared<dai::ImgFrame>(frame(i < 8 ? 683.89563f : 402.26504f));
@@ -200,7 +216,9 @@ TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration 
                 input->setTimestamp(stamp);
                 input->setTimestampDevice(stamp);
             }
-            odomQueue->send(std::make_shared<dai::TransformData>(0.01 * i, 0, 0, 0, 0, 0, 1));
+            auto odometry = std::make_shared<dai::Odometry>(0.01 * i, 0, 0, 0, 0, 0, 1, dai::Point3d{});
+            odometry->trackedFrameExtrinsics = trackedFrame(referenceToBody);
+            odomQueue->send(odometry);
             rectQueue->send(image);
             depthQueue->send(depth);
             bool timedOut = false;
@@ -237,4 +255,56 @@ TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration 
     REQUIRE(firstProjection);
     REQUIRE(secondProjection);
     db->closeConnection(false);
+}
+
+TEST_CASE("RTABMap rejects incompatible odometry frame metadata", "[rtabmap][geometry]") {
+    auto image = frame();
+    auto body = trackedFrame();
+    SECTION("different calibration reference") {
+        body.toCameraSocket = dai::CameraBoardSocket::CAM_C;
+    }
+    SECTION("different known device") {
+        auto ext = image.transformation.getExtrinsics();
+        ext.toDeviceId = "image-device";
+        image.transformation.setExtrinsics(ext);
+        body.toDeviceId = "other-device";
+    }
+    SECTION("unknown camera") {
+        body.toCameraSocket = dai::CameraBoardSocket::AUTO;
+    }
+    SECTION("invalid rotation") {
+        body.rotationMatrix.clear();
+    }
+    SECTION("nonfinite translation") {
+        body.translation.x = std::numeric_limits<float>::infinity();
+    }
+    SECTION("unknown units") {
+        body.lengthUnit = dai::LengthUnit::CUSTOM;
+    }
+    REQUIRE_THROWS(dai::getRTABMapFrameCameraModel(image, image, body));
+}
+
+TEST_CASE("RTABMap metadata mode requires stable odometry frame metadata", "[rtabmap][geometry]") {
+    dai::Pipeline pipeline(false);
+    auto slam = pipeline.create<dai::node::RTABMapSLAM>();
+    slam->setUseFrameMetadata(true);
+    SECTION("legacy pose lacks metadata") {
+        REQUIRE_THROWS_WITH(slam->odom.send(std::make_shared<dai::TransformData>()), "RTABMapSLAM: metadata mode requires Odometry.trackedFrameExtrinsics");
+    }
+    SECTION("odometry lacks metadata") {
+        REQUIRE_THROWS_WITH(slam->odom.send(std::make_shared<dai::Odometry>()), "RTABMapSLAM: metadata mode requires Odometry.trackedFrameExtrinsics");
+    }
+    SECTION("metadata changes after the first pose") {
+        auto first = std::make_shared<dai::Odometry>();
+        first->trackedFrameExtrinsics = trackedFrame();
+        REQUIRE_NOTHROW(slam->odom.send(first));
+        auto changed = std::make_shared<dai::Odometry>();
+        changed->trackedFrameExtrinsics = trackedFrame();
+        changed->trackedFrameExtrinsics->translation.x += 1;
+        REQUIRE_THROWS_WITH(slam->odom.send(changed), "RTABMapSLAM: tracked frame metadata changed during mapping; restart the pipeline");
+    }
+    SECTION("legacy mode continues to accept a plain pose") {
+        slam->setUseFrameMetadata(false);
+        REQUIRE_NOTHROW(slam->odom.send(std::make_shared<dai::TransformData>()));
+    }
 }
