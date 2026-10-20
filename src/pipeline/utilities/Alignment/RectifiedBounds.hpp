@@ -43,7 +43,7 @@ inline cv::Rect rectifiedBounds(cv::Size sourceSize,
             border.emplace_back(0, y);
             border.emplace_back(size.width, y);
         }
-        cv::undistortPoints(border, rectified, intrinsics, distortion, rotation, sourceK);
+        cv::undistortPoints(border, rectified, intrinsics, distortion, rotation, sourceK, cv::TermCriteria(cv::TermCriteria::COUNT, 30, 0.01));
         for(const auto& point : rectified) {
             if(!std::isfinite(point.x) || !std::isfinite(point.y) || point.x <= -MAX_RECTIFIED_DIMENSION || point.x >= MAX_RECTIFIED_DIMENSION
                || point.y <= -MAX_RECTIFIED_DIMENSION || point.y >= MAX_RECTIFIED_DIMENSION) {
