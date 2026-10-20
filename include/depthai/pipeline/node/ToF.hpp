@@ -40,7 +40,8 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     ToFBase(std::unique_ptr<Properties> props);
 
     /**
-     * Initial config to use for feature tracking.
+     * Initial ToF config. build() applies the selected profile preset, so set custom
+     * values after build() and before starting the pipeline.
      */
     std::shared_ptr<ToFConfig> initialConfig = std::make_shared<ToFConfig>();
 
