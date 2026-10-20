@@ -555,6 +555,14 @@ dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
 
+# Startup notification filtering
+if(DEPTHAI_ENABLE_CURL)
+    dai_add_test(startup_notifications_test src/onhost_tests/utility/startup_notifications_test.cpp)
+    target_link_libraries(startup_notifications_test PRIVATE httplib::httplib)
+    target_compile_definitions(startup_notifications_test PRIVATE DEPTHAI_ENABLE_CURL)
+    dai_set_test_labels(startup_notifications_test onhost ci)
+endif()
+
 # Telemetry fork safety test
 dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
 dai_set_test_labels(telemetry_fork_test onhost ci nowindows)
@@ -592,6 +600,10 @@ dai_set_test_labels(pointclouddata_test onhost ci)
 # PointCloud node tests
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
+
+# Model zoo settings tests (also valid without libcurl)
+dai_add_test(model_zoo_settings_test src/onhost_tests/model_zoo_settings_test.cpp)
+dai_set_test_labels(model_zoo_settings_test onhost ci)
 
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)

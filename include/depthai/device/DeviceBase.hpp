@@ -314,6 +314,13 @@ class DeviceBase {
     std::string getPlatformAsString() const;
 
     /**
+     * Get the transport protocol of the connected device.
+     *
+     * @return XLink protocol in use, such as X_LINK_USB_VSC or X_LINK_TCP_IP.
+     */
+    XLinkProtocol_t getProtocol() const;
+
+    /**
      * Gets Bootloader version if it was booted through Bootloader
      *
      * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
