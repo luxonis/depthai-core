@@ -57,7 +57,7 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack) {
         .def("setFreq", &RTABMapSLAM::setFreq, py::arg("f"), DOC(dai, node, RTABMapSLAM, setFreq))
         .def("setAlphaScaling", &RTABMapSLAM::setAlphaScaling, py::arg("alpha"), DOC(dai, node, RTABMapSLAM, setAlphaScaling))
         .def("setUseFeatures", &RTABMapSLAM::setUseFeatures, py::arg("useFeatures"), DOC(dai, node, RTABMapSLAM, setUseFeatures))
-        .def("getReferenceInput", &RTABMapSLAM::getReferenceInput, py::return_value_policy::reference_internal, DOC(dai, node, RTABMapSLAM, getReferenceInput))
+        .def("setUseFrameMetadata", &RTABMapSLAM::setUseFrameMetadata, py::arg("use"), DOC(dai, node, RTABMapSLAM, setUseFrameMetadata))
         .def("setLocalTransform", &RTABMapSLAM::setLocalTransform, py::arg("transform"), DOC(dai, node, RTABMapSLAM, setLocalTransform))
         .def("getLocalTransform", &RTABMapSLAM::getLocalTransform, DOC(dai, node, RTABMapSLAM, getLocalTransform))
         .def("triggerNewMap", &RTABMapSLAM::triggerNewMap, DOC(dai, node, RTABMapSLAM, triggerNewMap));

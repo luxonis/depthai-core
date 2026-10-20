@@ -20,6 +20,10 @@ class TransformData : public Buffer {
      */
     TransformData();
     TransformData(const Transform& transform);
+    /**
+     * Construct a transform from a 4x4 homogeneous matrix.
+     * @param data Homogeneous transform; translation uses the consuming node's coordinate units.
+     */
     TransformData(const std::array<std::array<double, 4>, 4>& data);
     TransformData(double x, double y, double z, double qx, double qy, double qz, double qw);
     TransformData(double x, double y, double z, double roll, double pitch, double yaw);

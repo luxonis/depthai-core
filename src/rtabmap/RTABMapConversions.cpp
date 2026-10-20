@@ -38,10 +38,7 @@ void validateRectifiedFrame(const ImgFrame& frame) {
 }
 }  // namespace
 
-rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image,
-                                                const ImgFrame& depth,
-                                                const ImgFrame& reference,
-                                                const rtabmap::Transform& referenceToBase) {
+rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image, const ImgFrame& depth, const rtabmap::Transform& referenceToBase) {
     validateRectifiedFrame(image);
     validateRectifiedFrame(depth);
     const auto k = image.transformation.getIntrinsicMatrix();
@@ -62,8 +59,7 @@ rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image,
     }
     const auto imageExtrinsics = image.transformation.getExtrinsics();
     const auto depthExtrinsics = depth.transformation.getExtrinsics();
-    const auto referenceExtrinsics = reference.transformation.getExtrinsics();
-    for(const auto& extrinsics : {imageExtrinsics, depthExtrinsics, referenceExtrinsics}) {
+    for(const auto& extrinsics : {imageExtrinsics, depthExtrinsics}) {
         if(!isConvertibleLengthUnit(extrinsics.lengthUnit)) {
             throw std::invalid_argument("RTABMapSLAM: frame extrinsics require a known metric length unit.");
         }
@@ -77,10 +73,10 @@ rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image,
     if(!imageExtrinsics.isEqualExtrinsics(depthExtrinsics, 1e-4f)) {
         throw std::invalid_argument("RTABMapSLAM: depth and rectified image must have the same optical frame.");
     }
-    // Extrinsics map each optical frame into a common reference. The relative
-    // transform maps rectified-image coordinates into the odometry camera.
+    // The image already carries its optical-frame-to-reference transform.
+    // The configured local transform maps that named reference into the odometry body.
     Transform imageToReference;
-    const auto relative = imageExtrinsics.getExtrinsicsTransformationTo(referenceExtrinsics, false, LengthUnit::METER);
+    const auto relative = imageExtrinsics.getTransformationMatrix(false, LengthUnit::METER);
     for(size_t row = 0; row < 4; ++row) {
         for(size_t col = 0; col < 4; ++col) {
             imageToReference.matrix[row][col] = relative[row][col];

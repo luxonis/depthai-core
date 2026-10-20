@@ -159,22 +159,23 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      */
     void setUseFeatures(bool use);
     /**
-     * Enable per-frame camera geometry and return its synchronized reference-image input.
+     * Use the existing rect/depth inputs' transformation metadata for camera geometry.
      *
-     * Link the original camera image whose pose is supplied on odom (for BasaltVIO,
-     * the image supplied on its left input). Only its transformation metadata is used.
      * rect and depth must be aligned rectified perspective images with valid intrinsics
-     * and extrinsics. Their extrinsics and the reference image's extrinsics must name
-     * the same target camera/device. Missing or inconsistent metadata raises an error.
+     * and extrinsics naming the same target camera/device. Missing or inconsistent
+     * metadata raises an error. No additional image input or calibration lookup is used.
      *
-     * setLocalTransform maps reference-camera optical coordinates to the odometry
-     * body's coordinates (optical-to-FLU by default). Rectification rotation and
-     * translation are composed from frame metadata, with translation converted to meters.
+     * setLocalTransform must map the metadata's named target camera coordinates to
+     * the body coordinates whose pose is supplied on odom. The default optical-to-FLU
+     * transform is correct when that target is the original camera tracked by Basalt.
+     * Otherwise configure the target-to-body transform explicitly. Rectification rotation
+     * and translation come from frame metadata, with translation converted to meters.
      * setAlphaScaling is ignored in this mode: the frames already define the projection.
-     * Without this input, the legacy calibration-based camera model is retained.
-     * Call before starting the pipeline.
+     * False by default, retaining the legacy calibration-based camera model.
+     * Call before starting the pipeline, as with setLocalTransform.
+     * @param use Whether to consume per-frame camera geometry.
      */
-    Input& getReferenceInput();
+    void setUseFrameMetadata(bool use);
     void setLocalTransform(std::shared_ptr<TransformData> transform);
     std::shared_ptr<TransformData> getLocalTransform();
     /**

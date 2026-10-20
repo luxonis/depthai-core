@@ -117,6 +117,7 @@ class RTABMapSLAM::Impl {
     bool publishObstacleCloud = true;
     bool publishGroundCloud = true;
     bool publishGrid = true;
+    bool useFrameMetadata = false;
 };
 
 void RTABMapSLAM::buildInternal() {
@@ -178,11 +179,8 @@ void RTABMapSLAM::setUseFeatures(bool use) {
     }
 }
 
-Node::Input& RTABMapSLAM::getReferenceInput() {
-    auto& reference = inputs["reference"];
-    reference.setBlocking(false);
-    reference.setMaxSize(1);
-    return reference;
+void RTABMapSLAM::setUseFrameMetadata(bool use) {
+    pimplRtabmap->useFrameMetadata = use;
 }
 
 void RTABMapSLAM::setPublishGrid(bool publish) {
@@ -209,12 +207,10 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
         featuresFrame = group->get<dai::TrackedFeatures>(featuresInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
-        const bool useFrameGeometry = inputs.has("reference");
+        const bool useFrameGeometry = pimplRtabmap->useFrameMetadata;
         rtabmap::CameraModel frameModel;
         if(useFrameGeometry) {
-            auto reference = group->get<dai::ImgFrame>("reference");
-            if(!reference) throw std::invalid_argument("RTABMapSLAM: reference image is required for frame geometry.");
-            frameModel = getRTABMapFrameCameraModel(*imgFrame, *depthFrame, *reference, pimplRtabmap->localTransform);
+            frameModel = getRTABMapFrameCameraModel(*imgFrame, *depthFrame, pimplRtabmap->localTransform);
         }
         if(!initialized) {
             auto pipeline = getParentPipeline();
@@ -309,7 +305,7 @@ void RTABMapSLAM::run() {
 }
 
 void RTABMapSLAM::initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
-    if(!inputs.has("reference")) {
+    if(!pimplRtabmap->useFrameMetadata) {
         auto calibHandler = pipeline.getDefaultDevice()->getCalibration();
         auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
         pimplRtabmap->model = getRTABMapCameraModel(cameraId, width, height, pimplRtabmap->localTransform, alphaScaling, calibHandler);

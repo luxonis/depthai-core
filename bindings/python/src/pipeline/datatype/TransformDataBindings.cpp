@@ -10,6 +10,7 @@
 // pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 
 void bind_transformdata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -31,6 +32,7 @@ void bind_transformdata(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     transformData.def(py::init<>())
+        .def(py::init<const std::array<std::array<double, 4>, 4>&>(), py::arg("matrix"), "Construct a transform from a 4x4 homogeneous matrix.")
         .def("__repr__", &TransformData::str)
         .def("getTranslation", &TransformData::getTranslation, DOC(dai, TransformData, getTranslation))
         .def("getRotationEuler", &TransformData::getRotationEuler, DOC(dai, TransformData, getRotationEuler))

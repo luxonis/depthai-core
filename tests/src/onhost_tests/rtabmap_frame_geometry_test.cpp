@@ -21,14 +21,16 @@ dai::ImgFrame frame(float cx = 683.89563f, int width = 640, int height = 400) {
     return image;
 }
 
-rtabmap::CameraModel model(const dai::ImgFrame& image, const dai::ImgFrame& depth, const dai::ImgFrame& reference) {
-    return dai::getRTABMapFrameCameraModel(image, depth, reference, rtabmap::CameraModel::opticalRotation());
+rtabmap::CameraModel model(const dai::ImgFrame& image,
+                           const dai::ImgFrame& depth,
+                           const rtabmap::Transform& referenceToBase = rtabmap::CameraModel::opticalRotation()) {
+    return dai::getRTABMapFrameCameraModel(image, depth, referenceToBase);
 }
 }  // namespace
 
 TEST_CASE("RTABMap consumes the current projection, including an off-image principal point", "[rtabmap][geometry]") {
     auto image = frame();
-    const auto camera = model(image, image, image);
+    const auto camera = model(image, image);
     REQUIRE(camera.fx() == Catch::Approx(283.2423));
     REQUIRE(camera.cx() == Catch::Approx(683.89563));
     REQUIRE(camera.cy() == Catch::Approx(172.2848));
@@ -38,23 +40,28 @@ TEST_CASE("RTABMap consumes the current projection, including an off-image princ
 
     image.transformation.addCrop(40, 20, 560, 360);
     image.setWidth(560).setHeight(360);
-    const auto cropped = model(image, image, frame());
+    const auto cropped = model(image, image);
     REQUIRE(cropped.cx() == Catch::Approx(camera.cx() - 40));
     REQUIRE(cropped.cy() == Catch::Approx(camera.cy() - 20));
     REQUIRE(cropped.imageWidth() == 560);
 }
 
 TEST_CASE("RTABMap composes rectification relative to the odometry camera in meters", "[rtabmap][geometry]") {
-    auto reference = frame();
     auto image = frame();
-    // The common reference is itself rotated and translated. It must cancel.
-    dai::Extrinsics referenceExtrinsics({{0, -1, 0}, {1, 0, 0}, {0, 0, 1}}, {100, 200, 300}, dai::CameraBoardSocket::CAM_A);
-    reference.transformation.setExtrinsics(referenceExtrinsics);
+    // Explicitly configure common-reference -> tracked camera -> FLU.
+    // The common reference is rotated 90 degrees and translated (1, 2, 3) meters.
+    const rtabmap::Transform commonToCamera(0, 1, 0, -2, -1, 0, 0, 1, 0, 0, 1, -3);
+    const auto referenceToBody = rtabmap::CameraModel::opticalRotation() * commonToCamera;
     const float c = std::cos(0.2f), s = std::sin(0.2f);
     // T_image_to_common = T_reference_to_common * T_image_to_reference.
     dai::Extrinsics imageExtrinsics({{0, -1, 0}, {c, 0, s}, {-s, 0, c}}, {1, 2.1f, 3}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::METER);
     image.transformation.setExtrinsics(imageExtrinsics);
-    const auto camera = model(image, image, reference);
+    auto depth = image;
+    auto depthExtrinsics = imageExtrinsics;
+    depthExtrinsics.lengthUnit = dai::LengthUnit::CENTIMETER;
+    depthExtrinsics.translation = {100, 210, 300};
+    depth.transformation.setExtrinsics(depthExtrinsics);
+    const auto camera = model(image, depth, referenceToBody);
     const rtabmap::Transform imageToReference(c, 0, s, 0.1f, 0, 1, 0, 0, -s, 0, c, 0);
     const auto expected = rtabmap::CameraModel::opticalRotation() * imageToReference;
     for(int i = 0; i < 12; ++i) {
@@ -67,21 +74,21 @@ TEST_CASE("RTABMap accepts consistently decimated depth", "[rtabmap][geometry]")
     auto depth = frame();
     depth.transformation.addScale(0.5f, 0.5f);
     depth.setWidth(320).setHeight(200);
-    REQUIRE(model(image, depth, image).imageWidth() == 640);
+    REQUIRE(model(image, depth).imageWidth() == 640);
 }
 
 TEST_CASE("RTABMap rejects mismatched image and depth geometry", "[rtabmap][geometry]") {
     auto image = frame();
     auto depth = frame(320.4844f);
-    REQUIRE_THROWS(model(image, depth, image));
+    REQUIRE_THROWS(model(image, depth));
     depth = frame();
     auto extrinsics = depth.transformation.getExtrinsics();
     extrinsics.translation.x = 1;
     depth.transformation.setExtrinsics(extrinsics);
-    REQUIRE_THROWS(model(image, depth, image));
+    REQUIRE_THROWS(model(image, depth));
     depth = frame();
     depth.setWidth(320);
-    REQUIRE_THROWS(model(image, depth, image));
+    REQUIRE_THROWS(model(image, depth));
 }
 
 TEST_CASE("RTABMap rejects unusable intrinsics and unrectified input", "[rtabmap][geometry]") {
@@ -103,13 +110,13 @@ TEST_CASE("RTABMap rejects unusable intrinsics and unrectified input", "[rtabmap
         image.transformation.setDistortionCoefficients({0.1f, 0, 0, 0});
     }
     image.transformation.setIntrinsicMatrix(k);
-    REQUIRE_THROWS(model(image, image, frame()));
+    REQUIRE_THROWS(model(image, image));
 }
 
 TEST_CASE("RTABMap requires known, compatible extrinsic reference frames", "[rtabmap][geometry]") {
     auto image = frame();
-    auto reference = frame();
-    auto extrinsics = reference.transformation.getExtrinsics();
+    auto depth = frame();
+    auto extrinsics = depth.transformation.getExtrinsics();
     SECTION("different target camera") {
         extrinsics.toCameraSocket = dai::CameraBoardSocket::CAM_C;
     }
@@ -131,8 +138,8 @@ TEST_CASE("RTABMap requires known, compatible extrinsic reference frames", "[rta
     SECTION("nonfinite translation") {
         extrinsics.translation.x = std::numeric_limits<float>::infinity();
     }
-    reference.transformation.setExtrinsics(extrinsics);
-    REQUIRE_THROWS(model(image, image, reference));
+    depth.transformation.setExtrinsics(extrinsics);
+    REQUIRE_THROWS(model(image, depth));
 }
 
 TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration device", "[rtabmap][geometry]") {
@@ -145,6 +152,7 @@ TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration 
             std::filesystem::remove(path, error);
         }
     } cleanup{path};
+    const rtabmap::Transform referenceToBody(0, 0, 1, 0.4f, -1, 0, 0, -0.2f, 0, -1, 0, 0.1f);
     {
         dai::Pipeline pipeline(false);
         auto slam = pipeline.create<dai::node::RTABMapSLAM>();
@@ -162,7 +170,13 @@ TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration 
                          {"Kp/DetectorStrategy", "6"}});
         auto rectQueue = slam->rect.createInputQueue();
         auto depthQueue = slam->depth.createInputQueue();
-        auto referenceQueue = slam->getReferenceInput().createInputQueue();
+        dai::Transform configured{};
+        configured.matrix[3][3] = 1;
+        for(int row = 0; row < 3; ++row)
+            for(int col = 0; col < 4; ++col) configured.matrix[row][col] = referenceToBody.data()[row * 4 + col];
+        slam->setLocalTransform(std::make_shared<dai::TransformData>(configured));
+        slam->setUseFrameMetadata(true);
+        REQUIRE_FALSE(slam->inputs.has("reference"));
         auto odomQueue = slam->odom.createInputQueue();
         auto passthrough = slam->passthroughRect.createOutputQueue();
         cv::Mat texture(400, 640, CV_8UC1);
@@ -179,17 +193,14 @@ TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration 
                     dai::Extrinsics({{c, 0, s}, {0, 1, 0}, {-s, 0, c}}, {0.1f, 0, 0}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::METER));
             }
             auto depth = std::make_shared<dai::ImgFrame>(*image);
-            auto reference = std::make_shared<dai::ImgFrame>(frame());
             image->setCvFrame(texture, dai::ImgFrame::Type::GRAY8);
             depth->setCvFrame(depthPixels, dai::ImgFrame::Type::RAW16);
-            reference->setCvFrame(texture, dai::ImgFrame::Type::GRAY8);
-            for(const auto& input : {image, depth, reference}) {
+            for(const auto& input : {image, depth}) {
                 input->setSequenceNum(i + 1);
                 input->setTimestamp(stamp);
                 input->setTimestampDevice(stamp);
             }
             odomQueue->send(std::make_shared<dai::TransformData>(0.01 * i, 0, 0, 0, 0, 0, 1));
-            referenceQueue->send(reference);
             rectQueue->send(image);
             depthQueue->send(depth);
             bool timedOut = false;
@@ -218,7 +229,7 @@ TEST_CASE("RTABMap host pipeline saves per-frame geometry without a calibration 
         const float angle = std::abs(camera.cx() - 402.26504) < 0.001 ? 0.2f : 0.0f;
         const float tx = angle == 0 ? 0 : 0.1f;
         const rtabmap::Transform relative(std::cos(angle), 0, std::sin(angle), tx, 0, 1, 0, 0, -std::sin(angle), 0, std::cos(angle), 0);
-        const auto expected = rtabmap::CameraModel::opticalRotation() * relative;
+        const auto expected = referenceToBody * relative;
         for(int i = 0; i < 12; ++i) {
             REQUIRE(camera.localTransform().data()[i] == Catch::Approx(expected.data()[i]).margin(1e-6));
         }

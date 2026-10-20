@@ -1,4 +1,5 @@
 #include "depthai/depthai.hpp"
+#include "depthai/utility/matrixOps.hpp"
 #include "rerun_node.hpp"
 
 int main() {
@@ -22,6 +23,21 @@ int main() {
     params.insert(std::make_pair<std::string, std::string>("Grid/3D", "true"));
     params.insert(std::make_pair<std::string, std::string>("Rtabmap/SaveWMState", "true"));
     slam->setParams(params);
+    // Camera metadata targets the lowest calibrated socket. Basalt tracks CAM_B
+    // in FLU coordinates: configure reference -> CAM_B -> FLU.
+    const auto calibration = pipeline.getDefaultDevice()->getCalibration();
+    const auto reference = calibration.getCameraWithLowestId();
+    const auto referenceToCamera = calibration.getCameraExtrinsics(reference, dai::CameraBoardSocket::CAM_B, false, dai::LengthUnit::METER);
+    const std::vector<std::vector<float>> opticalToBody{{0, 0, 1, 0}, {-1, 0, 0, 0}, {0, -1, 0, 0}, {0, 0, 0, 1}};
+    const auto referenceToBody = dai::matrix::matMul(opticalToBody, referenceToCamera);
+    dai::Transform local;
+    for(size_t row = 0; row < 4; ++row) {
+        for(size_t col = 0; col < 4; ++col) {
+            local.matrix[row][col] = referenceToBody[row][col];
+        }
+    }
+    slam->setLocalTransform(std::make_shared<dai::TransformData>(local));
+    slam->setUseFrameMetadata(true);
     auto rerun = pipeline.create<RerunNode>();
 
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
@@ -40,8 +56,6 @@ int main() {
     left->requestOutput(std::make_pair(width, height))->link(stereo->left);
     right->requestOutput(std::make_pair(width, height))->link(stereo->right);
     stereo->syncedLeft.link(odom->left);
-    // Use frame geometry relative to the original left camera tracked by Basalt.
-    stereo->syncedLeft.link(slam->getReferenceInput());
     stereo->syncedRight.link(odom->right);
     stereo->depth.link(slam->depth);
     stereo->rectifiedLeft.link(slam->rect);

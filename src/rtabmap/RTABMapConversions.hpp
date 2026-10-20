@@ -18,11 +18,9 @@ std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transfo
 std::shared_ptr<Odometry> rtabmapToOdometry(rtabmap::Transform transformRTABMap, const Point3d& velocity);
 rtabmap::Transform getRTABMapTransform(const Transform& transform);
 // Build an RGB-D model from the current image geometry, relative to the camera
-// whose pose is supplied on odom. Throws for missing or inconsistent metadata.
-rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image,
-                                                const ImgFrame& depth,
-                                                const ImgFrame& reference,
-                                                const rtabmap::Transform& referenceToBase);
+// body whose pose is supplied on odom. referenceToBase maps the metadata's named
+// target camera into that body. Throws for missing or inconsistent metadata.
+rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image, const ImgFrame& depth, const rtabmap::Transform& referenceToBase);
 rtabmap::StereoCameraModel getRTABMapCameraModel(CameraBoardSocket cameraId,
                                                  int width,
                                                  int height,
