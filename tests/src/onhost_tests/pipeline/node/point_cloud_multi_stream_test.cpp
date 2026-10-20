@@ -5,6 +5,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -708,7 +709,9 @@ TEST_CASE_METHOD(HostPointCloudFixture, "Concurrent streams match the single-str
 namespace {
 
 /// Test backend: reproduces the CPU math on the CPU, counts calls and records what it received
-struct FakeGpuBackend : dai::node::internal::PointCloudGpuBackend {
+static_assert(std::is_same_v<dai::node::PointCloudGpuBackend, dai::node::internal::PointCloudGpuBackend>);
+
+struct FakeGpuBackend : dai::node::PointCloudGpuBackend {
     std::atomic<int> denseCalls{0};
     std::atomic<int> coloredCalls{0};
     std::atomic<int> memorySeen{0};
@@ -777,7 +780,7 @@ struct FakeGpuPointCloud : dai::node::PointCloud {
     std::atomic<int> backendRequests{0};
 
    protected:
-    std::shared_ptr<dai::node::internal::PointCloudGpuBackend> createGpuBackend(uint32_t, std::shared_ptr<spdlog::logger>) override {
+    std::shared_ptr<dai::node::PointCloudGpuBackend> createGpuBackend(uint32_t, std::shared_ptr<spdlog::logger>) override {
         ++backendRequests;
         return backend;
     }
@@ -916,4 +919,102 @@ TEST_CASE("GPU request without a GPU falls back to the CPU", "[PointCloud][GPU]"
     REQUIRE(gpu->backendRequests == 1);
     requirePointsClose(pcd->getPoints(), 0, 1.f, 2.f, 3.f);
     pipeline.stop();
+}
+
+// ── Backend selection and legacy wrappers ──
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Backend preferences compute through the common point-cloud loop", "[PointCloud][Backend]") {
+    const auto backend = GENERATE(dai::Backend::CPU, dai::Backend::GPU, dai::Backend::AUTO);
+    pc->setBackend(backend).setNumThreads(3);
+    auto depth = pc->inputDepth.createInputQueue();
+    auto output = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+    depth->send(makeDepthFrame(makeExtrinsics(10.f, -20.f, 30.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now()));
+    const auto cloud = waitForOutput(*output);
+    requirePointsClose(cloud->getPoints(), 0, 10.f, -20.f, 30.f);
+    REQUIRE(pc->getBackend() == (backend == dai::Backend::AUTO ? dai::Backend::GPU : backend));  // a GPU fallback preserves the requested preference
+    REQUIRE(pc->getNumThreads() == 3);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Legacy compute methods preserve backend and threading behavior", "[PointCloud][Backend][Compat]") {
+    const bool multithreaded = GENERATE(false, true);
+    pc->setBackend(dai::Backend::AUTO).setNumThreads(4);
+    if(multithreaded)
+        pc->useCPUMT();
+    else
+        pc->useCPU();
+    REQUIRE(pc->getBackend() == dai::Backend::CPU);
+    REQUIRE(pc->getNumThreads() == (multithreaded ? 2 : 1));
+    auto depth = pc->inputDepth.createInputQueue();
+    auto output = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+    depth->send(makeDepthFrame(makeExtrinsics(1.f, 2.f, 3.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now()));
+    requirePointsClose(waitForOutput(*output)->getPoints(), 0, 1.f, 2.f, 3.f);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Unsupported backend and zero CPU thread count are handled explicitly", "[PointCloud][Backend]") {
+    REQUIRE_THROWS_AS(pc->setBackend(dai::Backend::HW), std::invalid_argument);
+    REQUIRE(pc->getBackend() == dai::Backend::CPU);
+    pc->setNumThreads(0);
+    REQUIRE(pc->getNumThreads() == 1);
+    pc->useGPU(0);
+    REQUIRE(pc->getBackend() == dai::Backend::GPU);
+}
+
+namespace {
+struct InspectablePointCloud : dai::node::PointCloud {
+    dai::PointCloudProperties& configuration() {
+        return getProperties();
+    }
+};
+}  // namespace
+
+TEST_CASE("Existing computeMethod properties drive the common loop and the new backend API", "[PointCloud][Backend][Compat]") {
+    using Method = dai::PointCloudProperties::ComputeMethod;
+    const auto method = GENERATE(Method::CPU, Method::CPU_MT, Method::GPU);
+    dai::Pipeline pipeline(false);
+    auto pc = createHostPointCloud<InspectablePointCloud>(pipeline);
+    auto& props = pc->configuration();
+    props.computeMethod = method;
+    props.numThreads = 3;
+    REQUIRE(pc->getBackend() == (method == Method::GPU ? dai::Backend::GPU : dai::Backend::CPU));
+    REQUIRE(pc->getNumThreads() == (method == Method::CPU ? 1 : 3));
+    auto depth = pc->inputDepth.createInputQueue();
+    auto output = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+    depth->send(makeDepthFrame(makeExtrinsics(10.f, -20.f, 30.f, dai::CameraBoardSocket::CAM_A, "dev0"), std::chrono::steady_clock::now()));
+    bool timedOut = false;
+    const auto cloud = output->get<dai::PointCloudData>(OUTPUT_TIMEOUT, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(cloud != nullptr);
+    requirePointsClose(cloud->getPoints(), 0, 10.f, -20.f, 30.f);
+    pipeline.stop();
+}
+
+TEST_CASE("Backend setters update existing serialized properties without a second selector", "[PointCloud][Backend][Compat]") {
+    using Method = dai::PointCloudProperties::ComputeMethod;
+    dai::Pipeline pipeline(false);
+    auto pc = createHostPointCloud<InspectablePointCloud>(pipeline);
+    auto& props = pc->configuration();
+    REQUIRE(props.computeMethod == Method::CPU);
+    REQUIRE(props.numThreads == 2);  // existing properties default; CPU itself remains single-threaded
+    REQUIRE(pc->getNumThreads() == 1);
+    pc->setNumThreads(4).setBackend(dai::Backend::GPU);
+    REQUIRE(props.computeMethod == Method::GPU);
+    pc->setBackend(dai::Backend::CPU);
+    REQUIRE(props.computeMethod == Method::CPU_MT);
+    REQUIRE(props.numThreads == 4);
+    pc->setNumThreads(1);
+    REQUIRE(props.computeMethod == Method::CPU);
+    pc->setBackend(dai::Backend::AUTO);
+    REQUIRE(props.computeMethod == Method::GPU);
+    REQUIRE(pc->getBackend() == dai::Backend::GPU);
+    pc->useCPU();
+    REQUIRE(props.computeMethod == Method::CPU);
+    pc->useCPUMT();
+    REQUIRE(props.computeMethod == Method::CPU_MT);
+    REQUIRE(props.numThreads == 2);
+    pc->useGPU(2);
+    REQUIRE(props.computeMethod == Method::GPU);
+    REQUIRE(props.gpuDevice == 2);
 }

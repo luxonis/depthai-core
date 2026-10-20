@@ -11,7 +11,6 @@
 
 namespace dai {
 namespace node {
-namespace internal {
 
 /**
  * @internal
@@ -19,6 +18,7 @@ namespace internal {
  * OpenCL on RVC4 devices. A platform node class provides it by overriding PointCloud::createGpuBackend;
  * PointCloud::useGPU then computes through it. Without a backend the built-in Kompute path is used when
  * compiled in, otherwise the node falls back to the CPU.
+ * The original dai::node::PointCloudGpuBackend type is retained for source and ABI compatibility.
  * This is an SDK/firmware implementation interface, not a user extension API.
  * Applications select GPU computation with PointCloud::useGPU().
  */
@@ -60,6 +60,9 @@ class PointCloudGpuBackend {
                                                    const std::shared_ptr<Memory>& colorMemory) = 0;
 };
 
+namespace internal {
+// Keep the internal spelling introduced after the original public type.
+using PointCloudGpuBackend = ::dai::node::PointCloudGpuBackend;
 }  // namespace internal
 }  // namespace node
 }  // namespace dai

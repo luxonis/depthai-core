@@ -700,6 +700,48 @@ bool PointCloud::runOnHost() const {
     return runOnHostVar;
 }
 
+// Backend selection adapts to the existing properties, preserving the SDK/firmware wire contract.
+PointCloud& PointCloud::setBackend(Backend backend) {
+    switch(backend) {
+        case Backend::CPU:
+            if(properties.computeMethod == Properties::ComputeMethod::GPU) {
+                properties.computeMethod = Properties::ComputeMethod::CPU;
+                setNumThreads(properties.numThreads);
+            }
+            return *this;
+        case Backend::GPU:
+        case Backend::AUTO:
+            useGPU(properties.gpuDevice);
+            return *this;
+        case Backend::HW:
+            throw std::invalid_argument("PointCloud does not support the HW backend");
+    }
+    throw std::invalid_argument("Unknown PointCloud backend");
+}
+
+PointCloud::Backend PointCloud::getBackend() const {
+    switch(properties.computeMethod) {
+        case Properties::ComputeMethod::CPU:
+        case Properties::ComputeMethod::CPU_MT:
+            return Backend::CPU;
+        case Properties::ComputeMethod::GPU:
+            return Backend::GPU;
+    }
+    throw std::invalid_argument("Unknown PointCloud compute method");
+}
+
+PointCloud& PointCloud::setNumThreads(uint32_t numThreads) {
+    properties.numThreads = std::max(1u, numThreads);
+    if(getBackend() == Backend::CPU) {
+        properties.computeMethod = properties.numThreads > 1 ? Properties::ComputeMethod::CPU_MT : Properties::ComputeMethod::CPU;
+    }
+    return *this;
+}
+
+uint32_t PointCloud::getNumThreads() const {
+    return properties.computeMethod == Properties::ComputeMethod::CPU ? 1 : std::max(1u, properties.numThreads);
+}
+
 // The compute method is stored in the properties so that it reaches a node running on the device; it is applied to
 // the Impls when the node starts (applyComputeSettings), where a missing GPU can be handled with a CPU fallback.
 void PointCloud::useCPU() {

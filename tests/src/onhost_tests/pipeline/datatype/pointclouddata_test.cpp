@@ -3,15 +3,28 @@
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
+#include "depthai/properties/ImageManipProperties.hpp"
 #include "depthai/properties/PointCloudProperties.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace {
+
+// Frozen pre-refactor schema: catches both wire-format and default-value regressions.
+struct LegacyPointCloudProperties {
+    enum class ComputeMethod : std::int32_t { CPU = 0, CPU_MT = 1, GPU = 2 };
+    dai::PointCloudConfig initialConfig;
+    int numFramesPool = 4;
+    ComputeMethod computeMethod = ComputeMethod::CPU;
+    std::uint32_t numThreads = 2;
+    std::uint32_t gpuDevice = 0;
+    DEPTHAI_SERIALIZE(LegacyPointCloudProperties, initialConfig, numFramesPool, computeMethod, numThreads, gpuDevice);
+};
 
 /// Build a simple grid of Point3f for PointCloudData tests.
 std::vector<dai::Point3f> makePointGrid(unsigned int w, unsigned int h, float z) {
@@ -275,9 +288,14 @@ TEST_CASE("PointCloudConfig serialization roundtrip", "[PointCloudConfig][Serial
 TEST_CASE("PointCloudProperties defaults and serialization", "[PointCloudProperties]") {
     dai::PointCloudProperties props;
     REQUIRE(props.numFramesPool == 4);
+    REQUIRE(props.computeMethod == dai::PointCloudProperties::ComputeMethod::CPU);
+    REQUIRE(props.numThreads == 2);
     REQUIRE_FALSE(props.initialConfig.getOrganized());  // default organized=false
 
     props.numFramesPool = 16;
+    props.computeMethod = dai::PointCloudProperties::ComputeMethod::GPU;
+    props.numThreads = 3;
+    props.gpuDevice = 2;
     props.initialConfig.setOrganized(true);
     props.initialConfig.setLengthUnit(dai::LengthUnit::METER);
     props.initialConfig.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A, false);
@@ -288,6 +306,9 @@ TEST_CASE("PointCloudProperties defaults and serialization", "[PointCloudPropert
     dai::PointCloudProperties props2;
     dai::utility::deserialize(ser, props2);
     REQUIRE(props2.numFramesPool == 16);
+    REQUIRE(props2.computeMethod == dai::PointCloudProperties::ComputeMethod::GPU);
+    REQUIRE(props2.numThreads == 3);
+    REQUIRE(props2.gpuDevice == 2);
     REQUIRE(props2.initialConfig.getOrganized());
     REQUIRE(props2.initialConfig.getLengthUnit() == dai::LengthUnit::METER);
     REQUIRE(props2.initialConfig.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET);
@@ -314,4 +335,48 @@ TEST_CASE("Point3f and Point3fRGBA sizes", "[Point3f]") {
 
     dai::Point3fRGBA pc(1.f, 2.f, 3.f, 10, 20, 30, 200);
     REQUIRE(pc.a == 200);
+}
+
+TEST_CASE("Shared backend preserves ImageManip enum values and serialization", "[PointCloudProperties][Backend]") {
+    static_assert(std::is_same_v<dai::ImageManipProperties::Backend, dai::Backend>);
+    const auto backend = GENERATE(dai::Backend::CPU, dai::Backend::HW, dai::Backend::GPU, dai::Backend::AUTO);
+    REQUIRE(static_cast<uint8_t>(dai::Backend::CPU) == 0);
+    REQUIRE(static_cast<uint8_t>(dai::Backend::HW) == 1);
+    REQUIRE(static_cast<uint8_t>(dai::Backend::GPU) == 2);
+    REQUIRE(static_cast<uint8_t>(dai::Backend::AUTO) == 3);
+    dai::ImageManipProperties props;
+    props.backend = backend;
+    dai::ImageManipProperties restored;
+    dai::utility::deserialize(dai::utility::serialize(props), restored);
+    REQUIRE(restored.backend == backend);
+}
+
+TEST_CASE("PointCloudProperties preserves the previous wire contract", "[PointCloudProperties][Compat][Serialization]") {
+    const auto encoding = GENERATE(dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK);
+    const auto method = GENERATE(
+        LegacyPointCloudProperties::ComputeMethod::CPU, LegacyPointCloudProperties::ComputeMethod::CPU_MT, LegacyPointCloudProperties::ComputeMethod::GPU);
+    LegacyPointCloudProperties legacy;
+    dai::PointCloudProperties current;
+    REQUIRE(dai::utility::serialize(legacy, encoding) == dai::utility::serialize(current, encoding));
+    legacy.computeMethod = method;
+    legacy.numThreads = 5;
+    legacy.gpuDevice = 2;
+    legacy.numFramesPool = 9;
+    legacy.initialConfig.setOrganized(true);
+    const auto before = dai::utility::serialize(legacy, encoding);
+    REQUIRE(dai::utility::deserialize(before, current, encoding));
+    REQUIRE(static_cast<std::int32_t>(current.computeMethod) == static_cast<std::int32_t>(method));
+    REQUIRE(current.numThreads == 5);
+    REQUIRE(current.gpuDevice == 2);
+    REQUIRE(current.numFramesPool == 9);
+    REQUIRE(current.initialConfig.getOrganized());
+    REQUIRE(dai::utility::serialize(current, encoding) == before);
+    // A previous reader must also accept data written by the new SDK.
+    current.numThreads = 7;
+    const auto after = dai::utility::serialize(current, encoding);
+    LegacyPointCloudProperties restored;
+    REQUIRE(dai::utility::deserialize(after, restored, encoding));
+    REQUIRE(restored.computeMethod == method);
+    REQUIRE(restored.numThreads == 7);
+    REQUIRE(dai::utility::serialize(restored, encoding) == after);
 }

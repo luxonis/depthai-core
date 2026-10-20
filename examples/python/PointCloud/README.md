@@ -57,3 +57,20 @@ python3 multi_device_point_cloud.py --target-device <id> --target-housing VESA_A
 With `--target-device` the frames of the other devices are carried over through the multi-device
 calibration and that device's own calibration, so the cloud can be expressed in any camera or housing
 of any device in the pipeline.
+
+### Compute backend
+
+PointCloud and ImageManip share `dai.Backend` (`CPU`, `HW`, `GPU`, `AUTO`).
+PointCloud supports CPU, GPU and AUTO; HW raises an error. CPU with one thread
+per stream is the default. AUTO resolves to GPU with CPU fallback; `getBackend()` reports GPU.
+
+```python
+pc.setBackend(dai.Backend.GPU)
+pc.setBackend(dai.Backend.CPU).setNumThreads(4)
+```
+
+The existing `useCPU()`, `useCPUMT(n)` and `useGPU(device)` methods remain available.
+`PointCloudProperties.ComputeMethod` and the `computeMethod`, `numThreads` and `gpuDevice`
+properties keep their existing meanings, defaults and serialized layout. The new methods adapt
+that same configuration. GPU fallback remains single-threaded.
+The platform GPU implementation is selected internally.

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "depthai/common/Backend.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/properties/Properties.hpp"
@@ -13,6 +14,8 @@ namespace dai {
  * Specify properties for PointCloud
  */
 struct PointCloudProperties : PropertiesSerializable<Properties, PointCloudProperties> {
+    using Backend = dai::Backend;
+
     /// How the points are computed (PointCloud::useCPU / useCPUMT / useGPU)
     enum class ComputeMethod : std::int32_t {
         CPU = 0,     ///< one thread per depth stream

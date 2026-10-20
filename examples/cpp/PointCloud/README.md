@@ -153,11 +153,18 @@ Rules of the merged output:
 - `useGPU()` computes on the GPU. On an RVC4 device (the node running on the device) this is
   an OpenCL kernel that deprojects, undistorts (through the per-pixel ray table) and transforms
   the points in one pass, with the depth frame imported without a copy where the driver allows
-  it. On the host it is the Kompute path when compiled in. The compute method is part of the
-  node properties, so `useCPU()` / `useCPUMT(n)` / `useGPU()` apply wherever the node runs; a
+  it. On the host it is the Kompute path when compiled in. Backend and CPU thread preferences
+  are part of the node properties, so `useCPU()` / `useCPUMT(n)` / `useGPU()` apply wherever the node runs; a
   device without a GPU logs a warning and falls back to the CPU.
-  `PointCloudGpuBackend` in `dai::node::internal` is an SDK/firmware implementation
-  interface; applications use `useGPU()` and do not implement a backend.
+  Backend selection uses the same `dai::Backend` enum as ImageManip. For example,
+  `pc->setBackend(dai::Backend::GPU)` selects GPU processing and
+  `pc->setBackend(dai::Backend::CPU).setNumThreads(4)` selects four CPU threads per stream.
+  `AUTO` resolves to GPU with CPU fallback (`getBackend()` reports GPU); `HW` is unsupported.
+  CPU with one thread remains the default. The existing `useCPU()`, `useCPUMT(n)` and `useGPU(device)` calls remain available.
+  The selectors adapt to the existing `PointCloudProperties::computeMethod`, `numThreads` and
+  `gpuDevice` fields, keeping their enum values, defaults and serialized layout unchanged.
+  GPU fallback remains single-threaded. RVC4 uses the existing SDK/firmware GPU interface internally;
+  applications do not need to implement a backend.
   Measured on an OAK-4-D (RVC4, board revision P10) for a 1280x800 depth frame: the OpenCL
   kernel itself takes 0.6 ms, but the CPU still has to read the 12 MB of points the GPU wrote
   (to compact and emit them), and on this SoC that read is several times slower than reading

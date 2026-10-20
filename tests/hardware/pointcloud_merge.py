@@ -62,8 +62,7 @@ def run(args):
         merged.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
         merged.setTargetCoordinateSystem(dai.CameraBoardSocket.CAM_B)
         merged.sync.setSyncThreshold(timedelta(milliseconds=30))
-        if args.gpu:
-            merged.useGPU()
+        merged.setBackend(dai.Backend.GPU if args.gpu else dai.Backend.CPU).setNumThreads(args.threads)
         cloudQueue = merged.outputPointCloud.createOutputQueue(30, True)
         depthQueue = merged.passthroughDepth.createOutputQueue(60, True)
         individualQueues = []
@@ -132,4 +131,5 @@ if __name__ == "__main__":
     parser.add_argument("--fps", type=float, default=5)
     parser.add_argument("--on-device", dest="onDevice", action="store_true")
     parser.add_argument("--gpu", action="store_true")
+    parser.add_argument("--threads", type=int, default=1)
     run(parser.parse_args())

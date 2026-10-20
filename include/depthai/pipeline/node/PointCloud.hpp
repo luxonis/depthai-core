@@ -62,6 +62,7 @@ namespace node {
 class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "PointCloud";
+    using Backend = dai::Backend;
 
     class Impl {
        public:
@@ -185,6 +186,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
      * @internal
      * Platform GPU backend used by useGPU. Returns null here; a platform node class (the RVC4 firmware)
      * overrides it with its implementation. Called once per depth stream when the node starts.
+     * Applications select processing with setBackend(); they do not need to provide a backend.
      */
     virtual std::shared_ptr<internal::PointCloudGpuBackend> createGpuBackend(uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger);
 
@@ -306,6 +308,31 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
      * By default, the node will run on host.
      */
     void setRunOnHost(bool runOnHost);
+
+    /**
+     * Select the compute backend. CPU uses the configured CPU thread count; GPU and AUTO try
+     * OpenCL on RVC4 or Kompute on the host and fall back to CPU when unavailable.
+     * CPU is the default. AUTO resolves to GPU with CPU fallback.
+     * Dedicated HW acceleration is not supported.
+     * @param backend Backend preference
+     * @return This node for chaining
+     * @throws std::invalid_argument when backend is HW or an unknown value
+     */
+    PointCloud& setBackend(Backend backend);
+
+    /** Get the configured backend (AUTO resolves to GPU); runtime fallback does not change it. */
+    Backend getBackend() const;
+
+    /**
+     * Set CPU threads per depth stream. Also selects CPU_MT or CPU when the backend is CPU.
+     * GPU fallback remains single-threaded, as with useGPU().
+     * @param numThreads Thread count; zero is clamped to one. The effective default for CPU is one.
+     * @return This node for chaining
+     */
+    PointCloud& setNumThreads(uint32_t numThreads);
+
+    /** Get the CPU thread count per depth stream; single-threaded CPU reports one. */
+    uint32_t getNumThreads() const;
 
     /**
      * Use single-threaded CPU for processing (one thread per depth stream on the host). Default.

@@ -157,11 +157,7 @@ struct TwoNodes {
             node->setRunOnHost(false);
             node->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
             node->initialConfig->setOrganized(organized);
-            if(useGpu) {
-                node->useGPU();
-            } else {
-                node->useCPU();
-            }
+            node->setBackend(useGpu ? dai::Backend::GPU : dai::Backend::CPU).setNumThreads(2);
             return node;
         };
         cpu = make(false);

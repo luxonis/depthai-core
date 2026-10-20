@@ -30,6 +30,10 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
         .value("CPU", PointCloudProperties::ComputeMethod::CPU)
         .value("CPU_MT", PointCloudProperties::ComputeMethod::CPU_MT)
         .value("GPU", PointCloudProperties::ComputeMethod::GPU);
+    auto backend = m.attr("ImageManipProperties").attr("Backend");
+    properties.attr("Backend") = backend;
+    node.attr("Backend") = backend;
+    m.attr("Backend") = backend;
 
     properties.def_readwrite("initialConfig", &PointCloudProperties::initialConfig, DOC(dai, PointCloudProperties, initialConfig))
         .def_readwrite("numFramesPool", &PointCloudProperties::numFramesPool, DOC(dai, PointCloudProperties, numFramesPool))
@@ -69,6 +73,14 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
         .def_readonly("initialConfig", &PointCloud::initialConfig, DOC(dai, node, PointCloud, initialConfig), DOC(dai, node, PointCloud, initialConfig))
         .def("setNumFramesPool", &PointCloud::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, PointCloud, setNumFramesPool))
         .def("setRunOnHost", &PointCloud::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, PointCloud, setRunOnHost))
+        .def("setBackend", &PointCloud::setBackend, py::arg("backend"), py::return_value_policy::reference_internal, DOC(dai, node, PointCloud, setBackend))
+        .def("getBackend", &PointCloud::getBackend, DOC(dai, node, PointCloud, getBackend))
+        .def("setNumThreads",
+             &PointCloud::setNumThreads,
+             py::arg("numThreads"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, PointCloud, setNumThreads))
+        .def("getNumThreads", &PointCloud::getNumThreads, DOC(dai, node, PointCloud, getNumThreads))
         .def("useCPU", &PointCloud::useCPU, DOC(dai, node, PointCloud, useCPU))
         .def("useCPUMT", &PointCloud::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, PointCloud, useCPUMT))
         .def("useGPU", &PointCloud::useGPU, py::arg("device") = 0, DOC(dai, node, PointCloud, useGPU))
