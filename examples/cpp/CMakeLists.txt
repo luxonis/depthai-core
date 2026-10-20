@@ -15,7 +15,7 @@ target_link_libraries(utility ${OpenCV_LIBS})
 
 set(test_env
     # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
+    "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
     "RUNNING_AS_TEST=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=20000"

@@ -304,7 +304,7 @@ endif()
 
 set(test_env
     # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
+    "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=30000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
