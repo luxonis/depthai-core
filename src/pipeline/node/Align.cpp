@@ -261,7 +261,7 @@ void shiftDepthImg(const ImgFrame& input,
 
     depthLut[0] = 0;
     for(int i = 1; i < 65536; i++) {
-        depthLut[i] = shiftXPreComputed / (float)i + 0.5f;
+        depthLut[i] = static_cast<int>(std::round(shiftXPreComputed / static_cast<float>(i)));
     }
 
     for(int i = 0; i < height; i++) {
@@ -274,6 +274,10 @@ void shiftDepthImg(const ImgFrame& input,
             for(int j = width - 1; j >= 0; j--) {
                 uint16_t depth = currentLine[j];
                 if(depth == 0) continue;
+                if(depthLut[depth] == 0) {
+                    alignedLine[j] = depth;
+                    continue;
+                }
 
                 int shifted = j + depthLut[depth];
 
@@ -284,6 +288,10 @@ void shiftDepthImg(const ImgFrame& input,
             for(int j = 0; j < width; j++) {
                 uint16_t depth = currentLine[j];
                 if(depth == 0) continue;
+                if(depthLut[depth] == 0) {
+                    alignedLine[j] = depth;
+                    continue;
+                }
 
                 int shifted = j + depthLut[depth];
 
