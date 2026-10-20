@@ -9,7 +9,7 @@ void SpatialLocationCalculatorConfig::serialize(std::vector<std::uint8_t>& metad
     datatype = DatatypeEnum::SpatialLocationCalculatorConfig;
 }
 
-void SpatialLocationCalculatorConfig::setROIs(std::vector<SpatialLocationCalculatorConfigData> ROIs) {
+void SpatialLocationCalculatorConfig::setROIs(const std::vector<SpatialLocationCalculatorConfigData>& ROIs) {
     config = ROIs;
 }
 

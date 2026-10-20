@@ -106,11 +106,5 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
     // Message
     pipelineState.def(py::init<>())
         .def("__repr__", &PipelineState::str)
-        .def_readwrite("nodeStates", &PipelineState::nodeStates, DOC(dai, PipelineState, nodeStates))
-        .def("getTimestamp", &PipelineState::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &PipelineState::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getSequenceNum", &PipelineState::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &PipelineState::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &PipelineState::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
-        .def("setSequenceNum", &PipelineState::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum));
+        .def_readwrite("nodeStates", &PipelineState::nodeStates, DOC(dai, PipelineState, nodeStates));
 }

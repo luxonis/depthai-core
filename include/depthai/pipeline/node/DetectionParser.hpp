@@ -12,6 +12,7 @@
 #include <string>
 
 #include "depthai/common/YoloDecodingFamily.hpp"
+#include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
@@ -29,12 +30,31 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     ~DetectionParser() override;
 
+    /** Initial runtime thresholds. Send a config to inputConfig to change them after startup. */
+    std::shared_ptr<DetectionParserConfig> initialConfig = [this] {
+        auto config = std::make_shared<DetectionParserConfig>();
+        config->confidenceThreshold = properties.parser.confidenceThreshold;
+        config->iouThreshold = properties.parser.iouThreshold;
+        return config;
+    }();
+
+    /** Runtime threshold configuration. Non-blocking queue of size 4; does not wait by default. */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::DetectionParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
     /**
      * @brief Build DetectionParser node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
      * @param nnInput: Output to link
      * @param nnArchive: Neural network archive
      */
     std::shared_ptr<DetectionParser> build(Node::Output& nnInput, const NNArchive& nnArchive);
+
+    /**
+     * @brief Build DetectionParser node with a specific NNArchive head.
+     * @param nnInput: Output to link
+     * @param head: Specific head from NNArchive to use for this parser
+     */
+    std::shared_ptr<DetectionParser> build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head);
+
     /**
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
@@ -56,7 +76,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Returns number of frames in pool
      *
      */
-    int getNumFramesPool();
+    int getNumFramesPool() const;
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
@@ -64,6 +84,13 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @param nnArchive: NNArchive to set
      */
     void setNNArchive(const NNArchive& nnArchive);
+
+    /**
+     * @brief Set NNArchive head for this Node.
+     *
+     * @param head: NNArchive head to set
+     */
+    void setNNArchiveHead(const dai::nn_archive::v1::Head& head);
 
     /**
      * Load network xml and bin files into assets.
@@ -84,7 +111,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      *
      * @param blob OpenVINO blob to retrieve the information from
      */
-    void setBlob(OpenVINO::Blob blob);
+    void setBlob(const OpenVINO::Blob& blob);
 
     /**
      * Same functionality as the setBlobPath(). Load network blob into assets and use once pipeline is started.
@@ -104,7 +131,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Set preview output size, as a tuple<width, height>
      */
-    void setInputImageSize(std::tuple<int, int> size);
+    void setInputImageSize(const std::tuple<int, int>& size);
 
     /**
      * Sets NN Family to parse. Possible values are:
@@ -119,11 +146,12 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Gets NN Family to parse
      */
-    DetectionNetworkType getNNFamily();
+    DetectionNetworkType getNNFamily() const;
 
     /**
      * Specifies confidence threshold at which to filter the rest of the detections.
      * @param thresh Detection confidence must be greater than specified threshold to be added to the list
+     * @note Sets startup configuration. Send DetectionParserConfig to inputConfig for runtime updates.
      */
     void setConfidenceThreshold(float thresh);
 
@@ -156,13 +184,13 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @param anchors Flattened vector of anchors
      * @warning This method is deprecated, use setAnchorsV2 instead.
      */
-    void setAnchors(std::vector<float> anchors);
+    void setAnchors(const std::vector<float>& anchors);
 
     /**
      * Set anchor masks for anchor-based yolo models
      * @param anchorMasks Map of anchor masks
      */
-    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
+    void setAnchorMasks(const std::map<std::string, std::vector<int>>& anchorMasks);
 
     /**
      * Set anchors for anchor-based yolo models (v2)
@@ -173,6 +201,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Set IOU threshold for non-maxima suppression
      * @param thresh IOU threshold
+     * @note Sets startup configuration. Send DetectionParserConfig to inputConfig for runtime updates.
      */
     void setIouThreshold(float thresh);
 
@@ -283,6 +312,9 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     void run() override;
 
+    /** Get serialized startup properties, including initialConfig thresholds. */
+    Properties& getProperties() override;
+
     /**
      * @brief Decode Mobilenet-SSD detections from NNData
      */
@@ -295,20 +327,18 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     void setConfig(const dai::NNArchiveVersionedConfig& config);
+    void setConfig(const dai::nn_archive::v1::Head& head);
     YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtype);
     bool decodeSegmentationResolver(const std::vector<std::string>& outputs);
     void configureYOLONetworkParser(DetectionParserOptions& parser, const nn_archive::v1::Head& metadata);
     void checkKptExtraParams(DetectionParserOptions& parser, const nlohmann::json& extraParams);
     // host runnable requirements
     void buildStage1() override;
-    void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections);
+    void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections, DetectionParserProperties& runtimeProperties);
     std::vector<dai::TensorInfo> inTensorInfo;
     uint32_t imgWidth;
     uint32_t imgHeight;
     uint32_t imgSizesSet = false;
-    //
-
-    std::optional<NNArchive> mArchive;
 
     std::optional<NNArchiveVersionedConfig> archiveConfig;
 };

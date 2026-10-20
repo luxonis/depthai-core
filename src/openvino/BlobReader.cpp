@@ -36,7 +36,7 @@ T readFromBlob(const std::vector<std::uint8_t>& blob, uint32_t& offset) {
     return *reinterpret_cast<const T*>(srcPtr);
 }
 
-bool isIOShapeName(std::string name) {
+bool isIOShapeName(const std::string& name) {
     return name.find("@shape") != std::string::npos;
 }
 

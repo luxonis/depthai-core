@@ -163,7 +163,7 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
     crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
     crashDumpData.name = getCrashDumpFilename(crashDump);
 
-    fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
+    fs::path logDir = dai::platform::getDaiCacheDir() / "crashdumps";
     fs::path crashDumpPathLocal(dirToStoreCrashDumps);
     if(crashDumpPathLocal.empty()) {
         crashDumpPathLocal = logDir / crashDumpData.sha1Hash / crashDumpData.name;

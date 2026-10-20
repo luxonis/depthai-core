@@ -195,7 +195,7 @@ bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
     return send(msg, std::chrono::milliseconds(0));
 }
 
-void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> message) {
+void MessageQueue::callCallbacks(const std::shared_ptr<ADatatype>& message) {
     // Lock first
     std::lock_guard<std::mutex> lock(callbacksMtx);
 

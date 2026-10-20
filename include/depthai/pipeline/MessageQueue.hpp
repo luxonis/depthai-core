@@ -44,7 +44,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     CallbackId uniqueCallbackId{0};
 
    private:
-    void callCallbacks(std::shared_ptr<ADatatype> msg);
+    void callCallbacks(const std::shared_ptr<ADatatype>& msg);
     void notifyListeners();
     utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
 

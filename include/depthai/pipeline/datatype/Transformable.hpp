@@ -68,6 +68,7 @@ class TransformableBuffer : public Buffer, public Transformable {
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
+    using Buffer::tsSystem;
     using Transformable::getTransformation;
     using Transformable::setTransformation;
     using Transformable::transformation;
@@ -93,7 +94,7 @@ class TransformableBuffer : public Buffer, public Transformable {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(TransformableBuffer, sequenceNum, ts, tsDevice, Transformable::transformation);
+    DEPTHAI_SERIALIZE(TransformableBuffer, sequenceNum, ts, tsDevice, tsSystem, Transformable::transformation);
 };
 
 }  // namespace dai

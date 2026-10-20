@@ -18,14 +18,6 @@ void signalHandler(int) {
 
 namespace {
 
-cv::Mat colorizeDepth(const cv::Mat& depthFrame) {
-    cv::Mat depthAbs;
-    cv::Mat colorizedDepth;
-    cv::convertScaleAbs(depthFrame, depthAbs, 0.03);
-    cv::applyColorMap(depthAbs, colorizedDepth, cv::COLORMAP_JET);
-    return colorizedDepth;
-}
-
 void applySegmentationOverlay(cv::Mat& image, const cv::Mat& segmentationMask) {
     cv::Mat lut(1, 256, CV_8U);
     for(int i = 0; i < 256; ++i) {
@@ -137,8 +129,7 @@ int main() {
             if(!inSpatialDet || !rgbFrame || !depthFrame) {
                 continue;
             }
-            cv::Mat depthCv = depthFrame->getCvFrame();
-            cv::Mat colorizedDepth = colorizeDepth(depthCv);
+            cv::Mat colorizedDepth = dai::utility::colorizeDepthFrame(*depthFrame).getCvFrame();
 
             cv::Mat image = rgbFrame->getCvFrame();
 

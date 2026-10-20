@@ -11,6 +11,8 @@ namespace dai {
  * Specify properties for Sync.
  */
 struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
+    enum class TimestampSource : uint8_t { DEFAULT, DEVICE, HOST, SYSTEM };
+
     /**
      * The maximal interval the messages can be apart in nanoseconds.
      */
@@ -26,9 +28,14 @@ struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
      */
     ProcessorType processor = ProcessorType::LEON_CSS;
 
+    /**
+     * Which timestamp to use for synchronization. On device the default is DEVICE, on host the default is HOST
+     */
+    TimestampSource timestampSource = TimestampSource::DEFAULT;
+
     ~SyncProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts, processor);
+DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts, processor, timestampSource);
 
 }  // namespace dai

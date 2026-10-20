@@ -2,14 +2,20 @@
 #pragma once
 
 // std
+#include <filesystem>
+#include <functional>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <type_traits>
+#include <vector>
 
 // project
-#include "CallbackHandler.hpp"
 #include "depthai/common/UsbSpeed.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/device/Version.hpp"
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
+    #include "depthai/pipeline/Pipeline.hpp"
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -39,9 +45,9 @@ class DeviceBootloader {
     // Derive and extend bootloader::Config for easier usage
     struct Config : public bootloader::Config {
         /// Setting a static IPv4 won't start DHCP client
-        void setStaticIPv4(std::string ip, std::string mask, std::string gateway);
+        void setStaticIPv4(const std::string& ip, const std::string& mask, const std::string& gateway);
         /// Setting a dynamic IPv4 will set that IP as well as start DHCP client
-        void setDynamicIPv4(std::string ip, std::string mask, std::string gateway);
+        void setDynamicIPv4(const std::string& ip, const std::string& mask, const std::string& gateway);
         /// Get if static IPv4 configuration is set
         bool isStaticIPV4();
         /// Get IPv4
@@ -51,7 +57,7 @@ class DeviceBootloader {
         /// Get IPv4 gateway
         std::string getIPv4Gateway();
         /// Set IPv4 DNS options
-        void setDnsIPv4(std::string dns, std::string dnsAlt = "");
+        void setDnsIPv4(const std::string& dns, const std::string& dnsAlt = "");
         /// Get primary IPv4 DNS server
         std::string getDnsIPv4();
         /// Get alternate IPv4 DNS server
@@ -68,7 +74,7 @@ class DeviceBootloader {
         std::chrono::milliseconds getNetworkTimeout();
 
         /// Set MAC address if not flashed on controller
-        void setMacAddress(std::string mac);
+        void setMacAddress(const std::string& mac);
         /// Get MAC address if not flashed on controller
         std::string getMacAddress();
 
@@ -81,7 +87,7 @@ class DeviceBootloader {
         nlohmann::json toJson() const;
 
         /// from JSON
-        static Config fromJson(nlohmann::json);
+        static Config fromJson(const nlohmann::json&);
 
        private:
         nlohmann::json data;
@@ -120,54 +126,6 @@ class DeviceBootloader {
      * @returns Vector of all found devices
      */
     static std::vector<DeviceInfo> getAllAvailableDevices();
-
-    /**
-     * Creates application package which can be flashed to depthai device.
-     * @param pipeline Pipeline from which to create the application package
-     * @param pathToCmd Optional path to custom device firmware
-     * @param compress Optional boolean which specifies if contents should be compressed
-     * @param applicationName Optional name the application that is flashed
-     * @returns Depthai application package
-     */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(
-        const Pipeline& pipeline, const fs::path& pathToCmd = {}, bool compress = false, std::string applicationName = "", bool checkChecksum = false);
-
-    /**
-     * Creates application package which can be flashed to depthai device.
-     * @param pipeline Pipeline from which to create the application package
-     * @param compress Specifies if contents should be compressed
-     * @param applicationName Name the application that is flashed
-     * @returns Depthai application package
-     */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline,
-                                                                bool compress,
-                                                                std::string applicationName = "",
-                                                                bool checkChecksum = false);
-
-    /**
-     * Saves application package to a file which can be flashed to depthai device.
-     * @param path Path where to save the application package
-     * @param pipeline Pipeline from which to create the application package
-     * @param pathToCmd Optional path to custom device firmware
-     * @param compress Optional boolean which specifies if contents should be compressed
-     * @param applicationName Optional name the application that is flashed
-     */
-    static void saveDepthaiApplicationPackage(const fs::path& path,
-                                              const Pipeline& pipeline,
-                                              const fs::path& pathToCmd = {},
-                                              bool compress = false,
-                                              std::string applicationName = "",
-                                              bool checkChecksum = false);
-
-    /**
-     * Saves application package to a file which can be flashed to depthai device.
-     * @param path Path where to save the application package
-     * @param pipeline Pipeline from which to create the application package
-     * @param compress Specifies if contents should be compressed
-     * @param applicationName Optional name the application that is flashed
-     */
-    static void saveDepthaiApplicationPackage(
-        const fs::path& path, const Pipeline& pipeline, bool compress, std::string applicationName = "", bool checkChecksum = false);
 
     /**
      * @returns Embedded bootloader version
@@ -227,48 +185,10 @@ class DeviceBootloader {
     ~DeviceBootloader();
 
     /**
-     * Flashes a given pipeline to the device.
-     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
-     * @param pipeline Pipeline to flash to the board
-     * @param compress Compresses application to reduce needed memory size
-     * @param applicationName Name the application that is flashed
-     */
-    std::tuple<bool, std::string> flash(std::function<void(float)> progressCallback,
-                                        const Pipeline& pipeline,
-                                        bool compress = false,
-                                        std::string applicationName = "",
-                                        Memory memory = Memory::AUTO,
-                                        bool checkChecksum = false);
-
-    /**
-     * Flashes a given pipeline to the device.
-     * @param pipeline Pipeline to flash to the board
-     * @param compress Compresses application to reduce needed memory size
-     * @param applicationName Optional name the application that is flashed
-     */
-    std::tuple<bool, std::string> flash(
-        const Pipeline& pipeline, bool compress = false, std::string applicationName = "", Memory memory = Memory::AUTO, bool checkChecksum = false);
-
-    /**
      * Reads information about flashed application in specified memory from device
      * @param memory Specifies which memory to query
      */
     ApplicationInfo readApplicationInfo(Memory memory);
-
-    /**
-     * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
-     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
-     * @param package Depthai application package to flash to the board
-     */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::function<void(float)> progressCallback,
-                                                                 std::vector<uint8_t> package,
-                                                                 Memory memory = Memory::AUTO);
-
-    /**
-     * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
-     * @param package Depthai application package to flash to the board
-     */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::vector<uint8_t> package, Memory memory = Memory::AUTO);
 
     /**
      * Clears flashed application on the device, by removing SBR boot structure
@@ -281,7 +201,7 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param path Optional parameter to custom bootloader to flash
      */
-    std::tuple<bool, std::string> flashBootloader(std::function<void(float)> progressCallback, const fs::path& path = {});
+    std::tuple<bool, std::string> flashBootloader(const std::function<void(float)>& progressCallback, const fs::path& path = {});
 
     /**
      * Flash selected bootloader to the current board
@@ -342,9 +262,16 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param data Data to flash
      */
-    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset, const std::vector<uint8_t>& data, std::function<void(float)> progressCb = nullptr);
-    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset, const uint8_t* data, size_t size, std::function<void(float)> progressCb = nullptr);
-    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset, std::string filename, std::function<void(float)> progressCb = nullptr);
+    std::tuple<bool, std::string> flashCustom(Memory memory,
+                                              size_t offset,
+                                              const std::vector<uint8_t>& data,
+                                              const std::function<void(float)>& progressCb = nullptr);
+    std::tuple<bool, std::string> flashCustom(
+        Memory memory, size_t offset, const uint8_t* data, size_t size, const std::function<void(float)>& progressCb = nullptr);
+    std::tuple<bool, std::string> flashCustom(Memory memory,
+                                              size_t offset,
+                                              const std::string& filename,
+                                              const std::function<void(float)>& progressCb = nullptr);
 
     /**
      * Reads arbitrary data at custom offset in specified memory
@@ -355,10 +282,14 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current reading progress
      */
     std::tuple<bool, std::string> readCustom(
-        Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, std::function<void(float)> progressCb = nullptr);
-    std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, std::function<void(float)> progressCb = nullptr);
-    std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, std::string filename, std::function<void(float)> progressCb = nullptr);
-    std::tuple<bool, std::string, std::vector<uint8_t>> readCustom(Memory memory, size_t offset, size_t size, std::function<void(float)> progressCb = nullptr);
+        Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, const std::function<void(float)>& progressCb = nullptr);
+    std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, const std::function<void(float)>& progressCb = nullptr);
+    std::tuple<bool, std::string> readCustom(
+        Memory memory, size_t offset, size_t size, const std::string& filename, const std::function<void(float)>& progressCb = nullptr);
+    std::tuple<bool, std::string, std::vector<uint8_t>> readCustom(Memory memory,
+                                                                   size_t offset,
+                                                                   size_t size,
+                                                                   const std::function<void(float)>& progressCb = nullptr);
 
     /**
      * Reads configuration data from bootloader
@@ -374,7 +305,7 @@ class DeviceBootloader {
      * @param memory Optional - to which memory flash configuration
      * @param type Optional - for which type of bootloader to flash configuration
      */
-    std::tuple<bool, std::string> flashConfigData(nlohmann::json configData, Memory memory = Memory::AUTO, Type type = Type::AUTO);
+    std::tuple<bool, std::string> flashConfigData(const nlohmann::json& configData, Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
      * Flashes configuration data to bootloader

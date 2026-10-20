@@ -62,8 +62,7 @@ with dai.Pipeline(device) as pipeline:
         assert isinstance(rgbFrame, dai.ImgFrame)
         assert isinstance(depthFrame, dai.ImgFrame)
 
-        depthImg = depthFrame.getCvFrame()
-        colorizedDepth = cv2.applyColorMap(cv2.convertScaleAbs(depthImg, alpha=0.03), cv2.COLORMAP_JET)
+        colorizedDepth = dai.utility.colorizeDepthFrame(depthFrame).getCvFrame()
         image = rgbFrame.getCvFrame()
         segmentationMask = cv2.Mat(np.zeros((spatialDetections.getSegmentationMaskHeight(), spatialDetections.getSegmentationMaskWidth()), dtype=np.uint8))
         segmentationMask = spatialDetections.getCvSegmentationMask()

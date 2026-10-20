@@ -74,7 +74,7 @@ int main() {
         throw std::runtime_error("No thermal camera found!");
     }
 
-    auto calibData = device->readCalibration();
+    auto calibData = device->getCalibration();
     auto rgbDistortion = calibData.getDistortionCoefficients(RGB_SOCKET);
     auto distortionModel = calibData.getDistortionModel(RGB_SOCKET);
     if(distortionModel != dai::CameraModel::Perspective) {

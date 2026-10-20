@@ -1,5 +1,9 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
+#include <chrono>
+#include <optional>
+
+#include "depthai/common/Timestamp.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 
@@ -58,12 +62,27 @@ void Buffer::setData(std::vector<std::uint8_t>&& d) {
 
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> Buffer::getTimestamp() const {
     using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(ts.sec) + nanoseconds(ts.nsec)};
+    auto total = seconds(ts.sec) + nanoseconds(ts.nsec);
+    auto dur = duration_cast<steady_clock::duration>(total);
+    return time_point<steady_clock, steady_clock::duration>(dur);
 }
 
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> Buffer::getTimestampDevice() const {
     using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(tsDevice.sec) + nanoseconds(tsDevice.nsec)};
+    auto total = seconds(tsDevice.sec) + nanoseconds(tsDevice.nsec);
+    auto dur = duration_cast<steady_clock::duration>(total);
+    return time_point<steady_clock, steady_clock::duration>(dur);
+}
+
+std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> Buffer::getTimestampSystem() const {
+    if(!tsSystem.has_value()) {
+        return std::nullopt;
+    }
+
+    using namespace std::chrono;
+    auto total = seconds(tsSystem->sec) + nanoseconds(tsSystem->nsec);
+    auto dur = duration_cast<system_clock::duration>(total);
+    return time_point<system_clock, system_clock::duration>(dur);
 }
 
 void Buffer::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
@@ -80,6 +99,20 @@ void Buffer::setTimestampDevice(std::chrono::time_point<std::chrono::steady_cloc
     tsDevice.sec = duration_cast<seconds>(ts).count();
     tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
 }
+void Buffer::setTimestampSystem(std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> tp) {
+    // Set timestamp from timepoint
+    if(!tp.has_value()) {
+        tsSystem = std::nullopt;
+        return;
+    }
+    using namespace std::chrono;
+    auto ts = tp->time_since_epoch();
+
+    Timestamp tmp;
+    tmp.sec = duration_cast<seconds>(ts).count();
+    tmp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    tsSystem = tmp;
+}
 
 int64_t Buffer::getSequenceNum() const {
     return sequenceNum;
@@ -87,6 +120,18 @@ int64_t Buffer::getSequenceNum() const {
 
 void Buffer::setSequenceNum(int64_t sequenceNum) {
     this->sequenceNum = sequenceNum;
+}
+
+void Buffer::setBufferMetadataFrom(const Buffer* other) {
+    if(other == nullptr) return;
+    this->sequenceNum = other->sequenceNum;
+    this->ts = other->ts;
+    this->tsDevice = other->tsDevice;
+    this->tsSystem = other->tsSystem;
+}
+
+void Buffer::setBufferMetadataFrom(const std::shared_ptr<Buffer>& other) {
+    setBufferMetadataFrom(other.get());
 }
 
 span<const uint8_t> Buffer::getRecordData() const {

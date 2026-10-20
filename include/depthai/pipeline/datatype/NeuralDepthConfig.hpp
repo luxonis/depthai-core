@@ -52,6 +52,14 @@ class NeuralDepthConfig : public Buffer {
          */
         uint8_t edgeThreshold = 10;
 
+        using ThresholdFilter = filters::params::ThresholdFilter;
+
+        /**
+         * Threshold filtering.
+         * Filters out distances outside of a given interval.
+         */
+        ThresholdFilter thresholdFilter;
+
         using TemporalFilter = filters::params::TemporalFilter;
 
         /**
@@ -59,7 +67,7 @@ class NeuralDepthConfig : public Buffer {
          */
         TemporalFilter temporalFilter;
 
-        DEPTHAI_SERIALIZE(PostProcessing, confidenceThreshold, edgeThreshold, temporalFilter);
+        DEPTHAI_SERIALIZE(PostProcessing, confidenceThreshold, edgeThreshold, thresholdFilter, temporalFilter);
     };
 
     /**

@@ -8,13 +8,9 @@
 #include "depthai-bootloader-shared/SBR.h"
 #include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai/pipeline/Assets.hpp"
-#include "depthai/utility/Serialization.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
 
 // project
-#include "device/Device.hpp"
-#include "pipeline/Pipeline.hpp"
 #include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
 #include "utility/spdlog-fmt.hpp"
@@ -24,7 +20,6 @@
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
-#include "zlib.h"
 
 namespace dai {
 
@@ -34,6 +29,8 @@ namespace Response = bootloader::response;
 
 // constants
 constexpr const DeviceBootloader::Type DeviceBootloader::DEFAULT_TYPE;
+constexpr const char* NETWORK_BOOTLOADER_FLASH_UTILITY_PATH = "depthai-core/utilities/flash_network_bootloader.py";
+constexpr const char* NETWORK_BOOTLOADER_DOCS_URL = "https://docs.luxonis.com/software-v3/depthai/depthai-components/bootloader";
 
 // static api
 
@@ -60,189 +57,6 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
         if(d.state != X_LINK_BOOTED) availableDevices.push_back(d);
     }
     return availableDevices;
-}
-
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
-    const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
-    // Serialize the pipeline
-    PipelineSchema schema;
-    Assets assets;
-    std::vector<std::uint8_t> assetStorage;
-    pipeline.serialize(schema, assets, assetStorage);
-
-    // Get DeviceConfig
-    DeviceBase::Config deviceConfig = pipeline.getDeviceConfig();
-
-    // Prepare device firmware
-    std::vector<uint8_t> deviceFirmware = Resources::getInstance().getDeviceFirmware(deviceConfig, pathToCmd);
-    if(deviceFirmware.empty()) {
-        throw std::runtime_error("Error getting device firmware");
-    }
-
-    // Serialize data
-    std::vector<uint8_t> pipelineBinary, assetsBinary;
-    utility::serialize(schema, pipelineBinary);
-    utility::serialize(assets, assetsBinary);
-
-    // Prepare FW version buffer
-    std::string fwVersionBuffer{DEPTHAI_DEVICE_VERSION};
-
-    // Prepare SBR structure
-    SBR sbr = {};
-    SBR_SECTION* lastSection = &sbr.sections[0];
-
-    // Order of sections
-    SBR_SECTION* fwSection = lastSection++;
-    SBR_SECTION* pipelineSection = lastSection++;
-    SBR_SECTION* assetsSection = lastSection++;
-    SBR_SECTION* assetStorageSection = lastSection++;
-    SBR_SECTION* fwVersionSection = lastSection++;
-    SBR_SECTION* appNameSection = lastSection++;
-
-    // Set to last section
-    lastSection = lastSection - 1;
-
-    // Alignup for easier updating
-    auto getSectionAlignedOffset = [](long S) {
-        constexpr long SECTION_ALIGNMENT_SIZE = 1 * 1024 * 1024;  // 1MiB for easier updating
-        return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1));
-    };
-    // Alignup for easier updating
-    auto getSectionAlignedOffsetSmall = [](long S) {
-        constexpr long SECTION_ALIGNMENT_SIZE = 64 * 1024;  // 64k for flash alignement
-        return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1));
-    };
-
-    // Should compress firmware?
-    if(compress) {
-        using namespace std::chrono;
-
-        auto t1 = steady_clock::now();
-        auto compressBufferSize = compressBound(static_cast<decltype(compressBound(1))>(deviceFirmware.size()));
-        std::vector<uint8_t> compressBuffer(compressBufferSize);
-        // Chosen impirically
-        constexpr int COMPRESSION_LEVEL = 9;
-        if(compress2(compressBuffer.data(),
-                     &compressBufferSize,
-                     deviceFirmware.data(),
-                     static_cast<decltype(compressBufferSize)>(deviceFirmware.size()),
-                     COMPRESSION_LEVEL)
-           != Z_OK) {
-            throw std::runtime_error("Error while compressing device firmware\n");
-        }
-
-        // Resize output buffer
-        compressBuffer.resize(compressBufferSize);
-
-        // Set the compressed firmware
-        auto prevSize = deviceFirmware.size();
-        deviceFirmware = std::move(compressBuffer);
-
-        auto diff = duration_cast<milliseconds>(steady_clock::now() - t1);
-        logger::debug("Compressed firmware for Dephai Application Package. Took {}, size reduced from {:.2f}MiB to {:.2f}MiB",
-                      diff,
-                      prevSize / (1024.0f * 1024.0f),
-                      deviceFirmware.size() / (1024.0f * 1024.0f));
-    }
-
-    // Section, MVCMD, name '__firmware'
-    sbr_section_set_name(fwSection, "__firmware");
-    sbr_section_set_bootable(fwSection, true);
-    sbr_section_set_size(fwSection, static_cast<uint32_t>(deviceFirmware.size()));
-    sbr_section_set_checksum(fwSection, sbr_compute_checksum(deviceFirmware.data(), static_cast<uint32_t>(deviceFirmware.size())));
-    sbr_section_set_offset(fwSection, SBR_RAW_SIZE);
-    if(checkChecksum) {
-        // Don't ignore checksum, use it when booting
-        sbr_section_set_ignore_checksum(fwSection, false);
-    } else {
-        // Ignore checksum to allow faster booting (images are verified after flashing, low risk)
-        sbr_section_set_ignore_checksum(fwSection, true);
-    }
-    // Set compression flags
-    if(compress) {
-        sbr_section_set_compression(fwSection, SBR_COMPRESSION_ZLIB);
-    } else {
-        sbr_section_set_compression(fwSection, SBR_NO_COMPRESSION);
-    }
-
-    // Section, pipeline schema, name 'pipeline'
-    sbr_section_set_name(pipelineSection, "pipeline");
-    sbr_section_set_size(pipelineSection, static_cast<uint32_t>(pipelineBinary.size()));
-    sbr_section_set_checksum(pipelineSection, sbr_compute_checksum(pipelineBinary.data(), static_cast<uint32_t>(pipelineBinary.size())));
-    sbr_section_set_offset(pipelineSection, getSectionAlignedOffset(fwSection->offset + fwSection->size));
-
-    // Section, assets map, name 'assets'
-    sbr_section_set_name(assetsSection, "assets");
-    sbr_section_set_size(assetsSection, static_cast<uint32_t>(assetsBinary.size()));
-    sbr_section_set_checksum(assetsSection, sbr_compute_checksum(assetsBinary.data(), static_cast<uint32_t>(assetsBinary.size())));
-    sbr_section_set_offset(assetsSection, getSectionAlignedOffsetSmall(pipelineSection->offset + pipelineSection->size));
-
-    // Section, asset storage, name 'asset_storage'
-    sbr_section_set_name(assetStorageSection, "asset_storage");
-    sbr_section_set_size(assetStorageSection, static_cast<uint32_t>(assetStorage.size()));
-    sbr_section_set_checksum(assetStorageSection, sbr_compute_checksum(assetStorage.data(), static_cast<uint32_t>(assetStorage.size())));
-    sbr_section_set_offset(assetStorageSection, getSectionAlignedOffsetSmall(assetsSection->offset + assetsSection->size));
-
-    // Section, firmware version
-    sbr_section_set_name(fwVersionSection, "__fw_version");
-    sbr_section_set_size(fwVersionSection, static_cast<uint32_t>(fwVersionBuffer.size()));
-    sbr_section_set_checksum(fwVersionSection, sbr_compute_checksum(fwVersionBuffer.data(), static_cast<uint32_t>(fwVersionBuffer.size())));
-    sbr_section_set_offset(fwVersionSection, getSectionAlignedOffsetSmall(assetStorageSection->offset + assetStorageSection->size));
-
-    // Section, application name
-    sbr_section_set_name(appNameSection, "app_name");
-    sbr_section_set_size(appNameSection, static_cast<uint32_t>(applicationName.size()));
-    sbr_section_set_checksum(appNameSection, sbr_compute_checksum(applicationName.data(), static_cast<uint32_t>(applicationName.size())));
-    sbr_section_set_offset(appNameSection, getSectionAlignedOffsetSmall(fwVersionSection->offset + fwVersionSection->size));
-
-    // TODO(themarpe) - Add additional sections (Pipeline nodes will be able to use sections)
-
-    // Create a vector to hold whole dap package
-    std::vector<uint8_t> fwPackage;
-    fwPackage.resize(lastSection->offset + lastSection->size);
-
-    // Serialize SBR
-    sbr_serialize(&sbr, fwPackage.data(), static_cast<uint32_t>(fwPackage.size()));
-
-    // Write to fwPackage
-    for(std::size_t i = 0; i < deviceFirmware.size(); i++) fwPackage[fwSection->offset + i] = deviceFirmware[i];
-    for(std::size_t i = 0; i < fwVersionBuffer.size(); i++) fwPackage[fwVersionSection->offset + i] = fwVersionBuffer[i];
-    for(std::size_t i = 0; i < applicationName.size(); i++) fwPackage[appNameSection->offset + i] = applicationName[i];
-    for(std::size_t i = 0; i < pipelineBinary.size(); i++) fwPackage[pipelineSection->offset + i] = pipelineBinary[i];
-    for(std::size_t i = 0; i < assetsBinary.size(); i++) fwPackage[assetsSection->offset + i] = assetsBinary[i];
-    for(std::size_t i = 0; i < assetStorage.size(); i++) fwPackage[assetStorageSection->offset + i] = assetStorage[i];
-
-    // Debug
-    if(logger::get_level() == spdlog::level::debug) {
-        SBR_SECTION* cur = &sbr.sections[0];
-        logger::debug("DepthAI Application Package");
-        for(; cur != lastSection + 1; cur++) {
-            logger::debug("{}, {}B, {}, {}, {}, {}", cur->name, cur->size, cur->offset, cur->checksum, cur->type, cur->flags);
-        }
-    }
-
-    return fwPackage;
-}
-
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline,
-                                                                       bool compress,
-                                                                       std::string applicationName,
-                                                                       bool checkChecksum) {
-    return createDepthaiApplicationPackage(pipeline, "", compress, applicationName, checkChecksum);
-}
-
-void DeviceBootloader::saveDepthaiApplicationPackage(
-    const fs::path& path, const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
-    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName, checkChecksum);
-    std::ofstream outfile(path, std::ios::binary);
-    outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
-}
-
-void DeviceBootloader::saveDepthaiApplicationPackage(
-    const fs::path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
-    auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
-    std::ofstream outfile(path, std::ios::binary);
-    outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devInfo) {
@@ -356,7 +170,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), but id or name is - try finding it first
     if((deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) && (!deviceInfo.deviceId.empty() || !deviceInfo.name.empty())) {
         deviceDesc_t foundDesc;
-        auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+        auto ret = XLinkConnection::findFirstSuitableDevice(deviceInfo, foundDesc);
         if(ret == X_LINK_SUCCESS) {
             deviceInfo = DeviceInfo(foundDesc);
             logger::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
@@ -522,8 +336,15 @@ void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std
 
         // Bootloader device ready, check for version
         logger::debug("Connected bootloader version {}", version.toString());
-        if(getEmbeddedBootloaderVersion() > version) {
-            logger::info("New bootloader version available. Device has: {}, available: {}", version.toString(), getEmbeddedBootloaderVersion().toString());
+        if(getType() == Type::NETWORK && getEmbeddedBootloaderVersion() > version) {
+            logger::warn(
+                "An optional NETWORK bootloader update is available (installed: {}, available: {}). "
+                "Updating is recommended to improve device discoverability. Run 'depthai --flash' or '{}', "
+                "or see {} for more information.",
+                version.toString(),
+                getEmbeddedBootloaderVersion().toString(),
+                NETWORK_BOOTLOADER_FLASH_UTILITY_PATH,
+                NETWORK_BOOTLOADER_DOCS_URL);
         }
 
     } catch(...) {
@@ -618,21 +439,12 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
     return allowFlashingBootloader;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(
-    std::function<void(float)> progressCb, const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory, bool checkCheksum) {
-    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
-}
-
-std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory, bool checkCheksum) {
-    return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
-}
-
 DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory mem) {
     // Send request to retrieve bootloader version
     Request::GetApplicationDetails appDetails;
     appDetails.memory = mem;
 
-    sendRequestThrow(Request::GetApplicationDetails{});
+    sendRequestThrow(appDetails);
 
     // Receive response
     Response::ApplicationDetails details;
@@ -714,103 +526,6 @@ bool DeviceBootloader::isUserBootloader() {
     return user.isUserBootloader;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb,
-                                                                               std::vector<uint8_t> package,
-                                                                               Memory memory) {
-    // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
-    auto bootloaderVersion = getVersion();
-    if(bootloaderType == Type::NETWORK && bootloaderVersion < Version(0, 0, 14)) {
-        throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: "
-                                    + bootloaderVersion.toString());
-    }
-
-    std::tuple<bool, std::string> ret;
-    if(memory == Memory::AUTO) {
-        // send request to FLASH BOOTLOADER
-        Request::UpdateFlash updateFlash;
-        updateFlash.storage = Request::UpdateFlash::SBR;
-        updateFlash.totalSize = static_cast<uint32_t>(package.size());
-        updateFlash.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
-        if(!sendRequest(updateFlash)) return {false, "Couldn't send bootloader flash request"};
-
-        // After that send numPackets of data
-        stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
-
-        // Then wait for response by bootloader
-        // Wait till FLASH_COMPLETE response
-        Response::FlashComplete result;
-        result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
-        result.errorMsg[0] = 0;
-        do {
-            std::vector<uint8_t> data;
-            if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
-
-            Response::FlashStatusUpdate update;
-            if(parseResponse(data, update)) {
-                // if progress callback is set
-                if(progressCb != nullptr) {
-                    progressCb(update.progress);
-                }
-            } else if(parseResponse(data, result)) {
-                break;
-            } else {
-                // Unknown response, shouldn't happen
-                return {false, "Unknown response from bootloader while flashing"};
-            }
-
-        } while(true);
-
-        // Return if flashing was successful
-        ret = {result.success, result.errorMsg};
-
-    } else {
-        // Flash custom
-        ret = flashCustom(memory, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), package, progressCb);
-    }
-
-    // Try specifing final app memory if set explicitly or if AUTO would be EMMC
-    try {
-        Memory finalAppMem = Memory::FLASH;
-        if(memory != Memory::AUTO) {
-            // Specify final app memory if explicitly set
-            finalAppMem = memory;
-        } else if(memory == Memory::AUTO && bootloaderType == Type::NETWORK) {
-            // If AUTO, only do so if eMMC is target memory
-            auto mem = getMemoryInfo(Memory::EMMC);
-            if(mem.available) {
-                finalAppMem = Memory::EMMC;
-            }
-        }
-
-        // Try reading existing config, or create a new one
-        nlohmann::json configJson;
-        try {
-            configJson = readConfigData();
-        } catch(const std::exception& ex) {
-            logger::debug("Error while trying to read existing bootloader configuration: {}", ex.what());
-        }
-        // Set the following field 'appMem' (in forward/backward compat manner)
-        configJson["appMem"] = finalAppMem;
-        // Flash back the rest of configuration as is
-        bool success;
-        std::string errorMsg;
-        std::tie(success, errorMsg) = flashConfigData(configJson);
-        if(success) {
-            logger::debug("Success flashing the appMem configuration to '{}'", static_cast<std::int32_t>(finalAppMem));
-        } else {
-            throw std::runtime_error(errorMsg);
-        }
-    } catch(const std::exception& ex) {
-        logger::debug("Error while trying to specify final appMem configuration: {}", ex.what());
-    }
-
-    return ret;
-}
-
-std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::vector<uint8_t> package, Memory memory) {
-    return flashDepthaiApplicationPackage(nullptr, package, memory);
-}
-
 std::tuple<bool, std::string> DeviceBootloader::flashClear(Memory memory) {
     std::vector<uint8_t> clear;
     for(size_t i = 0; i < SBR_RAW_SIZE; i++) {
@@ -819,7 +534,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashClear(Memory memory) {
     return flashCustom(memory, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), clear);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, const fs::path& path) {
+std::tuple<bool, std::string> DeviceBootloader::flashBootloader(const std::function<void(float)>& progressCb, const fs::path& path) {
     return flashBootloader(Memory::FLASH, bootloaderType, progressCb, path);
 }
 
@@ -975,6 +690,12 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
 
     } while(true);
 
+    // Do not register a user bootloader that the device failed to write or
+    // verify. The factory bootloader remains selected as the safe fallback.
+    if(!result.success) {
+        return {false, result.errorMsg};
+    }
+
     // Calculate checksum and update config
     // Try reading existing config, or create a new one
     nlohmann::json configJson;
@@ -1074,20 +795,23 @@ std::tuple<bool, std::string> DeviceBootloader::flashFastBootHeader(Memory memor
 std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory,
                                                             size_t offset,
                                                             const std::vector<uint8_t>& data,
-                                                            std::function<void(float)> progressCb) {
+                                                            const std::function<void(float)>& progressCb) {
     if(data.size() == 0) {
         throw std::invalid_argument("Size to flash is zero");
     }
     return flashCustom(memory, offset, data.data(), data.size(), "", progressCb);
 }
 std::tuple<bool, std::string> DeviceBootloader::flashCustom(
-    Memory memory, size_t offset, const uint8_t* data, size_t size, std::function<void(float)> progressCb) {
+    Memory memory, size_t offset, const uint8_t* data, size_t size, const std::function<void(float)>& progressCb) {
     if(data == nullptr || size == 0) {
         throw std::invalid_argument("Data is nullptr or size is zero");
     }
     return flashCustom(memory, offset, data, size, "", progressCb);
 }
-std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, size_t offset, std::string filename, std::function<void(float)> progressCb) {
+std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory,
+                                                            size_t offset,
+                                                            const std::string& filename,
+                                                            const std::function<void(float)>& progressCb) {
     return flashCustom(memory, offset, nullptr, 0, filename, progressCb);
 }
 std::tuple<bool, std::string> DeviceBootloader::flashCustom(
@@ -1150,24 +874,25 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(
 }
 
 std::tuple<bool, std::string> DeviceBootloader::readCustom(
-    Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, std::function<void(float)> progressCb) {
+    Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, const std::function<void(float)>& progressCb) {
     // Resize container if not too small
     if(data.size() < size) {
         data.resize(size);
     }
     return readCustom(memory, offset, size, data.data(), "", progressCb);
 }
-std::tuple<bool, std::string> DeviceBootloader::readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, std::function<void(float)> progressCb) {
+std::tuple<bool, std::string> DeviceBootloader::readCustom(
+    Memory memory, size_t offset, size_t size, uint8_t* data, const std::function<void(float)>& progressCb) {
     return readCustom(memory, offset, size, data, "", progressCb);
 }
 std::tuple<bool, std::string> DeviceBootloader::readCustom(
-    Memory memory, size_t offset, size_t size, std::string filename, std::function<void(float)> progressCb) {
+    Memory memory, size_t offset, size_t size, const std::string& filename, const std::function<void(float)>& progressCb) {
     return readCustom(memory, offset, size, nullptr, filename, progressCb);
 }
 std::tuple<bool, std::string, std::vector<uint8_t>> DeviceBootloader::readCustom(Memory memory,
                                                                                  size_t offset,
                                                                                  size_t size,
-                                                                                 std::function<void(float)> progressCb) {
+                                                                                 const std::function<void(float)>& progressCb) {
     std::vector<uint8_t> data;
     auto ret = readCustom(memory, offset, size, data, progressCb);
     return {std::get<0>(ret), std::get<1>(ret), data};
@@ -1274,7 +999,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigClear(Memory memory, 
     return {result.success, result.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json configData, Memory memory, Type type) {
+std::tuple<bool, std::string> DeviceBootloader::flashConfigData(const nlohmann::json& configData, Memory memory, Type type) {
     // Parse to BSON
     auto bson = nlohmann::json::to_bson(configData);
 
@@ -1452,13 +1177,13 @@ void DeviceBootloader::receiveResponseThrow(T& response) {
 }
 
 // Config functions
-void DeviceBootloader::Config::setStaticIPv4(std::string ip, std::string mask, std::string gateway) {
+void DeviceBootloader::Config::setStaticIPv4(const std::string& ip, const std::string& mask, const std::string& gateway) {
     network.ipv4 = platform::getIPv4AddressAsBinary(ip);
     network.ipv4Mask = platform::getIPv4AddressAsBinary(mask);
     network.ipv4Gateway = platform::getIPv4AddressAsBinary(gateway);
     network.staticIpv4 = true;
 }
-void DeviceBootloader::Config::setDynamicIPv4(std::string ip, std::string mask, std::string gateway) {
+void DeviceBootloader::Config::setDynamicIPv4(const std::string& ip, const std::string& mask, const std::string& gateway) {
     network.ipv4 = platform::getIPv4AddressAsBinary(ip);
     network.ipv4Mask = platform::getIPv4AddressAsBinary(mask);
     network.ipv4Gateway = platform::getIPv4AddressAsBinary(gateway);
@@ -1479,7 +1204,7 @@ std::string DeviceBootloader::Config::getIPv4Gateway() {
     return platform::getIPv4AddressAsString(network.ipv4Gateway);
 }
 
-void DeviceBootloader::Config::setDnsIPv4(std::string dns, std::string dnsAlt) {
+void DeviceBootloader::Config::setDnsIPv4(const std::string& dns, const std::string& dnsAlt) {
     network.ipv4Dns = platform::getIPv4AddressAsBinary(dns);
     network.ipv4DnsAlt = platform::getIPv4AddressAsBinary(dnsAlt);
 }
@@ -1516,7 +1241,7 @@ UsbSpeed DeviceBootloader::Config::getUsbMaxSpeed() {
     return static_cast<UsbSpeed>(usb.maxUsbSpeed);
 }
 
-void DeviceBootloader::Config::setMacAddress(std::string mac) {
+void DeviceBootloader::Config::setMacAddress(const std::string& mac) {
     std::array<uint8_t, 6> a = {0, 0, 0, 0, 0, 0};
     if(mac != "") {
         int last = -1;
@@ -1553,7 +1278,7 @@ nlohmann::json DeviceBootloader::Config::toJson() const {
     return dataCopy;
 }
 
-DeviceBootloader::Config DeviceBootloader::Config::fromJson(nlohmann::json json) {
+DeviceBootloader::Config DeviceBootloader::Config::fromJson(const nlohmann::json& json) {
     // Parse out json (implicitly) and
     Config cfg = json;
     // save json data as is (to retain unknown values)

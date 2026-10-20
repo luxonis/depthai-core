@@ -120,7 +120,7 @@ class PipelineState : public Buffer {
 
     nlohmann::json toJson() const;
 
-    DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeStates, configSequenceNum);
+    DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeStates, configSequenceNum);
 };
 
 }  // namespace dai

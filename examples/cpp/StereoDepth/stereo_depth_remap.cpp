@@ -1,4 +1,5 @@
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -31,44 +32,8 @@ void drawRotatedRectangle(cv::Mat& frame, const cv::Point2f& center, const cv::S
 }
 
 // Helper function to process depth frame
-cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
-    cv::Mat depth_downscaled;
-    cv::resize(depthFrame, depth_downscaled, cv::Size(), 0.25, 0.25);
-
-    double min_depth = 0;
-    if(!cv::countNonZero(depth_downscaled == 0)) {
-        std::vector<uint16_t> nonZeroDepth;
-        nonZeroDepth.reserve(depth_downscaled.rows * depth_downscaled.cols);
-
-        for(int i = 0; i < depth_downscaled.rows; i++) {
-            for(int j = 0; j < depth_downscaled.cols; j++) {
-                uint16_t depth = depth_downscaled.at<uint16_t>(i, j);
-                if(depth > 0) nonZeroDepth.push_back(depth);
-            }
-        }
-
-        if(!nonZeroDepth.empty()) {
-            std::sort(nonZeroDepth.begin(), nonZeroDepth.end());
-            min_depth = nonZeroDepth[static_cast<int>(nonZeroDepth.size() * 0.01)];  // 1st percentile
-        }
-    }
-
-    std::vector<uint16_t> allDepth;
-    allDepth.reserve(depth_downscaled.rows * depth_downscaled.cols);
-    for(int i = 0; i < depth_downscaled.rows; i++) {
-        for(int j = 0; j < depth_downscaled.cols; j++) {
-            allDepth.push_back(depth_downscaled.at<uint16_t>(i, j));
-        }
-    }
-    std::sort(allDepth.begin(), allDepth.end());
-    double max_depth = allDepth[static_cast<int>(allDepth.size() * 0.99)];  // 99th percentile
-
-    // Normalize and colorize
-    cv::Mat normalized;
-    cv::normalize(depthFrame, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1, depthFrame > min_depth);
-    cv::Mat colorized;
-    cv::applyColorMap(normalized, colorized, cv::COLORMAP_HOT);
-    return colorized;
+cv::Mat processDepthFrame(const dai::ImgFrame& depthFrame) {
+    return dai::utility::colorizeDepthFrame(depthFrame, 500.0f, 12000.0f, cv::COLORMAP_HOT, true).getCvFrame();
 }
 
 int main() {
@@ -112,6 +77,7 @@ int main() {
 
     pipeline.start();
 
+    auto lastPrintTime = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     while(pipeline.isRunning() && !quitEvent) {
         auto colorFrame = colorOut->get<dai::ImgFrame>();
         auto stereoFrame = stereoOut->get<dai::ImgFrame>();
@@ -121,22 +87,27 @@ int main() {
         // Validate transformations
         if(!colorFrame->validateTransformations() || !stereoFrame->validateTransformations()) {
             std::cerr << "Invalid transformations!" << std::endl;
+            throw std::runtime_error("Invalid transformations!");
             continue;
         }
 
         // Get frames
         cv::Mat clr = colorFrame->getCvFrame();
-        cv::Mat depth = processDepthFrame(stereoFrame->getCvFrame());
+        cv::Mat depth = processDepthFrame(*stereoFrame);
 
         // Create and remap rectangle
         dai::RotatedRect rect(dai::Point2f(300, 200), dai::Size2f(200, 100), 10);
         auto remappedRect = colorFrame->transformation.remapRectTo(stereoFrame->transformation, rect);
 
-        // Print rectangle information
-        std::cout << "Original rect x: " << rect.center.x << " y: " << rect.center.y << " width: " << rect.size.width << " height: " << rect.size.height
-                  << " angle: " << rect.angle << std::endl;
-        std::cout << "Remapped rect x: " << remappedRect.center.x << " y: " << remappedRect.center.y << " width: " << remappedRect.size.width
-                  << " height: " << remappedRect.size.height << " angle: " << remappedRect.angle << std::endl;
+        const auto now = std::chrono::steady_clock::now();
+        if(now - lastPrintTime >= std::chrono::seconds(1)) {
+            // Print rectangle information at most once per second.
+            std::cout << "Original rect x: " << rect.center.x << " y: " << rect.center.y << " width: " << rect.size.width << " height: " << rect.size.height
+                      << " angle: " << rect.angle << std::endl;
+            std::cout << "Remapped rect x: " << remappedRect.center.x << " y: " << remappedRect.center.y << " width: " << remappedRect.size.width
+                      << " height: " << remappedRect.size.height << " angle: " << remappedRect.angle << std::endl;
+            lastPrintTime = now;
+        }
 
         // Draw rectangles
         drawRotatedRectangle(clr, cv::Point2f(rect.center.x, rect.center.y), cv::Size2f(rect.size.width, rect.size.height), rect.angle, cv::Scalar(255, 0, 0));

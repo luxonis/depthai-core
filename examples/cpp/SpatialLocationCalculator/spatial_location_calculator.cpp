@@ -21,18 +21,9 @@ int main() {
         dai::Pipeline pipeline;
 
         // Define sources and outputs
-        auto monoLeft = pipeline.create<dai::node::Camera>();
-        monoLeft->build(dai::CameraBoardSocket::CAM_B);
-
-        auto monoRight = pipeline.create<dai::node::Camera>();
-        monoRight->build(dai::CameraBoardSocket::CAM_C);
-
-        auto stereo = pipeline.create<dai::node::StereoDepth>();
+        auto depth = pipeline.create<dai::node::Depth>();
+        depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, std::make_pair(640u, 400u));
         auto spatialLocationCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
-
-        // Configure stereo
-        stereo->setRectification(true);
-        stereo->setExtendedDisparity(true);
 
         // Initial ROI configuration
         dai::Point2f topLeft(0.4f, 0.4f);
@@ -55,9 +46,7 @@ int main() {
         auto inputConfigQueue = spatialLocationCalculator->inputConfig.createInputQueue();
 
         // Linking
-        monoLeft->requestOutput(std::make_pair(640, 400))->link(stereo->left);
-        monoRight->requestOutput(std::make_pair(640, 400))->link(stereo->right);
-        stereo->depth.link(spatialLocationCalculator->inputDepth);
+        depth->depth().link(spatialLocationCalculator->inputDepth);
 
         // Start pipeline
         pipeline.start();
@@ -88,10 +77,7 @@ int main() {
             }
 
             // Process depth frame for visualization
-            cv::Mat depthFrameColor;
-            cv::normalize(frameDepth, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
-            cv::equalizeHist(depthFrameColor, depthFrameColor);
-            cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
+            cv::Mat depthFrameColor = dai::utility::colorizeDepthFrame(*outputDepthImage).getCvFrame();
 
             // Draw spatial data
             for(const auto& depthData : spatialData->spatialLocations) {

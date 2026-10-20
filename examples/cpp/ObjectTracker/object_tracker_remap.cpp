@@ -1,76 +1,9 @@
-#include <algorithm>  // Required for std::sort and std::unique
-#include <cmath>      // Required for std::log, std::isnan, std::isinf
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <vector>
 
 #include "depthai/depthai.hpp"
-#include "xtensor/containers/xadapt.hpp"
-#include "xtensor/core/xmath.hpp"
-
-cv::Mat colorizeDepth(cv::Mat frameDepth) {
-    cv::Mat invalidMask = frameDepth == 0;
-    cv::Mat depthFrameColor;
-
-    try {
-        cv::Mat frameDepthFloat;
-        frameDepth.convertTo(frameDepthFloat, CV_32F);
-        xt::xtensor<float, 2> depth =
-            xt::adapt((float*)frameDepthFloat.data, {static_cast<size_t>(frameDepthFloat.rows), static_cast<size_t>(frameDepthFloat.cols)});
-
-        // Get valid depth values (non-zero)
-        std::vector<float> validDepth;
-        validDepth.reserve(depth.size());
-        std::copy_if(depth.begin(), depth.end(), std::back_inserter(validDepth), [](float x) { return x != 0; });
-
-        if(validDepth.size() == 0) {
-            return cv::Mat::zeros(frameDepth.rows, frameDepth.cols, CV_8UC3);
-        }
-
-        // Calculate percentiles
-        std::sort(validDepth.begin(), validDepth.end());
-        float minDepth = validDepth[static_cast<size_t>(validDepth.size() * 0.03)];
-        float maxDepth = validDepth[static_cast<size_t>(validDepth.size() * 0.95)];
-
-        // Take log of depth values
-        auto logDepth = xt::eval(xt::log(depth));
-        float logMinDepth = std::log(minDepth);
-        float logMaxDepth = std::log(maxDepth);
-
-        // Replace invalid values with logMinDepth using a naive implementation
-        auto logDepthData = logDepth.data();
-        auto depthData = depth.data();
-        const size_t size = depth.size();
-        for(size_t i = 0; i < size; i++) {
-            if(std::isnan(logDepthData[i]) || std::isinf(logDepthData[i]) || depthData[i] == 0.0f) {
-                logDepthData[i] = logMinDepth;
-            }
-        }
-
-        // Clip values
-        logDepth = xt::clip(logDepth, logMinDepth, logMaxDepth);
-
-        // Normalize to 0-255 range
-        auto normalizedDepth = (logDepth - logMinDepth) / (logMaxDepth - logMinDepth) * 255.0f;
-
-        // Convert to CV_8UC1
-        cv::Mat depthMat(frameDepth.rows, frameDepth.cols, CV_8UC1);
-        std::transform(normalizedDepth.begin(), normalizedDepth.end(), depthMat.data, [](float x) { return static_cast<uchar>(x); });
-
-        // Apply colormap
-        cv::applyColorMap(depthMat, depthFrameColor, cv::COLORMAP_JET);
-
-        // Set invalid pixels to black
-        depthFrameColor.setTo(cv::Scalar(0, 0, 0), invalidMask);
-
-    } catch(const std::exception& e) {
-        std::cerr << "Error in colorizeDepth: " << e.what() << std::endl;
-        return cv::Mat::zeros(frameDepth.rows, frameDepth.cols, CV_8UC3);
-    }
-
-    return depthFrameColor;
-}
 
 // Helper function to display frames with detections
 void displayFrame(const std::string& name,
@@ -81,7 +14,7 @@ void displayFrame(const std::string& name,
     cv::Mat cvFrame;
 
     if(frame->getType() == dai::ImgFrame::Type::RAW16) {
-        cvFrame = colorizeDepth(frame->getFrame());
+        cvFrame = dai::utility::colorizeDepthFrame(*frame).getCvFrame();
     } else {
         cvFrame = frame->getCvFrame();
     }
@@ -133,8 +66,10 @@ void displayFrame(const std::string& name,
 int main() {
     dai::Pipeline pipeline;
 
+    auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
     auto cameraNode = pipeline.create<dai::node::Camera>();
-    cameraNode->build();
+    cameraNode->build(colorSocket);
 
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
     dai::NNModelDescription modelDescription;
@@ -143,30 +78,16 @@ int main() {
     auto objectTracker = pipeline.create<dai::node::ObjectTracker>();
     auto labelMap = detectionNetwork->getClasses().value_or(std::vector<std::string>{});
 
-    auto monoLeft = pipeline.create<dai::node::Camera>();
-    monoLeft->build(dai::CameraBoardSocket::CAM_B);
-    auto monoRight = pipeline.create<dai::node::Camera>();
-    monoRight->build(dai::CameraBoardSocket::CAM_C);
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-
-    // Linking
-    auto monoLeftOut = monoLeft->requestOutput(std::make_pair(1280, 720));
-    auto monoRightOut = monoRight->requestOutput(std::make_pair(1280, 720));
-    monoLeftOut->link(stereo->left);
-    monoRightOut->link(stereo->right);
+    auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO);
 
     detectionNetwork->out.link(objectTracker->inputDetections);
     detectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
     detectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
 
-    stereo->setRectification(true);
-    stereo->setExtendedDisparity(true);
-    stereo->setLeftRightCheck(true);
-    stereo->setSubpixel(true);
-
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
     auto qTrack = objectTracker->out.createOutputQueue();
-    auto qDepth = stereo->disparity.createOutputQueue();
+    auto qDepth = depth->depth().createOutputQueue();
 
     pipeline.start();
 

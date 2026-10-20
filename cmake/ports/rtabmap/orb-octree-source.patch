@@ -1,0 +1,24 @@
+diff --git a/corelib/src/CMakeLists.txt b/corelib/src/CMakeLists.txt
+index b96b7e4..9a5d8af 100644
+--- a/corelib/src/CMakeLists.txt
++++ b/corelib/src/CMakeLists.txt
+@@ -131,11 +131,17 @@ SET(SRC_FILES
+     clams/discrete_depth_distortion_model.cpp
+     clams/frame_projector.cpp
+     clams/slam_calibrator.cpp
+-    
+-    opencv/ORBextractor.cc
++
+     opencv/solvepnp.cpp
+     opencv/five-point.cpp
+ )
++
++IF(WITH_ORB_OCTREE)
++SET(SRC_FILES
++    ${SRC_FILES}
++    opencv/ORBextractor.cc
++)
++ENDIF(WITH_ORB_OCTREE)
+ 
+ IF(PCL_VERSION VERSION_GREATER_EQUAL "1.8")
+ SET(SRC_FILES

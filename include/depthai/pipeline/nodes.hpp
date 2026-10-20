@@ -1,11 +1,13 @@
 #pragma once
 
 // all the nodes
+#include "node/Align.hpp"
 #include "node/AprilTag.hpp"
 #include "node/BenchmarkIn.hpp"
 #include "node/BenchmarkOut.hpp"
 #include "node/Camera.hpp"
 #include "node/ColorCamera.hpp"
+#include "node/Depth.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
 #include "node/Rectification.hpp"

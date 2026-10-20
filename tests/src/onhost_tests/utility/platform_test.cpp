@@ -186,3 +186,10 @@ TEST_CASE("Thread-level locking", "[platform]") {
     // Cleanup
     fs::remove(tempFile);
 }
+
+TEST_CASE("isIPv4Address accepts strict dotted quads only", "[platform]") {
+    using dai::platform::isIPv4Address;
+    for(auto ok : {"10.12.234.143", "192.168.1.1", "1.2.1.4", "0.0.0.0", "255.255.255.255"}) REQUIRE(isIPv4Address(ok));
+    for(auto bad : {"", "01.2.3.4", "1.2.3.04", "1.2.3", "1.2.3.4.5", "999.1.1.1", "256.1.1.1", "2.1.usb", "oak-1.local", " 1.2.3.4", "1.2.3.4 "})
+        REQUIRE_FALSE(isIPv4Address(bad));
+}

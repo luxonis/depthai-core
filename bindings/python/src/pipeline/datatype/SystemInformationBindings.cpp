@@ -104,22 +104,26 @@ void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack) {
     systemInformationRVC4.def(py::init<>())
         .def_property(
             "ddrMemoryUsage",
-            [](SystemInformationRVC4& i) { return &i.ddrMemoryUsage; },
+            [](SystemInformationRVC4& i) -> MemoryInfo { return i.ddrMemoryUsage; },
             [](SystemInformationRVC4& i, MemoryInfo val) { i.ddrMemoryUsage = val; })
         .def_property(
             "processMemoryUsage",
-            [](SystemInformationRVC4& i) { return i.processMemoryUsage; },
+            [](SystemInformationRVC4& i) -> int64_t { return i.processMemoryUsage; },
             [](SystemInformationRVC4& i, int64_t val) { i.processMemoryUsage = val; })
         .def_property(
-            "cpuAvgUsage", [](SystemInformationRVC4& i) { return &i.cpuAvgUsage; }, [](SystemInformationRVC4& i, CpuUsage val) { i.cpuAvgUsage = val; })
+            "cpuAvgUsage",
+            [](SystemInformationRVC4& i) -> CpuUsage { return i.cpuAvgUsage; },
+            [](SystemInformationRVC4& i, CpuUsage val) { i.cpuAvgUsage = val; })
         .def_property(
             "processCpuAvgUsage",
-            [](SystemInformationRVC4& i) { return &i.processCpuAvgUsage; },
+            [](SystemInformationRVC4& i) -> CpuUsage { return i.processCpuAvgUsage; },
             [](SystemInformationRVC4& i, CpuUsage val) { i.processCpuAvgUsage = val; })
         .def_property(
-            "cpuUsages", [](SystemInformationRVC4& i) { return &i.cpuUsages; }, [](SystemInformationRVC4& i, std::vector<CpuUsage> val) { i.cpuUsages = val; })
+            "cpuUsages",
+            [](SystemInformationRVC4& i) -> std::vector<CpuUsage>& { return i.cpuUsages; },
+            [](SystemInformationRVC4& i, std::vector<CpuUsage> val) { i.cpuUsages = std::move(val); })
         .def_property(
             "chipTemperature",
-            [](SystemInformationRVC4& i) { return &i.chipTemperature; },
+            [](SystemInformationRVC4& i) -> ChipTemperatureRVC4& { return i.chipTemperature; },
             [](SystemInformationRVC4& i, ChipTemperatureRVC4 val) { i.chipTemperature = val; });
 }

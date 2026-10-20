@@ -210,6 +210,11 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
     std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
+
+    /**
      * Serialize schema to proto buffer
      *
      * @returns serialized schema
@@ -232,7 +237,8 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
                       transformation,
                       Buffer::sequenceNum,
                       Buffer::ts,
-                      Buffer::tsDevice);
+                      Buffer::tsDevice,
+                      Buffer::tsSystem);
 };
 
 }  // namespace dai

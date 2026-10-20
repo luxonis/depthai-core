@@ -2,7 +2,11 @@
 #define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <limits>
+
+#include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
 
@@ -15,6 +19,7 @@ Affine::~Affine() = default;
 Perspective::~Perspective() = default;
 FourPoints::~FourPoints() = default;
 Crop::~Crop() = default;
+CropRotated::~CropRotated() = default;
 
 ImageManipConfig::~ImageManipConfig() = default;
 
@@ -32,17 +37,12 @@ ImageManipConfig& ImageManipConfig::addCrop(uint32_t x, uint32_t y, uint32_t w, 
     base.crop(x, y, w, h);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::addCrop(dai::Rect rect, bool normalizedCoords) {
+ImageManipConfig& ImageManipConfig::addCrop(const dai::Rect& rect, bool normalizedCoords) {
     base.crop(rect.x, rect.y, rect.width, rect.height, normalizedCoords);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords) {
-    base.rotateDegrees(-rotatedRect.angle);
-    base.crop(rotatedRect.center.x - rotatedRect.size.width / 2,
-              rotatedRect.center.y - rotatedRect.size.height / 2,
-              rotatedRect.size.width,
-              rotatedRect.size.height,
-              normalizedCoords);
+ImageManipConfig& ImageManipConfig::addCropRotatedRect(const dai::RotatedRect& rotatedRect, bool normalizedCoords) {
+    base.cropRotated(rotatedRect.center.x, rotatedRect.center.y, rotatedRect.size.width, rotatedRect.size.height, rotatedRect.angle, normalizedCoords);
     return *this;
 }
 ImageManipConfig& ImageManipConfig::addScale(float scaleX, float scaleY) {
@@ -69,11 +69,43 @@ ImageManipConfig& ImageManipConfig::addTransformAffine(std::array<float, 4> matr
     base.transformAffine(matrix);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::addTransformPerspective(std::array<float, 9> matrix) {
+ImageManipConfig& ImageManipConfig::addTransformPerspective(const std::array<float, 9>& matrix) {
     base.transformPerspective(matrix);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::addTransformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords) {
+ImageManipConfig& ImageManipConfig::addTransformFourPoints(const std::array<dai::Point2f, 4>& src,
+                                                           const std::array<dai::Point2f, 4>& dst,
+                                                           bool normalizedCoords) {
+    const auto validatePoints = [](const std::array<dai::Point2f, 4>& points, const char* name) {
+        for(const auto& point : points) {
+            if(!std::isfinite(point.x) || !std::isfinite(point.y)) {
+                throw std::invalid_argument(std::string(name) + " points must have finite coordinates.");
+            }
+        }
+
+        for(std::size_t first = 0; first < points.size() - 2; ++first) {
+            for(std::size_t second = first + 1; second < points.size() - 1; ++second) {
+                for(std::size_t third = second + 1; third < points.size(); ++third) {
+                    const auto& a = points[first];
+                    const auto& b = points[second];
+                    const auto& c = points[third];
+                    const double abX = static_cast<double>(b.x) - static_cast<double>(a.x);
+                    const double abY = static_cast<double>(b.y) - static_cast<double>(a.y);
+                    const double acX = static_cast<double>(c.x) - static_cast<double>(a.x);
+                    const double acY = static_cast<double>(c.y) - static_cast<double>(a.y);
+                    const double twiceArea = abX * acY - abY * acX;
+                    const double scale = std::max({1.0, std::abs(abX), std::abs(abY), std::abs(acX), std::abs(acY)});
+                    const double epsilon = static_cast<double>(std::numeric_limits<float>::epsilon());
+                    if(std::abs(twiceArea) <= epsilon * scale * scale) {
+                        throw std::invalid_argument(std::string("No three ") + name + " points may be collinear.");
+                    }
+                }
+            }
+        }
+    };
+
+    validatePoints(src, "Source");
+    validatePoints(dst, "Destination");
     base.transformFourPoints(src, dst, normalizedCoords);
     return *this;
 }

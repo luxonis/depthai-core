@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <vector>
 
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Extrinsics.hpp"
@@ -90,7 +91,7 @@ struct ImgTransformation {
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
-    dai::RotatedRect transformRect(dai::RotatedRect rect) const;
+    dai::RotatedRect transformRect(const dai::RotatedRect& rect) const;
     /**
      * Transform a point from the current frame to the source frame.
      * @param point Point to transform
@@ -102,7 +103,7 @@ struct ImgTransformation {
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
-    dai::RotatedRect invTransformRect(dai::RotatedRect rect) const;
+    dai::RotatedRect invTransformRect(const dai::RotatedRect& rect) const;
 
     /**
      * Retrieve the size of the frame. Should be equal to the size of the corresponding ImgFrame message.
@@ -145,7 +146,8 @@ struct ImgTransformation {
      */
     std::vector<float> getDistortionCoefficients() const;
     /**
-     * Retrieve the extrinsics to the source sensor.
+     * Retrieve the pose of the source sensor or virtual camera relative to its target coordinate system.
+     * The target coordinate system is identified by Extrinsics::toDeviceId and Extrinsics::toCameraSocket.
      * @return Extrinsics
      */
     Extrinsics getExtrinsics() const;
@@ -198,6 +200,21 @@ struct ImgTransformation {
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**
+     * Re-express the source extrinsics relative to a new target coordinate
+     * system.
+     *
+     * The supplied transform must map the current local calibration origin to
+     * the new target. Only the extrinsics are changed; all image-space
+     * transformation data is preserved. The rebased extrinsics translation is
+     * stored in centimeters.
+     *
+     * @param localOriginToTarget Transform from the current local calibration
+     * origin to the new target coordinate system.
+     * @return This transformation.
+     */
+    ImgTransformation& rebaseExtrinsics(const Extrinsics& localOriginToTarget);
+
+    /**
      * Returns true if the point is inside the transformed region of interest (determined by crops used).
      */
     bool getSrcMaskPt(size_t x, size_t y);
@@ -210,7 +227,7 @@ struct ImgTransformation {
      * Add a new transformation.
      * @param matrix Transformation matrix
      */
-    ImgTransformation& addTransformation(std::array<std::array<float, 3>, 3> matrix);
+    ImgTransformation& addTransformation(const std::array<std::array<float, 3>, 3>& matrix);
     /**
      * Add a crop transformation.
      * @param x X coordinate of the top-left corner of the crop
@@ -251,9 +268,9 @@ struct ImgTransformation {
     ImgTransformation& setSize(size_t width, size_t height);
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
-    ImgTransformation& setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix);
+    ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
     ImgTransformation& setDistortionModel(CameraModel model);
-    ImgTransformation& setDistortionCoefficients(std::vector<float> coefficients);
+    ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
 
     /**
      * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the
@@ -283,7 +300,7 @@ struct ImgTransformation {
      * @param from Transformation to remap from
      * @param rect RotatedRect to remap
      */
-    dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
+    dai::RotatedRect remapRectFrom(const ImgTransformation& from, const dai::RotatedRect& rect) const;
 
     /**
      * Project a 3D spatial point into 2D point in the current frame defined by this transformation.
@@ -357,7 +374,7 @@ struct ImgTransformation {
      * calibration.
      * @param sourceUnit The desired measurement unit in which to return the transformation matrix in.
      * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
-     * @note Both transformations must have a common toCameraSocket. Otherwise extrinsics cannot be calculated.
+     * @note Both transformations must have a compatible target device ID and a common target camera socket. Otherwise extrinsics cannot be calculated.
      */
     std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
                                                                             bool useSpecTranslation = false,

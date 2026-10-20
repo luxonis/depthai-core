@@ -9,6 +9,7 @@
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/Subnode.hpp"
@@ -40,7 +41,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
        public:
         Impl() = default;
 
-        void setLogger(std::shared_ptr<::spdlog::logger> log);
+        void setLogger(const std::shared_ptr<::spdlog::logger>& log);
 
         // Compute DENSE point cloud (width * height points, includes invalid z=0 or negative)
         void computePointCloudDense(const uint8_t* depthData, std::vector<Point3f>& points);
@@ -61,6 +62,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         void useCPUMT(uint32_t numThreads);
         void useGPU(uint32_t device);
         void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height);
+        void setDistortion(CameraModel model, std::vector<float> coefficients);
         void setExtrinsics(const std::vector<std::vector<float>>& transformMatrix);
         void clearExtrinsics();
 
@@ -68,6 +70,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
        private:
         void initializeGPU(uint32_t device);
+        void cacheUndistortedRays();
         template <typename PointT>
         void transformPointsCPU(std::vector<PointT>& points);
         void calcPointsChunkDense(const uint8_t* depthData, std::vector<Point3f>& points, unsigned int startRow, unsigned int endRow);
@@ -101,6 +104,11 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         float lengthUnitMultiplier = DEFAULT_LENGTH_UNIT_MULTIPLIER;
 
         float fx = 0.0f, fy = 0.0f, cx = 0.0f, cy = 0.0f;
+        CameraModel distortionModel = CameraModel::Perspective;
+        std::vector<float> distortionCoefficients;
+        std::vector<Point2f> undistortedRays;
+        bool hasDistortion = false;
+        bool gpuDistortionFallbackWarned = false;
         unsigned int width = 0u, height = 0u;
         size_t size = 0;
         bool intrinsicsSet = false;
@@ -118,6 +126,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
    public:
     PointCloud();
+    PointCloud(std::unique_ptr<Properties> props);
     ~PointCloud();
 
     /**
@@ -203,17 +212,25 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /**
      * Set target coordinate system to transform point cloud
      * @param targetCamera Target camera socket
-     * @param useSpecTranslation Use spec translation instead of calibration (default: false)
      */
-    void setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation = false);
+    void setTargetCoordinateSystem(CameraBoardSocket targetCamera);
 
     /**
      * Set target coordinate system to housing coordinate system
      * Point cloud will be transformed to this housing coordinate system
      * @param housingCS Target housing coordinate system
-     * @param useSpecTranslation Whether to use spec translation (default: true)
      */
-    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation = true);
+    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS);
+
+    /**
+     * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
+     */
+    void setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation);
+
+    /**
+     * Deprecated: use setTargetCoordinateSystem(housingCS) instead.
+     */
+    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation);
 
     bool runOnHost() const override;
 
@@ -236,8 +253,11 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     void setCoordinateTransformation(const ImgFrame& depthFrame, const PointCloudConfig& config);
 
     // Processing methods for the two code paths
-    void processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc, bool organized);
-    void processColorized(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<ImgFrame> colorFrame, std::shared_ptr<PointCloudData> pc, bool organized);
+    void processDepthOnly(const std::shared_ptr<ImgFrame>& depthFrame, const std::shared_ptr<PointCloudData>& pc, bool organized);
+    void processColorized(const std::shared_ptr<ImgFrame>& depthFrame,
+                          const std::shared_ptr<ImgFrame>& colorFrame,
+                          const std::shared_ptr<PointCloudData>& pc,
+                          bool organized);
 
     bool runOnHostVar = true;
     bool initialized = false;

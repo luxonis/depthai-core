@@ -20,7 +20,7 @@ class NNDataViewer {
 
     FactorsBefore factorsBefore;
 
-    NNDataViewer(dai::TensorInfo tensor, std::shared_ptr<dai::Memory> data, std::shared_ptr<spdlog::async_logger> logger)
+    NNDataViewer(const dai::TensorInfo& tensor, const std::shared_ptr<dai::Memory>& data, const std::shared_ptr<spdlog::async_logger>& logger)
         : data{data}, tensor{tensor}, logger{logger} {};
     bool build() {
         if(tensor.strides.size() < 2) {

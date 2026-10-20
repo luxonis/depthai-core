@@ -15,8 +15,9 @@ endif()
 set(TARGET_NAME "depthai")
 
 # Regexes for example test failure
-set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
-set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
+set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\\\[warning\\\\];\\\\[error\\\\];\\\\[critical\\\\]")
+set(NO_DEVICE_SKIP_REGEX "No device found after .* skipping test")
+set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\\\[error\\\\];\\\\[critical\\\\]")
 
 # Add a target to install_requirements (added to ALL)
 # For windows we don't install open3d-cpu
@@ -93,6 +94,8 @@ function(add_python_example example_name python_script_path)
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION ${STRICT_EXAMPLE_TEST_FAIL_REGEX})
 
+        set_tests_properties (${example_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${NO_DEVICE_SKIP_REGEX}")
+
     endif()
 
 endfunction()
@@ -148,6 +151,24 @@ function(dai_example_test_relax_fail_regex example_name)
         set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
     endif()
 endfunction()
+
+if(DEPTHAI_BUILD_BETA)
+    add_python_example(beta_classification_parser Beta/classification_parser.py)
+    add_python_example(beta_classification_sequence_parser Beta/classification_sequence_parser.py)
+    add_python_example(beta_embeddings_parser Beta/embeddings_parser.py)
+    add_python_example(beta_fastsam_parser Beta/fastsam_parser.py)
+    add_python_example(beta_hrnet_parser Beta/hrnet_parser.py)
+    add_python_example(beta_image_output_parser Beta/image_output_parser.py)
+    add_python_example(beta_keypoint_parser Beta/keypoint_parser.py)
+    add_python_example(beta_lane_detection_parser Beta/lane_detection_parser.py)
+    add_python_example(beta_map_output_parser Beta/map_output_parser.py)
+    add_python_example(beta_mlsd_parser Beta/mlsd_parser.py)
+    add_python_example(beta_mp_palm_detection_parser Beta/mp_palm_detection_parser.py)
+    add_python_example(beta_pp_text_detection_parser Beta/pp_text_detection_parser.py)
+    add_python_example(beta_scrfd_parser Beta/scrfd_parser.py)
+    add_python_example(beta_superanimal_parser Beta/superanimal_parser.py)
+    add_python_example(beta_yunet_parser Beta/yunet_parser.py)
+endif()
 
 
 ## Camera output
@@ -228,6 +249,9 @@ dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 rvc4rgb ci)
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
 dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 rvc4rgb ci)
 
+add_python_example(health_check Misc/HealthCheck/health_check.py)
+dai_set_example_test_labels(health_check ondevice rvc2_all rvc4 rvc4rgb ci)
+
 add_python_example(get_pipeline_state Misc/PipelineDebugging/get_pipeline_state.py)
 dai_set_example_test_labels(get_pipeline_state ondevice rvc2_all rvc4 ci)
 
@@ -244,6 +268,7 @@ dai_set_example_test_labels(edge_detector ondevice rvc2_all ci)
 
 ## Vpp
 add_python_example(virtual_patern_projection Vpp/virtual_patern_projection.py)
+add_python_example(tof_stereo_vpp Vpp/tof_stereo_vpp.py)
 dai_set_example_test_labels(virtual_patern_projection ondevice rvc4 ci)
 
 ## RGBD
@@ -286,6 +311,13 @@ dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 add_python_example(stereo_depth_from_host StereoDepth/stereo_depth_from_host.py)
 dai_set_example_test_labels(stereo_depth_from_host ondevice rvc2_all rvc4 ci)
 
+## Depth (dai.node.Depth composite)
+add_python_example(unified_depth Depth/unified_depth.py)
+dai_set_example_test_labels(unified_depth ondevice rvc2_all rvc4 ci)
+
+add_python_example(depth_rgb_align Depth/depth_rgb_align.py)
+dai_set_example_test_labels(depth_rgb_align ondevice rvc2_all rvc4 ci)
+
 ## VideoEncoder
 add_python_example(video_encoder VideoEncoder/video_encode.py)
 dai_set_example_test_labels(video_encoder ondevice rvc2_all rvc4 rvc4rgb ci)
@@ -297,6 +329,12 @@ dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 c
 ## ImageAlign
 add_python_example(depth_align ImageAlign/depth_align.py)
 dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
+
+## Align
+add_python_example(img_detections_align Align/img_detections_align.py)
+dai_set_example_test_labels(img_detections_align ondevice rvc4 ci)
+add_python_example(custom_message_align Align/custom_message_align.py)
+dai_set_example_test_labels(custom_message_align ondevice rvc2_all rvc4 ci)
 
 ## Visualizer
 
@@ -396,3 +434,16 @@ dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
 
 add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
 dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
+
+# Multi-device examples: registered without labels so they never run in CI
+# (they need at least two devices; the CI test wrapper pins to a single device)
+add_python_example(multi_device_cam_sync MultiDevice/multi_device_cam_sync.py)
+add_python_example(multi_device_frame_sync MultiDevice/multi_device_frame_sync.py --ptp-sync)
+add_python_example(multi_device_stream MultiDevice/multi_device_stream.py)
+add_python_example(device_to_device_relay MultiDevice/device_to_device_relay.py)
+
+# Multi-device calibration examples: also multi-device, so no CI labels
+if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_python_example(multi_device_calibration MultiDeviceCalibration/multi_device_calibration.py)
+    add_python_example(multi_device_calibration_constraints MultiDeviceCalibration/multi_device_calibration_constraints.py)
+endif()

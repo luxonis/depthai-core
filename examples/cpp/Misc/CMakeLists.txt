@@ -1,8 +1,14 @@
 project(misc_examples)
 cmake_minimum_required(VERSION 3.10)
 
+if(DEPTHAI_ENABLE_PROTOBUF)
+    dai_add_example(save_load save_load.cpp OFF OFF)
+endif()
+
 add_subdirectory(AutoReconnect)
+add_subdirectory(Bootloader)
 add_subdirectory(CrashDump)
+add_subdirectory(HealthCheck)
 add_subdirectory(Projectors)
 add_subdirectory(PipelineDebugging)
 add_subdirectory(SystemLogger)

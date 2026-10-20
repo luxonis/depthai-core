@@ -18,7 +18,7 @@ void ToFDepthConfidenceFilterConfig::serialize(std::vector<std::uint8_t>& metada
     datatype = DatatypeEnum::ToFDepthConfidenceFilterConfig;
 }
 
-ImageFiltersConfig& ImageFiltersConfig::updateFilterAtIndex(std::int32_t index, FilterParams params) {
+ImageFiltersConfig& ImageFiltersConfig::updateFilterAtIndex(std::int32_t index, const FilterParams& params) {
     DAI_CHECK_V(this->filterIndices.size() == this->filterParams.size(),
                 "ImageFiltersConfig can either be used to create a new filter pipeline or update an existing one, not both");
     this->filterIndices.push_back(index);
@@ -26,7 +26,7 @@ ImageFiltersConfig& ImageFiltersConfig::updateFilterAtIndex(std::int32_t index, 
     return *this;
 }
 
-ImageFiltersConfig& ImageFiltersConfig::insertFilter(FilterParams params) {
+ImageFiltersConfig& ImageFiltersConfig::insertFilter(const FilterParams& params) {
     DAI_CHECK_V(filterIndices.size() == 0, "ImageFiltersConfig can either be used to create a new filter pipeline or update an existing one, not both");
     this->filterParams.push_back(params);
     return *this;

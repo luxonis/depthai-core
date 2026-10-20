@@ -38,7 +38,7 @@ Node::Connection::Connection(Output out, Input in) {
     inputGroup = in.getGroup();
 }
 
-Node::Connection::Connection(ConnectionInternal c) {
+Node::Connection::Connection(const ConnectionInternal& c) {
     auto out = c.outputNode.lock();
     auto in = c.inputNode.lock();
     if(out == nullptr || in == nullptr) {
@@ -148,6 +148,17 @@ bool Node::Output::canConnect(const Input& in) {
 }
 
 void Node::Output::link(Input& in) {
+    // Linking across two different pipelines is not supported
+    auto outputPipeline = parent.get().parent.lock();
+    auto inputPipeline = in.getParent().parent.lock();
+    if(outputPipeline != nullptr && inputPipeline != nullptr && outputPipeline != inputPipeline) {
+        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}' - nodes are part of different pipelines",
+                                             getParent().getName(),
+                                             toString(),
+                                             in.getParent().getName(),
+                                             in.toString()));
+    }
+
     // First check if can connect
     if(!canConnect(in)) {
         throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
@@ -316,17 +327,17 @@ AssetManager& Node::getAssetManager() {
     return assetManager;
 }
 
-std::vector<uint8_t> Node::loadResource(std::filesystem::path uri) {
+std::vector<uint8_t> Node::loadResource(const std::filesystem::path& uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-std::vector<uint8_t> Node::moveResource(std::filesystem::path uri) {
+std::vector<uint8_t> Node::moveResource(const std::filesystem::path& uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd, true);
 }
 
-Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
+Node::OutputMap::OutputMap(Node& parent, std::string name, const Node::OutputDescription& defaultOutput, bool ref)
     : defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
     if(ref) {
         parent.setOutputMapRefs(this);
@@ -489,10 +500,10 @@ std::vector<const Node::Input*> Node::getInputRefs() const {
     return tmpInputRefs;
 }
 
-Node::Output* Node::getOutputRef(std::string name) {
+Node::Output* Node::getOutputRef(const std::string& name) {
     return getOutputRef("", name);
 }
-Node::Output* Node::getOutputRef(std::string group, std::string name) {
+Node::Output* Node::getOutputRef(const std::string& group, const std::string& name) {
     auto refs = getOutputRefs();
     for(auto& out : refs) {
         if(out->getGroup() == group && out->getName() == name) {
@@ -502,10 +513,10 @@ Node::Output* Node::getOutputRef(std::string group, std::string name) {
     return nullptr;
 }
 
-Node::Input* Node::getInputRef(std::string name) {
+Node::Input* Node::getInputRef(const std::string& name) {
     return getInputRef("", name);
 }
-Node::Input* Node::getInputRef(std::string group, std::string name) {
+Node::Input* Node::getInputRef(const std::string& group, const std::string& name) {
     auto refs = getInputRefs();
     for(auto& input : refs) {
         if(input->getGroup() == group && input->getName() == name) {
@@ -537,7 +548,7 @@ std::vector<Node::OutputMap*> Node::getOutputMapRefs() {
     return tmpOutputMapRefs;
 }
 
-Node::InputMap* Node::getInputMapRef(std::string group) {
+Node::InputMap* Node::getInputMapRef(const std::string& group) {
     for(auto* inMapRef : inputMapRefs) {
         if(inMapRef->name == group) {
             return inMapRef;
@@ -546,7 +557,7 @@ Node::InputMap* Node::getInputMapRef(std::string group) {
     return nullptr;
 }
 
-Node::OutputMap* Node::getOutputMapRef(std::string group) {
+Node::OutputMap* Node::getOutputMapRef(const std::string& group) {
     for(auto* outMapRef : outputMapRefs) {
         if(outMapRef->name == group) {
             return outMapRef;
@@ -612,13 +623,17 @@ void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
     setNodeRefs({alias, nodeRef});
 }
 
-void Node::add(std::shared_ptr<Node> node) {
+void Node::add(const std::shared_ptr<Node>& node) {
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
     node->parentId = this->id;
     nodeMap.push_back(node);
+    // If this node group is already in a pipeline, new children must be adopted too (lazy subgraphs).
+    if(auto pipeline = parent.lock()) {
+        pipeline->adoptSubtree(node);
+    }
 }
 
-void Node::remove(std::shared_ptr<Node> node) {
+void Node::remove(const std::shared_ptr<Node>& node) {
     // Remove the connection to the removed node and all it's children from all the nodes in the pipeline
     auto pipeline = parent.lock();
 
@@ -636,7 +651,7 @@ void Node::remove(std::shared_ptr<Node> node) {
     nodeMap.erase(std::remove(nodeMap.begin(), nodeMap.end(), node), nodeMap.end());
 }
 
-void Node::removeConnectionToNode(std::shared_ptr<Node> node) {
+void Node::removeConnectionToNode(const std::shared_ptr<Node>& node) {
     // Remove all connections to this node
     for(auto it = connections.begin(); it != connections.end();) {
         if(it->inputNode.lock() == node || it->outputNode.lock() == node) {
@@ -808,6 +823,37 @@ std::shared_ptr<dai::node::internal::XLinkInBridge> Node::Input::getXLinkBridge(
 
 std::shared_ptr<dai::node::internal::XLinkOutBridge> Node::Output::getXLinkBridge() const {
     return xLinkBridge;
+}
+
+std::shared_ptr<Device> Node::Input::getSourceDevice() const {
+    auto pipeline = parent.get().parent.lock();
+    if(pipeline == nullptr) {
+        return nullptr;
+    }
+    // Resolution is keyed by the address of the node's own Input object. getInputs() hands
+    // out copies, so map a copy back to the node's canonical input by group and name.
+    const Node::Input* canonical = this;
+    for(const Node::Input* input : static_cast<const Node&>(parent.get()).getInputRefs()) {
+        if(input == this) {
+            canonical = this;
+            break;
+        }
+        if(input->group == group && input->getName() == getName()) {
+            canonical = input;
+        }
+    }
+    return pipeline->getInputSourceDevice(canonical);
+}
+
+std::map<std::string, std::shared_ptr<Device>> Node::InputMap::getSourceDevices() const {
+    std::map<std::string, std::shared_ptr<Device>> sourceDevices;
+    for(const auto& entry : *this) {
+        // Inputs created with a group are keyed "<group>/<name>" so they cannot collapse
+        // onto a same-named input of another group
+        const auto key = entry.first.first == name ? entry.first.second : entry.first.first + "/" + entry.first.second;
+        sourceDevices[key] = entry.second.getSourceDevice();
+    }
+    return sourceDevices;
 }
 
 }  // namespace dai

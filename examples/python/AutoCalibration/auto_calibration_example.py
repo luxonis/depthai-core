@@ -1,47 +1,6 @@
 import cv2 as cv
 import numpy as np
 import depthai as dai
-import warnings
-
-
-def showDepth(depthFrame, windowName="Depth", minDistance=500, maxDistance=5000,
-               colormap=cv.COLORMAP_TURBO, useLog=False):
-    """
-    Nicely visualize a depth map.
-
-    Args:
-        depthFrame (np.ndarray): Depth frame (in millimeters).
-        windowName (str): OpenCV window name.
-        minDistance (int): Minimum depth to display (in mm).
-        maxDistance (int): Maximum depth to display (in mm).
-        colormap (int): OpenCV colormap (e.g., cv.COLORMAP_JET, COLORMAP_TURBO, etc.).
-        useLog (bool): Apply logarithmic scaling for better visual contrast.
-    """
-    if maxDistance <= minDistance:
-        warnings.warn(
-            f"Invalid distance range: maxDistance ({maxDistance}) <= minDistance ({minDistance})",
-            stacklevel=2,
-        )
-        return
-
-    # Convert to float for processing
-    depthFrame = depthFrame.astype(np.float32)
-
-    # Optionally apply log scaling
-    if useLog:
-        depthFrame = np.log(depthFrame + 1)
-        minDistance = np.log(minDistance + 1)
-        maxDistance = np.log(maxDistance + 1)
-
-    # Clip and normalize to [0, 255]
-    depthFrame = np.clip(depthFrame, minDistance, maxDistance)
-    depthFrame = np.uint8((depthFrame - minDistance) * (255.0 / (maxDistance - minDistance)))
-
-    # Apply color map
-    depthColor = cv.applyColorMap(depthFrame, colormap)
-
-    # Show in a window
-    cv.imshow(windowName, depthColor)
 
 
 def rotationMatrixToEulerAngles(rotationMatrix, vector=False):
@@ -96,7 +55,7 @@ def eulerAnglesToRotationMatrix(phi, theta, psi):
 
 
 def botchCalibration(device : dai.Device):
-    calibrationHandler = device.readCalibration()
+    calibrationHandler = device.getCalibration()
     extrinsics = calibrationHandler.getCameraExtrinsics(
         dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C
     )
@@ -131,7 +90,7 @@ with dai.Pipeline() as pipeline:
 
     camLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     camRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    stereo = pipeline.create(dai.node.StereoDepth)
+    depthNode = pipeline.create(dai.node.Depth)
 
     dcWorker = pipeline.create(dai.node.AutoCalibration).build(camLeft, camRight)
     dcWorker.initialConfig.maxIterations = 2
@@ -142,13 +101,7 @@ with dai.Pipeline() as pipeline:
     dcWorker.initialConfig.dataConfidenceThreshold = 0.3
     workerOutputQueue = dcWorker.output.createOutputQueue()
 
-    videoQueueLeft = camLeft.requestOutput((1280, 800), fps=30)
-    videoQueueRight = camRight.requestOutput((1280, 800), fps=30)
-
-    videoQueueLeft.link(stereo.left)
-    videoQueueRight.link(stereo.right)
-
-    stereoOut = stereo.depth.createOutputQueue()
+    stereoOut = depthNode.depth.createOutputQueue()
     pipeline.start()
 
     while pipeline.isRunning():
@@ -162,14 +115,7 @@ with dai.Pipeline() as pipeline:
                 print("Did not pass")
 
         depth = stereoOut.get()
-        showDepth(
-            depth.getCvFrame(),
-            windowName="Depth",
-            minDistance=500,
-            maxDistance=5000,
-            colormap=cv.COLORMAP_TURBO,
-            useLog=False
-        )
+        cv.imshow("Depth", dai.utility.colorizeDepthFrame(depth, 300, 12000, cv.COLORMAP_TURBO, useLog=True).getCvFrame())
 
         if cv.waitKey(1) == ord("q"):
             break

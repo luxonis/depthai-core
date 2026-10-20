@@ -55,7 +55,7 @@ class StereoDepthConfig : public Buffer {
         bool enableLeftRightCheck = true;
 
         /**
-         * Enables software left right check. Applicable to RVC4 only.
+         * Enables software left right check. RVC4 only.
          */
         bool enableSwLeftRightCheck = false;
 
@@ -67,6 +67,7 @@ class StereoDepthConfig : public Buffer {
 
         /**
          * Computes disparity with sub-pixel interpolation (5 fractional bits), suitable for long range
+         * RVC2 only.
          */
         bool enableSubpixel = true;
 
@@ -85,6 +86,7 @@ class StereoDepthConfig : public Buffer {
          * Defines the number of fractional disparities: 2^x
          *
          * Median filter postprocessing is supported only for 3 fractional bits
+         * RVC2 only.
          */
         std::int32_t subpixelFractionalBits = 5;
 
@@ -95,6 +97,7 @@ class StereoDepthConfig : public Buffer {
          * We normally only recommend doing this when it is known that there will be no objects
          * farther away than MaxZ, such as having a depth camera mounted above a table
          * pointing down at the table surface.
+         * RVC2 only.
          */
         std::int32_t disparityShift = 0;
 
@@ -110,6 +113,7 @@ class StereoDepthConfig : public Buffer {
          * 2. Warping the image to counter rotate and scaling to match the FOV.
          * Center alignment factor 1 is equivalent to RECTIFIED_RIGHT
          * Center alignment factor 0 is equivalent to RECTIFIED_LEFT
+         * RVC2 only.
          */
         std::optional<float> centerAlignmentShiftFactor;
 
@@ -117,6 +121,7 @@ class StereoDepthConfig : public Buffer {
          * Invalidate X amount of pixels at the edge of disparity frame.
          * For right and center alignment X pixels will be invalidated from the right edge,
          * for left alignment from the left edge.
+         * RVC2 only.
          */
         std::int32_t numInvalidateEdgePixels = 0;
 
@@ -135,6 +140,9 @@ class StereoDepthConfig : public Buffer {
                           numInvalidateEdgePixels);
     };
 
+    /**
+     * Confidence metrics settings. RVC4 only.
+     */
     struct ConfidenceMetrics {
         /**
          * Weight used with occlusion estimation to generate final confidence map.
@@ -195,6 +203,7 @@ class StereoDepthConfig : public Buffer {
         /**
          * Sigma value for bilateral filter. 0 means disabled.
          * A larger value of the parameter means that farther colors within the pixel neighborhood will be mixed together.
+         * RVC2 only.
          */
         std::int16_t bilateralSigmaValue = 0;
 
@@ -212,24 +221,7 @@ class StereoDepthConfig : public Buffer {
          */
         TemporalFilter temporalFilter;
 
-        /**
-         * Threshold filtering.
-         * Filters out distances outside of a given interval.
-         */
-        struct ThresholdFilter {
-            /**
-             * Minimum range in depth units.
-             * Depth values under this value are invalidated.
-             */
-            std::int32_t minRange = 0;
-            /**
-             * Maximum range in depth units.
-             * Depth values over this value are invalidated.
-             */
-            std::int32_t maxRange = 65535;
-
-            DEPTHAI_SERIALIZE(ThresholdFilter, minRange, maxRange);
-        };
+        using ThresholdFilter = filters::params::ThresholdFilter;
 
         /**
          * Threshold filtering.
@@ -307,6 +299,9 @@ class StereoDepthConfig : public Buffer {
          */
         DecimationFilter decimationFilter;
 
+        /**
+         * Hole-filling configuration. RVC4 only.
+         */
         struct HoleFilling {
             /**
              * Flag to enable post-processing hole-filling.
@@ -341,8 +336,14 @@ class StereoDepthConfig : public Buffer {
             DEPTHAI_SERIALIZE(HoleFilling, enable, highConfidenceThreshold, fillConfidenceThreshold, minValidDisparity, invalidateDisparities);
         };
 
+        /**
+         * Hole-filling configuration. RVC4 only.
+         */
         HoleFilling holeFilling;
 
+        /**
+         * Adaptive median filter configuration. RVC4 only.
+         */
         struct AdaptiveMedianFilter {
             /**
              * Flag to enable adaptive median filtering for a final pass of filtering on low confidence pixels.
@@ -359,6 +360,9 @@ class StereoDepthConfig : public Buffer {
             DEPTHAI_SERIALIZE(AdaptiveMedianFilter, enable, confidenceThreshold);
         };
 
+        /**
+         * Adaptive median filter configuration. RVC4 only.
+         */
         AdaptiveMedianFilter adaptiveMedianFilter;
 
         DEPTHAI_SERIALIZE(PostProcessing,
@@ -401,6 +405,7 @@ class StereoDepthConfig : public Buffer {
 
         /**
          * Census transform kernel size.
+         * RVC2 only.
          */
         KernelSize kernelSize = KernelSize::AUTO;
 
@@ -412,29 +417,34 @@ class StereoDepthConfig : public Buffer {
          * 0XAA02A8154055 for 7x7 census transform kernel.
          * 0X2AA00AA805540155 for 7x9 census transform kernel.
          * Empirical values.
+         * RVC2 only.
          */
         uint64_t kernelMask = 0;
 
         /**
          * If enabled, each pixel in the window is compared with the mean window value instead of the central pixel.
+         * RVC2 only.
          */
         bool enableMeanMode = true;
 
         /**
          * Census transform comparison threshold value.
+         * RVC2 only.
          */
         uint32_t threshold = 0;
 
         /**
          * Used to reduce small fixed levels of noise across all luminance values
          * in the current image.
-         * Valid range is [0,127]. Default value is 0.
+         * Valid range is [0,127]. Default value is 1.
+         * RVC4 only.
          */
         int8_t noiseThresholdOffset = 1;
         /**
          * Used to reduce noise values that increase with luminance in the
          * current image.
-         * Valid range is [-128,127]. Default value is 0.
+         * Valid range is [-128,127]. Default value is 1.
+         * RVC4 only.
          */
         int8_t noiseThresholdScale = 1;
 
@@ -454,6 +464,7 @@ class StereoDepthConfig : public Buffer {
 
         /**
          * Disparity search range, default 96 pixels.
+         * RVC2 only.
          */
         DisparityWidth disparityWidth = DisparityWidth::DISPARITY_96;
 
@@ -465,11 +476,13 @@ class StereoDepthConfig : public Buffer {
          * In case of 96 disparities: N=48, M=32, T=16.
          * This way the search range is extended to 176 disparities, by sparse matching.
          * Note: when enabling this flag only depth map will be affected, disparity map is not.
+         * RVC2 only.
          */
         bool enableCompanding = false;
 
         /**
          * Used only for debug purposes, SW postprocessing handled only invalid value of 0 properly.
+         * RVC2 only.
          */
         uint8_t invalidDisparityValue = 0;
 
@@ -479,7 +492,7 @@ class StereoDepthConfig : public Buffer {
         uint8_t confidenceThreshold = 55;
 
         /**
-         * Enable software confidence thresholding. Applicable to RVC4 only.
+         * Enable software confidence thresholding. RVC4 only.
          */
         bool enableSwConfidenceThresholding = false;
 
@@ -490,6 +503,7 @@ class StereoDepthConfig : public Buffer {
          * Where AD is the Absolute Difference between 2 pixels values.
          * CTC is the Census Transform Cost between 2 pixels, based on Hamming distance (xor).
          * The α and β parameters are subject to fine tuning by the user.
+         * RVC2 only.
          */
         struct LinearEquationParameters {
             uint8_t alpha = 0;
@@ -501,6 +515,7 @@ class StereoDepthConfig : public Buffer {
 
         /**
          * Cost calculation linear equation parameters.
+         * RVC2 only.
          */
         LinearEquationParameters linearEquationParameters;
 
@@ -526,29 +541,34 @@ class StereoDepthConfig : public Buffer {
 
         /**
          * Cost calculation linear equation parameters.
+         * RVC2 only.
          */
         uint8_t divisionFactor = 1;
 
         /**
          * Horizontal P1 penalty cost parameter.
+         * RVC2 only.
          */
         uint16_t horizontalPenaltyCostP1 = defaultPenaltyP1;
         /**
          * Horizontal P2 penalty cost parameter.
+         * RVC2 only.
          */
         uint16_t horizontalPenaltyCostP2 = defaultPenaltyP2;
 
         /**
          * Vertical P1 penalty cost parameter.
+         * RVC2 only.
          */
         uint16_t verticalPenaltyCostP1 = defaultPenaltyP1;
         /**
          * Vertical P2 penalty cost parameter.
+         * RVC2 only.
          */
         uint16_t verticalPenaltyCostP2 = defaultPenaltyP2;
 
         /**
-         * Structure for adaptive P1 penalty configuration.
+         * Adaptive P1 penalty configuration. RVC4 only.
          */
         struct P1Config {
             /**
@@ -594,10 +614,13 @@ class StereoDepthConfig : public Buffer {
             DEPTHAI_SERIALIZE(P1Config, enableAdaptive, defaultValue, edgeValue, smoothValue, edgeThreshold, smoothThreshold);
         };
 
+        /**
+         * Adaptive P1 penalty configuration. RVC4 only.
+         */
         P1Config p1Config;
 
         /**
-         * Structure for adaptive P2 penalty configuration.
+         * Adaptive P2 penalty configuration. RVC4 only.
          */
         struct P2Config {
             /**
@@ -629,6 +652,9 @@ class StereoDepthConfig : public Buffer {
             DEPTHAI_SERIALIZE(P2Config, enableAdaptive, defaultValue, edgeValue, smoothValue);
         };
 
+        /**
+         * Adaptive P2 penalty configuration. RVC4 only.
+         */
         P2Config p2Config;
 
         DEPTHAI_SERIALIZE(CostAggregation,
@@ -776,11 +802,13 @@ class StereoDepthConfig : public Buffer {
 
     /**
      * Set filters compute backend
+     * RVC4 only.
      */
     StereoDepthConfig& setFiltersComputeBackend(dai::ProcessorType filtersBackend);
 
     /**
      * Get filters compute backend
+     * RVC4 only.
      */
     dai::ProcessorType getFiltersComputeBackend() const;
 
@@ -816,10 +844,13 @@ class StereoDepthConfig : public Buffer {
     CostAggregation costAggregation;
 
     /**
-     * Confidence metrics settings.
+     * Confidence metrics settings. RVC4 only.
      */
     ConfidenceMetrics confidenceMetrics;
 
+    /**
+     * Compute backend for post-processing filters. RVC4 only.
+     */
     dai::ProcessorType filtersBackend = dai::ProcessorType::CPU;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;

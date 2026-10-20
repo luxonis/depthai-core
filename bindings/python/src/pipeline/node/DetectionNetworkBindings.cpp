@@ -56,6 +56,28 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             "build",
             [](DetectionNetwork& self,
                const std::shared_ptr<Camera>& input,
+               const DetectionNetwork::Model& model,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, model, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, DetectionNetwork, build))
+        .def(
+            "build",
+            [](DetectionNetwork& self, const std::shared_ptr<Camera>& input, const DetectionNetwork::Model& model, const ImgFrameCapability& capability) {
+                return self.build(input, model, capability);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("capability"),
+            DOC(dai, node, DetectionNetwork, build, 3))
+        // Backwards-compatible Camera build methods forwarding to the consolidated Model path
+        .def(
+            "build",
+            [](DetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
                NNModelDescription modelDesc,
                std::optional<float> fps,
                std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, DetectionNetwork::Model{std::move(modelDesc)}, fps, resizeMode); },
@@ -88,16 +110,17 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("fps") = std::nullopt,
             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
             DOC(dai, node, DetectionNetwork, build))
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
             "build",
-            [](DetectionNetwork& self, const std::shared_ptr<Camera>& input, const DetectionNetwork::Model& model, const ImgFrameCapability& capability) {
-                return self.build(input, model, capability);
+            [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, const DetectionNetwork::Model& model, std::optional<float> fps) {
+                return self.build(input, model, fps);
             },
             py::arg("input"),
             py::arg("model"),
-            py::arg("capability"),
-            DOC(dai, node, DetectionNetwork, build, 3))
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, DetectionNetwork, build, 4))
+        // Backwards-compatible ReplayVideo build methods forwarding to the consolidated Model path
         .def(
             "build",
             [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
@@ -110,7 +133,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def(
             "build",
             [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, const std::string& model, std::optional<float> fps) {
-                return self.build(input, DetectionNetwork::Model{NNModelDescription{model}}, fps);
+                return self.build(input, DetectionNetwork::Model{model}, fps);
             },
             py::arg("input"),
             py::arg("model"),
@@ -160,7 +183,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("description"),
              py::arg("useCached") = false,
              DOC(dai, node, DetectionNetwork, setFromModelZoo))
-        .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
+        .def("setBlob", py::overload_cast<const dai::OpenVINO::Blob&>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob",
              py::overload_cast<const std::filesystem::path&>(&DetectionNetwork::setBlob),
              py::arg("path"),

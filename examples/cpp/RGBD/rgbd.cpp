@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
 #include "rerun.hpp"
@@ -47,44 +49,16 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::Camera>();
-    auto right = pipeline.create<dai::node::Camera>();
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto rgbd = pipeline.create<dai::node::RGBD>()->build();
+    auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
     auto color = pipeline.create<dai::node::Camera>();
-    std::shared_ptr<dai::node::ImageAlign> align;
+    color->build(colorSocket);
+    auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO, 30.0f, std::make_pair(640u, 400u));
     auto rerun = pipeline.create<RerunNode>();
-    color->build();
 
-    left->build(dai::CameraBoardSocket::CAM_B);
-    right->build(dai::CameraBoardSocket::CAM_C);
-    stereo->setSubpixel(true);
-    stereo->setExtendedDisparity(false);
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
-    stereo->setLeftRightCheck(true);
-    stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
-    stereo->enableDistortionCorrection(true);
-    stereo->initialConfig->setLeftRightCheckThreshold(10);
-    stereo->initialConfig->postProcessing.thresholdFilter.maxRange = 10000;
+    auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth, std::make_pair(640, 400), 30.0f);
     rgbd->setDepthUnit(dai::StereoDepthConfig::AlgorithmControl::DepthUnit::METER);
-
-    left->requestOutput(std::pair<int, int>(640, 400))->link(stereo->left);
-    right->requestOutput(std::pair<int, int>(640, 400))->link(stereo->right);
-
-    auto platform = pipeline.getDefaultDevice()->getPlatform();
-    if(platform == dai::Platform::RVC4) {
-        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
-        out->link(rgbd->inColor);
-        align = pipeline.create<dai::node::ImageAlign>();
-        stereo->depth.link(align->input);
-        out->link(align->inputAlignTo);
-        align->outputAligned.link(rgbd->inDepth);
-    } else {
-        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, 30, true);
-        out->link(rgbd->inColor);
-        out->link(stereo->inputAlignTo);
-        stereo->depth.link(rgbd->inDepth);
-    }
 
     // Linking
     rgbd->pcl.link(rerun->inputPCL);

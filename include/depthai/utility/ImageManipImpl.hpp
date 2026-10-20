@@ -5,6 +5,7 @@
 #include <spdlog/async_logger.h>
 #include <stdint.h>
 
+#include <chrono>
 #include <cmath>
 #include <sstream>
 
@@ -53,6 +54,10 @@ template <typename N>
 void loop(N& node,
           const ImageManipConfig& initialConfig,
           std::shared_ptr<spdlog::async_logger> logger,
+          const std::function<void(std::chrono::steady_clock::time_point,
+                                   std::chrono::steady_clock::time_point,
+                                   std::chrono::steady_clock::time_point,
+                                   std::chrono::steady_clock::time_point)>& logTiming,
           const std::function<size_t(const ImageManipConfig&, const ImgFrame&)>& build,
           const std::function<std::shared_ptr<ImgFrame>(size_t)>& getFrame,
           const std::function<bool(const std::shared_ptr<OffsetMemory>&, std::shared_ptr<OffsetMemory>)>& apply,
@@ -63,6 +68,7 @@ void loop(N& node,
     std::shared_ptr<ImgFrame> inImage;
 
     while(node.mainLoop()) {
+        auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<ImageManipConfig> pConfig;
         bool hasConfig = false;
         bool needsImage = true;
@@ -110,41 +116,36 @@ void loop(N& node,
                 logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
             }
         }
+        auto tGotInput = steady_clock::now();
 
-        auto startP = std::chrono::steady_clock::now();
-
-        auto t1 = steady_clock::now();
         auto outputSize = build(config, *inImage);
-        auto t2 = steady_clock::now();
 
         // Check the output image size requirements, and check whether pool has the size required
         if(outputSize == 0) {
+            auto tProcessed = steady_clock::now();
             node.out.send(inImage);
+            auto tAbsoluteEnd = steady_clock::now();
+            logTiming(tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
-            auto outImage = getFrame(node.properties.outputFrameSize);
+            auto outImage = getFrame(outputSize);
 
             bool success = true;
             {
-                auto t3 = steady_clock::now();
                 success = apply(ConvertedOffsetMemory::convert(inImage->data), ConvertedOffsetMemory::convert(outImage->data));
-                auto t4 = steady_clock::now();
 
                 setFrame(*inImage, *outImage);
-
-                logger->trace("Build time: {}us, Process time: {}us, Total time: {}us, image manip id: {}",
-                              duration_cast<microseconds>(t2 - t1).count(),
-                              duration_cast<microseconds>(t4 - t3).count(),
-                              duration_cast<microseconds>(t4 - t1).count(),
-                              node.id);
             }
             if(!success) {
                 logger->error("Processing failed, potentially unsupported config");
             }
+            auto tProcessed = steady_clock::now();
             {
                 auto blockEvent = node.outputBlockEvent();
 
                 node.out.send(outImage);
             }
+            auto tAbsoluteEnd = steady_clock::now();
+            logTiming(tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
         } else {
             logger->error(
                 "Output image is bigger ({}B) than maximum frame size specified in properties ({}B) - skipping frame.\nPlease use the setMaxOutputFrameSize "
@@ -152,10 +153,6 @@ void loop(N& node,
                 outputSize,
                 node.properties.outputFrameSize);
         }
-
-        // Update previousConfig of preprocessor, to be able to check if it needs to be updated
-        auto loopNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - startP).count();
-        logger->trace("ImageManip | total process took {}ns ({}ms)", loopNanos, (double)loopNanos / 1e6);
     }
 }
 
@@ -260,29 +257,57 @@ struct FrameSpecs {
     uint32_t p3Stride;
 };
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-class UndistortOpenCvImpl {
+struct UndistortInput {
+    size_t width;
+    size_t height;
+    size_t stride;
+    uint32_t bpp;
+    uint32_t channels;
+    std::shared_ptr<OffsetMemory> data;
+};
+
+class Undistort {
    public:
     enum class BuildStatus { ONE_SHOT, TWO_SHOT, NOT_USED, NOT_BUILT, ERROR };
 
-   private:
+    Undistort(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
+    virtual ~Undistort() = default;
+
+    virtual BuildStatus build(std::array<float, 9> cameraMatrix,
+                              std::array<float, 9> newCameraMatrix,
+                              std::vector<float> distCoeffs,
+                              dai::ImgFrame::Type type,
+                              uint32_t srcWidth,
+                              uint32_t srcHeight,
+                              uint32_t dstWidth,
+                              uint32_t dstHeight) = 0;
+    virtual void undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t planeIndex) = 0;
+    virtual void finish() {}
+
+   protected:
+    std::shared_ptr<spdlog::async_logger> logger;
+
+    std::vector<float> distCoeffs;
+    dai::ImgFrame::Type type = dai::ImgFrame::Type::NONE;
+    uint32_t srcWidth = 0;
+    uint32_t srcHeight = 0;
+    uint32_t dstWidth = 0;
+    uint32_t dstHeight = 0;
+
+    std::array<float, 9> cameraMatrix{};
+    std::array<float, 9> newCameraMatrix{};
+};
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+class UndistortOpenCvImpl : public Undistort {
     cv::Mat undistortMap1;
     cv::Mat undistortMap2;
     cv::Mat undistortMap1Half;
     cv::Mat undistortMap2Half;
 
-    std::shared_ptr<spdlog::async_logger> logger;
+    using Undistort::Undistort;
 
-    std::array<float, 9> cameraMatrix;
-    std::array<float, 9> newCameraMatrix;
-    std::vector<float> distCoeffs;
-    dai::ImgFrame::Type type;
-    uint32_t srcWidth;
-    uint32_t srcHeight;
-    uint32_t dstWidth;
-    uint32_t dstHeight;
-
-    bool validMatrix(std::array<float, 9> matrix) const;
+    bool validMatrix(const std::array<float, 9>& matrix) const;
     void initMaps(std::array<float, 9> cameraMatrix,
                   std::array<float, 9> newCameraMatrix,
                   std::vector<float> distCoeffs,
@@ -293,7 +318,6 @@ class UndistortOpenCvImpl {
                   uint32_t dstHeight);
 
    public:
-    UndistortOpenCvImpl(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
     BuildStatus build(std::array<float, 9> cameraMatrix,
                       std::array<float, 9> newCameraMatrix,
                       std::vector<float> distCoeffs,
@@ -301,8 +325,8 @@ class UndistortOpenCvImpl {
                       uint32_t srcWidth,
                       uint32_t srcHeight,
                       uint32_t dstWidth,
-                      uint32_t dstHeight);
-    void undistort(cv::Mat& src, cv::Mat& dst);
+                      uint32_t dstHeight) override;
+    void undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t planeIndex) override;
 };
 #endif
 
@@ -320,6 +344,7 @@ class Warp {
     uint32_t backgroundColor[3] = {0, 0, 0};
     bool enableUndistort = false;
     bool undistortOneShot = false;
+    std::optional<float> alphaScaling;
 
     ImgFrame::Type type;
     FrameSpecs srcSpecs;
@@ -344,6 +369,7 @@ class Warp {
                                 const std::array<float, 9>& cameraMatrix,
                                 const std::array<float, 9>& newCameraMatrix,
                                 const std::vector<float>& distCoeffs,
+                                const std::optional<float> alpha,
                                 const ImgFrame::Type type,
                                 const uint32_t srcWidth,
                                 const uint32_t srcHeight,
@@ -370,7 +396,7 @@ class WarpH : public Warp {
 #endif
 
     void transform(const std::shared_ptr<OffsetMemory>& srcData,
-                   std::shared_ptr<OffsetMemory> dstData,
+                   const std::shared_ptr<OffsetMemory>& dstData,
                    const size_t srcWidth,
                    const size_t srcHeight,
                    const size_t srcStride,
@@ -379,7 +405,7 @@ class WarpH : public Warp {
                    const size_t dstStride,
                    const uint16_t numChannels,
                    const uint16_t bpp,
-                   const std::array<std::array<float, 3>, 3> matrix,
+                   const std::array<std::array<float, 3>, 3>& matrix,
                    const std::vector<uint32_t>& backgroundColor);
 
    public:
@@ -392,6 +418,7 @@ class WarpH : public Warp {
                         const std::array<float, 9>& cameraMatrix,
                         const std::array<float, 9>& newCameraMatrix,
                         const std::vector<float>& distCoeffs,
+                        const std::optional<float> alpha,
                         const ImgFrame::Type type,
                         const uint32_t srcWidth,
                         const uint32_t srcHeight,
@@ -488,6 +515,7 @@ class ImageManipOperations {
                                          const std::array<float, 9>& cameraMatrix,
                                          const std::array<float, 9>& newCameraMatrix,
                                          const std::vector<float>& distCoeffs,
+                                         const std::optional<float> alpha,
                                          const ImgFrame::Type type,
                                          const uint32_t srcWidth,
                                          const uint32_t srcHeight,
@@ -510,6 +538,9 @@ class ImageManipOperations {
     bool undistortEnabled() const {
         return warpEngine.enableUndistort;
     }
+    std::optional<float> getUndistortAlpha() const {
+        return warpEngine.alphaScaling;
+    }
 
     std::string toString() const;
 };
@@ -523,7 +554,7 @@ struct ColorChangeArgs {
     std::shared_ptr<OffsetMemory> auxFrame;
 };
 FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
-FrameSpecs getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
+FrameSpecs getCcDstFrameSpecs(const FrameSpecs& srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
 FrameSpecs getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type);
 size_t getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height);
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
@@ -540,12 +571,12 @@ bool colorConvertToNV12(const ColorChangeArgs& args);
 bool colorConvertToYUV420p(const ColorChangeArgs& args);
 bool colorConvertToGRAY8(const ColorChangeArgs& args);
 
-std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>> points);
+std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>>& points);
 dai::RotatedRect getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
 void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
                               const bool center,
-                              const std::array<std::array<float, 3>, 3> transformInv,
+                              const std::array<std::array<float, 3>, 3>& transformInv,
                               const uint32_t srcWidth,
                               const uint32_t srcHeight,
                               uint32_t& outputWidth,
@@ -667,7 +698,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
         auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
         imageCorners = {
-            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[3])}}};
         matrix = matmul(mat, matrix);
         outputOps.emplace_back(res);
     }
@@ -817,12 +848,13 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     const std::array<float, 9>& cameraMatrix,
     const std::array<float, 9>& newCameraMatrix,
     const std::vector<float>& distCoeffs,
+    const std::optional<float> alpha,
     const ImgFrame::Type type,
     const uint32_t srcWidth,
     const uint32_t srcHeight,
     const uint32_t dstWidth,
     const uint32_t dstHeight) {
-    warpEngine.buildUndistort(enable, cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
+    warpEngine.buildUndistort(enable, cameraMatrix, newCameraMatrix, distCoeffs, alpha, type, srcWidth, srcHeight, dstWidth, dstHeight);
     return *this;
 }
 

@@ -97,8 +97,12 @@ std::string BytePlayer::init(const std::string& filePath) {
     if(initialized) {
         throw std::runtime_error("BytePlayer already initialized");
     }
+    // Check if file exists
     if(filePath.empty()) {
         throw std::runtime_error("BytePlayer file path is empty");
+    }
+    if(!std::filesystem::is_regular_file(filePath)) {
+        throw std::runtime_error("BytePlayer file does not exist: " + filePath);
     }
     {
         const auto res = reader.open(filePath);

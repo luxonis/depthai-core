@@ -19,7 +19,7 @@ TEST_CASE("Undistorted output changes only on new EEPROM") {
 
     // Read the device's current calibration and force old EEPROM format
     auto device = pipeline.getDefaultDevice();
-    auto calib = device->readCalibration();
+    auto calib = device->getCalibration();
     auto eeprom = calib.getEepromData();
     bool newEEPROM = false;
 

@@ -138,7 +138,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
              py::arg("height"),
              DOC(dai, node, ColorCamera, setPreviewSize))
         .def("setPreviewSize",
-             static_cast<void (ColorCamera::*)(std::tuple<int, int>)>(&ColorCamera::setPreviewSize),
+             static_cast<void (ColorCamera::*)(const std::tuple<int, int>&)>(&ColorCamera::setPreviewSize),
              py::arg("size"),
              DOC(dai, node, ColorCamera, setPreviewSize, 2))
         .def("setVideoSize",
@@ -147,7 +147,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
              py::arg("height"),
              DOC(dai, node, ColorCamera, setVideoSize))
         .def("setVideoSize",
-             static_cast<void (ColorCamera::*)(std::tuple<int, int>)>(&ColorCamera::setVideoSize),
+             static_cast<void (ColorCamera::*)(const std::tuple<int, int>&)>(&ColorCamera::setVideoSize),
              py::arg("size"),
              DOC(dai, node, ColorCamera, setVideoSize, 2))
         .def("setStillSize",
@@ -156,7 +156,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
              py::arg("height"),
              DOC(dai, node, ColorCamera, setStillSize))
         .def("setStillSize",
-             static_cast<void (ColorCamera::*)(std::tuple<int, int>)>(&ColorCamera::setStillSize),
+             static_cast<void (ColorCamera::*)(const std::tuple<int, int>&)>(&ColorCamera::setStillSize),
              py::arg("size"),
              DOC(dai, node, ColorCamera, setStillSize, 2))
         .def("setResolution", &ColorCamera::setResolution, py::arg("resolution"), DOC(dai, node, ColorCamera, setResolution))
@@ -192,7 +192,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
              py::arg("denominator"),
              DOC(dai, node, ColorCamera, setIspScale))
         .def("setIspScale",
-             static_cast<void (ColorCamera::*)(std::tuple<int, int>)>(&ColorCamera::setIspScale),
+             static_cast<void (ColorCamera::*)(const std::tuple<int, int>&)>(&ColorCamera::setIspScale),
              py::arg("scale"),
              DOC(dai, node, ColorCamera, setIspScale, 2))
         .def("setIspScale",
@@ -203,7 +203,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
              py::arg("vertDenom"),
              DOC(dai, node, ColorCamera, setIspScale, 3))
         .def("setIspScale",
-             static_cast<void (ColorCamera::*)(std::tuple<int, int>, std::tuple<int, int>)>(&ColorCamera::setIspScale),
+             static_cast<void (ColorCamera::*)(const std::tuple<int, int>&, const std::tuple<int, int>&)>(&ColorCamera::setIspScale),
              py::arg("horizScale"),
              py::arg("vertScale"),
              DOC(dai, node, ColorCamera, setIspScale, 4))

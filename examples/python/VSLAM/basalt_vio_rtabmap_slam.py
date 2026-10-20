@@ -43,7 +43,7 @@ with dai.Pipeline() as p:
     imu.out.link(odom.imu)
 
     odom.transform.link(slam.odom)
-    slam.transform.link(rerunViewer.inputTrans)
+    slam.transform.link(rerunViewer.inputPose)
     slam.passthroughRect.link(rerunViewer.inputImg)
     slam.occupancyGridMap.link(rerunViewer.inputGrid)
     slam.obstaclePCL.link(rerunViewer.inputObstaclePCL)

@@ -2,9 +2,6 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 
-// standard
-#include <fstream>
-
 // shared
 #include <depthai/properties/SyncProperties.hpp>
 
@@ -21,6 +18,7 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
    public:
     constexpr static const char* NAME = "Sync";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    using TimestampSource = SyncProperties::TimestampSource;
 
     /**
      * A map of inputs
@@ -33,6 +31,10 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::MessageGroup, false}}}}};
 
+   protected:
+    virtual TimestampSource getDefaultTimestampSource() const;
+
+   public:
     /**
      * Set the maximal interval between messages in the group
      * @param syncThreshold Maximal interval between messages in the group
@@ -61,6 +63,16 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     ProcessorType getProcessor() const;
 
     /**
+     * Specify the timestamp source
+     */
+    void setTimestampSource(TimestampSource source);
+
+    /**
+     * Get the timestamp source
+     */
+    TimestampSource getTimestampSource() const;
+
+    /**
      * Gets the maximal interval between messages in the group in milliseconds
      */
     std::chrono::nanoseconds getSyncThreshold() const;
@@ -80,6 +92,11 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
      * Check if the node is set to run on host
      */
     bool runOnHost() const override;
+
+    /**
+     * Validates the timestamp source when inputs come from more than one device.
+     */
+    void buildStage1() override;
 
     void run() override;
 };

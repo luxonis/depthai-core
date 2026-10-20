@@ -113,7 +113,7 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
      * Specify which camera to use by name
      * @param name Name of the camera to use
      */
-    void setCamera(std::string name);
+    void setCamera(const std::string& name);
 
     /**
      * Retrieves which camera to use by name
@@ -161,7 +161,7 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     void setPreviewSize(int width, int height);
 
     /// Set preview output size, as a tuple <width, height>
-    void setPreviewSize(std::tuple<int, int> size);
+    void setPreviewSize(const std::tuple<int, int>& size);
 
     /// Set number of frames in preview pool
     void setPreviewNumFramesPool(int num);
@@ -170,7 +170,7 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     void setVideoSize(int width, int height);
 
     /// Set video output size, as a tuple <width, height>
-    void setVideoSize(std::tuple<int, int> size);
+    void setVideoSize(const std::tuple<int, int>& size);
 
     /// Set number of frames in preview pool
     void setVideoNumFramesPool(int num);
@@ -179,7 +179,7 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     void setStillSize(int width, int height);
 
     /// Set still output size, as a tuple <width, height>
-    void setStillSize(std::tuple<int, int> size);
+    void setStillSize(const std::tuple<int, int>& size);
 
     void setMockIspSize(int width, int height);
 
@@ -210,7 +210,7 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     void setIspScale(int numerator, int denominator);
 
     /// Set 'isp' output scaling, as a tuple <numerator, denominator>
-    void setIspScale(std::tuple<int, int> scale);
+    void setIspScale(const std::tuple<int, int>& scale);
 
     /**
      * Set 'isp' output scaling, per each direction. If the horizontal scaling factor
@@ -220,7 +220,7 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     void setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom);
 
     /// Set 'isp' output scaling, per each direction, as <numerator, denominator> tuples
-    void setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale);
+    void setIspScale(const std::tuple<int, int>& horizScale, const std::tuple<int, int>& vertScale);
 
     /**
      * Set rate at which camera should produce frames

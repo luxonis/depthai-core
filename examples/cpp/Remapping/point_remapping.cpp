@@ -179,11 +179,7 @@ int main() {
             }
         }
 
-        cv::Mat depthScaled;
-        cv::convertScaleAbs(depthFrame->getFrame(), depthScaled, 0.05);
-
-        cv::Mat depthColor;
-        cv::applyColorMap(depthScaled, depthColor, cv::COLORMAP_JET);
+        cv::Mat depthColor = dai::utility::colorizeDepthFrame(*depthFrame).getCvFrame();
 
         drawPoint(leftFrame, originalPoint, sourceStatus, cv::Scalar(0, 255, 0));
         drawPoint(rgbDisplay, remappedRgbPoint, rgbStatus, cv::Scalar(255, 255, 0));

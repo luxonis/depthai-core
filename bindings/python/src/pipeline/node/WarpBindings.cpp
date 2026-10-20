@@ -36,7 +36,7 @@ void bind_warp(pybind11::module& m, void* pCallstack) {
         // setters
 
         .def("setOutputSize", py::overload_cast<int, int>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize))
-        .def("setOutputSize", py::overload_cast<std::tuple<int, int>>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize, 2))
+        .def("setOutputSize", py::overload_cast<const std::tuple<int, int>&>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize, 2))
         // .def("setOutputWidth", &Warp::setOutputWidth, DOC(dai, node, Warp, setOutputWidth))
         // .def("setOutputHeight", &Warp::setOutputHeight, DOC(dai, node, Warp, setOutputHeight))
 

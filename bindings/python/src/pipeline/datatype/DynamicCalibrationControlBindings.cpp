@@ -23,6 +23,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
         .value("OPTIMIZE_SPEED", DCC::PerformanceMode::OPTIMIZE_SPEED)
         .value("OPTIMIZE_PERFORMANCE", DCC::PerformanceMode::OPTIMIZE_PERFORMANCE)
         .value("SKIP_CHECKS", DCC::PerformanceMode::SKIP_CHECKS)
+        .value("RELAXED_COVERAGE", DCC::PerformanceMode::RELAXED_COVERAGE)
         .export_values();
 
     // Aliases for readability
@@ -38,8 +39,9 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
 
     // ---- Commands nested inside DynamicCalibrationControl ----
     py::class_<Calibrate, std::shared_ptr<Calibrate>>(cmds, "Calibrate")
-        .def(py::init<bool>(), py::arg("force") = false)
-        .def_readwrite("force", &Calibrate::force);
+        .def(py::init<bool, bool>(), py::arg("force") = false, py::arg("keepCameraCenters") = true)
+        .def_readwrite("force", &Calibrate::force)
+        .def_readwrite("keepCameraCenters", &Calibrate::keepCameraCenters);
 
     py::class_<ComputeCalibrationMetrics, std::shared_ptr<ComputeCalibrationMetrics>>(cmds, "ComputeCalibrationMetrics")
         .def(py::init<dai::CalibrationHandler&>(), py::arg("calibration"))
@@ -50,9 +52,10 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
         .def_readwrite("force", &CalibrationQuality::force);
 
     py::class_<StartCalibration, std::shared_ptr<StartCalibration>>(cmds, "StartCalibration")
-        .def(py::init<float, float>(), py::arg("loadImagePeriod") = 0.5f, py::arg("calibrationPeriod") = 5.0f)
+        .def(py::init<float, float, bool>(), py::arg("loadImagePeriod") = 0.5f, py::arg("calibrationPeriod") = 5.0f, py::arg("keepCameraCenters") = true)
         .def_readwrite("loadImagePeriod", &StartCalibration::loadImagePeriod)
-        .def_readwrite("calibrationPeriod", &StartCalibration::calibrationPeriod);
+        .def_readwrite("calibrationPeriod", &StartCalibration::calibrationPeriod)
+        .def_readwrite("keepCameraCenters", &StartCalibration::keepCameraCenters);
 
     py::class_<StopCalibration, std::shared_ptr<StopCalibration>>(cmds, "StopCalibration").def(py::init<>());
 
@@ -86,6 +89,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
            "calibrate",
            &DCC::calibrate,
            py::arg("force") = false,
+           py::arg("keepCameraCenters") = true,
            "Create a DynamicCalibrationControl with a Calibrate command.");
     cls.def_static(
            "computeCalibrationMetrics",
@@ -102,6 +106,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
            &DCC::startCalibration,
            py::arg("loadImagePeriod") = 0.5f,
            py::arg("calibrationPeriod") = 5.0f,
+           py::arg("keepCameraCenters") = true,
            "Create a DynamicCalibrationControl with a StartCalibration command.");
     cls.def_static(
            "stopCalibration",

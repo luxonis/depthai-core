@@ -46,6 +46,12 @@ find_package(Git REQUIRED)
 function(vcpkg_init)
     # set environment (not cached)
 
+    if(WIN32)
+        # vcpkg clears Python's environment, so use native CMake instead of pip's launcher.
+        get_filename_component(cmake_bin_dir "${CMAKE_COMMAND}" DIRECTORY)
+        set(ENV{PATH} "${cmake_bin_dir};$ENV{PATH}")
+    endif()
+
     # mask musl-libc if masked prior
     if(VCPKG_MASK_MUSL_LIBC)
         vcpkg_mask_if_musl_libc()

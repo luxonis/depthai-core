@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <utility>
 #include <vector>
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -38,6 +39,8 @@ std::vector<std::vector<float>> createTranslationMatrix(float dx, float dy);
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const dai::Point3f& translation);
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::array<std::array<float, 3>, 3>& rotation, const dai::Point3f& translation);
 dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix, const dai::Point3f& point);
+/** True when every component of the point is finite (no NaN or infinity). */
+bool isFinitePoint3f(const dai::Point3f& point);
 std::array<float, 4> dehomogenizePoint4(const std::array<float, 4>& point);
 std::array<float, 3> dehomogenizePoint3(const std::array<float, 3>& point);
 
@@ -46,10 +49,21 @@ std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& 
 std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
 std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::array<float, 3>, 3>& R);
 std::array<std::array<float, 3>, 3> vectorMatrixToMatrix3x3(const std::vector<std::vector<float>>& R);
+bool isValidIntrinsicsMatrix(const std::vector<std::vector<float>>& intrinsics);
+/**
+ * Validate that a matrix is a finite, proper 3x3 rotation matrix.
+ *
+ * @throws std::runtime_error when the matrix is not a valid rotation matrix.
+ */
+void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix);
+std::vector<std::vector<float>> extractRotationMatrix(const std::vector<std::vector<float>>& transform);
+std::vector<float> extractTranslationVector(const std::vector<std::vector<float>>& transform);
 
 std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 4>, 4>& projection);
 
 std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]);
+std::pair<std::vector<std::vector<float>>, std::vector<float>> invertSe3(const std::vector<std::vector<float>>& rotation,
+                                                                         const std::vector<float>& translation);
 void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat);
 std::array<std::array<float, 4>, 4> invertSe3Matrix4x4(const std::array<std::array<float, 4>, 4>& matrix);
 

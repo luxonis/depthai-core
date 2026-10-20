@@ -65,11 +65,28 @@ constexpr float getAngleUnitToRadianMultiplier(AngleUnit unit) {
             return 1.0f;
         case AngleUnit::DEGREE:
             return 57.29577951308232f;
+        default:
+            return 1.0f;
     }
 }
 
 constexpr float getDistanceUnitScale(LengthUnit targetUnit, LengthUnit sourceUnit) {
     return getLengthUnitMultiplier(targetUnit) / getLengthUnitMultiplier(sourceUnit);
+}
+
+/** True for units with a known metric scale, i.e. everything except CUSTOM. */
+constexpr bool isConvertibleLengthUnit(LengthUnit unit) {
+    switch(unit) {
+        case LengthUnit::METER:
+        case LengthUnit::CENTIMETER:
+        case LengthUnit::MILLIMETER:
+        case LengthUnit::INCH:
+        case LengthUnit::FOOT:
+            return true;
+        case LengthUnit::CUSTOM:
+        default:
+            return false;
+    }
 }
 
 }  // namespace dai

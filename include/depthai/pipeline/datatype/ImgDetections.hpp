@@ -186,6 +186,7 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     using Base::sequenceNum;
     using Base::ts;
     using Base::tsDevice;
+    using Base::tsSystem;
     using Transformable::transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
@@ -199,7 +200,7 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
      * If the target transformation has a different source coordinate system (eg. different camera socket) than the one the detections were originally generated
      * in, the remapping will be inaccurate due to the lack of depth information.
      *
-     * The segmentation mask is not transformed. Use ImageAlign node to transform the segmentation mask to the target transformation if needed.
+     * The segmentation mask is not transformed. Use Align node to transform the segmentation mask to the target transformation if needed.
      *
      * @param target Target image transformation.
      */
@@ -214,13 +215,18 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     std::vector<std::uint8_t> serializeProto(bool = false) const override;
 
     /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
+
+    /**
      * Serialize schema to proto buffer
      *
      * @returns serialized schema
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
-    DEPTHAI_SERIALIZE(ImgDetections, sequenceNum, ts, tsDevice, detections, transformation, segmentationMaskWidth, segmentationMaskHeight);
+    DEPTHAI_SERIALIZE(ImgDetections, sequenceNum, ts, tsDevice, tsSystem, detections, transformation, segmentationMaskWidth, segmentationMaskHeight);
 };
 
 }  // namespace dai

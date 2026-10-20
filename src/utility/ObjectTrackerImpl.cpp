@@ -114,7 +114,7 @@ class OCSTracker::State {
         KalmanFilterNew() = default;
         KalmanFilterNew(int dim_x_, int dim_z_, FilterType filterType_);
         void predict();
-        void update(Eigen::VectorXf z_);
+        void update(const Eigen::VectorXf& z_);
         void freeze();
         void unfreeze();
         KalmanFilterNew& operator=(const KalmanFilterNew&) = delete;
@@ -293,7 +293,7 @@ class OCSTracker::State {
                    int min_hits_ = 3,
                    float iou_threshold_ = 0.3,
                    int delta_t_ = 3,
-                   std::string asso_func_ = "iou",
+                   const std::string& asso_func_ = "iou",
                    float inertia_ = 0.2,
                    bool use_byte_ = false);
 
@@ -359,7 +359,7 @@ class OCSTracker::State {
           bool track_by_class_ = false,
           uint32_t max_trackers_ = 100,
           int delta_t_ = 3,
-          std::string asso_func_ = "iou",
+          const std::string& asso_func_ = "iou",
           float inertia_ = 0.2,
           bool use_byte_ = false,
           bool use_spatial_association_ = false,
@@ -557,7 +557,7 @@ OCSTracker::State::ClassState::ClassState(State* parent_,
                                           int min_hits_,
                                           float iou_threshold_,
                                           int delta_t_,
-                                          std::string asso_func_,
+                                          const std::string& asso_func_,
                                           float inertia_,
                                           bool use_byte_) {
     /*Sets key parameters for SORT*/
@@ -986,7 +986,7 @@ OCSTracker::State::State(float det_thresh_,
                          bool track_by_class_,
                          uint32_t max_trackers_,
                          int delta_t_,
-                         std::string asso_func_,
+                         const std::string& asso_func_,
                          float inertia_,
                          bool use_byte_,
                          bool use_spatial_association_,
@@ -1324,7 +1324,7 @@ Q : np.array(dim_x, dim_x), scalar, or None
     x_prior = x;
     P_prior = P;
 }
-void OCSTracker::State::KalmanFilterNew::update(Eigen::VectorXf z_) {
+void OCSTracker::State::KalmanFilterNew::update(const Eigen::VectorXf& z_) {
     /*
     Add a new measurement (z) to the Kalman filter.
     If z is None, nothing is computed. However, x_post and P_post are

@@ -20,6 +20,32 @@
 #include "pipeline/datatype/RGBDData.hpp"
 #include "pipeline/datatype/SegmentationMask.hpp"
 
+#ifndef DEPTHAI_PROTO_IMPL
+    #define DEPTHAI_PROTO_IMPL(daiMsg, protoMsg)                                             \
+        template <>                                                                          \
+        ProtoSerializable::SchemaPair getProtoSchema<daiMsg>() {                             \
+            static const ProtoSerializable::SchemaPair returnPair = [] {                     \
+                protoMsg protoMessage;                                                       \
+                const auto* descriptor = protoMessage.GetDescriptor();                       \
+                if(descriptor == nullptr) {                                                  \
+                    throw std::runtime_error("Failed to get protobuf descriptor");           \
+                }                                                                            \
+                ProtoSerializable::SchemaPair schemaPair;                                    \
+                schemaPair.schemaName = descriptor->full_name();                             \
+                schemaPair.schema = serializeFdSet(descriptor);                              \
+                return schemaPair;                                                           \
+            }();                                                                             \
+            return returnPair;                                                               \
+        }                                                                                    \
+        void deserializeProtoMessage(daiMsg& obj, const std::vector<std::uint8_t>& bytes) {  \
+            protoMsg protoMessage;                                                           \
+            if(!protoMessage.ParseFromArray(bytes.data(), static_cast<int>(bytes.size()))) { \
+                throw std::runtime_error("Failed to parse " #daiMsg " protobuf");            \
+            }                                                                                \
+            setProtoMessage(obj, &protoMessage);                                             \
+        }
+#endif
+
 namespace dai {
 namespace utility {
 // // Writes the FileDescriptor of this descriptor and all transitive dependencies
@@ -56,16 +82,62 @@ std::vector<std::uint8_t> serializeProto(std::unique_ptr<google::protobuf::Messa
     return buffer;
 }
 
-ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::Message> protoMessage) {
-    const auto* descriptor = protoMessage->GetDescriptor();
-    if(descriptor == nullptr) {
-        throw std::runtime_error("Failed to get protobuf descriptor");
+namespace {
+
+void serializePoint2f(proto::common::Point2f* protoPoint, const Point2f& point) {
+    protoPoint->set_x(point.x);
+    protoPoint->set_y(point.y);
+    if(point.hasNormalized) {
+        protoPoint->set_normalized(point.normalized);
+    } else {
+        protoPoint->clear_normalized();
     }
-    ProtoSerializable::SchemaPair returnPair;
-    returnPair.schemaName = descriptor->full_name();
-    returnPair.schema = serializeFdSet(descriptor);
-    return returnPair;
 }
+
+Point2f deserializePoint2f(const proto::common::Point2f& point) {
+    if(point.has_normalized()) {
+        return Point2f{point.x(), point.y(), point.normalized()};
+    }
+    return Point2f{point.x(), point.y()};
+}
+
+void serializeSize2f(proto::common::Size2f* protoSize, const Size2f& size) {
+    protoSize->set_width(size.width);
+    protoSize->set_height(size.height);
+    if(size.hasNormalized) {
+        protoSize->set_normalized(size.normalized);
+    } else {
+        protoSize->clear_normalized();
+    }
+}
+
+Size2f deserializeSize2f(const proto::common::Size2f& size) {
+    if(size.has_normalized()) {
+        return Size2f{size.width(), size.height(), size.normalized()};
+    }
+    return Size2f{size.width(), size.height()};
+}
+
+void serializeSpatialRect(proto::spatial_img_detections::Rect* protoRect, const Rect& rect) {
+    protoRect->set_x(rect.x);
+    protoRect->set_y(rect.y);
+    protoRect->set_width(rect.width);
+    protoRect->set_height(rect.height);
+    if(rect.hasNormalized) {
+        protoRect->set_normalized(rect.normalized);
+    } else {
+        protoRect->clear_normalized();
+    }
+}
+
+Rect deserializeSpatialRect(const proto::spatial_img_detections::Rect& rect) {
+    if(rect.has_normalized()) {
+        return Rect{rect.x(), rect.y(), rect.width(), rect.height(), rect.normalized()};
+    }
+    return Rect{rect.x(), rect.y(), rect.width(), rect.height()};
+}
+
+}  // namespace
 
 void serializeImgTransformation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation) {
     const auto [width, height] = transformation.getSize();
@@ -113,13 +185,12 @@ void serializeImgTransformation(proto::common::ImgTransformation* imgTransformat
     protoExtrinsics->mutable_spectranslation()->set_z(extrinsics.specTranslation.z);
     protoExtrinsics->set_tocamerasocket(static_cast<proto::common::CameraBoardSocket>(extrinsics.toCameraSocket));
     protoExtrinsics->set_lengthunit(static_cast<proto::common::LengthUnit>(extrinsics.lengthUnit));
+    protoExtrinsics->set_todeviceid(extrinsics.toDeviceId);
 
     for(const auto& crop : transformation.getSrcCrops()) {
         auto* protoCrop = imgTransformation->add_srccrops();
-        protoCrop->mutable_center()->set_x(crop.center.x);
-        protoCrop->mutable_center()->set_y(crop.center.y);
-        protoCrop->mutable_size()->set_width(crop.size.width);
-        protoCrop->mutable_size()->set_height(crop.size.height);
+        serializePoint2f(protoCrop->mutable_center(), crop.center);
+        serializeSize2f(protoCrop->mutable_size(), crop.size);
         protoCrop->set_angle(crop.angle);
     }
 }
@@ -128,6 +199,19 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix;
     std::vector<float> distortionCoefficients;
     Extrinsics extrinsics;
+    const auto validateMatrix = [](const auto& matrix, const char* matrixName) {
+        if(matrix.arrays_size() < 3) {
+            throw std::runtime_error(std::string(matrixName) + " must contain at least three rows");
+        }
+        for(auto i = 0; i < 3; ++i) {
+            if(matrix.arrays(i).values_size() < 3) {
+                throw std::runtime_error(std::string(matrixName) + " must contain at least three columns per row");
+            }
+        }
+    };
+    validateMatrix(imgTransformation.transformationmatrix(), "Transformation matrix");
+    validateMatrix(imgTransformation.sourceintrinsicmatrix(), "Source intrinsic matrix");
+
     distortionCoefficients.reserve(imgTransformation.distortioncoefficients().values_size());
     for(auto i = 0U; i < 3; ++i)
         for(auto j = 0U; j < 3; ++j) transformationMatrix[i][j] = imgTransformation.transformationmatrix().arrays(i).values(j);
@@ -160,6 +244,7 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
             extrinsics.specTranslation = Point3f(t.x(), t.y(), t.z());
         }
         extrinsics.toCameraSocket = static_cast<CameraBoardSocket>(protoExtrinsics.tocamerasocket());
+        extrinsics.toDeviceId = protoExtrinsics.todeviceid();
         if(protoExtrinsics.has_lengthunit()) {
             extrinsics.lengthUnit = static_cast<LengthUnit>(protoExtrinsics.lengthunit());
         } else {
@@ -170,12 +255,8 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
     std::vector<dai::RotatedRect> srcCrops;
     srcCrops.reserve(imgTransformation.srccrops_size());
     for(const auto& crop : imgTransformation.srccrops()) {
-        dai::Point2f center;
-        center.x = crop.center().x();
-        center.y = crop.center().y();
-        dai::Size2f size;
-        size.width = crop.size().width();
-        size.height = crop.size().height();
+        dai::Point2f center = deserializePoint2f(crop.center());
+        dai::Size2f size = deserializeSize2f(crop.size());
         srcCrops.emplace_back(center, size, crop.angle());
     }
     ImgTransformation transformation;
@@ -198,19 +279,23 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
 }
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
-    if(schemaName == "dai.proto.encoded_frame.EncodedFrame") {
+    if(schemaName == proto::encoded_frame::EncodedFrame::descriptor()->full_name()) {
         return DatatypeEnum::EncodedFrame;
-    } else if(schemaName == "dai.proto.imu_data.IMUData") {
+    } else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
         return DatatypeEnum::IMUData;
-    } else if(schemaName == "dai.proto.image_annotations.ImageAnnotations") {
+    } else if(schemaName == proto::image_annotations::ImageAnnotations::descriptor()->full_name()) {
         return DatatypeEnum::ImgAnnotations;
-    } else if(schemaName == "dai.proto.img_detections.ImgDetections") {
+    } else if(schemaName == proto::img_detections::ImgDetections::descriptor()->full_name()) {
         return DatatypeEnum::ImgDetections;
-    } else if(schemaName == "dai.proto.img_frame.ImgFrame") {
+    } else if(schemaName == proto::img_frame::ImgFrame::descriptor()->full_name()) {
         return DatatypeEnum::ImgFrame;
-    } else if(schemaName == "dai.proto.point_cloud_data.PointCloudData") {
+    } else if(schemaName == proto::nn_data::NNData::descriptor()->full_name()) {
+        return DatatypeEnum::NNData;
+    } else if(schemaName == proto::segmentation_mask::SegmentationMask::descriptor()->full_name()) {
+        return DatatypeEnum::SegmentationMask;
+    } else if(schemaName == proto::point_cloud_data::PointCloudData::descriptor()->full_name()) {
         return DatatypeEnum::PointCloudData;
-    } else if(schemaName == "dai.proto.spatial_img_detections.SpatialImgDetections") {
+    } else if(schemaName == proto::spatial_img_detections::SpatialImgDetections::descriptor()->full_name()) {
         return DatatypeEnum::SpatialImgDetections;
     } else if(schemaName == proto::rgbd_data::RGBDData::descriptor()->full_name()) {
         return DatatypeEnum::RGBDData;
@@ -221,25 +306,27 @@ DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
 
 bool deserializationSupported(DatatypeEnum datatype) {
     switch(datatype) {
+        case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::ImgDetections:
+        case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::ImgFrame:
+        case DatatypeEnum::NNData:
         case DatatypeEnum::EncodedFrame:
         case DatatypeEnum::IMUData:
+        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::PointCloudData:
         case DatatypeEnum::RGBDData:
             return true;
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
-        case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::GateControl:
-        case DatatypeEnum::ImgDetections:
-        case DatatypeEnum::SegmentationMask:
-        case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::DetectionParserConfig:
         case DatatypeEnum::SegmentationParserConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
@@ -257,15 +344,18 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::MapData:
         case DatatypeEnum::MessageGroup:
         case DatatypeEnum::TransformData:
+        case DatatypeEnum::Odometry:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
-        case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::AlignConfig:
         case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::MultiDeviceCalibrationControl:
+        case DatatypeEnum::MultiDeviceCalibrationResult:
         case DatatypeEnum::AutoCalibrationConfig:
         case DatatypeEnum::AutoCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
@@ -275,346 +365,122 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::ImgDetectionsFilterConfig:
+        case DatatypeEnum::Classifications:
+        case DatatypeEnum::Keypoints:
+        case DatatypeEnum::Clusters:
+        case DatatypeEnum::Map2D:
+        case DatatypeEnum::Lines:
+        case DatatypeEnum::Predictions:
+        case DatatypeEnum::FastSAMParserConfig:
+        case DatatypeEnum::HRNetParserConfig:
+        case DatatypeEnum::MLSDParserConfig:
+        case DatatypeEnum::MPPalmDetectionParserConfig:
+        case DatatypeEnum::PPTextDetectionParserConfig:
+        case DatatypeEnum::RFDETRParserConfig:
+        case DatatypeEnum::SCRFDParserConfig:
+        case DatatypeEnum::SuperAnimalParserConfig:
+        case DatatypeEnum::YuNetParserConfig:
+        case DatatypeEnum::ClassificationSequenceParserConfig:
+        case DatatypeEnum::MapOutputParserConfig:
+        case DatatypeEnum::XFeatMonoParserConfig:
+        case DatatypeEnum::XFeatStereoParserConfig:
         case DatatypeEnum::COUNT:
             return false;
     }
     return false;
 }
 
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* message, bool) {
-    auto imageAnnotations = std::make_unique<proto::image_annotations::ImageAnnotations>();
+namespace {
 
-    imageAnnotations->set_sequencenum(message->sequenceNum);
-    proto::common::Timestamp* ts = imageAnnotations->mutable_ts();
-    ts->set_sec(message->ts.sec);
-    ts->set_nsec(message->ts.nsec);
-    proto::common::Timestamp* tsDevice = imageAnnotations->mutable_tsdevice();
-    tsDevice->set_sec(message->tsDevice.sec);
-    tsDevice->set_nsec(message->tsDevice.nsec);
+template <typename ProtoMessageT, typename BufferT>
+void populateBufferMetadata(BufferT& obj, const ProtoMessageT& proto) {
+    obj.setTimestamp(safeTimestamp<std::chrono::steady_clock>(proto.ts(), proto.has_ts()));
+    obj.setTimestampDevice(safeTimestamp<std::chrono::steady_clock>(proto.tsdevice(), proto.has_tsdevice()));
 
-    if(message->transformation.has_value()) {
-        proto::common::ImgTransformation* imgTransformation = imageAnnotations->mutable_transformation();
-        utility::serializeImgTransformation(imgTransformation, message->transformation.value());
+    if(proto.has_tssystem()) {
+        obj.setTimestampSystem(fromProtoTimestamp<std::chrono::system_clock>(proto.tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
     }
 
-    for(const auto& annotation : message->annotations) {
-        proto::image_annotations::ImageAnnotation* imageAnnotation = imageAnnotations->add_annotations();
-        for(const auto& circle : annotation.circles) {
-            proto::image_annotations::CircleAnnotation* circleAnnotation = imageAnnotation->add_circles();
-            circleAnnotation->mutable_position()->set_x(circle.position.x);
-            circleAnnotation->mutable_position()->set_y(circle.position.y);
-            circleAnnotation->set_diameter(circle.diameter);
-            circleAnnotation->set_thickness(circle.thickness);
-            circleAnnotation->mutable_fillcolor()->set_r(circle.fillColor.r);
-            circleAnnotation->mutable_fillcolor()->set_g(circle.fillColor.g);
-            circleAnnotation->mutable_fillcolor()->set_b(circle.fillColor.b);
-            circleAnnotation->mutable_fillcolor()->set_a(circle.fillColor.a);
-            circleAnnotation->mutable_outlinecolor()->set_r(circle.outlineColor.r);
-            circleAnnotation->mutable_outlinecolor()->set_g(circle.outlineColor.g);
-            circleAnnotation->mutable_outlinecolor()->set_b(circle.outlineColor.b);
-            circleAnnotation->mutable_outlinecolor()->set_a(circle.outlineColor.a);
-        }
-        for(const auto& points : annotation.points) {
-            proto::image_annotations::PointsAnnotation* pointsAnnotation = imageAnnotation->add_points();
-            PointsAnnotationType type = points.type;
-            pointsAnnotation->set_type(static_cast<proto::image_annotations::PointsAnnotationType>(type));
-            for(const auto& point : points.points) {
-                proto::common::Point2f* protoPoint = pointsAnnotation->add_points();
-                protoPoint->set_x(point.x);
-                protoPoint->set_y(point.y);
-            }
-            pointsAnnotation->mutable_outlinecolor()->set_r(points.outlineColor.r);
-            pointsAnnotation->mutable_outlinecolor()->set_g(points.outlineColor.g);
-            pointsAnnotation->mutable_outlinecolor()->set_b(points.outlineColor.b);
-            pointsAnnotation->mutable_outlinecolor()->set_a(points.outlineColor.a);
-            for(const auto& color : points.outlineColors) {
-                proto::common::Color* protoColor = pointsAnnotation->add_outlinecolors();
-                protoColor->set_r(color.r);
-                protoColor->set_g(color.g);
-                protoColor->set_b(color.b);
-                protoColor->set_a(color.a);
-            }
-            pointsAnnotation->mutable_fillcolor()->set_r(points.fillColor.r);
-            pointsAnnotation->mutable_fillcolor()->set_g(points.fillColor.g);
-            pointsAnnotation->mutable_fillcolor()->set_b(points.fillColor.b);
-            pointsAnnotation->mutable_fillcolor()->set_a(points.fillColor.a);
-            pointsAnnotation->set_thickness(points.thickness);
-        }
-        for(const auto& text : annotation.texts) {
-            proto::image_annotations::TextAnnotation* textAnnotation = imageAnnotation->add_texts();
-            textAnnotation->mutable_position()->set_x(text.position.x);
-            textAnnotation->mutable_position()->set_y(text.position.y);
-            textAnnotation->set_text(text.text);
-            textAnnotation->set_fontsize(text.fontSize);
-            textAnnotation->mutable_textcolor()->set_r(text.textColor.r);
-            textAnnotation->mutable_textcolor()->set_g(text.textColor.g);
-            textAnnotation->mutable_textcolor()->set_b(text.textColor.b);
-            textAnnotation->mutable_textcolor()->set_a(text.textColor.a);
-            textAnnotation->mutable_backgroundcolor()->set_r(text.backgroundColor.r);
-            textAnnotation->mutable_backgroundcolor()->set_g(text.backgroundColor.g);
-            textAnnotation->mutable_backgroundcolor()->set_b(text.backgroundColor.b);
-            textAnnotation->mutable_backgroundcolor()->set_a(text.backgroundColor.a);
-        }
-    }
-    return imageAnnotations;
+    obj.setSequenceNum(proto.sequencenum());
 }
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool metadataOnly) {
-    // create and populate SpatialImgDetections protobuf message
-    auto spatialImgDetections = std::make_unique<proto::spatial_img_detections::SpatialImgDetections>();
-    spatialImgDetections->set_sequencenum(message->sequenceNum);
 
-    proto::common::Timestamp* ts = spatialImgDetections->mutable_ts();
-    ts->set_sec(message->ts.sec);
-    ts->set_nsec(message->ts.nsec);
-
-    proto::common::Timestamp* tsDevice = spatialImgDetections->mutable_tsdevice();
-    tsDevice->set_sec(message->tsDevice.sec);
-    tsDevice->set_nsec(message->tsDevice.nsec);
-
-    for(const auto& detection : message->detections) {
-        auto* spatialImgDetection = spatialImgDetections->add_detections();
-
-        // Populate embedded ImgDetection message.
-        auto* protoDetection = spatialImgDetection->mutable_detection();
-        protoDetection->set_label(detection.label);
-        protoDetection->set_labelname(detection.labelName);
-        protoDetection->set_confidence(detection.confidence);
-        protoDetection->set_xmin(detection.xmin);
-        protoDetection->set_ymin(detection.ymin);
-        protoDetection->set_xmax(detection.xmax);
-        protoDetection->set_ymax(detection.ymax);
-
-        if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
-            const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
-            auto* bboxProto = protoDetection->mutable_boundingbox();
-            auto* center = bboxProto->mutable_center();
-            center->set_x(bbox.center.x);
-            center->set_y(bbox.center.y);
-            auto* size = bboxProto->mutable_size();
-            size->set_width(bbox.size.width);
-            size->set_height(bbox.size.height);
-            bboxProto->set_angle(bbox.angle);
-        }
-
-        // Populate SpatialImgDetection.Point3f
-        auto* spatialCoordinates = spatialImgDetection->mutable_spatialcoordinates();
-        spatialCoordinates->set_x(detection.spatialCoordinates.x);
-        spatialCoordinates->set_y(detection.spatialCoordinates.y);
-        spatialCoordinates->set_z(detection.spatialCoordinates.z);
-
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData
-        auto* boundingBoxMapping = spatialImgDetection->mutable_boundingboxmapping();
-
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.Rect
-        auto* roi = boundingBoxMapping->mutable_roi();
-        roi->set_x(detection.boundingBoxMapping.roi.x);
-        roi->set_y(detection.boundingBoxMapping.roi.y);
-        roi->set_width(detection.boundingBoxMapping.roi.width);
-        roi->set_height(detection.boundingBoxMapping.roi.height);
-
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorConfigThresholds
-        auto* depthTresholds = boundingBoxMapping->mutable_depththresholds();
-        depthTresholds->set_lowerthreshold(detection.boundingBoxMapping.depthThresholds.lowerThreshold);
-        depthTresholds->set_upperthreshold(detection.boundingBoxMapping.depthThresholds.upperThreshold);
-
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorAlgorithm
-        boundingBoxMapping->set_calculationalgorithm(
-            static_cast<proto::spatial_img_detections::SpatialLocationCalculatorAlgorithm>(detection.boundingBoxMapping.calculationAlgorithm));
-
-        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.stepSize
-        boundingBoxMapping->set_stepsize(detection.boundingBoxMapping.stepSize);
-
-        if(detection.keypoints.has_value()) {
-            const auto& keypointsList = detection.keypoints.value();
-            const auto keypointsVec = keypointsList.getKeypoints();
-            const auto edgesVec = keypointsList.getEdges();
-
-            // Spatial keypoints with spatial coordinates.
-            auto* protoSpatialKeypoints = spatialImgDetection->mutable_keypoints();
-            protoSpatialKeypoints->set_unit(static_cast<proto::common::LengthUnit>(keypointsList.unit));
-            for(const auto& keypoint : keypointsVec) {
-                auto* protoKeypoint = protoSpatialKeypoints->add_keypoints();
-                auto* coords = protoKeypoint->mutable_imagecoordinates();
-                coords->set_x(keypoint.imageCoordinates.x);
-                coords->set_y(keypoint.imageCoordinates.y);
-                coords->set_z(keypoint.imageCoordinates.z);
-                protoKeypoint->set_confidence(keypoint.confidence);
-                protoKeypoint->set_label(keypoint.label);
-                protoKeypoint->set_labelname(keypoint.labelName);
-
-                auto* spatialCoords = protoKeypoint->mutable_spatialcoordinates();
-                spatialCoords->set_x(keypoint.spatialCoordinates.x);
-                spatialCoords->set_y(keypoint.spatialCoordinates.y);
-                spatialCoords->set_z(keypoint.spatialCoordinates.z);
-            }
-            for(const auto& edge : edgesVec) {
-                auto* protoEdge = protoSpatialKeypoints->add_edges();
-                protoEdge->set_src(edge[0]);
-                protoEdge->set_dst(edge[1]);
-            }
-        }
-    }
-
-    proto::common::ImgTransformation* imgTransformation = spatialImgDetections->mutable_transformation();
-    if(message->transformation.has_value()) {
-        utility::serializeImgTransformation(imgTransformation, message->transformation.value());
-    }
-
-    spatialImgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
-    spatialImgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
-    spatialImgDetections->set_unit(static_cast<proto::common::LengthUnit>(message->unit));
-
-    if(!metadataOnly) {
-        std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
-        if(segMaskData) {
-            spatialImgDetections->set_maskdata((*segMaskData).data(), (*segMaskData).size());
-        }
-    }
-    return spatialImgDetections;
+template <typename ProtoPointT>
+Point3f deserializePoint3f(const ProtoPointT& point) {
+    return Point3f{point.x(), point.y(), point.z()};
 }
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* message, bool) {
-    // create and populate ImgFrame protobuf message
-    auto imuData = std::make_unique<proto::imu_data::IMUData>();
-    auto imuPackets = imuData->mutable_packets();
-    imuPackets->Reserve(message->packets.size());
-    for(auto packet : message->packets) {
-        auto imuPacket = imuPackets->Add();
-        auto imuAccelerometer = imuPacket->mutable_accelerometer();
-        imuAccelerometer->mutable_vec()->set_x(packet.acceleroMeter.x);
-        imuAccelerometer->mutable_vec()->set_y(packet.acceleroMeter.y);
-        imuAccelerometer->mutable_vec()->set_z(packet.acceleroMeter.z);
-        imuAccelerometer->mutable_report()->set_accuracy(static_cast<dai::proto::imu_data::Accuracy>(packet.acceleroMeter.accuracy));
-        imuAccelerometer->mutable_report()->set_sequence(packet.acceleroMeter.sequence);
-        imuAccelerometer->mutable_report()->mutable_ts()->set_sec(packet.acceleroMeter.timestamp.sec);
-        imuAccelerometer->mutable_report()->mutable_ts()->set_nsec(packet.acceleroMeter.timestamp.nsec);
-        imuAccelerometer->mutable_report()->mutable_tsdevice()->set_sec(packet.acceleroMeter.tsDevice.sec);
-        imuAccelerometer->mutable_report()->mutable_tsdevice()->set_nsec(packet.acceleroMeter.tsDevice.nsec);
 
-        auto imuGyroscope = imuPacket->mutable_gyroscope();
-        imuGyroscope->mutable_vec()->set_x(packet.gyroscope.x);
-        imuGyroscope->mutable_vec()->set_y(packet.gyroscope.y);
-        imuGyroscope->mutable_vec()->set_z(packet.gyroscope.z);
-        imuGyroscope->mutable_report()->set_accuracy(static_cast<dai::proto::imu_data::Accuracy>(packet.gyroscope.accuracy));
-        imuGyroscope->mutable_report()->set_sequence(packet.gyroscope.sequence);
-        imuGyroscope->mutable_report()->mutable_ts()->set_sec(packet.gyroscope.timestamp.sec);
-        imuGyroscope->mutable_report()->mutable_ts()->set_nsec(packet.gyroscope.timestamp.nsec);
-        imuGyroscope->mutable_report()->mutable_tsdevice()->set_sec(packet.gyroscope.tsDevice.sec);
-        imuGyroscope->mutable_report()->mutable_tsdevice()->set_nsec(packet.gyroscope.tsDevice.nsec);
-
-        auto imuMagnetometer = imuPacket->mutable_magnetometer();
-        imuMagnetometer->mutable_vec()->set_x(packet.magneticField.x);
-        imuMagnetometer->mutable_vec()->set_y(packet.magneticField.y);
-        imuMagnetometer->mutable_vec()->set_z(packet.magneticField.z);
-        imuMagnetometer->mutable_report()->set_accuracy(static_cast<dai::proto::imu_data::Accuracy>(packet.magneticField.accuracy));
-        imuMagnetometer->mutable_report()->set_sequence(packet.magneticField.sequence);
-        imuMagnetometer->mutable_report()->mutable_ts()->set_sec(packet.magneticField.timestamp.sec);
-        imuMagnetometer->mutable_report()->mutable_ts()->set_nsec(packet.magneticField.timestamp.nsec);
-        imuMagnetometer->mutable_report()->mutable_tsdevice()->set_sec(packet.magneticField.tsDevice.sec);
-        imuMagnetometer->mutable_report()->mutable_tsdevice()->set_nsec(packet.magneticField.tsDevice.nsec);
-
-        auto imuRotationVector = imuPacket->mutable_rotationvector();
-        imuRotationVector->mutable_quat()->set_x(packet.rotationVector.i);
-        imuRotationVector->mutable_quat()->set_y(packet.rotationVector.j);
-        imuRotationVector->mutable_quat()->set_z(packet.rotationVector.k);
-        imuRotationVector->mutable_quat()->set_w(packet.rotationVector.real);
-        imuRotationVector->mutable_report()->set_accuracy(static_cast<dai::proto::imu_data::Accuracy>(packet.rotationVector.accuracy));
-        imuRotationVector->mutable_report()->set_sequence(packet.rotationVector.sequence);
-        imuRotationVector->mutable_report()->mutable_ts()->set_sec(packet.rotationVector.timestamp.sec);
-        imuRotationVector->mutable_report()->mutable_ts()->set_nsec(packet.rotationVector.timestamp.nsec);
-        imuRotationVector->mutable_report()->mutable_tsdevice()->set_sec(packet.rotationVector.tsDevice.sec);
-        imuRotationVector->mutable_report()->mutable_tsdevice()->set_nsec(packet.rotationVector.tsDevice.nsec);
-    }
-
-    // Set timestamps
-    proto::common::Timestamp* ts = imuData->mutable_ts();
-    ts->set_sec(message->ts.sec);
-    ts->set_nsec(message->ts.nsec);
-    proto::common::Timestamp* tsDevice = imuData->mutable_tsdevice();
-    tsDevice->set_sec(message->tsDevice.sec);
-    tsDevice->set_nsec(message->tsDevice.nsec);
-    imuData->set_sequencenum(message->sequenceNum);
-
-    return imuData;
+Color deserializeColor(const proto::common::Color& color) {
+    return Color{color.r(), color.g(), color.b(), color.a()};
 }
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool metadataOnly) {
-    auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
 
-    imgDetections->set_sequencenum(message->sequenceNum);
-    proto::common::Timestamp* ts = imgDetections->mutable_ts();
-    ts->set_sec(message->ts.sec);
-    ts->set_nsec(message->ts.nsec);
-    proto::common::Timestamp* tsDevice = imgDetections->mutable_tsdevice();
-    tsDevice->set_sec(message->tsDevice.sec);
-    tsDevice->set_nsec(message->tsDevice.nsec);
+RotatedRect deserializeRotatedRect(const proto::common::RotatedRect& bbox) {
+    return RotatedRect{
+        deserializePoint2f(bbox.center()),
+        deserializeSize2f(bbox.size()),
+        bbox.angle(),
+    };
+}
 
-    for(const auto& detection : message->detections) {
-        proto::img_detections::ImgDetection* imgDetection = imgDetections->add_detections();
-        imgDetection->set_label(detection.label);
-        imgDetection->set_labelname(detection.labelName);
-        imgDetection->set_confidence(detection.confidence);
-        imgDetection->set_xmin(detection.xmin);
-        imgDetection->set_ymin(detection.ymin);
-        imgDetection->set_xmax(detection.xmax);
-        imgDetection->set_ymax(detection.ymax);
+template <typename ProtoEdgesT>
+std::vector<Edge> deserializeEdges(const ProtoEdgesT& protoEdges) {
+    std::vector<Edge> edges;
+    edges.reserve(protoEdges.size());
+    for(const auto& protoEdge : protoEdges) {
+        edges.push_back({protoEdge.src(), protoEdge.dst()});
+    }
+    return edges;
+}
 
-        if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
-            const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
-            proto::common::RotatedRect* bboxProto = imgDetection->mutable_boundingbox();
-            proto::common::Point2f* center = bboxProto->mutable_center();
-            center->set_x(bbox.center.x);
-            center->set_y(bbox.center.y);
-            proto::common::Size2f* size = bboxProto->mutable_size();
-            size->set_width(bbox.size.width);
-            size->set_height(bbox.size.height);
-            bboxProto->set_angle(bbox.angle);
-        }
+KeypointsList deserializeKeypointsList(const proto::common::KeypointsList& protoKeypoints) {
+    std::vector<Keypoint> keypoints;
+    keypoints.reserve(protoKeypoints.keypoints_size());
+    for(const auto& protoKeypoint : protoKeypoints.keypoints()) {
+        keypoints.emplace_back(
+            deserializePoint3f(protoKeypoint.imagecoordinates()), protoKeypoint.confidence(), protoKeypoint.label(), protoKeypoint.labelname());
+    }
+    return KeypointsList(std::move(keypoints), deserializeEdges(protoKeypoints.edges()));
+}
 
-        if(detection.keypoints.has_value()) {
-            const auto& keypointsList = detection.keypoints.value();
-            const auto keypointsVec = keypointsList.getKeypoints();
-            const auto edgesVec = keypointsList.getEdges();
-            proto::common::KeypointsList* protoKeypoints = imgDetection->mutable_keypoints();
-            for(const auto& keypoint : keypointsVec) {
-                auto* protoKeypoint = protoKeypoints->add_keypoints();
-                proto::common::Point3f* coords = protoKeypoint->mutable_imagecoordinates();
-                coords->set_x(keypoint.imageCoordinates.x);
-                coords->set_y(keypoint.imageCoordinates.y);
-                coords->set_z(keypoint.imageCoordinates.z);
-                protoKeypoint->set_confidence(keypoint.confidence);
-                protoKeypoint->set_label(keypoint.label);
-                protoKeypoint->set_labelname(keypoint.labelName);
-            }
-            for(const auto& edge : edgesVec) {
-                auto* protoEdge = protoKeypoints->add_edges();
-                protoEdge->set_src(edge[0]);
-                protoEdge->set_dst(edge[1]);
-            }
-        }
+SpatialKeypointsList deserializeSpatialKeypointsList(const proto::common::SpatialKeypointsList& protoKeypoints) {
+    std::vector<SpatialKeypoint> keypoints;
+    keypoints.reserve(protoKeypoints.keypoints_size());
+    for(const auto& protoKeypoint : protoKeypoints.keypoints()) {
+        keypoints.emplace_back(deserializePoint3f(protoKeypoint.imagecoordinates()),
+                               deserializePoint3f(protoKeypoint.spatialcoordinates()),
+                               protoKeypoint.confidence(),
+                               protoKeypoint.label(),
+                               protoKeypoint.labelname());
+    }
+    return SpatialKeypointsList(std::move(keypoints), deserializeEdges(protoKeypoints.edges()), static_cast<LengthUnit>(protoKeypoints.unit()));
+}
+
+void populateImgDetection(ImgDetection& detection, const proto::img_detections::ImgDetection& protoDetection) {
+    detection.label = protoDetection.label();
+    detection.labelName = protoDetection.labelname();
+    detection.confidence = protoDetection.confidence();
+    detection.xmin = protoDetection.xmin();
+    detection.ymin = protoDetection.ymin();
+    detection.xmax = protoDetection.xmax();
+    detection.ymax = protoDetection.ymax();
+
+    if(protoDetection.has_boundingbox()) {
+        detection.boundingBox = deserializeRotatedRect(protoDetection.boundingbox());
+    } else {
+        detection.boundingBox.reset();
     }
 
-    imgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
-    imgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
-
-    proto::common::ImgTransformation* imgTransformation = imgDetections->mutable_transformation();
-    if(message->transformation.has_value()) {
-        utility::serializeImgTransformation(imgTransformation, message->transformation.value());
+    if(protoDetection.has_keypoints()) {
+        detection.keypoints = deserializeKeypointsList(protoDetection.keypoints());
+    } else {
+        detection.keypoints.reset();
     }
-
-    if(!metadataOnly) {
-        std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
-        if(segMaskData) {
-            imgDetections->set_maskdata((*segMaskData).data(), (*segMaskData).size());
-        }
-    }
-    return imgDetections;
 }
 
 // Helper function to populate an EncodedFrame proto from an EncodedFrame object
-static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* encodedFrame, const EncodedFrame* message, bool metadataOnly) {
+void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* encodedFrame, const EncodedFrame* message, bool metadataOnly) {
     // Populate the protobuf message fields with the EncodedFrame data
     encodedFrame->set_instancenum(message->instanceNum);  // instanceNum -> instancenum
     encodedFrame->set_width(message->width);
@@ -636,6 +502,14 @@ static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* enco
     proto::common::Timestamp* tsDevice = encodedFrame->mutable_tsdevice();
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = encodedFrame->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        encodedFrame->clear_tssystem();
+    }
 
     // Set camera settings
     proto::common::CameraSettings* cam = encodedFrame->mutable_cam();
@@ -660,21 +534,22 @@ static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* enco
     utility::serializeImgTransformation(imgTransformation, message->transformation);
 }
 
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly) {
-    auto encodedFrame = std::make_unique<proto::encoded_frame::EncodedFrame>();
-    populateEncodedFrameToProto(encodedFrame.get(), message, metadataOnly);
-    return encodedFrame;
-}
-
 // Helper function to populate an ImgFrame proto from an ImgFrame object
-static void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFrame* message, bool metadataOnly) {
+void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFrame* message, bool metadataOnly) {
     proto::common::Timestamp* ts = imgFrame->mutable_ts();
     ts->set_sec(message->ts.sec);
     ts->set_nsec(message->ts.nsec);
     proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = imgFrame->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        imgFrame->clear_tssystem();
+    }
 
     imgFrame->set_sequencenum(message->sequenceNum);
 
@@ -726,11 +601,615 @@ static void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const 
     }
 }
 
+// Helper function to populate an EncodedFrame object from an EncodedFrame proto
+void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encoded_frame::EncodedFrame& encFrame, bool metadataOnly) {
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using clock = std::chrono::steady_clock;
+        using steady_tp = std::chrono::time_point<clock>;
+        return hasField ? utility::fromProtoTimestamp<clock>(protoTs) : steady_tp{};
+    };
+
+    obj.setTimestamp(safeTimestamp(encFrame.ts(), encFrame.has_ts()));
+    obj.setTimestampDevice(safeTimestamp(encFrame.tsdevice(), encFrame.has_tsdevice()));
+
+    if(encFrame.has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(encFrame.tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+
+    obj.setSequenceNum(encFrame.sequencenum());
+
+    obj.width = encFrame.width();
+    obj.height = encFrame.height();
+
+    obj.instanceNum = encFrame.instancenum();
+
+    obj.quality = encFrame.quality();
+    obj.bitrate = encFrame.bitrate();
+    obj.profile = static_cast<EncodedFrame::Profile>(encFrame.profile());
+
+    obj.lossless = encFrame.lossless();
+    obj.type = static_cast<EncodedFrame::FrameType>(encFrame.type());
+
+    obj.frameOffset = encFrame.frameoffset();
+    obj.frameSize = encFrame.framesize();
+
+    obj.cam.exposureTimeUs = encFrame.cam().exposuretimeus();
+    obj.cam.sensitivityIso = encFrame.cam().sensitivityiso();
+    obj.cam.lensPosition = encFrame.cam().lensposition();
+    obj.cam.wbColorTemp = encFrame.cam().wbcolortemp();
+    obj.cam.lensPositionRaw = encFrame.cam().lenspositionraw();
+    obj.cam.fsync = static_cast<ImgFrame::Fsync>(encFrame.cam().fsync());
+    obj.cam.sensorMode = encFrame.cam().sensormode();
+    obj.cam.fps = encFrame.cam().fps();
+    obj.cam.sensorTemperatureC = encFrame.cam().has_sensortemperaturec() ? std::make_optional(encFrame.cam().sensortemperaturec()) : std::nullopt;
+
+    if(encFrame.has_transformation()) {
+        obj.transformation = deserializeImgTransformation(encFrame.transformation());
+    }
+
+    if(!metadataOnly) {
+        std::vector<uint8_t> data(encFrame.data().begin(), encFrame.data().end());
+        obj.setData(std::move(data));
+    }
+}
+
+// Helper function to populate an ImgFrame object from an ImgFrame proto
+void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& imgFrame, bool metadataOnly) {
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp<std::chrono::steady_clock>(protoTs) : steady_tp{};
+    };
+    obj.setTimestamp(safeTimestamp(imgFrame.ts(), imgFrame.has_ts()));
+    obj.setTimestampDevice(safeTimestamp(imgFrame.tsdevice(), imgFrame.has_tsdevice()));
+
+    if(imgFrame.has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(imgFrame.tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+
+    obj.setSequenceNum(imgFrame.sequencenum());
+
+    // frame buffer info
+    obj.fb.type = static_cast<dai::ImgFrame::Type>(imgFrame.fb().type());
+    obj.fb.width = imgFrame.fb().width();
+    obj.fb.height = imgFrame.fb().height();
+    obj.fb.stride = imgFrame.fb().stride();
+    obj.fb.bytesPP = imgFrame.fb().bytespp();
+    obj.fb.p1Offset = imgFrame.fb().p1offset();
+    obj.fb.p2Offset = imgFrame.fb().p2offset();
+    obj.fb.p3Offset = imgFrame.fb().p3offset();
+
+    // source frame buffer info
+    obj.sourceFb.type = static_cast<dai::ImgFrame::Type>(imgFrame.sourcefb().type());
+    obj.sourceFb.width = imgFrame.sourcefb().width();
+    obj.sourceFb.height = imgFrame.sourcefb().height();
+    obj.sourceFb.stride = imgFrame.sourcefb().stride();
+    obj.sourceFb.bytesPP = imgFrame.sourcefb().bytespp();
+    obj.sourceFb.p1Offset = imgFrame.sourcefb().p1offset();
+    obj.sourceFb.p2Offset = imgFrame.sourcefb().p2offset();
+    obj.sourceFb.p3Offset = imgFrame.sourcefb().p3offset();
+
+    // camera settings
+    obj.cam.exposureTimeUs = imgFrame.cam().exposuretimeus();
+    obj.cam.sensitivityIso = imgFrame.cam().sensitivityiso();
+    obj.cam.lensPosition = imgFrame.cam().lensposition();
+    obj.cam.wbColorTemp = imgFrame.cam().wbcolortemp();
+    obj.cam.lensPositionRaw = imgFrame.cam().lenspositionraw();
+    obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame.cam().fsync());
+    obj.cam.sensorMode = imgFrame.cam().sensormode();
+    obj.cam.fps = imgFrame.cam().fps();
+    obj.cam.sensorTemperatureC = imgFrame.cam().has_sensortemperaturec() ? std::make_optional(imgFrame.cam().sensortemperaturec()) : std::nullopt;
+
+    // instance number and category
+    obj.instanceNum = imgFrame.instancenum();
+    obj.category = imgFrame.category();
+
+    if(imgFrame.has_transformation()) {
+        obj.transformation = deserializeImgTransformation(imgFrame.transformation());
+    }
+
+    if(!metadataOnly) {
+        std::vector<uint8_t> data(imgFrame.data().begin(), imgFrame.data().end());
+        obj.setData(std::move(data));
+    }
+}
+
+// Helper function to populate an NNData proto from an NNData object
+void populateNNDataToProto(proto::nn_data::NNData* nnData, const NNData* message, bool metadataOnly) {
+    nnData->set_sequencenum(message->sequenceNum);
+
+    proto::common::Timestamp* ts = nnData->mutable_ts();
+    ts->set_sec(message->ts.sec);
+    ts->set_nsec(message->ts.nsec);
+
+    proto::common::Timestamp* tsDevice = nnData->mutable_tsdevice();
+    tsDevice->set_sec(message->tsDevice.sec);
+    tsDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = nnData->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        nnData->clear_tssystem();
+    }
+
+    for(const auto& tensor : message->tensors) {
+        proto::nn_data::TensorInfo* protoTensor = nnData->add_tensors();
+        protoTensor->set_order(static_cast<proto::nn_data::StorageOrder>(tensor.order));
+        protoTensor->set_datatype(static_cast<proto::nn_data::DataType>(tensor.dataType));
+        protoTensor->set_numdimensions(tensor.numDimensions);
+        for(const auto& dim : tensor.dims) {
+            protoTensor->add_dims(dim);
+        }
+        for(const auto& stride : tensor.strides) {
+            protoTensor->add_strides(stride);
+        }
+        protoTensor->set_name(tensor.name);
+        protoTensor->set_offset(tensor.offset);
+        protoTensor->set_quantization(tensor.quantization);
+        protoTensor->set_qpscale(tensor.qpScale);
+        protoTensor->set_qpzp(tensor.qpZp);
+    }
+
+    nnData->set_batchsize(message->batchSize);
+
+    if(message->transformation.has_value()) {
+        utility::serializeImgTransformation(nnData->mutable_transformation(), message->transformation.value());
+    } else {
+        nnData->clear_transformation();
+    }
+
+    if(!metadataOnly) {
+        const auto data = message->data->getData();
+        nnData->set_data(data.data(), data.size());
+    }
+}
+
+// Helper function to populate an NNData object from an NNData proto
+void populateNNDataFromProto(NNData& obj, const proto::nn_data::NNData& nnData, bool metadataOnly) {
+    obj.setSequenceNum(nnData.sequencenum());
+    obj.setTimestamp(utility::safeTimestamp<std::chrono::steady_clock>(nnData.ts(), nnData.has_ts()));
+    obj.setTimestampDevice(utility::safeTimestamp<std::chrono::steady_clock>(nnData.tsdevice(), nnData.has_tsdevice()));
+
+    if(nnData.has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(nnData.tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+
+    obj.tensors.clear();
+    obj.tensors.reserve(nnData.tensors_size());
+    for(const auto& protoTensor : nnData.tensors()) {
+        TensorInfo tensor;
+        tensor.order = static_cast<TensorInfo::StorageOrder>(protoTensor.order());
+        tensor.dataType = static_cast<TensorInfo::DataType>(protoTensor.datatype());
+        tensor.numDimensions = protoTensor.numdimensions();
+        tensor.dims.assign(protoTensor.dims().begin(), protoTensor.dims().end());
+        tensor.strides.assign(protoTensor.strides().begin(), protoTensor.strides().end());
+        tensor.name = protoTensor.name();
+        tensor.offset = protoTensor.offset();
+        tensor.quantization = protoTensor.quantization();
+        tensor.qpScale = protoTensor.qpscale();
+        tensor.qpZp = protoTensor.qpzp();
+        obj.tensors.push_back(std::move(tensor));
+    }
+
+    obj.batchSize = nnData.batchsize();
+
+    if(nnData.has_transformation()) {
+        obj.transformation = deserializeImgTransformation(nnData.transformation());
+    } else {
+        obj.transformation = std::nullopt;
+    }
+
+    if(!metadataOnly) {
+        std::vector<uint8_t> data(nnData.data().begin(), nnData.data().end());
+        obj.setData(std::move(data));
+    }
+}
+
+}  // namespace
+
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* message, bool) {
+    auto imageAnnotations = std::make_unique<proto::image_annotations::ImageAnnotations>();
+
+    imageAnnotations->set_sequencenum(message->sequenceNum);
+    proto::common::Timestamp* ts = imageAnnotations->mutable_ts();
+    ts->set_sec(message->ts.sec);
+    ts->set_nsec(message->ts.nsec);
+    proto::common::Timestamp* tsDevice = imageAnnotations->mutable_tsdevice();
+    tsDevice->set_sec(message->tsDevice.sec);
+    tsDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = imageAnnotations->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        imageAnnotations->clear_tssystem();
+    }
+
+    if(message->transformation.has_value()) {
+        proto::common::ImgTransformation* imgTransformation = imageAnnotations->mutable_transformation();
+        utility::serializeImgTransformation(imgTransformation, message->transformation.value());
+    }
+
+    for(const auto& annotation : message->annotations) {
+        proto::image_annotations::ImageAnnotation* imageAnnotation = imageAnnotations->add_annotations();
+        for(const auto& circle : annotation.circles) {
+            proto::image_annotations::CircleAnnotation* circleAnnotation = imageAnnotation->add_circles();
+            serializePoint2f(circleAnnotation->mutable_position(), circle.position);
+            circleAnnotation->set_diameter(circle.diameter);
+            circleAnnotation->set_thickness(circle.thickness);
+            circleAnnotation->mutable_fillcolor()->set_r(circle.fillColor.r);
+            circleAnnotation->mutable_fillcolor()->set_g(circle.fillColor.g);
+            circleAnnotation->mutable_fillcolor()->set_b(circle.fillColor.b);
+            circleAnnotation->mutable_fillcolor()->set_a(circle.fillColor.a);
+            circleAnnotation->mutable_outlinecolor()->set_r(circle.outlineColor.r);
+            circleAnnotation->mutable_outlinecolor()->set_g(circle.outlineColor.g);
+            circleAnnotation->mutable_outlinecolor()->set_b(circle.outlineColor.b);
+            circleAnnotation->mutable_outlinecolor()->set_a(circle.outlineColor.a);
+        }
+        for(const auto& points : annotation.points) {
+            proto::image_annotations::PointsAnnotation* pointsAnnotation = imageAnnotation->add_points();
+            PointsAnnotationType type = points.type;
+            pointsAnnotation->set_type(static_cast<proto::image_annotations::PointsAnnotationType>(type));
+            for(const auto& point : points.points) {
+                proto::common::Point2f* protoPoint = pointsAnnotation->add_points();
+                serializePoint2f(protoPoint, point);
+            }
+            pointsAnnotation->mutable_outlinecolor()->set_r(points.outlineColor.r);
+            pointsAnnotation->mutable_outlinecolor()->set_g(points.outlineColor.g);
+            pointsAnnotation->mutable_outlinecolor()->set_b(points.outlineColor.b);
+            pointsAnnotation->mutable_outlinecolor()->set_a(points.outlineColor.a);
+            for(const auto& color : points.outlineColors) {
+                proto::common::Color* protoColor = pointsAnnotation->add_outlinecolors();
+                protoColor->set_r(color.r);
+                protoColor->set_g(color.g);
+                protoColor->set_b(color.b);
+                protoColor->set_a(color.a);
+            }
+            pointsAnnotation->mutable_fillcolor()->set_r(points.fillColor.r);
+            pointsAnnotation->mutable_fillcolor()->set_g(points.fillColor.g);
+            pointsAnnotation->mutable_fillcolor()->set_b(points.fillColor.b);
+            pointsAnnotation->mutable_fillcolor()->set_a(points.fillColor.a);
+            pointsAnnotation->set_thickness(points.thickness);
+        }
+        for(const auto& text : annotation.texts) {
+            proto::image_annotations::TextAnnotation* textAnnotation = imageAnnotation->add_texts();
+            serializePoint2f(textAnnotation->mutable_position(), text.position);
+            textAnnotation->set_text(text.text);
+            textAnnotation->set_fontsize(text.fontSize);
+            textAnnotation->mutable_textcolor()->set_r(text.textColor.r);
+            textAnnotation->mutable_textcolor()->set_g(text.textColor.g);
+            textAnnotation->mutable_textcolor()->set_b(text.textColor.b);
+            textAnnotation->mutable_textcolor()->set_a(text.textColor.a);
+            textAnnotation->mutable_backgroundcolor()->set_r(text.backgroundColor.r);
+            textAnnotation->mutable_backgroundcolor()->set_g(text.backgroundColor.g);
+            textAnnotation->mutable_backgroundcolor()->set_b(text.backgroundColor.b);
+            textAnnotation->mutable_backgroundcolor()->set_a(text.backgroundColor.a);
+        }
+    }
+    return imageAnnotations;
+}
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool metadataOnly) {
+    // create and populate SpatialImgDetections protobuf message
+    auto spatialImgDetections = std::make_unique<proto::spatial_img_detections::SpatialImgDetections>();
+    spatialImgDetections->set_sequencenum(message->sequenceNum);
+
+    proto::common::Timestamp* ts = spatialImgDetections->mutable_ts();
+    ts->set_sec(message->ts.sec);
+    ts->set_nsec(message->ts.nsec);
+
+    proto::common::Timestamp* tsDevice = spatialImgDetections->mutable_tsdevice();
+    tsDevice->set_sec(message->tsDevice.sec);
+    tsDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = spatialImgDetections->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        spatialImgDetections->clear_tssystem();
+    }
+
+    for(const auto& detection : message->detections) {
+        auto* spatialImgDetection = spatialImgDetections->add_detections();
+
+        // Populate embedded ImgDetection message.
+        auto* protoDetection = spatialImgDetection->mutable_detection();
+        protoDetection->set_label(detection.label);
+        protoDetection->set_labelname(detection.labelName);
+        protoDetection->set_confidence(detection.confidence);
+        protoDetection->set_xmin(detection.xmin);
+        protoDetection->set_ymin(detection.ymin);
+        protoDetection->set_xmax(detection.xmax);
+        protoDetection->set_ymax(detection.ymax);
+
+        if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
+            const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
+            auto* bboxProto = protoDetection->mutable_boundingbox();
+            serializePoint2f(bboxProto->mutable_center(), bbox.center);
+            serializeSize2f(bboxProto->mutable_size(), bbox.size);
+            bboxProto->set_angle(bbox.angle);
+        }
+
+        // Populate SpatialImgDetection.Point3f
+        auto* spatialCoordinates = spatialImgDetection->mutable_spatialcoordinates();
+        spatialCoordinates->set_x(detection.spatialCoordinates.x);
+        spatialCoordinates->set_y(detection.spatialCoordinates.y);
+        spatialCoordinates->set_z(detection.spatialCoordinates.z);
+
+        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData
+        auto* boundingBoxMapping = spatialImgDetection->mutable_boundingboxmapping();
+
+        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.Rect
+        serializeSpatialRect(boundingBoxMapping->mutable_roi(), detection.boundingBoxMapping.roi);
+
+        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorConfigThresholds
+        auto* depthTresholds = boundingBoxMapping->mutable_depththresholds();
+        depthTresholds->set_lowerthreshold(detection.boundingBoxMapping.depthThresholds.lowerThreshold);
+        depthTresholds->set_upperthreshold(detection.boundingBoxMapping.depthThresholds.upperThreshold);
+
+        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorAlgorithm
+        boundingBoxMapping->set_calculationalgorithm(
+            static_cast<proto::spatial_img_detections::SpatialLocationCalculatorAlgorithm>(detection.boundingBoxMapping.calculationAlgorithm));
+
+        // Populate SpatialImgDetection.SpatialLocationCalculatorConfigData.stepSize
+        boundingBoxMapping->set_stepsize(detection.boundingBoxMapping.stepSize);
+
+        if(detection.keypoints.has_value()) {
+            const auto& keypointsList = detection.keypoints.value();
+            const auto keypointsVec = keypointsList.getKeypoints();
+            const auto edgesVec = keypointsList.getEdges();
+
+            // Spatial keypoints with spatial coordinates.
+            auto* protoSpatialKeypoints = spatialImgDetection->mutable_keypoints();
+            protoSpatialKeypoints->set_unit(static_cast<proto::common::LengthUnit>(keypointsList.unit));
+            for(const auto& keypoint : keypointsVec) {
+                auto* protoKeypoint = protoSpatialKeypoints->add_keypoints();
+                auto* coords = protoKeypoint->mutable_imagecoordinates();
+                coords->set_x(keypoint.imageCoordinates.x);
+                coords->set_y(keypoint.imageCoordinates.y);
+                coords->set_z(keypoint.imageCoordinates.z);
+                protoKeypoint->set_confidence(keypoint.confidence);
+                protoKeypoint->set_label(keypoint.label);
+                protoKeypoint->set_labelname(keypoint.labelName);
+
+                auto* spatialCoords = protoKeypoint->mutable_spatialcoordinates();
+                spatialCoords->set_x(keypoint.spatialCoordinates.x);
+                spatialCoords->set_y(keypoint.spatialCoordinates.y);
+                spatialCoords->set_z(keypoint.spatialCoordinates.z);
+            }
+            for(const auto& edge : edgesVec) {
+                auto* protoEdge = protoSpatialKeypoints->add_edges();
+                protoEdge->set_src(edge[0]);
+                protoEdge->set_dst(edge[1]);
+            }
+        }
+    }
+
+    if(message->transformation.has_value()) {
+        proto::common::ImgTransformation* imgTransformation = spatialImgDetections->mutable_transformation();
+        utility::serializeImgTransformation(imgTransformation, message->transformation.value());
+    }
+
+    spatialImgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
+    spatialImgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
+    spatialImgDetections->set_unit(static_cast<proto::common::LengthUnit>(message->unit));
+
+    if(!metadataOnly) {
+        std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
+        if(segMaskData) {
+            spatialImgDetections->set_maskdata((*segMaskData).data(), (*segMaskData).size());
+        }
+    }
+    return spatialImgDetections;
+}
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* message, bool) {
+    // create and populate ImgFrame protobuf message
+    auto imuData = std::make_unique<proto::imu_data::IMUData>();
+    auto imuPackets = imuData->mutable_packets();
+    imuPackets->Reserve(message->packets.size());
+    for(auto packet : message->packets) {
+        auto imuPacket = imuPackets->Add();
+        auto imuAccelerometer = imuPacket->mutable_accelerometer();
+        imuAccelerometer->mutable_vec()->set_x(packet.acceleroMeter.x);
+        imuAccelerometer->mutable_vec()->set_y(packet.acceleroMeter.y);
+        imuAccelerometer->mutable_vec()->set_z(packet.acceleroMeter.z);
+        imuAccelerometer->mutable_report()->set_accuracy(static_cast<dai::proto::imu_data::Accuracy>(packet.acceleroMeter.accuracy));
+        imuAccelerometer->mutable_report()->set_sequence(packet.acceleroMeter.sequence);
+        imuAccelerometer->mutable_report()->mutable_ts()->set_sec(packet.acceleroMeter.timestamp.sec);
+        imuAccelerometer->mutable_report()->mutable_ts()->set_nsec(packet.acceleroMeter.timestamp.nsec);
+        imuAccelerometer->mutable_report()->mutable_tsdevice()->set_sec(packet.acceleroMeter.tsDevice.sec);
+        imuAccelerometer->mutable_report()->mutable_tsdevice()->set_nsec(packet.acceleroMeter.tsDevice.nsec);
+
+        if(packet.acceleroMeter.tsSystem.has_value()) {
+            imuAccelerometer->mutable_report()->mutable_tssystem()->set_sec(packet.acceleroMeter.tsSystem.value().sec);
+            imuAccelerometer->mutable_report()->mutable_tssystem()->set_nsec(packet.acceleroMeter.tsSystem.value().nsec);
+        } else {
+            imuAccelerometer->mutable_report()->clear_tssystem();
+        }
+
+        auto imuGyroscope = imuPacket->mutable_gyroscope();
+        imuGyroscope->mutable_vec()->set_x(packet.gyroscope.x);
+        imuGyroscope->mutable_vec()->set_y(packet.gyroscope.y);
+        imuGyroscope->mutable_vec()->set_z(packet.gyroscope.z);
+        imuGyroscope->mutable_report()->set_accuracy(static_cast<dai::proto::imu_data::Accuracy>(packet.gyroscope.accuracy));
+        imuGyroscope->mutable_report()->set_sequence(packet.gyroscope.sequence);
+        imuGyroscope->mutable_report()->mutable_ts()->set_sec(packet.gyroscope.timestamp.sec);
+        imuGyroscope->mutable_report()->mutable_ts()->set_nsec(packet.gyroscope.timestamp.nsec);
+        imuGyroscope->mutable_report()->mutable_tsdevice()->set_sec(packet.gyroscope.tsDevice.sec);
+        imuGyroscope->mutable_report()->mutable_tsdevice()->set_nsec(packet.gyroscope.tsDevice.nsec);
+
+        if(packet.gyroscope.tsSystem.has_value()) {
+            imuGyroscope->mutable_report()->mutable_tssystem()->set_sec(packet.gyroscope.tsSystem.value().sec);
+            imuGyroscope->mutable_report()->mutable_tssystem()->set_nsec(packet.gyroscope.tsSystem.value().nsec);
+        } else {
+            imuGyroscope->mutable_report()->clear_tssystem();
+        }
+
+        auto imuMagnetometer = imuPacket->mutable_magnetometer();
+        imuMagnetometer->mutable_vec()->set_x(packet.magneticField.x);
+        imuMagnetometer->mutable_vec()->set_y(packet.magneticField.y);
+        imuMagnetometer->mutable_vec()->set_z(packet.magneticField.z);
+        imuMagnetometer->mutable_report()->set_accuracy(static_cast<dai::proto::imu_data::Accuracy>(packet.magneticField.accuracy));
+        imuMagnetometer->mutable_report()->set_sequence(packet.magneticField.sequence);
+        imuMagnetometer->mutable_report()->mutable_ts()->set_sec(packet.magneticField.timestamp.sec);
+        imuMagnetometer->mutable_report()->mutable_ts()->set_nsec(packet.magneticField.timestamp.nsec);
+        imuMagnetometer->mutable_report()->mutable_tsdevice()->set_sec(packet.magneticField.tsDevice.sec);
+        imuMagnetometer->mutable_report()->mutable_tsdevice()->set_nsec(packet.magneticField.tsDevice.nsec);
+
+        if(packet.magneticField.tsSystem.has_value()) {
+            imuMagnetometer->mutable_report()->mutable_tssystem()->set_sec(packet.magneticField.tsSystem.value().sec);
+            imuMagnetometer->mutable_report()->mutable_tssystem()->set_nsec(packet.magneticField.tsSystem.value().nsec);
+        } else {
+            imuMagnetometer->mutable_report()->clear_tssystem();
+        }
+
+        auto imuRotationVector = imuPacket->mutable_rotationvector();
+        imuRotationVector->mutable_quat()->set_x(packet.rotationVector.i);
+        imuRotationVector->mutable_quat()->set_y(packet.rotationVector.j);
+        imuRotationVector->mutable_quat()->set_z(packet.rotationVector.k);
+        imuRotationVector->mutable_quat()->set_w(packet.rotationVector.real);
+        imuRotationVector->mutable_report()->set_accuracy(static_cast<dai::proto::imu_data::Accuracy>(packet.rotationVector.accuracy));
+        imuRotationVector->mutable_report()->set_sequence(packet.rotationVector.sequence);
+        imuRotationVector->mutable_report()->mutable_ts()->set_sec(packet.rotationVector.timestamp.sec);
+        imuRotationVector->mutable_report()->mutable_ts()->set_nsec(packet.rotationVector.timestamp.nsec);
+        imuRotationVector->mutable_report()->mutable_tsdevice()->set_sec(packet.rotationVector.tsDevice.sec);
+        imuRotationVector->mutable_report()->mutable_tsdevice()->set_nsec(packet.rotationVector.tsDevice.nsec);
+
+        if(packet.rotationVector.tsSystem.has_value()) {
+            imuRotationVector->mutable_report()->mutable_tssystem()->set_sec(packet.rotationVector.tsSystem.value().sec);
+            imuRotationVector->mutable_report()->mutable_tssystem()->set_nsec(packet.rotationVector.tsSystem.value().nsec);
+        } else {
+            imuRotationVector->mutable_report()->clear_tssystem();
+        }
+    }
+
+    // Set timestamps
+    proto::common::Timestamp* ts = imuData->mutable_ts();
+    ts->set_sec(message->ts.sec);
+    ts->set_nsec(message->ts.nsec);
+    proto::common::Timestamp* tsDevice = imuData->mutable_tsdevice();
+    tsDevice->set_sec(message->tsDevice.sec);
+    tsDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = imuData->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        imuData->clear_tssystem();
+    }
+
+    imuData->set_sequencenum(message->sequenceNum);
+
+    return imuData;
+}
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool metadataOnly) {
+    auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
+
+    imgDetections->set_sequencenum(message->sequenceNum);
+    proto::common::Timestamp* ts = imgDetections->mutable_ts();
+    ts->set_sec(message->ts.sec);
+    ts->set_nsec(message->ts.nsec);
+    proto::common::Timestamp* tsDevice = imgDetections->mutable_tsdevice();
+    tsDevice->set_sec(message->tsDevice.sec);
+    tsDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = imgDetections->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        imgDetections->clear_tssystem();
+    }
+
+    for(const auto& detection : message->detections) {
+        proto::img_detections::ImgDetection* imgDetection = imgDetections->add_detections();
+        imgDetection->set_label(detection.label);
+        imgDetection->set_labelname(detection.labelName);
+        imgDetection->set_confidence(detection.confidence);
+        imgDetection->set_xmin(detection.xmin);
+        imgDetection->set_ymin(detection.ymin);
+        imgDetection->set_xmax(detection.xmax);
+        imgDetection->set_ymax(detection.ymax);
+
+        if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
+            const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
+            proto::common::RotatedRect* bboxProto = imgDetection->mutable_boundingbox();
+            serializePoint2f(bboxProto->mutable_center(), bbox.center);
+            serializeSize2f(bboxProto->mutable_size(), bbox.size);
+            bboxProto->set_angle(bbox.angle);
+        }
+
+        if(detection.keypoints.has_value()) {
+            const auto& keypointsList = detection.keypoints.value();
+            const auto keypointsVec = keypointsList.getKeypoints();
+            const auto edgesVec = keypointsList.getEdges();
+            proto::common::KeypointsList* protoKeypoints = imgDetection->mutable_keypoints();
+            for(const auto& keypoint : keypointsVec) {
+                auto* protoKeypoint = protoKeypoints->add_keypoints();
+                proto::common::Point3f* coords = protoKeypoint->mutable_imagecoordinates();
+                coords->set_x(keypoint.imageCoordinates.x);
+                coords->set_y(keypoint.imageCoordinates.y);
+                coords->set_z(keypoint.imageCoordinates.z);
+                protoKeypoint->set_confidence(keypoint.confidence);
+                protoKeypoint->set_label(keypoint.label);
+                protoKeypoint->set_labelname(keypoint.labelName);
+            }
+            for(const auto& edge : edgesVec) {
+                auto* protoEdge = protoKeypoints->add_edges();
+                protoEdge->set_src(edge[0]);
+                protoEdge->set_dst(edge[1]);
+            }
+        }
+    }
+
+    imgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
+    imgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
+
+    if(message->transformation.has_value()) {
+        proto::common::ImgTransformation* imgTransformation = imgDetections->mutable_transformation();
+        utility::serializeImgTransformation(imgTransformation, message->transformation.value());
+    }
+
+    if(!metadataOnly) {
+        std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
+        if(segMaskData) {
+            imgDetections->set_maskdata((*segMaskData).data(), (*segMaskData).size());
+        }
+    }
+    return imgDetections;
+}
+
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly) {
+    auto encodedFrame = std::make_unique<proto::encoded_frame::EncodedFrame>();
+    populateEncodedFrameToProto(encodedFrame.get(), message, metadataOnly);
+    return encodedFrame;
+}
+
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly) {
     auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
     populateImgFrameToProto(imgFrame.get(), message, metadataOnly);
     return imgFrame;
+}
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const NNData* message, bool metadataOnly) {
+    auto nnData = std::make_unique<proto::nn_data::NNData>();
+    populateNNDataToProto(nnData.get(), message, metadataOnly);
+    return nnData;
 }
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const SegmentationMask* message, bool metadataOnly) {
@@ -745,6 +1224,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SegmentationMas
     auto timestampDevice = segmentationMask->mutable_tsdevice();
     timestampDevice->set_sec(message->tsDevice.sec);
     timestampDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        auto timestampSystem = segmentationMask->mutable_tssystem();
+        timestampSystem->set_sec(message->tsSystem.value().sec);
+        timestampSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        segmentationMask->clear_tssystem();
+    }
 
     segmentationMask->set_width(message->getWidth());
     segmentationMask->set_height(message->getHeight());
@@ -775,6 +1262,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
     auto timestampDevice = pointCloudData->mutable_tsdevice();
     timestampDevice->set_sec(message->tsDevice.sec);
     timestampDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        auto timestampSystem = pointCloudData->mutable_tssystem();
+        timestampSystem->set_sec(message->tsSystem.value().sec);
+        timestampSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        pointCloudData->clear_tssystem();
+    }
 
     pointCloudData->set_sequencenum(message->sequenceNum);
     pointCloudData->set_width(message->getWidth());
@@ -810,6 +1305,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
     auto timestampDevice = rgbdData->mutable_tsdevice();
     timestampDevice->set_sec(message->tsDevice.sec);
     timestampDevice->set_nsec(message->tsDevice.nsec);
+
+    if(message->tsSystem.has_value()) {
+        auto timestampSystem = rgbdData->mutable_tssystem();
+        timestampSystem->set_sec(message->tsSystem.value().sec);
+        timestampSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        rgbdData->clear_tssystem();
+    }
 
     // Set sequence number
     rgbdData->set_sequencenum(message->sequenceNum);
@@ -859,15 +1362,164 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
     return rgbdData;
 }
 
-// template <>
-// void setProtoMessage(ImgAnnotations* obj, std::shared_ptr<google::protobuf::Message> msg, bool) {
-// }
-// template <>
-// void setProtoMessage(SpatialImgDetections* obj, std::shared_ptr<google::protobuf::Message> msg, bool) {
-// }
-// template <>
-// void setProtoMessage(ImgDetections* obj, std::shared_ptr<google::protobuf::Message> msg, bool) {
-// }
+template <>
+void setProtoMessage(ImgAnnotations& obj, const google::protobuf::Message* msg, bool) {
+    auto imageAnnotations = dynamic_cast<const proto::image_annotations::ImageAnnotations*>(msg);
+    if(imageAnnotations == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to ImgAnnotations");
+    }
+
+    populateBufferMetadata(obj, *imageAnnotations);
+    obj.transformation =
+        imageAnnotations->has_transformation() ? std::make_optional(deserializeImgTransformation(imageAnnotations->transformation())) : std::nullopt;
+
+    obj.annotations.clear();
+    obj.annotations.reserve(imageAnnotations->annotations_size());
+    for(const auto& protoAnnotation : imageAnnotations->annotations()) {
+        ImgAnnotation annotation;
+
+        annotation.circles.reserve(protoAnnotation.circles_size());
+        for(const auto& protoCircle : protoAnnotation.circles()) {
+            CircleAnnotation circle;
+            circle.position = deserializePoint2f(protoCircle.position());
+            circle.diameter = protoCircle.diameter();
+            circle.thickness = protoCircle.thickness();
+            circle.fillColor = deserializeColor(protoCircle.fillcolor());
+            circle.outlineColor = deserializeColor(protoCircle.outlinecolor());
+            annotation.circles.push_back(circle);
+        }
+
+        annotation.points.reserve(protoAnnotation.points_size());
+        for(const auto& protoPoints : protoAnnotation.points()) {
+            PointsAnnotation points;
+            points.type = static_cast<PointsAnnotationType>(protoPoints.type());
+            points.points.reserve(protoPoints.points_size());
+            for(const auto& protoPoint : protoPoints.points()) {
+                points.points.push_back(deserializePoint2f(protoPoint));
+            }
+            points.outlineColor = deserializeColor(protoPoints.outlinecolor());
+            points.outlineColors.reserve(protoPoints.outlinecolors_size());
+            for(const auto& protoColor : protoPoints.outlinecolors()) {
+                points.outlineColors.push_back(deserializeColor(protoColor));
+            }
+            points.fillColor = deserializeColor(protoPoints.fillcolor());
+            points.thickness = protoPoints.thickness();
+            annotation.points.push_back(points);
+        }
+
+        annotation.texts.reserve(protoAnnotation.texts_size());
+        for(const auto& protoText : protoAnnotation.texts()) {
+            TextAnnotation text;
+            text.position = deserializePoint2f(protoText.position());
+            text.text = protoText.text();
+            text.fontSize = protoText.fontsize();
+            text.textColor = deserializeColor(protoText.textcolor());
+            text.backgroundColor = deserializeColor(protoText.backgroundcolor());
+            annotation.texts.push_back(text);
+        }
+
+        obj.annotations.push_back(std::move(annotation));
+    }
+}
+
+template <>
+void setProtoMessage(SpatialImgDetections& obj, const google::protobuf::Message* msg, bool metadataOnly) {
+    auto spatialImgDetections = dynamic_cast<const proto::spatial_img_detections::SpatialImgDetections*>(msg);
+    if(spatialImgDetections == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to SpatialImgDetections");
+    }
+
+    populateBufferMetadata(obj, *spatialImgDetections);
+    obj.transformation =
+        spatialImgDetections->has_transformation() ? std::make_optional(deserializeImgTransformation(spatialImgDetections->transformation())) : std::nullopt;
+    obj.unit = static_cast<LengthUnit>(spatialImgDetections->unit());
+    obj.segmentationMaskWidth = static_cast<size_t>(spatialImgDetections->segmentationmaskwidth());
+    obj.segmentationMaskHeight = static_cast<size_t>(spatialImgDetections->segmentationmaskheight());
+
+    obj.detections.clear();
+    obj.detections.reserve(spatialImgDetections->detections_size());
+    for(const auto& protoSpatialDetection : spatialImgDetections->detections()) {
+        SpatialImgDetection detection;
+
+        if(protoSpatialDetection.has_detection()) {
+            const auto& protoDetection = protoSpatialDetection.detection();
+            detection.label = protoDetection.label();
+            detection.labelName = protoDetection.labelname();
+            detection.confidence = protoDetection.confidence();
+            detection.xmin = protoDetection.xmin();
+            detection.ymin = protoDetection.ymin();
+            detection.xmax = protoDetection.xmax();
+            detection.ymax = protoDetection.ymax();
+
+            if(protoDetection.has_boundingbox()) {
+                detection.boundingBox = deserializeRotatedRect(protoDetection.boundingbox());
+            } else {
+                detection.boundingBox.reset();
+            }
+        }
+
+        detection.spatialCoordinates = deserializePoint3f(protoSpatialDetection.spatialcoordinates());
+
+        if(protoSpatialDetection.has_boundingboxmapping()) {
+            const auto& protoMapping = protoSpatialDetection.boundingboxmapping();
+            detection.boundingBoxMapping.roi = deserializeSpatialRect(protoMapping.roi());
+            detection.boundingBoxMapping.depthThresholds.lowerThreshold = protoMapping.depththresholds().lowerthreshold();
+            detection.boundingBoxMapping.depthThresholds.upperThreshold = protoMapping.depththresholds().upperthreshold();
+            detection.boundingBoxMapping.calculationAlgorithm = static_cast<SpatialLocationCalculatorAlgorithm>(protoMapping.calculationalgorithm());
+            detection.boundingBoxMapping.stepSize = protoMapping.stepsize();
+        }
+
+        if(protoSpatialDetection.has_keypoints()) {
+            detection.keypoints = deserializeSpatialKeypointsList(protoSpatialDetection.keypoints());
+        } else {
+            detection.keypoints.reset();
+        }
+
+        obj.detections.push_back(std::move(detection));
+    }
+
+    if(!metadataOnly) {
+        if(!spatialImgDetections->maskdata().empty() && spatialImgDetections->maskdata().data() != nullptr) {
+            std::vector<std::uint8_t> maskData(spatialImgDetections->maskdata().begin(), spatialImgDetections->maskdata().end());
+            obj.setSegmentationMask(maskData, obj.segmentationMaskWidth, obj.segmentationMaskHeight);
+        } else {
+            std::vector<std::uint8_t> emptyData;
+            obj.setData(std::move(emptyData));
+        }
+    }
+}
+
+template <>
+void setProtoMessage(ImgDetections& obj, const google::protobuf::Message* msg, bool metadataOnly) {
+    auto imgDetections = dynamic_cast<const proto::img_detections::ImgDetections*>(msg);
+    if(imgDetections == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to ImgDetections");
+    }
+
+    populateBufferMetadata(obj, *imgDetections);
+    obj.transformation = imgDetections->has_transformation() ? std::make_optional(deserializeImgTransformation(imgDetections->transformation())) : std::nullopt;
+    obj.segmentationMaskWidth = static_cast<size_t>(imgDetections->segmentationmaskwidth());
+    obj.segmentationMaskHeight = static_cast<size_t>(imgDetections->segmentationmaskheight());
+
+    obj.detections.clear();
+    obj.detections.reserve(imgDetections->detections_size());
+    for(const auto& protoDetection : imgDetections->detections()) {
+        ImgDetection detection;
+        populateImgDetection(detection, protoDetection);
+        obj.detections.push_back(std::move(detection));
+    }
+
+    if(!metadataOnly) {
+        if(!imgDetections->maskdata().empty() && imgDetections->maskdata().data() != nullptr) {
+            std::vector<std::uint8_t> maskData(imgDetections->maskdata().begin(), imgDetections->maskdata().end());
+            obj.setSegmentationMask(maskData, obj.segmentationMaskWidth, obj.segmentationMaskHeight);
+        } else {
+            std::vector<std::uint8_t> emptyData;
+            obj.setData(std::move(emptyData));
+        }
+    }
+}
+
 template <>
 void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
     auto imuData = dynamic_cast<const proto::imu_data::IMUData*>(msg);
@@ -890,6 +1542,14 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiAccelerometer.tsDevice.sec = protoAccelerometer.report().tsdevice().sec();
         daiAccelerometer.tsDevice.nsec = protoAccelerometer.report().tsdevice().nsec();
 
+        if(protoAccelerometer.report().has_tssystem()) {
+            daiAccelerometer.tsSystem.emplace();
+            daiAccelerometer.tsSystem->sec = protoAccelerometer.report().tssystem().sec();
+            daiAccelerometer.tsSystem->nsec = protoAccelerometer.report().tssystem().nsec();
+        } else {
+            daiAccelerometer.tsSystem.reset();
+        }
+
         auto protoGyroscope = packet.gyroscope();
         auto& daiGyroscope = imuPacket.gyroscope;
         daiGyroscope.x = protoGyroscope.vec().x();
@@ -902,6 +1562,14 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiGyroscope.tsDevice.sec = protoGyroscope.report().tsdevice().sec();
         daiGyroscope.tsDevice.nsec = protoGyroscope.report().tsdevice().nsec();
 
+        if(protoGyroscope.report().has_tssystem()) {
+            daiGyroscope.tsSystem.emplace();
+            daiGyroscope.tsSystem->sec = protoGyroscope.report().tssystem().sec();
+            daiGyroscope.tsSystem->nsec = protoGyroscope.report().tssystem().nsec();
+        } else {
+            daiGyroscope.tsSystem.reset();
+        }
+
         auto protoMagnetometer = packet.magnetometer();
         auto& daiMagnetometer = imuPacket.magneticField;
         daiMagnetometer.x = protoMagnetometer.vec().x();
@@ -913,6 +1581,14 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiMagnetometer.timestamp.nsec = protoMagnetometer.report().ts().nsec();
         daiMagnetometer.tsDevice.sec = protoMagnetometer.report().tsdevice().sec();
         daiMagnetometer.tsDevice.nsec = protoMagnetometer.report().tsdevice().nsec();
+
+        if(protoMagnetometer.report().has_tssystem()) {
+            daiMagnetometer.tsSystem.emplace();
+            daiMagnetometer.tsSystem->sec = protoMagnetometer.report().tssystem().sec();
+            daiMagnetometer.tsSystem->nsec = protoMagnetometer.report().tssystem().nsec();
+        } else {
+            daiMagnetometer.tsSystem.reset();
+        }
 
         auto protoRotationVector = packet.rotationvector();
         auto& daiRotationVector = imuPacket.rotationVector;
@@ -927,11 +1603,26 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiRotationVector.tsDevice.sec = protoRotationVector.report().tsdevice().sec();
         daiRotationVector.tsDevice.nsec = protoRotationVector.report().tsdevice().nsec();
 
+        if(protoRotationVector.report().has_tssystem()) {
+            daiRotationVector.tsSystem.emplace();
+            daiRotationVector.tsSystem->sec = protoRotationVector.report().tssystem().sec();
+            daiRotationVector.tsSystem->nsec = protoRotationVector.report().tssystem().nsec();
+        } else {
+            daiRotationVector.tsSystem.reset();
+        }
+
         obj.packets.push_back(imuPacket);
     }
 
-    obj.setTimestamp(fromProtoTimestamp(imuData->ts()));
-    obj.setTimestampDevice(fromProtoTimestamp(imuData->tsdevice()));
+    obj.setTimestamp(fromProtoTimestamp<std::chrono::steady_clock>(imuData->ts()));
+    obj.setTimestampDevice(fromProtoTimestamp<std::chrono::steady_clock>(imuData->tsdevice()));
+
+    if(imuData->has_tssystem()) {
+        obj.setTimestampSystem(fromProtoTimestamp<std::chrono::system_clock>(imuData->tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+
     obj.setSequenceNum(imuData->sequencenum());
 }
 template <>
@@ -940,98 +1631,38 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     if(imgFrame == nullptr) {
         throw std::runtime_error("Failed to cast protobuf message to ImgFrame");
     }
-    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
-        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
-        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
-    };
-    // create and populate ImgFrame protobuf message
-    obj.setTimestamp(safeTimestamp(imgFrame->ts(), imgFrame->has_ts()));
-    obj.setTimestampDevice(safeTimestamp(imgFrame->tsdevice(), imgFrame->has_tsdevice()));
-
-    obj.setSequenceNum(imgFrame->sequencenum());
-
-    obj.fb.type = static_cast<dai::ImgFrame::Type>(imgFrame->fb().type());
-    obj.fb.width = imgFrame->fb().width();
-    obj.fb.height = imgFrame->fb().height();
-    obj.fb.stride = imgFrame->fb().stride();
-    obj.fb.bytesPP = imgFrame->fb().bytespp();
-    obj.fb.p1Offset = imgFrame->fb().p1offset();
-    obj.fb.p2Offset = imgFrame->fb().p2offset();
-    obj.fb.p3Offset = imgFrame->fb().p3offset();
-
-    obj.sourceFb.type = static_cast<dai::ImgFrame::Type>(imgFrame->sourcefb().type());
-    obj.sourceFb.width = imgFrame->sourcefb().width();
-    obj.sourceFb.height = imgFrame->sourcefb().height();
-    obj.sourceFb.stride = imgFrame->sourcefb().stride();
-    obj.sourceFb.bytesPP = imgFrame->sourcefb().bytespp();
-    obj.sourceFb.p1Offset = imgFrame->sourcefb().p1offset();
-    obj.sourceFb.p2Offset = imgFrame->sourcefb().p2offset();
-    obj.sourceFb.p3Offset = imgFrame->sourcefb().p3offset();
-
-    obj.cam.exposureTimeUs = imgFrame->cam().exposuretimeus();
-    obj.cam.sensitivityIso = imgFrame->cam().sensitivityiso();
-    obj.cam.lensPosition = imgFrame->cam().lensposition();
-    obj.cam.wbColorTemp = imgFrame->cam().wbcolortemp();
-    obj.cam.lensPositionRaw = imgFrame->cam().lenspositionraw();
-    obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame->cam().fsync());
-    obj.cam.sensorMode = imgFrame->cam().sensormode();
-    obj.cam.fps = imgFrame->cam().fps();
-    obj.cam.sensorTemperatureC = imgFrame->cam().has_sensortemperaturec() ? std::make_optional(imgFrame->cam().sensortemperaturec()) : std::nullopt;
-
-    obj.instanceNum = imgFrame->instancenum();
-
-    obj.category = imgFrame->category();
-
-    obj.transformation = deserializeImgTransformation(imgFrame->transformation());
-
-    if(!metadataOnly && !imgFrame->data().empty() && imgFrame->data().data() != nullptr) {
-        std::vector<uint8_t> data(imgFrame->data().begin(), imgFrame->data().end());
-        obj.setData(data);
-    }
+    populateImgFrameFromProto(obj, *imgFrame, metadataOnly);
 }
+template <>
+void setProtoMessage(NNData& obj, const google::protobuf::Message* msg, bool metadataOnly) {
+    auto nnData = dynamic_cast<const proto::nn_data::NNData*>(msg);
+    if(nnData == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to NNData");
+    }
+    populateNNDataFromProto(obj, *nnData, metadataOnly);
+}
+template <>
+void setProtoMessage(SegmentationMask& obj, const google::protobuf::Message* msg, bool metadataOnly) {
+    auto segmentationMask = dynamic_cast<const proto::segmentation_mask::SegmentationMask*>(msg);
+    if(segmentationMask == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to SegmentationMask");
+    }
 
-// Helper function to populate an EncodedFrame object from an EncodedFrame proto
-static void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encoded_frame::EncodedFrame& encFrame, bool metadataOnly) {
-    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
-        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
-        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
-    };
+    populateBufferMetadata(obj, *segmentationMask);
+    obj.transformation =
+        segmentationMask->has_transformation() ? std::make_optional(deserializeImgTransformation(segmentationMask->transformation())) : std::nullopt;
+    obj.setSize(static_cast<size_t>(segmentationMask->width()), static_cast<size_t>(segmentationMask->height()));
+    obj.setLabels(std::vector<std::string>(segmentationMask->labels().begin(), segmentationMask->labels().end()));
 
-    obj.setTimestamp(safeTimestamp(encFrame.ts(), encFrame.has_ts()));
-    obj.setTimestampDevice(safeTimestamp(encFrame.tsdevice(), encFrame.has_tsdevice()));
-
-    obj.setSequenceNum(encFrame.sequencenum());
-
-    obj.width = encFrame.width();
-    obj.height = encFrame.height();
-
-    obj.instanceNum = encFrame.instancenum();
-
-    obj.quality = encFrame.quality();
-    obj.bitrate = encFrame.bitrate();
-    obj.profile = static_cast<EncodedFrame::Profile>(encFrame.profile());
-
-    obj.lossless = encFrame.lossless();
-    obj.type = static_cast<EncodedFrame::FrameType>(encFrame.type());
-
-    obj.frameOffset = encFrame.frameoffset();
-    obj.frameSize = encFrame.framesize();
-
-    obj.cam.exposureTimeUs = encFrame.cam().exposuretimeus();
-    obj.cam.sensitivityIso = encFrame.cam().sensitivityiso();
-    obj.cam.lensPosition = encFrame.cam().lensposition();
-    obj.cam.wbColorTemp = encFrame.cam().wbcolortemp();
-    obj.cam.lensPositionRaw = encFrame.cam().lenspositionraw();
-    obj.cam.fsync = static_cast<ImgFrame::Fsync>(encFrame.cam().fsync());
-    obj.cam.sensorMode = encFrame.cam().sensormode();
-    obj.cam.fps = encFrame.cam().fps();
-    obj.cam.sensorTemperatureC = encFrame.cam().has_sensortemperaturec() ? std::make_optional(encFrame.cam().sensortemperaturec()) : std::nullopt;
-
-    obj.transformation = deserializeImgTransformation(encFrame.transformation());
-
-    if(!metadataOnly && !encFrame.data().empty() && encFrame.data().data() != nullptr) {
-        std::vector<uint8_t> data(encFrame.data().begin(), encFrame.data().end());
-        obj.setData(data);
+    if(!metadataOnly) {
+        if(!segmentationMask->data().empty() && segmentationMask->data().data() != nullptr) {
+            obj.setMask(span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(segmentationMask->data().data()), segmentationMask->data().size()),
+                        obj.getWidth(),
+                        obj.getHeight());
+        } else {
+            std::vector<std::uint8_t> emptyData;
+            obj.setData(std::move(emptyData));
+        }
     }
 }
 
@@ -1051,11 +1682,17 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
     }
     const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
         using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
-        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+        return hasField ? utility::fromProtoTimestamp<std::chrono::steady_clock>(protoTs) : steady_tp{};
     };
     // create and populate ImgFrame protobuf message
     obj.setTimestamp(safeTimestamp(pcl->ts(), pcl->has_ts()));
     obj.setTimestampDevice(safeTimestamp(pcl->tsdevice(), pcl->has_tsdevice()));
+
+    if(pcl->has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(pcl->tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
 
     obj.setSequenceNum(pcl->sequencenum());
 
@@ -1072,60 +1709,9 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
     obj.setMaxZ(pcl->maxz());
     obj.setColor(pcl->color());
 
-    if(!metadataOnly && !pcl->data().empty() && pcl->data().data() != nullptr) {
-        std::vector<uint8_t> data(pcl->data().begin(), pcl->data().end());
-        obj.setData(data);
-    }
-}
-
-// Helper function to populate an ImgFrame object from an ImgFrame proto
-static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& imgFrame, bool metadataOnly) {
-    obj.setTimestamp(utility::fromProtoTimestamp(imgFrame.ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(imgFrame.tsdevice()));
-
-    obj.setSequenceNum(imgFrame.sequencenum());
-
-    // frame buffer info
-    obj.fb.type = static_cast<dai::ImgFrame::Type>(imgFrame.fb().type());
-    obj.fb.width = imgFrame.fb().width();
-    obj.fb.height = imgFrame.fb().height();
-    obj.fb.stride = imgFrame.fb().stride();
-    obj.fb.bytesPP = imgFrame.fb().bytespp();
-    obj.fb.p1Offset = imgFrame.fb().p1offset();
-    obj.fb.p2Offset = imgFrame.fb().p2offset();
-    obj.fb.p3Offset = imgFrame.fb().p3offset();
-
-    // source frame buffer info
-    obj.sourceFb.type = static_cast<dai::ImgFrame::Type>(imgFrame.sourcefb().type());
-    obj.sourceFb.width = imgFrame.sourcefb().width();
-    obj.sourceFb.height = imgFrame.sourcefb().height();
-    obj.sourceFb.stride = imgFrame.sourcefb().stride();
-    obj.sourceFb.bytesPP = imgFrame.sourcefb().bytespp();
-    obj.sourceFb.p1Offset = imgFrame.sourcefb().p1offset();
-    obj.sourceFb.p2Offset = imgFrame.sourcefb().p2offset();
-    obj.sourceFb.p3Offset = imgFrame.sourcefb().p3offset();
-
-    // camera settings
-    obj.cam.exposureTimeUs = imgFrame.cam().exposuretimeus();
-    obj.cam.sensitivityIso = imgFrame.cam().sensitivityiso();
-    obj.cam.lensPosition = imgFrame.cam().lensposition();
-    obj.cam.wbColorTemp = imgFrame.cam().wbcolortemp();
-    obj.cam.lensPositionRaw = imgFrame.cam().lenspositionraw();
-    obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame.cam().fsync());
-    obj.cam.sensorMode = imgFrame.cam().sensormode();
-    obj.cam.fps = imgFrame.cam().fps();
-    obj.cam.sensorTemperatureC = imgFrame.cam().has_sensortemperaturec() ? std::make_optional(imgFrame.cam().sensortemperaturec()) : std::nullopt;
-
-    // instance number and category
-    obj.instanceNum = imgFrame.instancenum();
-    obj.category = imgFrame.category();
-
-    // transformation
-    obj.transformation = deserializeImgTransformation(imgFrame.transformation());
-
     if(!metadataOnly) {
-        std::vector<uint8_t> data(imgFrame.data().begin(), imgFrame.data().end());
-        obj.setData(data);
+        std::vector<uint8_t> data(pcl->data().begin(), pcl->data().end());
+        obj.setData(std::move(data));
     }
 }
 
@@ -1136,8 +1722,15 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
         throw std::runtime_error("Failed to cast protobuf message to RGBDData");
     }
 
-    obj.setTimestamp(utility::fromProtoTimestamp(rgbdData->ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(rgbdData->tsdevice()));
+    obj.setTimestamp(utility::fromProtoTimestamp<std::chrono::steady_clock>(rgbdData->ts()));
+    obj.setTimestampDevice(utility::fromProtoTimestamp<std::chrono::steady_clock>(rgbdData->tsdevice()));
+
+    if(rgbdData->has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(rgbdData->tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+
     obj.setSequenceNum(rgbdData->sequencenum());
 
     // Deserialize color frame if present (can be ImgFrame or EncodedFrame)
@@ -1155,6 +1748,7 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
             break;
         }
         case proto::rgbd_data::RGBDData::COLOR_FRAME_NOT_SET:
+            obj.setRGBFrame(std::shared_ptr<ImgFrame>{});
             break;
     }
 
@@ -1173,9 +1767,22 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
             break;
         }
         case proto::rgbd_data::RGBDData::DEPTH_FRAME_NOT_SET:
+            obj.setDepthFrame(std::shared_ptr<ImgFrame>{});
             break;
     }
 }
+
+DEPTHAI_PROTO_IMPL(ImgAnnotations, proto::image_annotations::ImageAnnotations)
+DEPTHAI_PROTO_IMPL(SpatialImgDetections, proto::spatial_img_detections::SpatialImgDetections)
+DEPTHAI_PROTO_IMPL(IMUData, proto::imu_data::IMUData)
+DEPTHAI_PROTO_IMPL(ImgDetections, proto::img_detections::ImgDetections)
+DEPTHAI_PROTO_IMPL(EncodedFrame, proto::encoded_frame::EncodedFrame)
+DEPTHAI_PROTO_IMPL(ImgFrame, proto::img_frame::ImgFrame)
+DEPTHAI_PROTO_IMPL(NNData, proto::nn_data::NNData)
+DEPTHAI_PROTO_IMPL(SegmentationMask, proto::segmentation_mask::SegmentationMask)
+DEPTHAI_PROTO_IMPL(PointCloudData, proto::point_cloud_data::PointCloudData)
+DEPTHAI_PROTO_IMPL(RGBDData, proto::rgbd_data::RGBDData)
+#undef DEPTHAI_PROTO_IMPL
 
 };  // namespace utility
 };  // namespace dai

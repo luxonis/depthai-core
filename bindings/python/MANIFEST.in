@@ -1,6 +1,8 @@
-include README.md LICENSE CMakeLists.txt pyproject.toml
+include README.md CMakeLists.txt pyproject.toml
 include find_version.py
 include generate_stubs.py
+include LICENSE
+graft notices
 graft cmake
 graft generated
 graft ci

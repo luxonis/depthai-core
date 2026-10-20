@@ -1,5 +1,6 @@
 #include "Platform.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -45,7 +46,35 @@
 namespace dai {
 namespace platform {
 
-uint32_t getIPv4AddressAsBinary(std::string address) {
+namespace {
+
+std::filesystem::path getEnvPath(const char* name) {
+    if(const char* value = std::getenv(name); value != nullptr && value[0] != '\0') {
+        return std::filesystem::path(value);
+    }
+    return {};
+}
+
+std::filesystem::path getHomePath() {
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    auto home = getEnvPath("USERPROFILE");
+    if(!home.empty()) {
+        return home;
+    }
+    auto drive = getEnvPath("HOMEDRIVE");
+    auto path = getEnvPath("HOMEPATH");
+    if(!drive.empty() && !path.empty()) {
+        return drive / path.relative_path();
+    }
+    return {};
+#else
+    return getEnvPath("HOME");
+#endif
+}
+
+}  // namespace
+
+uint32_t getIPv4AddressAsBinary(const std::string& address) {
     uint32_t binary = 0;
     if(address == "") {
         // inet_addr returns 0xFFFFFFFF if addr is ""
@@ -75,6 +104,25 @@ std::string getIPv4AddressAsString(std::uint32_t binary) {
 #endif
 
     return {address};
+}
+
+bool isIPv4Address(const std::string& address) {
+    if(address.empty()) {
+        return false;
+    }
+
+    uint32_t binary = 0;
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    #if(_WIN32_WINNT <= 0x0501)
+    // for XP: inet_addr is the only parser available (it is not strict about leading zeros)
+    binary = inet_addr(address.c_str());
+    return binary != INADDR_NONE;
+    #else
+    return inet_pton(AF_INET, address.c_str(), &binary) == 1;  // for Vista or higher
+    #endif
+#else
+    return inet_pton(AF_INET, address.c_str(), &binary) == 1;
+#endif
 }
 
 std::string getLocalIpAddress() {
@@ -221,6 +269,31 @@ std::string getOSVersion() {
 #else
     return "Other";
 #endif
+}
+
+std::filesystem::path getDaiCacheDir() {
+    if(auto cacheDir = getEnvPath("DEPTHAI_CACHE_DIR"); !cacheDir.empty()) {
+        return cacheDir;
+    }
+
+#ifdef __linux__
+    if(auto xdgCacheHome = getEnvPath("XDG_CACHE_HOME"); !xdgCacheHome.empty()) {
+        return xdgCacheHome / "depthai";
+    }
+    if(auto home = getHomePath(); !home.empty()) {
+        return home / ".cache" / "depthai";
+    }
+#elif defined(__APPLE__)
+    if(auto home = getHomePath(); !home.empty()) {
+        return home / "Library" / "Caches" / "depthai";
+    }
+#elif defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    if(auto localAppData = getEnvPath("LOCALAPPDATA"); !localAppData.empty()) {
+        return localAppData / "depthai" / "cache";
+    }
+#endif
+
+    return std::filesystem::current_path() / ".cache";
 }
 
 void setThreadName(JoiningThread& thread, const std::string& name) {

@@ -25,8 +25,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
     py::enum_<StereoDepthConfig::AlgorithmControl::DepthAlign> depthAlign(
         algorithmControl, "DepthAlign", DOC(dai, StereoDepthConfig, AlgorithmControl, DepthAlign));
     py::class_<StereoDepthConfig::PostProcessing> postProcessing(stereoDepthConfig, "PostProcessing", DOC(dai, StereoDepthConfig, PostProcessing));
-    py::class_<StereoDepthConfig::PostProcessing::ThresholdFilter> thresholdFilter(
-        postProcessing, "ThresholdFilter", DOC(dai, StereoDepthConfig, PostProcessing, ThresholdFilter));
     py::class_<StereoDepthConfig::PostProcessing::BrightnessFilter> brightnessFilter(
         postProcessing, "BrightnessFilter", DOC(dai, StereoDepthConfig, PostProcessing, BrightnessFilter));
     py::class_<StereoDepthConfig::PostProcessing::DecimationFilter> decimationFilter(
@@ -130,12 +128,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
                        DOC(dai, StereoDepthConfig, ConfidenceMetrics, flatnessConfidenceThreshold))
         .def_readwrite(
             "flatnessOverride", &StereoDepthConfig::ConfidenceMetrics::flatnessOverride, DOC(dai, StereoDepthConfig, ConfidenceMetrics, flatnessOverride));
-
-    thresholdFilter.def(py::init<>())
-        .def_readwrite(
-            "minRange", &StereoDepthConfig::PostProcessing::ThresholdFilter::minRange, DOC(dai, StereoDepthConfig, PostProcessing, ThresholdFilter, minRange))
-        .def_readwrite(
-            "maxRange", &StereoDepthConfig::PostProcessing::ThresholdFilter::maxRange, DOC(dai, StereoDepthConfig, PostProcessing, ThresholdFilter, maxRange));
 
     brightnessFilter.def(py::init<>())
         .def_readwrite("minBrightness",

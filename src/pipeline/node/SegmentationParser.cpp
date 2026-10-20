@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -34,7 +35,11 @@ void SegmentationParser::buildInternal() {
         auto platform = device->getPlatform();
         if(platform == Platform::RVC2) {
             setRunOnHost(true);
-            std::cout << "SegmentationParser: For RVC2 platform, running on host." << std::endl;
+            auto& logger = ThreadedNode::pimpl->logger;
+            if(logger)
+                logger->info("For RVC2 platform, running on host.");
+            else
+                std::cout << "SegmentationParser: For RVC2 platform, running on host." << std::endl;
         }
     }
 }
@@ -74,9 +79,23 @@ NNArchive SegmentationParser::decodeModel(const Model& model) {
     return *nnArchive;
 }
 
+void SegmentationParser::setNNArchive(const NNArchive& nnArchive) {
+    setConfig(nnArchive.getVersionedConfig());
+}
+
+void SegmentationParser::setNNArchiveHead(const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
+}
+
 std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const Model& model) {
     auto nnArchive = decodeModel(model);
     setConfig(nnArchive.getVersionedConfig());
+    nnInput.link(input);
+    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
+}
+
+std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
     nnInput.link(input);
     return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
@@ -103,12 +122,6 @@ void SegmentationParser::setConfig(const dai::NNArchiveVersionedConfig& config) 
     setConfig(segHead);
 }
 
-std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
-    setConfig(head);
-    nnInput.link(input);
-    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
-}
-
 void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
     DAI_CHECK_V(head.parser == "SegmentationParser", "The provided head is not a SegmentationParser head.");
 
@@ -124,8 +137,8 @@ void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
         properties.classesInOneLayer = head.metadata.extraParams.at("classes_in_one_layer").get<bool>();
     }
 
-    if(head.metadata.extraParams.contains("background_class")) {
-        properties.backgroundClass = head.metadata.extraParams.at("background_class").get<bool>();
+    if(head.metadata.backgroundClass.has_value()) {
+        properties.backgroundClass = *head.metadata.backgroundClass;
     }
 
     if(head.metadata.classes) {
@@ -203,10 +216,8 @@ void SegmentationParser::validateTensor(std::optional<TensorInfo>& info) {
 
 void SegmentationParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    using std::chrono::duration_cast;
-    using std::chrono::microseconds;
     using std::chrono::steady_clock;
-    logger->debug("Start SegmentationParser");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     const bool inputConfigSync = inputConfig.getWaitForMessage();
     const bool classesInSingleLayer = properties.classesInOneLayer;
@@ -247,6 +258,10 @@ void SegmentationParser::run() {
 
         auto outMask = std::make_shared<dai::SegmentationMask>();
         if(!classesInSingleLayer) {
+            // Handle single-channel foreground score outputs, with no threshold configuration.
+            if(tensorInfo->getChannels() == 1 && !properties.backgroundClass && inConfig->getConfidenceThreshold() == -1.0f) {
+                inConfig->setConfidenceThreshold(0.0f);
+            }
             utilities::SegmentationParserUtils::computeSegmentationMask(*outMask, *sharedNNData, *tensorInfo, *inConfig, properties.backgroundClass, logger);
         } else {
             // assume data is stored as INT in shape N x H x W  with N = 1
@@ -258,9 +273,7 @@ void SegmentationParser::run() {
         if(properties.labels.size() > 0) {
             outMask->setLabels(properties.labels);
         }
-        outMask->setSequenceNum(sharedNNData->getSequenceNum());
-        outMask->setTimestamp(sharedNNData->getTimestamp());
-        outMask->setTimestampDevice(sharedNNData->getTimestampDevice());
+        outMask->setBufferMetadataFrom(sharedNNData);
         outMask->transformation = sharedNNData->transformation;
         const float invStep = 1.0f / static_cast<float>(inConfig->stepSize);
         outMask->transformation->addScale(invStep, invStep);
@@ -272,11 +285,7 @@ void SegmentationParser::run() {
         }
 
         auto tAbsoluteEnd = steady_clock::now();
-        logger->trace("Seg parser {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
-                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+        this->logTiming(logger, tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }
 }
 

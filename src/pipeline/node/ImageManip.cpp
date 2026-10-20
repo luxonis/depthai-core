@@ -7,7 +7,7 @@ namespace dai {
 
 namespace node {
 
-inline std::array<float, 9> flatten(std::array<std::array<float, 3>, 3> mat) {
+inline std::array<float, 9> flatten(const std::array<std::array<float, 3>, 3>& mat) {
     return {mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]};
 }
 
@@ -16,12 +16,17 @@ ImageManip::ImageManip(std::unique_ptr<Properties> props)
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 void ImageManip::run() {
-    impl::ImageManipOperations<impl::_ImageManipMemory, impl::ColorChangeH, impl::WarpH> manip(properties, pimpl->logger);
+    auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
+    impl::ImageManipOperations<impl::_ImageManipMemory, impl::ColorChangeH, impl::WarpH> manip(properties, logger);
     auto iConf = runOnHost() ? *initialConfig : properties.initialConfig;
     impl::loop<ImageManip>(
         *this,
         iConf,
-        pimpl->logger,
+        logger,
+        [this, &logger](auto tAbsoluteBeginning, auto tGotInput, auto tProcessed, auto tAbsoluteEnd) {
+            this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
+        },
         [&](const ImageManipConfig& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
@@ -30,6 +35,7 @@ void ImageManip::run() {
                                  flatten(frame.transformation.getIntrinsicMatrix()),
                                  flatten(newCameraMatrix),
                                  frame.transformation.getDistortionCoefficients(),
+                                 std::nullopt,
                                  frame.getType(),
                                  frame.getWidth(),
                                  frame.getHeight(),
@@ -50,9 +56,7 @@ void ImageManip::run() {
             dstFrame.sourceFb = srcFrame.sourceFb;
             dstFrame.cam = srcFrame.cam;
             dstFrame.instanceNum = srcFrame.instanceNum;
-            dstFrame.sequenceNum = srcFrame.sequenceNum;
-            dstFrame.tsDevice = srcFrame.tsDevice;
-            dstFrame.ts = srcFrame.ts;
+            dstFrame.setBufferMetadataFrom(&srcFrame);
             dstFrame.category = srcFrame.category;
             dstFrame.event = srcFrame.event;
             dstFrame.fb.height = dstSpecs.height;
@@ -81,6 +85,10 @@ void ImageManip::setNumFramesPool(int numFramesPool) {
 
 void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
     properties.outputFrameSize = maxFrameSize;
+}
+
+void ImageManip::setMaxPoolSize(unsigned int maxPoolSize) {
+    properties.maxPoolSize = maxPoolSize;
 }
 
 ImageManip::Properties& ImageManip::getProperties() {

@@ -1,10 +1,13 @@
 #include "depthai/pipeline/node/PointCloud.hpp"
 
 #include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <cstring>
 #include <future>
+#include <stdexcept>
+#include <string>
 #include <thread>
 
 #ifdef DEPTHAI_ENABLE_KOMPUTE
@@ -22,6 +25,7 @@
 #include "device/CalibrationHandler.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
 
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     #include "depthai/shaders/depth2pointcloud.hpp"
@@ -33,7 +37,7 @@ namespace node {
 
 // ── Impl: apply / get methods ──
 
-void PointCloud::Impl::setLogger(std::shared_ptr<::spdlog::logger> log) {
+void PointCloud::Impl::setLogger(const std::shared_ptr<::spdlog::logger>& log) {
     logger = log;
 }
 
@@ -52,7 +56,15 @@ void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, std::vec
             computePointCloudDenseCPUMT(depthData, points);
             break;
         case ComputeMethod::GPU:
-            computePointCloudDenseGPU(depthData, points);
+            if(hasDistortion) {
+                if(!gpuDistortionFallbackWarned) {
+                    if(logger) logger->warn("GPU compute does not support depth undistortion yet, falling back to CPU");
+                    gpuDistortionFallbackWarned = true;
+                }
+                computePointCloudDenseCPU(depthData, points);
+            } else {
+                computePointCloudDenseGPU(depthData, points);
+            }
             break;
     }
 }
@@ -146,8 +158,9 @@ void PointCloud::Impl::calcPointsChunkDense(const uint8_t* depthData, std::vecto
             float yCoord = 0.0f;
 
             if(z > 0.0f) {
-                xCoord = (col - cx) * z / fx;
-                yCoord = (row - cy) * z / fy;
+                const auto& ray = undistortedRays[i];
+                xCoord = ray.x * z;
+                yCoord = ray.y * z;
             }
 
             points[i] = Point3f{xCoord, yCoord, z};
@@ -198,8 +211,9 @@ void PointCloud::Impl::calcPointsChunkDenseColored(
             float yCoord = 0.0f;
 
             if(z > 0.0f) {
-                xCoord = (col - cx) * z / fx;
-                yCoord = (row - cy) * z / fy;
+                const auto& ray = undistortedRays[i];
+                xCoord = ray.x * z;
+                yCoord = ray.y * z;
             }
 
             uint8_t r = colorData[i * 3 + 0];
@@ -368,6 +382,7 @@ void PointCloud::Impl::useCPUMT(uint32_t numThreads) {
 }
 
 void PointCloud::Impl::useGPU(uint32_t device) {
+    gpuDistortionFallbackWarned = false;
     initializeGPU(device);
 }
 
@@ -386,6 +401,7 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
     this->height = height;
     size = this->width * this->height;
     intrinsicsSet = true;
+    cacheUndistortedRays();
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     if(resolutionChanged) {
         tensorsInitialized = false;
@@ -393,6 +409,34 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
         tensors.clear();
     }
 #endif
+}
+
+void PointCloud::Impl::setDistortion(CameraModel model, std::vector<float> coefficients) {
+    const bool nextHasDistortion = hasNonZeroDistortion(coefficients);
+    if(nextHasDistortion && model != CameraModel::Perspective && model != CameraModel::Fisheye) {
+        throw std::invalid_argument(std::string("PointCloud does not support distortion model: ") + std::string(toString(model)));
+    }
+
+    const bool distortionStateChanged = hasDistortion != nextHasDistortion;
+    distortionModel = model;
+    distortionCoefficients = std::move(coefficients);
+    hasDistortion = nextHasDistortion;
+    if(distortionStateChanged) gpuDistortionFallbackWarned = false;
+    cacheUndistortedRays();
+}
+
+void PointCloud::Impl::cacheUndistortedRays() {
+    undistortedRays.clear();
+    if(!intrinsicsSet) return;
+
+    undistortedRays.resize(size);
+    for(unsigned int row = 0; row < height; ++row) {
+        for(unsigned int col = 0; col < width; ++col) {
+            const size_t i = static_cast<size_t>(row) * width + col;
+            const auto ray = undistortPoint({(col - cx) / fx, (row - cy) / fy, 1.0f}, distortionModel, distortionCoefficients);
+            undistortedRays[i] = {ray[0] / ray[2], ray[1] / ray[2]};
+        }
+    }
 }
 
 void PointCloud::Impl::clearExtrinsics() {
@@ -420,7 +464,12 @@ void PointCloud::Impl::setExtrinsics(const std::vector<std::vector<float>>& tran
 }
 
 // PointCloud main class implementations
-PointCloud::PointCloud() : pimplPointCloud() {}
+PointCloud::PointCloud() : PointCloud(std::make_unique<Properties>()) {}
+
+PointCloud::PointCloud(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>(std::move(props)),
+      initialConfig(std::make_shared<PointCloudConfig>(properties.initialConfig)),
+      pimplPointCloud() {}
 
 PointCloud::~PointCloud() = default;
 
@@ -477,6 +526,14 @@ void PointCloud::useCPUMT(uint32_t numThreads) {
 
 void PointCloud::useGPU(uint32_t device) {
     pimplPointCloud->useGPU(device);
+}
+
+void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera) {
+    initialConfig->setTargetCoordinateSystem(targetCamera);
+}
+
+void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS) {
+    initialConfig->setTargetCoordinateSystem(housingCS);
 }
 
 void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation) {
@@ -604,6 +661,7 @@ void PointCloud::initialize(const ImgFrame& depthFrame, const PointCloudConfig& 
 
     // Set camera intrinsics from the depth frame
     setIntrinsicsFromFrame(depthFrame);
+    pimplPointCloud->setDistortion(depthFrame.transformation.getDistortionModel(), depthFrame.transformation.getDistortionCoefficients());
 
     // Compute and apply coordinate transformation (frame extrinsics + target transform)
     setCoordinateTransformation(depthFrame, config);
@@ -616,7 +674,7 @@ void PointCloud::initialize(const ImgFrame& depthFrame, const PointCloudConfig& 
 // Processing helpers (depth-only and colorized paths)
 //------------------------------------------------------------------
 
-void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc, bool organized) {
+void PointCloud::processDepthOnly(const std::shared_ptr<ImgFrame>& depthFrame, const std::shared_ptr<PointCloudData>& pc, bool organized) {
     const auto width = depthFrame->getWidth();
     const auto height = depthFrame->getHeight();
     const auto* depthData = depthFrame->getData().data();
@@ -640,9 +698,9 @@ void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::sha
     pc->setPoints(std::move(points));
 }
 
-void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
-                                  std::shared_ptr<ImgFrame> colorFrame,
-                                  std::shared_ptr<PointCloudData> pc,
+void PointCloud::processColorized(const std::shared_ptr<ImgFrame>& depthFrame,
+                                  const std::shared_ptr<ImgFrame>& colorFrame,
+                                  const std::shared_ptr<PointCloudData>& pc,
                                   bool organized) {
     const auto width = depthFrame->getWidth();
     const auto height = depthFrame->getHeight();
@@ -663,21 +721,14 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
         return;
     }
 
-    // Warn about extrinsics mismatches (non-fatal)
-    {
-        auto depthExtrinsics = depthFrame->transformation.getExtrinsics();
-        auto colorExtrinsics = colorFrame->transformation.getExtrinsics();
-        if(depthExtrinsics.toCameraSocket != colorExtrinsics.toCameraSocket) {
-            pimpl->logger->warn("PointCloud: color extrinsics toCameraSocket ({}) does not match depth ({}) -- colorization may be misaligned",
-                                toString(colorExtrinsics.toCameraSocket),
-                                toString(depthExtrinsics.toCameraSocket));
-        } else if(depthExtrinsics.rotationMatrix != colorExtrinsics.rotationMatrix || depthExtrinsics.translation.x != colorExtrinsics.translation.x
-                  || depthExtrinsics.translation.y != colorExtrinsics.translation.y || depthExtrinsics.translation.z != colorExtrinsics.translation.z) {
-            pimpl->logger->warn(
-                "PointCloud: depth and color extrinsics differ (same toCameraSocket={} but different rotation/translation) "
-                "-- colorization may be misaligned",
-                toString(depthExtrinsics.toCameraSocket));
-        }
+    // Check extrinsics mismatches (non-fatal)
+    if(!depthFrame->transformation.getExtrinsics().isEqualExtrinsics(colorFrame->transformation.getExtrinsics())) {
+        pimpl->logger->warn("PointCloud: depth and color extrinsics differ -- colorization may be misaligned");
+    }
+
+    // Check intrinsics and distortion mismatches (non-fatal)
+    if(!depthFrame->transformation.isAlignedTo(colorFrame->transformation)) {
+        pimpl->logger->warn("PointCloud: depth and color transformations are not aligned (intrinsics/distortion differ) -- colorization may be misaligned");
     }
 
     const auto* depthData = depthFrame->getData().data();
@@ -718,9 +769,13 @@ void PointCloud::run() {
     // On device, apply the deserialized config from properties
     *initialConfig = properties.initialConfig;
 
-    pimpl->logger->info("PointCloud node started (colorMode={})", colorMode);
+    auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
-    uint32_t currentEepromId = getParentPipeline().getEepromId();
+    // EEPROM id of the device this node runs on (falls back to the pipeline default device when the node has none),
+    // so calibration changes are tracked on the node's own device rather than the master's.
+    auto readEepromId = [&]() -> uint32_t { return device ? device->getProperties().eepromId : getParentPipeline().getEepromId(); };
+    uint32_t currentEepromId = readEepromId();
     auto latestConfig = initialConfig;
 
     while(mainLoop()) {
@@ -729,6 +784,7 @@ void PointCloud::run() {
             continue;
         }
 
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         // Get synced frames from MessageGroup
         std::shared_ptr<MessageGroup> group;
         {
@@ -743,7 +799,7 @@ void PointCloud::run() {
             continue;
         }
 
-        auto colorFrame = colorMode ? group->get<ImgFrame>(colorInputName) : nullptr;
+        auto colorFrame = group->get<ImgFrame>(colorInputName);
 
         // Check for runtime config update
         auto newConfig = inputConfig.tryGet<PointCloudConfig>();
@@ -751,11 +807,12 @@ void PointCloud::run() {
             latestConfig = newConfig;
             initialized = false;
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // Read organized mode from config
         const bool organized = latestConfig->getOrganized();
 
-        const uint32_t latestEepromId = getParentPipeline().getEepromId();
+        const uint32_t latestEepromId = readEepromId();
         if(latestEepromId > currentEepromId) {
             pimpl->logger->debug("Calibration data changed (ID: {} -> {}), reinitializing...", currentEepromId, latestEepromId);
             initialized = false;
@@ -785,10 +842,11 @@ void PointCloud::run() {
 
         // Create PointCloudData
         auto pc = std::make_shared<PointCloudData>();
-        pc->setTimestamp(depthFrame->getTimestamp());
-        pc->setTimestampDevice(depthFrame->getTimestampDevice());
-        pc->setSequenceNum(depthFrame->getSequenceNum());
+        pc->setBufferMetadataFrom(depthFrame);
         pc->setInstanceNum(depthFrame->getInstanceNum());
+        // Preserve the source ImgTransformation as metadata. The distortion model and
+        // coefficients describe the image used to generate the cloud; the 3D points have already
+        // been distortion-compensated.
         auto outputTransformation = depthFrame->getTransformation();
         if(targetExtrinsics_) {
             outputTransformation.setExtrinsics(*targetExtrinsics_);
@@ -803,6 +861,7 @@ void PointCloud::run() {
 
         pc->updateBoundingBox();
 
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             outputPointCloud.send(pc);
@@ -811,6 +870,8 @@ void PointCloud::run() {
                 passthroughDepth.send(depthFrame);
             }
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

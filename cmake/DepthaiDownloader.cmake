@@ -1,5 +1,6 @@
 # This script downloads depthai device side artifacts
 include(DownloadAndChecksum)
+include(VerifyLicense)
 function(DepthaiDownload)
 
     ### VARIABLES
@@ -156,6 +157,26 @@ function(DepthaiDownload)
     endif()
     # add depthai-device-fwp.tar.xz to list
     list(APPEND "${output_list_var}" "${folder}/depthai-device-fwp-${_version_commit_identifier}.tar.xz")
+
+    # Download depthai-device firmware package license
+    message(STATUS "Downloading and checking depthai-device-fwp-LICENSE")
+    DownloadAndChecksum(
+        "${_download_directory_url}/depthai-device-fwp-${_version_commit_identifier}-LICENSE" # File
+        "${_download_directory_url}/depthai-device-fwp-${_version_commit_identifier}-LICENSE.sha256" # File checksum
+        "${folder}/depthai-device-fwp-${_version_commit_identifier}-LICENSE"
+        status
+    )
+    if(${status})
+        message(STATUS "\nCouldn't download depthai-device-fwp-LICENSE\n")
+        PrintErrorMessage(${status})
+        message(FATAL_ERROR "Aborting.\n")
+    endif()
+    # add depthai-device-fwp-LICENSE to list
+    list(APPEND "${output_list_var}" "${folder}/depthai-device-fwp-${_version_commit_identifier}-LICENSE")
+    DepthaiVerifyDownloadedLicense(
+        "${folder}/depthai-device-fwp-${_version_commit_identifier}-LICENSE"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../notices/depthai-device-RVC2-LICENSE"
+    )
     
 
 

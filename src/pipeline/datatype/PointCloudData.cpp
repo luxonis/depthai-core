@@ -249,10 +249,16 @@ std::vector<std::uint8_t> PointCloudData::serializeProto(bool metadataOnly) cons
 }
 
 ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<PointCloudData>();
+}
+
+void PointCloudData::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
 }
 
 #endif
+
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");
 static_assert(sizeof(Point3fRGBA) == 16, "Point3fRGBA size must be 16 bytes");
+
 }  // namespace dai

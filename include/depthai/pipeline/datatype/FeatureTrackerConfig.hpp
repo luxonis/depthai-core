@@ -246,7 +246,7 @@ class FeatureTrackerConfig : public Buffer {
      * Set corner detector full configuration.
      * @param config Corner detector configuration
      */
-    FeatureTrackerConfig& setCornerDetector(CornerDetector config);
+    FeatureTrackerConfig& setCornerDetector(const CornerDetector& config);
 
     /**
      * Set optical flow as motion estimation algorithm type.
@@ -257,7 +257,7 @@ class FeatureTrackerConfig : public Buffer {
      * Set optical flow full configuration.
      * @param config Optical flow configuration
      */
-    FeatureTrackerConfig& setOpticalFlow(MotionEstimator::OpticalFlow config);
+    FeatureTrackerConfig& setOpticalFlow(const MotionEstimator::OpticalFlow& config);
 
     /**
      * Set hardware accelerated motion estimation using block matching.
@@ -281,7 +281,7 @@ class FeatureTrackerConfig : public Buffer {
      * Set motion estimator full configuration.
      * @param config Motion estimator configuration
      */
-    FeatureTrackerConfig& setMotionEstimator(MotionEstimator config);
+    FeatureTrackerConfig& setMotionEstimator(const MotionEstimator& config);
 
     /**
      * Enable or disable feature maintainer.

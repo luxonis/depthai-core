@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -29,6 +30,7 @@ namespace dai {
 // fwd declare Pipeline
 class Pipeline;
 class PipelineImpl;
+class Device;
 namespace utility {
 class PipelineImplHelper;
 }
@@ -351,7 +353,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
        public:
         std::string name;
-        OutputMap(Node& parent, std::string name, OutputDescription defaultOutput, bool ref = true);
+        OutputMap(Node& parent, std::string name, const OutputDescription& defaultOutput, bool ref = true);
         OutputMap(Node& parent, OutputDescription defaultOutput, bool ref = true);
         /// Create or modify an output
         Output& operator[](const std::string& key);
@@ -499,6 +501,14 @@ class Node : public std::enable_shared_from_this<Node> {
          * @return std::shared_ptr<dai::node::internal::XLinkInBridge>: pointer to the XLink bridge or nullptr if not applicable
          */
         std::shared_ptr<dai::node::internal::XLinkInBridge> getXLinkBridge() const;
+
+        /**
+         * @brief Get the device that produces the data arriving at this input, resolved at pipeline build.
+         *
+         * @return The source device, or nullptr when the upstream node runs on the host.
+         *         Throws if this input is connected to sources on more than one device.
+         */
+        std::shared_ptr<Device> getSourceDevice() const;
     };
 
     /**
@@ -521,6 +531,14 @@ class Node : public std::enable_shared_from_this<Node> {
         Input& operator[](std::pair<std::string, std::string> groupKey);
         // Check if the input exists
         bool has(const std::string& key) const;
+
+        /**
+         * @brief Get the source device of every input in this map, resolved at pipeline build.
+         *
+         * @return Map of input name to source device; nullptr when the source runs on the host.
+         *         Inputs created with a group are keyed "<group>/<name>".
+         */
+        std::map<std::string, std::shared_ptr<Device>> getSourceDevices() const;
     };
 
     /// Connection between an Input and Output internal
@@ -544,7 +562,7 @@ class Node : public std::enable_shared_from_this<Node> {
     struct Connection {
         friend struct std::hash<Connection>;
         Connection(Output out, Input in);
-        Connection(ConnectionInternal c);
+        Connection(const ConnectionInternal& c);
         Id outputId;
         std::string outputName;
         std::string outputGroup;
@@ -653,18 +671,18 @@ class Node : public std::enable_shared_from_this<Node> {
     std::vector<InputMap*> getInputMapRefs();
 
     /// Retrieves reference to specific output
-    Output* getOutputRef(std::string name);
-    Output* getOutputRef(std::string group, std::string name);
+    Output* getOutputRef(const std::string& name);
+    Output* getOutputRef(const std::string& group, const std::string& name);
 
     /// Retrieves reference to specific input
-    Input* getInputRef(std::string name);
-    Input* getInputRef(std::string group, std::string name);
+    Input* getInputRef(const std::string& name);
+    Input* getInputRef(const std::string& group, const std::string& name);
 
     /// Retrieves reference to specific output map
-    OutputMap* getOutputMapRef(std::string group);
+    OutputMap* getOutputMapRef(const std::string& group);
 
     /// Retrieves reference to specific input map
-    InputMap* getInputMapRef(std::string group);
+    InputMap* getInputMapRef(const std::string& group);
 
     // For record and replay
     virtual bool isSourceNode() const;
@@ -672,7 +690,7 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     Node() = default;
     Node(bool conf);
-    void removeConnectionToNode(std::shared_ptr<Node> node);
+    void removeConnectionToNode(const std::shared_ptr<Node>& node);
 
    public:
     virtual ~Node() = default;
@@ -684,10 +702,10 @@ class Node : public std::enable_shared_from_this<Node> {
     AssetManager& getAssetManager();
 
     /// Loads resource specified by URI and returns its data
-    std::vector<uint8_t> loadResource(std::filesystem::path uri);
+    std::vector<uint8_t> loadResource(const std::filesystem::path& uri);
 
     /// Moves the resource out
-    std::vector<uint8_t> moveResource(std::filesystem::path uri);
+    std::vector<uint8_t> moveResource(const std::filesystem::path& uri);
 
     /// Create and place Node to this Node
     template <class N>
@@ -703,13 +721,13 @@ class Node : public std::enable_shared_from_this<Node> {
     }
 
     /// Add existing node to nodeMap
-    void add(std::shared_ptr<Node> node);
+    void add(const std::shared_ptr<Node>& node);
 
     // Access to nodes
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
-    void remove(std::shared_ptr<Node> node);
+    void remove(const std::shared_ptr<Node>& node);
     ConnectionMap getConnectionMap();
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);

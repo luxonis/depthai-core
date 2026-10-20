@@ -5,7 +5,7 @@ import depthai as dai
 import numpy as np
 
 device = dai.Device()
-calibration = device.readCalibration()
+calibration = device.getCalibration()
 pipeline = dai.Pipeline(device)
 monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
 monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
@@ -23,27 +23,21 @@ stereo.setLeftRightCheck(True)
 
 rectifiedLeftQueue = stereo.rectifiedLeft.createOutputQueue()
 rectifiedRightQueue = stereo.rectifiedRight.createOutputQueue()
-disparityQueue = stereo.disparity.createOutputQueue()
-
-colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
-colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
+depthQueue = stereo.depth.createOutputQueue()
 
 with pipeline:
     pipeline.start()
-    maxDisparity = 1
     while pipeline.isRunning():
         leftRectified = rectifiedLeftQueue.get()
         rightRectified = rectifiedRightQueue.get()
-        disparity = disparityQueue.get()
+        depth = depthQueue.get()
         assert isinstance(leftRectified, dai.ImgFrame)
         assert isinstance(rightRectified, dai.ImgFrame)
-        assert isinstance(disparity, dai.ImgFrame)
+        assert isinstance(depth, dai.ImgFrame)
         cv2.imshow("left", leftRectified.getCvFrame())
         cv2.imshow("right", rightRectified.getCvFrame())
-        npDisparity = disparity.getFrame()
-        maxDisparity = max(maxDisparity, np.max(npDisparity))
-        colorizedDisparity = cv2.applyColorMap(((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap)
-        cv2.imshow("disparity", colorizedDisparity)
+        colorizedDepth = dai.utility.colorizeDepthFrame(depth).getCvFrame()
+        cv2.imshow("depth", colorizedDepth)
         key = cv2.waitKey(1)
         if key == ord('q'):
             pipeline.stop()
@@ -62,4 +56,3 @@ with pipeline:
                 print("Updated distortion coefficients: ", distortionCoeffs)
             except:
                 pass
-

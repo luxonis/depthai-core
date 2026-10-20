@@ -51,7 +51,7 @@ with dai.Pipeline() as pipeline:
     if not thermalFound:
         raise RuntimeError("No thermal camera found!")
 
-    calibrationHandler = device.readCalibration()
+    calibrationHandler = device.getCalibration()
     rgbDistortion = calibrationHandler.getDistortionCoefficients(RGB_SOCKET)
     distortionModel = calibrationHandler.getDistortionModel(RGB_SOCKET)
     if distortionModel != dai.CameraModel.Perspective:

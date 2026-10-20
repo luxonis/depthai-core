@@ -179,6 +179,69 @@ TEST_CASE("Zero depth pixels produce zero-valued points", "[PointCloud][Impl]") 
     }
 }
 
+TEST_CASE("Distorted depth is undistorted before deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 5, H = 3;
+    constexpr float DEPTH_MM = 1000.f;
+    constexpr float EXPECTED_UNDISTORTED_X_MM = 19.282993f;
+    impl.setIntrinsics(100.f, 100.f, 2.f, 1.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {100.f});
+
+    const auto points = computeDense(impl, makeConstantDepth(W, H, static_cast<uint16_t>(DEPTH_MM)));
+
+    // At (u=4,v=1), xd=(u-cx)/fx=0.02. With k1=100, the undistorted
+    // normalized ray is 0.019282993, giving x=19.282993 mm at z=1000 mm.
+    const auto& right = points[1 * W + 4];
+    REQUIRE(right.x == Catch::Approx(EXPECTED_UNDISTORTED_X_MM).epsilon(0.0001f));
+    REQUIRE(right.y == Catch::Approx(0.f));
+    REQUIRE(right.z == Catch::Approx(DEPTH_MM));
+
+    // Radial distortion is symmetric around the principal point.
+    const auto& left = points[1 * W + 0];
+    REQUIRE(left.x == Catch::Approx(-EXPECTED_UNDISTORTED_X_MM).epsilon(0.0001f));
+    REQUIRE(left.y == Catch::Approx(0.f));
+    REQUIRE(left.z == Catch::Approx(DEPTH_MM));
+
+    // Updating intrinsics must rebuild the cached rays.
+    impl.setIntrinsics(200.f, 100.f, 1.f, 0.f, W, H);
+    const auto updatedPoints = computeDense(impl, makeConstantDepth(W, H, static_cast<uint16_t>(DEPTH_MM)));
+    REQUIRE(updatedPoints[1 * W + 4].x < EXPECTED_UNDISTORTED_X_MM);
+}
+
+TEST_CASE("Fisheye depth is undistorted before deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Fisheye, {0.5f, 0.0f, 0.0f, 0.0f});
+
+    const auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
+
+    REQUIRE(points[2].x < 10.f);
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+}
+
+TEST_CASE("Zero distortion preserves the original deprojection", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {0.0f, 0.0f, 0.0f, 0.0f});
+
+    const auto points = computeDense(impl, makeConstantDepth(W, H, 1000));
+
+    REQUIRE(points[2].x == Catch::Approx(10.f));
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+}
+
+TEST_CASE("Unsupported distortion models are rejected by PointCloud", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, 3, 1);
+
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::RadialDivision, {0.1f}), "PointCloud does not support distortion model: RadialDivision");
+    REQUIRE_THROWS_WITH(impl.setDistortion(dai::CameraModel::Equirectangular, {0.1f}), "PointCloud does not support distortion model: Equirectangular");
+}
+
 // ============================================================================
 // Depth with holes → filterValidPoints keeps only z > 0
 // ============================================================================
@@ -1058,6 +1121,24 @@ std::vector<dai::Point3fRGBA> computeDenseColored(dai::node::PointCloud::Impl& i
 
 }  // namespace
 
+TEST_CASE("Colored deprojection uses undistorted rays", "[PointCloud][Impl][Colored]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 3, H = 1;
+    impl.setIntrinsics(100.f, 100.f, 1.f, 0.f, W, H);
+    impl.setDistortion(dai::CameraModel::Perspective, {10.f});
+
+    const auto depth = makeConstantDepth(W, H, 1000);
+    const auto color = makeConstantColor(W, H, 1, 2, 3);
+    const auto points = computeDenseColored(impl, depth, color);
+
+    REQUIRE(points[2].x < 10.f);
+    REQUIRE(points[2].y == Catch::Approx(0.f));
+    REQUIRE(points[2].z == Catch::Approx(1000.f));
+    REQUIRE(points[2].r == 1);
+    REQUIRE(points[2].g == 2);
+    REQUIRE(points[2].b == 3);
+}
+
 // ============================================================================
 // Colored dense compute: constant depth + constant color
 // ============================================================================
@@ -1532,19 +1613,6 @@ TEST_CASE("PointCloudData stores and retrieves ImgTransformation", "[PointCloud]
     REQUIRE(retrievedIntrinsics[1][2] == Catch::Approx(200.f));
 }
 
-TEST_CASE("PointCloudData transformation default is identity", "[PointCloud][Transformation]") {
-    dai::PointCloudData pc;
-    const auto& t = pc.getTransformation();
-    auto intrinsics = t.getIntrinsicMatrix();
-
-    // Default intrinsic matrix is identity
-    REQUIRE(intrinsics[0][0] == Catch::Approx(1.f));
-    REQUIRE(intrinsics[1][1] == Catch::Approx(1.f));
-    REQUIRE(intrinsics[2][2] == Catch::Approx(1.f));
-    REQUIRE(intrinsics[0][1] == Catch::Approx(0.f));
-    REQUIRE(intrinsics[0][2] == Catch::Approx(0.f));
-}
-
 TEST_CASE("PointCloudData transformation mutated via setter", "[PointCloud][Transformation]") {
     dai::PointCloudData pc;
     std::array<std::array<float, 3>, 3> intrinsics = {{{300.f, 0.f, 160.f}, {0.f, 300.f, 120.f}, {0.f, 0.f, 1.f}}};
@@ -1751,4 +1819,62 @@ TEST_CASE("setSparse throws logic_error", "[PointCloud][PointCloudData]") {
     REQUIRE_THROWS_AS(pcd.setSparse(true), std::logic_error);
     REQUIRE_THROWS_AS(pcd.setSparse(false), std::logic_error);
 #pragma GCC diagnostic pop
+}
+
+// ============================================================================
+// Frame extrinsics: getTransformationMatrix(false) uses measured translation
+// ============================================================================
+TEST_CASE("Extrinsics getTransformationMatrix(false) uses measured translation, not spec", "[PointCloud][Extrinsics]") {
+    // Create extrinsics with different measured and spec translation values
+    dai::Extrinsics ext;
+    ext.rotationMatrix = eye3();
+    ext.translation = {1.0f, 2.0f, 3.0f};         // measured (calibrated)
+    ext.specTranslation = {10.0f, 20.0f, 30.0f};  // spec (CAD design)
+    ext.toCameraSocket = dai::CameraBoardSocket::CAM_C;
+
+    // getTransformationMatrix(false) should use measured translation
+    auto matMeasured = ext.getTransformationMatrix(false, dai::LengthUnit::CENTIMETER);
+    REQUIRE(matMeasured[0][3] == Catch::Approx(1.0f));
+    REQUIRE(matMeasured[1][3] == Catch::Approx(2.0f));
+    REQUIRE(matMeasured[2][3] == Catch::Approx(3.0f));
+
+    // getTransformationMatrix(true) should use spec translation
+    auto matSpec = ext.getTransformationMatrix(true, dai::LengthUnit::CENTIMETER);
+    REQUIRE(matSpec[0][3] == Catch::Approx(10.0f));
+    REQUIRE(matSpec[1][3] == Catch::Approx(20.0f));
+    REQUIRE(matSpec[2][3] == Catch::Approx(30.0f));
+
+    // Verify rotation part is identity in both cases
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            float expected = (i == j) ? 1.0f : 0.0f;
+            REQUIRE(matMeasured[i][j] == Catch::Approx(expected));
+            REQUIRE(matSpec[i][j] == Catch::Approx(expected));
+        }
+    }
+}
+
+// ============================================================================
+// PointCloudConfig: new overloads preserve the current useSpecTranslation value
+// ============================================================================
+TEST_CASE("PointCloudConfig overloads preserve useSpecTranslation behavior", "[PointCloud][Config]") {
+    dai::PointCloudConfig cfg;
+
+    REQUIRE_FALSE(cfg.getUseSpecTranslation());
+
+    cfg.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A);
+    REQUIRE(cfg.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET);
+    REQUIRE(cfg.getTargetCameraSocket() == dai::CameraBoardSocket::CAM_A);
+    REQUIRE_FALSE(cfg.getUseSpecTranslation());
+
+    cfg.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_B, false);
+    REQUIRE_FALSE(cfg.getUseSpecTranslation());
+
+    cfg.setTargetCoordinateSystem(dai::HousingCoordinateSystem::VESA_A);
+    REQUIRE(cfg.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::HOUSING);
+    REQUIRE(cfg.getTargetHousingCS() == dai::HousingCoordinateSystem::VESA_A);
+    REQUIRE_FALSE(cfg.getUseSpecTranslation());
+
+    cfg.setTargetCoordinateSystem(dai::HousingCoordinateSystem::VESA_B, true);
+    REQUIRE(cfg.getUseSpecTranslation());
 }

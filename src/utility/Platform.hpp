@@ -21,8 +21,18 @@
 namespace dai {
 namespace platform {
 
-uint32_t getIPv4AddressAsBinary(std::string address);
+uint32_t getIPv4AddressAsBinary(const std::string& address);
 std::string getIPv4AddressAsString(std::uint32_t binary);
+
+/**
+ * @brief Check whether a string is a strict dotted-quad IPv4 address ("10.12.234.143").
+ * Accepts exactly what inet_pton accepts: four decimal octets 0-255, no leading zeros
+ * ("01.2.3.4"), no surrounding whitespace, no hostnames
+ * @param address String to check
+ * @return True if the string is an IPv4 address, false otherwise
+ */
+bool isIPv4Address(const std::string& address);
+
 std::string getLocalIpAddress();
 
 /**
@@ -31,6 +41,7 @@ std::string getLocalIpAddress();
  */
 std::string getOSPlatform();
 std::string getOSVersion();
+std::filesystem::path getDaiCacheDir();
 
 /**
  * @brief Get the temporary path

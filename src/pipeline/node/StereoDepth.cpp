@@ -14,7 +14,7 @@
 namespace dai {
 namespace node {
 
-std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMode presetMode, std::pair<int, int> size, std::optional<float> fps) {
+std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMode presetMode, const std::pair<int, int>& size, std::optional<float> fps) {
     if(!autoCreateCameras) {
         return std::static_pointer_cast<StereoDepth>(shared_from_this());
     }
@@ -28,10 +28,10 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
     }
     // Take the first stereo pair
     auto stereoPair = stereoPairs[0];
-    // Create the two cameras
+    // Create the two cameras on the same device this node runs on
     auto pipeline = getParentPipeline();
-    auto left = pipeline.create<dai::node::Camera>()->build(stereoPair.left);
-    auto right = pipeline.create<dai::node::Camera>()->build(stereoPair.right);
+    auto left = pipeline.create<dai::node::Camera>(device)->build(stereoPair.left);
+    auto right = pipeline.create<dai::node::Camera>(device)->build(stereoPair.right);
 
     return build(
         *left->requestOutput(size, std::nullopt, ImgResizeMode::CROP, fps), *right->requestOutput(size, std::nullopt, ImgResizeMode::CROP, fps), presetMode);
@@ -55,15 +55,15 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
     std::string assetKey;
     meshAsset.alignment = 64;
 
-    meshAsset.data = dataLeft;
+    meshAsset.setData(dataLeft);
     assetKey = "meshLeft";
     properties.mesh.meshLeftUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
-    meshAsset.data = dataRight;
+    meshAsset.setData(dataRight);
     assetKey = "meshRight";
     properties.mesh.meshRightUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
-    properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.data.size());
+    properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.getSize());
 }
 
 void StereoDepth::loadMeshFiles(const std::filesystem::path& pathLeft, const std::filesystem::path& pathRight) {
@@ -91,7 +91,7 @@ void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
 }
-void StereoDepth::setInputResolution(std::tuple<int, int> resolution) {
+void StereoDepth::setInputResolution(const std::tuple<int, int>& resolution) {
     setInputResolution(std::get<0>(resolution), std::get<1>(resolution));
 }
 void StereoDepth::setOutputSize(int width, int height) {

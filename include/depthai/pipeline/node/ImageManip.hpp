@@ -66,13 +66,27 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     void setMaxOutputFrameSize(int maxFrameSize);
 
     /**
+     * Specify maximum size of output image pool.
+     * @param maxPoolSize Maximum pool size in bytes
+     */
+    void setMaxPoolSize(unsigned int maxPoolSize);
+
+    /**
      * Specify whether to run on host or device
      * @param runOnHost Run node on host
      */
     ImageManip& setRunOnHost(bool runOnHost = true);
 
     /**
-     * Set CPU as backend preference
+     * Set backend preference:
+     *  - CPU: Run ImageManip on the CPU.
+     *  - HW: Prefer the dedicated hardware image manipulation backend.
+     *  - GPU: Prefer the GPU backend.
+     *  - AUTO: Let the runtime select the backend automatically (GPU with CPU fallback).
+     *
+     * Hardware-accelerated backends can cause some unexpected behavior when using multiple
+     * ImageManip nodes in series. Currently, the only operation affected is downscaling.
+     *
      * @param backend Backend preference
      */
     ImageManip& setBackend(Backend backend);

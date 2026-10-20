@@ -39,7 +39,7 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
 
 void DetectionNetwork::buildInternal() {
     // Default confidence threshold
-    detectionParser->properties.parser.confidenceThreshold = 0.5;
+    detectionParser->setConfidenceThreshold(0.5f);
     neuralNetwork->out.link(detectionParser->input);
 
     // No "internal" buffering to keep interface similar to monolithic nodes
@@ -174,7 +174,7 @@ void DetectionNetwork::setBlobPath(const std::filesystem::path& path) {
     detectionParser->setBlobPath(path);
 }
 
-void DetectionNetwork::setBlob(OpenVINO::Blob blob) {
+void DetectionNetwork::setBlob(const OpenVINO::Blob& blob) {
     neuralNetwork->setBlob(blob);
     detectionParser->setBlob(blob);
 }
@@ -205,15 +205,15 @@ void DetectionNetwork::setNumShavesPerInferenceThread(int numShavesPerThread) {
     neuralNetwork->setNumShavesPerInferenceThread(numShavesPerThread);
 }
 
-void DetectionNetwork::setBackend(std::string backend) {
+void DetectionNetwork::setBackend(const std::string& backend) {
     neuralNetwork->setBackend(backend);
 }
 
-void DetectionNetwork::setBackendProperties(std::map<std::string, std::string> props) {
+void DetectionNetwork::setBackendProperties(const std::map<std::string, std::string>& props) {
     neuralNetwork->setBackendProperties(props);
 }
 
-int DetectionNetwork::getNumInferenceThreads() {
+int DetectionNetwork::getNumInferenceThreads() const {
     return neuralNetwork->getNumInferenceThreads();
 }
 

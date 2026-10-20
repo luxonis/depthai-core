@@ -35,7 +35,7 @@ int main() {
     auto* lout = monoLeft->requestOutput({640, 400});
     auto* rout = monoRight->requestOutput({640, 400});
 
-    // Create a node that will produce the depth map (using disparity output as it's easier to visualize depth this way)
+    // Create a node that will produce the depth map.
     depth->build(*lout, *rout, dai::node::StereoDepth::PresetMode::DEFAULT);
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
     depth->initialConfig->setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
@@ -43,24 +43,14 @@ int main() {
     depth->setExtendedDisparity(extended_disparity);
     depth->setSubpixel(subpixel);
 
-    // Output queue will be used to get the disparity frames from the outputs defined above
-    auto q = depth->disparity.createOutputQueue();
-    auto qleft = lout->createOutputQueue();
+    auto q = depth->depth.createOutputQueue();
 
     pipeline.start();
 
     while(pipeline.isRunning() && !quitEvent) {
         auto inDepth = q->get<dai::ImgFrame>();
-        auto inLeft = qleft->get<dai::ImgFrame>();
-        auto frame = inDepth->getFrame();
-        // Normalization for better visualization
-        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig->getMaxDisparity());
-
-        cv::imshow("disparity", frame);
-
-        // Available color maps: https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html
-        cv::applyColorMap(frame, frame, cv::COLORMAP_JET);
-        cv::imshow("disparity_color", frame);
+        auto frame = dai::utility::colorizeDepthFrame(*inDepth).getCvFrame();
+        cv::imshow("depth", frame);
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {

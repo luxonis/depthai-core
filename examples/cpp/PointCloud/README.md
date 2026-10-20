@@ -33,20 +33,20 @@ via `setTargetCoordinateSystem()`. Three kinds of target frame are supported:
 
 ```cpp
 pc->setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A);
-// useSpecTranslation=true  →  use nominal spec translation instead of per-unit calibration
 ```
 
-Available sockets: `CAM_A` … `CAM_J`. `useSpecTranslation` defaults to `false`.
+Available sockets: `CAM_A` … `CAM_J`.
+This preferred overload uses calibrated translations. The legacy
+`setTargetCoordinateSystem(socket, useSpecTranslation)` overload is deprecated.
 
 **B) Housing coordinate system** — uses housing calibration stored on the device.
 
 ```cpp
 pc->setTargetCoordinateSystem(dai::HousingCoordinateSystem::VESA_A);
-// useSpecTranslation=false  →  use per-unit calibrated values instead of spec
 ```
 
 Available targets: `CAM_A`…`CAM_J`, `FRONT_CAM_A`…`FRONT_CAM_J`, `VESA_A`…`VESA_J`, `IMU`.
-`useSpecTranslation` defaults to `true`.
+Housing calibration is resolved using the spec translation path.
 
 **C) Custom 4×4 matrix** — any homogeneous transform via `initialConfig` or the runtime
 `inputConfig` queue. When combined with (A)/(B), the custom matrix is applied *after*

@@ -29,6 +29,7 @@ message IMUReport {
     Accuracy accuracy = 2;
     common.Timestamp ts = 3;
     common.Timestamp tsDevice = 4;
+    optional common.Timestamp tsSystem = 5;
 }
 
 message IMUReportVec {
@@ -54,4 +55,5 @@ message IMUData {
     int64 sequenceNum = 2;          // Sequence number
     common.Timestamp ts = 3;        // Timestamp
     common.Timestamp tsDevice = 4;  // Timestamp from device
+    optional common.Timestamp tsSystem = 5;  // Timestamp from system_clock
 }

@@ -14,7 +14,7 @@ namespace dai {
 constexpr std::chrono::milliseconds XLinkStream::WAIT_FOR_STREAM_RETRY;
 constexpr int XLinkStream::STREAM_OPEN_RETRIES;
 
-XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t maxWriteSize) : connection(conn), streamName(name) {
+XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, std::size_t maxWriteSize) : connection(conn), streamName(name) {
     if(name.empty()) throw std::invalid_argument("Cannot create XLinkStream using empty stream name");
     if(!connection || connection->getLinkId() == -1) throw std::invalid_argument("Cannot create XLinkStream using unconnected XLinkConnection");
 

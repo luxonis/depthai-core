@@ -107,7 +107,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, StereoDepth, build))
         .def("build",
              static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(
-                 bool autoCreate, StereoDepth::PresetMode, std::pair<int, int> size, std::optional<float> fps)>(&StereoDepth::build),
+                 bool autoCreate, StereoDepth::PresetMode, const std::pair<int, int>& size, std::optional<float> fps)>(&StereoDepth::build),
              py::arg("autoCreateCameras"),
              py::arg("presetMode") = StereoDepth::PresetMode::DEFAULT,
              py::arg("size") = std::pair<int, int>{640, 400},
@@ -143,7 +143,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              py::arg("height"),
              DOC(dai, node, StereoDepth, setInputResolution))
         .def("setInputResolution",
-             static_cast<void (StereoDepth::*)(std::tuple<int, int>)>(&StereoDepth::setInputResolution),
+             static_cast<void (StereoDepth::*)(const std::tuple<int, int>&)>(&StereoDepth::setInputResolution),
              py::arg("resolution"),
              DOC(dai, node, StereoDepth, setInputResolution, 2))
         .def("setOutputSize", &StereoDepth::setOutputSize, py::arg("width"), py::arg("height"), DOC(dai, node, StereoDepth, setOutputSize))

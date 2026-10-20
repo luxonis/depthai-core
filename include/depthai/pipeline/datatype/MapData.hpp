@@ -22,7 +22,7 @@ class MapData : public Buffer {
     float minY = 0.0;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
-    DEPTHAI_SERIALIZE(MapData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, map, minX, minY);
+    DEPTHAI_SERIALIZE(MapData, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, map, minX, minY);
 };
 
 }  // namespace dai

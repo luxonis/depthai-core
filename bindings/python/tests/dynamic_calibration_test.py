@@ -32,6 +32,7 @@ def test_performance_mode_enum_all_values():
         DCC.PerformanceMode.OPTIMIZE_SPEED,
         DCC.PerformanceMode.OPTIMIZE_PERFORMANCE,
         DCC.PerformanceMode.SKIP_CHECKS,
+        DCC.PerformanceMode.RELAXED_COVERAGE,
     ]
 
     assert len(set(modes)) == len(modes)  # All values unique
@@ -42,11 +43,17 @@ def test_performance_mode_enum_all_values():
 
 def test_command_calibrate_rw_and_owner_init():
     """Verify read/write access to Calibrate command attributes and owner init."""
-    cmd = Cmds.Calibrate(force=True)
+    default_cmd = Cmds.Calibrate()
+    assert default_cmd.keepCameraCenters is True
+
+    cmd = Cmds.Calibrate(force=True, keepCameraCenters=False)
     assert cmd.force is True
+    assert cmd.keepCameraCenters is False
 
     cmd.force = False
+    cmd.keepCameraCenters = True
     assert cmd.force is False
+    assert cmd.keepCameraCenters is True
 
     ctrl = DCC(cmd)
     assert isinstance(ctrl, DCC)
@@ -66,14 +73,20 @@ def test_command_calibration_quality_rw_and_owner_init():
 
 def test_command_start_calibration_rw_and_owner_init():
     """Check read/write for StartCalibration fields and DCC construction."""
-    cmd = Cmds.StartCalibration(loadImagePeriod=0.25, calibrationPeriod=3.0)
+    default_cmd = Cmds.StartCalibration()
+    assert default_cmd.keepCameraCenters is True
+
+    cmd = Cmds.StartCalibration(loadImagePeriod=0.25, calibrationPeriod=3.0, keepCameraCenters=False)
     assert cmd.loadImagePeriod == 0.25
     assert cmd.calibrationPeriod == 3.0
+    assert cmd.keepCameraCenters is False
 
     cmd.loadImagePeriod = 0.5
     cmd.calibrationPeriod = 5.0
+    cmd.keepCameraCenters = True
     assert cmd.loadImagePeriod == 0.5
     assert cmd.calibrationPeriod == 5.0
+    assert cmd.keepCameraCenters is True
 
     ctrl = DCC(cmd)
     assert isinstance(ctrl, DCC)
@@ -120,6 +133,9 @@ def test_command_set_performance_mode_rw_and_owner_init():
     cmd.performanceMode = DCC.PerformanceMode.OPTIMIZE_PERFORMANCE
     assert cmd.performanceMode == DCC.PerformanceMode.OPTIMIZE_PERFORMANCE
 
+    cmd.performanceMode = DCC.PerformanceMode.RELAXED_COVERAGE
+    assert cmd.performanceMode == DCC.PerformanceMode.RELAXED_COVERAGE
+
     ctrl = DCC(cmd)
     assert isinstance(ctrl, DCC)
 
@@ -131,7 +147,7 @@ def test_command_set_performance_mode_rw_and_owner_init():
 def test_static_factory_calibrate_all_args():
     """Check static factory for calibrate() with default and explicit args."""
     c1 = DCC.calibrate()
-    c2 = DCC.calibrate(force=True)
+    c2 = DCC.calibrate(force=True, keepCameraCenters=False)
     assert isinstance(c1, DCC)
     assert isinstance(c2, DCC)
 
@@ -147,7 +163,7 @@ def test_static_factory_calibration_quality_all_args():
 def test_static_factory_start_calibration_all_args():
     """Ensure startCalibration() factory supports default and custom arguments."""
     c1 = DCC.startCalibration()
-    c2 = DCC.startCalibration(loadImagePeriod=0.1, calibrationPeriod=1.5)
+    c2 = DCC.startCalibration(loadImagePeriod=0.1, calibrationPeriod=1.5, keepCameraCenters=False)
     assert isinstance(c1, DCC)
     assert isinstance(c2, DCC)
 
@@ -188,6 +204,7 @@ def test_static_factory_set_performance_mode_all_modes():
         DCC.PerformanceMode.OPTIMIZE_SPEED,
         DCC.PerformanceMode.OPTIMIZE_PERFORMANCE,
         DCC.PerformanceMode.SKIP_CHECKS,
+        DCC.PerformanceMode.RELAXED_COVERAGE,
     ]:
         c = DCC.setPerformanceMode(mode)
         assert isinstance(c, DCC)
@@ -203,12 +220,20 @@ def test_coverage_data_read_write():
 
     d.coveragePerCellA = [[1.0], [2.0], [3.0]]
     d.coveragePerCellB = [[4.0], [5.0], [6.0]]
+    d.coveragePerCell = {
+        dai.CameraBoardSocket.CAM_A: [[1.0], [2.0], [3.0]],
+        dai.CameraBoardSocket.CAM_B: [[4.0], [5.0], [6.0]],
+    }
     d.meanCoverage = 0.42
     d.dataAcquired = 1.0
     d.coverageAcquired = 1.0
 
     assert d.coveragePerCellA == [[1.0], [2.0], [3.0]]
     assert d.coveragePerCellB == [[4.0], [5.0], [6.0]]
+    assert d.coveragePerCell == {
+        dai.CameraBoardSocket.CAM_A: [[1.0], [2.0], [3.0]],
+        dai.CameraBoardSocket.CAM_B: [[4.0], [5.0], [6.0]],
+    }
     assert d.meanCoverage == pytest.approx(0.42)
     assert d.dataAcquired == pytest.approx(1.0)
     assert d.coverageAcquired == pytest.approx(1.0)
@@ -222,11 +247,15 @@ def test_calibration_quality_data_rw():
     q.depthErrorDifference = [1.0, 2.0]
     q.sampsonErrorCurrent = 0.5
     q.sampsonErrorNew = 0.25
+    q.pairwiseRotationDifference = {
+        (dai.CameraBoardSocket.CAM_A, dai.CameraBoardSocket.CAM_B): [0.4, 0.5, 0.6],
+    }
 
     assert list(q.rotationChange) == pytest.approx([0.1, 0.2, 0.3])
     assert q.depthErrorDifference == pytest.approx([1.0, 2.0])
     assert q.sampsonErrorCurrent == pytest.approx(0.5)
     assert q.sampsonErrorNew == pytest.approx(0.25)
+    assert q.pairwiseRotationDifference[(dai.CameraBoardSocket.CAM_A, dai.CameraBoardSocket.CAM_B)] == pytest.approx([0.4, 0.5, 0.6])
 
 
 def test_calibration_quality_default():
@@ -277,11 +306,15 @@ def test_dynamic_calibration_result_data_rw():
 
     diff = dai.CalibrationQualityData()
     diff.sampsonErrorNew = 1.1
+    diff.pairwiseRotationDifference = {
+        (dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C): [0.7, 0.8, 0.9],
+    }
     r.calibrationDifference = diff
 
     assert isinstance(r.newCalibration, dai.CalibrationHandler)
     assert isinstance(r.currentCalibration, dai.CalibrationHandler)
     assert r.calibrationDifference.sampsonErrorNew == pytest.approx(1.1)
+    assert r.calibrationDifference.pairwiseRotationDifference[(dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C)] == pytest.approx([0.7, 0.8, 0.9])
 
 
 def test_dynamic_calibration_result_default():

@@ -8,25 +8,22 @@
 int main() {
     bool fullFrameTracking = false;
     bool useSpatialAssociation = false;
+    float sensorFps = 20.0f;
 
     // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    auto colorSockets = pipeline.getDefaultDevice()->getConnectedCameras(dai::CameraSensorType::COLOR);
+    auto colorSocket = colorSockets.empty() ? dai::CameraBoardSocket::CAM_A : colorSockets.front();
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(colorSocket, std::nullopt, sensorFps);
 
-    // Create stereo node
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto leftOutput = monoLeft->requestOutput(std::make_pair(640, 400));
-    auto rightOutput = monoRight->requestOutput(std::make_pair(640, 400));
-    leftOutput->link(stereo->left);
-    rightOutput->link(stereo->right);
+    auto depth = pipeline.create<dai::node::Depth>();
+    depth->build(dai::node::Depth::Algorithm::AUTO, sensorFps, std::make_pair(640u, 400u));
 
     // Create spatial detection network
     dai::NNModelDescription modelDescription{"yolov6-nano"};
-    auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>()->build(camRgb, stereo, modelDescription);
+    auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>()->build(camRgb, depth, modelDescription);
     spatialDetectionNetwork->setConfidenceThreshold(0.6f);
     spatialDetectionNetwork->input.setBlocking(false);
     spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5f);

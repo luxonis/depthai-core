@@ -156,20 +156,22 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
     frame.setSourceSize(transformation.getSourceSize());
     // Important to set the transformation last as setting the source size resets it
     frame.transformation = transformation;
-    frame.setSequenceNum(getSequenceNum());
-    frame.setTimestamp(getTimestamp());
-    frame.setTimestampDevice(getTimestampDevice());
+    frame.setBufferMetadataFrom(this);
     return frame;
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 ProtoSerializable::SchemaPair EncodedFrame::serializeSchema() const {
-    return utility::serializeSchema(utility::getProtoMessage(this));
+    return utility::getProtoSchema<EncodedFrame>();
 }
 
 std::vector<std::uint8_t> EncodedFrame::serializeProto(bool metadataOnly) const {
     return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }
+void EncodedFrame::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
+
 #endif
 
 }  // namespace dai

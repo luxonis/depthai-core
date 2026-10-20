@@ -66,8 +66,6 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
 
     void run() override;
 
-    virtual CalibrationHandler getCalibrationData() const;
-
    private:
     bool runOnHostVar = false;
 };

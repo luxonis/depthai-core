@@ -22,7 +22,7 @@ CameraBoardSocket MonoCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
 
-void MonoCamera::setCamera(std::string name) {
+void MonoCamera::setCamera(const std::string& name) {
     properties.cameraName = name;
 }
 

@@ -74,6 +74,7 @@ class AprilTags : public Buffer, public TransformableCRTP<AprilTags> {
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
+    using Buffer::tsSystem;
     using Transformable::transformation;
     /**
      * Construct AprilTags message.
@@ -99,7 +100,8 @@ class AprilTags : public Buffer, public TransformableCRTP<AprilTags> {
     }
 
     std::vector<AprilTag> aprilTags;
-    DEPTHAI_SERIALIZE(AprilTags, sequenceNum, ts, tsDevice, transformation, aprilTags);
+
+    DEPTHAI_SERIALIZE(AprilTags, sequenceNum, ts, tsDevice, tsSystem, transformation, aprilTags);
 };
 
 }  // namespace dai

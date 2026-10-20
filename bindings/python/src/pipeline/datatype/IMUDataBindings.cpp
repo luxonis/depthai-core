@@ -27,7 +27,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
         m, "IMUReportRotationVectorWAcc", DOC(dai, IMUReportRotationVectorWAcc));
     py::class_<IMUPacket> imuPacket(m, "IMUPacket", DOC(dai, IMUPacket));
     // py::class_<RawIMUData, RawBuffer, std::shared_ptr<RawIMUData>> rawIMUPackets(m, "RawIMUData", DOC(dai, RawIMUData));
-    py::class_<IMUData, Py<IMUData>, Buffer, std::shared_ptr<IMUData>> imuData(m, "IMUData", DOC(dai, IMUData));
+    py::class_<IMUData, Py<IMUData>, Buffer, ProtoSerializable, std::shared_ptr<IMUData>> imuData(m, "IMUData", DOC(dai, IMUData));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -50,6 +50,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
         .def_readwrite("tsDevice", &IMUReport::tsDevice)
         .def("getTimestamp", &IMUReport::getTimestamp, DOC(dai, IMUReport, getTimestamp))
         .def("getTimestampDevice", &IMUReport::getTimestampDevice, DOC(dai, IMUReport, getTimestampDevice))
+        .def("getTimestampSystem", &IMUReport::getTimestampSystem, DOC(dai, IMUReport, getTimestampSystem))
         .def("getSequenceNum", &IMUReport::getSequenceNum, DOC(dai, IMUReport, getSequenceNum));
 
     imuReportAccuracy.value("UNRELIABLE", IMUReport::Accuracy::UNRELIABLE)
@@ -152,7 +153,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
         .def("__repr__", &IMUData::str)
         .def_property(
             "packets",
-            [](IMUData& imuDta) { return &imuDta.packets; },
-            [](IMUData& imuDta, std::vector<IMUPacket> val) { imuDta.packets = val; },
+            [](IMUData& imuDta) -> std::vector<IMUPacket>& { return imuDta.packets; },
+            [](IMUData& imuDta, std::vector<IMUPacket>& val) { imuDta.packets = val; },
             DOC(dai, IMUData, packets));
 }

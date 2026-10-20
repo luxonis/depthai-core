@@ -56,6 +56,11 @@ class RGBDData : public Buffer, public ProtoSerializable {
     std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
+
+    /**
      * Serialize schema to proto buffer
      *
      * @returns serialized schema
@@ -63,7 +68,7 @@ class RGBDData : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(RGBDData, colorFrame, depthFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE(RGBDData, colorFrame, depthFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
 };
 
 }  // namespace dai

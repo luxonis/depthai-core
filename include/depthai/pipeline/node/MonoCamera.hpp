@@ -92,7 +92,7 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
      * Specify which camera to use by name
      * @param name Name of the camera to use
      */
-    void setCamera(std::string name);
+    void setCamera(const std::string& name);
 
     /**
      * Retrieves which camera to use by name

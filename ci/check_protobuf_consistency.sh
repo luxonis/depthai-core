@@ -13,27 +13,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
-GET_DECLS="${TMP_DIR}/get_decls.txt"
+PROTO_DECLS="${TMP_DIR}/proto_decls.txt"
+GET_DECLS="${PROTO_DECLS}"
 GET_DEFS="${TMP_DIR}/get_defs.txt"
-SET_DECLS="${TMP_DIR}/set_decls.txt"
+SET_DECLS="${PROTO_DECLS}"
 SET_DEFS="${TMP_DIR}/set_defs.txt"
 PROTO_DATATYPES="${TMP_DIR}/proto_datatypes.txt"
 SCHEMA_ENUMS="${TMP_DIR}/schema_enums.txt"
 DESER_TRUE_ENUMS="${TMP_DIR}/deser_true_enums.txt"
 
-extract_get_specializations_declared() {
-    rg -NoI --replace '$1' '^[[:space:]]*std::unique_ptr<google::protobuf::Message>[[:space:]]+getProtoMessage\(const ([A-Za-z0-9_]+)\*' "${PROTO_HPP}" \
-        | grep -vx 'T' | sort -u > "${GET_DECLS}"
+extract_specializations_declared() {
+    rg -NoI --replace '$1' '^[[:space:]]*DEPTHAI_PROTO_DECLARE\(([A-Za-z0-9_]+)\)' "${PROTO_HPP}" \
+        | sort -u > "${PROTO_DECLS}"
 }
 
 extract_get_specializations_defined() {
     rg -NoI --replace '$1' '^[[:space:]]*std::unique_ptr<google::protobuf::Message>[[:space:]]+getProtoMessage\(const ([A-Za-z0-9_]+)\*' "${PROTO_CPP}" \
         | grep -vx 'T' | sort -u > "${GET_DEFS}"
-}
-
-extract_set_specializations_declared() {
-    rg -NoI --replace '$1' '^[[:space:]]*void[[:space:]]+setProtoMessage\(([A-Za-z0-9_]+)&' "${PROTO_HPP}" \
-        | grep -vx 'T' | sort -u > "${SET_DECLS}"
 }
 
 extract_set_specializations_defined() {
@@ -114,9 +110,8 @@ check_equal_sets() {
 }
 
 main() {
-    extract_get_specializations_declared
+    extract_specializations_declared
     extract_get_specializations_defined
-    extract_set_specializations_declared
     extract_set_specializations_defined
     extract_proto_datatype_classes
     extract_schema_name_to_datatype_enums

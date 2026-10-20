@@ -48,15 +48,23 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
         .def("useCPUMT", &PointCloud::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, PointCloud, useCPUMT))
         .def("useGPU", &PointCloud::useGPU, py::arg("device") = 0, DOC(dai, node, PointCloud, useGPU))
         .def("setTargetCoordinateSystem",
+             py::overload_cast<CameraBoardSocket>(&PointCloud::setTargetCoordinateSystem),
+             py::arg("targetCamera"),
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<HousingCoordinateSystem>(&PointCloud::setTargetCoordinateSystem),
+             py::arg("housingCS"),
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 2))
+        .def("setTargetCoordinateSystem",
              py::overload_cast<CameraBoardSocket, bool>(&PointCloud::setTargetCoordinateSystem),
              py::arg("targetCamera"),
-             py::arg("useSpecTranslation") = false,
-             DOC(dai, node, PointCloud, setTargetCoordinateSystem))
+             py::arg("useSpecTranslation"),
+             "**Deprecated:** Use setTargetCoordinateSystem(targetCamera) instead.")
         .def("setTargetCoordinateSystem",
              py::overload_cast<HousingCoordinateSystem, bool>(&PointCloud::setTargetCoordinateSystem),
              py::arg("housingCS"),
-             py::arg("useSpecTranslation") = true,
-             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 2));
+             py::arg("useSpecTranslation"),
+             "**Deprecated:** Use setTargetCoordinateSystem(housingCS) instead.");
 
     // ALIAS
     daiNodeModule.attr("PointCloud").attr("Properties") = properties;

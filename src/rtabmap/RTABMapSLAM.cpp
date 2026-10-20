@@ -292,7 +292,7 @@ void RTABMapSLAM::run() {
 }
 
 void RTABMapSLAM::initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
-    auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
+    auto calibHandler = pipeline.getDefaultDevice()->getCalibration();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
 
     pimplRtabmap->model = getRTABMapCameraModel(cameraId, width, height, pimplRtabmap->localTransform, alphaScaling, calibHandler);

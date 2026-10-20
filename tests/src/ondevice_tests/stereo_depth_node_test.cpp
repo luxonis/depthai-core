@@ -96,7 +96,7 @@ TEST_CASE("StereoDepth running while repeatedly setting calibration does not cra
 
         // This is the line that crashes in Python
         try {
-            pipeline.getDefaultDevice()->setCalibration(pipeline.getDefaultDevice()->readCalibration());
+            pipeline.getDefaultDevice()->setCalibration(pipeline.getDefaultDevice()->getCalibration());
         } catch(const std::exception& e) {
             FAIL(std::string("setCalibration() threw exception: ") + e.what());
         }

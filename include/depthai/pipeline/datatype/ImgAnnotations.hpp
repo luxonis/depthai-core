@@ -80,6 +80,11 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
     std::vector<std::uint8_t> serializeProto(bool = false) const override;
 
     /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
+
+    /**
      * Serialize schema to proto buffer
      *
      * @returns serialized schema
@@ -87,7 +92,7 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations, transformation);
+    DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, annotations, transformation);
 };
 
 }  // namespace dai

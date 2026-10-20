@@ -24,7 +24,7 @@ int main() {
     left->requestOutput(std::make_pair(width, height))->link(odom->left);
     right->requestOutput(std::make_pair(width, height))->link(odom->right);
     imu->out.link(odom->imu);
-    odom->transform.link(rerun->inputTrans);
+    odom->transform.link(rerun->inputOdom);
     odom->passthrough.link(rerun->inputImg);
 
     pipeline.start();

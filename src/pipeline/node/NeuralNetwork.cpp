@@ -81,7 +81,7 @@ void NeuralNetwork::decodeModel(const Model& model) {
     setNNArchive(*nnArchive);
 }
 
-ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, std::optional<ImgFrameCapability> expectedCapability) {
+ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, const std::optional<ImgFrameCapability>& expectedCapability) {
     const auto& nnArchiveCfg = nnArchive.getVersionedConfig();
 
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
@@ -229,7 +229,7 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     }
     auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
-    properties.blobSize = static_cast<uint32_t>(asset->data.size());
+    properties.blobSize = static_cast<uint32_t>(asset->getSize());
     properties.modelSource = Properties::ModelSource::BLOB;
 }
 
@@ -240,7 +240,7 @@ void NeuralNetwork::setOtherModelFormat(std::vector<uint8_t> otherModel) {
 }
 
 void NeuralNetwork::setOtherModelFormat(const std::filesystem::path& path) {
-    auto modelAsset = assetManager.set("__model", path);
+    auto modelAsset = assetManager.setLazy("__model", path);
     properties.modelUri = modelAsset->getRelativeUri();
     properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
 }
@@ -279,15 +279,15 @@ void NeuralNetwork::setNumShavesPerInferenceThread(int numShavesPerThread) {
     properties.numShavesPerThread = numShavesPerThread;
 }
 
-void NeuralNetwork::setBackend(std::string backend) {
+void NeuralNetwork::setBackend(const std::string& backend) {
     properties.backend = backend;
 }
 
-void NeuralNetwork::setBackendProperties(std::map<std::string, std::string> props) {
+void NeuralNetwork::setBackendProperties(const std::map<std::string, std::string>& props) {
     properties.backendProperties = props;
 }
 
-int NeuralNetwork::getNumInferenceThreads() {
+int NeuralNetwork::getNumInferenceThreads() const {
     return properties.numThreads;
 }
 

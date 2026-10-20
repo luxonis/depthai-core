@@ -1,18 +1,19 @@
 #pragma once
 #include <rerun/datatypes/color_model.hpp>
+
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MapData.hpp"
+#include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
-#include "depthai/common/CameraBoardSocket.hpp"
-#include "depthai/device/CalibrationHandler.hpp"
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     #include <pcl/point_types.h>
 #endif
 #include "rerun.hpp"
-
 
 class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
    public:
@@ -21,6 +22,8 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
    public:
     void build() {}
 
+    // BasaltVIO emits Odometry; RTABMapSLAM emits TransformData.
+    Input inputOdom{*this, {.name = "inOdom", .types = {{dai::DatatypeEnum::Odometry, true}}}};
     Input inputTrans{*this, {.name = "inTrans", .types = {{dai::DatatypeEnum::TransformData, true}}}};
     Input inputImg{*this, {.name = "inImg", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
     Input inputObstaclePCL{*this, {.name = "inObstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
@@ -29,7 +32,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
 
     void getFocalLengthFromImage(std::shared_ptr<dai::ImgFrame> imgFrame) {
         auto p = getParentPipeline();
-        auto calibHandler = p.getDefaultDevice()->readCalibration();
+        auto calibHandler = p.getDefaultDevice()->getCalibration();
         auto intrinsics =
             calibHandler.getCameraIntrinsics(static_cast<dai::CameraBoardSocket>(imgFrame->getInstanceNum()), imgFrame->getWidth(), imgFrame->getHeight());
         fx = intrinsics[0][0];
@@ -43,7 +46,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
         rec.log_static("world", rerun::ViewCoordinates::FLU);
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
         while(mainLoop()) {
-            std::shared_ptr<dai::TransformData> transData = inputTrans.get<dai::TransformData>();
+            std::shared_ptr<dai::TransformData> poseData = inputOdom.isConnected() ? inputOdom.get<dai::Odometry>() : inputTrans.get<dai::TransformData>();
             auto imgFrame = inputImg.get<dai::ImgFrame>();
             if(!intrinsicsSet) {
                 getFocalLengthFromImage(imgFrame);
@@ -51,9 +54,9 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
             auto pclObstData = inputObstaclePCL.tryGet<dai::PointCloudData>();
             auto pclGrndData = inputGroundPCL.tryGet<dai::PointCloudData>();
             auto mapData = inputMap.tryGet<dai::MapData>();
-            if(transData != nullptr) {
-                auto trans = transData->getTranslation();
-                auto quat = transData->getQuaternion();
+            if(poseData != nullptr) {
+                auto trans = poseData->getTranslation();
+                auto quat = poseData->getQuaternion();
 
                 auto position = rerun::Vec3D(trans.x, trans.y, trans.z);
 
@@ -67,7 +70,8 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 auto image = imgFrame->getCvFrame();
                 cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
                 rec.log("world/camera/image/rgb",
-                        rerun::Image(reinterpret_cast<const uint8_t*>(image.data), {imgFrame->getWidth(), imgFrame->getHeight()}, rerun::datatypes::ColorModel::RGB));
+                        rerun::Image(
+                            reinterpret_cast<const uint8_t*>(image.data), {imgFrame->getWidth(), imgFrame->getHeight()}, rerun::datatypes::ColorModel::RGB));
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
                 if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
@@ -97,10 +101,12 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 }
 #endif
                 if(mapData != nullptr) {
-                    auto &map = mapData->map;
+                    auto& map = mapData->map;
                     auto image = map.getCvFrame();
-                    rec.log("map", rerun::Image(reinterpret_cast<const uint8_t*>(image.data),
-                        {static_cast<uint32_t>(map.getWidth()), static_cast<uint32_t>(map.getHeight())}, rerun::datatypes::ColorModel::L));
+                    rec.log("map",
+                            rerun::Image(reinterpret_cast<const uint8_t*>(image.data),
+                                         {static_cast<uint32_t>(map.getWidth()), static_cast<uint32_t>(map.getHeight())},
+                                         rerun::datatypes::ColorModel::L));
                 }
             }
         }

@@ -40,20 +40,6 @@ void Rectification::run() {
 
 namespace {
 
-template <typename T>
-std::vector<T> flatten(const std::vector<std::vector<T> >& orig) {
-    std::vector<T> ret;
-    for(const auto& v : orig) ret.insert(ret.end(), v.begin(), v.end());
-    return ret;
-}
-
-cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<std::vector<float> >& orig) {
-    std::vector<float> flat = flatten(orig);
-    cv::Mat cvMat = cv::Mat(rows, cols, type);
-    memcpy(cvMat.data, flat.data(), flat.size() * sizeof(flat[0]));
-    return cvMat;
-}
-
 cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
     cv::Mat cvMat = cv::Mat(rows, cols, type);
     memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
@@ -95,14 +81,6 @@ std::string matToString(const cv::Mat& mat) {
 
 }  // namespace
 
-CalibrationHandler Rectification::getCalibrationData() const {
-    if(device) {
-        return device->readCalibration();
-    } else {
-        return getParentPipeline().getCalibrationData();
-    }
-}
-
 std::vector<std::vector<float> > applyRectificationMatrix(const dai::Extrinsics& extrinsics, const cv::Mat& rectificationMatrix) {
     cv::Mat rectificationMatrixInv;
     cv::invert(rectificationMatrix, rectificationMatrixInv);
@@ -130,9 +108,11 @@ dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& e
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     if(runOnHost()) {
-        auto device = getParentPipeline().getDefaultDevice();
-        if(device && device->getPlatform() != Platform::RVC4) {
+        // Check the platform of the device this node runs on (falls back to the pipeline default device when the node has none)
+        auto platformDevice = device ? device : getParentPipeline().getDefaultDevice();
+        if(platformDevice && platformDevice->getPlatform() != Platform::RVC4) {
             throw std::runtime_error("Rectification node is only supported on RVC4 platform");
         }
     }
@@ -145,7 +125,10 @@ void Rectification::run() {
     std::array<std::array<float, 3>, 3> targetM1, targetM2;
     dai::ImgTransformation output1ImgTransformation;
     dai::ImgTransformation output2ImgTransformation;
+    dai::ImgTransformation previousInput1Transformation;
+    dai::ImgTransformation previousInput2Transformation;
     while(mainLoop()) {
+        auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<dai::ImgFrame> input1Frame;
         std::shared_ptr<dai::ImgFrame> input2Frame;
         {
@@ -153,6 +136,7 @@ void Rectification::run() {
             input1Frame = input1.get<dai::ImgFrame>();
             input2Frame = input2.get<dai::ImgFrame>();
         }
+        auto tGotInput = steady_clock::now();
         uint32_t output1FrameWidth;
         uint32_t output1FrameHeight;
         uint32_t output2FrameWidth;
@@ -170,13 +154,14 @@ void Rectification::run() {
             output2FrameHeight = input2Frame->getHeight();
         }
 
+        if(!previousInput1Transformation.isEqualTransformation(input1Frame->transformation)
+           || !previousInput2Transformation.isEqualTransformation(input2Frame->transformation)) {
+            initialized = false;
+        }
+
         if(!initialized) {
             dai::ImgTransformation input1ImgTransformation = input1Frame->transformation;
             dai::ImgTransformation input2ImgTransformation = input2Frame->transformation;
-            auto calib = getCalibrationData();
-
-            auto leftSocket = (dai::CameraBoardSocket)input1Frame->getInstanceNum();
-            auto rightSocket = (dai::CameraBoardSocket)input2Frame->getInstanceNum();
 
             auto M1 = input1Frame->transformation.getIntrinsicMatrix();
             auto M2 = input2Frame->transformation.getIntrinsicMatrix();
@@ -190,10 +175,11 @@ void Rectification::run() {
             auto cv_d1 = vecToCvMat(1, d1.size(), CV_32FC1, d1);
             auto cv_d2 = vecToCvMat(1, d2.size(), CV_32FC1, d2);
 
-            auto R = calib.getCameraRotationMatrix(leftSocket, rightSocket);
-            auto cv_R = vecToCvMat(3, 3, CV_32FC1, R);
-            auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, false);
-            auto cv_T = vecToCvMat(1, 3, CV_32FC1, T);
+            const auto extrinsics = input1Frame->transformation.getExtrinsicsTransformationMatrixTo(input2Frame->transformation);
+            const auto R = dai::matrix::getRotationMatrixFromProjection4x4(extrinsics);
+            const auto cv_R = arrayToCvMat(3, 3, CV_32FC1, R);
+            const std::vector<float> T = {extrinsics[0][3], extrinsics[1][3], extrinsics[2][3]};
+            const auto cv_T = vecToCvMat(1, 3, CV_32FC1, T);
 
             cv::Mat cv_R1, cv_R2;
             cv::Size imageSize = cv::Size(input1Frame->getWidth(), input1Frame->getHeight());
@@ -261,9 +247,9 @@ void Rectification::run() {
             logger->debug("TARGET_MATRIX2 = {}", matToString(cv_targetCameraMatrix2));
 
             initialized = true;
+            previousInput1Transformation = input1Frame->transformation;
+            previousInput2Transformation = input2Frame->transformation;
         }
-
-        auto start = steady_clock::now();
 
         std::shared_ptr<dai::ImgFrame> rectifiedFrame1 = std::make_shared<dai::ImgFrame>();
         size_t frameSize1 = output1FrameWidth * output1FrameHeight;
@@ -309,10 +295,7 @@ void Rectification::run() {
         rectifiedFrame1->transformation = output1ImgTransformation;
         rectifiedFrame2->transformation = output2ImgTransformation;
 
-        auto end = steady_clock::now();
-        auto duration = duration_cast<milliseconds>(end - start).count();
-        logger->debug("Rectification took {} ms", duration);
-
+        auto tProcessed = steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             output1.send(rectifiedFrame1);
@@ -322,6 +305,8 @@ void Rectification::run() {
             passthrough1.send(input1Frame);
             passthrough2.send(input2Frame);
         }
+        auto tAbsoluteEnd = steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 #endif  // DEPTHAI_HAVE_OPENCV_SUPPORT

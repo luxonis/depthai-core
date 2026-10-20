@@ -1,5 +1,6 @@
 # This script downloads depthai device side artifacts for different device types
 include(DownloadAndChecksum)
+include(VerifyLicense)
 function(DepthaiDeviceDownloader)
 
     ### VARIABLES
@@ -141,6 +142,59 @@ function(DepthaiDeviceDownloader)
     endif()
     # add depthai-device-kb-fwp.tar.xz to list
     list(APPEND "${output_list_var}" "${folder}/${device_type}-fwp-${_version_commit_identifier}.tar.xz")
+
+    if("${device_type}" STREQUAL "depthai-device-rvc4")
+        # Download firmware package license
+        message(STATUS "Downloading and checking ${device_type}-fwp-LICENSE")
+        message(STATUS "Download URL: ${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}-LICENSE")
+        DownloadAndChecksum(
+            "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}-LICENSE" # File
+            "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}-LICENSE.sha256" # File checksum
+            "${folder}/${device_type}-fwp-${_version_commit_identifier}-LICENSE"
+            status
+        )
+        if(${status})
+            message(STATUS "\nCouldn't download ${device_type}-fwp-LICENSE\n")
+            PrintErrorMessage(${status})
+            message(FATAL_ERROR "Aborting.\n")
+        endif()
+        # add depthai-device-rvc4-fwp-LICENSE to list
+        list(APPEND "${output_list_var}" "${folder}/${device_type}-fwp-${_version_commit_identifier}-LICENSE")
+        DepthaiVerifyDownloadedLicense(
+            "${folder}/${device_type}-fwp-${_version_commit_identifier}-LICENSE"
+            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../notices/depthai-device-RVC4-LICENSE"
+        )
+
+        # Download firmware package SBOMs (SPDX and CycloneDX), used by scripts/generate_sbom.py.
+        # Firmware versions from before the SBOMs have none, so a missing SBOM is not an error.
+        # They are not added to the resource list: the library does not embed them.
+        set(_saved_retry_num ${DOWNLOADER_RETRY_NUM})
+        set(DOWNLOADER_RETRY_NUM 1)
+        foreach(_sbom_extension "spdx.json" "cdx.json")
+            set(_sbom_file "${folder}/${device_type}-fwp-${_version_commit_identifier}.${_sbom_extension}")
+            if(EXISTS "${_sbom_file}.unavailable")
+                continue()
+            endif()
+            DownloadAndChecksum(
+                "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.${_sbom_extension}" # File
+                "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.${_sbom_extension}.sha256" # File checksum
+                "${_sbom_file}"
+                status
+            )
+            if(${status})
+                # A failed download can leave a partial file, which the next configure would take as downloaded
+                file(REMOVE "${_sbom_file}")
+                if("${status}" STREQUAL "22")
+                    # HTTP error (not published): do not ask again on the next configure
+                    message(STATUS "No ${device_type}-fwp ${_sbom_extension} SBOM for this firmware version")
+                    file(WRITE "${_sbom_file}.unavailable" "")
+                else()
+                    message(WARNING "Could not download the ${device_type}-fwp ${_sbom_extension} SBOM (status ${status})")
+                endif()
+            endif()
+        endforeach()
+        set(DOWNLOADER_RETRY_NUM ${_saved_retry_num})
+    endif()
 
 
     # Set list of files as output

@@ -22,7 +22,7 @@ bool SpatialLocationCalculator::runOnHost() const {
 
 void SpatialLocationCalculator::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("Start SpatialLocationCalculator");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     bool inputConfigSync = inputConfig.getWaitForMessage();
     if(!calculationConfig) {
@@ -81,9 +81,7 @@ void SpatialLocationCalculator::run() {
 
         auto start = high_resolution_clock::now();
         auto outputSpatial = std::make_shared<SpatialLocationCalculatorData>();
-        outputSpatial->setSequenceNum(imgFrame->getSequenceNum());
-        outputSpatial->setTimestampDevice(imgFrame->getTimestampDevice());
-        outputSpatial->setTimestamp(imgFrame->getTimestamp());
+        outputSpatial->setBufferMetadataFrom(imgFrame);
         if(calculationConfig->getConfigData().size() > 0) {
             utilities::SpatialUtils::computeSpatialData(imgFrame, calculationConfig->getConfigData(), spatialLocations, logger);
             auto stop = high_resolution_clock::now();
@@ -107,9 +105,7 @@ void SpatialLocationCalculator::run() {
                 outputSpatialImgDetections->segmentationMaskHeight = imgDetections->getSegmentationMaskHeight();
             }
 
-            outputSpatialImgDetections->setSequenceNum(imgDetections->getSequenceNum());
-            outputSpatialImgDetections->setTimestampDevice(imgDetections->getTimestampDevice());
-            outputSpatialImgDetections->setTimestamp(imgDetections->getTimestamp());
+            outputSpatialImgDetections->setBufferMetadataFrom(imgDetections);
             outputSpatialImgDetections->transformation = imgDetections->transformation;
         }
 
@@ -122,11 +118,7 @@ void SpatialLocationCalculator::run() {
             passthroughDepth.send(imgFrame);
         }
         auto tAbsoluteEnd = steady_clock::now();
-        logger->debug("SpatialLocationCalculator total took {} ms, processing {} ms, getting_frames {} ms, sending_frames {} ms",
-                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+        this->logTiming(logger, tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }
 }
 }  // namespace node

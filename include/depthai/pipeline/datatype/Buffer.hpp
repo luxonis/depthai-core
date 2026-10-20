@@ -1,11 +1,13 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <unordered_map>
 #include <variant>
 #include <vector>
 
 #include "depthai/common/Timestamp.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -61,6 +63,12 @@ class Buffer : public ADatatype {
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
 
     /**
+     * Retrieves timestamp directly captured from device's system clock,
+     * that can be synchronized using PTP
+     */
+    std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> getTimestampSystem() const;
+
+    /**
      * Sets image timestamp related to dai::Clock::now()
      */
     void setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
@@ -69,6 +77,11 @@ class Buffer : public ADatatype {
      * Sets image timestamp related to dai::Clock::now()
      */
     void setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets optional system_clock timestamp (device system clock; may be PTP-synchronized).
+     */
+    void setTimestampSystem(std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> timestamp);
 
     /**
      * Retrieves image sequence number
@@ -80,6 +93,16 @@ class Buffer : public ADatatype {
      */
     void setSequenceNum(int64_t sequenceNum);
 
+    /**
+     * Copies all metadata from another buffer
+     */
+    void setBufferMetadataFrom(const Buffer* other);
+
+    /**
+     * Copies all metadata from another buffer
+     */
+    void setBufferMetadataFrom(const std::shared_ptr<Buffer>& other);
+
     virtual span<const uint8_t> getRecordData() const;
 
     /**
@@ -89,10 +112,12 @@ class Buffer : public ADatatype {
     virtual dai::VisualizeType getVisualizationMessage() const;
 
     // TODO(Morato) // Make this private
-    int64_t sequenceNum = 0;  // increments for each message
-    Timestamp ts = {};        // generation timestamp, synced to host time
-    Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
-    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice);
+    int64_t sequenceNum = 0;            // increments for each message
+    Timestamp ts = {};                  // generation timestamp, synced to host time
+    Timestamp tsDevice = {};            // generation timestamp, direct device monotonic clock
+    std::optional<Timestamp> tsSystem;  // generation timestamp, direct device system clock
+
+    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem);
 };
 
 }  // namespace dai

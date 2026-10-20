@@ -2,7 +2,7 @@
 namespace dai {
 namespace node {
 
-void Warp::setOutputSize(std::tuple<int, int> size) {
+void Warp::setOutputSize(const std::tuple<int, int>& size) {
     properties.outputWidth = std::get<0>(size);
     properties.outputHeight = std::get<1>(size);
 }
@@ -35,7 +35,7 @@ void Warp::setWarpMesh(const float* meshData, int numMeshPoints, int width, int 
     size_t meshSize = meshStride * height;
 
     // Create mesh data
-    asset.data = std::vector<uint8_t>(meshSize);
+    asset.setData(std::vector<uint8_t>(meshSize));
 
     // Fill out mesh points with stride
     for(int i = 0; i < height; i++) {
@@ -45,7 +45,7 @@ void Warp::setWarpMesh(const float* meshData, int numMeshPoints, int width, int 
 
             // get output offset
             size_t outputMeshOffset = (meshStride * i) + (j * sizeof(float) * 2);
-            auto& point = reinterpret_cast<std::pair<float, float>&>(asset.data.data()[outputMeshOffset]);
+            auto& point = reinterpret_cast<std::pair<float, float>&>(asset.getData().data()[outputMeshOffset]);
 
             // Asign reversed mesh coordinates (HW specified)
             point.first = meshData[inputMeshIndex + 1];
@@ -72,7 +72,7 @@ void Warp::setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int
     setWarpMesh(reinterpret_cast<const float*>(meshData.data()), static_cast<int>(meshData.size()), width, height);
 }
 
-void Warp::setHwIds(std::vector<int> ids) {
+void Warp::setHwIds(const std::vector<int>& ids) {
     properties.warpHwIds = ids;
 }
 

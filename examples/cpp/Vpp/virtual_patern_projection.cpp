@@ -12,40 +12,6 @@
   └───────┘      └───────────────┘ --right_low_res--> └──────────────┘ --confidence--> └─────┘
 **/
 
-// Nicely visualize a depth map.
-// The input depthFrameIn is assumed to be the raw disparity (CV_16UC1 or similar)
-// received from the DepthAI pipeline.
-void showDepth(const cv::Mat& depthFrameIn,
-               const std::string& windowName = "Depth",
-               int minDistance = 500,
-               int maxDistance = 5000,
-               int colorMap = cv::COLORMAP_TURBO,
-               bool useLog = false) {
-    cv::Mat depthFrame = depthFrameIn.clone();
-
-    cv::Mat floatFrame;
-    depthFrame.convertTo(floatFrame, CV_32FC1);
-
-    // Optionally apply log scaling
-    if(useLog) {
-        cv::log(floatFrame + 1, floatFrame);
-    }
-
-    cv::Mat upperClamped;
-    cv::min(floatFrame, maxDistance, upperClamped);
-
-    cv::Mat clippedFrame;
-    cv::max(upperClamped, minDistance, clippedFrame);
-
-    double alpha = 255.0 / maxDistance;
-    clippedFrame.convertTo(clippedFrame, CV_8U, alpha);
-
-    cv::Mat depthColor;
-    cv::applyColorMap(clippedFrame, depthColor, colorMap);
-
-    cv::imshow(windowName, depthColor);
-}
-
 int main() {
     int fps = 20;
     dai::Pipeline pipeline;
@@ -108,7 +74,7 @@ int main() {
         cv::imshow("vppLeft", vppLeftFrame->getCvFrame());
         cv::imshow("vppRight", vppRightFrame->getCvFrame());
 
-        showDepth(depthFrame->getCvFrame());
+        cv::imshow("Depth", dai::utility::colorizeDepthFrame(*depthFrame, 500.0f, 12000.0f, cv::COLORMAP_TURBO, true).getCvFrame());
 
         if(cv::waitKey(1) == 'q') {
             break;

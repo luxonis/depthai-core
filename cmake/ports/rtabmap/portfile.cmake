@@ -13,6 +13,7 @@ vcpkg_from_github(
         gklib.patch
         lz4.patch
         ceres_typo.patch
+        orb-octree-source.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
@@ -60,7 +61,7 @@ vcpkg_cmake_configure(
         -DWITH_OKVIS=OFF
         -DWITH_OPENCHISEL=OFF
         -DWITH_OPENVINS=OFF
-        -DWITH_ORB_OCTREE=ON   # GPLv3
+        -DWITH_ORB_OCTREE=OFF  # GPLv3
         -DWITH_ORB_SLAM=OFF
         -DWITH_PDAL=OFF
         -DWITH_POINTMATCHER=OFF
@@ -124,8 +125,9 @@ endif()
 
 vcpkg_install_copyright(
     COMMENT [[
-The RTAB-Map main license is BSD-3-Clause, but some parts of the
-source code are under other licenses possibly including GPL-3.0-only.
+The RTAB-Map main license is BSD-3-Clause. This build disables ORB
+OcTree support and does not compile the GPL-3.0-only ORB extractor
+implementation.
 ]]
     FILE_LIST "${SOURCE_PATH}/LICENSE" 
 )

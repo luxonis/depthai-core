@@ -37,7 +37,7 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
         .def_readonly("rgbd", &RGBD::rgbd, DOC(dai, node, RGBD, rgbd))
         .def("build", static_cast<std::shared_ptr<RGBD> (RGBD::*)()>(&RGBD::build))
         .def("build",
-             static_cast<std::shared_ptr<RGBD> (RGBD::*)(bool, StereoDepth::PresetMode, std::pair<int, int>, std::optional<float>)>(&RGBD::build),
+             static_cast<std::shared_ptr<RGBD> (RGBD::*)(bool, StereoDepth::PresetMode, const std::pair<int, int>&, std::optional<float>)>(&RGBD::build),
              py::arg("autocreate"),
              py::arg("mode") = StereoDepth::PresetMode::DEFAULT,
              py::arg("size") = std::make_pair(640, 400),
@@ -45,7 +45,7 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, RGBD, build, 2))
         // Build method with DepthSource variant
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const node::DepthSource&, std::pair<int, int>, std::optional<float>>(&RGBD::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, const node::DepthSource&, const std::pair<int, int>&, std::optional<float>>(&RGBD::build),
              py::arg("camera"),
              py::arg("depthSource"),
              py::arg("size") = std::make_pair(640, 400),

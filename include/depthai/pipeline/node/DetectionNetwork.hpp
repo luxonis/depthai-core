@@ -139,7 +139,7 @@ class DetectionNetwork : public DeviceNodeGroup {
      *
      * @param blob Network blob
      */
-    void setBlob(OpenVINO::Blob blob);
+    void setBlob(const OpenVINO::Blob& blob);
 
     /**
      * Same functionality as the setBlobPath(). Load network blob into assets and use once pipeline is started.
@@ -150,7 +150,8 @@ class DetectionNetwork : public DeviceNodeGroup {
     void setBlob(const std::filesystem::path& path);
 
     /**
-     * Load network model into assets.
+     * Load a network model into assets. DLC and other custom model files are loaded lazily and must remain available and unchanged until the
+     * pipeline has been built.
      * @param modelPath Path to the model file.
      */
     void setModelPath(const std::filesystem::path& modelPath);
@@ -183,19 +184,19 @@ class DetectionNetwork : public DeviceNodeGroup {
      * Specifies backend to use
      * @param backend String specifying backend to use
      */
-    void setBackend(std::string backend);
+    void setBackend(const std::string& backend);
 
     /**
      * Set backend properties
      * @param backendProperties backend properties map
      */
-    void setBackendProperties(std::map<std::string, std::string> properties);
+    void setBackendProperties(const std::map<std::string, std::string>& properties);
 
     /**
      * How many inference threads will be used to run the network
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
-    int getNumInferenceThreads();
+    int getNumInferenceThreads() const;
 
     /**
      * Specifies confidence threshold at which to filter the rest of the detections.

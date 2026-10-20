@@ -26,7 +26,7 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     /**
      * Internal transform hook used by transformTo() to apply PointCloudData-specific transformation logic.
      *
-     * Point cloud remapping is currently not implemented here. Use ImageAlign on the source
+     * Point cloud remapping is currently not implemented here. Use Align on the source
      * images before generating the point cloud instead.
      */
     void transformToInternal(const ImgTransformation& target) override;
@@ -44,9 +44,11 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
+    using Buffer::getTimestampSystem;
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
+    using Buffer::tsSystem;
     using Transformable::getTransformation;
     using Transformable::setTransformation;
     using Transformable::transformation;
@@ -221,7 +223,11 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     PointCloudData& setInstanceNum(unsigned int instanceNum);
 
     /**
-     * Retrieves image transformation data
+     * Retrieves image transformation data.
+     *
+     * For PointCloud output, the distortion model and coefficients describe the source image used
+     * to generate the cloud. The 3D points themselves are already compensated for that distortion,
+     * so the distortion fields are informational.
      */
     const ImgTransformation& getTransformation() const;
 
@@ -230,7 +236,7 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
      *
      * Due to efficiency reasons, point cloud remapping is currently not implemented. Point clouds
      * should be generated from already aligned source messages instead of being transformed after
-     * the fact. Use ImageAlign on the source inputs before creating the point cloud.
+     * the fact. Use Align on the source inputs before creating the point cloud.
      *
      * @param target Target image transformation.
      */
@@ -257,6 +263,11 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
      * @returns serialized message
      */
     std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
+
+    /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    void deserializeProto(const std::vector<std::uint8_t>& bytes) override;
 
     /**
      * Serialize schema to proto buffer
@@ -295,7 +306,8 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
         return DatatypeEnum::PointCloudData;
     }
 
-    DEPTHAI_SERIALIZE(PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation, ts, tsDevice, sequenceNum);
+    DEPTHAI_SERIALIZE(
+        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation, ts, tsDevice, tsSystem, sequenceNum);
 };
 
 }  // namespace dai

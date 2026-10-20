@@ -79,9 +79,10 @@ with dai.Pipeline() as pipeline:
             if videoIn is not None:
                 FPSCounters[index].tick()
                 assert isinstance(videoIn, dai.ImgFrame)
-                print(
-                    f"frame {videoIn.getWidth()}x{videoIn.getHeight()} | {videoIn.getSequenceNum()}: exposure={videoIn.getExposureTime()}us, timestamp: {videoIn.getTimestampDevice()}"
-                )
+                if (videoIn.getSequenceNum() % 60) == 0:
+                    print(
+                        f"frame {videoIn.getWidth()}x{videoIn.getHeight()} | {videoIn.getSequenceNum()}: exposure={videoIn.getExposureTime()}us, timestamp: {videoIn.getTimestampDevice()}"
+                    )
                 # Get BGR frame from NV12 encoded video frame to show with opencv
                 # Visualizing the frame on slower hosts might have overhead
                 cvFrame = videoIn.getCvFrame()
