@@ -364,8 +364,8 @@ void PointCloud::Impl::dropGpuBackend(const std::string& reason) {
     computeMethod = ComputeMethod::CPU;
 }
 
-PointCloudGpuBackend::Geometry PointCloud::Impl::gpuGeometry() const {
-    PointCloudGpuBackend::Geometry geometry;
+internal::PointCloudGpuBackend::Geometry PointCloud::Impl::gpuGeometry() const {
+    internal::PointCloudGpuBackend::Geometry geometry;
     geometry.width = width;
     geometry.height = height;
     geometry.depthScale = scaleFactor;
@@ -477,7 +477,7 @@ void PointCloud::Impl::useCPUMT(uint32_t numThreads) {
     computeMethod = ComputeMethod::CPU_MT;
 }
 
-void PointCloud::Impl::useGPU(uint32_t device, std::shared_ptr<PointCloudGpuBackend> backend) {
+void PointCloud::Impl::useGPU(uint32_t device, std::shared_ptr<internal::PointCloudGpuBackend> backend) {
     gpuDistortionFallbackWarned = false;
     gpuBackend = std::move(backend);
     if(gpuBackend) {
@@ -716,7 +716,7 @@ void PointCloud::useGPU(uint32_t device) {
     properties.gpuDevice = device;
 }
 
-std::shared_ptr<PointCloudGpuBackend> PointCloud::createGpuBackend(uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger) {
+std::shared_ptr<internal::PointCloudGpuBackend> PointCloud::createGpuBackend(uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger) {
     (void)gpuDevice;
     (void)logger;
     return nullptr;
@@ -770,12 +770,6 @@ void PointCloud::setTargetCoordinateSystem(const std::string& targetDeviceId, Ho
 void PointCloud::setDeviceCalibration(const std::string& deviceId, const CalibrationHandler& calibration) {
     deviceCalibrations[deviceId] = calibration;
     for(auto& entry : depthStreams) entry.second.initialized = false;
-}
-
-std::string PointCloud::OutputCoordinateSystem::describe() const {
-    std::string description = "device '" + deviceId + "' ";
-    if(housing != HousingCoordinateSystem::AUTO) return description + "housing " + toString(housing);
-    return description + "socket " + std::string(toString(socket));
 }
 
 // ── Depth stream bookkeeping ──
@@ -845,35 +839,29 @@ bool PointCloud::isValidDepthFrame(const ImgFrame& depthFrame) {
 }
 
 bool PointCloud::haveCommonTargetCoordinateSystem(const std::vector<StreamFrames>& frames) {
-    // Every stream is transformed into its own output coordinate system: the one its frame extrinsics
-    // point to, or the configured target resolved for that stream. The merged cloud is only meaningful
-    // when all of those coincide (same device and socket/housing, e.g. the common origin of a
-    // multi-device calibration or an explicit target device). Unknown parts (AUTO sockets) are
-    // treated as compatible, like Extrinsics::hasCompatibleCoordinateSystem.
-    const auto compatible = [](const OutputCoordinateSystem& a, const OutputCoordinateSystem& b) {
-        const bool sameSocket = a.socket == CameraBoardSocket::AUTO || b.socket == CameraBoardSocket::AUTO || a.socket == b.socket;
-        return a.deviceId == b.deviceId && sameSocket && a.housing == b.housing;
-    };
+    // Calibration resolution is handled by MultiDeviceCalibrationHandler. Here only the resolved
+    // target identity matters. All streams use the same config, including the housing target.
+    const auto describe = [](const Extrinsics& target) { return "device '" + target.toDeviceId + "' socket " + std::string(toString(target.toCameraSocket)); };
     const auto& reference = getDepthStream(frames.front().name).outputCoordinateSystem;
     for(size_t i = 1; i < frames.size(); ++i) {
         const auto& other = getDepthStream(frames[i].name).outputCoordinateSystem;
-        if(!compatible(reference, other)) {
+        if(!reference.hasCompatibleCoordinateSystem(other)) {
             if(!coordinateSystemMismatchWarned) {
                 pimpl->logger->warn(
                     "PointCloud: depth stream '{}' is expressed relative to {} while depth stream '{}' is expressed relative to {}. The streams cannot "
                     "be merged until they share a target coordinate system (set a multi-device calibration on the pipeline for depth from several "
                     "devices, or select the target device explicitly with setTargetCoordinateSystem(deviceId, ...)) -- dropping synced groups",
                     frames.front().name,
-                    reference.describe(),
+                    describe(reference),
                     frames[i].name,
-                    other.describe());
+                    describe(other));
                 coordinateSystemMismatchWarned = true;
             }
             return false;
         }
     }
     if(coordinateSystemMismatchWarned) {
-        pimpl->logger->info("PointCloud: depth streams share the target coordinate system {} again", reference.describe());
+        pimpl->logger->info("PointCloud: depth streams share the target coordinate system {} again", describe(reference));
         coordinateSystemMismatchWarned = false;
     }
     return true;
@@ -1034,7 +1022,8 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
     std::optional<std::vector<std::vector<float>>> T_final = std::nullopt;
     std::optional<Extrinsics> targetExtrinsics = std::nullopt;
     // Without a target the points stay in the coordinate system the frame extrinsics point to
-    OutputCoordinateSystem outputCoordinateSystem{frameExtrinsics.toDeviceId, refCamera, HousingCoordinateSystem::AUTO};
+    Extrinsics outputCoordinateSystem = frameExtrinsics;
+    outputCoordinateSystem.toCameraSocket = refCamera;
 
     switch(coordSystemType) {
         case PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET: {
@@ -1048,7 +1037,8 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
             auto T_ref_to_target = matrix::matMul(T_targetRef_to_target, T_ref_to_targetRef);
             T_final = matrix::matMul(T_ref_to_target, T_frame_to_ref);
             targetExtrinsics = Extrinsics(T_ref_to_target, targetCameraSocket, unit);
-            outputCoordinateSystem = {targetDeviceId, targetCameraSocket, HousingCoordinateSystem::AUTO};
+            outputCoordinateSystem.toDeviceId = targetDeviceId;
+            outputCoordinateSystem.toCameraSocket = targetCameraSocket;
             break;
         }
 
@@ -1063,7 +1053,8 @@ void PointCloud::setCoordinateTransformation(DepthStream& stream, const ImgFrame
             auto T_ref_to_housing = matrix::matMul(T_targetRef_to_housing, T_ref_to_targetRef);
             T_final = matrix::matMul(T_ref_to_housing, T_frame_to_ref);
             targetExtrinsics = Extrinsics(T_ref_to_housing, CameraBoardSocket::AUTO, unit);
-            outputCoordinateSystem = {targetDeviceId, CameraBoardSocket::AUTO, targetHousingCS};
+            outputCoordinateSystem.toDeviceId = targetDeviceId;
+            outputCoordinateSystem.toCameraSocket = CameraBoardSocket::AUTO;
             break;
         }
 

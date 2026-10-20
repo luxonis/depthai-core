@@ -281,7 +281,7 @@ void Sync::run() {
     for(const auto& in : inputs) {
         const auto& inputName = in.first.second;
         if(anyConnected && !in.second.isConnected()) {
-            logger->debug("Input '{}' is not linked, leaving it out of the synchronization", inputName);
+            logger->warn("Input '{}' is not linked, leaving it out of the synchronization", inputName);
             continue;
         }
         inputNames.push_back(inputName);

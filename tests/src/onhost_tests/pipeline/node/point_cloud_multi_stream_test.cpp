@@ -557,6 +557,32 @@ TEST_CASE_METHOD(HostPointCloudFixture, "Streams with different reference device
     REQUIRE(outExtrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_B);
 }
 
+TEST_CASE_METHOD(HostPointCloudFixture, "Streams with different reference devices share a housing target", "[PointCloud][Target][MultiDevice]") {
+    pipeline.setMultiDeviceCalibration(makeTwoDeviceGraph(500.f));
+    const auto calibration = makeHousingCalibration({100.f, 0.f, 0.f});
+    pc->setDeviceCalibration("dev0", calibration);
+    pc->setTargetCoordinateSystem("dev0", dai::HousingCoordinateSystem::AUTO);
+    auto depthA = pc->inputDepth.createInputQueue();
+    auto depthB = pc->getDepthInput("dev1").createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    const auto now = std::chrono::steady_clock::now();
+    depthA->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0"), now));
+    depthB->send(makeDepthFrame(makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev1"), now));
+
+    auto cloud = waitForOutput(*outQ);
+    const auto points = cloud->getPoints();
+    REQUIRE(points.size() == 2 * W * H);
+    const auto transform =
+        calibration.getHousingCalibration(dai::CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::AUTO, true, dai::LengthUnit::MILLIMETER);
+    requirePointsClose(points, 0, transform[0][3], transform[1][3], transform[2][3]);
+    requirePointsClose(points, W * H, transform[0][3], transform[1][3], transform[2][3] + 500.f);
+    const auto target = cloud->getTransformation().getExtrinsics();
+    REQUIRE(target.toDeviceId == "dev0");
+    REQUIRE(target.toCameraSocket == dai::CameraBoardSocket::AUTO);
+}
+
 TEST_CASE_METHOD(HostPointCloudFixture, "Cross-device target waits for the multi-device calibration", "[PointCloud][Target][MultiDevice]") {
     pc->setDeviceCalibration("dev1", makeDeviceCalibration({-200.f, 0.f, 0.f}));
     pc->setTargetCoordinateSystem("dev1", dai::CameraBoardSocket::CAM_B);
@@ -682,7 +708,7 @@ TEST_CASE_METHOD(HostPointCloudFixture, "Concurrent streams match the single-str
 namespace {
 
 /// Test backend: reproduces the CPU math on the CPU, counts calls and records what it received
-struct FakeGpuBackend : dai::node::PointCloudGpuBackend {
+struct FakeGpuBackend : dai::node::internal::PointCloudGpuBackend {
     std::atomic<int> denseCalls{0};
     std::atomic<int> coloredCalls{0};
     std::atomic<int> memorySeen{0};
@@ -751,7 +777,7 @@ struct FakeGpuPointCloud : dai::node::PointCloud {
     std::atomic<int> backendRequests{0};
 
    protected:
-    std::shared_ptr<dai::node::PointCloudGpuBackend> createGpuBackend(uint32_t, std::shared_ptr<spdlog::logger>) override {
+    std::shared_ptr<dai::node::internal::PointCloudGpuBackend> createGpuBackend(uint32_t, std::shared_ptr<spdlog::logger>) override {
         ++backendRequests;
         return backend;
     }

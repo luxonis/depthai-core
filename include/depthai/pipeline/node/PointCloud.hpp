@@ -24,6 +24,7 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/pipeline/node/internal/PointCloudGpuBackend.hpp"
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
@@ -37,50 +38,6 @@ class logger;
 
 namespace dai {
 namespace node {
-
-/**
- * Platform specific GPU implementation of the dense deprojection used by the PointCloud node, for example
- * OpenCL on RVC4 devices. A platform node class provides it by overriding PointCloud::createGpuBackend;
- * PointCloud::useGPU then computes through it. Without a backend the built-in Kompute path is used when
- * compiled in, otherwise the node falls back to the CPU.
- */
-class PointCloudGpuBackend {
-   public:
-    /// Inputs of the deprojection that stay constant between frames of the same size, intrinsics and target
-    struct Geometry {
-        unsigned int width = 0;
-        unsigned int height = 0;
-        /// Multiplier from the raw uint16 depth value (millimeters) to the output length unit
-        float depthScale = 1.0f;
-        /// Undistorted normalized ray (x/z, y/z) of every pixel, width*height entries, row-major
-        const Point2f* rays = nullptr;
-        /// Changes whenever the content of `rays` changes, so that a backend can cache the uploaded table
-        std::uint64_t raysVersion = 0;
-        /// Apply `transform` (4x4 row-major, R*p + t) to every valid point (z > 0)
-        bool hasTransform = false;
-        std::array<std::array<float, 4>, 4> transform{};
-    };
-
-    virtual ~PointCloudGpuBackend() = default;
-
-    /**
-     * Deproject a RAW16 depth frame into width*height points: z = depth * depthScale, x = ray.x * z, y = ray.y * z,
-     * invalid depth (0) gives (0, 0, 0); valid points are transformed when `hasTransform` is set.
-     * @param depthMemory Memory object that owns `depthData` when known (allows zero-copy import), may be null
-     * @returns The dense points in memory owned by the backend (for example a mapped GPU buffer), valid until the
-     * next compute call on this backend. The caller copies or compacts them into its own buffers.
-     */
-    virtual const Point3f* computeDense(const Geometry& geometry, const std::uint8_t* depthData, const std::shared_ptr<Memory>& depthMemory) = 0;
-
-    /**
-     * Same as computeDense with the RGB888i color of every pixel copied into the point (alpha = 255).
-     */
-    virtual const Point3fRGBA* computeDenseColored(const Geometry& geometry,
-                                                   const std::uint8_t* depthData,
-                                                   const std::shared_ptr<Memory>& depthMemory,
-                                                   const std::uint8_t* colorData,
-                                                   const std::shared_ptr<Memory>& colorMemory) = 0;
-};
 
 /**
  * @brief PointCloud node. Computes point cloud from depth frames.
@@ -150,7 +107,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
          * Compute through `backend` when given, otherwise through Kompute on GPU `device` when compiled in.
          * Throws when neither is available.
          */
-        void useGPU(uint32_t device, std::shared_ptr<PointCloudGpuBackend> backend = nullptr);
+        void useGPU(uint32_t device, std::shared_ptr<internal::PointCloudGpuBackend> backend = nullptr);
         void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height);
         void setDistortion(CameraModel model, std::vector<float> coefficients);
         void setExtrinsics(const std::vector<std::vector<float>>& transformMatrix);
@@ -211,8 +168,8 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         bool hasExtrinsics = false;
 
         // Platform GPU backend (useGPU)
-        std::shared_ptr<PointCloudGpuBackend> gpuBackend;
-        PointCloudGpuBackend::Geometry gpuGeometry() const;
+        std::shared_ptr<internal::PointCloudGpuBackend> gpuBackend;
+        internal::PointCloudGpuBackend::Geometry gpuGeometry() const;
         // Give up on the backend after a runtime failure and continue on the CPU
         void dropGpuBackend(const std::string& reason);
         uint64_t raysVersion = 0;
@@ -225,10 +182,11 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
+     * @internal
      * Platform GPU backend used by useGPU. Returns null here; a platform node class (the RVC4 firmware)
      * overrides it with its implementation. Called once per depth stream when the node starts.
      */
-    virtual std::shared_ptr<PointCloudGpuBackend> createGpuBackend(uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger);
+    virtual std::shared_ptr<internal::PointCloudGpuBackend> createGpuBackend(uint32_t gpuDevice, std::shared_ptr<::spdlog::logger> logger);
 
    public:
     PointCloud();
@@ -433,14 +391,6 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /// Private input receiving synced MessageGroup from Sync subnode
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
 
-    /// Coordinate system the points of one stream are expressed in after the transformation
-    struct OutputCoordinateSystem {
-        std::string deviceId;
-        CameraBoardSocket socket = CameraBoardSocket::AUTO;
-        HousingCoordinateSystem housing = HousingCoordinateSystem::AUTO;
-        std::string describe() const;
-    };
-
     /// Per depth stream state. The default stream uses pimplPointCloud, additional streams own an Impl configured alike.
     struct DepthStream {
         std::unique_ptr<Impl> impl;
@@ -450,7 +400,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         // Extrinsics to set on the output PointCloudData after coordinate transformation
         std::optional<Extrinsics> targetExtrinsics;
         // Coordinate system of the transformed points (the frame reference unless a target is configured)
-        OutputCoordinateSystem outputCoordinateSystem;
+        Extrinsics outputCoordinateSystem;
         // Scratch buffers reused across frames so that no large allocation (and page faulting) happens per frame
         std::vector<Point3f> points;
         std::vector<Point3fRGBA> coloredPoints;

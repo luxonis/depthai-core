@@ -156,6 +156,8 @@ Rules of the merged output:
   it. On the host it is the Kompute path when compiled in. The compute method is part of the
   node properties, so `useCPU()` / `useCPUMT(n)` / `useGPU()` apply wherever the node runs; a
   device without a GPU logs a warning and falls back to the CPU.
+  `PointCloudGpuBackend` in `dai::node::internal` is an SDK/firmware implementation
+  interface; applications use `useGPU()` and do not implement a backend.
   Measured on an OAK-4-D (RVC4, board revision P10) for a 1280x800 depth frame: the OpenCL
   kernel itself takes 0.6 ms, but the CPU still has to read the 12 MB of points the GPU wrote
   (to compact and emit them), and on this SoC that read is several times slower than reading
