@@ -1,7 +1,9 @@
+#include <algorithm>
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <vector>
 
 #include "depthai/depthai.hpp"
@@ -159,10 +161,142 @@ void runDepthShiftTest(bool runOnHost) {
         }
     }
 }
+template <typename Node>
+void runFourPixelProjectionTest(bool runOnHost) {
+    constexpr int width = 64, height = 64;
+    const std::array<std::array<float, 3>, 3> k = {{{32, 0, 32}, {0, 32, 32}, {0, 0, 1}}};
+    const cv::Matx33d cameraMatrix(32, 0, 32, 0, 32, 32, 0, 0, 1);
+    const std::vector<float> distortion = {0.5f, 0, 0, 0, 0};
+    const std::vector<std::vector<float>> identity = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const dai::Extrinsics targetExtrinsics(identity, {0, 0, 0}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+    const dai::ImgTransformation targetTransformation(width, height, k, dai::CameraModel::Perspective, {}, targetExtrinsics);
+    for(const float baseline : {-70.0f, 70.0f}) {
+        CAPTURE(baseline);
+        const dai::Extrinsics sourceExtrinsics(identity, {baseline, 0, 0}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::ImgTransformation sourceTransformation(width, height, k, dai::CameraModel::Perspective, distortion, sourceExtrinsics);
+        auto input = std::make_shared<dai::ImgFrame>();
+        input->setType(dai::ImgFrame::Type::RAW16);
+        input->setSize(width, height);
+        input->setInstanceNum(static_cast<unsigned int>(dai::CameraBoardSocket::CAM_B));
+        input->setTransformation(sourceTransformation);
+        std::vector<uint8_t> pixels(width * height * 2, 0);
+        const std::array<uint16_t, 4> depths = {1000, 2000, 4000, 8000};
+        size_t marker = 0;
+        for(const int y : {12, 52}) {
+            for(const int x : {12, 52}) {
+                const size_t offset = 2 * (y * width + x);
+                pixels[offset] = static_cast<uint8_t>(depths[marker]);
+                pixels[offset + 1] = static_cast<uint8_t>(depths[marker++] >> 8);
+            }
+        }
+        input->setData(std::move(pixels));
+
+        // Independently deproject the actual depth image; do not use the node's rectification maps.
+        std::vector<cv::Point2d> observed, rays;
+        std::vector<uint16_t> observedDepths;
+        const auto& sourceData = input->getData();
+        for(int y = 0; y < height; ++y) {
+            for(int x = 0; x < width; ++x) {
+                const size_t offset = 2 * (y * width + x);
+                const uint16_t depth = sourceData[offset] | (static_cast<uint16_t>(sourceData[offset + 1]) << 8);
+                if(depth == 0) continue;
+                observed.emplace_back(x, y);
+                observedDepths.push_back(depth);
+            }
+        }
+        REQUIRE(observed.size() == 4);
+        cv::undistortPoints(observed,
+                            rays,
+                            cameraMatrix,
+                            distortion,
+                            cv::noArray(),
+                            cv::noArray(),
+                            cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 100, 1e-12));
+        std::vector<cv::Point3d> points;
+        for(size_t i = 0; i < rays.size(); ++i) {
+            points.emplace_back(rays[i].x * observedDepths[i], rays[i].y * observedDepths[i], observedDepths[i]);
+        }
+        std::vector<cv::Point2d> projected;
+        cv::projectPoints(points, cv::Vec3d(0, 0, 0), cv::Vec3d(baseline, 0, 0), cameraMatrix, cv::noArray(), projected);
+
+        std::vector<uint16_t> expected(width * height, 0);
+        for(size_t i = 0; i < projected.size(); ++i) {
+            const int x = static_cast<int>(std::lround(projected[i].x));
+            const int y = static_cast<int>(std::lround(projected[i].y));
+            REQUIRE(x > 0);
+            REQUIRE(x < width - 1);
+            REQUIRE(y >= 0);
+            REQUIRE(y < height);
+            expected[y * width + x] = observedDepths[i];
+            // Nonzero integer depth shifts retain the node's existing adjacent-pixel splat.
+            const int sourceX = static_cast<int>(std::lround(32 * rays[i].x + 32));
+            if(x != sourceX) expected[y * width + x + (baseline > 0 ? 1 : -1)] = observedDepths[i];
+        }
+
+        dai::Pipeline pipeline(!runOnHost);
+        auto align = pipeline.create<Node>();
+        align->setRunOnHost(runOnHost);
+        auto inputQueue = align->input.createInputQueue();
+        auto targetQueue = align->inputAlignTo.createInputQueue();
+        std::shared_ptr<dai::MessageQueue> outputQueue = align->outputAligned.createOutputQueue();
+        auto target = std::make_shared<dai::ImgFrame>();
+        target->setType(dai::ImgFrame::Type::GRAY8);
+        target->setSize(width, height);
+        target->setInstanceNum(static_cast<unsigned int>(dai::CameraBoardSocket::CAM_A));
+        target->setTransformation(targetTransformation);
+        target->setData(std::vector<uint8_t>(width * height));
+        pipeline.start();
+        targetQueue->send(target);
+        inputQueue->send(input);
+        bool timedOut = false;
+        auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(10), timedOut);
+        pipeline.stop();
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(output != nullptr);
+        REQUIRE(output->getType() == dai::ImgFrame::Type::RAW16);
+        REQUIRE(output->getWidth() == width);
+        REQUIRE(output->getHeight() == height);
+        const auto data = output->getData();
+        REQUIRE(data.size() == width * height * 2);
+        std::array<double, 4> nearest;
+        nearest.fill(std::numeric_limits<double>::infinity());
+        for(int y = 0; y < height; ++y) {
+            for(int x = 0; x < width; ++x) {
+                CAPTURE(x, y);
+                const size_t index = y * width + x;
+                const uint16_t actual = data[2 * index] | (static_cast<uint16_t>(data[2 * index + 1]) << 8);
+                CHECK(actual == expected[index]);
+                for(size_t i = 0; i < projected.size(); ++i) {
+                    if(actual == observedDepths[i]) nearest[i] = std::min(nearest[i], cv::norm(cv::Point2d(x, y) - projected[i]));
+                }
+            }
+        }
+        for(size_t i = 0; i < nearest.size(); ++i) {
+            CAPTURE(i, observedDepths[i], projected[i].x, projected[i].y, nearest[i]);
+            CHECK(nearest[i] <= std::sqrt(0.5) + 1e-6);
+        }
+    }
+}
 }  // namespace
 
 TEST_CASE("Test Align preserves rotated depth coverage on host") {
     runRotatedCoverageTest(true);
+}
+
+TEST_CASE("Test Align matches four distorted 3D projections on host") {
+    runFourPixelProjectionTest<dai::node::Align>(true);
+}
+
+TEST_CASE("Test Align matches four distorted 3D projections on device") {
+    runFourPixelProjectionTest<dai::node::Align>(false);
+}
+
+TEST_CASE("Test ImageAlign matches four distorted 3D projections on host") {
+    runFourPixelProjectionTest<dai::node::ImageAlign>(true);
+}
+
+TEST_CASE("Test ImageAlign matches four distorted 3D projections on device") {
+    runFourPixelProjectionTest<dai::node::ImageAlign>(false);
 }
 
 TEST_CASE("Test Align preserves rotated depth coverage on device") {
