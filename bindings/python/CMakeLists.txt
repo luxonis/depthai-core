@@ -108,6 +108,7 @@ set(SOURCE_LIST
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/VideoDecoderBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
+    src/pipeline/node/StitchingBindings.cpp
     src/pipeline/node/AlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
@@ -216,7 +217,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/RFDETRParserBindings.cpp
         src/beta/node/SCRFDParserBindings.cpp
         src/beta/node/SuperAnimalParserBindings.cpp
-        src/beta/node/StitchingBindings.cpp
         src/beta/node/ToFStereoFusionBindings.cpp
         src/beta/node/XFeatMonoParserBindings.cpp
         src/beta/node/XFeatStereoParserBindings.cpp
