@@ -6,10 +6,9 @@
 #include <opencv2/stitching/detail/motion_estimators.hpp>
 #include <vector>
 
-#include "depthai/beta/node/Stitching.hpp"
+#include "depthai/pipeline/node/Stitching.hpp"
 
 namespace dai {
-namespace beta {
 namespace utilities {
 
 using node::Stitching;
@@ -75,5 +74,4 @@ class FixedPanoramaCompositor {
 };
 
 }  // namespace utilities
-}  // namespace beta
 }  // namespace dai

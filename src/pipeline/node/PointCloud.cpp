@@ -1259,7 +1259,8 @@ void PointCloud::run() {
     for(auto& entry : depthStreams) {
         if(entry.second.impl) applyComputeSettings(*entry.second.impl);
     }
-    pimpl->logger->info("PointCloud node started");
+    auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     // EEPROM id of the device this node runs on (falls back to the pipeline default device when the node has none),
     // so calibration changes are tracked on the node's own device rather than the master's.
@@ -1273,6 +1274,7 @@ void PointCloud::run() {
             continue;
         }
 
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         // Get synced frames from MessageGroup
         std::shared_ptr<MessageGroup> group;
         {
@@ -1295,6 +1297,7 @@ void PointCloud::run() {
             latestConfig = newConfig;
             for(auto& entry : depthStreams) entry.second.initialized = false;
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // Read organized mode from config
         const bool organized = latestConfig->getOrganized();
@@ -1432,6 +1435,7 @@ void PointCloud::run() {
 
         pc->updateBoundingBox();
 
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             outputPointCloud.send(pc);
@@ -1442,6 +1446,8 @@ void PointCloud::run() {
                 }
             }
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

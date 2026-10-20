@@ -1,4 +1,4 @@
-#include "depthai/beta/node/Stitching.hpp"
+#include "depthai/pipeline/node/Stitching.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_HAVE_OPENCV_STITCHING)
 
@@ -15,17 +15,16 @@
     #include <string>
     #include <utility>
 
-    #include "beta/utilities/Stitching/FixedPanoramaCompositor.hpp"
-    #include "beta/utilities/Stitching/PlanarStitcher.hpp"
-    #include "beta/utilities/Stitching/StitchingCompositing.hpp"
     #include "depthai/pipeline/datatype/ImgFrame.hpp"
     #include "depthai/pipeline/datatype/MessageGroup.hpp"
     #include "depthai/utility/matrixOps.hpp"
     #include "pipeline/ThreadedNodeImpl.hpp"
+    #include "pipeline/utilities/Stitching/FixedPanoramaCompositor.hpp"
+    #include "pipeline/utilities/Stitching/PlanarStitcher.hpp"
+    #include "pipeline/utilities/Stitching/StitchingCompositing.hpp"
     #include "utility/ErrorMacros.hpp"
 
 namespace dai {
-namespace beta {
 namespace node {
 
 using utilities::FixedPanoramaCompositor;
@@ -229,6 +228,7 @@ class Stitching::Impl {
     cv::Ptr<ScoringFeaturesMatcher> scoringMatcher;
     std::optional<RegistrationCandidate> bestCandidate;
     uint32_t candidatesEvaluated = 0;
+    bool registrationWarningEmitted = false;
     bool transformFixed = false;
     FixedPanoramaCompositor fixedPanorama;
     std::vector<ImgTransformation> fixedPanoramaTransformations;
@@ -248,6 +248,7 @@ class Stitching::Impl {
         scoringMatcher.release();
         bestCandidate.reset();
         candidatesEvaluated = 0;
+        registrationWarningEmitted = false;
         transformFixed = false;
         fixedPanorama.reset();
         fixedPanoramaTransformations.clear();
@@ -621,6 +622,16 @@ void Stitching::run() {
         cv::Mat pano;
         ImgTransformation view;
         cv::Stitcher::Status status = cv::Stitcher::OK;
+        bool usedAllInputs = true;
+        const auto recordRegistrationFailure = [&](const std::string& reason) {
+            if(logger && !impl->registrationWarningEmitted) {
+                impl->registrationWarningEmitted = true;
+                logger->warn(
+                    "Panorama stitching could not register all inputs from image content (reason: {}). Ensure neighboring views overlap and contain distinct "
+                    "visual features. For calibrated fixed cameras, request undistorted outputs and call setUseInputCalibration(true).",
+                    reason);
+            }
+        };
         // referenceInput is the index of the input the panorama is expressed through, the first contributing one
         const auto composePanorama = [&](const std::vector<cv::Mat>& contributing, size_t referenceInput) -> std::optional<cv::Stitcher::Status> {
             const auto geometry = impl->estimatedPanoramaGeometry(contributing, currentProperties);
@@ -651,6 +662,10 @@ void Stitching::run() {
                 const auto component = impl->stitcher->component();
                 if(component.size() == contributing.size()) return composePanorama(contributing, contributingInputs.front());
                 if(logger) logger->debug("Stitching used {} of {} inputs, the rest did not match confidently", component.size(), contributing.size());
+                if(usedAllInputs) {
+                    recordRegistrationFailure("some inputs did not match confidently");
+                    usedAllInputs = false;
+                }
 
                 std::vector<cv::Mat> matched;
                 std::vector<size_t> matchedInputs;
@@ -682,6 +697,7 @@ void Stitching::run() {
                         if(logger) {
                             logger->debug("Stitching used {} of {} inputs, the rest did not match confidently", component.size(), images.size());
                         }
+                        recordRegistrationFailure("some inputs did not match confidently");
                         continue;
                     }
 
@@ -730,6 +746,9 @@ void Stitching::run() {
         }
 
         if(status != cv::Stitcher::OK || pano.empty()) {
+            if(status != cv::Stitcher::OK) {
+                if(usedAllInputs) recordRegistrationFailure(statusToString(status));
+            }
             if(logger) logger->debug("Stitching failed: {}", statusToString(status));
             continue;
         }
@@ -747,7 +766,6 @@ void Stitching::run() {
 }
 
 }  // namespace node
-}  // namespace beta
 }  // namespace dai
 
 #endif

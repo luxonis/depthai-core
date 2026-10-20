@@ -38,6 +38,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("NEURAL", Depth::Algorithm::NEURAL)
         .value("NEURAL_ASSISTED_STEREO", Depth::Algorithm::NEURAL_ASSISTED_STEREO)
         .value("TOF", Depth::Algorithm::TOF)
+        .value("TOF_STEREO_FUSION", Depth::Algorithm::TOF_STEREO_FUSION)
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
     node.def("getRequestedAlgorithm", &Depth::getRequestedAlgorithm, DOC(dai, node, Depth, getRequestedAlgorithm))

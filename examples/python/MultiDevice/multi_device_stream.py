@@ -3,11 +3,13 @@
 
 The node discovers which device feeds each of its inputs with
 Input.getSourceDevice() (resolved at pipeline build) and composes a mosaic.
+Every tile shows its frame timestamp; the mosaic shows the max diff between the
+newest and the oldest timestamp of the frames shown together.
 It keeps running when a device disappears: the lost device's tile freezes and is
 labeled OFFLINE while the other tiles keep updating (partial operation).
+With --stop-on-device-loss the pipeline stops instead when any device is lost for good.
 """
-import os
-import sys
+import argparse
 import time
 
 import cv2
@@ -34,32 +36,43 @@ class MosaicNode(dai.node.ThreadedHostNode):
             for name, inp in self.inputsByName.items():
                 frame = inp.tryGet()
                 if frame is not None:
-                    latest[name] = frame.getCvFrame()
+                    latest[name] = (frame.getCvFrame(), frame.getTimestamp())
                     anyNew = True
             if not anyNew:
                 time.sleep(0.005)
                 continue
 
             tiles = []
+            liveTimestamps = []
             for name in sorted(latest):
-                tile = latest[name].copy()
+                image, timestamp = latest[name]
+                tile = image.copy()
                 device = sources.get(name)
-                label = name
-                # The device reports its own state; asking the pipeline from a node thread is avoided
+                label = f"{name}  {timestamp.total_seconds():.3f} s"
                 if device is not None and device.getDeviceState() != dai.DeviceState.RUNNING:
                     label += " [OFFLINE]"
                     tile = cv2.cvtColor(cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
-                cv2.putText(tile, label, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 127, 255), 2, cv2.LINE_AA)
+                else:
+                    liveTimestamps.append(timestamp)
+                cv2.putText(tile, label, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 127, 255), 2, cv2.LINE_AA)
                 tiles.append(tile)
 
             mosaic = cv2.hconcat(tiles)
+            if len(liveTimestamps) >= 2:
+                diffMs = (max(liveTimestamps) - min(liveTimestamps)).total_seconds() * 1e3
+                cv2.putText(mosaic, f"max diff = {diffMs:.2f} ms", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
             outFrame = dai.ImgFrame()
             outFrame.setCvFrame(mosaic, dai.ImgFrame.Type.BGR888i)
             self.output.send(outFrame)
 
 
-if len(sys.argv) >= 2:
-    deviceInfos = [dai.DeviceInfo(arg) for arg in sys.argv[1:]]
+parser = argparse.ArgumentParser()
+parser.add_argument("devices", nargs="*", help="Device ids or IPs (default: all available devices)")
+parser.add_argument("--stop-on-device-loss", action="store_true", help="Stop the pipeline when any device is lost for good")
+args = parser.parse_args()
+
+if args.devices:
+    deviceInfos = [dai.DeviceInfo(arg) for arg in args.devices]
 else:
     deviceInfos = dai.Device.getAllAvailableDevices()
 if len(deviceInfos) < 2:
@@ -67,24 +80,27 @@ if len(deviceInfos) < 2:
     raise SystemExit(0)
 
 with dai.Pipeline(False) as pipeline:
+    # Off by default (partial operation)
+    pipeline.setStopOnDeviceLoss(args.stop_on_device_loss)
     mosaic = pipeline.create(MosaicNode)
 
     for info in deviceInfos:
         device = pipeline.addDevice(info)
         camera = pipeline.create(dai.node.Camera, device).build(dai.CameraBoardSocket.CAM_A)
-        camera.requestOutput((640, 400)).link(mosaic.addStream(device.getDeviceId()))
+        camera.requestOutput((1280, 800)).link(mosaic.addStream(device.getDeviceId()))
 
     queue = mosaic.output.createOutputQueue()
     pipeline.start()
 
-    display = bool(os.environ.get("DISPLAY"))
     while pipeline.isRunning():
-        frame = queue.get()
+        try:
+            frame = queue.get()
+        except dai.MessageQueue.QueueException:
+            # The pipeline stopped itself after a device loss
+            print("Pipeline stopped - a device was lost")
+            break
         if frame is None:
             continue
-        if display:
-            cv2.imshow("multi_device_host_node", frame.getCvFrame())
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
-        else:
-            print(f"Mosaic frame {frame.getWidth()}x{frame.getHeight()}")
+        cv2.imshow("multi_device_stream", frame.getCvFrame())
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break

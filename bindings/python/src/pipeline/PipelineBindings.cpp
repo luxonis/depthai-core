@@ -435,6 +435,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getDevices", &Pipeline::getDevices, DOC(dai, Pipeline, getDevices))
         .def("getDeviceState", &Pipeline::getDeviceState, py::arg("device"), DOC(dai, Pipeline, getDeviceState))
         .def("setDeviceStateCallback", &Pipeline::setDeviceStateCallback, py::arg("callback"), DOC(dai, Pipeline, setDeviceStateCallback))
+        .def("setStopOnDeviceLoss", &Pipeline::setStopOnDeviceLoss, py::arg("stop"), DOC(dai, Pipeline, setStopOnDeviceLoss))
+        .def("getStopOnDeviceLoss", &Pipeline::getStopOnDeviceLoss, DOC(dai, Pipeline, getStopOnDeviceLoss))
         // 'Template' create function
         .def(
             "add",

@@ -1220,6 +1220,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getSupportedDeviceModels();
             },
             DOC(dai, DeviceBase, getSupportedDeviceModels))
+        .def("getProtocol", &DeviceBase::getProtocol, DOC(dai, DeviceBase, getProtocol))
         .def("getPlatform", &DeviceBase::getPlatform, DOC(dai, DeviceBase, getPlatform))
         .def("getPlatformAsString", &DeviceBase::getPlatformAsString, DOC(dai, DeviceBase, getPlatformAsString));
 
