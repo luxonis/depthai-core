@@ -35,7 +35,7 @@ RESULT_RE = re.compile(
 )
 TESTSUITE_RE = re.compile(
     # print(f"Running tests for configuration: linux_rvc2_test / RVC2 - POE, on platform: RVC4, on protocol: POE, with labels: {labels if labels is not None else ""}")
-    r"^(Running tests for configuration: )(?P<name>.+?), on platform: (?P<platform>.+?), on protocol: (?P<protocol>.+?), with labels: (?P<labels>.+?)$"
+    r"^(Running tests for configuration: )(?P<name>.+?), on platform: (?P<platform>.+?), on protocol: (?P<protocol>.+?), with labels:\s*(?P<labels>.*)$"
 )
 TESTBED_RE = re.compile(
     # [INFO] Using testbed: slo304-4d
@@ -95,7 +95,7 @@ def parse_log(log_path: Path):
         if num not in failures[config]:
             failures[config][num] = (name, cause)
         else:
-            prev_name, prev_cause = failures[config][num]
+            _, prev_cause = failures[config][num]
             if not prev_cause and cause:
                 failures[config][num] = (name, cause)
 
@@ -118,6 +118,7 @@ def parse_log(log_path: Path):
             if description_match:
                 config = description_match.group("name").strip()
                 ensure_config(config)
+                descriptions[config]["name"] = config
                 descriptions[config]["DEPTHAI_PLATFORM"] = description_match.group("platform").strip()
                 descriptions[config]["DEPTHAI_PROTOCOL"] = description_match.group("protocol").strip()
                 descriptions[config]["labels"] = description_match.group("labels").strip()
@@ -273,8 +274,10 @@ def write_junit(
         parsed_unfinished = unfinished.get(config, OrderedDict())
         finished_count = len(parsed_passes) + len(parsed_skips) + len(parsed_failures) - len(parsed_unfinished)
 
-        # No ctest summary although tests ran: the run was cancelled or crashed, report it as a failure
-        incomplete = summary is None and (finished_count > 0 or len(parsed_unfinished) > 0)
+        # An announced configuration can crash before any tests start.
+        incomplete = summary is None and (
+            description["name"] != "null" or finished_count > 0 or len(parsed_unfinished) > 0
+        )
         written_failures = len(parsed_failures) + (1 if incomplete else 0)
 
         # Counts come from the per-test result lines; ctest's own "passed" count includes skipped tests

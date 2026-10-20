@@ -110,7 +110,8 @@ jobs:
  report_mac_test_results:
     name: Report mac test results
     needs: [mac_rvc4_test_usb, mac_rvc4_test]
-    if: always()
+    # Keep crash/failure reports, but exclude incomplete results from cancelled jobs or runs.
+    if: ${{ !cancelled() && !contains(needs.*.result, 'cancelled') }}
     runs-on: ['self-hosted', 'testbed-runner']
     permissions:
       actions: read

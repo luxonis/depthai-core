@@ -98,7 +98,7 @@ def main() -> int:
         if num not in failures[config]:
             failures[config][num] = (name, cause)
         else:
-            prev_name, prev_cause = failures[config][num]
+            _, prev_cause = failures[config][num]
             if not prev_cause and cause:
                 failures[config][num] = (name, cause)
 

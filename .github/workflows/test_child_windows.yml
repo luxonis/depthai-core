@@ -229,7 +229,8 @@ jobs:
   report_windows_test_results:
     name: Report Windows test results
     needs: [run_windows_tests_rvc4, run_windows_tests_rvc4_usb]
-    if: always()
+    # Keep crash/failure reports, but exclude incomplete results from cancelled jobs or runs.
+    if: ${{ !cancelled() && !contains(needs.*.result, 'cancelled') }}
     runs-on: ['self-hosted', 'testbed-runner']
     permissions:
       actions: read
