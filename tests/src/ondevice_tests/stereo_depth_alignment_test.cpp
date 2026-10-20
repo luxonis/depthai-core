@@ -1,3 +1,20 @@
+/**
+ * Device regression coverage for StereoDepth alignment after decimation.
+ *
+ * The RVC2 regression used target intrinsics as source intrinsics and scaled
+ * destination intrinsics to the original stereo resolution when output size
+ * was implicit. With decimation 2, this produced a 2x zoom/crop; with explicit
+ * output size, a requested target principal-point shift could cancel out.
+ *
+ * The synthetic textured stereo pair places two squares at distinct positions
+ * and depths. Assertions use their expected geometry to check depth coverage,
+ * misplaced foreground and centroids on actual device output. Cases cover
+ * decimation 1/2/4, both stereo cameras, implicit/explicit output sizes, targets
+ * at decimated/original resolution and a (+32, +16) target-pixel shift.
+ * RVC2 uses StereoDepth inputAlignTo; RVC4 uses ImageAlign. A separate case
+ * checks native rectified alignment on both platforms. Run with the Catch2
+ * filter [stereo-alignment] and a connected RVC2 or RVC4 device.
+ */
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <chrono>
