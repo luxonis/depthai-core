@@ -17,7 +17,7 @@
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<ImageManipConfig, Py<ImageManipConfig>, Buffer, std::shared_ptr<ImageManipConfig>> imageManipConfig(
+    py::class_<ImageManipConfig, Py<ImageManipConfig>, Buffer, py::smart_holder> imageManipConfig(
         m, "ImageManipConfig", DOC(dai, ImageManipConfig));
     py::enum_<ImageManipConfig::ResizeMode> resizeMode(imageManipConfig, "ResizeMode");
 

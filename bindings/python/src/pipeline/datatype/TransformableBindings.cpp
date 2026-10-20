@@ -8,8 +8,8 @@
 void bind_transformable(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<Transformable, std::shared_ptr<Transformable>> transformable(m, "Transformable", DOC(dai, Transformable));
-    py::class_<TransformableBuffer, Py<TransformableBuffer>, Buffer, Transformable, std::shared_ptr<TransformableBuffer>> transformableBuffer(
+    py::class_<Transformable, py::smart_holder> transformable(m, "Transformable", DOC(dai, Transformable));
+    py::class_<TransformableBuffer, Py<TransformableBuffer>, Buffer, Transformable, py::smart_holder> transformableBuffer(
         m, "TransformableBuffer", DOC(dai, TransformableBuffer));
 
     ///////////////////////////////////////////////////////////////////////

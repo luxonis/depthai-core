@@ -17,7 +17,7 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     namespace py = pybind11;
 
     // CoverageData
-    py::class_<CoverageData, Buffer, std::shared_ptr<CoverageData>>(m, "CoverageData")
+    py::class_<CoverageData, Buffer, py::smart_holder>(m, "CoverageData")
         .def(py::init<>())
         .def_readwrite("coveragePerCellA", &CoverageData::coveragePerCellA)
         .def_readwrite("coveragePerCellB", &CoverageData::coveragePerCellB)
@@ -36,14 +36,14 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("pairwiseRotationDifference", &CalibrationQuality::Data::pairwiseRotationDifference);
 
     // CalibrationQuality
-    py::class_<CalibrationQuality, Buffer, std::shared_ptr<CalibrationQuality>>(m, "CalibrationQuality")
+    py::class_<CalibrationQuality, Buffer, py::smart_holder>(m, "CalibrationQuality")
         .def(py::init<>())
         .def(py::init<CalibrationQuality::Data, std::string>(), "qualityData"_a, "info"_a)
         .def(py::init<std::string>(), "info"_a)
         .def_readwrite("qualityData", &CalibrationQuality::qualityData)  // std::optional<CalibrationQuality::Data>
         .def_readwrite("info", &CalibrationQuality::info);
 
-    py::class_<CalibrationMetrics, Buffer, std::shared_ptr<CalibrationMetrics>>(m, "CalibrationMetrics")
+    py::class_<CalibrationMetrics, Buffer, py::smart_holder>(m, "CalibrationMetrics")
         .def(py::init<>())
         .def_readwrite("calibrationConfidence", &CalibrationMetrics::calibrationConfidence)
         .def_readwrite("dataConfidence", &CalibrationMetrics::dataConfidence);
@@ -57,7 +57,7 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("dataConfidence", &DynamicCalibrationResult::Data::dataConfidence);
 
     // DynamicCalibrationResult
-    py::class_<DynamicCalibrationResult, Buffer, std::shared_ptr<DynamicCalibrationResult>>(m, "DynamicCalibrationResult")
+    py::class_<DynamicCalibrationResult, Buffer, py::smart_holder>(m, "DynamicCalibrationResult")
         .def(py::init<>())
         .def(py::init<DynamicCalibrationResult::Data, std::string>(), "data"_a, "info"_a)
         .def(py::init<std::string>(), "info"_a)

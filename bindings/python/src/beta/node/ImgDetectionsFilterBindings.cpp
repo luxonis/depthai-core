@@ -8,7 +8,7 @@ void bind_beta_imgdetectionsfilter(pybind11::module& m, void* pCallstack) {
     using namespace dai::beta::node;
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::ImgDetectionsFilterConfig, Py<beta::ImgDetectionsFilterConfig>, Buffer, std::shared_ptr<beta::ImgDetectionsFilterConfig>>
+    py::class_<beta::ImgDetectionsFilterConfig, Py<beta::ImgDetectionsFilterConfig>, Buffer, py::smart_holder>
         imgDetectionsFilterConfig(betaModule, "ImgDetectionsFilterConfig");
     py::class_<beta::ImgDetectionsFilterProperties> imgDetectionsFilterProperties(betaModule, "ImgDetectionsFilterProperties");
     auto imgDetectionsFilter = ADD_BETA_NODE_DERIVED(ImgDetectionsFilter, dai::DeviceNode);

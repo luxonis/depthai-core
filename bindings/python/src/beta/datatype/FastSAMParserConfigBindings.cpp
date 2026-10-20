@@ -6,7 +6,7 @@ void bind_beta_fastsamparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::FastSAMParserConfig, Py<beta::FastSAMParserConfig>, Buffer, std::shared_ptr<beta::FastSAMParserConfig>> config(
+    py::class_<beta::FastSAMParserConfig, Py<beta::FastSAMParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "FastSAMParserConfig", DOC(dai, beta, FastSAMParserConfig));
     py::enum_<beta::FastSAMParserConfig::Prompt> prompt(config, "Prompt", DOC(dai, beta, FastSAMParserConfig, Prompt));
 

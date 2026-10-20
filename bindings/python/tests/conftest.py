@@ -6,6 +6,8 @@ Adds docstring and exceptions message sanitizers: ignore Python 2 vs 3 differenc
 """
 
 import contextlib
+import os
+import sys
 import difflib
 import gc
 import re
@@ -15,6 +17,20 @@ import pytest
 
 # Early diagnostic for failed imports
 import depthai_pybind11_tests  # noqa: F401
+
+
+def _check_gil_disabled():
+    if os.environ.get("DEPTHAI_REQUIRE_GIL_DISABLED") == "1":
+        if not hasattr(sys, "_is_gil_enabled") or sys._is_gil_enabled():
+            raise pytest.UsageError("This test run requires a free-threaded Python with the GIL disabled")
+
+
+def pytest_sessionstart(session):
+    _check_gil_disabled()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    _check_gil_disabled()
 
 _unicode_marker = re.compile(r"u(\'[^\']*\')")
 _long_marker = re.compile(r"([0-9])L")

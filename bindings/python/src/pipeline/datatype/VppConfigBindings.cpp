@@ -16,7 +16,7 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
     using namespace pybind11::literals;
 
     // 1. First, define the VppConfig class object so we can attach things to it
-    py::class_<VppConfig, Py<VppConfig>, Buffer, std::shared_ptr<VppConfig>> vppConfig(m, "VppConfig", DOC(dai, VppConfig));
+    py::class_<VppConfig, Py<VppConfig>, Buffer, py::smart_holder> vppConfig(m, "VppConfig", DOC(dai, VppConfig));
 
     // 2. Bind the Enum INSIDE vppConfig instead of m
     py::enum_<VppConfig::PatchColoringType>(vppConfig, "PatchColoringType", DOC(dai, VppConfig, PatchColoringType))

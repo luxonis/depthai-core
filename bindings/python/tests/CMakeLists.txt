@@ -15,6 +15,7 @@ set(PYBIND11_TEST_FILES
     # "dai_path_conversion_test.py" requires device
     "nn_archive_gil_test.py"
     "test_registration_test.py"
+    "freethreading_test.py"
     "nndata_tensor_test.py"
     "pcldata_set_points_test.py"
     "remote_connection_service_test.py"
@@ -47,17 +48,25 @@ string(REPLACE ".cpp" ".py" PYBIND11_PYTEST_FILES "${PYBIND11_TEST_FILES}")
 # Create the binding library at the end
 pybind11_add_module(${TARGET_TEST_MODULE} THIN_LTO ${TARGET_TEST_MODULE}.cpp ${PYBIND11_TEST_FILES})
 
+set(DEPTHAI_PYTEST_COMMAND
+    ${CMAKE_COMMAND} -E env
+    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
+    "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$<TARGET_FILE_DIR:${TARGET_TEST_MODULE}>${SYS_PATH_SEPARATOR}${DEPTHAI_PYTHON_TEST_EXTRA_PATH}${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+    ${ASAN_ENVIRONMENT_VARS}
+    ${DEPTHAI_PYTHON_TEST_ENVIRONMENT}
+    ${PYTHON_EXECUTABLE} -m pytest ${PYBIND11_PYTEST_FILES}
+)
+
+add_test(NAME python_bindings COMMAND ${DEPTHAI_PYTEST_COMMAND})
+set_tests_properties(python_bindings PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+    LABELS "python_unit"
+    TIMEOUT 300
+)
+
 # A single command to compile and run the tests
 add_custom_target(
-    pytest COMMAND
-        ${CMAKE_COMMAND} -E env
-        # PATH (dlls)
-        "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
-        # Python path (to find compiled modules)
-        "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$<TARGET_FILE_DIR:${TARGET_TEST_MODULE}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-        # ASAN in case of sanitizers
-        ${ASAN_ENVIRONMENT_VARS}
-        ${PYTHON_EXECUTABLE} -m pytest ${PYBIND11_PYTEST_FILES}
+    pytest COMMAND ${DEPTHAI_PYTEST_COMMAND}
     DEPENDS
         ${TARGET_TEST_MODULE} # Compiled tests
         ${TARGET_NAME} # DepthAI Python Library

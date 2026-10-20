@@ -18,7 +18,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
 
     // py::class_<RawStereoDepthConfig, RawBuffer, std::shared_ptr<RawStereoDepthConfig>> rawStereoDepthConfig(m, "RawStereoDepthConfig", DOC(dai,
     // RawStereoDepthConfig));
-    py::class_<StereoDepthConfig, Py<StereoDepthConfig>, Buffer, std::shared_ptr<StereoDepthConfig>> stereoDepthConfig(
+    py::class_<StereoDepthConfig, Py<StereoDepthConfig>, Buffer, py::smart_holder> stereoDepthConfig(
         m, "StereoDepthConfig", DOC(dai, StereoDepthConfig));
     py::class_<StereoDepthConfig::ConfidenceMetrics> _ConfidenceMetrics(stereoDepthConfig, "ConfidenceMetrics", DOC(dai, StereoDepthConfig, ConfidenceMetrics));
     py::class_<StereoDepthConfig::AlgorithmControl> algorithmControl(stereoDepthConfig, "AlgorithmControl", DOC(dai, StereoDepthConfig, AlgorithmControl));

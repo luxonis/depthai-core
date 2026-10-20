@@ -14,7 +14,7 @@
 void bind_segmentationparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<SegmentationParserConfig, Py<SegmentationParserConfig>, Buffer, std::shared_ptr<SegmentationParserConfig>> segmentationParserConfig(
+    py::class_<SegmentationParserConfig, Py<SegmentationParserConfig>, Buffer, py::smart_holder> segmentationParserConfig(
         m, "SegmentationParserConfig", DOC(dai, SegmentationParserConfig));
 
     ///////////////////////////////////////////////////////////////////////

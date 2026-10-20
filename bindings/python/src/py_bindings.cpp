@@ -56,7 +56,7 @@ extern "C" void depthai_bindings_init() {}  // to force inclusion
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
 PYBIND11_EMBEDDED_MODULE(depthai, m)
 #else
-PYBIND11_MODULE(depthai, m)
+PYBIND11_MODULE(depthai, m, py::mod_gil_not_used())
 #endif
 {
     dai::utility::Telemetry::setTelemetryUsesPython(true);

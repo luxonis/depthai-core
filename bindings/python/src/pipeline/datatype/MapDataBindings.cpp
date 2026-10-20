@@ -14,7 +14,7 @@
 void bind_mapdata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<MapData, Py<MapData>, Buffer, std::shared_ptr<MapData>> mapData(m, "MapData", DOC(dai, MapData));
+    py::class_<MapData, Py<MapData>, Buffer, py::smart_holder> mapData(m, "MapData", DOC(dai, MapData));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

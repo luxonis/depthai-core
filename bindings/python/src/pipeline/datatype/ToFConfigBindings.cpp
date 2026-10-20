@@ -16,7 +16,7 @@
 void bind_tofconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<ToFConfig, Py<ToFConfig>, Buffer, std::shared_ptr<ToFConfig>> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
+    py::class_<ToFConfig, Py<ToFConfig>, Buffer, py::smart_holder> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
     py::enum_<ToFConfig::Profile> toFConfigProfile(toFConfig, "Profile", DOC(dai, ToFConfig, Profile));
 
     ///////////////////////////////////////////////////////////////////////

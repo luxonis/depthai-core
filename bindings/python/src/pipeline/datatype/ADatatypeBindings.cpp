@@ -14,7 +14,7 @@
 // #include "spdlog/spdlog.h"
 
 namespace dai {
-class PyADataType : public ADatatype {
+class PyADataType : public ADatatype, public py::trampoline_self_life_support {
    public:
     using ADatatype::ADatatype;
 };
@@ -23,7 +23,7 @@ class PyADataType : public ADatatype {
 void bind_adatatype(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<ADatatype, PyADataType, std::shared_ptr<ADatatype>> adatatype(m, "ADatatype", DOC(dai, ADatatype));
+    py::class_<ADatatype, PyADataType, py::smart_holder> adatatype(m, "ADatatype", DOC(dai, ADatatype));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

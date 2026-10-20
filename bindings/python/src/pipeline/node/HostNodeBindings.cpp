@@ -25,7 +25,7 @@ using namespace dai::node;
     throw;
 }
 
-class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode, false> {
+class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode, false>, public py::trampoline_self_life_support {
     std::string nodeName = ThreadedHostNode::NAME;
 
    public:
@@ -52,7 +52,7 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode,
     }
 };
 
-class PyHostNode : public NodeCRTP<HostNode, PyHostNode, false> {
+class PyHostNode : public NodeCRTP<HostNode, PyHostNode, false>, public py::trampoline_self_life_support {
     std::string nodeName = ThreadedHostNode::NAME;
 
    public:
@@ -89,9 +89,9 @@ void setPythonNodeName(ThreadedHostNode& node, std::string name) {
 
 void bind_hostnode(pybind11::module& m, void* pCallstack) {
     // declare upfront
-    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, std::shared_ptr<ThreadedHostNode>>(
+    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, py::smart_holder>(
         daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
-    auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, std::shared_ptr<HostNode>>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
+    auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, py::smart_holder>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

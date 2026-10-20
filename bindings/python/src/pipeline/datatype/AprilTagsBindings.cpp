@@ -17,7 +17,7 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<AprilTag> aprilTag(m, "AprilTag", DOC(dai, AprilTag));
-    py::class_<AprilTags, Py<AprilTags>, Buffer, Transformable, std::shared_ptr<AprilTags>> aprilTags(m, "AprilTags", DOC(dai, AprilTags));
+    py::class_<AprilTags, Py<AprilTags>, Buffer, Transformable, py::smart_holder> aprilTags(m, "AprilTags", DOC(dai, AprilTags));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

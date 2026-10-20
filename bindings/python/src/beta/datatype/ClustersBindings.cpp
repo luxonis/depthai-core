@@ -10,7 +10,7 @@ void bind_beta_clusters(pybind11::module& m, void* pCallstack) {
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
     py::class_<beta::Cluster> cluster(betaModule, "Cluster", DOC(dai, beta, Cluster));
-    py::class_<beta::Clusters, Py<beta::Clusters>, Buffer, Transformable, std::shared_ptr<beta::Clusters>> clusters(
+    py::class_<beta::Clusters, Py<beta::Clusters>, Buffer, Transformable, py::smart_holder> clusters(
         betaModule, "Clusters", DOC(dai, beta, Clusters));
 
     ///////////////////////////////////////////////////////////////////////

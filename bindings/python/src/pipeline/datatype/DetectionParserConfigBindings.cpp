@@ -9,7 +9,7 @@
 void bind_detectionparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<DetectionParserConfig, Py<DetectionParserConfig>, Buffer, std::shared_ptr<DetectionParserConfig>> detectionParserConfig(
+    py::class_<DetectionParserConfig, Py<DetectionParserConfig>, Buffer, py::smart_holder> detectionParserConfig(
         m, "DetectionParserConfig", DOC(dai, DetectionParserConfig));
 
     ///////////////////////////////////////////////////////////////////////

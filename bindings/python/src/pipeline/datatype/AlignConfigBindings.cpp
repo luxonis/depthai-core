@@ -14,7 +14,7 @@
 void bind_alignconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<AlignConfig, Py<AlignConfig>, Buffer, std::shared_ptr<AlignConfig>> alignConfig(m, "AlignConfig", DOC(dai, AlignConfig));
+    py::class_<AlignConfig, Py<AlignConfig>, Buffer, py::smart_holder> alignConfig(m, "AlignConfig", DOC(dai, AlignConfig));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

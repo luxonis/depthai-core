@@ -13,7 +13,7 @@ void bind_beta_multidevicecalibrationcontrol(pybind11::module& m, void* pCallsta
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
     auto control =
-        py::class_<Control, Buffer, std::shared_ptr<Control>>(betaModule, "MultiDeviceCalibrationControl", DOC(dai, beta, MultiDeviceCalibrationControl));
+        py::class_<Control, Buffer, py::smart_holder>(betaModule, "MultiDeviceCalibrationControl", DOC(dai, beta, MultiDeviceCalibrationControl));
     auto commands = py::class_<Commands>(control, "Commands");
     py::class_<Commands::Start>(commands, "Start").def(py::init<>());
     py::class_<Commands::Stop>(commands, "Stop").def(py::init<>());

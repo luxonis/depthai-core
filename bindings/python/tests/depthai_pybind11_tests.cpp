@@ -11,6 +11,9 @@
 
 #include <functional>
 #include <list>
+#include <memory>
+
+#include "depthai/utility/ProtoSerializable.hpp"
 
 /*
 For testing purposes, we define a static global variable here in a function that each individual
@@ -41,8 +44,12 @@ test_initializer::test_initializer(const char *submodule_name, Initializer init)
     });
 }
 
-PYBIND11_MODULE(depthai_pybind11_tests, m) {
+PYBIND11_MODULE(depthai_pybind11_tests, m, py::mod_gil_not_used()) {
     m.doc() = "depthai pybind11 test module";
+
+    m.def("retain_proto_serializable", [](std::shared_ptr<dai::ProtoSerializable> message) {
+        return py::cpp_function([message = std::move(message)]() { return message; });
+    });
 
 #if !defined(NDEBUG)
     m.attr("debug_enabled") = true;
