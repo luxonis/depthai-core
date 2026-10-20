@@ -540,6 +540,10 @@ dai_set_test_labels(bootloader_version_test onhost ci)
 dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
 dai_set_test_labels(bootloader_config_test onhost ci)
 
+# Crash dump serialization test
+dai_add_test(crash_dump_serialization_test src/onhost_tests/crash_dump_serialization_test.cpp)
+dai_set_test_labels(crash_dump_serialization_test onhost ci)
+
 # Environment test
 dai_add_test(env_test src/onhost_tests/utility/env_test.cpp)
 dai_set_test_labels(env_test onhost ci)
