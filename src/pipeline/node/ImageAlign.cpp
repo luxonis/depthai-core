@@ -226,7 +226,7 @@ void ImageAlign::run() {
         }
 
         const float shift = depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0];
-        for(size_t i = 1; i < depthShiftLut.size(); ++i) depthShiftLut[i] = static_cast<int>(shift / static_cast<float>(i) + 0.5f);
+        for(size_t i = 1; i < depthShiftLut.size(); ++i) depthShiftLut[i] = static_cast<int>(std::round(shift / static_cast<float>(i)));
 
         cv::Mat cv_combinedExtrinsics = cv::Mat::eye(4, 4, CV_32F);
         cv_newR.copyTo(cv_combinedExtrinsics(cv::Rect(0, 0, 3, 3)));
