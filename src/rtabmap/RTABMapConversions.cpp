@@ -1,11 +1,94 @@
 #include "RTABMapConversions.hpp"
 
+#include <cmath>
+#include <stdexcept>
+
 #include "common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
+#include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/StereoCameraModel.h"
 #include "rtabmap/core/Transform.h"
 namespace dai {
+
+namespace {
+void validateRectifiedFrame(const ImgFrame& frame) {
+    const auto& transformation = frame.transformation;
+    const auto k = transformation.getIntrinsicMatrix();
+    if(frame.getWidth() == 0 || frame.getHeight() == 0 || transformation.getSize() != std::make_pair(size_t(frame.getWidth()), size_t(frame.getHeight()))) {
+        throw std::invalid_argument("RTABMapSLAM: frame dimensions must match image transformation metadata.");
+    }
+    for(const auto& row : k) {
+        for(const auto value : row) {
+            if(!std::isfinite(value)) throw std::invalid_argument("RTABMapSLAM: non-finite frame intrinsics.");
+        }
+    }
+    if(k[0][0] <= 0 || k[1][1] <= 0 || std::abs(k[0][1]) > 1e-6f || std::abs(k[1][0]) > 1e-6f || std::abs(k[2][0]) > 1e-6f || std::abs(k[2][1]) > 1e-6f
+       || std::abs(k[2][2] - 1) > 1e-6f || (k[0][0] == 1 && k[1][1] == 1 && k[0][2] == 0 && k[1][2] == 0)) {
+        throw std::invalid_argument("RTABMapSLAM: expected calibrated, positive-focal pinhole intrinsics.");
+    }
+    if(transformation.getDistortionModel() != CameraModel::Perspective) {
+        throw std::invalid_argument("RTABMapSLAM: expected rectified perspective images.");
+    }
+    for(const auto value : transformation.getDistortionCoefficients()) {
+        if(!std::isfinite(value) || std::abs(value) > 1e-6f) {
+            throw std::invalid_argument("RTABMapSLAM: input images must already be rectified.");
+        }
+    }
+}
+}  // namespace
+
+rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image,
+                                                const ImgFrame& depth,
+                                                const ImgFrame& reference,
+                                                const rtabmap::Transform& referenceToBase) {
+    validateRectifiedFrame(image);
+    validateRectifiedFrame(depth);
+    const auto k = image.transformation.getIntrinsicMatrix();
+    const auto depthK = depth.transformation.getIntrinsicMatrix();
+    // RTAB-Map supports a lower-resolution depth image covering the same view.
+    const double sx = double(depth.getWidth()) / image.getWidth();
+    const double sy = double(depth.getHeight()) / image.getHeight();
+    if(image.getWidth() % depth.getWidth() != 0 || image.getHeight() % depth.getHeight() != 0 || std::abs(sx - sy) > 1e-6) {
+        throw std::invalid_argument("RTABMapSLAM: depth must have the image's resolution or a uniform integer decimation.");
+    }
+    for(int row = 0; row < 3; ++row) {
+        for(int col = 0; col < 3; ++col) {
+            const double scale = row == 0 ? sx : (row == 1 ? sy : 1.0);
+            if(std::abs(depthK[row][col] - scale * k[row][col]) > 0.01) {
+                throw std::invalid_argument("RTABMapSLAM: depth and rectified image projections do not match. Align depth to the rectified image.");
+            }
+        }
+    }
+    const auto imageExtrinsics = image.transformation.getExtrinsics();
+    const auto depthExtrinsics = depth.transformation.getExtrinsics();
+    const auto referenceExtrinsics = reference.transformation.getExtrinsics();
+    for(const auto& extrinsics : {imageExtrinsics, depthExtrinsics, referenceExtrinsics}) {
+        if(!isConvertibleLengthUnit(extrinsics.lengthUnit)) {
+            throw std::invalid_argument("RTABMapSLAM: frame extrinsics require a known metric length unit.");
+        }
+        if(!extrinsics.hasValidRotationMatrix() || extrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
+            throw std::invalid_argument("RTABMapSLAM: valid frame extrinsics with a named reference camera are required.");
+        }
+        for(const auto value : extrinsics.getTranslationVector(false, LengthUnit::METER)) {
+            if(!std::isfinite(value)) throw std::invalid_argument("RTABMapSLAM: non-finite frame translation.");
+        }
+    }
+    if(!imageExtrinsics.isEqualExtrinsics(depthExtrinsics, 1e-4f)) {
+        throw std::invalid_argument("RTABMapSLAM: depth and rectified image must have the same optical frame.");
+    }
+    // Extrinsics map each optical frame into a common reference. The relative
+    // transform maps rectified-image coordinates into the odometry camera.
+    Transform imageToReference;
+    const auto relative = imageExtrinsics.getExtrinsicsTransformationTo(referenceExtrinsics, false, LengthUnit::METER);
+    for(size_t row = 0; row < 4; ++row) {
+        for(size_t col = 0; col < 4; ++col) {
+            imageToReference.matrix[row][col] = relative[row][col];
+        }
+    }
+    return rtabmap::CameraModel(
+        k[0][0], k[1][1], k[0][2], k[1][2], referenceToBase * getRTABMapTransform(imageToReference), 0.0, cv::Size(image.getWidth(), image.getHeight()));
+}
 
 std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transformRTABMap) {
     auto transform = std::make_shared<TransformData>();

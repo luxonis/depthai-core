@@ -178,6 +178,13 @@ void RTABMapSLAM::setUseFeatures(bool use) {
     }
 }
 
+Node::Input& RTABMapSLAM::getReferenceInput() {
+    auto& reference = inputs["reference"];
+    reference.setBlocking(false);
+    reference.setMaxSize(1);
+    return reference;
+}
+
 void RTABMapSLAM::setPublishGrid(bool publish) {
     pimplRtabmap->setPublishGrid(publish);
 }
@@ -202,14 +209,24 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
         featuresFrame = group->get<dai::TrackedFeatures>(featuresInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
+        const bool useFrameGeometry = inputs.has("reference");
+        rtabmap::CameraModel frameModel;
+        if(useFrameGeometry) {
+            auto reference = group->get<dai::ImgFrame>("reference");
+            if(!reference) throw std::invalid_argument("RTABMapSLAM: reference image is required for frame geometry.");
+            frameModel = getRTABMapFrameCameraModel(*imgFrame, *depthFrame, *reference, pimplRtabmap->localTransform);
+        }
         if(!initialized) {
             auto pipeline = getParentPipeline();
             initialize(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
         } else {
             double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
-            pimplRtabmap->sensorData =
-                rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), pimplRtabmap->model.left(), imgFrame->getSequenceNum(), stamp);
+            pimplRtabmap->sensorData = rtabmap::SensorData(imgFrame->getCvFrame(),
+                                                           depthFrame->getCvFrame(),
+                                                           useFrameGeometry ? frameModel : pimplRtabmap->model.left(),
+                                                           imgFrame->getSequenceNum(),
+                                                           stamp);
             std::vector<cv::KeyPoint> keypoints;
             if(featuresFrame != nullptr) {
                 for(auto& feature : featuresFrame->trackedFeatures) {
@@ -292,10 +309,11 @@ void RTABMapSLAM::run() {
 }
 
 void RTABMapSLAM::initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
-    auto calibHandler = pipeline.getDefaultDevice()->getCalibration();
-    auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
-
-    pimplRtabmap->model = getRTABMapCameraModel(cameraId, width, height, pimplRtabmap->localTransform, alphaScaling, calibHandler);
+    if(!inputs.has("reference")) {
+        auto calibHandler = pipeline.getDefaultDevice()->getCalibration();
+        auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
+        pimplRtabmap->model = getRTABMapCameraModel(cameraId, width, height, pimplRtabmap->localTransform, alphaScaling, calibHandler);
+    }
     if(!databasePath.empty()) {
         pimplRtabmap->rtabmap.init(rtabParams, databasePath);
     } else {

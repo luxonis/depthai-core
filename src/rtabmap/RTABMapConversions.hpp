@@ -2,12 +2,14 @@
 
 #include "common/CameraBoardSocket.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 
 namespace rtabmap {
 class Transform;
 class StereoCameraModel;
+class CameraModel;
 }  // namespace rtabmap
 
 namespace dai {
@@ -15,6 +17,12 @@ namespace dai {
 std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transformRTABMap);
 std::shared_ptr<Odometry> rtabmapToOdometry(rtabmap::Transform transformRTABMap, const Point3d& velocity);
 rtabmap::Transform getRTABMapTransform(const Transform& transform);
+// Build an RGB-D model from the current image geometry, relative to the camera
+// whose pose is supplied on odom. Throws for missing or inconsistent metadata.
+rtabmap::CameraModel getRTABMapFrameCameraModel(const ImgFrame& image,
+                                                const ImgFrame& depth,
+                                                const ImgFrame& reference,
+                                                const rtabmap::Transform& referenceToBase);
 rtabmap::StereoCameraModel getRTABMapCameraModel(CameraBoardSocket cameraId,
                                                  int width,
                                                  int height,

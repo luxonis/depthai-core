@@ -446,6 +446,15 @@ target_link_libraries(telemetry_multi_device_test_child PRIVATE depthai::core Th
 
 ### On-host tests #############################################################
 
+if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    dai_add_test(rtabmap_frame_geometry_test src/onhost_tests/rtabmap_frame_geometry_test.cpp)
+    target_link_libraries(rtabmap_frame_geometry_test PRIVATE rtabmap::core)
+    if(NOT DEPTHAI_MERGED_TARGET)
+        target_link_libraries(rtabmap_frame_geometry_test PRIVATE depthai::rtabmap)
+    endif()
+    dai_set_test_labels(rtabmap_frame_geometry_test onhost ci)
+endif()
+
 # Superblob test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp)

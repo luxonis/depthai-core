@@ -158,6 +158,23 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * Whether to use input features for SLAM. False by default.
      */
     void setUseFeatures(bool use);
+    /**
+     * Enable per-frame camera geometry and return its synchronized reference-image input.
+     *
+     * Link the original camera image whose pose is supplied on odom (for BasaltVIO,
+     * the image supplied on its left input). Only its transformation metadata is used.
+     * rect and depth must be aligned rectified perspective images with valid intrinsics
+     * and extrinsics. Their extrinsics and the reference image's extrinsics must name
+     * the same target camera/device. Missing or inconsistent metadata raises an error.
+     *
+     * setLocalTransform maps reference-camera optical coordinates to the odometry
+     * body's coordinates (optical-to-FLU by default). Rectification rotation and
+     * translation are composed from frame metadata, with translation converted to meters.
+     * setAlphaScaling is ignored in this mode: the frames already define the projection.
+     * Without this input, the legacy calibration-based camera model is retained.
+     * Call before starting the pipeline.
+     */
+    Input& getReferenceInput();
     void setLocalTransform(std::shared_ptr<TransformData> transform);
     std::shared_ptr<TransformData> getLocalTransform();
     /**

@@ -31,12 +31,15 @@ with dai.Pipeline() as p:
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
     stereo.initialConfig.setLeftRightCheckThreshold(10)
-    stereo.setDepthAlign(dai.CameraBoardSocket.CAM_B)
+    stereo.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT)
 
 
     left.requestOutput((width, height)).link(stereo.left)
     right.requestOutput((width, height)).link(stereo.right)
     stereo.syncedLeft.link(odom.left)
+    # Basalt reports the original left camera pose. RTAB-Map uses frame metadata
+    # to project rectified depth and transform it into that camera's coordinates.
+    stereo.syncedLeft.link(slam.getReferenceInput())
     stereo.syncedRight.link(odom.right)
     stereo.depth.link(slam.depth)
     stereo.rectifiedLeft.link(slam.rect)

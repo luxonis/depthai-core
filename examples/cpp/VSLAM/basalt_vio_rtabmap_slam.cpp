@@ -40,6 +40,8 @@ int main() {
     left->requestOutput(std::make_pair(width, height))->link(stereo->left);
     right->requestOutput(std::make_pair(width, height))->link(stereo->right);
     stereo->syncedLeft.link(odom->left);
+    // Use frame geometry relative to the original left camera tracked by Basalt.
+    stereo->syncedLeft.link(slam->getReferenceInput());
     stereo->syncedRight.link(odom->right);
     stereo->depth.link(slam->depth);
     stereo->rectifiedLeft.link(slam->rect);
