@@ -177,8 +177,8 @@ void configureStereo(dai::node::StereoDepth& stereo, int decimation) {
 }
 
 /** Run the real device alignment path, sharing the same scene and pixel oracle on both platforms. */
-void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, bool shifted, bool socketOnly = false) {
-    CAPTURE(decimation, right, explicitSize, fullSize, shifted, socketOnly);
+void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, bool shifted, bool nativeOnly = false) {
+    CAPTURE(decimation, right, explicitSize, fullSize, shifted, nativeOnly);
     dai::Pipeline pipeline;
     const auto platform = pipeline.getDefaultDevice()->getPlatform();
     REQUIRE((platform == dai::Platform::RVC2 || platform == dai::Platform::RVC4));
@@ -199,8 +199,15 @@ void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, 
     auto rightQueue = stereo->right.createInputQueue();
     std::shared_ptr<dai::InputQueue> alignQueue;
     std::shared_ptr<dai::MessageQueue> output;
-    if(socketOnly) {
-        stereo->setDepthAlign(socket);
+    if(nativeOnly) {
+        if(rvc4) {
+            // Match the StereoDepth examples: choose the rectified perspective
+            // with the enum overload on RVC4, rather than the camera-socket API.
+            using DepthAlign = dai::StereoDepthConfig::AlgorithmControl::DepthAlign;
+            stereo->setDepthAlign(right ? DepthAlign::RECTIFIED_RIGHT : DepthAlign::RECTIFIED_LEFT);
+        } else {
+            stereo->setDepthAlign(socket);
+        }
         output = stereo->depth.createOutputQueue();
     } else if(rvc4) {
         // RVC4 aligns depth through ImageAlign. Align from the opposite stereo
@@ -249,7 +256,7 @@ TEST_CASE("StereoDepth aligns synthetic depth squares to target pixels", "[stere
     }
 }
 
-TEST_CASE("StereoDepth socket alignment preserves synthetic depth squares", "[stereo-alignment]") {
+TEST_CASE("StereoDepth native alignment preserves synthetic depth squares", "[stereo-alignment]") {
     const auto decimation = GENERATE(1, 2, 4);
     const auto right = GENERATE(false, true);
     runAlignment(decimation, right, true, false, false, true);
