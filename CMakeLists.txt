@@ -1221,6 +1221,13 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})
 
+    # Resolve bundled shared dependencies beside the installed library.
+    if(APPLE)
+        set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
+    elseif(UNIX)
+        set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
+    endif()
+
     # Add default flags
     add_default_flags(${TARGET_OPENCV_NAME})
 

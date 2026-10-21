@@ -110,7 +110,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install clang-tidy-18 libopencv-dev libudev-dev
+        sudo apt-get install -y clang-tidy-18 libopencv-dev libudev-dev nasm
 
     - name: configure
       run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=/usr/bin/clang-tidy-18
@@ -242,7 +242,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
+        sudo apt-get install -y libopencv-dev libudev-dev libusb-1.0-0-dev nasm
 
     - name: Install dependencies
       if: runner.os == 'Windows'
@@ -319,7 +319,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
+        sudo apt-get install -y libopencv-dev libudev-dev libusb-1.0-0-dev nasm
 
     - name: Install dependencies
       if: runner.os == 'Windows'
