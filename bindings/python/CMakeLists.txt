@@ -476,6 +476,10 @@ if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
             set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0")
         endif()
     endif()
+    # UBSan reports have no stack trace by default
+    if(SANITIZE_UNDEFINED)
+        list(APPEND ASAN_ENVIRONMENT_VARS "UBSAN_OPTIONS=print_stacktrace=1")
+    endif()
     message(STATUS "ASAN environment variables: ${ASAN_ENVIRONMENT_VARS}")
 endif()
 
