@@ -47,6 +47,18 @@ float intersectionArea(const RotatedRect& lhs, const RotatedRect& rhs) {
     return static_cast<float>(std::abs(area) / 2);
 }
 
+// Axis-aligned bounds of mapped points as a RotatedRect at angle 0.
+RotatedRect axisAlignedBounds(const std::vector<std::array<float, 2>>& points) {
+    float minX = std::numeric_limits<float>::infinity(), minY = minX, maxX = -minX, maxY = -minX;
+    for(const auto& point : points) {
+        minX = std::min(minX, point[0]);
+        maxX = std::max(maxX, point[0]);
+        minY = std::min(minY, point[1]);
+        maxY = std::max(maxY, point[1]);
+    }
+    return RotatedRect(Point2f((minX + maxX) / 2, (minY + maxY) / 2, false), Size2f(maxX - minX, maxY - minY, false), 0);
+}
+
 struct Candidate {
     ImgDetection detection;
     RotatedRect box;
@@ -125,8 +137,9 @@ class DetectionRound {
         const bool identity = source.isEqualTransformation(*reference);
         if(!identity) {
             const auto model = reference->getDistortionModel();
+            const bool panorama = model == CameraModel::Cylindrical || model == CameraModel::Equirectangular;
             // Panorama projections curve straight box edges; corners alone can underestimate the bounds and shift their center.
-            const std::size_t edgeSamples = model == CameraModel::Cylindrical || model == CameraModel::Equirectangular ? 16 : 1;
+            const std::size_t edgeSamples = panorama ? 16 : 1;
             const auto corners = candidate.box.getPoints();
             std::vector<std::array<float, 2>> points;
             points.reserve(corners.size() * edgeSamples);
@@ -139,7 +152,11 @@ class DetectionRound {
                     points.push_back({mapped.x, mapped.y});
                 }
             }
-            candidate.box = standardize(getOuterRotatedRect(points));
+            // The bent edges make the minimum-area rectangle tilt by several degrees even for a level camera, most near the image
+            // border, and a normalized RotatedRect stays a rectangle only at angle 0. A panorama keeps the mean camera Y axis
+            // vertical, so its boxes are the axis-aligned bounds of the sampled edges; perspective references keep the box
+            // orientation, which an in-plane camera roll maps exactly.
+            candidate.box = panorama ? axisAlignedBounds(points) : standardize(getOuterRotatedRect(points));
             candidate.box.center.hasNormalized = candidate.box.size.hasNormalized = true;
             candidate.box.center.normalized = candidate.box.size.normalized = false;
         }
