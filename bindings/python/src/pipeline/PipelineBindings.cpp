@@ -518,6 +518,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  p.wait();
              })
         .def("stop", &Pipeline::stop, py::call_guard<py::gil_scoped_release>(), DOC(dai, Pipeline, stop))
+        .def("setCloseDevicesOnStop", &Pipeline::setCloseDevicesOnStop, py::arg("close"), DOC(dai, Pipeline, setCloseDevicesOnStop))
+        .def("getCloseDevicesOnStop", &Pipeline::getCloseDevicesOnStop, DOC(dai, Pipeline, getCloseDevicesOnStop))
         .def("run",
              [](Pipeline& p) {
                  {

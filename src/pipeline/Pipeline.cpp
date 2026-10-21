@@ -1799,6 +1799,11 @@ void PipelineImpl::start() {
             pipelineDevices.push_back(device);
         }
     }
+    if(!closeDevicesOnStop) {
+        for(const auto& device : devices) {
+            device->checkPipelineStopSupport();
+        }
+    }
     // Add pointer to the pipeline to every device before device-side startup, so that
     // device-side telemetry can resolve the pipeline and a disconnect during another
     // device's (slow) startup still finds the pipeline for reconnection.
@@ -2152,6 +2157,14 @@ void PipelineImpl::stop() {
     // is complete, so isRunning()/run() only return once the devices are closed.
     stopping = true;
 
+    // Keep receiving until the device has drained and closed its output streams.
+    if(!closeDevicesOnStop) {
+        for(const auto& node : getAllNodes()) {
+            if(auto input = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node)) input->drainOnStop = true;
+            if(auto output = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node)) output->sendStopMarker = true;
+        }
+    }
+
     // Wake any XLink host node parked waiting for a reconnect - stopping joins the
     // node threads and a parked node would never exit on its own
     disconnectXLinkHosts();
@@ -2192,31 +2205,41 @@ void PipelineImpl::stop() {
     // Close the task queue
     tasks.destruct();
 
-    // Close every device that is part of the pipeline (master, added with addDevice, or
-    // assigned to a node) - a pipeline might be host only and still have a device.
-    // Devices close in parallel - each close waits on its own watchdog/monitor threads.
+    // Stop every device that is part of the pipeline, closing connections by default.
+    // Each device tears down in parallel with the others.
     auto devicesToClose = getDevices();
-    for(const auto& device : getAllAssignedDevices()) {
+    const auto assignedDevices = getAllAssignedDevices();
+    for(const auto& device : assignedDevices) {
         if(std::find(devicesToClose.begin(), devicesToClose.end(), device) == devicesToClose.end()) {
             devicesToClose.push_back(device);
         }
     }
     std::vector<std::thread> closeThreads;
+    const bool closeDevices = closeDevicesOnStop;
     for(const auto& device : devicesToClose) {
-        closeThreads.emplace_back([device]() {
+        const bool hasDevicePipeline = std::find(assignedDevices.begin(), assignedDevices.end(), device) != assignedDevices.end();
+        closeThreads.emplace_back([device, closeDevices, hasDevicePipeline]() {
             // An exception escaping a std::thread terminates the process - one device
             // failing to close must not take the application (or the other devices) down
             try {
-                device->close();
+                if(closeDevices) {
+                    device->close();
+                } else if(hasDevicePipeline && !device->isClosed()) {
+                    device->stopPipeline();
+                }
             } catch(const std::exception& ex) {
-                Logging::getInstance().logger.error("Failed to close device {}: {}", device->getDeviceInfo().getDeviceId(), ex.what());
+                Logging::getInstance().logger.error("Failed to stop device {}: {}", device->getDeviceInfo().getDeviceId(), ex.what());
             } catch(...) {
-                Logging::getInstance().logger.error("Failed to close device {}: unknown exception", device->getDeviceInfo().getDeviceId());
+                Logging::getInstance().logger.error("Failed to stop device {}: unknown exception", device->getDeviceInfo().getDeviceId());
             }
         });
     }
     for(auto& thread : closeThreads) {
         thread.join();
+    }
+
+    for(const auto& node : getAllNodes()) {
+        if(auto input = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node)) input->drainOnStop = false;
     }
 
     running = false;

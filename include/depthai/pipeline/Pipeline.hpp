@@ -264,6 +264,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Off by default: a lost device only idles its streams (permissive mode).
     AtomicBool stopOnDeviceLoss{false};
 
+    AtomicBool closeDevicesOnStop{true};
+
     // Called from a device's monitor thread on state transitions. On FAILED, idles the
     // device's XLink host nodes and stops the pipeline when the device was fatal, the
     // last one alive, or stopOnDeviceLoss is set.
@@ -791,6 +793,25 @@ class Pipeline {
     }
     void stop() {
         impl()->stop();
+    }
+
+    /**
+     * Choose whether stopping this pipeline also closes its device connections.
+     * Must be set before start().
+     * Disabling this requires RVC4 firmware with support for stopping a device pipeline.
+     * Retain a shared pointer to each device outside this pipeline to reuse it in a new Pipeline after stop() and wait().
+     * @param close True to close devices on stop (default); false to keep connections open.
+     */
+    void setCloseDevicesOnStop(bool close) {
+        if(impl()->isRunning()) throw std::runtime_error("Configure device closing before starting the pipeline.");
+        impl()->closeDevicesOnStop = close;
+    }
+
+    /**
+     * @return Whether stop() closes the pipeline's device connections.
+     */
+    bool getCloseDevicesOnStop() const {
+        return impl()->closeDevicesOnStop;
     }
     void processTasks(bool waitForTasks = false, double timeoutSeconds = -1.0) {
         impl()->processTasks(waitForTasks, timeoutSeconds);

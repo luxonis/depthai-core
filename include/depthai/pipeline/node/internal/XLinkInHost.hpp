@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -16,6 +18,8 @@ class XLinkInHostTestable;
 class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
    private:
     friend XLinkInHostTestable;
+    friend class ::dai::PipelineImpl;
+    std::atomic<bool> drainOnStop{false};
     std::shared_ptr<XLinkConnection> conn;
     std::string streamName;
     std::condition_variable isWaitingForReconnect;

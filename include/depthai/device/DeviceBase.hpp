@@ -1301,6 +1301,9 @@ class DeviceBase {
     void init(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
 
    private:
+    void checkPipelineStopSupport();
+    void stopPipeline();
+
     // private functions
     void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();

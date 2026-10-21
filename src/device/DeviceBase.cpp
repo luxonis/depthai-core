@@ -2612,6 +2612,28 @@ bool DeviceBase::startPipeline(const Pipeline& pipeline) {
     return startPipelineImpl(pipeline);
 }
 
+void DeviceBase::checkPipelineStopSupport() {
+    if(getPlatform() != Platform::RVC4) {
+        throw std::runtime_error("Keeping a device open after stopping its pipeline requires RVC4 firmware with pipeline-stop support.");
+    }
+    try {
+        if(pimpl->rpcCallChecked<bool>("isPipelineStopSupported")) return;
+    } catch(const std::exception& ex) {
+        throw std::runtime_error(fmt::format("Keeping devices open requires firmware with pipeline-stop support: {}", ex.what()));
+    }
+    throw std::runtime_error("Keeping devices open requires firmware with pipeline-stop support.");
+}
+
+void DeviceBase::stopPipeline() {
+    try {
+        pimpl->rpcCallCheckedVoid(std::chrono::milliseconds(0), "stopPipeline");
+    } catch(...) {
+        // A failed stop must still unblock the pipeline's stream threads.
+        close();
+        throw;
+    }
+}
+
 bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     // Serialize the pipeline
     PipelineSchema schema;

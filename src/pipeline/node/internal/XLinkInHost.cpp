@@ -146,7 +146,7 @@ void XLinkInHost::run() {
             reconnect = true;
             continue;
         }
-        while(mainLoop()) {
+        while(mainLoop() || drainOnStop.load()) {
             try {
                 // Blocking -- parse packet and gather timing information
                 const auto t1Parse = std::chrono::steady_clock::now();
@@ -168,7 +168,7 @@ void XLinkInHost::run() {
 
                 {
                     auto blockEvent = this->outputBlockEvent();
-                    out.send(msg);
+                    if(!drainOnStop.load()) out.send(msg);
                 }
                 // // Add 'data' to queue
                 // if(!queue.push(msg)) {
@@ -188,10 +188,11 @@ void XLinkInHost::run() {
                 //     }
                 // }
             } catch(const dai::MessageQueue::QueueException& ex) {
+                if(drainOnStop.load()) continue;
                 logger::info("XLinkInHost node stopped - exception: {}", ex.what());
                 break;
             } catch(const std::exception& ex) {
-                if(isRunning()) {
+                if(isRunning() && !drainOnStop.load()) {
                     auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                     logger::error(exceptionMessage);
                     logger::info("Waiting for reconnect (XLINKINHOST)\n");

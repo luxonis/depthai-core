@@ -21,6 +21,7 @@ namespace {
 // loss (the device monitor closes the connection a couple of watchdog periods after one)
 constexpr auto CONNECTION_LOSS_GRACE = std::chrono::seconds(10);
 constexpr auto PARK_POLL_INTERVAL = std::chrono::milliseconds(100);
+constexpr char PIPELINE_STOP_MARKER[] = "DAISTOP";
 }  // namespace
 
 void XLinkOutHost::setStreamName(const std::string& name) {
@@ -185,7 +186,7 @@ void XLinkOutHost::run() {
                     }
                 }
             } catch(const std::exception& ex) {
-                if(isRunning()) {
+                if(isRunning() && !sendStopMarker.load()) {
                     logger::error("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                     logger::info("Waiting for reconnect (XLINKOUTHOST)\n");
                     // Device gone for good: the stream stays idle instead of tearing down the pipeline
@@ -201,6 +202,10 @@ void XLinkOutHost::run() {
                     break;
                 }
             }
+        }
+        if(sendStopMarker.load() && !reconnect) {
+            // The firmware treats this short, non-message packet as end-of-stream.
+            stream.write(PIPELINE_STOP_MARKER, sizeof(PIPELINE_STOP_MARKER));
         }
     }
 }

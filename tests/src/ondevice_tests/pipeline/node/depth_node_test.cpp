@@ -453,6 +453,56 @@ TEST_CASE("Depth: host-only pipeline cannot create node") {
     REQUIRE_THROWS_AS(pipeline.create<node::Depth>(), std::runtime_error);
 }
 
+TEST_CASE("Depth: successive pipelines keep the same device connection", "[keep-device-open]") {
+    const auto device = std::make_shared<Device>();
+    if(device->getPlatform() != Platform::RVC4) {
+        SKIP("Keeping device connections open requires RVC4 firmware.");
+    }
+    const auto methods = node::DepthTestAccess::getSupportedAlgorithms(node::Depth{}, device);
+    if(methods.empty()) {
+        SKIP("No depth method available on this device.");
+    }
+    const auto connection = device->getConnection();
+    const auto second = deviceReportsTofSensor(device) ? node::Depth::Algorithm::TOF : methods.front();
+    std::vector<node::Depth::Algorithm> sequence;
+    bool stopBeforeFirstFrame = false;
+    SECTION("Stereo and ToF") {
+        sequence = {methods.front(), second, methods.front()};
+    }
+    SECTION("Neural and neural-assisted stereo") {
+        const auto neural = node::Depth::Algorithm::NEURAL;
+        const auto assisted = node::Depth::Algorithm::NEURAL_ASSISTED_STEREO;
+        if(std::find(methods.begin(), methods.end(), neural) == methods.end() || std::find(methods.begin(), methods.end(), assisted) == methods.end()) {
+            SKIP("Neural and neural-assisted stereo are not supported on this device.");
+        }
+        sequence = {neural, assisted, neural, assisted, neural};
+        stopBeforeFirstFrame = GENERATE(false, true);
+        CAPTURE(stopBeforeFirstFrame);
+    }
+    for(const auto method : sequence) {
+        {
+            Pipeline pipeline(device);
+            pipeline.setCloseDevicesOnStop(false);
+            const auto depth = pipeline.create<node::Depth>()->build(method, 15.f, std::make_pair(640u, 400u));
+            const auto queue = depth->depth().createOutputQueue(1, false);
+            try {
+                pipeline.start();
+            } catch(const std::runtime_error& ex) {
+                if(std::string(ex.what()).find("Keeping devices open requires firmware") != std::string::npos) {
+                    SKIP("Firmware does not support stopping pipelines while keeping the connection open.");
+                }
+                throw;
+            }
+            if(!stopBeforeFirstFrame) REQUIRE(requireStreamFrame(queue, kDepthFrameTimeout) != nullptr);
+            pipeline.stop();
+            pipeline.wait();
+            REQUIRE_FALSE(device->isPipelineRunning());
+        }
+        REQUIRE_FALSE(device->isClosed());
+        REQUIRE(device->getConnection() == connection);
+    }
+}
+
 TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     Pipeline pipeline;
     (void)requireDefaultDevice(pipeline);

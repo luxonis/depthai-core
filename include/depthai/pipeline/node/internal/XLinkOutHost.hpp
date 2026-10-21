@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -10,6 +12,8 @@ namespace internal {
 
 class XLinkOutHost : public NodeCRTP<ThreadedHostNode, XLinkOutHost> {
    private:
+    friend class ::dai::PipelineImpl;
+    std::atomic<bool> sendStopMarker{false};
     std::shared_ptr<XLinkConnection> conn;
     std::string streamName;
     std::condition_variable isWaitingForReconnect;
