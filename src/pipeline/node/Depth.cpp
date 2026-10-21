@@ -195,6 +195,28 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
     }
 }
 
+// Profile limits validate requested processing settings, not measured runtime throughput.
+void validateRequestedFps(Depth::Algorithm algorithm,
+                          const Depth::Config& config,
+                          std::optional<float> fps,
+                          std::optional<std::pair<uint32_t, uint32_t>> resolution) {
+    if(!fps) return;
+    bool knownProfile = false;
+    bool fits = false;
+    for(const auto& profile : BACKEND_PROFILES) {
+        if(profile.algorithm != algorithm) continue;
+        if(!std::holds_alternative<std::monostate>(config) && profile.config != config) continue;
+        knownProfile = true;
+        if(profile.maxFps >= *fps && (!resolution || (resolution->first <= profile.maxSize.first && resolution->second <= profile.maxSize.second))) {
+            fits = true;
+        }
+    }
+    DAI_CHECK_V(!knownProfile || fits,
+                "Depth: selected {} configuration cannot serve the requested {} FPS at the requested processing size.",
+                algorithmName(algorithm),
+                *fps);
+}
+
 DeviceModelZoo neuralModelFromConfig(const Depth::Config& config) {
     if(const auto* m = std::get_if<DeviceModelZoo>(&config)) {
         return *m;
@@ -592,7 +614,7 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
                                       const std::vector<DeviceModelZoo>& modelFilter,
                                       bool requireFpsAndResolutionMatch) {
     targetFps = targetFpsWithDefault(targetFps);
-    const float requiredFps = targetFps * SELECTION_FPS_SAFETY_MARGIN;
+    const float requiredFps = requireFpsAndResolutionMatch ? targetFps : targetFps * SELECTION_FPS_SAFETY_MARGIN;
 
     // 1. Priority scan honoring the requested FPS and (optional) resolution.
     if(const auto picked = findBackendProfile(
@@ -600,10 +622,9 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
         return {picked->algorithm, picked->config};
     }
 
-    // When the user explicitly pinned both FPS and resolution, do not silently fall back to a
-    // backend that cannot serve them; surface a clear error instead.
+    // Explicit processing constraints must not silently select a slower backend.
     DAI_CHECK_V(!requireFpsAndResolutionMatch,
-                "Depth: no available algorithm can serve the requested resolution {}x{} at {} FPS.",
+                "Depth: no available algorithm can serve the requested processing size {}x{} at {} FPS (0 means automatic size).",
                 resolution.has_value() ? resolution->first : 0,
                 resolution.has_value() ? resolution->second : 0,
                 targetFps);
@@ -636,6 +657,9 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         validateExplicitConfig(
             algorithmOverride_, *configOverride_, supported, algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
         resolved_ = {algorithmOverride_, *configOverride_};
+        if(isRvc4) {
+            validateRequestedFps(resolved_.algorithm, resolved_.config, stereoOutputFps_, sizeOverride_);
+        }
         if(resolved_.algorithm == Algorithm::STEREO && sizeOverride_) {
             validateStereoDepthResolution(sizeOverride_->first, sizeOverride_->second);
         }
@@ -676,9 +700,10 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     const auto& resolution = inputs.resolution;
 
     if(algorithmOverride_ == Algorithm::AUTO) {
-        // Only enforce an exact FPS+resolution match when the user pinned both via build().
-        const bool userPinnedFpsAndResolution = stereoOutputFps_.has_value() && sizeOverride_.has_value();
-        resolved_ = selectBackend(resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution);
+        // Existing camera outputs do not constrain the internal model size. Alignment separately
+        // follows the output passed to setAlignTo(). Keep inferred-size selection for unpinned FPS.
+        const auto processingResolution = stereoOutputFps_ ? sizeOverride_ : resolution;
+        resolved_ = selectBackend(processingResolution, targetFps, supported, supportedModels, stereoOutputFps_.has_value());
         if(resolved_.algorithm == Algorithm::STEREO && resolution) {
             validateStereoDepthResolution(resolution->first, resolution->second);
         }
@@ -706,9 +731,11 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     switch(resolved_.algorithm) {
         case Algorithm::NEURAL:
-            if(const auto model = pickNeuralModel(targetFps * SELECTION_FPS_SAFETY_MARGIN, resolution, supportedModels)) {
+            if(const auto model = pickNeuralModel(stereoOutputFps_ ? targetFps : targetFps * SELECTION_FPS_SAFETY_MARGIN, sizeOverride_, supportedModels)) {
                 resolved_.config = *model;
             } else {
+                DAI_CHECK_V(
+                    !stereoOutputFps_, "Depth: no supported NeuralDepth model can serve the requested {} FPS at the requested processing size.", targetFps);
                 resolved_.config = DEFAULT_NEURAL_DEPTH_MODEL;
             }
             break;
@@ -722,6 +749,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         case Algorithm::AUTO:
             break;
     }
+    validateRequestedFps(resolved_.algorithm, resolved_.config, stereoOutputFps_, sizeOverride_);
 }
 
 Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
@@ -924,6 +952,9 @@ void Depth::buildInternal() {
         }
     }
 
+    if(device->getPlatform() == Platform::RVC4) {
+        validateRequestedFps(active, resolved_.config, stereoOutputFps_, wiredResolution);
+    }
     wireAlignment(active, device);
 
     if(!wiredFps || *wiredFps <= 0.f) {

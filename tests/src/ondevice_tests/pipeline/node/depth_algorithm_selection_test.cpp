@@ -22,8 +22,9 @@ struct DepthTestAccess {
     static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
-                                                                    const std::vector<DeviceModelZoo>& modelFilter = {}) {
-        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, modelFilter);
+                                                                    const std::vector<DeviceModelZoo>& modelFilter = {},
+                                                                    bool strict = false) {
+        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, modelFilter, strict);
         return {selection.algorithm, selection.config};
     }
 };
@@ -213,4 +214,14 @@ TEST_CASE("Depth::selectBackend honors supportedModels filter for NEURAL rows", 
     const auto sel = select(std::make_pair(640u, 400u), 30.f, kAllRvc4Backends, only);
     REQUIRE(sel.algorithm == Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(sel.config) == DeviceModelZoo::NEURAL_DEPTH_480X300);
+}
+
+TEST_CASE("Depth AUTO honors an explicit FPS even without a processing size", "[Depth]") {
+    REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectBackend(std::nullopt, 1000.f, kAllRvc4Backends, {}, true),
+                        Catch::Matchers::ContainsSubstring("no available algorithm"));
+    REQUIRE_THROWS_WITH(dai::node::DepthTestAccess::selectBackend(std::make_pair(1920u, 1440u), 30.f, kAllRvc4Backends, {}, true),
+                        Catch::Matchers::ContainsSubstring("no available algorithm"));
+    const auto selection = dai::node::DepthTestAccess::selectBackend(std::nullopt, 30.f, kAllRvc4Backends, {}, true);
+    REQUIRE(selection.first == Depth::Algorithm::NEURAL);
+    REQUIRE(std::get<DeviceModelZoo>(selection.second) == DeviceModelZoo::NEURAL_DEPTH_576X360);
 }
