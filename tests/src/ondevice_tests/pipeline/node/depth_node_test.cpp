@@ -841,7 +841,19 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO wires NeuralAssistedStereo on RVC4") {
     (void)requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
+    SECTION("default model") {}
+    SECTION("explicit model") {
+        const auto supportedModels = device->getSupportedDeviceModels();
+        const auto model = DeviceModelZoo::NEURAL_DEPTH_576X360;
+        if(std::find(supportedModels.begin(), supportedModels.end(), model) == supportedModels.end()) {
+            SKIP("Device does not report the requested NAS model.");
+        }
+        depth->setConfig(model);
+    }
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+    if(depth->getRequestedConfig()) {
+        REQUIRE(depth->getResolvedConfig() == *depth->getRequestedConfig());
+    }
     requireDepthSingleBackendChild(*depth, "NeuralAssistedStereo");
 }
 

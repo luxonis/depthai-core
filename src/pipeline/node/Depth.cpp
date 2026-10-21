@@ -185,6 +185,12 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
             DAI_CHECK_V(std::holds_alternative<StereoDepth::PresetMode>(config), "Depth config for STEREO must be a StereoDepth::PresetMode.");
             break;
         case Depth::Algorithm::NEURAL_ASSISTED_STEREO:
+            if(const auto* model = std::get_if<DeviceModelZoo>(&config)) {
+                DAI_CHECK_V(isModelSupportedByDevice(*model, supportedModels), "Depth selected NAS neural model is not available on this device.");
+            } else {
+                DAI_CHECK_V(std::holds_alternative<std::monostate>(config), "Depth config for NAS must be a DeviceModelZoo model or empty.");
+            }
+            break;
         case Depth::Algorithm::GPU_STEREO:
         case Depth::Algorithm::TOF:
         case Depth::Algorithm::TOF_STEREO_FUSION:
@@ -201,11 +207,15 @@ void validateRequestedFps(Depth::Algorithm algorithm,
                           std::optional<float> fps,
                           std::optional<std::pair<uint32_t, uint32_t>> resolution) {
     if(!fps) return;
+    const bool nasModel = algorithm == Depth::Algorithm::NEURAL_ASSISTED_STEREO && std::holds_alternative<DeviceModelZoo>(config);
+    if(nasModel) {
+        validateRequestedFps(Depth::Algorithm::NEURAL, config, fps, std::nullopt);
+    }
     bool knownProfile = false;
     bool fits = false;
     for(const auto& profile : BACKEND_PROFILES) {
         if(profile.algorithm != algorithm) continue;
-        if(!std::holds_alternative<std::monostate>(config) && profile.config != config) continue;
+        if(!nasModel && !std::holds_alternative<std::monostate>(config) && profile.config != config) continue;
         knownProfile = true;
         if(profile.maxFps >= *fps && (!resolution || (resolution->first <= profile.maxSize.first && resolution->second <= profile.maxSize.second))) {
             fits = true;
@@ -654,8 +664,12 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     const auto supported = getSupportedAlgorithms(device);
 
     if(configOverride_) {
-        validateExplicitConfig(
-            algorithmOverride_, *configOverride_, supported, algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
+        validateExplicitConfig(algorithmOverride_,
+                               *configOverride_,
+                               supported,
+                               (algorithmOverride_ == Algorithm::NEURAL || algorithmOverride_ == Algorithm::NEURAL_ASSISTED_STEREO)
+                                   ? supportedModels
+                                   : std::vector<DeviceModelZoo>{});
         resolved_ = {algorithmOverride_, *configOverride_};
         if(isRvc4) {
             validateRequestedFps(resolved_.algorithm, resolved_.config, stereoOutputFps_, sizeOverride_);
@@ -897,7 +911,8 @@ void Depth::buildInternal() {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
             const auto stereo = ensureStereoOutputs(pipeline, *stereoPair, sizeOverride_, stereoOutputFps_);
-            nasBackend_->build(*stereo.left, *stereo.right, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
+            const auto* model = std::get_if<DeviceModelZoo>(&resolved_.config);
+            nasBackend_->build(*stereo.left, *stereo.right, model ? *model : DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
 #ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
             depthOut_ = &(*nasBackend_->stereoDepth).depth;
 #else
