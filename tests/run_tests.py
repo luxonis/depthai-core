@@ -26,6 +26,9 @@ class ResultThread(threading.Thread):
             stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
+            # Test output can contain bytes that are not valid UTF-8 (e.g. Catch2 prints
+            # uint8_t image data as raw chars). A strict decode would kill this thread and
+            # abort the whole run, so escape such bytes instead.
             errors="backslashreplace",
         )
 

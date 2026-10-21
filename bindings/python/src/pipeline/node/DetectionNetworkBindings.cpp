@@ -62,7 +62,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, DetectionNetwork, build))
         .def(
             "build",
@@ -84,7 +84,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, DetectionNetwork, build))
         .def(
             "build",
@@ -96,7 +96,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("nnArchive"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, DetectionNetwork, build))
         .def(
             "build",
@@ -108,7 +108,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, DetectionNetwork, build))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
