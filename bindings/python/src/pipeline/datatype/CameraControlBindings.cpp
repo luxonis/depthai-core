@@ -20,8 +20,6 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
     py::class_<CameraControl, Py<CameraControl>, Buffer, std::shared_ptr<CameraControl>> cameraControl(m, "CameraControl", DOC(dai, CameraControl));
     py::class_<CameraControl::ManualExposureParams> manualExposure(cameraControl, "ManualExposureParams", DOC(dai, CameraControl, ManualExposureParams));
     py::class_<CameraControl::RegionParams> region(cameraControl, "RegionParams", DOC(dai, CameraControl, RegionParams));
-    py::class_<CameraControl::StrobeTimings> strobeTimings(cameraControl, "StrobeTimings", DOC(dai, CameraControl, StrobeTimings));
-    py::class_<CameraControl::StrobeConfig> strobeConfig(cameraControl, "StrobeConfig", DOC(dai, CameraControl, StrobeConfig));
     py::enum_<CameraControl::Command> cameraControlCommand(cameraControl, "Command", DOC(dai, CameraControl, Command));
     py::enum_<CameraControl::AutoFocusMode> cameraControlAutoFocusMode(cameraControl, "AutoFocusMode", DOC(dai, CameraControl, AutoFocusMode));
     py::enum_<CameraControl::AutoWhiteBalanceMode> cameraControlAutoWhiteBalanceMode(
@@ -57,16 +55,6 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def_readwrite("width", &CameraControl::RegionParams::width, DOC(dai, CameraControl, RegionParams, width))
         .def_readwrite("height", &CameraControl::RegionParams::height, DOC(dai, CameraControl, RegionParams, height))
         .def_readwrite("priority", &CameraControl::RegionParams::priority, DOC(dai, CameraControl, RegionParams, priority));
-    strobeTimings.def(py::init<>())
-        .def_readwrite(
-            "exposureBeginOffsetUs", &CameraControl::StrobeTimings::exposureBeginOffsetUs, DOC(dai, CameraControl, StrobeTimings, exposureBeginOffsetUs))
-        .def_readwrite("exposureEndOffsetUs", &CameraControl::StrobeTimings::exposureEndOffsetUs, DOC(dai, CameraControl, StrobeTimings, exposureEndOffsetUs))
-        .def_readwrite("durationUs", &CameraControl::StrobeTimings::durationUs, DOC(dai, CameraControl, StrobeTimings, durationUs));
-    strobeConfig.def(py::init<>())
-        .def_readwrite("enable", &CameraControl::StrobeConfig::enable, DOC(dai, CameraControl, StrobeConfig, enable))
-        .def_readwrite("activeLevel", &CameraControl::StrobeConfig::activeLevel, DOC(dai, CameraControl, StrobeConfig, activeLevel))
-        .def_readwrite("gpioNumber", &CameraControl::StrobeConfig::gpioNumber, DOC(dai, CameraControl, StrobeConfig, gpioNumber));
-
     cameraControl.def(py::init<>())
         .def(py::init<>(), DOC(dai, CameraControl, CameraControl))
         .def_readwrite("aeRegion", &CameraControl::aeRegion, DOC(dai, CameraControl, aeRegion))
@@ -78,9 +66,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def_readwrite("lensPositionRaw", &CameraControl::lensPositionRaw, DOC(dai, CameraControl, lensPositionRaw))
         .def_readwrite("lowPowerNumFramesBurst", &CameraControl::lowPowerNumFramesBurst, DOC(dai, CameraControl, lowPowerNumFramesBurst))
         .def_readwrite("lowPowerNumFramesDiscard", &CameraControl::lowPowerNumFramesDiscard, DOC(dai, CameraControl, lowPowerNumFramesDiscard))
-        .def_readwrite("miscControls", &CameraControl::miscControls, DOC(dai, CameraControl, miscControls))
-        .def_readwrite("strobeConfig", &CameraControl::strobeConfig, DOC(dai, CameraControl, strobeConfig))
-        .def_readwrite("strobeTimings", &CameraControl::strobeTimings, DOC(dai, CameraControl, strobeTimings));
+        .def_readwrite("miscControls", &CameraControl::miscControls, DOC(dai, CameraControl, miscControls));
 
     // Metadata / raw
     std::vector<const char*> camCtrlAttr;

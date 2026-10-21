@@ -449,16 +449,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("device"),
              DOC(dai, Pipeline, getDeviceConfig, 2))
         .def("serializeToJson", &Pipeline::serializeToJson, py::arg("includeAssets") = true, DOC(dai, Pipeline, serializeToJson))
-        .def("getPipelineSchema",
-             &Pipeline::getPipelineSchema,
-             py::arg("type") = DEFAULT_SERIALIZATION_TYPE,
-             py::arg("includePipelineDebugging") = true,
-             DOC(dai, Pipeline, getPipelineSchema))
-        .def("getDevicePipelineSchema",
-             &Pipeline::getDevicePipelineSchema,
-             py::arg("type") = DEFAULT_SERIALIZATION_TYPE,
-             py::arg("includePipelineDebugging") = true,
-             DOC(dai, Pipeline, getDevicePipelineSchema))
         .def("setBoardConfig", py::overload_cast<BoardConfig>(&Pipeline::setBoardConfig), DOC(dai, Pipeline, setBoardConfig))
         .def("setBoardConfig",
              py::overload_cast<const std::shared_ptr<Device>&, const BoardConfig&>(&Pipeline::setBoardConfig),

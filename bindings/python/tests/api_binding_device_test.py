@@ -1,7 +1,6 @@
-"""Opt-in hardware roundtrips for newly exposed message metadata.
+"""TODO: Hardware roundtrips for newly exposed message metadata.
 
-Set DEPTHAI_BINDINGS_DEVICE_TESTS=1 and select a device using
-DEPTHAI_DEVICE_ID_LIST. Run on both RVC2 and RVC4 when available.
+Disabled pending validation on both RVC2 and RVC4 and HIL integration.
 """
 from datetime import timedelta
 import os
@@ -11,9 +10,8 @@ import depthai as dai
 import numpy as np
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get("DEPTHAI_BINDINGS_DEVICE_TESTS") != "1",
-    reason="Set DEPTHAI_BINDINGS_DEVICE_TESTS=1 to run on hardware",
+pytestmark = pytest.mark.skip(
+    reason="TODO: validate on RVC2/RVC4 hardware and integrate with HIL before enabling",
 )
 
 

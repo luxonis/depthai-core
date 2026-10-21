@@ -10,7 +10,7 @@ endif()
 set(PYBIND11_TEST_FILES
     "test.py"
     "api_binding_coverage_test.py"
-    "api_binding_device_test.py"
+    # TODO: validate api_binding_device_test.py on RVC2/RVC4 in HIL before enabling.
     "queue_gil_test.py"
     "xlink_exceptions_test.cpp"
     "xlink_protocol_test.py"

@@ -39,7 +39,6 @@ void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
 void bind_objecttrackerconfig(pybind11::module& m, void* pCallstack);
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
-void bind_pipelineeventaggregationconfig(pybind11::module& m, void* pCallstack);
 void bind_pipelineevent(pybind11::module& m, void* pCallstack);
 void bind_pipelinestate(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
@@ -121,7 +120,6 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_objecttrackerconfig);
     callstack.push_front(bind_pointclouddata);
     callstack.push_front(bind_pipelineevent);
-    callstack.push_front(bind_pipelineeventaggregationconfig);
     callstack.push_front(bind_pipelinestate);
     callstack.push_front(bind_transformdata);
     callstack.push_front(bind_odometry);

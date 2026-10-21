@@ -1,7 +1,3 @@
-#include <cstdint>
-#include <limits>
-#include <stdexcept>
-
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -16,7 +12,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
 
     // Node and Properties declare upfront
     py::class_<ColorCameraProperties> colorCameraProperties(m, "ColorCameraProperties", DOC(dai, ColorCameraProperties));
-    py::class_<ColorCameraProperties::IspScale> ispScale(colorCameraProperties, "IspScale", DOC(dai, ColorCameraProperties, IspScale));
     py::enum_<ColorCameraProperties::SensorResolution> colorCameraPropertiesSensorResolution(
         colorCameraProperties, "SensorResolution", DOC(dai, ColorCameraProperties, SensorResolution));
     py::enum_<ColorCameraProperties::ColorOrder> colorCameraPropertiesColorOrder(
@@ -66,20 +61,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .value("CALIBRATION", ColorCameraProperties::WarpMeshSource::CALIBRATION)
         .value("URI", ColorCameraProperties::WarpMeshSource::URI);
 
-    colorCameraProperties.def(py::init<>());
-
-    ispScale.def(py::init<>())
-        .def_readwrite("horizNumerator", &ColorCameraProperties::IspScale::horizNumerator, DOC(dai, ColorCameraProperties, IspScale, horizNumerator))
-        .def_readwrite("horizDenominator", &ColorCameraProperties::IspScale::horizDenominator, DOC(dai, ColorCameraProperties, IspScale, horizDenominator))
-        .def_readwrite("vertNumerator", &ColorCameraProperties::IspScale::vertNumerator, DOC(dai, ColorCameraProperties, IspScale, vertNumerator))
-        .def_readwrite("vertDenominator", &ColorCameraProperties::IspScale::vertDenominator, DOC(dai, ColorCameraProperties, IspScale, vertDenominator));
-
-    colorCameraProperties.def_readwrite("cameraName", &dai::ColorCameraProperties::cameraName, DOC(dai, ColorCameraProperties, cameraName))
-        .def_readwrite("mockIspHeight", &dai::ColorCameraProperties::mockIspHeight, DOC(dai, ColorCameraProperties, mockIspHeight))
-        .def_readwrite("mockIspWidth", &dai::ColorCameraProperties::mockIspWidth, DOC(dai, ColorCameraProperties, mockIspWidth))
-        .def_readwrite("previewType", &dai::ColorCameraProperties::previewType, DOC(dai, ColorCameraProperties, previewType))
-        .def_readwrite("rawPacked", &dai::ColorCameraProperties::rawPacked, DOC(dai, ColorCameraProperties, rawPacked))
-        .def_readwrite("initialControl", &ColorCameraProperties::initialControl)
+    colorCameraProperties.def_readwrite("initialControl", &ColorCameraProperties::initialControl)
         .def_readwrite("boardSocket", &ColorCameraProperties::boardSocket)
         .def_readwrite("imageOrientation", &ColorCameraProperties::imageOrientation)
         .def_readwrite("previewHeight", &ColorCameraProperties::previewHeight)
@@ -114,26 +96,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
             auto camera = getImplicitPipeline()->create<ColorCamera>();
             return camera;
         }))
-        .def_readonly("mockIsp", &dai::node::ColorCamera::mockIsp, DOC(dai, node, ColorCamera, mockIsp))
-        .def("setPreviewType", &dai::node::ColorCamera::setPreviewType, py::arg("type"), DOC(dai, node, ColorCamera, setPreviewType))
-        .def("getPreviewType", &dai::node::ColorCamera::getPreviewType, DOC(dai, node, ColorCamera, getPreviewType))
-        .def(
-            "getScaledSize",
-            [](const ColorCamera&, int input, int num, int denom) {
-                if(denom == 0) throw std::invalid_argument("Scale denominator must not be zero");
-                const auto scaled = (static_cast<int64_t>(input) * num - 1) / denom + 1;
-                if(scaled < std::numeric_limits<int>::min() || scaled > std::numeric_limits<int>::max()) {
-                    throw std::overflow_error("Scaled size does not fit in an int");
-                }
-                return static_cast<int>(scaled);
-            },
-            py::arg("input"),
-            py::arg("num"),
-            py::arg("denom"),
-            DOC(dai, node, ColorCamera, getScaledSize))
-        .def("setMockIspSize", &dai::node::ColorCamera::setMockIspSize, py::arg("width"), py::arg("height"), DOC(dai, node, ColorCamera, setMockIspSize));
-
-    colorCamera.def_readonly("inputControl", &ColorCamera::inputControl, DOC(dai, node, ColorCamera, inputControl))
+        .def_readonly("inputControl", &ColorCamera::inputControl, DOC(dai, node, ColorCamera, inputControl))
         .def_readonly("initialControl", &ColorCamera::initialControl, DOC(dai, node, ColorCamera, initialControl))
         .def_readonly("video", &ColorCamera::video, DOC(dai, node, ColorCamera, video))
         .def_readonly("preview", &ColorCamera::preview, DOC(dai, node, ColorCamera, preview))

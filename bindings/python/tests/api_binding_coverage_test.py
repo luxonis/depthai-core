@@ -13,9 +13,7 @@ def test_cpp_default_arguments():
     assert frame.getPlaneStride() == frame.getPlaneStride(0)
     control = dai.CameraControl()
     control.setStrobeSensor()
-    assert control.strobeConfig.activeLevel == 1
     control.setStrobeExternal(1)
-    assert control.strobeConfig.activeLevel == 1
     control.setCommand(dai.CameraControl.Command.START_STREAM)
     assert control.getCommand(dai.CameraControl.Command.START_STREAM)
     config = dai.ImageManipConfig()
@@ -34,19 +32,13 @@ def test_cpp_default_arguments():
     assert len(dai.DeviceBootloader.getEmbeddedBootloaderBinary()) > 0
 
 
-def test_pipeline_schema_and_state_json():
+def test_pipeline_and_state_json():
     with dai.Pipeline(False) as pipeline:
         first = pipeline.create(dai.node.ImageManip)
         second = pipeline.create(dai.node.ImageManip)
         first.setRunOnHost()
         second.setRunOnHost()
         first.out.link(second.inputImage)
-        schema = pipeline.getPipelineSchema()
-        assert isinstance(schema, dai.PipelineSchema)
-        assert schema.nodes[first.id].name == "ImageManip"
-        assert schema.nodes[first.id].ioInfo[("", "out")].name == "out"
-        assert any(c.node1Id == first.id and c.node2Id == second.id for c in schema.connections)
-        assert isinstance(pipeline.getDevicePipelineSchema(), dai.PipelineSchema)
         assert isinstance(pipeline.serializeToJson(), dict)
     assert dai.PipelineState().toJson() == {"nodeStates": []}
 
@@ -99,7 +91,6 @@ def test_object_tracker_config_is_registered_and_mutable():
     (dai.ImgFrame, dai.DatatypeEnum.ImgFrame),
     (dai.EncodedFrame, dai.DatatypeEnum.EncodedFrame),
     (dai.GateControl, dai.DatatypeEnum.GateControl),
-    (dai.PipelineEventAggregationConfig, dai.DatatypeEnum.PipelineEventAggregationConfig),
 ])
 def test_virtual_datatype_dispatch(factory, datatype):
     assert factory().getDatatype() == datatype
@@ -201,24 +192,6 @@ def test_prepare_segmentation_mask_returns_writable_storage():
     assert (mask.getWidth(), mask.getHeight()) == (2, 3)
 
 
-def test_pipeline_event_configuration_keeps_mutable_nodes():
-    node = dai.NodeEventAggregationConfig()
-    node.nodeId = 12
-    node.inputs = ["left", "right"]
-    node.events = True
-    config = dai.PipelineEventAggregationConfig()
-    config.nodes = [node]
-    config.nodes[0].outputs = ["out"]
-    config.repeatIntervalSeconds = 2
-    assert list(config.nodes[0].inputs) == ["left", "right"]
-    assert list(config.nodes[0].outputs) == ["out"]
-    assert config.nodes[0].events
-    config.nodes.append(node)
-    assert len(config.nodes) == 2
-    config.repeatIntervalSeconds = None
-    assert config.repeatIntervalSeconds is None
-
-
 def test_board_camera_and_imu_configuration():
     config = dai.BoardConfig()
     camera = dai.BoardConfig.Camera()
@@ -254,8 +227,6 @@ def test_board_camera_and_imu_configuration():
     (dai.RectificationProperties, "enableRectification", False),
     (dai.ToFProperties, "fps", 15.0),
     (dai.ToFProperties, "cameraName", "tof"),
-    (dai.ColorCameraProperties, "rawPacked", False),
-    (dai.MonoCameraProperties, "cameraName", "left"),
     (dai.StereoDepthProperties, "enableFrameSync", False),
     (dai.ObjectTrackerProperties, "trackingPerClass", True),
     (dai.ObjectTrackerProperties, "trackletMaxLifespan", 15),
@@ -453,20 +424,6 @@ def test_thermal_orientation():
     assert config.imageParams.orientation == dai.ThermalImageOrientation.MirrorFlip
 
 
-def test_color_camera_isp_scale():
-    properties = dai.ColorCameraProperties()
-    scale = dai.ColorCameraProperties.IspScale()
-    scale.horizNumerator = 2
-    scale.horizDenominator = 3
-    scale.vertNumerator = 4
-    scale.vertDenominator = 5
-    properties.ispScale = scale
-    assert properties.ispScale.horizNumerator == 2
-    assert properties.ispScale.horizDenominator == 3
-    assert properties.ispScale.vertNumerator == 4
-    assert properties.ispScale.vertDenominator == 5
-
-
 def test_camera_control_parameters():
     control = dai.CameraControl()
     control.setManualExposure(1000, 200)
@@ -477,8 +434,3 @@ def test_camera_control_parameters():
     control.setAutoExposureRegion(5, 6, 70, 80)
     assert (control.aeRegion.x, control.aeRegion.y, control.aeRegion.width, control.aeRegion.height) == (5, 6, 70, 80)
     control.setStrobeExternal(3, 1)
-    assert control.strobeConfig.enable == 1
-    assert control.strobeConfig.activeLevel == 1
-    assert control.strobeConfig.gpioNumber == 3
-    control.strobeTimings.durationUs = 100
-    assert control.strobeTimings.durationUs == 100

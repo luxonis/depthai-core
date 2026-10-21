@@ -57,19 +57,21 @@ def test_set_data_accepts_strided_and_convertible_buffers(source):
     np.testing.assert_array_equal(buffer.getData(), np.asarray(source, dtype=np.uint8))
 
 
-@pytest.mark.parametrize("mode", ["inferred", "datatype", "storage_order"])
-def test_nndata_view_survives_adding_tensor(mode):
+@pytest.mark.parametrize("mode", ["inferred", "datatype", "storage_order_list", "storage_order_array"])
+@pytest.mark.parametrize("dtype", [np.int32, np.float32, np.float64])
+def test_nndata_view_survives_adding_tensor(mode, dtype):
     message = dai.NNData()
     message.addTensor("first", np.arange(16, dtype=np.uint8))
     previous = message.getData()
     expected = previous.copy()
-    tensor = np.arange(1024, dtype=np.int32) % 256
+    tensor = (np.arange(1024) % 256).astype(dtype)
     if mode == "inferred":
         message.addTensor("second", tensor)
     elif mode == "datatype":
-        message.addTensor("second", tensor, dai.TensorInfo.DataType.INT)
+        datatype = {np.int32: dai.TensorInfo.DataType.INT, np.float32: dai.TensorInfo.DataType.FP32, np.float64: dai.TensorInfo.DataType.FP64}[dtype]
+        message.addTensor("second", tensor, datatype)
     else:
-        message.addTensor("second", tensor.tolist(), dai.TensorInfo.StorageOrder.NC)
+        message.addTensor("second", tensor.tolist() if mode == "storage_order_list" else tensor, dai.TensorInfo.StorageOrder.NC)
     np.testing.assert_array_equal(previous, expected)
     np.testing.assert_array_equal(message.getTensor("second").ravel(), tensor)
 

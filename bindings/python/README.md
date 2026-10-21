@@ -132,6 +132,15 @@ Exceptions cover only that declaration, not its whole class or future overloads.
 Keys are literal, including `*` in pointer parameter types; wildcard matching is
 never performed. Keep exceptions narrow and review them alongside the API change.
 
+The exception list covers deprecated ColorCamera/MonoCamera APIs and properties,
+internal pipeline schemas and event aggregation, and CameraControl strobe fields
+and nested types pending RVC4 validation. Existing deprecated bindings remain
+available. New overloads still require a binding or a reviewed exact exception.
+
+`tests/api_binding_device_test.py` is retained as a TODO for validation on both
+RVC2 and RVC4 and HIL integration. It is excluded from the compiled pytest target
+and unconditionally skipped during direct pytest runs until that work is done.
+
 This is a source-level guard, not proof of runtime coverage. It recognizes
 `py::class_`, `py::enum_`, `ADD_NODE*`, direct member bindings and common lambda
 wrappers that access the typed bound instance directly. Enum values are matched

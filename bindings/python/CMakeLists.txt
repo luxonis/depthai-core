@@ -60,7 +60,6 @@ set(SOURCE_LIST
     src/DatatypeBindings.cpp
     src/MessageQueueBindings.cpp
     src/pipeline/PipelineBindings.cpp
-    src/pipeline/PipelineSchemaBindings.cpp
     src/pipeline/CommonBindings.cpp
     src/pipeline/AssetManagerBindings.cpp
     src/openvino/OpenVINOBindings.cpp
@@ -159,7 +158,6 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudConfigBindings.cpp
     src/pipeline/datatype/ObjectTrackerConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
-    src/pipeline/datatype/PipelineEventAggregationConfigBindings.cpp
     src/pipeline/datatype/PipelineEventBindings.cpp
     src/pipeline/datatype/PipelineStateBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
