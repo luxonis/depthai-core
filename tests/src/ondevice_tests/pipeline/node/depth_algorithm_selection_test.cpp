@@ -56,6 +56,10 @@ TEST_CASE("Depth::getSupportedAlgorithms requires a non-null device", "[Depth]")
     REQUIRE_THROWS_WITH(Depth::getSupportedAlgorithms(nullptr), Catch::Matchers::ContainsSubstring("requires a device"));
 }
 
+TEST_CASE("Depth::getDefaultAlgorithm requires a non-null device", "[Depth]") {
+    REQUIRE_THROWS_WITH(Depth::getDefaultAlgorithm(nullptr), Catch::Matchers::ContainsSubstring("requires a device"));
+}
+
 TEST_CASE("Depth::selectBackend picks NeuralDepth model whose tensor band fits the user resolution", "[Depth]") {
     struct Case {
         uint32_t w, h;

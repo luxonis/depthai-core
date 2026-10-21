@@ -47,6 +47,11 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
                     py::arg("device"),
                     py::call_guard<py::gil_scoped_release>(),
                     DOC(dai, node, Depth, getSupportedAlgorithms))
+        .def_static("getDefaultAlgorithm",
+                    &Depth::getDefaultAlgorithm,
+                    py::arg("device"),
+                    py::call_guard<py::gil_scoped_release>(),
+                    DOC(dai, node, Depth, getDefaultAlgorithm))
         .def("setAlgorithm", &Depth::setAlgorithm, py::arg("algorithm"), DOC(dai, node, Depth, setAlgorithm))
         .def(
             "getRequestedConfig",

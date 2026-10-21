@@ -564,6 +564,14 @@ std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_pt
     return supported;
 }
 
+Depth::Algorithm Depth::getDefaultAlgorithm(const std::shared_ptr<Device>& device) {
+    DAI_CHECK_V(device != nullptr, "Depth::getDefaultAlgorithm requires a device.");
+    const auto supported = getSupportedAlgorithms(device);
+    const auto pair = requireFirstStereoPair(device);
+    const auto models = device->getPlatform() == Platform::RVC4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+    return selectBackend(sizeFromDeviceFeatures(device, pair), DEFAULT_TARGET_FPS, supported, models).algorithm;
+}
+
 // --- Algorithm resolution ---
 
 bool Depth::exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {

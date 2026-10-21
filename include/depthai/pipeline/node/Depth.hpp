@@ -157,6 +157,16 @@ class Depth : public DeviceNodeGroup {
     [[nodiscard]] static std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device);
 
     /**
+     * Get the algorithm AUTO would select without FPS, size, config, or existing camera overrides.
+     * Uses the device's native stereo resolution and a target of 30 FPS.
+     * Can be called before creating a pipeline or Depth node.
+     * @param device Device to query; must not be null.
+     * @return The concrete default algorithm (never AUTO).
+     * @throws std::runtime_error If device is null or lacks the sensors required for AUTO selection.
+     */
+    [[nodiscard]] static Algorithm getDefaultAlgorithm(const std::shared_ptr<Device>& device);
+
+    /**
      * Set the requested algorithm before wiring.
      * @param algorithm Backend to use; AUTO re-enables auto-selection
      */

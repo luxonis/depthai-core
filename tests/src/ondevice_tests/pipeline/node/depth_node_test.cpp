@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>
@@ -482,6 +483,24 @@ TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW((void)&depth->depth());
     REQUIRE_NOTHROW((void)&depth->confidence());
+}
+
+TEST_CASE("Depth: default algorithm query matches AUTO before creating a pipeline", "[default-algorithm]") {
+    const auto device = std::make_shared<Device>();
+    const auto supported = node::Depth::getSupportedAlgorithms(device);
+    if(device->getStereoPairs().empty() && (device->getPlatform() == Platform::RVC4 || !deviceReportsTofSensor(device))) {
+        REQUIRE_THROWS(node::Depth::getDefaultAlgorithm(device));
+        return;
+    }
+
+    const auto algorithm = node::Depth::getDefaultAlgorithm(device);
+    REQUIRE(algorithm != node::Depth::Algorithm::AUTO);
+    REQUIRE(std::find(supported.begin(), supported.end(), algorithm) != supported.end());
+
+    Pipeline pipeline(device);
+    auto depth = pipeline.create<node::Depth>();
+    (void)depth->depth();
+    REQUIRE(depth->getResolvedAlgorithm() == algorithm);
 }
 
 TEST_CASE("Depth: build(algorithm) exposes algorithm via getRequestedAlgorithm") {
