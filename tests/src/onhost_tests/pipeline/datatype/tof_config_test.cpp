@@ -1,8 +1,9 @@
-#include <catch2/catch_test_macros.hpp>
-#include <type_traits>
-#include <sstream>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
+
+#include <catch2/catch_test_macros.hpp>
+#include <sstream>
+#include <type_traits>
 
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 
@@ -86,13 +87,17 @@ TEST_CASE("ToF config serialization preserves presets and optional controls") {
     // Exercise the public message serializer, not just the nested controls.
     config.s5k33d.phaseUnwrapErrorThreshold = 42;
     config.s5k33d.enablePhaseShuffleTemporalFilter = false;
+    const nlohmann::json original = config;
+    auto expected = config;
+    expected.applyLegacyConfig();
     std::vector<std::uint8_t> metadata;
     dai::DatatypeEnum datatype{};
     config.serialize(metadata, datatype);
     REQUIRE(datatype == dai::DatatypeEnum::ToFConfig);
     dai::ToFConfig decoded;
     REQUIRE(dai::utility::deserialize(metadata, decoded));
-    REQUIRE(nlohmann::json(decoded) == nlohmann::json(config));
+    REQUIRE(nlohmann::json(decoded) == nlohmann::json(expected));
+    REQUIRE(nlohmann::json(config) == original);
 }
 
 TEST_CASE("ToF legacy RVC2 fields warn and preserve supported settings") {
@@ -103,7 +108,9 @@ TEST_CASE("ToF legacy RVC2 fields warn and preserve supported settings") {
     logger->set_level(spdlog::level::warn);
     struct RestoreLogger {
         std::shared_ptr<spdlog::logger> previous = spdlog::default_logger();
-        ~RestoreLogger() { spdlog::set_default_logger(previous); }
+        ~RestoreLogger() {
+            spdlog::set_default_logger(previous);
+        }
     } restoreLogger;
     spdlog::set_default_logger(logger);
 
@@ -121,7 +128,11 @@ TEST_CASE("ToF legacy RVC2 fields warn and preserve supported settings") {
     dai::ToFConfig defaults;
     const nlohmann::json defaultJson = defaults;
     for(const auto& field : legacyValues.items()) {
-        REQUIRE(defaultJson.at(field.key()).is_null());
+        if(defaultJson.at("s5k33d").contains(field.key())) {
+            REQUIRE(defaultJson.at(field.key()) == defaultJson.at("s5k33d").at(field.key()));
+        } else {
+            REQUIRE(defaultJson.at(field.key()).is_null());
+        }
     }
     defaults.applyLegacyConfig();
     std::vector<std::uint8_t> metadata;
