@@ -201,12 +201,11 @@ class DeviceBase {
     static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 
     /**
-     * Performs a device health check, which can be stopped before it completes (e.g. on Ctrl+C).
+     * Performs a device health check
      *
      * @param devInfo DeviceInfo which specifies which device to check
      * @param config Health-check steps to execute
-     * @param shouldStop Called between the steps and at least every 100 ms while a step waits. If it returns true,
-     * the remaining steps are skipped. A step that connects to the device is not interrupted.
+     * @param shouldStop stop function called in between runs. Return true to stop the health check
      * @returns HealthCheckMetrics collected until the check completed or stopped. Steps that did not run are NOT_RUN
      */
     static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop);
