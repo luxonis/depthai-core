@@ -21,10 +21,6 @@ on:
         required: false
         type: string
         default: "all"
-      run_standard_tests:
-        required: false
-        type: boolean
-        default: true
       test_label:
         required: false
         type: string
@@ -99,7 +95,6 @@ jobs:
 
  linux_rvc2_test:
     needs: [build_docker_container]
-    if: inputs.run_standard_tests
     runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: ${{ inputs.rvc2_timeout_minutes }}
     steps:
@@ -127,7 +122,7 @@ jobs:
   #  Testing
  linux_rvc4_test:
       needs: [build_docker_container]
-      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test != '[]'
+      if: inputs.luxonis_os_versions_to_test != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
@@ -157,7 +152,7 @@ jobs:
 
  linux_rvc4_usb_test:
       needs: [build_docker_container]
-      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_usb != '[]'
+      if: inputs.luxonis_os_versions_to_test_usb != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
@@ -183,7 +178,7 @@ jobs:
 
  linux_rvc4_rgb_test:
       needs: [build_docker_container]
-      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_rgb != '[]'
+      if: inputs.luxonis_os_versions_to_test_rgb != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_rgb) }}
@@ -210,8 +205,9 @@ jobs:
  report_linux_test_results:
     name: Report Linux test results (${{ inputs.job_prefix || inputs.flavor }})
     needs: [linux_rvc2_test, linux_rvc4_test,linux_rvc4_usb_test, linux_rvc4_rgb_test]
-    # Keep crash/failure reports, but exclude incomplete results from cancelled jobs or runs.
-    if: ${{ !cancelled() && !contains(needs.*.result, 'cancelled') && inputs.run_standard_tests }}
+    # Skip the report when the run was cancelled (by a user or by concurrency).
+    # Keep it for crashes, failures and job timeouts.
+    if: ${{ !cancelled() }}
     runs-on: ['self-hosted', 'testbed-runner']
     permissions:
       actions: read
