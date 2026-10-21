@@ -172,3 +172,70 @@ TEST_CASE("ToF legacy RVC2 fields warn and preserve supported settings") {
         REQUIRE(nlohmann::json(config) == json);
     }
 }
+
+TEST_CASE("ToF decoded controls can be edited through nested or legacy fields") {
+    for(const auto type : {dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK}) {
+        for(const bool nestedMessage : {false, true}) {
+            CAPTURE(type, nestedMessage);
+            auto checkControl = [=](auto nestedMember, auto legacyMember, auto initialValue, auto updatedValue) {
+                dai::ToFConfig source;
+                source.s5k33d.*nestedMember = initialValue;
+                source.applyLegacyConfig();
+                dai::ToFConfig decoded;
+                if(nestedMessage) {
+                    const auto data = dai::utility::serialize(std::vector<dai::ToFConfig>{source}, type);
+                    std::vector<dai::ToFConfig> configs;
+                    REQUIRE(dai::utility::deserialize(data, configs, type));
+                    REQUIRE(configs.size() == 1);
+                    decoded = configs.front();
+                } else {
+                    const auto data = dai::utility::serialize(source, type);
+                    REQUIRE(dai::utility::deserialize(data, decoded, type));
+                }
+
+                auto checkRoundtrip = [=](dai::ToFConfig config) {
+                    std::vector<std::uint8_t> metadata;
+                    dai::DatatypeEnum datatype{};
+                    config.serialize(metadata, datatype);
+                    dai::ToFConfig result;
+                    REQUIRE(dai::utility::deserialize(metadata, result));
+                    REQUIRE(result.s5k33d.*nestedMember == updatedValue);
+                    REQUIRE(result.*legacyMember == updatedValue);
+                    // Startup normalization must agree with runtime serialization.
+                    config.applyLegacyConfig();
+                    REQUIRE(nlohmann::json(config) == nlohmann::json(result));
+                };
+
+                auto nestedEdit = decoded;
+                nestedEdit.s5k33d.*nestedMember = updatedValue;
+                checkRoundtrip(nestedEdit);
+                auto legacyEdit = decoded;
+                legacyEdit.*legacyMember = updatedValue;
+                checkRoundtrip(legacyEdit);
+            };
+            checkControl(&dai::ToFConfig::S5K33D::phaseUnwrappingLevel, &dai::ToFConfig::phaseUnwrappingLevel, 3, 2);
+            checkControl(&dai::ToFConfig::S5K33D::phaseUnwrapErrorThreshold, &dai::ToFConfig::phaseUnwrapErrorThreshold, std::uint16_t{42}, std::uint16_t{43});
+            checkControl(&dai::ToFConfig::S5K33D::enablePhaseShuffleTemporalFilter, &dai::ToFConfig::enablePhaseShuffleTemporalFilter, false, true);
+            checkControl(&dai::ToFConfig::S5K33D::enableBurstMode, &dai::ToFConfig::enableBurstMode, true, false);
+        }
+    }
+}
+
+TEST_CASE("ToF JSON preserves pending nested edits and legacy override precedence") {
+    dai::ToFConfig source;
+    SECTION("Nested edit") {
+        source.s5k33d.phaseUnwrapErrorThreshold = 42;
+    }
+    SECTION("Legacy edit") {
+        source.phaseUnwrapErrorThreshold = 42;
+    }
+    SECTION("Legacy wins when both representations are edited") {
+        source.s5k33d.phaseUnwrapErrorThreshold = 41;
+        source.phaseUnwrapErrorThreshold = 42;
+    }
+    const nlohmann::json json = source;
+    auto decoded = json.get<dai::ToFConfig>();
+    decoded.applyLegacyConfig();
+    REQUIRE(decoded.s5k33d.phaseUnwrapErrorThreshold == 42);
+    REQUIRE(decoded.phaseUnwrapErrorThreshold == 42);
+}

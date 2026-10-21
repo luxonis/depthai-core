@@ -193,25 +193,101 @@ class ToFConfig : public Buffer {
      */
     void setProfilePreset(Profile profile);
 
-    DEPTHAI_SERIALIZE(ToFConfig,
-                      profile,
-                      median,
-                      enablePhaseShuffleTemporalFilter,
-                      enableBurstMode,
-                      enableDistortionCorrection,
-                      enableFPPNCorrection,
-                      enableOpticalCorrection,
-                      enableTemperatureCorrection,
-                      enableWiggleCorrection,
-                      enablePhaseUnwrapping,
-                      phaseUnwrappingLevel,
-                      phaseUnwrapErrorThreshold,
-                      vd55h1,
-                      s5k33d);
+#define DEPTHAI_TOF_CONFIG_FIELDS                                                                                                                  \
+    profile, median, enablePhaseShuffleTemporalFilter, enableBurstMode, enableDistortionCorrection, enableFPPNCorrection, enableOpticalCorrection, \
+        enableTemperatureCorrection, enableWiggleCorrection, enablePhaseUnwrapping, phaseUnwrappingLevel, phaseUnwrapErrorThreshold, vd55h1, s5k33d
+
+    friend void to_json(nlohmann::json& json, const ToFConfig& config);
+    friend void from_json(const nlohmann::json& json, ToFConfig& config);
+    DEPTHAI_DISPLAY(ToFConfig)
+    NOP_STRUCTURE(ToFConfig, DEPTHAI_TOF_CONFIG_FIELDS);
 
    private:
+    // Reuse the same member list when decoding a temporary, without recursively
+    // invoking the ToFConfig encoding specialization below.
+    struct SerializationProxy;
+
+    void restoreSynchronizationState() {
+        // Equal decoded fields are already synchronized, not pending legacy edits.
+        // Preserve the existing baseline for unequal fields so intentional legacy
+        // overrides (including values loaded from JSON) keep their precedence.
+        if(phaseUnwrappingLevel == s5k33d.phaseUnwrappingLevel) {
+            synchronizedSamsungControls.phaseUnwrappingLevel = phaseUnwrappingLevel;
+        }
+        if(phaseUnwrapErrorThreshold == s5k33d.phaseUnwrapErrorThreshold) {
+            synchronizedSamsungControls.phaseUnwrapErrorThreshold = phaseUnwrapErrorThreshold;
+        }
+        if(enablePhaseShuffleTemporalFilter == s5k33d.enablePhaseShuffleTemporalFilter) {
+            synchronizedSamsungControls.enablePhaseShuffleTemporalFilter = enablePhaseShuffleTemporalFilter;
+        }
+        if(enableBurstMode == s5k33d.enableBurstMode) {
+            synchronizedSamsungControls.enableBurstMode = enableBurstMode;
+        }
+    }
+
     // Track the last synchronized values so unchanged legacy defaults cannot overwrite nested controls.
     S5K33D synchronizedSamsungControls;
 };
 
+// This derived view inherits the original libnop member list and uses the same
+// JSON fields. It adds no serialized fields or public configuration settings.
+struct ToFConfig::SerializationProxy : ToFConfig {
+    SerializationProxy() = default;
+    explicit SerializationProxy(const ToFConfig& config) : ToFConfig(config) {}
+
+    DEPTHAI_NLOHMANN_DEFINE_TYPE_INTRUSIVE(SerializationProxy, DEPTHAI_TOF_CONFIG_FIELDS)
+};
+
+#undef DEPTHAI_TOF_CONFIG_FIELDS
+
+inline void to_json(nlohmann::json& json, const ToFConfig& config) {
+    to_json(json, ToFConfig::SerializationProxy{config});
+}
+
+inline void from_json(const nlohmann::json& json, ToFConfig& config) {
+    auto decoded = ToFConfig::SerializationProxy{config};
+    from_json(json, decoded);
+    decoded.restoreSynchronizationState();
+    config = decoded;
+}
+
 }  // namespace dai
+
+namespace nop {
+
+// Restore non-wire bookkeeping even when ToFConfig is nested inside properties
+// or another message; a utility::deserialize overload would miss those reads.
+template <>
+struct Encoding<dai::ToFConfig> : EncodingIO<dai::ToFConfig> {
+    using Proxy = dai::ToFConfig::SerializationProxy;
+
+    static constexpr EncodingByte Prefix(const dai::ToFConfig&) {
+        return EncodingByte::Structure;
+    }
+
+    static std::size_t Size(const dai::ToFConfig& config) {
+        return Encoding<Proxy>::Size(Proxy{config});
+    }
+
+    static constexpr bool Match(EncodingByte prefix) {
+        return Encoding<Proxy>::Match(prefix);
+    }
+
+    template <typename Writer>
+    static Status<void> WritePayload(EncodingByte prefix, const dai::ToFConfig& config, Writer* writer) {
+        return Encoding<Proxy>::WritePayload(prefix, Proxy{config}, writer);
+    }
+
+    template <typename Reader>
+    static Status<void> ReadPayload(EncodingByte prefix, dai::ToFConfig* config, Reader* reader) {
+        auto decoded = Proxy{*config};
+        auto status = Encoding<Proxy>::ReadPayload(prefix, &decoded, reader);
+        if(status) {
+            decoded.restoreSynchronizationState();
+            *config = decoded;
+        }
+        return status;
+    }
+};
+
+}  // namespace nop
