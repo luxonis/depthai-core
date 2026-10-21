@@ -222,8 +222,9 @@ struct IrPowerGuard {
     }
 };
 
-bool rampIrIntensity(const std::function<bool(float)>& setIntensityFunction, IrPowerGuard& guard) {
+bool rampIrIntensity(const std::function<bool(float)>& setIntensityFunction, IrPowerGuard& guard, const std::function<bool()>& shouldStop) {
     for(std::uint32_t step = 1; step <= POWER_SUPPLY_IR_RAMP_STEPS; ++step) {
+        throwIfStopRequested(shouldStop);
         const float intensity = MAX_POWER_IR_INTENSITY * static_cast<float>(step) / static_cast<float>(POWER_SUPPLY_IR_RAMP_STEPS);
         if(!setIntensityFunction(intensity)) {
             return false;
@@ -237,7 +238,7 @@ bool rampIrIntensity(const std::function<bool(float)>& setIntensityFunction, IrP
     return true;
 }
 
-void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMetrics& metrics, IrPowerGuard& guard) {
+void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMetrics& metrics, IrPowerGuard& guard, const std::function<bool()>& shouldStop) {
     try {
         const auto irDrivers = device->getIrDrivers();
         if(irDrivers.empty()) {
@@ -249,13 +250,13 @@ void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMet
         bool laserEnabled = false;
         bool floodEnabled = false;
         try {
-            laserEnabled = rampIrIntensity([&](float intensity) { return device->setIrLaserDotProjectorIntensity(intensity); }, guard);
+            laserEnabled = rampIrIntensity([&](float intensity) { return device->setIrLaserDotProjectorIntensity(intensity); }, guard, shouldStop);
         } catch(const std::exception& ex) {
             metrics.issues.emplace_back(
                 HealthCheckIssueType::Warning, HealthCheckIssueStage::PowerSupply, std::string("Failed to enable IR laser dot projector: ") + ex.what());
         }
         try {
-            floodEnabled = rampIrIntensity([&](float intensity) { return device->setIrFloodLightIntensity(intensity); }, guard);
+            floodEnabled = rampIrIntensity([&](float intensity) { return device->setIrFloodLightIntensity(intensity); }, guard, shouldStop);
         } catch(const std::exception& ex) {
             metrics.issues.emplace_back(
                 HealthCheckIssueType::Warning, HealthCheckIssueStage::PowerSupply, std::string("Failed to enable IR flood light: ") + ex.what());
@@ -547,7 +548,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
 
         // Verify power supply
         if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
-            enablePowerSupplyLoad(device, metrics, irGuard);
+            enablePowerSupplyLoad(device, metrics, irGuard, shouldStop);
             bool sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.powerSupplyCheckDuration, metrics, shouldStop);
             if(!sufficientPower) {
                 metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
