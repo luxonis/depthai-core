@@ -647,7 +647,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 
     // ToF uses its own sensor, regardless of any requested stereo pair.
-    if(algorithmOverride_ == Algorithm::TOF) {
+    if(algorithmOverride_ == Algorithm::TOF || (algorithmOverride_ == Algorithm::AUTO && supported == std::vector<Algorithm>{Algorithm::TOF})) {
         resolved_ = {Algorithm::TOF, std::monostate{}};
         return;
     }

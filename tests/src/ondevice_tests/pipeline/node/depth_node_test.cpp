@@ -552,14 +552,18 @@ TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
     auto device = requireDefaultDevice(pipeline);
     const auto platform = device->getPlatform();
     const auto hasTofSensor = deviceReportsTofSensor(device);
-    if(platform != Platform::RVC2 || !hasTofSensor) {
+    if(!hasTofSensor || (platform == Platform::RVC4 && device->getStereoPairs().size() > 0)) {
         (void)requireFirstStereoPairForTest(device);
     }
 
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 
-    requireDepthAutoBackend(*depth, platform, hasTofSensor);
+    if(hasTofSensor && device->getStereoPairs().empty()) {
+        REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::TOF);
+    } else {
+        requireDepthAutoBackend(*depth, platform, hasTofSensor);
+    }
 }
 
 TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
@@ -752,7 +756,7 @@ TEST_CASE("Depth: resolved algorithm + config can rebuild the same backend expli
     auto device = requireDefaultDevice(pipeline);
     const auto platform = device->getPlatform();
     const auto hasTofSensor = deviceReportsTofSensor(device);
-    if(platform != Platform::RVC2 || !hasTofSensor) {
+    if(!hasTofSensor || (platform == Platform::RVC4 && device->getStereoPairs().size() > 0)) {
         (void)requireFirstStereoPairForTest(device);
     }
 
