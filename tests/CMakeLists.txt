@@ -605,6 +605,10 @@ dai_set_test_labels(pointclouddata_test onhost ci)
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
 
+# PointCloud node multi-stream (merged) tests
+dai_add_test(point_cloud_multi_stream_test src/onhost_tests/pipeline/node/point_cloud_multi_stream_test.cpp)
+dai_set_test_labels(point_cloud_multi_stream_test onhost ci)
+
 # Model zoo settings tests (also valid without libcurl)
 dai_add_test(model_zoo_settings_test src/onhost_tests/model_zoo_settings_test.cpp)
 dai_set_test_labels(model_zoo_settings_test onhost ci)
@@ -770,6 +774,10 @@ dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
+dai_add_test(pointcloud_gpu_test src/ondevice_tests/pointcloud_gpu_test.cpp)
+dai_set_test_labels(pointcloud_gpu_test ondevice rvc4)
+dai_add_test(pointcloud_multi_stream_device_test src/ondevice_tests/pointcloud_multi_stream_device_test.cpp)
+dai_set_test_labels(pointcloud_multi_stream_device_test ondevice rvc4 ci)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
