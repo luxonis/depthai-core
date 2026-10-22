@@ -11,7 +11,6 @@
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
-namespace beta {
 namespace utilities {
 
 namespace {
@@ -474,5 +473,4 @@ cv::Mat PlanarStitcher::compose(const std::vector<cv::Mat>& images) {
 }
 
 }  // namespace utilities
-}  // namespace beta
 }  // namespace dai

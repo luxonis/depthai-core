@@ -71,16 +71,15 @@ void NeuralAssistedStereo::setInitialValues() {
 }
 
 std::shared_ptr<NeuralAssistedStereo> NeuralAssistedStereo::build(Output& leftInput, Output& rightInput, DeviceModelZoo neuralModel, bool rectifyImages) {
-    // Link camera inputs to rectification
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    leftInput.link(left);
-    rightInput.link(right);
-#endif
-
     if(rectifyImages) {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+        leftInput.link(left);
+        rightInput.link(right);
+#endif
         neuralDepth->build(rectification->output1, rectification->output2, neuralModel);
         vpp->build(rectification->output1, rectification->output2, neuralDepth->disparity, neuralDepth->confidence);
     } else {
+        neuralDepth->build(leftInput, rightInput, neuralModel);
         vpp->build(leftInput, rightInput, neuralDepth->disparity, neuralDepth->confidence);
     }
 
