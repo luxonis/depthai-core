@@ -46,15 +46,18 @@ struct SharedCbaFixture {
         return std::find(sockets.begin(), sockets.end(), socket) != sockets.end();
     }
 
-    void requireEeprom(Socket socket) const {
-        if(!device->isCBAEepromAvailable(socket)) SKIP("Selected camera board has no EEPROM");
-    }
-
-    void readAllowingEmptyEeprom(Socket socket) const {
+    void readAllowingUnavailableCalibration(Socket socket) const {
+        if(!device->isCBAEepromAvailable(socket)) {
+            REQUIRE_THROWS_MATCHES(device->readCBACalibration2(socket),
+                                   dai::EepromError,
+                                   Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("EEPROM_NOT_AVAILABLE")));
+            return;
+        }
         // The strict API exposes rejection. The convenience reader can hide
         // EepromError by returning an empty calibration handler.
         try {
-            device->readCBACalibration2(socket);
+            const auto calibration = device->readCBACalibration2(socket);
+            REQUIRE(calibration.hasCalibrationData());
         } catch(const dai::EepromError& error) {
             INFO(error.what());
             REQUIRE_THAT(std::string(error.what()), Catch::Matchers::ContainsSubstring("EEPROM_INVALID_DATA"));
@@ -98,52 +101,35 @@ TEST_CASE("CBA EEPROM reads before startup preserve all camera streams", "[cba_e
     const std::array<std::vector<Socket>, 4> readOrders = {{{Socket::CAM_B}, {Socket::CAM_C}, {Socket::CAM_B, Socket::CAM_C}, {Socket::CAM_C, Socket::CAM_B}}};
     CAPTURE(order);
     SharedCbaFixture fixture;
-    for(const auto socket : readOrders.at(order)) fixture.requireEeprom(socket);
-    // Each direction and order starts with a fresh device. Empty EEPROMs also
-    // trigger the reset path and must not prevent subsequent camera startup.
+    // Each direction and order starts with a fresh device. Missing or empty
+    // EEPROMs must not prevent subsequent camera startup.
     for(const auto socket : readOrders.at(order)) {
-        fixture.readAllowingEmptyEeprom(socket);
+        fixture.readAllowingUnavailableCalibration(socket);
     }
     fixture.start(fixture.sockets);
     fixture.requireStreaming(5s);
 }
 
-TEST_CASE("Valid B/C EEPROM payloads can be read before camera startup", "[cba_eeprom]") {
-    SharedCbaFixture fixture;
-    for(const auto socket : {Socket::CAM_B, Socket::CAM_C}) {
-        fixture.requireEeprom(socket);
-        try {
-            const auto calibration = fixture.device->readCBACalibration2(socket);
-            REQUIRE(calibration.hasCalibrationData());
-        } catch(const dai::EepromError& error) {
-            REQUIRE_THAT(std::string(error.what()), Catch::Matchers::ContainsSubstring("EEPROM_INVALID_DATA"));
-            SKIP("Requires valid EEPROM payloads on both B and C; this test never flashes EEPROM");
-        }
-    }
-    fixture.start(fixture.sockets);
-    fixture.requireStreaming(5s);
-}
-
-TEST_CASE("Live CBA access rejects before resetting its streaming neighbour", "[cba_eeprom]") {
+TEST_CASE("Live CBA access rejects unavailable EEPROMs or access on a streaming bus", "[cba_eeprom]") {
     const auto socket = GENERATE(Socket::CAM_B, Socket::CAM_C);
     SharedCbaFixture fixture;
     INFO("EEPROM socket " << static_cast<int>(socket));
-    fixture.requireEeprom(socket);
+    const auto eepromAvailable = fixture.device->isCBAEepromAvailable(socket);
     fixture.start(fixture.sockets);
     fixture.requireStreaming(3s);
-    REQUIRE_THROWS_MATCHES(fixture.device->readCBACalibration2(socket),
-                           dai::EepromError,
-                           Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("EEPROM_CAMERA_RUNNING")));
+    REQUIRE_THROWS_MATCHES(
+        fixture.device->readCBACalibration2(socket),
+        dai::EepromError,
+        Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring(eepromAvailable ? "EEPROM_CAMERA_RUNNING" : "EEPROM_NOT_AVAILABLE")));
     fixture.requireStreaming(5s);
 }
 
 TEST_CASE("Independent CAM_A EEPROM access leaves B/C streams running", "[cba_eeprom]") {
     SharedCbaFixture fixture;
     if(!fixture.hasCamera(Socket::CAM_A)) SKIP("Requires a camera on CAM_A");
-    fixture.requireEeprom(Socket::CAM_A);
-    fixture.start(fixture.sockets);
+    fixture.start({Socket::CAM_B, Socket::CAM_C});
     fixture.requireStreaming(3s);
-    fixture.readAllowingEmptyEeprom(Socket::CAM_A);
+    fixture.readAllowingUnavailableCalibration(Socket::CAM_A);
     fixture.requireStreaming(5s);
 }
 
@@ -151,9 +137,8 @@ TEST_CASE("CBA access is allowed when its shared neighbour is outside the runnin
     const auto socket = GENERATE(Socket::CAM_B, Socket::CAM_C);
     SharedCbaFixture fixture;
     if(!fixture.hasCamera(Socket::CAM_A)) SKIP("Requires a camera on CAM_A");
-    fixture.requireEeprom(socket);
     fixture.start({Socket::CAM_A});
     fixture.requireStreaming(3s);
-    fixture.readAllowingEmptyEeprom(socket);
+    fixture.readAllowingUnavailableCalibration(socket);
     fixture.requireStreaming(5s);
 }
