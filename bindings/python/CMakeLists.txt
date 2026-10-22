@@ -467,6 +467,7 @@ if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
     endif()
     # Set preload env variable
     # detect_container_overflow=0: vcpkg dependencies are built without ASan, see test_env in tests/CMakeLists.txt
+    # TODO: remove detect_container_overflow=0 when the vcpkg dependencies are built with ASan
     if(APPLE)
         set(ASAN_ENVIRONMENT_VARS "DYLD_INSERT_LIBRARIES=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0:detect_container_overflow=0")
     elseif(UNIX)
