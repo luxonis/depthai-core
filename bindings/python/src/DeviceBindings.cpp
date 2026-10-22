@@ -287,7 +287,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("board", &Device::Config::board)
         .def_readwrite("nonExclusiveMode", &Device::Config::nonExclusiveMode)
         .def_readwrite("outputLogLevel", &Device::Config::outputLogLevel)
-        .def_readwrite("logLevel", &Device::Config::logLevel);
+        .def_readwrite("logLevel", &Device::Config::logLevel)
+        .def_readwrite("dangerousIrPowerOverride", &Device::Config::dangerousIrPowerOverride, DOC(dai, DeviceBase, Config, dangerousIrPowerOverride));
 
     // Bind UsbGeneration
     usbGeneration.value("UNKNOWN", UsbGeneration::UNKNOWN, DOC(dai, UsbGeneration, UNKNOWN))
