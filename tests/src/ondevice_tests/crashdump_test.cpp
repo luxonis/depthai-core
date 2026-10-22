@@ -101,12 +101,17 @@ bool isUsbProtocol(XLinkProtocol_t protocol) {
     return protocol == X_LINK_USB_VSC || protocol == X_LINK_USB_CDC || protocol == X_LINK_USB_EP;
 }
 
-// RVC4 crashdump coverage over USB is not working yet. Skip these cases for now
-// and leave a note so the gap is removed once the USB path is fixed in the future.
-void skipIfRvc4OverUsb(const dai::DeviceBase& device) {
-    const auto deviceInfo = device.getDeviceInfo();
-    if(device.getPlatform() == dai::Platform::RVC4 && isUsbProtocol(deviceInfo.protocol)) {
-        SKIP("Skipping crashdump test on RVC4 over USB for now; this path is not working yet and should be fixed in the future.");
+// RVC4 OS 1.45.0 and older do not send a crash dump of 16 MiB or more completely over USB, and the
+// crash dump of crashDevice() is larger, so the host gets no payload. Raise the limit if a newer OS
+// still has this problem; the OS versions above the limit must send the full crash dump.
+bool sendsIncompleteCrashDumpOverUsb(dai::DeviceBase& device) {
+    return device.getPlatform() == dai::Platform::RVC4 && isUsbProtocol(device.getDeviceInfo().protocol)
+           && dai::Version(device.getOSVersion()) <= dai::Version(1, 45, 0);
+}
+
+void skipPayloadCaseIfIncompleteOverUsb(dai::DeviceBase& device) {
+    if(sendsIncompleteCrashDumpOverUsb(device)) {
+        SKIP("RVC4 OS 1.45.0 and older cannot send the full crash dump over USB");
     }
 }
 
@@ -172,7 +177,6 @@ TEST_CASE("Crashdump callback rejects disabled automatic collection") {
         ScopedEnvVar crashdumpTimeout("DEPTHAI_CRASHDUMP_TIMEOUT", std::nullopt);
 
         dai::Device device;
-        skipIfRvc4OverUsb(device);
         REQUIRE_THROWS(device.registerCrashdumpCallback([](std::shared_ptr<dai::CrashDump>) {}));
     }
 
@@ -181,7 +185,6 @@ TEST_CASE("Crashdump callback rejects disabled automatic collection") {
         ScopedEnvVar crashdumpTimeout("DEPTHAI_CRASHDUMP_TIMEOUT", "0");
 
         dai::Device device;
-        skipIfRvc4OverUsb(device);
         REQUIRE_THROWS(device.registerCrashdumpCallback([](std::shared_ptr<dai::CrashDump>) {}));
     }
 }
@@ -201,7 +204,6 @@ TEST_CASE("Crashdump callback is not invoked after automatic collection is disab
         std::optional<ScopedEnvVar> disableCrashdump;
         {
             dai::Device device;
-            skipIfRvc4OverUsb(device);
             device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
             disableCrashdump.emplace("DEPTHAI_CRASHDUMP", "0");
@@ -219,7 +221,6 @@ TEST_CASE("Crashdump callback is not invoked after automatic collection is disab
         std::optional<ScopedEnvVar> disableCrashdumpTimeout;
         {
             dai::Device device;
-            skipIfRvc4OverUsb(device);
             device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
             disableCrashdumpTimeout.emplace("DEPTHAI_CRASHDUMP_TIMEOUT", "0");
@@ -242,7 +243,7 @@ TEST_CASE("Crashdump callback is invoked on device crash regardless of reconnect
 
         CrashObserver observer;
         dai::Device device;
-        skipIfRvc4OverUsb(device);
+        skipPayloadCaseIfIncompleteOverUsb(device);
         device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
         device.crashDevice();
@@ -255,7 +256,7 @@ TEST_CASE("Crashdump callback is invoked on device crash regardless of reconnect
 
         CrashObserver observer;
         dai::Device device;
-        skipIfRvc4OverUsb(device);
+        skipPayloadCaseIfIncompleteOverUsb(device);
         device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
         device.crashDevice();
@@ -282,7 +283,7 @@ TEST_CASE("Crashdump callback is delivered once when processing fails") {
     CrashObserver observer;
     {
         dai::Device device;
-        skipIfRvc4OverUsb(device);
+        skipPayloadCaseIfIncompleteOverUsb(device);
         device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) {
             if(!throwFromCallback) {
                 // Invalid UTF-8 makes extra.json serialization throw during archive creation.
@@ -317,7 +318,7 @@ TEST_CASE("Crashdump is written to the configured path") {
     CrashObserver observer;
     {
         dai::Device device;
-        skipIfRvc4OverUsb(device);
+        skipPayloadCaseIfIncompleteOverUsb(device);
         device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
         device.crashDevice();
@@ -365,7 +366,7 @@ TEST_CASE("Crashdump can be collected more than once when reconnection is allowe
     int reconnectCount = 0;
 
     auto device = std::make_shared<dai::Device>();
-    skipIfRvc4OverUsb(*device);
+    skipPayloadCaseIfIncompleteOverUsb(*device);
     device->setMaxReconnectionAttempts(5, [&](dai::DeviceBase::ReconnectionStatus status) {
         if(status == dai::DeviceBase::ReconnectionStatus::RECONNECTED) {
             std::lock_guard<std::mutex> lock(reconnectMtx);
@@ -428,11 +429,39 @@ TEST_CASE("hasCrashed returns true after device crash") {
     ScopedEnvVar crashdumpTimeout("DEPTHAI_CRASHDUMP_TIMEOUT", "30000");
 
     dai::Device device;
-    skipIfRvc4OverUsb(device);
     REQUIRE_FALSE(device.hasCrashed());
 
     device.crashDevice();
     waitForCrashDetection(device, CRASH_DETECTION_TIMEOUT);
     REQUIRE(device.hasCrashed());
     device.close();
+}
+
+// Verifies the crash path where the device cannot send the full crash dump (RVC4 OS 1.45.0 and older
+// over USB): the crash is detected, no callback is invoked, and the device can be opened again.
+// A crash dump download that stops in the middle must not leave the USB link to the device blocked.
+TEST_CASE("Incomplete crashdump over USB invokes no callback and keeps the device usable") {
+    ScopedEnvVar disableUpload("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", "1");
+    ScopedEnvVar crashDevice("DEPTHAI_CRASH_DEVICE", "1");
+    ScopedEnvVar reconnectTimeout("DEPTHAI_RECONNECT_TIMEOUT", "0");
+    ScopedEnvVar crashdumpPath("DEPTHAI_CRASHDUMP", std::nullopt);
+    ScopedEnvVar crashdumpTimeout("DEPTHAI_CRASHDUMP_TIMEOUT", std::nullopt);
+
+    CrashObserver observer;
+    {
+        dai::Device device;
+        if(!sendsIncompleteCrashDumpOverUsb(device)) {
+            SKIP("Only for devices that cannot send the full crash dump (RVC4 OS 1.45.0 and older over USB)");
+        }
+        device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
+
+        device.crashDevice();
+        waitForCrashDetection(device, CRASH_DETECTION_TIMEOUT);
+        // Closing joins the crash dump collection, which gives up at its timeout.
+        device.close();
+        REQUIRE(observer.count() == 0);
+    }
+
+    dai::Device device;
+    REQUIRE_FALSE(device.getOSVersion().empty());
 }
