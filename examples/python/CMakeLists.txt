@@ -68,23 +68,23 @@ function(add_python_example example_name python_script_path)
 
     if(DEPTHAI_PYTHON_TEST_EXAMPLES)
 
-        # Adds test with 5 seconds timeout and bumps all python warnings to errors
+        # Run through the timeout wrapper and treat Python warnings as errors.
         add_test(NAME ${example_name} COMMAND
-            ${CMAKE_COMMAND} -E env
+            # CI relocates these tests; resolve CMake before replacing the child PATH.
+            cmake -DFORCE_TIMEOUT_SECONDS=300
+            -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+            cmake -E env
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
             "DEPTHAI_SEARCH_TIMEOUT=20000"
             "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
+            "PYTHONWARNINGS=error"
             ${ASAN_ENVIRONMENT_VARS}
 
-            ${CMAKE_COMMAND}
-            -DFORCE_TIMEOUT_SECONDS=300
-            -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
             $<TARGET_FILE:test_wrapper>
             40 # A timeout to terminate the test when sucessful
             ${PYTHON_EXECUTABLE}
-            -Werror
             "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}"
             ${arguments}
         )
@@ -127,15 +127,14 @@ if(DEPTHAI_PYTHON_TEST_EXAMPLES)
 
     # Adds install requirements test with 5 minute timeout
     add_test(NAME install_requirements COMMAND
-        ${CMAKE_COMMAND} -E env
+        cmake -DFORCE_TIMEOUT_SECONDS=300 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+        cmake -E env
         # PATH (dlls)
         "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         # ASAN in case of sanitizers
         ${ASAN_ENVIRONMENT_VARS}
-        ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=300 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
-
         # Actual script to run
         ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
     )

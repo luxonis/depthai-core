@@ -209,12 +209,14 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // set for the duration of stop(): device state transitions reported while the devices
     // are being closed must not re-trigger a stop or user callbacks
     AtomicBool stopping{false};
-    // Thread stopping the pipeline after a device loss. It is spawned from the device's
-    // monitor thread (which stop() joins indirectly) and owns no reference to the pipeline;
+    // Thread stopping the pipeline after a host-node request or device loss. It owns no
+    // reference to the pipeline, so shutdown cannot outlive its owner;
     // wait(), start() and the destructor join it.
-    std::thread deviceLossStopThread;
-    std::mutex deviceLossStopMtx;
-    void joinDeviceLossStop();
+    std::thread stopThread;
+    std::mutex stopThreadMtx;
+    std::shared_ptr<Node::PipelineStopState> stopState{std::make_shared<Node::PipelineStopState>(this)};
+    void stopAsync();
+    void joinStopThread();
     std::string telemetryPipelineId{createTelemetryPipelineId()};
     std::optional<std::chrono::steady_clock::time_point> telemetryPipelineStartedAt;
 

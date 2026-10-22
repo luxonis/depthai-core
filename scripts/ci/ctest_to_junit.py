@@ -31,7 +31,7 @@ RESULT_RE = re.compile(
     #  51/172 Test #107: april_tags ...............................***Skipped  33.29 sec
     #  27/177 Test  #90: fsync_test ...............................***Timeout 1000.08 sec
     r"^\[(?P<config>[^\]]+)\]\s+\d+/(?P<planned>\d+)\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.*\s*"
-    r"(?P<status>Passed|\*\*\*.+?)\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
+    r"(?P<status>Passed|\*\*\*.+?|Subprocess \w+\*\*\*Exception:.*?)\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
 )
 TESTSUITE_RE = re.compile(
     # print(f"Running tests for configuration: linux_rvc2_test / RVC2 - POE, on platform: RVC4, on protocol: POE, with labels: {labels if labels is not None else ""}")
@@ -71,6 +71,7 @@ def parse_log(log_path: Path):
     failures = {}
     passes = {}
     skips = {}
+    disabled = {}
     test_outputs = {}
     descriptions = {}
     started = {}
@@ -86,6 +87,7 @@ def parse_log(log_path: Path):
             failures[config] = OrderedDict()
             passes[config] = OrderedDict()
             skips[config] = OrderedDict()
+            disabled[config] = set()
             test_outputs[config] = {}
             started[config] = OrderedDict()
             order.append(config)
@@ -147,11 +149,16 @@ def parse_log(log_path: Path):
                 name = normalize_name(result_match.group("name"))
                 seconds = float(result_match.group("seconds"))
                 planned[config] = max(planned.get(config, 0), int(result_match.group("planned")))
+                for outcomes in (failures[config], passes[config], skips[config]):
+                    outcomes.pop(num, None)
+                disabled[config].discard(num)
                 kind, cause = classify_status(result_match.group("status"))
                 if kind == "passed":
                     passes[config][num] = (name, seconds)
                 elif kind == "skipped":
                     skips[config][num] = (name, seconds)
+                    if cause == "Not Run (Disabled)":
+                        disabled[config].add(num)
                 else:
                     add_failure(config, num, name, cause)
 
@@ -171,8 +178,10 @@ def parse_log(log_path: Path):
                 cause = normalize_name(cause) if cause else ""
                 if list_kind == "failed":
                     add_failure(list_config, num, name, cause)
-                elif num not in skips[list_config]:
-                    skips[list_config][num] = (name, 0.0)
+                else:
+                    skips[list_config].setdefault(num, (name, 0.0))
+                    if cause == "Disabled":
+                        disabled[list_config].add(num)
             elif list_config is not None and line.startswith(f"[{list_config}]"):
                 list_config = None
                 list_kind = None
@@ -185,6 +194,14 @@ def parse_log(log_path: Path):
     # Tests that started but have no result line: the run was cancelled or the log is truncated
     unfinished = {}
     for config in order:
+        # CTest omits the summary when all planned tests are disabled.
+        if summaries[config] is None and disabled[config] and len(disabled[config]) == planned.get(config, 0):
+            summaries[config] = (0, 0, 0)
+        # CTest excludes disabled tests; normalize them into the skipped counts used by both reports.
+        if summaries[config] is not None:
+            passed, failed, total = summaries[config]
+            disabled_count = len(disabled[config])
+            summaries[config] = (passed + disabled_count, failed, total + disabled_count)
         unfinished[config] = OrderedDict(
             (num, name)
             for num, name in started[config].items()
@@ -241,6 +258,8 @@ def write_junit(
     root = ET.Element("testsuites")
     all_tests = 0
     all_failures = 0
+    all_skips = 0
+    all_errors = 0
 
     configs = iter_configs(order, summaries, failures)
     if not configs:
@@ -250,7 +269,7 @@ def write_junit(
             name=f"{context or 'ctest'}",
             tests="1",
             failures="0",
-            errors="0",
+            errors="1",
             skipped="0",
             time="0",
         )
@@ -261,9 +280,10 @@ def write_junit(
             name="summary empty",
             time="0",
         )
-        system_out = ET.SubElement(empty_case, "system-out")
+        system_out = ET.SubElement(empty_case, "error", message="No CTest results found")
         system_out.text = "No CTest summary lines found in the log."
         all_tests = 1
+        all_errors = 1
 
     for config in configs:
         summary = summaries.get(config)
@@ -286,10 +306,12 @@ def write_junit(
         suite_skips = len(parsed_skips)
         suite_name = f"{context} / {config}" if context else config
         suite_tests = suite_failures+suite_passes+suite_skips
+        suite_errors = int(summary is None and suite_tests == 0)
+        suite_tests += suite_errors
 
         declared_failed = summary[1] if summary else suite_failures
         declared_total = summary[2] if summary else suite_tests
-        declared_passed = summary[0] if summary else declared_total - declared_failed
+        declared_passed = max(0, summary[0] - suite_skips) if summary else suite_passes
 
         suite = ET.SubElement(
             root,
@@ -297,7 +319,7 @@ def write_junit(
             name=suite_name,
             tests=str(suite_tests),
             failures=str(suite_failures),
-            errors="?",
+            errors=str(suite_errors),
             skipped=str(suite_skips),
             time="0",
             labels=description['labels'],
@@ -312,6 +334,11 @@ def write_junit(
             name="ctest.summary",
             value=f"Passed={declared_passed}, Failed={declared_failed}, Total={declared_total}",
         )
+
+        if suite_errors:
+            case = ET.SubElement(suite, "testcase", classname=suite_name, name="summary empty", time="0")
+            error = ET.SubElement(case, "error", message="No CTest results found")
+            error.text = "Configuration had no captured CTest results."
 
         for num, entry in parsed_failures.items():
             test_name, cause = entry
@@ -383,7 +410,7 @@ def write_junit(
             )
             skip = ET.SubElement(
                 case,
-                "skip",
+                "skipped",
             )
         
 
@@ -403,10 +430,13 @@ def write_junit(
 
         all_tests += suite_tests
         all_failures += suite_failures
+        all_skips += suite_skips
+        all_errors += suite_errors
 
     root.set("tests", str(all_tests))
     root.set("failures", str(all_failures))
-    root.set("errors", "0")
+    root.set("errors", str(all_errors))
+    root.set("skipped", str(all_skips))
     root.set("time", "0")
     root.set("testbedId", testbedId if testbedId is not None else "")
 

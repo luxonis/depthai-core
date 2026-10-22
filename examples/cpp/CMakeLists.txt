@@ -65,7 +65,8 @@ function(dai_add_example example_name example_src enable_test use_pcl)
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND
-            ${CMAKE_COMMAND}
+            # Resolve CMake on the test machine after CI relocates the build artifacts.
+            cmake
             -DTIMEOUT_SECONDS=300
             -P ${TOP_CPP_EXAMPLES_CMAKE_DIR}/cmake/ExecuteTestTimeout.cmake
             $<TARGET_FILE:test_wrapper>

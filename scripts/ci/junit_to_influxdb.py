@@ -56,7 +56,8 @@ def writeTestsuite(
     failed: int,
     fixed: int,
     broken: int,
-    skipped: int
+    skipped: int,
+    errored: int = 0
 ):
     testsuite = (
         influxdb_client
@@ -76,7 +77,7 @@ def writeTestsuite(
         .tag("DEPTHAI_PROTOCOL", protocol)
         .field("tests", tests)
         .field("skipped", skipped)
-        .field("errored", 0)
+        .field("errored", errored)
         .field("failed", failed)
         .field("passed", passed)
         .field("fixed", fixed)
@@ -138,7 +139,7 @@ def writeSingleTest(
     return
 
 def parseTestSummary():
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 4:
         print("COULD NOT UPLOAD JUNITS TO INFLUXDB, BECAUSE SCRIPT WAS CALLED INCORRECTLY")
         return
     global timeGlobal, osGlobal
@@ -153,14 +154,15 @@ def parseTestSummary():
         labels = testsuite.get('labels', '')
         protocol = testsuite.get('DEPTHAI_PROTOCOL', 'null')
         platform = testsuite.get('DEPTHAI_PLATFORM', 'null')
-        skipped = int(testsuite.get('skipped', '-1'))
+        skipped = int(testsuite.get('skipped', '0'))
+        errored = int(testsuite.get('errors', '0'))
         print("Processing testsuite", name)
         props = testsuite.find('properties')
-        if (props == None):
-            print("Could not find testsuite properties, skipping!")
-            continue
-        failed = -1; passed = -1; total = -1; brokenCt = 0; fixedCt = 0
-        for prop in props:
+        failed = int(testsuite.get('failures', '0'))
+        total = int(testsuite.get('tests', '0'))
+        passed = max(0, total - failed - skipped - errored)
+        brokenCt = 0; fixedCt = 0
+        for prop in props if props is not None else ():
             name = prop.get('name')
             match name:
                 case 'ctest.summary':
@@ -182,6 +184,9 @@ def parseTestSummary():
             testname = summary.split(' ')[1] or 'unknown_test'
 
             failure = testcase.find("failure")
+            error = testcase.find("error")
+            if error is not None:
+                failure = error
             if failure is not None:
                 broken = False
                 if (prevFailureList.count(testname) == 0): #not present means it just broke
@@ -196,25 +201,26 @@ def parseTestSummary():
                 if (len(logs) < 16): logs = "Could not find logs"
                 writeSingleTest(
                     labels=labels, platform=platform, protocol=protocol, context=context, config=config, testbed=testbedId,
-                    testname=testname, logs=logs, status="failed"
+                    testname=testname, logs=logs, status="errored" if error is not None else "failed"
                 )
                 continue
             if testcase.find("success") is not None:
+                if testname in prevFailureList:
+                    fixedCt += 1
                 writeSingleTest(
                     labels=labels, platform=platform, protocol=protocol, context=context, config=config, testbed=testbedId,
                     testname=testname, status="passed", logs=None
                 )
                 continue
-            if testcase.find("skip") is not None:
+            if testcase.find("skipped") is not None or testcase.find("skip") is not None:
                 writeSingleTest(
                     labels=labels, platform=platform, protocol=protocol, context=context, config=config, testbed=testbedId,
                     testname=testname, status="skipped", logs=None
                 )
                 continue
-        fixedCt = len(prevFailureList)
         writeTestsuite(
             labels=labels, platform=platform, protocol=protocol, context=context, config=config, testbed=testbedId,
-            passed=passed, failed=failed, tests=total, fixed=fixedCt, broken=brokenCt, skipped=skipped
+            passed=passed, failed=failed, tests=total, fixed=fixedCt, broken=brokenCt, skipped=skipped, errored=errored
         )
 
 parseTestSummary()

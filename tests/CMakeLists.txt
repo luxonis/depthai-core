@@ -364,7 +364,8 @@ function(dai_add_test test_name test_src)
 
     # Add test
     add_test(NAME ${test_name} COMMAND ${test_name})
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
+    # Catch2 returns 4 when every selected test case calls SKIP().
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}" SKIP_RETURN_CODE 4)
 
 
     # Copy over required DLLs (Windows)
@@ -725,6 +726,9 @@ dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci noreplayci)
 # Pipeline test
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
 dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
+
+dai_add_test(pipeline_shutdown_test src/ondevice_tests/pipeline_shutdown_test.cpp)
+dai_set_test_labels(pipeline_shutdown_test ondevice rvc2_all rvc4 ci noreplayci)
 
 # Pipeline debugging tests
 dai_add_test(pipeline_debugging_rvc4_test src/ondevice_tests/pipeline_debugging_rvc4_test.cpp)

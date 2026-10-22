@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <tuple>
@@ -74,6 +75,14 @@ class Node : public std::enable_shared_from_this<Node> {
     friend class PipelineImpl;
     friend class utility::PipelineImplHelper;
     friend class Device;
+
+    // Shared with the pipeline; the mutex protects the pointer through destruction.
+    struct PipelineStopState {
+        explicit PipelineStopState(PipelineImpl* pipeline) : pipeline(pipeline) {}
+        std::mutex mutex;
+        PipelineImpl* pipeline;
+    };
+    std::shared_ptr<PipelineStopState> pipelineStopState;
 
    public:
     // Nodes must always be managed

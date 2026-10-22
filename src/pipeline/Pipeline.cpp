@@ -1306,6 +1306,7 @@ void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
         if(curNode->parent.lock() == nullptr) {
             curNode->parent = shared_from_this();
         }
+        curNode->pipelineStopState = stopState;
         // In case we have a device node without an assigned device (usually subnodes in non-DeviceNode nodes), use the default device.
         if(auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(curNode)) {
             if(deviceNode->getDevice() == nullptr) {
@@ -1764,9 +1765,9 @@ void PipelineImpl::build() {
 }
 
 void PipelineImpl::start() {
-    // A stop triggered by a device loss may still be finishing on its own thread - it must
+    // An asynchronous stop may still be finishing on its own thread - it must
     // complete before the pipeline is started again (it takes stateMtx itself)
-    joinDeviceLossStop();
+    joinStopThread();
     std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
 
@@ -2081,20 +2082,7 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
                                            fatal    ? "a fatal device"
                                            : strict ? "running nodes with stopOnDeviceLoss set"
                                                     : "the last device alive");
-        // Stop from a separate thread: this runs on the device's monitor thread, which
-        // stop() joins indirectly when closing the devices. The thread owns no reference to
-        // the pipeline - wait(), start() and the destructor join it - so the pipeline can
-        // never be destroyed on it.
-        std::lock_guard<std::mutex> lock(deviceLossStopMtx);
-        if(!deviceLossStopThread.joinable()) {
-            deviceLossStopThread = std::thread([this]() {
-                try {
-                    stop();
-                } catch(const std::exception& ex) {
-                    Logging::getInstance().logger.error("Failed to stop pipeline after device loss: {}", ex.what());
-                }
-            });
-        }
+        stopAsync();
     }
 }
 
@@ -2120,24 +2108,41 @@ void PipelineImpl::wait() {
             node->wait();
         }
     }
-    // A stop triggered by a device loss runs on its own thread - waiting for the pipeline
+    // Asynchronous stops run on their own thread - waiting for the pipeline
     // includes waiting for that teardown (device close) to finish
-    joinDeviceLossStop();
+    joinStopThread();
 }
 
-void PipelineImpl::joinDeviceLossStop() {
+void PipelineImpl::stopAsync() {
+    // Never retain shared ownership here: it could move destruction past the owner's
+    // scope (and even past static destruction). The owner joins this thread instead.
+    std::lock_guard<std::mutex> lock(stopThreadMtx);
+    if(!stopThread.joinable()) {
+        stopThread = std::thread([this]() {
+            try {
+                stop();
+            } catch(const std::exception& ex) {
+                Logging::getInstance().logger.error("Failed to stop pipeline asynchronously: {}", ex.what());
+            } catch(...) {
+                Logging::getInstance().logger.error("Failed to stop pipeline asynchronously: unknown exception");
+            }
+        });
+    }
+}
+
+void PipelineImpl::joinStopThread() {
     std::thread thread;
     {
-        std::lock_guard<std::mutex> lock(deviceLossStopMtx);
-        if(!deviceLossStopThread.joinable()) {
+        std::lock_guard<std::mutex> lock(stopThreadMtx);
+        if(!stopThread.joinable()) {
             return;
         }
-        if(deviceLossStopThread.get_id() == std::this_thread::get_id()) {
-            // Called on the loss-stop thread itself - it cannot join itself; let it run out
-            deviceLossStopThread.detach();
+        if(stopThread.get_id() == std::this_thread::get_id()) {
+            // Called on the stop thread itself - it cannot join itself; let it run out
+            stopThread.detach();
             return;
         }
-        thread = std::move(deviceLossStopThread);
+        thread = std::move(stopThread);
     }
     thread.join();
 }
@@ -2224,7 +2229,11 @@ void PipelineImpl::stop() {
 }
 
 PipelineImpl::~PipelineImpl() {
-    joinDeviceLossStop();
+    {
+        std::lock_guard<std::mutex> lock(stopState->mutex);
+        stopState->pipeline = nullptr;
+    }
+    joinStopThread();
     stop();
     wait();
 

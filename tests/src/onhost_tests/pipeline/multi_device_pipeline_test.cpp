@@ -1,5 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <chrono>
+#include <future>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
@@ -7,6 +9,79 @@
 #include "depthai/depthai.hpp"
 
 // Host-only checks for the multi-device pipeline API (no device required)
+
+namespace {
+class ShutdownNode : public dai::node::CustomThreadedNode<ShutdownNode> {
+   public:
+    std::promise<void> stopEntered;
+    std::promise<void> releaseStop;
+    std::promise<void> requestFinished;
+    std::shared_future<void> stopReleased{releaseStop.get_future()};
+    std::shared_future<void> requestGate;
+
+    void run() override {
+        if(requestGate.valid()) requestGate.wait();
+        stopPipeline();
+        requestFinished.set_value();
+    }
+
+    void onStop() override {
+        stopEntered.set_value();
+        stopReleased.wait();
+    }
+};
+}  // namespace
+
+TEST_CASE("Host node shutdown completes before wait or pipeline destruction returns") {
+    using namespace std::chrono_literals;
+    const bool destroyPipeline = GENERATE(false, true);
+    CAPTURE(destroyPipeline);
+    std::optional<dai::Pipeline> pipeline(std::in_place, false);
+    auto node = pipeline->create<ShutdownNode>();
+    auto entered = node->stopEntered.get_future();
+    auto requested = node->requestFinished.get_future();
+    pipeline->start();
+    // The request must return on the node thread while shutdown is still blocked.
+    const auto enteredStatus = entered.wait_for(5s);
+    const auto requestedStatus = requested.wait_for(5s);
+    if(enteredStatus != std::future_status::ready || requestedStatus != std::future_status::ready) {
+        node->releaseStop.set_value();
+        FAIL("Host node could not request asynchronous shutdown");
+    }
+    auto completion = std::async(std::launch::async, [&] {
+        if(destroyPipeline) {
+            pipeline.reset();
+        } else {
+            pipeline->wait();
+        }
+    });
+    CHECK(completion.wait_for(100ms) == std::future_status::timeout);
+    node->releaseStop.set_value();
+    completion.get();
+    // Also join the node when testing destruction; retaining the node is intentional.
+    node->wait();
+}
+
+TEST_CASE("Pipeline destruction can race with a host shutdown request") {
+    using namespace std::chrono_literals;
+    for(int attempt = 0; attempt < 32; ++attempt) {
+        CAPTURE(attempt);
+        std::optional<dai::Pipeline> pipeline(std::in_place, false);
+        auto node = pipeline->create<ShutdownNode>();
+        std::promise<void> request;
+        node->requestGate = request.get_future().share();
+        node->releaseStop.set_value();
+        auto requested = node->requestFinished.get_future();
+        pipeline->start();
+        // Release the node and the last pipeline owner together, without waiting for the request.
+        request.set_value();
+        pipeline.reset();
+        CHECK(requested.wait_for(5s) == std::future_status::ready);
+        node->wait();
+        // A retained node must also be safe to call after its pipeline has gone away.
+        CHECK_NOTHROW(node->stopPipeline());
+    }
+}
 
 TEST_CASE("Linking across two different pipelines throws") {
     dai::Pipeline p1(false);

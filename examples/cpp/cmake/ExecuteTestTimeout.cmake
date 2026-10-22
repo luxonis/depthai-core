@@ -1,17 +1,15 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.20)
 
-# Parse out arguments
-foreach(_arg RANGE ${CMAKE_ARGC})
-    if(append)
-        list(APPEND arguments "${CMAKE_ARGV${_arg}}")
-    endif()
-
-    if("${CMAKE_ARGV${_arg}}" STREQUAL "-P")
-        set(append true)
-        message(status "found -P")
+# Expand each original argument in quotes, without converting it to a CMake list.
+math(EXPR lastArgument "${CMAKE_ARGC} - 1")
+foreach(_arg RANGE ${lastArgument})
+    if(DEFINED commandStart AND _arg GREATER_EQUAL commandStart)
+        string(APPEND commandArguments " \"\${CMAKE_ARGV${_arg}}\"")
+        string(APPEND arguments " [${CMAKE_ARGV${_arg}}]")
+    elseif(NOT DEFINED commandStart AND "${CMAKE_ARGV${_arg}}" STREQUAL "-P")
+        math(EXPR commandStart "${_arg} + 2")
     endif()
 endforeach()
-list(REMOVE_AT arguments 0)
 
 message(STATUS "arguments: ${arguments}")
 
@@ -29,9 +27,9 @@ endif()
 
 # Execute the example (SIGTERM for now, could be improved with SIGINT -> SIGKILL)
 if(TIMEOUT_SECONDS GREATER 0)
-    execute_process(COMMAND ${arguments} TIMEOUT ${TIMEOUT_SECONDS} RESULT_VARIABLE error_variable)
+    cmake_language(EVAL CODE "execute_process(COMMAND ${commandArguments} TIMEOUT \"\${TIMEOUT_SECONDS}\" RESULT_VARIABLE error_variable)")
 else()
-    execute_process(COMMAND ${arguments} RESULT_VARIABLE error_variable)
+    cmake_language(EVAL CODE "execute_process(COMMAND ${commandArguments} RESULT_VARIABLE error_variable)")
 endif()
 
 message(STATUS "After process executed, ${PATH_TO_TEST_EXECUTABLE} produced the following exit code: ${error_variable}")
