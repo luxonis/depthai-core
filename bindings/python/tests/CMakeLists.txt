@@ -13,8 +13,11 @@ set(PYBIND11_TEST_FILES
     "xlink_protocol_test.py"
     "utf8_support_test.py"
     # "dai_path_conversion_test.py" requires device
+    "nn_archive_gil_test.py"
+    "test_registration_test.py"
     "nndata_tensor_test.py"
     "pcldata_set_points_test.py"
+    "backend_compatibility_test.py"
     "remote_connection_service_test.py"
     "messsage_queue_test.py"
     "imgframe_test.py"
@@ -26,6 +29,12 @@ set(PYBIND11_TEST_FILES
     "stitching_test.py"
     "neural_network_model_test.cpp"
 )
+
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND PYBIND11_TEST_FILES
+        "model_zoo_gil_test.py"
+    )
+endif()
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND PYBIND11_TEST_FILES

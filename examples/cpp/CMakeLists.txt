@@ -15,7 +15,7 @@ target_link_libraries(utility ${OpenCV_LIBS})
 
 set(test_env
     # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
+    "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
     # vcpkg dependencies are built without ASan: protobuf containers then give false container-overflow
     # reports (inline code from instrumented objects annotates memory that libprotobuf.a then writes)
     # TODO: remove when the vcpkg dependencies are built with ASan
