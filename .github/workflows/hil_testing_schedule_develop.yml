@@ -1,13 +1,16 @@
 name: DepthAI Core HIL Testing Develop Schedule
 
+# Scheduled workflows run only from the default branch (main), so changes here take effect on main.
 on:
   schedule:
-    - cron: '0 1 * * *' # Every day at 01:00 UTC
+    - cron: '0 20 * * *' # Every day at 20:00 Ljubljana time
+      timezone: 'Europe/Ljubljana'
     - cron: '0 3 * * 6' # Saturdays at 03:00 UTC
     - cron: '0 3 * * 0' # Sundays at 03:00 UTC
 
 permissions:
   actions: write
+  contents: read
 
 jobs:
   dispatch:
@@ -25,11 +28,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run weekly_stability.yml --repo "$GITHUB_REPOSITORY" --ref develop
 
-      - name: Trigger nightly develop HIL testing
-        if: github.event.schedule == '0 1 * * *'
+      - name: Trigger nightly develop build and HIL testing
+        # contains(): the docs do not say if github.event.schedule also holds the timezone.
+        if: contains(github.event.schedule, '0 20 * * *')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop
+        run: |
+          # Pushes to develop do not start a build, so build each new develop commit here, once. When
+          # main.workflow.yml already has a run for the newest commit, an earlier night (or a manual run)
+          # built it; a second Python build of the same commit fails to upload its wheels again.
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/develop" --jq .sha)
+          built=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow main.workflow.yml --branch develop --commit "$sha" --limit 1 --json databaseId --jq length)
+          if [[ "$built" == "0" ]]; then
+            echo "Building develop commit $sha"
+            gh workflow run main.workflow.yml --repo "$GITHUB_REPOSITORY" --ref develop
+            gh workflow run containers.yml --repo "$GITHUB_REPOSITORY" --ref develop
+            # Python wheels first, then the HIL tests, then the BOM tests.
+            gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop -f build_and_bom=true
+          else
+            echo "develop commit $sha is already built; running the HIL tests only"
+            gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop
+          fi
 
       - name: Notify Slack
         if: github.event.schedule == '0 3 * * 6'
