@@ -63,7 +63,7 @@ jobs:
             echo "The wheels of develop commit $sha are uploaded (or a running build uploads them); running the HIL tests only"
             gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop
           else
-            echo "Building the wheels of develop commit $sha, then the HIL tests, then the BOM tests"
+            echo "Building the wheels of develop commit $sha, then the HIL tests and the BOM tests"
             gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop -f build_and_bom=true
           fi
 

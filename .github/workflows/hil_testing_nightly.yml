@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       build_and_bom:
-        description: Build the Python wheels before the HIL tests and run the BOM tests after them (the nightly develop build)
+        description: Build the Python wheels, then run the BOM tests at the same time as the HIL tests (the nightly develop build)
         type: boolean
         default: false
 
@@ -47,7 +47,7 @@ jobs:
       INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
 
   dispatch_bom_tests:
-    needs: [build_wheels, run_ci_and_ci_nightly_tests]
+    needs: build_wheels
     if: ${{ !cancelled() && needs.build_wheels.result == 'success' }}
     uses: ./.github/workflows/bom_dispatch.yml
     secrets: inherit
