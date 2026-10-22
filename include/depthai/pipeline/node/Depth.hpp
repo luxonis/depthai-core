@@ -223,7 +223,8 @@ class Depth : public DeviceNodeGroup {
 
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
-    static Selection selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
+    static Selection selectBackend(Platform platform,
+                                   std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                    float targetFps,
                                    const std::vector<Algorithm>& supportedAlgorithms,
                                    const std::vector<DeviceModelZoo>& modelFilter = {},

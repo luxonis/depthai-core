@@ -29,7 +29,7 @@ struct DepthTestAccess {
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {}) {
-        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, modelFilter);
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter);
         return {selection.algorithm, selection.config};
     }
 

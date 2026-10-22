@@ -567,9 +567,14 @@ std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_pt
 Depth::Algorithm Depth::getDefaultAlgorithm(const std::shared_ptr<Device>& device) {
     DAI_CHECK_V(device != nullptr, "Depth::getDefaultAlgorithm requires a device.");
     const auto supported = getSupportedAlgorithms(device);
-    const auto pair = requireFirstStereoPair(device);
-    const auto models = device->getPlatform() == Platform::RVC4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
-    return selectBackend(sizeFromDeviceFeatures(device, pair), DEFAULT_TARGET_FPS, supported, models).algorithm;
+    const auto platform = device->getPlatform();
+    const bool isRvc4 = platform == Platform::RVC4;
+    std::optional<std::pair<uint32_t, uint32_t>> resolution;
+    if(isRvc4 || !supportsAlgorithm(supported, Algorithm::TOF)) {
+        resolution = sizeFromDeviceFeatures(device, requireFirstStereoPair(device));
+    }
+    const auto models = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+    return selectBackend(platform, resolution, DEFAULT_TARGET_FPS, supported, models).algorithm;
 }
 
 // --- Algorithm resolution ---
@@ -579,11 +584,19 @@ bool Depth::exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {
     return width > maxWidth || height > maxHeight;
 }
 
-Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
+Depth::Selection Depth::selectBackend(Platform platform,
+                                      std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                       float targetFps,
                                       const std::vector<Algorithm>& supportedAlgorithms,
                                       const std::vector<DeviceModelZoo>& modelFilter,
                                       bool requireFpsAndResolutionMatch) {
+    if(platform != Platform::RVC4) {
+        if(supportsAlgorithm(supportedAlgorithms, Algorithm::TOF)) {
+            return {Algorithm::TOF, std::monostate{}};
+        }
+        return {Algorithm::STEREO, resolveStereoPreset(targetFps, resolution)};
+    }
+
     targetFps = targetFpsWithDefault(targetFps);
     const float requiredFps = targetFps * SELECTION_FPS_SAFETY_MARGIN;
 
@@ -619,7 +632,8 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
 }
 
 void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline) {
-    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
+    const auto platform = device->getPlatform();
+    const bool isRvc4 = platform == Platform::RVC4;
 
     // getSupportedDeviceModels() is an RVC4-only RPC; on other platforms there is no model catalog.
     const auto supportedModels = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
@@ -641,7 +655,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     if(!isRvc4) {
         const Algorithm chosen =
-            (algorithmOverride_ == Algorithm::AUTO) ? (supportsAlgorithm(supported, Algorithm::TOF) ? Algorithm::TOF : Algorithm::STEREO) : algorithmOverride_;
+            (algorithmOverride_ == Algorithm::AUTO) ? selectBackend(platform, std::nullopt, DEFAULT_TARGET_FPS, supported).algorithm : algorithmOverride_;
         Config config = std::monostate{};
         if(chosen == Algorithm::STEREO) {
             const auto pair = requireFirstStereoPair(device);
@@ -665,7 +679,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     if(algorithmOverride_ == Algorithm::AUTO) {
         // Only enforce an exact FPS+resolution match when the user pinned both via build().
         const bool userPinnedFpsAndResolution = stereoOutputFps_.has_value() && sizeOverride_.has_value();
-        resolved_ = selectBackend(resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution);
+        resolved_ = selectBackend(platform, resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution);
         if(resolved_.algorithm == Algorithm::STEREO && resolution) {
             validateStereoDepthResolution(resolution->first, resolution->second);
         }
