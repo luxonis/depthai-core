@@ -19,6 +19,10 @@ on:
         default: develop
         type: string
 
+# The jobs run code of WARM_REF; actions/cache does not need token permissions.
+permissions:
+  contents: read
+
 env:
   WARM_REF: ${{ inputs.ref || 'develop' }}
   CMAKE_WINDOWS_SDK_VERSION: '10.0.26100.0'

@@ -2,6 +2,11 @@ name: DepthAI Core HIL Testing Nightly
 
 on:
   workflow_dispatch:
+    inputs:
+      build_and_bom:
+        description: Build the Python wheels before the HIL tests and run the BOM tests after them (the nightly develop build)
+        type: boolean
+        default: false
 
 permissions:
   actions: read
@@ -13,7 +18,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build_wheels:
+    if: inputs.build_and_bom
+    uses: ./.github/workflows/python-main.yml
+    with:
+      concurrency_suffix: nightly
+    secrets: inherit
+
   run_ci_and_ci_nightly_tests:
+    needs: build_wheels
+    if: ${{ !cancelled() }}
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
@@ -31,3 +45,9 @@ jobs:
       INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
       INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
       INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
+
+  dispatch_bom_tests:
+    needs: [build_wheels, run_ci_and_ci_nightly_tests]
+    if: ${{ !cancelled() && needs.build_wheels.result == 'success' }}
+    uses: ./.github/workflows/bom_dispatch.yml
+    secrets: inherit
