@@ -16,19 +16,28 @@ TEST_CASE("63D IR shared power budget can be bypassed explicitly", "[.dangerous]
     bool capped = false;
     bool matchedCurrent = false;
     dai::Device::Config config;
-    config.dangerousIrPowerOverride = dangerous;
     config.logLevel = dai::LogLevel::WARN;
     config.board.logDevicePrints = true;
-    dai::Device device(config);
-
-    const auto properties = device.getProperties();
-    REQUIRE(properties.calibData.has_value());
-    const auto& eeprom = properties.calibData.value();
-    const bool limitedBoard = (eeprom.boardName == "EL2086" && eeprom.boardRev == "R6M5E6" && eeprom.boardConf == "IR-C59M00-00")
-                              || (eeprom.boardName == "EL2086-ASM" && eeprom.boardConf == "IR-C59M07-00");
-    if(!limitedBoard) {
-        SKIP("Requires a 63D board with the shared IR power budget");
+    dai::DeviceInfo deviceInfo;
+    {
+        dai::Device probe(config);
+        if(probe.getPlatform() != dai::Platform::RVC2) {
+            SKIP("Requires an RVC2 device");
+        }
+        const auto properties = probe.getProperties();
+        if(!properties.calibData.has_value()) {
+            SKIP("Requires board calibration data to identify supported hardware");
+        }
+        const auto& eeprom = properties.calibData.value();
+        const bool limitedBoard = (eeprom.boardName == "EL2086" && eeprom.boardRev == "R6M5E6" && eeprom.boardConf == "IR-C59M00-00")
+                                  || (eeprom.boardName == "EL2086-ASM" && eeprom.boardConf == "IR-C59M07-00");
+        if(!limitedBoard) {
+            SKIP("Requires a 63D board with the shared IR power budget");
+        }
+        deviceInfo.deviceId = probe.getDeviceId();
     }
+    config.dangerousIrPowerOverride = dangerous;
+    dai::Device device(config, deviceInfo);
 
     // Calibration reads redo board lookups and must not cancel the explicit override.
     device.readCalibrationOrDefault();
