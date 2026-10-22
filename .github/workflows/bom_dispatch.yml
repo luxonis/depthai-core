@@ -5,7 +5,7 @@ name: BOM tests dispatch
 # job passed. Callers:
 #   - python-main.yml, for pushes to main, release branches and tags. A newer push to the same branch
 #     cancels the wait (the concurrency of python-main.yml).
-#   - hil_testing_nightly.yml, for the nightly develop build, after the HIL tests.
+#   - hil_testing_nightly.yml, for the nightly develop build, at the same time as the HIL tests.
 # The wait keeps an ubuntu runner busy for 135-361 min (develop runs of 2026-10-06..08).
 
 on:
