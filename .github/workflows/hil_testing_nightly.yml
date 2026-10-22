@@ -48,6 +48,6 @@ jobs:
 
   dispatch_bom_tests:
     needs: [build_wheels, run_ci_and_ci_nightly_tests]
-    if: always() && needs.build_wheels.result == 'success'
+    if: ${{ !cancelled() && needs.build_wheels.result == 'success' }}
     uses: ./.github/workflows/bom_dispatch.yml
     secrets: inherit
