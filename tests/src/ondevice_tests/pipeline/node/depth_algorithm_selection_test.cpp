@@ -19,7 +19,12 @@ struct DepthTestAccess {
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {}) {
-        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, modelFilter);
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter);
+        return {selection.algorithm, selection.config};
+    }
+
+    static std::pair<Depth::Algorithm, Depth::Config> selectNonRvc4Backend(const std::vector<Depth::Algorithm>& supportedAlgorithms) {
+        const auto selection = Depth::selectBackend(Platform::RVC2, std::nullopt, 30.f, supportedAlgorithms);
         return {selection.algorithm, selection.config};
     }
 };
@@ -51,6 +56,40 @@ Selection select(std::optional<std::pair<uint32_t, uint32_t>> res,
 }
 
 }  // namespace
+
+TEST_CASE("Depth::getSupportedAlgorithms requires a non-null device", "[Depth]") {
+    REQUIRE_THROWS_WITH(Depth::getSupportedAlgorithms(nullptr), Catch::Matchers::ContainsSubstring("requires a device"));
+}
+
+TEST_CASE("Depth::getDefaultAlgorithm requires a non-null device", "[Depth]") {
+    REQUIRE_THROWS_WITH(Depth::getDefaultAlgorithm(nullptr), Catch::Matchers::ContainsSubstring("requires a device"));
+}
+
+TEST_CASE("Depth::selectBackend prefers ToF on non-RVC4 devices without requiring stereo", "[Depth]") {
+    for(const auto& supported : {std::vector{Depth::Algorithm::TOF}, std::vector{Depth::Algorithm::STEREO, Depth::Algorithm::TOF}}) {
+        const auto selected = dai::node::DepthTestAccess::selectNonRvc4Backend(supported);
+        REQUIRE(selected.first == Depth::Algorithm::TOF);
+        REQUIRE(std::holds_alternative<std::monostate>(selected.second));
+    }
+}
+
+TEST_CASE("Depth::selectBackend preserves stereo selection on non-RVC4 devices without ToF", "[Depth]") {
+    const auto selected = dai::node::DepthTestAccess::selectNonRvc4Backend(kStereoOnly);
+    REQUIRE(selected.first == Depth::Algorithm::STEREO);
+    REQUIRE(std::get<StereoDepth::PresetMode>(selected.second) == StereoDepth::PresetMode::FAST_ACCURACY);
+}
+
+TEST_CASE("Depth::selectBackend selects ToF on RVC4 without stereo", "[Depth]") {
+    const auto sel = select(std::nullopt, 30.f, {Depth::Algorithm::TOF});
+    REQUIRE(sel.algorithm == Depth::Algorithm::TOF);
+    REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+}
+
+TEST_CASE("Depth::selectBackend preserves RVC4 stereo selection when ToF is also available", "[Depth]") {
+    const auto sel = select(std::make_pair(640u, 400u), 30.f, {Depth::Algorithm::STEREO, Depth::Algorithm::TOF});
+    REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
+    REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
+}
 
 TEST_CASE("Depth::selectBackend picks NeuralDepth model whose tensor band fits the user resolution", "[Depth]") {
     struct Case {

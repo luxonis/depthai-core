@@ -42,6 +42,16 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
     node.def("getRequestedAlgorithm", &Depth::getRequestedAlgorithm, DOC(dai, node, Depth, getRequestedAlgorithm))
+        .def_static("getSupportedAlgorithms",
+                    &Depth::getSupportedAlgorithms,
+                    py::arg("device"),
+                    py::call_guard<py::gil_scoped_release>(),
+                    DOC(dai, node, Depth, getSupportedAlgorithms))
+        .def_static("getDefaultAlgorithm",
+                    &Depth::getDefaultAlgorithm,
+                    py::arg("device"),
+                    py::call_guard<py::gil_scoped_release>(),
+                    DOC(dai, node, Depth, getDefaultAlgorithm))
         .def("setAlgorithm", &Depth::setAlgorithm, py::arg("algorithm"), DOC(dai, node, Depth, setAlgorithm))
         .def(
             "getRequestedConfig",
