@@ -6,3 +6,5 @@ cmake_minimum_required(VERSION 3.10)
 
 dai_add_example(sync sync.cpp ON OFF)
 dai_set_example_test_labels(sync ondevice rvc2_all rvc4 ci)
+
+dai_add_example(ptp_frame_sync ptp_frame_sync.cpp OFF OFF)
