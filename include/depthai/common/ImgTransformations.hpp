@@ -284,7 +284,9 @@ struct ImgTransformation {
      * intrinsics to remap the point.
      * @param to Transformation to remap to
      * @param point Point to remap
-     * @note This function assumes both transformations have the same source (eg. same source camera socket). If they don't, remapping will be inaccurate.
+     * @note Uses intrinsics, distortion and relative rotation, without object depth or camera translation.
+     * Perspective, Equirectangular and Cylindrical destinations are supported. An unprojectable point has non-finite coordinates.
+     * Different cameras must share an extrinsics coordinate system; near objects can be displaced by parallax.
      */
     dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point) const;
     /**
@@ -299,6 +301,7 @@ struct ImgTransformation {
      * intrinsics to remap the rect.
      * @param to Transformation to remap to
      * @param rect RotatedRect to remap
+     * @return Minimum enclosing rectangle with an angle in (-45, 45] degrees.
      */
     dai::RotatedRect remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const;
     /**

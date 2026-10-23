@@ -188,3 +188,5 @@ endif()
 if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_subdirectory(MultiDeviceCalibration)
 endif()
+
+add_subdirectory(MultiDevice)

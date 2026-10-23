@@ -49,6 +49,9 @@ class FixedPanoramaCompositor {
     /** Scale of the rotation warper the panorama is rendered with, i.e. the radius of the projection surface in pixels. */
     double getWarperScale() const;
 
+    /** Visibility of one source in panorama coordinates, using the cached seam masks or direct copying order. */
+    cv::Mat getSourceMask(size_t sourceIndex) const;
+
    private:
     struct Source {
         cv::Size inputSize;
