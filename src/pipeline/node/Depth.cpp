@@ -535,21 +535,34 @@ void Depth::requireNotBuilt(const char* method) const {
 
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) {
     DAI_CHECK_V(device != nullptr, "Depth::getSupportedAlgorithms requires a device.");
-    std::vector<Algorithm> supported;
     const bool hasStereoPair = !device->getStereoPairs().empty();
     const bool hasTof = cameraFeaturesIncludeTof(device->getConnectedCameraFeatures());
+    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
+    auto supportedModels = isRvc4 && hasStereoPair ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+    const bool hasNasModel = isModelSupportedByDevice(DEFAULT_NAS_NEURAL_MODEL, supportedModels);
+    const bool hasFusionModels = isModelSupportedByDevice(DeviceModelZoo::NEURAL_DEPTH_MEDIUM, supportedModels)
+                                 && isModelSupportedByDevice(DeviceModelZoo::TOF_NEURAL_FUSION_672X804, supportedModels);
+    // Keep only models accepted by NeuralDepth after checking the composite backends' requirements.
+    supportedModels.erase(std::remove_if(supportedModels.begin(),
+                                         supportedModels.end(),
+                                         [](DeviceModelZoo model) {
+                                             return !findBackendProfile([model](const BackendProfile& profile) {
+                                                 return profile.algorithm == Algorithm::NEURAL && std::get<DeviceModelZoo>(profile.config) == model;
+                                             });
+                                         }),
+                          supportedModels.end());
+
+    std::vector<Algorithm> supported;
     if(hasStereoPair) {
         supported.push_back(Algorithm::STEREO);
     }
-
-    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
     if(hasStereoPair && isRvc4 && device->isNeuralDepthSupported()) {
-        // NEURAL is only usable when the device actually has a model-zoo depth model available.
-        const auto supportedModels = device->getSupportedDeviceModels();
         if(!supportedModels.empty()) {
             supported.push_back(Algorithm::NEURAL);
         }
-        supported.push_back(Algorithm::NEURAL_ASSISTED_STEREO);
+        if(hasNasModel) {
+            supported.push_back(Algorithm::NEURAL_ASSISTED_STEREO);
+        }
     }
     if(hasStereoPair && isRvc4 && device->isGpuStereoSupported()) {
         supported.push_back(Algorithm::GPU_STEREO);
@@ -557,7 +570,7 @@ std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_pt
     if(hasTof) {
         supported.push_back(Algorithm::TOF);
     }
-    if(isRvc4 && hasStereoPair && hasTof) {
+    if(isRvc4 && hasStereoPair && hasTof && hasFusionModels) {
         supported.push_back(Algorithm::TOF_STEREO_FUSION);
     }
 
