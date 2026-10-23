@@ -36,6 +36,7 @@ jobs:
       test_label: "ci|ci_nightly"
       luxonis_os_versions_to_test: "['1.44.0']"
       luxonis_os_versions_to_test_usb: "['1.44.0']"
+      usb_link_speed_sanity: true
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
