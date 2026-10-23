@@ -79,6 +79,18 @@ TEST_CASE("Depth::selectBackend preserves stereo selection on non-RVC4 devices w
     REQUIRE(std::get<StereoDepth::PresetMode>(selected.second) == StereoDepth::PresetMode::FAST_ACCURACY);
 }
 
+TEST_CASE("Depth::selectBackend selects ToF on RVC4 without stereo", "[Depth]") {
+    const auto sel = select(std::nullopt, 30.f, {Depth::Algorithm::TOF});
+    REQUIRE(sel.algorithm == Depth::Algorithm::TOF);
+    REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+}
+
+TEST_CASE("Depth::selectBackend preserves RVC4 stereo selection when ToF is also available", "[Depth]") {
+    const auto sel = select(std::make_pair(640u, 400u), 30.f, {Depth::Algorithm::STEREO, Depth::Algorithm::TOF});
+    REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
+    REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
+}
+
 TEST_CASE("Depth::selectBackend picks NeuralDepth model whose tensor band fits the user resolution", "[Depth]") {
     struct Case {
         uint32_t w, h;

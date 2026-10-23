@@ -583,7 +583,7 @@ Depth::Algorithm Depth::getDefaultAlgorithm(const std::shared_ptr<Device>& devic
     const auto platform = device->getPlatform();
     const bool isRvc4 = platform == Platform::RVC4;
     std::optional<std::pair<uint32_t, uint32_t>> resolution;
-    if(isRvc4 || !supportsAlgorithm(supported, Algorithm::TOF)) {
+    if(!supportsAlgorithm(supported, Algorithm::TOF) || (isRvc4 && supportsAlgorithm(supported, Algorithm::STEREO))) {
         resolution = sizeFromDeviceFeatures(device, requireFirstStereoPair(device));
     }
     const auto models = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
@@ -603,10 +603,10 @@ Depth::Selection Depth::selectBackend(Platform platform,
                                       const std::vector<Algorithm>& supportedAlgorithms,
                                       const std::vector<DeviceModelZoo>& modelFilter,
                                       bool requireFpsAndResolutionMatch) {
+    if(supportsAlgorithm(supportedAlgorithms, Algorithm::TOF) && (platform != Platform::RVC4 || !supportsAlgorithm(supportedAlgorithms, Algorithm::STEREO))) {
+        return {Algorithm::TOF, std::monostate{}};
+    }
     if(platform != Platform::RVC4) {
-        if(supportsAlgorithm(supportedAlgorithms, Algorithm::TOF)) {
-            return {Algorithm::TOF, std::monostate{}};
-        }
         return {Algorithm::STEREO, resolveStereoPreset(targetFps, resolution)};
     }
 
@@ -666,7 +666,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         DAI_CHECK_V(supportsAlgorithm(supported, algorithmOverride_), "Depth algorithm {} is not supported on this device.", algorithmName(algorithmOverride_));
     }
 
-    if(!isRvc4) {
+    if(!isRvc4 || algorithmOverride_ == Algorithm::TOF || (!supportsAlgorithm(supported, Algorithm::STEREO) && supportsAlgorithm(supported, Algorithm::TOF))) {
         const Algorithm chosen =
             (algorithmOverride_ == Algorithm::AUTO) ? selectBackend(platform, std::nullopt, DEFAULT_TARGET_FPS, supported).algorithm : algorithmOverride_;
         Config config = std::monostate{};
