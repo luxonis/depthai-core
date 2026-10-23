@@ -2675,8 +2675,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
-        std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+        XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+        std::thread t1([&stream, &assetStorage]() {
             int64_t offset = 0;
             do {
                 int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));

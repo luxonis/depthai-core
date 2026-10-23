@@ -8,20 +8,6 @@
 
 // Host-only checks for the multi-device pipeline API (no device required)
 
-TEST_CASE("Pipeline device closing is enabled by default and configurable") {
-    dai::Pipeline pipeline(false);
-    REQUIRE(pipeline.getCloseDevicesOnStop());
-    pipeline.setCloseDevicesOnStop(false);
-    REQUIRE_FALSE(pipeline.getCloseDevicesOnStop());
-    pipeline.start();
-    REQUIRE_THROWS_AS(pipeline.setCloseDevicesOnStop(true), std::runtime_error);
-    pipeline.stop();
-    pipeline.wait();
-    REQUIRE_FALSE(pipeline.isRunning());
-    pipeline.setCloseDevicesOnStop(true);
-    REQUIRE(pipeline.getCloseDevicesOnStop());
-}
-
 TEST_CASE("Linking across two different pipelines throws") {
     dai::Pipeline p1(false);
     dai::Pipeline p2(false);

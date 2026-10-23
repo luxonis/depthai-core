@@ -40,6 +40,12 @@ void XLinkInHost::disconnect() {
     isWaitingForReconnect.notify_all();
 }
 
+void XLinkInHost::wait() {
+    ThreadedHostNode::wait();
+    // A stopped pipeline may outlive another pipeline reusing the same stream name.
+    stream.reset();
+}
+
 bool XLinkInHost::parkUntilReconnect(const std::shared_ptr<XLinkConnection>& lostConn, bool streamOpenFailed) {
     using namespace std::chrono;
     const auto parkStart = steady_clock::now();

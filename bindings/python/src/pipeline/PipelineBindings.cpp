@@ -238,8 +238,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  // as it periodically checks for python interrupts
                  if(createImplicitDevice) {
                      dai::DeviceInfo deviceInfo = deviceSearchHelper<dai::Device>();
-                     auto device = std::make_shared<dai::Device>(deviceInfo);
-                     return new Pipeline(device);
+                     auto pipeline = std::make_unique<Pipeline>(false);
+                     pipeline->addDevice(deviceInfo);
+                     return pipeline.release();
                  }
 
                  assert(createImplicitDevice == false);
@@ -518,8 +519,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  p.wait();
              })
         .def("stop", &Pipeline::stop, py::call_guard<py::gil_scoped_release>(), DOC(dai, Pipeline, stop))
-        .def("setCloseDevicesOnStop", &Pipeline::setCloseDevicesOnStop, py::arg("close"), DOC(dai, Pipeline, setCloseDevicesOnStop))
-        .def("getCloseDevicesOnStop", &Pipeline::getCloseDevicesOnStop, DOC(dai, Pipeline, getCloseDevicesOnStop))
         .def("run",
              [](Pipeline& p) {
                  {

@@ -482,7 +482,6 @@ TEST_CASE("Depth: successive pipelines keep the same device connection", "[keep-
     for(const auto method : sequence) {
         {
             Pipeline pipeline(device);
-            pipeline.setCloseDevicesOnStop(false);
             const auto depth = pipeline.create<node::Depth>()->build(method, 15.f, std::make_pair(640u, 400u));
             const auto queue = depth->depth().createOutputQueue(1, false);
             try {

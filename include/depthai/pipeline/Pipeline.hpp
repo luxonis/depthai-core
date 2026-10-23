@@ -53,6 +53,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
+            ownedDevices.insert(defaultDevice.get());
         } else {
             hostProperties = DeviceProperties();
             defaultDeviceProperties = &hostProperties.value();
@@ -264,7 +265,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Off by default: a lost device only idles its streams (permissive mode).
     AtomicBool stopOnDeviceLoss{false};
 
-    AtomicBool closeDevicesOnStop{true};
+    // Only connections constructed by this pipeline are closed on stop.
+    std::unordered_set<const Device*> ownedDevices;
 
     // Called from a device's monitor thread on state transitions. On FAILED, idles the
     // device's XLink host nodes and stops the pipeline when the device was fatal, the
@@ -461,12 +463,12 @@ class Pipeline {
 
     /**
      * Creates a pipeline
-     * @param createImplicitDevice If true, creates a default device (default = true)
+     * @param createImplicitDevice If true, creates a default device that is closed on stop() (default = true)
      */
     explicit Pipeline(bool createImplicitDevice = true);
 
     /**
-     * Creates a pipeline with specified device
+     * Creates a pipeline with a caller-supplied device that stays open on stop().
      */
     explicit Pipeline(std::shared_ptr<Device> device);
 
@@ -791,28 +793,15 @@ class Pipeline {
     void wait() {
         impl()->wait();
     }
+    /**
+     * Stop execution and close devices constructed by this pipeline.
+     * Caller-supplied devices stay open and can be reused after wait().
+     * Running device nodes on caller-supplied devices requires RVC4 firmware with pipeline-stop support.
+     */
     void stop() {
         impl()->stop();
     }
 
-    /**
-     * Choose whether stopping this pipeline also closes its device connections.
-     * Must be set before start().
-     * Disabling this requires RVC4 firmware with support for stopping a device pipeline.
-     * Retain a shared pointer to each device outside this pipeline to reuse it in a new Pipeline after stop() and wait().
-     * @param close True to close devices on stop (default); false to keep connections open.
-     */
-    void setCloseDevicesOnStop(bool close) {
-        if(impl()->isRunning()) throw std::runtime_error("Configure device closing before starting the pipeline.");
-        impl()->closeDevicesOnStop = close;
-    }
-
-    /**
-     * @return Whether stop() closes the pipeline's device connections.
-     */
-    bool getCloseDevicesOnStop() const {
-        return impl()->closeDevicesOnStop;
-    }
     void processTasks(bool waitForTasks = false, double timeoutSeconds = -1.0) {
         impl()->processTasks(waitForTasks, timeoutSeconds);
     }
@@ -834,13 +823,13 @@ class Pipeline {
      * without an implicit device is promoted to the default device (master), so
      * nodes created without an explicit device run on it.
      *
-     * @param device Already constructed device to add
+     * @param device Already constructed device to add; stays open on stop()
      * @returns The added device
      */
     std::shared_ptr<Device> addDevice(std::shared_ptr<Device> device);
 
     /**
-     * Construct a device from the given device info and add it to the pipeline.
+     * Construct a device from the given device info and add it to the pipeline. Closed on stop().
      *
      * @param deviceInfo Device info to construct the device from
      * @returns The constructed device
@@ -848,7 +837,7 @@ class Pipeline {
     std::shared_ptr<Device> addDevice(const DeviceInfo& deviceInfo);
 
     /**
-     * Construct a device from a device id, IP address or name and add it to the pipeline.
+     * Construct a device from a device id, IP address or name and add it to the pipeline. Closed on stop().
      *
      * @param idOrIpOrName Device id, IP address or name to construct the device from
      * @returns The constructed device

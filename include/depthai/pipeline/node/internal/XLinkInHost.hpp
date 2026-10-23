@@ -48,6 +48,7 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     void setConnection(std::shared_ptr<XLinkConnection> conn);
     void disconnect();
     void run() override;
+    void wait() override;
 };
 
 }  // namespace internal

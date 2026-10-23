@@ -243,11 +243,13 @@ std::shared_ptr<Device> Pipeline::addDevice(std::shared_ptr<Device> device) {
 }
 
 std::shared_ptr<Device> Pipeline::addDevice(const DeviceInfo& deviceInfo) {
-    return impl()->registerDevice(std::make_shared<Device>(deviceInfo));
+    auto device = impl()->registerDevice(std::make_shared<Device>(deviceInfo));
+    impl()->ownedDevices.insert(device.get());
+    return device;
 }
 
 std::shared_ptr<Device> Pipeline::addDevice(const std::string& idOrIpOrName) {
-    return impl()->registerDevice(std::make_shared<Device>(idOrIpOrName));
+    return addDevice(DeviceInfo(idOrIpOrName));
 }
 
 std::vector<std::shared_ptr<Device>> Pipeline::getDevices() const {
@@ -1791,7 +1793,7 @@ void PipelineImpl::start() {
 
     const auto devices = getAllAssignedDevices();
     // Every device that is part of the pipeline (master, added with addDevice, or assigned to
-    // a node) is monitored and closed with it, whether or not a node runs on it; only
+    // a node) is monitored with it, whether or not a node runs on it; only
     // 'devices' get a device-side pipeline
     std::vector<std::shared_ptr<Device>> pipelineDevices = getDevices();
     for(const auto& device : devices) {
@@ -1799,8 +1801,8 @@ void PipelineImpl::start() {
             pipelineDevices.push_back(device);
         }
     }
-    if(!closeDevicesOnStop) {
-        for(const auto& device : devices) {
+    for(const auto& device : devices) {
+        if(ownedDevices.count(device.get()) == 0) {
             device->checkPipelineStopSupport();
         }
     }
@@ -2157,9 +2159,11 @@ void PipelineImpl::stop() {
     // is complete, so isRunning()/run() only return once the devices are closed.
     stopping = true;
 
-    // Keep receiving until the device has drained and closed its output streams.
-    if(!closeDevicesOnStop) {
-        for(const auto& node : getAllNodes()) {
+    // Drain streams only for devices whose connections must stay open.
+    for(const auto& node : getAllNodes()) {
+        const auto it = bridgeHostDevices.find(node->id);
+        const auto device = it != bridgeHostDevices.end() ? it->second : defaultDevice;
+        if(device && ownedDevices.count(device.get()) == 0) {
             if(auto input = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node)) input->drainOnStop = true;
             if(auto output = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node)) output->sendStopMarker = true;
         }
@@ -2205,7 +2209,7 @@ void PipelineImpl::stop() {
     // Close the task queue
     tasks.destruct();
 
-    // Stop every device that is part of the pipeline, closing connections by default.
+    // Stop every device, closing only connections constructed by this pipeline.
     // Each device tears down in parallel with the others.
     auto devicesToClose = getDevices();
     const auto assignedDevices = getAllAssignedDevices();
@@ -2215,8 +2219,8 @@ void PipelineImpl::stop() {
         }
     }
     std::vector<std::thread> closeThreads;
-    const bool closeDevices = closeDevicesOnStop;
     for(const auto& device : devicesToClose) {
+        const bool closeDevices = ownedDevices.count(device.get()) != 0;
         const bool hasDevicePipeline = std::find(assignedDevices.begin(), assignedDevices.end(), device) != assignedDevices.end();
         closeThreads.emplace_back([device, closeDevices, hasDevicePipeline]() {
             // An exception escaping a std::thread terminates the process - one device
