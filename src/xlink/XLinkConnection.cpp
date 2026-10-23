@@ -484,16 +484,13 @@ void XLinkConnection::close() {
         // Only in case if device was booted to begin with
         if(bootDevice) {
             auto t1 = steady_clock::now();
-            bool found = false;
             do {
-                DeviceInfo rebootingDeviceInfo;
-                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceById(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
-                if(found) {
-                    if(rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER) {
-                        break;
-                    }
+                const auto [found, rebootingDeviceInfo] = XLinkConnection::getDeviceById(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
+                if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
+                    break;
                 }
-            } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
+                std::this_thread::sleep_for(POLLING_DELAY_TIME);
+            } while(steady_clock::now() - t1 < BOOTUP_SEARCH);
         }
 
         logger::debug("XLinkResetRemote of linkId: ({})", previousLinkId);
