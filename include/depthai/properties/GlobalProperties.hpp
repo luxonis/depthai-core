@@ -15,6 +15,14 @@ namespace dai {
  * Specify properties which apply for whole pipeline
  */
 struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
+    /**
+     * Lock of the device's FSYNC period to the PTP time grid, frame edges at k * frame period + phaseNs
+     */
+    struct PtpFrameSync {
+        bool enabled = false;
+        int64_t phaseNs = 0;
+    };
+
     std::optional<std::string> pipelineName;
     std::optional<std::string> pipelineVersion;
     /**
@@ -23,6 +31,7 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
      * build, validate and resolve it.
      */
     std::optional<std::vector<MultiDeviceExtrinsics>> multiDeviceCalibration;
+    PtpFrameSync ptpFrameSync;
     ~GlobalProperties() override;
 };
 
@@ -120,7 +129,24 @@ struct DeviceProperties : PropertiesSerializable<Properties, DeviceProperties> {
 
 DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
 
-DEPTHAI_SERIALIZE_EXT(GlobalProperties, pipelineName, pipelineVersion, multiDeviceCalibration);
+DEPTHAI_SERIALIZE_EXT(GlobalProperties::PtpFrameSync, enabled, phaseNs);
+
+inline void to_json(nlohmann::json& j, const GlobalProperties& p) {
+    j["pipelineName"] = p.pipelineName;
+    j["pipelineVersion"] = p.pipelineVersion;
+    j["multiDeviceCalibration"] = p.multiDeviceCalibration;
+    j["ptpFrameSync"] = p.ptpFrameSync;
+}
+
+inline void from_json(const nlohmann::json& j, GlobalProperties& p) {
+    j.at("pipelineName").get_to(p.pipelineName);
+    j.at("pipelineVersion").get_to(p.pipelineVersion);
+    j.at("multiDeviceCalibration").get_to(p.multiDeviceCalibration);
+    // Hosts that predate ptpFrameSync do not send it
+    if(j.contains("ptpFrameSync")) j.at("ptpFrameSync").get_to(p.ptpFrameSync);
+}
+
+NOP_EXTERNAL_STRUCTURE(GlobalProperties, pipelineName, pipelineVersion, multiDeviceCalibration, ptpFrameSync);
 
 DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
