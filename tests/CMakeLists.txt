@@ -365,6 +365,9 @@ function(dai_add_test test_name test_src)
     # Add test
     add_test(NAME ${test_name} COMMAND ${test_name})
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
+    # Catch2 returns 4 when every selected test case is skipped. Preserve that
+    # result in CTest without hiding assertion failures or empty selections.
+    set_tests_properties(${test_name} PROPERTIES SKIP_RETURN_CODE 4)
 
 
     # Copy over required DLLs (Windows)
@@ -445,6 +448,10 @@ add_default_flags(telemetry_multi_device_test_child LEAN)
 target_link_libraries(telemetry_multi_device_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
 
 ### On-host tests #############################################################
+
+# Exercise Catch2's all-skipped exit code through the shared CTest registration.
+dai_add_test(catch2_skip_test src/onhost_tests/catch2_skip_test.cpp)
+dai_set_test_labels(catch2_skip_test onhost ci)
 
 # Superblob test
 if(DEPTHAI_FETCH_ARTIFACTS)
