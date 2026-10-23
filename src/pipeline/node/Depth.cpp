@@ -211,6 +211,10 @@ void validateRequestedFps(Depth::Algorithm algorithm,
     if(nasModel) {
         validateRequestedFps(Depth::Algorithm::NEURAL, config, fps, std::nullopt);
     }
+    // NeuralDepth rectifies to the selected model's tensor size. A preferred size only guides model selection.
+    if(algorithm == Depth::Algorithm::NEURAL) {
+        resolution.reset();
+    }
     bool knownProfile = false;
     bool fits = false;
     for(const auto& profile : BACKEND_PROFILES) {
@@ -469,8 +473,9 @@ std::optional<StereoDepth::PresetMode> pickFastestStereoPreset(std::optional<std
     return std::nullopt;
 }
 
-StereoDepth::PresetMode resolveStereoPreset(float targetFps, std::optional<std::pair<uint32_t, uint32_t>> resolution) {
-    if(const auto preset = pickStereoPreset(targetFps * SELECTION_FPS_SAFETY_MARGIN, resolution)) {
+StereoDepth::PresetMode resolveStereoPreset(float targetFps, std::optional<std::pair<uint32_t, uint32_t>> resolution, bool requireExactFps = false) {
+    const float requiredFps = requireExactFps ? targetFps : targetFps * SELECTION_FPS_SAFETY_MARGIN;
+    if(const auto preset = pickStereoPreset(requiredFps, resolution)) {
         return *preset;
     }
     if(const auto preset = pickFastestStereoPreset(resolution)) {
@@ -754,7 +759,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
             }
             break;
         case Algorithm::STEREO:
-            resolved_.config = resolveStereoPreset(targetFps, resolution);
+            resolved_.config = resolveStereoPreset(targetFps, resolution, stereoOutputFps_.has_value());
             break;
         case Algorithm::NEURAL_ASSISTED_STEREO:
         case Algorithm::GPU_STEREO:
@@ -805,7 +810,8 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
         DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera full-resolution stereo output request failed.");
     }
 
-    const std::pair<uint32_t, uint32_t> resolution{left->getMaxRequestedWidth(), left->getMaxRequestedHeight()};
+    // A separate preview can be larger than the output requested for Depth.
+    const auto resolution = outputSize.value_or(std::make_pair(left->getMaxRequestedWidth(), left->getMaxRequestedHeight()));
     DAI_CHECK_V(resolution.first > 0 && resolution.second > 0, "Depth: failed to determine wired stereo resolution.");
     const float maxCameraFps = std::max(left->getMaxRequestedFps(), right->getMaxRequestedFps());
     return {lo, ro, resolution, maxCameraFps};

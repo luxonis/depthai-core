@@ -497,6 +497,18 @@ if (DEPTHAI_PYTHON_ENABLE_TESTS)
     add_subdirectory(tests)
 endif()
 
+# Device-dependent binding tests run with the hardware CTest suite and do not use the host-only pytest fixtures.
+if(DEPTHAI_BUILD_TESTS)
+    add_test(NAME depth_stereo_pair_python_test COMMAND
+        ${CMAKE_COMMAND} -E env
+        "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>"
+        ${ASAN_ENVIRONMENT_VARS}
+        ${PYTHON_EXECUTABLE} -m pytest --noconftest
+        "${CMAKE_CURRENT_LIST_DIR}/tests/depth_stereo_pair_test.py"
+    )
+    dai_set_test_labels(depth_stereo_pair_python_test ondevice rvc2_all rvc4 ci noreplayci)
+endif()
+
 ########################
 # Examples (can also act as tests)
 ########################

@@ -8,6 +8,7 @@
 #include <set>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include "depthai/beta/node/ToFStereoFusion.hpp"
 #include "depthai/capabilities/ImgFrameCapability.hpp"
@@ -36,6 +37,10 @@ struct DepthTestAccess {
 
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {
         return Depth::exceedsStereoDepthMaxResolution(width, height);
+    }
+
+    static std::pair<uint32_t, uint32_t> getWiredStereoResolution(Depth& depth, Pipeline& pipeline, const StereoPair& pair) {
+        return depth.ensureStereoOutputs(pipeline, pair, std::make_pair(640u, 400u), 30.f).resolution;
     }
 };
 
@@ -1018,4 +1023,65 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == std::get<DeviceModelZoo>(expected.second));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
+}
+
+TEST_CASE("Depth: explicit neural FPS accepts preferred sizes and larger preview streams", "[processing-fps]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4 || !device->isNeuralDepthSupported()) {
+        SKIP("Requires NeuralDepth on RVC4.");
+    }
+    const auto models = device->getSupportedDeviceModels();
+    const auto model = DeviceModelZoo::NEURAL_DEPTH_576X360;
+    if(std::find(models.begin(), models.end(), model) == models.end()) {
+        SKIP("Requires the 576x360 NeuralDepth model.");
+    }
+    const auto pair = requireFirstStereoPairForTest(device);
+    const auto algorithm = GENERATE(node::Depth::Algorithm::AUTO, node::Depth::Algorithm::NEURAL);
+    const bool preview = GENERATE(false, true);
+    std::vector<std::shared_ptr<MessageQueue>> previewQueues;
+    if(preview) {
+        for(const auto socket : {pair.left, pair.right}) {
+            auto camera = pipeline.create<node::Camera>()->build(socket, std::nullopt, 30.f);
+            previewQueues.push_back(camera->requestOutput({1280, 800}, std::nullopt, ImgResizeMode::CROP, 30.f)->createOutputQueue());
+        }
+    }
+    auto depth = pipeline.create<node::Depth>();
+    SECTION("automatic processing size") {
+        depth->build(algorithm, 30.f);
+    }
+    SECTION("preferred size within the model tensor-cover band") {
+        depth->build(algorithm, 30.f, std::make_pair(640u, 400u));
+    }
+    REQUIRE_NOTHROW((void)depth->depth());
+    REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
+    REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == model);
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+}
+
+TEST_CASE("Depth: explicit stereo FPS selects a preset that can serve the exact request", "[processing-fps]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4) {
+        SKIP("Requires RVC4 backend profiles.");
+    }
+    (void)requireFirstStereoPairForTest(device);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO, 17.f, std::make_pair(640u, 400u));
+    REQUIRE_NOTHROW((void)depth->depth());
+    REQUIRE(std::get<node::StereoDepth::PresetMode>(depth->getResolvedConfig()) == node::StereoDepth::PresetMode::FAST_ACCURACY);
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+}
+
+TEST_CASE("Depth: wired processing size is independent of larger preview requests", "[processing-fps]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    const auto pair = requireFirstStereoPairForTest(device);
+    auto left = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 30.f);
+    auto right = pipeline.create<node::Camera>()->build(pair.right, std::nullopt, 30.f);
+    auto leftPreview = left->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, 30.f)->createOutputQueue();
+    auto rightPreview = right->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, 30.f)->createOutputQueue();
+    auto depth = pipeline.create<node::Depth>();
+    REQUIRE(node::DepthTestAccess::getWiredStereoResolution(*depth, pipeline, pair) == std::make_pair(640u, 400u));
+    REQUIRE(left->getMaxRequestedWidth() == kUserStereoSensorResolution.first);
+    REQUIRE(right->getMaxRequestedWidth() == kUserStereoSensorResolution.first);
 }
