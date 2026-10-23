@@ -21,7 +21,6 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-import time
 import uuid
 from pathlib import Path
 from urllib.parse import quote
@@ -171,25 +170,6 @@ SCOPE_OF_RELATION = {"depends": "required", "contains": "required", "optional": 
 # ---------------------------------------------------------------------
 def run(cmd: list[str], cwd: Path | None = None) -> str:
     return subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True, capture_output=True, text=True).stdout
-
-
-# vcpkg-tool before 2026-09-25 (microsoft/vcpkg-tool#2131) opens its lock file without O_CLOEXEC, so a process that
-# vcpkg starts can keep the lock on .vcpkg-root after vcpkg exits. The next vcpkg command waits only about 1.5 s for
-# the lock and then fails with this error. Wait and try again.
-VCPKG_LOCK_ERROR = "Failed to take the filesystem lock"
-VCPKG_LOCK_RETRY_SECONDS = (5, 10, 20, 30, 60)
-
-
-def run_vcpkg(cmd: list[str], cwd: Path | None = None) -> str:
-    for delay in VCPKG_LOCK_RETRY_SECONDS:
-        try:
-            return run(cmd, cwd)
-        except subprocess.CalledProcessError as error:
-            if VCPKG_LOCK_ERROR not in f"{error.stdout or ''}{error.stderr or ''}":
-                raise
-        print(f"warning: vcpkg could not take its filesystem lock; trying again in {delay} s", file=sys.stderr)
-        time.sleep(delay)
-    return run(cmd, cwd)
 
 
 # The checkout can belong to another user (for example in a manylinux container job), and git then
@@ -529,9 +509,9 @@ def vcpkg_from_source(repo: Path, vcpkg_root: Path, triplet: str, inventory: dic
 
     with tempfile.TemporaryDirectory() as scratch:
         def dry_run(extra: list[str]) -> dict[str, dict[str, Any]]:
-            output = run_vcpkg([str(vcpkg), "install", "--dry-run", f"--x-manifest-root={repo}",
-                                f"--x-install-root={Path(scratch) / 'installed'}", f"--triplet={triplet}",
-                                "--x-no-default-features", *extra], cwd=repo)
+            output = run([str(vcpkg), "install", "--dry-run", "--x-wait-for-lock", f"--x-manifest-root={repo}",
+                          f"--x-install-root={Path(scratch) / 'installed'}", f"--triplet={triplet}",
+                          "--x-no-default-features", *extra], cwd=repo)
             return parse_plan(output)
 
         base = dry_run([])
@@ -542,9 +522,9 @@ def vcpkg_from_source(repo: Path, vcpkg_root: Path, triplet: str, inventory: dic
         # Classic mode (no manifest in the working directory) on the baseline ports gives the dependency edges
         ports_root = export_baseline_ports(vcpkg_root, inventory["properties"]["vcpkg:baseline"], Path(scratch))
         specs = [f"{name}[{','.join(entry['features'])}]:{entry['triplet']}" for name, entry in sorted(full.items())]
-        dot = run_vcpkg([str(vcpkg), "depend-info", *specs, f"--x-builtin-ports-root={ports_root}",
-                         f"--overlay-ports={repo / 'cmake' / 'ports'}",
-                         f"--overlay-triplets={repo / 'cmake' / 'triplets'}", "--format=dot"], cwd=Path(scratch))
+        dot = run([str(vcpkg), "depend-info", *specs, f"--x-builtin-ports-root={ports_root}",
+                   f"--overlay-ports={repo / 'cmake' / 'ports'}", f"--overlay-triplets={repo / 'cmake' / 'triplets'}",
+                   "--format=dot"], cwd=Path(scratch))
         manifests = {name: port_manifest(repo, ports_root, name) for name in full}
         upstreams = {name: portfile_upstream(Path(manifests[name].get("_dir", "")) / "portfile.cmake", entry["version"])
                      for name, entry in full.items()}
