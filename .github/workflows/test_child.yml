@@ -36,6 +36,10 @@ on:
         required: false
         type: string
         default: "[]"
+      usb_link_speed_sanity:
+        required: false
+        type: boolean
+        default: false
       luxonis_os_versions_to_test_fsync:
         required: false
         type: string
@@ -165,8 +169,13 @@ jobs:
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-usb"
+          SANITY_ARGS=""
+          if [ "${{ inputs.usb_link_speed_sanity }}" = "true" ]; then
+            # Skip testbeds with a USB 2.0 link. The check is destructive, so it needs -d.
+            SANITY_ARGS="--sanity usb-link-speed -d"
+          fi
           set -o pipefail
-          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4usb --test-label \"${{ inputs.test_label }}\"" 2>&1 | tee rvc4_usb_test_output.log
+          hil_runner --models "oak4_pro or oak4_d" $SANITY_ARGS --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4usb --test-label \"${{ inputs.test_label }}\"" 2>&1 | tee rvc4_usb_test_output.log
 
       - name: Upload test log
         if: always()
