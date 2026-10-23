@@ -488,6 +488,18 @@ class Pipeline {
     }
 
     /**
+     * Locks the FSYNC period of the device's frame-synced cameras (including TIME_PTP ones) to the PTP time grid,
+     * with frame edges at k * frame period + phase on the PTP timescale.
+     * Devices without live FSYNC timing keep their frame sync modes. See DeviceBase::getPtpFrameSyncStatus.
+     */
+    void setPtpFrameSync(std::chrono::nanoseconds phase = std::chrono::nanoseconds(0)) {
+        auto globalProperties = getGlobalProperties();
+        globalProperties.ptpFrameSync.enabled = true;
+        globalProperties.ptpFrameSync.phaseNs = phase.count();
+        setGlobalProperties(globalProperties);
+    }
+
+    /**
      * Sets default device properties
      */
     void setDefaultDeviceProperties(DeviceProperties deviceProperties) {
