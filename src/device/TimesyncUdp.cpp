@@ -3,9 +3,11 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <optional>
 
 #include "utility/Logging.hpp"
 
@@ -85,12 +87,40 @@ struct StartAt {  // host -> device: stream on at this host steady-clock time; a
     #pragma pack(pop)
 }  // namespace sync_start
 
+// depthai's PTP instance for TIME_PTP when the OS runs no PTP, keep in sync with the firmware (DaiPtp.cpp)
+namespace dai_ptp {
+enum Method : uint16_t { QUERY = 16, START = 17 };
+enum Status : uint16_t { OK = 0, OS_PTP = 1 };
+enum Os : uint8_t { OS_OFF = 0, OS_FRAMES = 1, OS_NO_FRAMES = 2 };  // /etc/luxonis-ptp.conf: no PTP, PTP for frames, PTP only
+enum Role : uint8_t { NONE = 0, MASTER = 1, SLAVE = 2 };
+enum State : uint8_t { STOPPED = 0, STARTING = 1, LOCKED = 2, FAILED = 3 };  // LOCKED: serving / slave within 1 us
+    #pragma pack(push, 1)
+struct Info {  // QUERY reply
+    uint8_t os;
+    uint8_t role;
+    uint8_t state;
+    uint8_t domain;
+    uint8_t mac[6];        // the device's eth0
+    uint8_t masterMac[6];  // a slave's master
+    int64_t offsetNs;      // a slave's last |offset| (or max of the last summary), -1 = none yet
+};
+struct Start {  // START call: run in this role (ptp4l restarts if role, domain or master differ, or it stopped)
+    uint8_t role;
+    uint8_t domain;
+    uint8_t masterMac[6];
+};
+    #pragma pack(pop)
+}  // namespace dai_ptp
+
 constexpr auto RPC_RESEND_FIRST = std::chrono::milliseconds(2);  // then doubling, up to RPC_RESEND_MAX
 constexpr auto RPC_RESEND_MAX = std::chrono::milliseconds(50);
 constexpr auto SYNC_ARM_DEADLINE = std::chrono::milliseconds(300);
 constexpr auto SYNC_READY_TIMEOUT = std::chrono::seconds(10);
 constexpr auto SYNC_START_MARGIN = std::chrono::milliseconds(150);  // READY of the last device -> start
 constexpr auto SYNC_START_DEADLINE = std::chrono::milliseconds(100);
+constexpr auto PTP_CALL_DEADLINE = std::chrono::milliseconds(300);
+constexpr auto PTP_LOCK_TIMEOUT = std::chrono::seconds(10);  // READY -> start at most
+constexpr auto PTP_LOCK_POLL = std::chrono::milliseconds(50);
 
 // Responders by owner (DeviceBase), sync-start groups by pipeline
 std::mutex registryMtx;
@@ -105,6 +135,68 @@ bool withResponder(const void* device, F&& fn) {
     auto it = responders.find(device);
     if(it == responders.end()) return false;
     fn(*it->second);
+    return true;
+}
+
+// Calls every device at once and waits for all; a reply is (status, payload), nullopt when there was none
+std::vector<std::optional<std::pair<uint16_t, TimesyncUdpResponder::RpcPayload>>> callAll(const std::vector<const void*>& devices,
+                                                                                           uint16_t method,
+                                                                                           const std::vector<TimesyncUdpResponder::RpcPayload>& payloads,
+                                                                                           std::chrono::milliseconds deadline) {
+    std::vector<std::optional<std::pair<uint16_t, TimesyncUdpResponder::RpcPayload>>> replies(devices.size());
+    std::mutex mtx;
+    std::condition_variable cv;
+    size_t pending = 0;
+    for(size_t i = 0; i < devices.size(); i++) {
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            ++pending;
+        }
+        const bool sent = withResponder(devices[i], [&, i](TimesyncUdpResponder& responder) {
+            responder.call(method, payloads[i], deadline, [&, i](bool replied, uint16_t status, const TimesyncUdpResponder::RpcPayload& reply) {
+                std::lock_guard<std::mutex> lock(mtx);
+                if(replied) replies[i] = std::make_pair(status, reply);
+                --pending;
+                cv.notify_all();
+            });
+        });
+        if(!sent) {
+            std::lock_guard<std::mutex> lock(mtx);
+            --pending;
+        }
+    }
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [&] { return pending == 0; });
+    return replies;
+}
+
+std::string macString(const uint8_t* mac) {
+    char s[18];
+    snprintf(s, sizeof(s), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return s;
+}
+
+// Polls depthai's PTP slaves until each is locked to its master; false when some are not by the timeout (or on stop)
+bool waitPtpLocked(const std::vector<const void*>& slaves, std::chrono::nanoseconds timeout, const std::function<bool()>& stop) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    std::vector<const void*> waiting = slaves;
+    while(!waiting.empty()) {
+        const auto replies = callAll(waiting, dai_ptp::QUERY, std::vector<TimesyncUdpResponder::RpcPayload>(waiting.size()), PTP_CALL_DEADLINE);
+        std::vector<const void*> still;
+        for(size_t i = 0; i < waiting.size(); i++) {
+            dai_ptp::Info info{};
+            if(replies[i] && replies[i]->first == dai_ptp::OK) memcpy(&info, replies[i]->second.data(), sizeof(info));
+            if(info.state == dai_ptp::FAILED) {
+                logger::warn("PTP frame sync: the slave {} stopped", macString(info.mac));
+                return false;
+            }
+            if(info.state != dai_ptp::LOCKED) still.push_back(waiting[i]);
+        }
+        waiting.swap(still);
+        if(waiting.empty()) return true;
+        if(stop() || std::chrono::steady_clock::now() + PTP_LOCK_POLL > deadline) return false;
+        std::this_thread::sleep_for(PTP_LOCK_POLL);
+    }
     return true;
 }
 
@@ -486,7 +578,63 @@ void TimesyncUdpResponder::run() {
     }
 }
 
-void SyncStartGroup::begin(const void* pipeline, const std::vector<std::pair<const void*, uint16_t>>& devices) {
+PtpGroup::Setup PtpGroup::setUp(const std::vector<const void*>& devices) {
+    Setup setup;
+    const auto replies = callAll(devices, dai_ptp::QUERY, std::vector<TimesyncUdpResponder::RpcPayload>(devices.size()), PTP_CALL_DEADLINE);
+    std::vector<dai_ptp::Info> info(devices.size());
+    size_t osFrames = 0, os = 0;
+    for(size_t i = 0; i < devices.size(); i++) {
+        if(!replies[i] || replies[i]->first != dai_ptp::OK) {
+            logger::warn("PTP frame sync: a device cannot start PTP (older firmware), cameras without a frame sync mode keep AUTO");
+            return setup;
+        }
+        memcpy(&info[i], replies[i]->second.data(), sizeof(info[i]));
+        if(info[i].os != dai_ptp::OS_OFF) ++os;
+        if(info[i].os == dai_ptp::OS_FRAMES) ++osFrames;
+    }
+    if(osFrames == devices.size()) {
+        setup.ok = true;  // the OS runs PTP on all of them
+        return setup;
+    }
+    if(os > 0) {
+        logger::warn("PTP frame sync: the OS runs PTP (for frames) on {} ({}) of {} devices; enable it for frames on all of them or on none",
+                     os,
+                     osFrames,
+                     devices.size());
+        return setup;
+    }
+    // The master stays where it already serves (its slaves stay locked), else the first device
+    size_t master = 0;
+    for(size_t i = 0; i < devices.size(); i++) {
+        if(info[i].role == dai_ptp::MASTER && info[i].state != dai_ptp::FAILED) {
+            master = i;
+            break;
+        }
+    }
+    std::vector<TimesyncUdpResponder::RpcPayload> starts(devices.size());
+    for(size_t i = 0; i < devices.size(); i++) {
+        dai_ptp::Start start{};
+        start.role = i == master ? dai_ptp::MASTER : dai_ptp::SLAVE;
+        start.domain = DOMAIN;
+        memcpy(start.masterMac, info[master].mac, sizeof(start.masterMac));
+        memcpy(starts[i].data(), &start, sizeof(start));
+    }
+    const auto started = callAll(devices, dai_ptp::START, starts, PTP_CALL_DEADLINE);
+    for(size_t i = 0; i < devices.size(); i++) {
+        if(!started[i] || started[i]->first != dai_ptp::OK) {
+            logger::warn("PTP frame sync: {} could not start PTP", macString(info[i].mac));
+            return setup;
+        }
+        if(i != master) setup.slaves.push_back(devices[i]);
+    }
+    logger::info("PTP frame sync: depthai PTP, master {}, {} slaves, domain {}", macString(info[master].mac), setup.slaves.size(), DOMAIN);
+    setup.ok = true;
+    return setup;
+}
+
+void SyncStartGroup::begin(const void* pipeline,
+                           const std::vector<std::pair<const void*, uint16_t>>& devices,
+                           const std::vector<const void*>& ptpSlaves) {
     end(pipeline);
     std::vector<std::pair<const void*, uint16_t>> candidates;  // with cameras and a UDP timesync
     for(const auto& d : devices) {
@@ -495,6 +643,7 @@ void SyncStartGroup::begin(const void* pipeline, const std::vector<std::pair<con
     if(candidates.size() < 2) return;
     auto group = std::make_shared<SyncStartGroup>();
     group->generation = ++lastGeneration;
+    group->ptpSlaves = ptpSlaves;
     // Arm them; only the armed ones are waited for, the others start on their own
     std::mutex armMtx;
     std::condition_variable armCv;
@@ -567,6 +716,17 @@ void SyncStartGroup::coordinate() {
         });
         if(stopping) return;
         if(!allReady) logger::warn("Synchronized start: not every device reported its cameras ready, starting the others");
+    }
+    if(!ptpSlaves.empty()) {
+        const bool locked = waitPtpLocked(ptpSlaves, PTP_LOCK_TIMEOUT, [this] {
+            std::lock_guard<std::mutex> lock(mtx);
+            return stopping;
+        });
+        if(!locked) logger::warn("Synchronized start: not every PTP slave is locked to its master, starting anyway");
+    }
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        if(stopping) return;
         int64_t periodNs = 0;
         bool samePeriod = true;
         for(const auto& m : members) {
@@ -644,7 +804,10 @@ void TimesyncUdpResponder::call(uint16_t, const RpcPayload&, std::chrono::millis
     if(done) done(false, 0, RpcPayload{});
 }
 void TimesyncUdpResponder::run() {}
-void SyncStartGroup::begin(const void*, const std::vector<std::pair<const void*, uint16_t>>&) {}
+PtpGroup::Setup PtpGroup::setUp(const std::vector<const void*>&) {
+    return {};
+}
+void SyncStartGroup::begin(const void*, const std::vector<std::pair<const void*, uint16_t>>&, const std::vector<const void*>&) {}
 void SyncStartGroup::end(const void*) {}
 SyncStartGroup::~SyncStartGroup() = default;
 

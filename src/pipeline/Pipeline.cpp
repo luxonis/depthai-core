@@ -1836,8 +1836,27 @@ void PipelineImpl::start() {
         DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
         DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(),
                     "Number of devices assigned to device nodes does not match the number of master and slave devices");
-        // A multi-device pipeline starts the cameras of all its devices at one time (RVC4 with the UDP timesync)
+        // A multi-device pipeline starts the cameras of all its devices at one time (RVC4 with the UDP timesync) and
+        // aligns their frames in PTP time: cameras left at AUTO get TIME_PTP when PTP runs on all their devices (the
+        // OS's or depthai's own, see PtpGroup)
         if(devices.size() > 1) {
+            std::vector<const void*> ptpDevices;
+            std::vector<std::shared_ptr<dai::node::Camera>> autoCameras;
+            for(const auto& node : getAllNodes()) {
+                auto camera = std::dynamic_pointer_cast<dai::node::Camera>(node);
+                const auto d = camera ? getAssignedDevice(node) : nullptr;
+                if(!d || d->getPlatform() != dai::Platform::RVC4) continue;
+                const auto mode = camera->initialControl.frameSyncMode;
+                if(mode != CameraControl::FrameSyncMode::AUTO && mode != CameraControl::FrameSyncMode::TIME_PTP) continue;
+                if(mode == CameraControl::FrameSyncMode::AUTO) autoCameras.push_back(camera);
+                const void* owner = static_cast<const DeviceBase*>(d.get());
+                if(std::find(ptpDevices.begin(), ptpDevices.end(), owner) == ptpDevices.end()) ptpDevices.push_back(owner);
+            }
+            PtpGroup::Setup ptp;
+            if(ptpDevices.size() > 1) ptp = PtpGroup::setUp(ptpDevices);
+            if(ptp.ok) {
+                for(const auto& camera : autoCameras) camera->initialControl.setFrameSyncMode(CameraControl::FrameSyncMode::TIME_PTP);
+            }
             std::vector<std::pair<const void*, uint16_t>> cameras;
             for(const auto& d : devices) {
                 uint16_t n = 0;
@@ -1846,7 +1865,7 @@ void PipelineImpl::start() {
                 }
                 cameras.emplace_back(static_cast<const DeviceBase*>(d.get()), n);
             }
-            SyncStartGroup::begin(this, cameras);
+            SyncStartGroup::begin(this, cameras, ptp.slaves);
         }
         // Start masters before slaves, in parallel within each group. If either
         // group fails, roll back every device that started in either group.

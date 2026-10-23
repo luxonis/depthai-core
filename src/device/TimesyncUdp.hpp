@@ -88,17 +88,37 @@ class TimesyncUdpResponder {
 };
 
 /**
+ * PTP for the frame sync (TIME_PTP) of a multi-device pipeline (RVC4 with the UDP timesync, firmware DaiPtp.cpp). If the
+ * OS of every device runs PTP for frames (luxonis-ptp), that is used. If none does, depthai-device on each runs its own
+ * ptp4l, unicast in DOMAIN on the NIC's hardware clock: one device is the master (one that already serves, else the
+ * first), the others are its slaves.
+ */
+class PtpGroup {
+   public:
+    static constexpr uint8_t DOMAIN = 74;
+    struct Setup {
+        bool ok = false;                  // PTP runs on every device
+        std::vector<const void*> slaves;  // depthai's PTP slaves: the synchronized start waits until they are locked
+    };
+    // Sets PTP up for these devices (DeviceBase), each with a UDP timesync
+    static Setup setUp(const std::vector<const void*>& devices);
+};
+
+/**
  * Synchronized camera start of a multi-device pipeline (RVC4 with the UDP timesync, firmware CameraSensor.cpp).
  * Before the device pipelines start, every device is armed with how many cameras the pipeline runs on it (ARM). The
  * devices hold their cameras' stream-on until all are configured and report READY; once all did (or 10 s passed), each
  * gets the same start time, a frame boundary ~150 ms ahead on the host clock (START_AT). The devices convert it to
- * their clock only then, so the timesync's drift error covers those 150 ms, not the seconds the setup took.
+ * their clock only then, so the timesync's drift error covers those 150 ms, not the seconds the setup took. With
+ * depthai's PTP the start also waits (10 s at most) for its slaves to lock, so the frames align from the first one.
  */
 class SyncStartGroup {
    public:
     // Arms the devices (DeviceBase, cameras on it) that have a UDP timesync for the pipeline's start and coordinates it
     // when there are at least two; replaces an earlier group of the pipeline
-    static void begin(const void* pipeline, const std::vector<std::pair<const void*, uint16_t>>& devices);
+    static void begin(const void* pipeline,
+                      const std::vector<std::pair<const void*, uint16_t>>& devices,
+                      const std::vector<const void*>& ptpSlaves = {});
     // Ends the pipeline's group (before its devices close)
     static void end(const void* pipeline);
 
@@ -118,6 +138,7 @@ class SyncStartGroup {
     std::condition_variable cv;
     bool stopping = false;
     std::vector<Member> members;
+    std::vector<const void*> ptpSlaves;
     std::thread thread;
 };
 
