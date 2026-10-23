@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "depthai/utility/ImageManipImpl.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 namespace dai {
 namespace impl {
@@ -72,6 +73,7 @@ class DetectionRound {
     const ImgDetectionsFilterConfig& config;
     const std::optional<ImgTransformation>& reference;
     const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks;
+    std::vector<MaskRemapCache>& maskRemaps;
     const bool geometry;
     std::shared_ptr<ImgDetections> output = std::make_shared<ImgDetections>();
     std::pair<std::size_t, std::size_t> size{0, 0};
@@ -343,20 +345,35 @@ class DetectionRound {
                    std::size_t height,
                    std::size_t key,
                    const std::array<std::uint8_t, 256>& indexMap,
-                   const std::vector<std::uint8_t>& sourceMask) const {
+                   const std::vector<std::uint8_t>& sourceMask) {
         const auto& message = messages[key];
         const auto sourceWidth = message->getSegmentationMaskWidth(), sourceHeight = message->getSegmentationMaskHeight();
+        auto& cache = maskRemaps[key];
+        if(reference) {
+            // Compare exact values: approximate equality can miss a change across a source-pixel boundary.
+            std::array<std::vector<std::uint8_t>, 2> transformations{utility::serialize(*reference), utility::serialize(*message->transformation)};
+            const std::array<std::size_t, 4> dimensions{width, height, sourceWidth, sourceHeight};
+            if(cache.dimensions != dimensions || cache.transformations != transformations) {
+                if(sourceHeight != 0 && sourceWidth > std::numeric_limits<std::size_t>::max() / sourceHeight)
+                    throw std::overflow_error("ImgDetectionsFilter source mask size overflow");
+                std::vector<std::size_t> indices(mask.size(), std::numeric_limits<std::size_t>::max());
+                for(std::size_t y = 0; y < height; ++y) {
+                    for(std::size_t x = 0; x < width; ++x) {
+                        const auto point = reference->remapPointTo(*message->transformation, Point2f((x + 0.5f) / width, (y + 0.5f) / height, true));
+                        if(!std::isfinite(point.x) || !std::isfinite(point.y) || point.x < 0 || point.y < 0 || point.x >= 1 || point.y >= 1) continue;
+                        const auto sx = static_cast<std::size_t>(point.x * sourceWidth), sy = static_cast<std::size_t>(point.y * sourceHeight);
+                        if(sx < sourceWidth && sy < sourceHeight) indices[y * width + x] = sy * sourceWidth + sx;
+                    }
+                }
+                cache = {std::move(transformations), dimensions, std::move(indices)};
+            }
+        }
         for(std::size_t y = 0; y < height; ++y) {
             for(std::size_t x = 0; x < width; ++x) {
-                std::size_t sx = x, sy = y;
-                if(reference) {
-                    const auto point = reference->remapPointTo(*message->transformation, Point2f((x + 0.5f) / width, (y + 0.5f) / height, true));
-                    if(!std::isfinite(point.x) || !std::isfinite(point.y) || point.x < 0 || point.y < 0 || point.x >= 1 || point.y >= 1) continue;
-                    sx = static_cast<std::size_t>(point.x * sourceWidth);
-                    sy = static_cast<std::size_t>(point.y * sourceHeight);
-                }
-                if(sx >= sourceWidth || sy >= sourceHeight || sy * sourceWidth + sx >= sourceMask.size()) continue;
-                const auto index = indexMap[sourceMask[sy * sourceWidth + sx]];
+                if(!reference && (x >= sourceWidth || y >= sourceHeight)) continue;
+                const auto sourceIndex = reference ? cache.sourceIndices[y * width + x] : y * sourceWidth + x;
+                if(sourceIndex >= sourceMask.size()) continue;
+                const auto index = indexMap[sourceMask[sourceIndex]];
                 auto& previous = mask[y * width + x];
                 if(index != 255
                    && (previous == 255 || output->detections[index].confidence > output->detections[previous].confidence
@@ -392,11 +409,13 @@ class DetectionRound {
     DetectionRound(const std::vector<std::shared_ptr<ImgDetections>>& messages,
                    const ImgDetectionsFilterConfig& config,
                    const std::optional<ImgTransformation>& reference,
-                   const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks)
+                   const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks,
+                   std::vector<MaskRemapCache>& maskRemaps)
         : messages(messages),
           config(config),
           reference(reference),
           sourceMasks(sourceMasks),
+          maskRemaps(maskRemaps),
           geometry(config.hasGeometryFilters() || std::any_of(sourceMasks.begin(), sourceMasks.end(), [](const auto& mask) { return mask != nullptr; })) {}
     std::shared_ptr<ImgDetections> process() {
         prepare();
@@ -412,8 +431,12 @@ class DetectionRound {
 std::shared_ptr<ImgDetections> filterDetectionRound(const std::vector<std::shared_ptr<ImgDetections>>& messages,
                                                     const ImgDetectionsFilterConfig& config,
                                                     const std::optional<ImgTransformation>& reference,
-                                                    const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks) {
-    return DetectionRound(messages, config, reference, sourceMasks).process();
+                                                    const std::vector<std::shared_ptr<ImgFrame>>& sourceMasks,
+                                                    std::vector<MaskRemapCache>* maskRemaps) {
+    std::vector<MaskRemapCache> localCache;
+    auto& cache = maskRemaps ? *maskRemaps : localCache;
+    cache.resize(messages.size());
+    return DetectionRound(messages, config, reference, sourceMasks, cache).process();
 }
 }  // namespace impl
 }  // namespace dai

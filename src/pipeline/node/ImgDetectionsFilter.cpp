@@ -52,6 +52,7 @@ void ImgDetectionsFilter::run() {
     auto config = getProperties().initialConfig;
     auto reference = config.reference;
     std::vector<std::shared_ptr<ImgFrame>> sourceMasks(linkedInputs.size());
+    std::vector<impl::MaskRemapCache> maskRemaps(linkedInputs.size());
     bool inputReferenceReceived = false, dropping = false;
     while(mainLoop()) {
         const auto beginning = std::chrono::steady_clock::now();
@@ -101,7 +102,7 @@ void ImgDetectionsFilter::run() {
         }
         dropping = false;
         if(!masksReady) continue;
-        auto output = impl::filterDetectionRound(messages, config, reference, sourceMasks);
+        auto output = impl::filterDetectionRound(messages, config, reference, sourceMasks, &maskRemaps);
         if(output->detections.size() > 255 && output->getSegmentationMaskWidth() > 0)
             logger->warn("ImgDetectionsFilter mask represents only output detections 0 through 254; all detections remain in the list");
         const auto processed = std::chrono::steady_clock::now();

@@ -2,6 +2,7 @@
 
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "img_detections_filter_test_cases.hpp"
+#include "pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.hpp"
 
 using namespace filtertest;
 
@@ -1129,6 +1130,105 @@ TEST_CASE("ImgDetectionsFilter M-10: unrepresentable index cannot win a pixel", 
     a->setSegmentationMask(maskBytes("0 0 0 0 . . . .\n0 0 0 0 . . . .\n0 0 0 0 . . . .\n0 0 0 0 . . . ."), 8, 4);
     b->setSegmentationMask(maskBytes(". . 0 0 0 0 . .\n. . 0 0 0 0 . .\n. . 0 0 0 0 . .\n. . 0 0 0 0 . ."), 8, 4);
     requireMask(*checkRound(s, {a, b}, expected), 8, 4, row + "\n" + row + "\n" + row + "\n" + row);
+}
+
+TEST_CASE("ImgDetectionsFilter reuses mask geometry with current pixel owners", "[ImgDetectionsFilter][MK-12][RT-4]") {
+    const auto t = transformation(4, 2);
+    dai::ImgDetectionsFilterConfig config;
+    config.overlapMode = Mode::OFF;
+    std::vector<dai::impl::MaskRemapCache> cache;
+    auto a = message(t, {{2, 1, 4, 2, .5f}, {2, 1, 4, 2, .9f, 1}}), b = message(t, {{2, 1, 4, 2, .75f, 2}});
+    a->setSegmentationMask({0, 1}, 2, 1);
+    b->setSegmentationMask({0}, 1, 1);
+    requireMask(*dai::impl::filterDetectionRound({a, b}, config, t, {}, &cache), 4, 2, "2 2 1 1\n2 2 1 1");
+    const auto* mapA = cache[0].sourceIndices.data();
+    const auto* mapB = cache[1].sourceIndices.data();
+
+    // New messages with identical geometry must reuse the maps, while mask bytes and confidences remain live.
+    a = message(t, {{2, 1, 4, 2, .95f}, {2, 1, 4, 2, .4f, 1}});
+    b = message(t, {{2, 1, 4, 2, .8f, 2}});
+    a->setSegmentationMask({1, 0}, 2, 1);
+    b->setSegmentationMask({0}, 1, 1);
+    requireMask(*dai::impl::filterDetectionRound({a, b}, config, t, {}, &cache), 4, 2, "2 2 0 0\n2 2 0 0");
+    for(auto& d : a->detections) d.confidence = .8f;
+    requireMask(*dai::impl::filterDetectionRound({a, b}, config, t, {}, &cache), 4, 2, "1 1 0 0\n1 1 0 0");
+    config.sortByConfidence = true;
+    a->detections[0].confidence = .5f;
+    a->detections[1].confidence = .9f;
+    requireMask(*dai::impl::filterDetectionRound({a, b}, config, t, {}, &cache), 4, 2, "0 0 1 1\n0 0 1 1");
+    REQUIRE(cache[0].sourceIndices.data() == mapA);
+    REQUIRE(cache[1].sourceIndices.data() == mapB);
+}
+
+TEST_CASE("ImgDetectionsFilter rebuilds mask geometry when its inputs change", "[ImgDetectionsFilter][MK-8][RT-4][RT-6]") {
+    std::optional<dai::ImgTransformation> reference = transformation(4, 4);
+    auto input = message(*reference, {{2, 2, 4, 4, .9f}, {2, 2, 4, 4, .8f, 1}});
+    input->setSegmentationMask(maskBytes("0 . 1 .\n. 0 . 1\n1 . 0 .\n. 1 . 0"), 4, 4);
+    dai::ImgDetectionsFilterConfig config;
+    std::vector<dai::impl::MaskRemapCache> cache;
+    dai::impl::filterDetectionRound({input}, config, reference, {}, &cache);
+    const auto transformations = cache.front().transformations;
+    const auto dimensions = cache.front().dimensions;
+    SECTION("source crop") {
+        input->setTransformation(cropped(transformation(8, 4), 2, 0, 4, 4));
+    }
+    SECTION("reference rotation with unchanged dimensions") {
+        reference->addRotation(90, {2, 2, false});
+    }
+    SECTION("reference dimensions") {
+        reference = scaled(*reference, 2);
+    }
+    SECTION("source image dimensions") {
+        input->setTransformation(transformation(8, 8));
+    }
+    SECTION("source mask width") {
+        input->setSegmentationMask(maskBytes("0 1\n1 0\n0 1\n1 0"), 2, 4);
+    }
+    SECTION("source mask height") {
+        input->setSegmentationMask(maskBytes("0 1 0 1\n1 0 1 0"), 4, 2);
+    }
+    SECTION("source extrinsics") {
+        input->setTransformation(transformation(4, 4, rotation(90)));
+    }
+    SECTION("source distortion") {
+        input->transformation->setDistortionCoefficients({.8f, 0, 0, 0, 0});
+    }
+    SECTION("change below approximate transformation equality tolerance") {
+        input->transformation->addTransformation({{{1, 0, 1e-7f}, {0, 1, 0}, {0, 0, 1}}});
+        REQUIRE(input->transformation->isEqualTransformation(*reference));
+    }
+    const auto cached = dai::impl::filterDetectionRound({input}, config, reference, {}, &cache);
+    const auto fresh = dai::impl::filterDetectionRound({input}, config, reference);
+    MessageSnapshot(*fresh).requireEqual(*cached);
+    REQUIRE((cache.front().transformations != transformations || cache.front().dimensions != dimensions));
+    MessageSnapshot(*cached).requireEqual(*dai::impl::filterDetectionRound({input}, config, reference, {}, &cache));
+}
+
+TEST_CASE("ImgDetectionsFilter cached mask coordinates preserve invalid pixels and payload bounds", "[ImgDetectionsFilter][MK-9][MK-12]") {
+    const auto reference = transformation(8, 4);
+    auto input = message(cropped(reference, 2, 0, 4, 4), {{2, 2, 4, 4, .9f}});
+    input->setSegmentationMask(std::vector<std::uint8_t>(16, 0), 4, 4);
+    dai::ImgDetectionsFilterConfig config;
+    std::vector<dai::impl::MaskRemapCache> cache;
+    const std::string row = ". . 0 0 0 0 . .";
+    requireMask(*dai::impl::filterDetectionRound({input}, config, reference, {}, &cache), 8, 4, row + "\n" + row + "\n" + row + "\n" + row);
+    SECTION("current payload is shorter than the cached geometry") {
+        input->setData(std::vector<std::uint8_t>{0, 0});
+        requireMask(*dai::impl::filterDetectionRound({input}, config, reference, {}, &cache),
+                    8,
+                    4,
+                    ". . 0 0 . . . .\n. . . . . . . .\n. . . . . . . .\n. . . . . . . .");
+        input->setSegmentationMask(std::vector<std::uint8_t>(16, 0), 4, 4);
+        requireMask(*dai::impl::filterDetectionRound({input}, config, reference, {}, &cache), 8, 4, row + "\n" + row + "\n" + row + "\n" + row);
+    }
+    SECTION("points behind the source camera stay invalid on cache reuse") {
+        input->setTransformation(transformation(4, 4, rotation(180, true)));
+        const std::string empty = ". . . . . . . .\n. . . . . . . .\n. . . . . . . .\n. . . . . . . .";
+        for(int round = 0; round < 2; ++round) requireMask(*dai::impl::filterDetectionRound({input}, config, reference, {}, &cache), 8, 4, empty);
+    }
+    SECTION("no reference keeps the direct mask path") {
+        requireMask(*dai::impl::filterDetectionRound({input}, config, std::nullopt, {}, &cache), 4, 4, "0 0 0 0\n0 0 0 0\n0 0 0 0\n0 0 0 0");
+    }
 }
 
 TEST_CASE("ImgDetectionsFilter T-1: metadata from newest host timestamp", "[ImgDetectionsFilter][OUT-7][OUT-8]") {
