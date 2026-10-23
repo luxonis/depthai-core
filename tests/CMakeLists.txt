@@ -1079,3 +1079,11 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
+
+# Explicit Align interpolation on host or RVC4 (ALIGN_TEST_ON_HOST selects host).
+dai_add_test(align_interpolation_test src/ondevice_tests/align_interpolation_test.cpp)
+dai_set_test_labels(align_interpolation_test ondevice rvc4 ci)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    add_test(NAME align_interpolation_host_test COMMAND align_interpolation_test)
+    set_tests_properties(align_interpolation_host_test PROPERTIES ENVIRONMENT "ALIGN_TEST_ON_HOST=1" LABELS "onhost;ci")
+endif()

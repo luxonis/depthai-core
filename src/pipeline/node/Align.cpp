@@ -41,6 +41,19 @@ Align& Align::setNumFramesPool(int numFramesPool) {
     return *this;
 }
 
+Align& Align::setInterpolation(Interpolation interpolation) {
+    switch(interpolation) {
+        case Interpolation::AUTO:
+        case Interpolation::NEAREST_NEIGHBOR:
+        case Interpolation::BILINEAR:
+        case Interpolation::BICUBIC:
+            properties.interpolation = interpolation;
+            return *this;
+        default:
+            throw std::invalid_argument("Unsupported Align interpolation");
+    }
+}
+
 void Align::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -352,7 +365,11 @@ std::shared_ptr<ImgFrame> makeRemapTarget(const ImgFrame& source, int width, int
     return frame;
 }
 
-std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunState& state, bool isSegmentationMask, std::array<uint8_t, 3> bgColorRgb) {
+std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
+                                        const ImgFrameRunState& state,
+                                        bool isSegmentationMask,
+                                        std::array<uint8_t, 3> bgColorRgb,
+                                        Interpolation interpolation = Interpolation::AUTO) {
     const cv::Scalar bgColor(bgColorRgb[0], bgColorRgb[1], bgColorRgb[2]);
 
     const ImgFrame::Type inputFrameType = inputImg.getType();
@@ -374,17 +391,32 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunSta
     const auto frameSize = static_cast<uint32_t>(roundf(width * height * inputFrameBpp));
     const auto outFrameSize = static_cast<uint32_t>(roundf(state.alignWidth * state.alignHeight * inputFrameBpp));
 
-    const int interp = cv::INTER_NEAREST;
-    const int chromaInterp = isSegmentationMask ? cv::INTER_NEAREST : cv::INTER_LINEAR;
+    int interp = cv::INTER_NEAREST;
+    switch(interpolation) {
+        case Interpolation::AUTO:
+            if(inputFrameBpp == 1.5f) interp = cv::INTER_LINEAR;
+            break;
+        case Interpolation::NEAREST_NEIGHBOR:
+            break;
+        case Interpolation::BILINEAR:
+            interp = cv::INTER_LINEAR;
+            break;
+        case Interpolation::BICUBIC:
+            interp = cv::INTER_CUBIC;
+            break;
+        default:
+            throw std::invalid_argument("Unsupported Align interpolation");
+    }
+    if(isSegmentationMask || inputFrameType == ImgFrame::Type::RAW16) interp = cv::INTER_NEAREST;
 
     const auto remapFrame = [&](ImgFrame& src, ImgFrame& dst, const cv::Mat& mapX, const cv::Mat& mapY) {
         auto srcFrame = src.getFrame();
         auto dstFrame = dst.getFrame();
         if(inputFrameBpp == 1.5f) {
             if(dst.getType() == ImgFrame::Type::NV12) {
-                remapNv12(srcFrame, dstFrame, mapX, mapY, chromaInterp, bgColor);
+                remapNv12(srcFrame, dstFrame, mapX, mapY, interp, bgColor);
             } else {  // YUV420p; no other frame type has 1.5 bytes per pixel
-                remapYuv420(srcFrame, dstFrame, mapX, mapY, chromaInterp, bgColor);
+                remapYuv420(srcFrame, dstFrame, mapX, mapY, interp, bgColor);
             }
         } else if(dst.getType() == ImgFrame::Type::RGB888p || dst.getType() == ImgFrame::Type::BGR888p) {
             cv::Mat remapped;
@@ -514,7 +546,8 @@ std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>&
                                                   const ImgTransformation& targetTransform,
                                                   const ImgFrameRunState& runState,
                                                   bool& warnedAboutDistortion,
-                                                  spdlog::async_logger& logger) {
+                                                  spdlog::async_logger& logger,
+                                                  Interpolation interpolation) {
     const auto alignToDistortion = targetTransform.getDistortionCoefficients();
     bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
 
@@ -537,7 +570,7 @@ std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>&
 
         warnAboutDistortion();
 
-        auto alignedImg = alignImgFrame(*imgFrameInput, runState, false, {0, 0, 0});
+        auto alignedImg = alignImgFrame(*imgFrameInput, runState, false, {0, 0, 0}, interpolation);
         const auto [sourceWidth, sourceHeight] = undistortedTransform.getSourceSize();
         alignedImg->setSourceSize(static_cast<unsigned int>(sourceWidth), static_cast<unsigned int>(sourceHeight));
         alignedImg->setTransformation(undistortedTransform);
@@ -681,7 +714,7 @@ void Align::run() {
         initialized = true;
 
         std::shared_ptr<Buffer> alignedInputMsg =
-            buildAlignedOutputMessage(inputMsg, inputDatatype, alignToTransform, runState, warnedAboutDistortion, *logger);
+            buildAlignedOutputMessage(inputMsg, inputDatatype, alignToTransform, runState, warnedAboutDistortion, *logger, properties.interpolation);
 
         auto tStop = std::chrono::steady_clock::now();
         auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(tStop - tStart).count();
