@@ -53,7 +53,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
-            ownedDevices.insert(defaultDevice.get());
         } else {
             hostProperties = DeviceProperties();
             defaultDeviceProperties = &hostProperties.value();
@@ -205,10 +204,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
 
     // is pipeline running - stays set until stop() has completed, so isRunning()/run()
-    // cover the whole teardown (device close included)
+    // cover the whole pipeline teardown
     AtomicBool running{false};
     // set for the duration of stop(): device state transitions reported while the devices
-    // are being closed must not re-trigger a stop or user callbacks
+    // are being stopped must not re-trigger a stop or user callbacks
     AtomicBool stopping{false};
     // Thread stopping the pipeline after a device loss. It is spawned from the device's
     // monitor thread (which stop() joins indirectly) and owns no reference to the pipeline;
@@ -264,9 +263,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // When set, losing any device that carries a node stops the pipeline (strict mode).
     // Off by default: a lost device only idles its streams (permissive mode).
     AtomicBool stopOnDeviceLoss{false};
-
-    // Only connections constructed by this pipeline are closed on stop.
-    std::unordered_set<const Device*> ownedDevices;
 
     // Called from a device's monitor thread on state transitions. On FAILED, idles the
     // device's XLink host nodes and stops the pipeline when the device was fatal, the
@@ -463,7 +459,7 @@ class Pipeline {
 
     /**
      * Creates a pipeline
-     * @param createImplicitDevice If true, creates a default device that is closed on stop() (default = true)
+     * @param createImplicitDevice If true, creates a default device (default = true)
      */
     explicit Pipeline(bool createImplicitDevice = true);
 
@@ -794,9 +790,9 @@ class Pipeline {
         impl()->wait();
     }
     /**
-     * Stop execution and close devices constructed by this pipeline.
-     * Caller-supplied devices stay open and can be reused after wait().
-     * Running device nodes on caller-supplied devices requires RVC4 firmware with pipeline-stop support.
+     * Stop execution without closing devices. Devices can be reused after wait().
+     * Devices are closed when their last shared reference is released, or by calling Device::close().
+     * Running device nodes requires RVC4 firmware with pipeline-stop support.
      */
     void stop() {
         impl()->stop();
@@ -829,7 +825,7 @@ class Pipeline {
     std::shared_ptr<Device> addDevice(std::shared_ptr<Device> device);
 
     /**
-     * Construct a device from the given device info and add it to the pipeline. Closed on stop().
+     * Construct a device from the given device info and add it to the pipeline. The device stays open on stop().
      *
      * @param deviceInfo Device info to construct the device from
      * @returns The constructed device
@@ -837,7 +833,7 @@ class Pipeline {
     std::shared_ptr<Device> addDevice(const DeviceInfo& deviceInfo);
 
     /**
-     * Construct a device from a device id, IP address or name and add it to the pipeline. Closed on stop().
+     * Construct a device from a device id, IP address or name and add it to the pipeline. The device stays open on stop().
      *
      * @param idOrIpOrName Device id, IP address or name to construct the device from
      * @returns The constructed device

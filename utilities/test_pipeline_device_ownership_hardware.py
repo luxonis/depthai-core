@@ -26,38 +26,53 @@ class DeviceOwnershipTest(unittest.TestCase):
             time.sleep(0.005)
         self.fail("No camera output received")
 
-    def assert_closed_and_rebooted(self, device):
-        self.assertTrue(device.isClosed())
-        if device.getPlatform() == self.dai.Platform.RVC2:
-            available = {info.getDeviceId(): info for info in self.dai.Device.getAllAvailableDevices()}
-            self.assertIn(self.device_id, available)
-            self.assertIn(available[self.device_id].state, (
-                self.dai.XLinkDeviceState.X_LINK_UNBOOTED,
-                self.dai.XLinkDeviceState.X_LINK_BOOTLOADER,
-            ))
-
-    def test_implicit_device_closes_on_stop(self):
-        with self.dai.Pipeline() as pipeline:
-            device = pipeline.getDefaultDevice()
-            try:
-                self.assertEqual(device.getDeviceId(), self.device_id)
+    def check_created_device_lifetime(self, factory):
+        pipeline = factory()
+        device = pipeline.getDefaultDevice()
+        try:
+            self.assertEqual(device.getDeviceId(), self.device_id)
+            if device.getPlatform() == self.dai.Platform.RVC2:
+                with self.assertRaisesRegex(RuntimeError, "requires RVC4 firmware"):
+                    self.stream_camera(pipeline)
+            else:
                 self.stream_camera(pipeline)
                 pipeline.stop()
                 pipeline.wait()
-                self.assert_closed_and_rebooted(device)
-            finally:
-                device.close()
+                self.assertFalse(device.isPipelineRunning())
+            self.assertFalse(device.isClosed())
+            del pipeline
+            gc.collect()
+            self.assertFalse(device.isClosed())
+            self.assertEqual(device.getDeviceId(), self.device_id)
+            if device.getPlatform() == self.dai.Platform.RVC4:
+                with self.dai.Pipeline(device) as pipeline:
+                    self.stream_camera(pipeline)
+        finally:
+            device.close()
 
-    def test_device_created_from_info_closes_on_stop(self):
-        with self.dai.Pipeline(False) as pipeline:
-            device = pipeline.addDevice(self.dai.DeviceInfo(self.device_id))
-            try:
-                self.stream_camera(pipeline)
-                pipeline.stop()
-                pipeline.wait()
-                self.assert_closed_and_rebooted(device)
-            finally:
-                device.close()
+    def test_implicit_device_survives_stop_and_pipeline_destruction(self):
+        self.check_created_device_lifetime(self.dai.Pipeline)
+
+    def test_added_device_survives_stop_and_pipeline_destruction(self):
+        for from_info in (False, True):
+            with self.subTest(from_info=from_info):
+                def factory():
+                    pipeline = self.dai.Pipeline(False)
+                    argument = self.dai.DeviceInfo(self.device_id) if from_info else self.device_id
+                    pipeline.addDevice(argument)
+                    return pipeline
+                self.check_created_device_lifetime(factory)
+
+    def test_last_device_reference_is_released_with_pipeline(self):
+        def run():
+            with self.dai.Pipeline() as pipeline:
+                if pipeline.getDefaultDevice().getPlatform() == self.dai.Platform.RVC4:
+                    self.stream_camera(pipeline)
+        run()
+        gc.collect()
+        # Reopening the same device requires the previous connection to have closed.
+        with self.dai.Device(self.dai.DeviceInfo(self.device_id)) as device:
+            self.assertEqual(device.getDeviceId(), self.device_id)
 
     def test_caller_owned_device_is_preserved(self):
         with self.dai.Device(self.dai.DeviceInfo(self.device_id)) as device:

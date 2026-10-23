@@ -38,7 +38,7 @@ TEST_CASE("Pipeline node creation, link, unlink and removal") {
     REQUIRE(p.getAllNodes().size() == 0);
 }
 
-TEST_CASE("Pipeline closes devices it constructs on stop", "[device-ownership]") {
+TEST_CASE("Pipeline shares the lifetime of devices it constructs", "[device-ownership]") {
     std::shared_ptr<dai::Device> device;
     SECTION("Implicit device") {
         dai::Pipeline pipeline;
@@ -46,7 +46,7 @@ TEST_CASE("Pipeline closes devices it constructs on stop", "[device-ownership]")
         pipeline.start();
         pipeline.stop();
         pipeline.wait();
-        REQUIRE(device->isClosed());
+        REQUIRE_FALSE(device->isClosed());
     }
     SECTION("Device constructed by addDevice") {
         dai::Pipeline pipeline(false);
@@ -57,13 +57,14 @@ TEST_CASE("Pipeline closes devices it constructs on stop", "[device-ownership]")
         SECTION("Device id") {
             device = pipeline.addDevice(info.getDeviceId());
         }
-        // Re-registering an owned device must not transfer ownership.
+        // Re-registering a device must preserve its shared lifetime.
         REQUIRE(pipeline.addDevice(device) == device);
         pipeline.start();
         pipeline.stop();
         pipeline.wait();
-        REQUIRE(device->isClosed());
+        REQUIRE_FALSE(device->isClosed());
     }
+    REQUIRE_FALSE(device->isClosed());
 }
 
 TEST_CASE("Pipeline leaves caller-supplied devices open", "[device-ownership]") {
@@ -98,4 +99,18 @@ TEST_CASE("Pipeline leaves caller-supplied devices open", "[device-ownership]") 
     }
     REQUIRE_FALSE(device->isClosed());
     REQUIRE(device->getConnection() == connection);
+}
+
+TEST_CASE("Pipeline releases its device reference on destruction", "[device-ownership]") {
+    std::weak_ptr<dai::Device> device;
+    {
+        dai::Pipeline pipeline;
+        device = pipeline.getDefaultDevice();
+        pipeline.start();
+        pipeline.stop();
+        pipeline.wait();
+        REQUIRE_FALSE(device.expired());
+        REQUIRE_FALSE(device.lock()->isClosed());
+    }
+    REQUIRE(device.expired());
 }
