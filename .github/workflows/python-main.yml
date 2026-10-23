@@ -877,9 +877,8 @@ jobs:
           AK_TOKEN: ${{ secrets.AK_TOKEN }}
 
   # BOM tests for pushes to main, release branches and tags; they install the wheels that this run uploaded.
-  # Only a newer push to the same branch cancels the wait (concurrency group above; a "testable" PR run has
-  # its own group). develop is not built on push: hil_testing_nightly.yml runs the BOM tests of the nightly
-  # build after its HIL tests.
+  # The job only dispatches the BOM run and links it. develop is not built on push: hil_testing_nightly.yml
+  # starts the BOM tests of the nightly build at the same time as its HIL tests.
   dispatch-bom-tests:
     if: github.event_name == 'push' && !failure() && !cancelled()
     needs: [required_python_ci_report, upload-wheels-to-ak, deploy]
