@@ -129,7 +129,8 @@ std::shared_ptr<dai::ImgFrame> makeRuntimeTransformationFrame(const dai::ImgTran
 
 std::shared_ptr<dai::ImgFrame> alignSyntheticDepth(bool runOnHost,
                                                    const dai::ImgTransformation& depthTransformation,
-                                                   const dai::ImgTransformation& imageTransformation) {
+                                                   const dai::ImgTransformation& imageTransformation,
+                                                   const std::vector<uint8_t>& inputDepthPixels = {}) {
     dai::Pipeline pipeline(!runOnHost);
     auto align = pipeline.create<dai::node::ImageAlign>();
     align->setRunOnHost(runOnHost);
@@ -152,6 +153,10 @@ std::shared_ptr<dai::ImgFrame> alignSyntheticDepth(bool runOnHost,
             depthPixels[offset] = static_cast<uint8_t>(millimeters);
             depthPixels[offset + 1] = static_cast<uint8_t>(millimeters >> 8);
         }
+    }
+    if(!inputDepthPixels.empty()) {
+        REQUIRE(inputDepthPixels.size() == depthPixels.size());
+        depthPixels = inputDepthPixels;
     }
     depth->setData(std::move(depthPixels));
 
@@ -218,6 +223,172 @@ TEST_CASE("Test ImageAlign synthetic depth to image host device parity") {
     REQUIRE(deviceData.size() >= imageBytes);
     REQUIRE(std::any_of(hostData.begin(), hostData.begin() + imageBytes, [](uint8_t pixel) { return pixel != 0; }));
     REQUIRE(std::equal(hostData.begin(), hostData.begin() + imageBytes, deviceData.begin()));
+}
+
+void runImageAlignRotatedCoverageTest(bool runOnHost, bool distorted = false) {
+    const std::array<std::array<float, 3>, 3> depthK = {{{64.0f, 0.0f, 32.0f}, {0.0f, 64.0f, 24.0f}, {0.0f, 0.0f, 1.0f}}};
+    auto imageK = depthK;
+    imageK[0][2] = 64.0f;
+    const std::vector<std::vector<float>> identity = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const dai::Extrinsics imageExtrinsics(identity, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+    const dai::ImgTransformation imageTransformation(128, 48, imageK, dai::CameraModel::Perspective, {}, imageExtrinsics);
+    const std::vector<float> distortion = distorted ? std::vector<float>{-8.0f / 27.0f, 0, 0, 0, 0} : std::vector<float>{};
+    for(const float sign : {-1.0f, 1.0f}) {
+        CAPTURE(sign);
+        const float angle = sign * 20.0f * 3.14159265f / 180.0f;
+        const std::vector<std::vector<float>> rotation = {
+            {std::cos(angle), 0.0f, std::sin(angle)}, {0.0f, 1.0f, 0.0f}, {-std::sin(angle), 0.0f, std::cos(angle)}};
+        const dai::Extrinsics depthExtrinsics(rotation, {sign * 70.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::ImgTransformation depthTransformation(64, 48, depthK, dai::CameraModel::Perspective, distortion, depthExtrinsics);
+        const auto aligned = alignSyntheticDepth(runOnHost, depthTransformation, imageTransformation);
+
+        // Project a source point near the outer edge into the target independently of the rectification maps.
+        const auto r = depthTransformation.getRotationMatrixTo(imageTransformation);
+        const auto t = depthTransformation.getTranslationVectorTo(imageTransformation, false, dai::LengthUnit::MILLIMETER);
+        // This known ray lands exactly on an integer source pixel, with or without radial distortion.
+        const float rayX = sign * 0.375f;
+        const float sourceX = 32.0f + 64.0f * rayX * (1.0f + (distorted ? distortion[0] * rayX * rayX : 0.0f));
+        REQUIRE(std::abs(sourceX - std::round(sourceX)) < 1e-4f);
+        const float z = 1000.0f + 7.0f * sourceX + 11.0f * 24.0f;
+        const float x = rayX * z;
+        const float targetX = r[0][0] * x + r[0][2] * z + t[0];
+        const float targetZ = r[2][0] * x + r[2][2] * z + t[2];
+        const int u = static_cast<int>(std::lround(64.0f * targetX / targetZ + 64.0f));
+        REQUIRE(u >= 2);
+        REQUIRE(u < 126);
+        const auto data = aligned->getData();
+        for(int dx = -1; dx <= 1; ++dx) {
+            const size_t offset = 2 * (24 * 128 + u + dx);
+            const uint16_t depth = data[offset] | (static_cast<uint16_t>(data[offset + 1]) << 8);
+            REQUIRE(depth > 1000);
+        }
+    }
+}
+
+TEST_CASE("Test ImageAlign preserves rotated depth coverage on host") {
+    runImageAlignRotatedCoverageTest(true);
+}
+
+TEST_CASE("Test ImageAlign preserves rotated depth coverage on device") {
+    runImageAlignRotatedCoverageTest(false);
+}
+
+TEST_CASE("Test ImageAlign preserves distorted depth coverage on host") {
+    runImageAlignRotatedCoverageTest(true, true);
+}
+
+TEST_CASE("Test ImageAlign preserves distorted depth coverage on device") {
+    runImageAlignRotatedCoverageTest(false, true);
+}
+
+namespace {
+void runImageAlignZeroShiftTest(bool runOnHost) {
+    const std::array<std::array<float, 3>, 3> k = {{{64.0f, 0.0f, 32.0f}, {0.0f, 64.0f, 24.0f}, {0.0f, 0.0f, 1.0f}}};
+    const std::vector<std::vector<float>> identity = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const dai::Extrinsics imageExtrinsics(identity, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+    const dai::ImgTransformation imageTransformation(64, 48, k, dai::CameraModel::Perspective, {}, imageExtrinsics);
+    std::vector<uint8_t> inputPixels(64 * 48 * 2, 0);
+    constexpr uint16_t DEPTH = 2000;
+    inputPixels[2 * (24 * 64 + 32)] = static_cast<uint8_t>(DEPTH);
+    inputPixels[2 * (24 * 64 + 32) + 1] = static_cast<uint8_t>(DEPTH >> 8);
+
+    for(const auto& [baseline, displacement] : {std::pair<float, int>{1.0f, 0},
+                                                {-1.0f, 0},
+                                                {15.3125f, 0},
+                                                {-15.3125f, 0},
+                                                {15.9375f, 1},
+                                                {-15.9375f, -1},
+                                                {31.25f, 1},
+                                                {-31.25f, -1},
+                                                {140.0f, 4},
+                                                {-140.0f, -4},
+                                                {141.25f, 5},
+                                                {-141.25f, -5}}) {
+        CAPTURE(baseline, displacement);
+        const dai::Extrinsics depthExtrinsics(identity, {baseline, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::ImgTransformation depthTransformation(64, 48, k, dai::CameraModel::Perspective, {}, depthExtrinsics);
+        const auto aligned = alignSyntheticDepth(runOnHost, depthTransformation, imageTransformation, inputPixels);
+        const auto data = aligned->getData();
+        const int shiftedX = 32 + displacement;
+        const int adjacentX = shiftedX + (baseline > 0 ? 1 : -1);
+        for(int y = 0; y < 48; ++y) {
+            for(int x = 0; x < 64; ++x) {
+                const size_t offset = 2 * (y * 64 + x);
+                const uint16_t actual = data[offset] | (static_cast<uint16_t>(data[offset + 1]) << 8);
+                const uint16_t expected = y == 24 && (x == shiftedX || (displacement != 0 && x == adjacentX)) ? DEPTH : 0;
+                CAPTURE(x, y);
+                CHECK(actual == expected);
+            }
+        }
+    }
+}
+}  // namespace
+
+TEST_CASE("Test ImageAlign only splats depth for nonzero pixel displacement on host") {
+    runImageAlignZeroShiftTest(true);
+}
+
+TEST_CASE("Test ImageAlign only splats depth for nonzero pixel displacement on device") {
+    runImageAlignZeroShiftTest(false);
+}
+
+namespace {
+void runImageAlignSignedShiftTest(bool runOnHost) {
+    const std::array<std::array<float, 3>, 3> k = {{{64.0f, 0.0f, 32.0f}, {0.0f, 64.0f, 24.0f}, {0.0f, 0.0f, 1.0f}}};
+    const std::vector<std::vector<float>> identity = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const dai::Extrinsics imageExtrinsics(identity, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+    const dai::ImgTransformation imageTransformation(64, 48, k, dai::CameraModel::Perspective, {}, imageExtrinsics);
+    std::vector<uint8_t> inputPixels(64 * 48 * 2, 0);
+    constexpr uint16_t DEPTH = 2000;
+    inputPixels[2 * (24 * 64 + 32)] = static_cast<uint8_t>(DEPTH);
+    inputPixels[2 * (24 * 64 + 32) + 1] = static_cast<uint8_t>(DEPTH >> 8);
+
+    for(const auto& [baseline, displacement] : {std::pair<float, int>{31.25f, 1}, {-31.25f, -1}, {140.0f, 4}, {-140.0f, -4}, {141.25f, 5}, {-141.25f, -5}}) {
+        CAPTURE(baseline, displacement);
+        const dai::Extrinsics depthExtrinsics(identity, {baseline, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::ImgTransformation depthTransformation(64, 48, k, dai::CameraModel::Perspective, {}, depthExtrinsics);
+        const auto aligned = alignSyntheticDepth(runOnHost, depthTransformation, imageTransformation, inputPixels);
+        const auto data = aligned->getData();
+        const int shiftedX = 32 + displacement;
+        const int adjacentX = shiftedX + (baseline > 0 ? 1 : -1);
+        for(int y = 0; y < 48; ++y) {
+            for(int x = 0; x < 64; ++x) {
+                const size_t offset = 2 * (y * 64 + x);
+                const uint16_t actual = data[offset] | (static_cast<uint16_t>(data[offset + 1]) << 8);
+                const uint16_t expected = y == 24 && (x == shiftedX || x == adjacentX) ? DEPTH : 0;
+                CAPTURE(x, y);
+                CHECK(actual == expected);
+            }
+        }
+    }
+}
+}  // namespace
+
+TEST_CASE("Test ImageAlign rounds signed depth shifts on host") {
+    runImageAlignSignedShiftTest(true);
+}
+
+TEST_CASE("Test ImageAlign rounds signed depth shifts on device") {
+    runImageAlignSignedShiftTest(false);
+}
+
+TEST_CASE("Test ImageAlign rejects excessive rectified bounds on host") {
+    for(const auto& geometry : {std::pair<float, float>{20.0f, 40.0f}, {64.0f, 90.0f}}) {
+        const auto [focalLength, yawDegrees] = geometry;
+        CAPTURE(focalLength, yawDegrees);
+        const std::array<std::array<float, 3>, 3> k = {{{focalLength, 0.0f, 32.0f}, {0.0f, focalLength, 24.0f}, {0.0f, 0.0f, 1.0f}}};
+        const float angle = yawDegrees * 3.14159265f / 180.0f;
+        const std::vector<std::vector<float>> rotation = {
+            {std::cos(angle), 0.0f, std::sin(angle)}, {0.0f, 1.0f, 0.0f}, {-std::sin(angle), 0.0f, std::cos(angle)}};
+        const std::vector<std::vector<float>> identity = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+        const dai::Extrinsics depthExtrinsics(rotation, {70.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::Extrinsics imageExtrinsics(identity, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::ImgTransformation depthTransformation(64, 48, k, dai::CameraModel::Perspective, {}, depthExtrinsics);
+        const dai::ImgTransformation imageTransformation(64, 48, k, dai::CameraModel::Perspective, {}, imageExtrinsics);
+
+        // Invalid geometry stops the node and closes its output queue, rather than allocating the maps.
+        REQUIRE_THROWS_AS(alignSyntheticDepth(true, depthTransformation, imageTransformation), dai::MessageQueue::QueueException);
+    }
 }
 
 // Feeds synthetic frames with hand-made ImgTransformations through ImageAlign and checks that a transformation change on
