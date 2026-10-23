@@ -16,7 +16,6 @@ on:
   push:
     branches:
       - main
-      - develop
       - 'release*'
     tags:
       - 'v*'
@@ -92,9 +91,10 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore
         with:
@@ -149,9 +149,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
@@ -188,7 +189,9 @@ jobs:
 
       - name: Setup cmake
         if: matrix.os == 'macos-latest'
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+        with:
+          useCloudCache: false
 
 
       - name: Install pytest
@@ -238,9 +241,10 @@ jobs:
       CMAKE_GENERATOR_TOOLSET: v143
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '4.2.x'
+          cmakeVersion: '4.2.x'
+          useCloudCache: false
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
@@ -332,9 +336,10 @@ jobs:
       DEPTHAI_BUILD_KOMPUTE: ON
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
@@ -870,3 +875,12 @@ jobs:
         env:
           AK_URL: ${{ secrets.AK_URL }}
           AK_TOKEN: ${{ secrets.AK_TOKEN }}
+
+  # BOM tests for pushes to main, release branches and tags; they install the wheels that this run uploaded.
+  # The job only dispatches the BOM run and links it. develop is not built on push: hil_testing_nightly.yml
+  # starts the BOM tests of the nightly build at the same time as its HIL tests.
+  dispatch-bom-tests:
+    if: github.event_name == 'push' && !failure() && !cancelled()
+    needs: [required_python_ci_report, upload-wheels-to-ak, deploy]
+    uses: ./.github/workflows/bom_dispatch.yml
+    secrets: inherit

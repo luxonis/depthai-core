@@ -305,6 +305,10 @@ endif()
 set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
+    # vcpkg dependencies are built without ASan: protobuf containers then give false container-overflow
+    # reports (inline code from instrumented objects annotates memory that libprotobuf.a then writes)
+    # TODO: remove when the vcpkg dependencies are built with ASan
+    "ASAN_OPTIONS=detect_container_overflow=0"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=30000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
@@ -605,6 +609,10 @@ dai_set_test_labels(pointclouddata_test onhost ci)
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
 
+# PointCloud node multi-stream (merged) tests
+dai_add_test(point_cloud_multi_stream_test src/onhost_tests/pipeline/node/point_cloud_multi_stream_test.cpp)
+dai_set_test_labels(point_cloud_multi_stream_test onhost ci)
+
 # Model zoo settings tests (also valid without libcurl)
 dai_add_test(model_zoo_settings_test src/onhost_tests/model_zoo_settings_test.cpp)
 dai_set_test_labels(model_zoo_settings_test onhost ci)
@@ -770,6 +778,10 @@ dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
+dai_add_test(pointcloud_gpu_test src/ondevice_tests/pointcloud_gpu_test.cpp)
+dai_set_test_labels(pointcloud_gpu_test ondevice rvc4)
+dai_add_test(pointcloud_multi_stream_device_test src/ondevice_tests/pointcloud_multi_stream_device_test.cpp)
+dai_set_test_labels(pointcloud_multi_stream_device_test ondevice rvc4 ci)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
@@ -960,6 +972,10 @@ dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
 # StereoDepth test
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
+
+# Pixel geometry regression: synthetic inputs through on-device stereo and alignment.
+dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
+dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
 
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)

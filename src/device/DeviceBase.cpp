@@ -383,6 +383,10 @@ HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, con
     return DeviceHealthCheck::run(devInfo, config);
 }
 
+HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop) {
+    return DeviceHealthCheck::run(devInfo, config, shouldStop);
+}
+
 /*
 std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices(){
     return XLinkConnection::getAllConnectedDevices();
