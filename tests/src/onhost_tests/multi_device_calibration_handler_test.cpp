@@ -6,7 +6,9 @@
 #include <limits>
 #include <stdexcept>
 
+#include "depthai/beta/device/LocalCalibrationOrigin.hpp"
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 
 using namespace dai;
 using dai::beta::MultiDeviceCalibrationHandler;
@@ -231,4 +233,63 @@ TEST_CASE("Extrinsics::withLengthUnit converts both translations and keeps every
     REQUIRE(roundTrip.translation.x == Catch::Approx(source.translation.x));
     REQUIRE(roundTrip.specTranslation.z == Catch::Approx(source.specTranslation.z));
     REQUIRE(source.withLengthUnit(LengthUnit::METER).isEqualExtrinsics(source));
+}
+
+TEST_CASE("Multi-device calibration validates a device's local calibration origin against the graph") {
+    MultiDeviceExtrinsics edge;
+    edge.fromDeviceId = "device-b";
+    edge.fromSocket = CameraBoardSocket::CAM_B;
+    edge.extrinsics = makeExtrinsics("device-a", CameraBoardSocket::CAM_A, {1.0f, 0.0f, 0.0f});
+    const MultiDeviceCalibrationHandler handler(std::vector<MultiDeviceExtrinsics>{edge});
+
+    const auto describe = [](bool available, CameraBoardSocket presentSocket, CameraBoardSocket origin) {
+        dai::beta::LocalCalibrationOrigin local;
+        local.available = available;
+        local.hasSocket = [presentSocket](CameraBoardSocket socket) { return socket == presentSocket; };
+        local.originOf = [origin](CameraBoardSocket) { return origin; };
+        return local;
+    };
+
+    SECTION("a device absent from the graph always passes") {
+        dai::beta::LocalCalibrationOrigin none;
+        REQUIRE_NOTHROW(handler.validateLocalOrigin("device-c", none));
+    }
+    SECTION("missing local calibration is rejected") {
+        REQUIRE_THROWS_WITH(handler.validateLocalOrigin("device-b", describe(false, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_B)),
+                            Catch::Matchers::ContainsSubstring("requires local calibration data for device 'device-b'"));
+    }
+    SECTION("a local calibration without the graph socket is rejected") {
+        REQUIRE_THROWS_WITH(handler.validateLocalOrigin("device-b", describe(true, CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_A)),
+                            Catch::Matchers::ContainsSubstring("requires local calibration socket CAM_B on device 'device-b'"));
+    }
+    SECTION("a local origin that differs from the graph socket is rejected") {
+        REQUIRE_THROWS_WITH(handler.validateLocalOrigin("device-b", describe(true, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_A)),
+                            Catch::Matchers::ContainsSubstring("graph expects socket CAM_B, local calibration resolves to CAM_A"));
+    }
+    SECTION("a matching local origin passes on both ends of the edge") {
+        REQUIRE_NOTHROW(handler.validateLocalOrigin("device-b", describe(true, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_B)));
+        REQUIRE_NOTHROW(handler.validateLocalOrigin("device-a", describe(true, CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_A)));
+    }
+}
+
+TEST_CASE("describeLocalCalibration reports the extrinsics chain root as the local origin") {
+    EepromData eeprom;
+    CameraInfo root;
+    root.extrinsics.toCameraSocket = CameraBoardSocket::AUTO;
+    CameraInfo child;
+    child.extrinsics.toCameraSocket = CameraBoardSocket::CAM_A;
+    child.extrinsics.rotationMatrix = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    child.extrinsics.translation = {7.5f, 0.0f, 0.0f};
+    eeprom.cameraData[CameraBoardSocket::CAM_A] = root;
+    eeprom.cameraData[CameraBoardSocket::CAM_B] = child;
+
+    const auto local = dai::beta::describeLocalCalibration(CalibrationHandler(eeprom));
+    REQUIRE(local.available);
+    REQUIRE(local.hasSocket(CameraBoardSocket::CAM_B));
+    REQUIRE_FALSE(local.hasSocket(CameraBoardSocket::CAM_C));
+    REQUIRE(local.originOf(CameraBoardSocket::CAM_A) == CameraBoardSocket::CAM_A);
+    REQUIRE(local.originOf(CameraBoardSocket::CAM_B) == CameraBoardSocket::CAM_A);
+
+    const auto missing = dai::beta::describeLocalCalibration(std::nullopt);
+    REQUIRE_FALSE(missing.available);
 }

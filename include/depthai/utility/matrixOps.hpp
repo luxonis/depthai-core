@@ -38,6 +38,15 @@ std::vector<std::vector<float>> createScalingMatrix(float scaleX, float scaleY);
 std::vector<std::vector<float>> createTranslationMatrix(float dx, float dy);
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const dai::Point3f& translation);
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::array<std::array<float, 3>, 3>& rotation, const dai::Point3f& translation);
+/**
+ * Re-express a source -> local-origin pose in a new target frame.
+ *
+ * Both inputs are 4x4 homogeneous transforms in the same length unit. The result is
+ * source -> target = localOriginToTarget * sourceToLocalOrigin, the composition used by
+ * ImgTransformation::rebaseExtrinsics and the device-side multi-device rebasers.
+ */
+std::array<std::array<float, 4>, 4> rebaseTransformation(const std::array<std::array<float, 4>, 4>& sourceToLocalOrigin,
+                                                         const std::array<std::array<float, 4>, 4>& localOriginToTarget);
 dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix, const dai::Point3f& point);
 /** True when every component of the point is finite (no NaN or infinity). */
 bool isFinitePoint3f(const dai::Point3f& point);
