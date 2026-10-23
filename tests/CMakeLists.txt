@@ -992,6 +992,10 @@ endif()
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
 dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)
 
+# Bandwidth health check for 300 seconds (RVC4 only, not in ci: hil_rvc4_usb_bandwidth.yml runs it)
+dai_add_test(bandwidth_health_check_test src/ondevice_tests/bandwidth_health_check_test.cpp)
+dai_set_test_labels(bandwidth_health_check_test ondevice rvc4 rvc4_bandwidth)
+
 # SystemLogger test
 dai_add_test(system_logger_test src/ondevice_tests/pipeline/node/system_logger_test.cpp)
 dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4rgb ci)

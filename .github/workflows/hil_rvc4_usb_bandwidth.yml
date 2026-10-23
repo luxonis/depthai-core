@@ -1,0 +1,134 @@
+name: DepthAI Core HIL RVC4 USB Bandwidth
+
+# Builds the HIL image one time, then runs bandwidth_health_check_test (300 s) one time on each of
+# N RVC4 USB testbeds, one run at a time. hil_runner selects a random free testbed for each run.
+on:
+  # A workflow that is not on the default branch can be dispatched only after its first run,
+  # so a push to this branch starts the run.
+  push:
+    branches:
+      - test/usb-speeds-rvc4
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: Number of test runs, one at a time (1 to 256)
+        type: number
+        default: 200
+      luxonis_os_version:
+        description: Luxonis OS version of the RVC4 camera
+        type: string
+        default: "1.44.0"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: hil-rvc4-usb-bandwidth-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_docker_container:
+    runs-on: ['self-hosted', 'hil-test-v3']
+    outputs:
+      tag: ${{ steps.build_and_push.outputs.tag }}
+    steps:
+    - uses: actions/checkout@v7
+    - name: Build and push
+      id: build_and_push
+      env:
+        CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      run: |
+        # The short ("pull request") build: tests only, no examples and no Python bindings
+        TAG="vanilla-rvc4-bandwidth_short_${{ github.sha }}"
+        echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+        scripts/hil/build_and_push.sh vanilla "${{ github.ref_name }}" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" true "$TAG"
+
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      iterations: ${{ steps.plan.outputs.iterations }}
+    steps:
+    - name: List the iterations
+      id: plan
+      env:
+        ITERATIONS: ${{ inputs.iterations || 200 }}
+      run: |
+        if [ "$ITERATIONS" -lt 1 ] || [ "$ITERATIONS" -gt 256 ]; then
+          echo "::error::iterations must be 1 to 256 (the GitHub matrix limit)"
+          exit 1
+        fi
+        echo "iterations=$(seq -w 1 "$ITERATIONS" | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+
+  rvc4_usb_bandwidth_test:
+    name: RVC4 USB bandwidth (${{ matrix.iteration }})
+    needs: [build_docker_container, plan]
+    strategy:
+      matrix:
+        iteration: ${{ fromJson(needs.plan.outputs.iterations) }}
+      fail-fast: false
+      max-parallel: 1
+    runs-on: ['self-hosted', 'testbed-runner']
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Run the bandwidth health check test
+      env:
+        RVC4_OS_VERSION: ${{ inputs.luxonis_os_version || '1.44.0' }}
+      run: |
+        source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+        # One reservation name for each iteration: hil_runner gives a testbed that is already reserved
+        # under the same name, so a shared name could keep the same testbed. No USB link speed sanity
+        # check: USB 2.0 testbeds stay in.
+        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-usb-bandwidth-${{ matrix.iteration }}"
+        set -o pipefail
+        hil_runner --models "oak4_pro or oak4_d" --reservation-name "$RESERVATION_NAME" --wait --rvc4-os-version "$RVC4_OS_VERSION" --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4usb --test-label rvc4_bandwidth" 2>&1 | tee rvc4_usb_bandwidth_${{ matrix.iteration }}.log
+
+    - name: Upload test log
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: rvc4-usb-bandwidth-log-${{ matrix.iteration }}
+        path: rvc4_usb_bandwidth_${{ matrix.iteration }}.log
+        if-no-files-found: warn
+
+  summary:
+    name: Bandwidth summary
+    needs: [rvc4_usb_bandwidth_test]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download the test logs
+      uses: actions/download-artifact@v8
+      with:
+        pattern: rvc4-usb-bandwidth-log-*
+        path: logs
+        merge-multiple: true
+
+    - name: Write the summary table
+      run: |
+        field() { sed -n "s/.* $1=\([^ ]*\).*/\1/p" <<< "$2"; }
+        {
+          echo "| Iteration | Testbed | USB speed | Reports | Min Mbps | Avg Mbps | Max Mbps | Result |"
+          echo "| --- | --- | --- | --- | --- | --- | --- | --- |"
+          for log in logs/rvc4_usb_bandwidth_*.log; do
+            [ -e "$log" ] || continue
+            iteration=$(basename "$log" .log)
+            iteration=${iteration#rvc4_usb_bandwidth_}
+            testbed=$(grep -oP 'Using testbed: \K\S+' "$log" | tail -1)
+            usb_speed=$(grep -oP 'USB speed: \K\w+' "$log" | tail -1)
+            summary=$(grep -o 'BANDWIDTH_SUMMARY.*' "$log" | tail -1)
+            result=FAIL
+            if grep -q "All tests passed" "$log"; then
+              result=PASS
+            fi
+            echo "| $iteration | ${testbed:--} | ${usb_speed:--} | $(field reports "$summary") | $(field min_mbps "$summary") | $(field avg_mbps "$summary") | $(field max_mbps "$summary") | $result |"
+          done
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload all test logs
+      uses: actions/upload-artifact@v7
+      with:
+        name: rvc4-usb-bandwidth-logs-all
+        path: logs/
+        if-no-files-found: warn
