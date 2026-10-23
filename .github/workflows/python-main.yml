@@ -23,7 +23,9 @@ on:
     branches:
       - main
       - develop
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
+  pull_request_review:
+    types: [submitted]
 
 ###################################
 ###################################
@@ -37,6 +39,8 @@ jobs:
   # The precheck job determines whether a workflow should be run in full
   precheck:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
       wheel_python_versions: ${{ steps.check.outputs.wheel_python_versions }}
@@ -48,6 +52,9 @@ jobs:
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
         CHECK_GITHUB_REF: ${{ github.ref }}
+        CHECK_REVIEW_STATE: ${{ github.event.review.state }}
+        CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        CHECK_ACTION: ${{ github.event.action }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
         GITHUB_REF="$CHECK_GITHUB_REF"
@@ -68,10 +75,15 @@ jobs:
           WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
         fi
 
-        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+        if [[ "$EVENT_NAME" == "pull_request" || "$EVENT_NAME" == "pull_request_review" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
-          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+          if [[ "$EVENT_NAME" == "pull_request" && "$CHECK_ACTION" != "labeled" ]]; then
+            # Run the binding precheck on edits; retain the existing full-build triggers.
+            SHOULD_RUN="false"
+          elif [[ "$EVENT_NAME" == "pull_request" ]] && ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          elif [[ "$EVENT_NAME" == "pull_request_review" && ("$CHECK_REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop")) ]]; then
             SHOULD_RUN="false"
           fi
         fi
@@ -80,6 +92,29 @@ jobs:
         echo "wheel_python_versions=$WHEEL_PYTHON_VERSIONS" >> "$GITHUB_OUTPUT"
         echo "wheel_python_sets=$WHEEL_PYTHON_SETS" >> "$GITHUB_OUTPUT"
         echo "wheel_macos_runners=$WHEEL_MACOS_RUNNERS" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    - name: Install binding precheck dependencies
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      run: python -m pip install -r ci/requirements-binding-check.txt
+    - name: Test binding precheck
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      run: python -m unittest discover -s ci/tests -p 'test_python_bindings.py'
+    - name: Check new public APIs have Python bindings
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      env:
+        BINDING_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+      run: |
+        if [[ -z "$BINDING_BASE" || "$BINDING_BASE" =~ ^0+$ ]]; then
+          BINDING_BASE=HEAD^
+        fi
+        python ci/check_python_bindings.py --base "$BINDING_BASE"
 
   # Job which builds docstrings for the rest of the wheel builds
   build-docstrings:

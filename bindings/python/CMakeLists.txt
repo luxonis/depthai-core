@@ -74,6 +74,8 @@ set(SOURCE_LIST
 
     src/pipeline/node/ColorCameraBindings.cpp
     src/pipeline/node/CameraBindings.cpp
+    src/pipeline/node/HostCameraBindings.cpp
+    src/pipeline/node/DisplayBindings.cpp
     src/pipeline/node/MonoCameraBindings.cpp
     src/pipeline/node/StereoDepthBindings.cpp
     src/pipeline/node/NeuralNetworkBindings.cpp

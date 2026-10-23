@@ -74,6 +74,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
     //     ;
 
     tensorInfo.def(py::init<>())
+        .def("validateStorageOrder", &dai::TensorInfo::validateStorageOrder, DOC(dai, TensorInfo, validateStorageOrder))
         .def("getTensorSize", &TensorInfo::getTensorSize)
         .def_readwrite("order", &TensorInfo::order)
         .def_readwrite("dataType", &TensorInfo::dataType)
@@ -120,6 +121,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
 
     nnData.def(py::init<>(), DOC(dai, NNData, NNData))
         .def(py::init<size_t>(), py::arg("size"), DOC(dai, NNData, NNData, 2))
+        .def("getFirstTensorDatatype", &dai::NNData::getFirstTensorDatatype, DOC(dai, NNData, getFirstTensorDatatype))
         .def("__repr__", &NNData::str)
         // // setters
         // .def("setLayer", [](NNData& obj, const std::string& name,
@@ -152,6 +154,15 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         .def("hasLayer", &NNData::hasLayer, py::arg("name"), DOC(dai, NNData, hasLayer))
         .def("getAllLayerNames", &NNData::getAllLayerNames, DOC(dai, NNData, getAllLayerNames))
         .def("getAllLayers", &NNData::getAllLayers, DOC(dai, NNData, getAllLayers))
+        .def(
+            "getLayerDatatype",
+            [](const NNData& self, const std::string& name) -> std::optional<TensorInfo::DataType> {
+                TensorInfo::DataType datatype;
+                if(!self.getLayerDatatype(name, datatype)) return std::nullopt;
+                return datatype;
+            },
+            py::arg("name"),
+            DOC(dai, NNData, getLayerDatatype))
         .def("getLayerDatatype", &NNData::getLayerDatatype, py::arg("name"), py::arg("datatype"), DOC(dai, NNData, getLayerDatatype))
         // .def("getLayerUInt8", [](NNData& obj, const std::string& name){
         //     PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'getTensor()'
@@ -177,48 +188,94 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         //     PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'getTensor()'
         //     instead", 1); return obj.getFirstLayerInt32();
         // }, DOC(dai, NNData, getFirstLayerInt32))
-        .def("addTensor",
-             static_cast<NNData& (NNData::*)(const std::string&, const std::vector<int>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
-             py::arg("name"),
-             py::arg("tensor"),
-             py::arg("storageOrder"),
-             DOC(dai, NNData, addTensor))
-        .def("addTensor",
-             static_cast<NNData& (NNData::*)(const std::string&, const std::vector<float>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
-             py::arg("name"),
-             py::arg("tensor"),
-             py::arg("storageOrder"),
-             DOC(dai, NNData, addTensor))
-        .def("addTensor",
-             static_cast<NNData& (NNData::*)(const std::string&, const std::vector<double>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
-             py::arg("name"),
-             py::arg("tensor"),
-             py::arg("storageOrder"),
-             DOC(dai, NNData, addTensor))
+        .def(
+            "addTensor",
+            [](NNData& obj, const std::string& name, const std::vector<int>& tensor, TensorInfo::StorageOrder order) -> NNData& {
+                if(obj.data.use_count() > 1) {
+                    const auto previous = obj.getData();
+                    obj.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
+                return obj.addTensor(name, tensor, order);
+            },
+            py::arg("name"),
+            py::arg("tensor"),
+            py::arg("storageOrder"),
+            DOC(dai, NNData, addTensor))
+        .def(
+            "addTensor",
+            [](NNData& obj, const std::string& name, const std::vector<float>& tensor, TensorInfo::StorageOrder order) -> NNData& {
+                if(obj.data.use_count() > 1) {
+                    const auto previous = obj.getData();
+                    obj.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
+                return obj.addTensor(name, tensor, order);
+            },
+            py::arg("name"),
+            py::arg("tensor"),
+            py::arg("storageOrder"),
+            DOC(dai, NNData, addTensor))
+        .def(
+            "addTensor",
+            [](NNData& obj, const std::string& name, const std::vector<double>& tensor, TensorInfo::StorageOrder order) -> NNData& {
+                if(obj.data.use_count() > 1) {
+                    const auto previous = obj.getData();
+                    obj.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
+                return obj.addTensor(name, tensor, order);
+            },
+            py::arg("name"),
+            py::arg("tensor"),
+            py::arg("storageOrder"),
+            DOC(dai, NNData, addTensor))
 
-        .def("addTensor",
-             static_cast<NNData& (NNData::*)(const std::string&, const xt::xarray<int>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
-             py::arg("name"),
-             py::arg("tensor"),
-             py::arg("storageOrder"),
-             DOC(dai, NNData, addTensor, 2))
-        .def("addTensor",
-             static_cast<NNData& (NNData::*)(const std::string&, const xt::xarray<float>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
-             py::arg("name"),
-             py::arg("tensor"),
-             py::arg("storageOrder"),
-             DOC(dai, NNData, addTensor, 2))
-        .def("addTensor",
-             static_cast<NNData& (NNData::*)(const std::string&, const xt::xarray<double>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
-             py::arg("name"),
-             py::arg("tensor"),
-             py::arg("storageOrder"),
-             DOC(dai, NNData, addTensor, 2))
+        .def(
+            "addTensor",
+            [](NNData& obj, const std::string& name, const xt::xarray<int>& tensor, TensorInfo::StorageOrder order) -> NNData& {
+                if(obj.data.use_count() > 1) {
+                    const auto previous = obj.getData();
+                    obj.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
+                return obj.addTensor(name, tensor, order);
+            },
+            py::arg("name"),
+            py::arg("tensor"),
+            py::arg("storageOrder"),
+            DOC(dai, NNData, addTensor, 2))
+        .def(
+            "addTensor",
+            [](NNData& obj, const std::string& name, const xt::xarray<float>& tensor, TensorInfo::StorageOrder order) -> NNData& {
+                if(obj.data.use_count() > 1) {
+                    const auto previous = obj.getData();
+                    obj.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
+                return obj.addTensor(name, tensor, order);
+            },
+            py::arg("name"),
+            py::arg("tensor"),
+            py::arg("storageOrder"),
+            DOC(dai, NNData, addTensor, 2))
+        .def(
+            "addTensor",
+            [](NNData& obj, const std::string& name, const xt::xarray<double>& tensor, TensorInfo::StorageOrder order) -> NNData& {
+                if(obj.data.use_count() > 1) {
+                    const auto previous = obj.getData();
+                    obj.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
+                return obj.addTensor(name, tensor, order);
+            },
+            py::arg("name"),
+            py::arg("tensor"),
+            py::arg("storageOrder"),
+            DOC(dai, NNData, addTensor, 2))
 
         .def(
             "addTensor",
             [](NNData& obj, const std::string& name, py::object tensor_obj, dai::TensorInfo::DataType dataType) {
                 auto tensor = py::array(tensor_obj);
+                if(obj.data.use_count() > 1) {
+                    const auto previous = obj.getData();
+                    obj.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
                 if(dataType == dai::TensorInfo::DataType::INT)
                     obj.addTensor<int>(name, tensor.cast<xt::xarray<int>>(), dai::TensorInfo::DataType::INT);
                 else if(dataType == dai::TensorInfo::DataType::FP32)
@@ -246,6 +303,10 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
             [](NNData& obj, const std::string& name, py::object tensor_obj) {
                 auto tensor = py::array(tensor_obj);
                 auto dtype = tensor.dtype();
+                if(obj.data.use_count() > 1) {
+                    const auto previous = obj.getData();
+                    obj.setData(std::vector<std::uint8_t>(previous.begin(), previous.end()));
+                }
                 if(dtype.is(py::dtype::of<float>()) || dtype.is(py::dtype::of<double>())) {
                     obj.addTensor<float>(name, tensor.cast<xt::xarray<float>>(), dai::TensorInfo::DataType::FP32);
                 } else if(dtype.is(py::dtype::of<int>()) || dtype.is(py::dtype::of<int64_t>())) {
@@ -286,9 +347,12 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
             "getTensor",
             [](NNData& obj, const std::string name, TensorInfo::StorageOrder order, bool dequantize) -> py::object {
                 const auto datatype = obj.getTensorDatatype(name);
-                if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                if((datatype == dai::TensorInfo::DataType::U8F || datatype == dai::TensorInfo::DataType::I8 || datatype == dai::TensorInfo::DataType::INT)
+                   && !dequantize) {
                     // In case of dequantization, we should always return float
                     return py::cast(obj.getTensor<int>(name, order));
+                } else if(datatype == dai::TensorInfo::DataType::FP64) {
+                    return py::cast(obj.getTensor<double>(name, order, dequantize));
                 } else {
                     return py::cast(obj.getTensor<float>(name, order, dequantize));
                 }
@@ -301,9 +365,12 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
             "getFirstTensor",
             [](NNData& obj, bool dequantize) -> py::object {
                 const auto datatype = obj.getFirstTensorDatatype();
-                if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                if((datatype == dai::TensorInfo::DataType::U8F || datatype == dai::TensorInfo::DataType::I8 || datatype == dai::TensorInfo::DataType::INT)
+                   && !dequantize) {
                     // In case of dequantization, we should always return float
                     return py::cast(obj.getFirstTensor<int>());
+                } else if(datatype == dai::TensorInfo::DataType::FP64) {
+                    return py::cast(obj.getFirstTensor<double>(dequantize));
                 } else {
                     return py::cast(obj.getFirstTensor<float>(dequantize));
                 }
@@ -315,9 +382,12 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
             "getFirstTensor",
             [](NNData& obj, TensorInfo::StorageOrder order, bool dequantize) -> py::object {
                 const auto datatype = obj.getFirstTensorDatatype();
-                if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                if((datatype == dai::TensorInfo::DataType::U8F || datatype == dai::TensorInfo::DataType::I8 || datatype == dai::TensorInfo::DataType::INT)
+                   && !dequantize) {
                     // In case of dequantization, we should always return float
                     return py::cast(obj.getFirstTensor<int>(order));
+                } else if(datatype == dai::TensorInfo::DataType::FP64) {
+                    return py::cast(obj.getFirstTensor<double>(order, dequantize));
                 } else {
                     return py::cast(obj.getFirstTensor<float>(order, dequantize));
                 }

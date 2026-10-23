@@ -46,6 +46,15 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
+    depthConfidenceFilterProperties.def(py::init<>());
+
+    depthConfidenceFilterProperties.def_readwrite(
+        "initialConfig", &dai::ToFDepthConfidenceFilterProperties::initialConfig, DOC(dai, ToFDepthConfidenceFilterProperties, initialConfig));
+
+    imageFiltersProperties.def(py::init<>());
+
+    imageFiltersProperties.def_readwrite("initialConfig", &dai::ImageFiltersProperties::initialConfig, DOC(dai, ImageFiltersProperties, initialConfig));
+
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -58,6 +67,9 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
         .value("TOF_HIGH_RANGE", ImageFiltersPresetMode::TOF_HIGH_RANGE);
 
     // StereoDepthFilterPipeline bindings
+    imageFilters.def(
+        "setDefaultProfilePreset", &dai::node::ImageFilters::setDefaultProfilePreset, py::arg("mode"), DOC(dai, node, ImageFilters, setDefaultProfilePreset));
+
     imageFilters.def_readonly("input", &ImageFilters::input, DOC(dai, node, ImageFilters, input))
         .def_readonly("output", &ImageFilters::output, DOC(dai, node, ImageFilters, output))
         .def_readonly("inputConfig", &ImageFilters::inputConfig, DOC(dai, node, ImageFilters, inputConfig))
