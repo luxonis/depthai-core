@@ -88,6 +88,24 @@ PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateS
     return *this;
 }
 
+PointCloudConfig& PointCloudConfig::setFusionMode(FusionMode mode) {
+    fusionMode = mode;
+    return *this;
+}
+
+PointCloudConfig& PointCloudConfig::setVoxelSize(float size) {
+    voxelSize = size;
+    return *this;
+}
+
+PointCloudConfig::FusionMode PointCloudConfig::getFusionMode() const {
+    return fusionMode;
+}
+
+float PointCloudConfig::getVoxelSize() const {
+    return voxelSize;
+}
+
 PointCloudConfig::CoordinateSystemType PointCloudConfig::getCoordinateSystemType() const {
     return coordSystemType;
 }

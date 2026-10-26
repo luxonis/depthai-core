@@ -23,6 +23,7 @@ parser.add_argument(
 parser.add_argument("--target-device", dest="targetDevice", metavar="ID", default=None, help="Device ID whose coordinate system the merged cloud is expressed in (default: the common origin)")
 parser.add_argument("--target-socket", dest="targetSocket", metavar="SOCKET", default="CAM_A", help="Camera socket of the target device, e.g. CAM_A (default: CAM_A)")
 parser.add_argument("--target-housing", dest="targetHousing", metavar="HOUSING", default=None, help="Housing coordinate system of the target device instead of a camera socket, e.g. VESA_A")
+parser.add_argument("--voxel-size", dest="voxelSize", type=float, metavar="METERS", default=None, help="Fuse the streams into one point per voxel of this edge length instead of concatenating them, e.g. 0.01")
 args = parser.parse_args()
 SIZE = tuple(args.size)
 
@@ -41,6 +42,10 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
     pc = pipeline.create(dai.node.PointCloud)
     pc.initialConfig.setLengthUnit(dai.LengthUnit.METER)
     pc.sync.setSyncThreshold(timedelta(milliseconds=1000 / FPS))  # one frame period: the devices are not hardware-synchronized
+    if args.voxelSize is not None:
+        # Voxel fusion: where the devices overlap, one point per voxel (closer cameras weigh more) instead of duplicates
+        pc.initialConfig.setFusionMode(dai.PointCloudConfig.FusionMode.VOXEL)
+        pc.initialConfig.setVoxelSize(args.voxelSize)
     if args.targetDevice is not None:
         # Express the merged cloud in a coordinate system of one particular device. Frames of the other
         # devices are carried over through the multi-device calibration and that device's own calibration.

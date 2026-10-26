@@ -46,6 +46,11 @@ void PointCloud::Impl::setLogger(const std::shared_ptr<::spdlog::logger>& log) {
     logger = log;
 }
 
+Point3f PointCloud::Impl::getCameraOrigin() const {
+    if(!hasExtrinsics) return {0.f, 0.f, 0.f};
+    return {extrinsics[0][3], extrinsics[1][3], extrinsics[2][3]};
+}
+
 bool PointCloud::Impl::usesGPU() const {
     return computeMethod == ComputeMethod::GPU;
 }
@@ -1212,7 +1217,7 @@ void PointCloud::computeColorized(Impl& impl, const ImgFrame& depthFrame, const 
 }
 
 template <typename PointT>
-size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool organized, PointCloudData& output) {
+size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool organized, const PointCloudConfig& config, PointCloudData& output) {
     constexpr bool colored = std::is_same_v<PointT, Point3fRGBA>;
     const size_t count = frames.size();
     std::vector<DepthStream*> streams;
@@ -1270,20 +1275,43 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
         for(size_t i = 0; i < count; ++i) computeOne(i);
     }
 
-    // Gather the streams, in stream order, into the output buffer with a single allocation
+    std::vector<uint8_t> data;
     size_t total = 0;
-    for(auto* stream : streams) total += bufferOf(*stream).size();
-    std::vector<uint8_t> data(total * sizeof(PointT));
-    size_t offset = 0;
-    for(auto* stream : streams) {
-        const auto& points = bufferOf(*stream);
-        const size_t bytes = points.size() * sizeof(PointT);
-        if(bytes > 0) std::memcpy(data.data() + offset, points.data(), bytes);
-        offset += bytes;
+    if(config.getFusionMode() == PointCloudConfig::FusionMode::VOXEL) {
+        // Fuse the streams into one point per voxel. The points are already in the common coordinate system, the
+        // camera origin of every stream weighs its points by their distance to the camera.
+        std::vector<internal::VoxelGridFusion::Source<PointT>> sources;
+        sources.reserve(count);
+        for(auto* stream : streams) {
+            const auto& points = bufferOf(*stream);
+            sources.push_back({points.data(), points.size(), getImpl(*stream).getCameraOrigin()});
+        }
+        std::vector<PointT> fused;
+        total = voxelFusion.fuse(sources, getVoxelSize(config), fused);
+        data.resize(total * sizeof(PointT));
+        if(total > 0) std::memcpy(data.data(), fused.data(), data.size());
+    } else {
+        // Gather the streams, in stream order, into the output buffer with a single allocation
+        for(auto* stream : streams) total += bufferOf(*stream).size();
+        data.resize(total * sizeof(PointT));
+        size_t offset = 0;
+        for(auto* stream : streams) {
+            const auto& points = bufferOf(*stream);
+            const size_t bytes = points.size() * sizeof(PointT);
+            if(bytes > 0) std::memcpy(data.data() + offset, points.data(), bytes);
+            offset += bytes;
+        }
     }
     output.setData(std::move(data));
     output.setColor(colored);
     return total;
+}
+
+float PointCloud::getVoxelSize(const PointCloudConfig& config) {
+    constexpr float DEFAULT_VOXEL_SIZE_MM = 10.f;
+    const float size = config.getVoxelSize();
+    if(size > 0.f) return size;
+    return DEFAULT_VOXEL_SIZE_MM * getDistanceUnitScale(config.getLengthUnit(), LengthUnit::MILLIMETER);
 }
 
 //------------------------------------------------------------------
@@ -1341,8 +1369,13 @@ void PointCloud::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        // Read organized mode from config
-        const bool organized = latestConfig->getOrganized();
+        // Read organized mode from config; a fused cloud has no pixel layout, so it is always unorganized
+        const bool fused = latestConfig->getFusionMode() != PointCloudConfig::FusionMode::NONE;
+        const bool organized = latestConfig->getOrganized() && !fused;
+        if(latestConfig->getOrganized() && fused && !fusionOrganizedWarned) {
+            pimpl->logger->warn("PointCloud: organized output requested together with fusion -- the fused cloud is stored as a single row");
+            fusionOrganizedWarned = true;
+        }
 
         const uint32_t latestEepromId = readEepromId();
         if(latestEepromId > currentEepromId) {
@@ -1404,7 +1437,8 @@ void PointCloud::run() {
 
         // Compute and merge the points of all streams (concurrently on the host)
         const auto computeStart = std::chrono::steady_clock::now();
-        const size_t totalPoints = colorize ? computeStreams<Point3fRGBA>(frames, organized, *pc) : computeStreams<Point3f>(frames, organized, *pc);
+        const size_t totalPoints =
+            colorize ? computeStreams<Point3fRGBA>(frames, organized, *latestConfig, *pc) : computeStreams<Point3f>(frames, organized, *latestConfig, *pc);
         computeTimeSum += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - computeStart).count();
         if(++computeTimeCount >= COMPUTE_TIME_LOG_INTERVAL) {
             pimpl->logger->debug("PointCloud: compute {:.2f} ms per group on average over {} groups ({} streams, {} points, {})",

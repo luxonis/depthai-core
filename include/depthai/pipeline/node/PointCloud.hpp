@@ -25,6 +25,7 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/pipeline/node/internal/PointCloudGpuBackend.hpp"
+#include "depthai/pipeline/node/internal/PointCloudVoxelFusion.hpp"
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
@@ -116,6 +117,9 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
         // Whether this Impl computes on the GPU
         bool usesGPU() const;
+
+        // Position of the source camera in the coordinate system of the transformed points (the translation of the extrinsics)
+        Point3f getCameraOrigin() const;
 
         LengthUnit targetLengthUnit = LengthUnit::MILLIMETER;
 
@@ -472,14 +476,17 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     void computeColorized(Impl& impl, const ImgFrame& depthFrame, const ImgFrame& colorFrame, bool organized, std::vector<Point3fRGBA>& points);
 
     /**
-     * Compute the points of every stream of a synced group and store them, in stream order, as the data of
-     * `output`. On the host the streams are computed concurrently (one thread per additional stream, each
-     * stream has its own Impl and scratch buffer); on device and with GPU compute they are processed one
-     * after another.
+     * Compute the points of every stream of a synced group and store them as the data of `output`: in stream
+     * order with PointCloudConfig::FusionMode::NONE, fused into one point per voxel with FusionMode::VOXEL.
+     * On the host the streams are computed concurrently (one thread per additional stream, each stream has
+     * its own Impl and scratch buffer); on device and with GPU compute they are processed one after another.
      * @returns Number of points stored
      */
     template <typename PointT>
-    size_t computeStreams(const std::vector<StreamFrames>& frames, bool organized, PointCloudData& output);
+    size_t computeStreams(const std::vector<StreamFrames>& frames, bool organized, const PointCloudConfig& config, PointCloudData& output);
+
+    /// Voxel edge length of FusionMode::VOXEL in the output length unit (the config value, or the default when it is not positive)
+    static float getVoxelSize(const PointCloudConfig& config);
 
     bool runOnHostVar = true;
     bool coordinateSystemMismatchWarned = false;
@@ -490,6 +497,9 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     unsigned computeTimeCount = 0;
     bool mixedColorWarned = false;
     bool organizedLayoutWarned = false;
+    bool fusionOrganizedWarned = false;
+    // Scratch state of FusionMode::VOXEL, reused across groups
+    internal::VoxelGridFusion voxelFusion;
 
     std::map<std::string, DepthStream> depthStreams;
     std::map<std::string, CalibrationHandler> deviceCalibrations;

@@ -36,6 +36,7 @@ struct ParsedArgs {
     std::optional<std::string> targetDevice;
     dai::CameraBoardSocket targetSocket = dai::CameraBoardSocket::CAM_A;
     std::optional<dai::HousingCoordinateSystem> targetHousing;
+    std::optional<float> voxelSize;
 };
 
 // Enumerator of `Enum` in [first, last] whose dai::toString matches `text`
@@ -52,7 +53,7 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
     auto printUsage = [argv]() {
         std::cout << "Usage: " << argv[0]
                   << " [-d|--devices <device_1> <device_2> ...] [-c|--calibration <path>] [--size <width> <height>]"
-                     " [--target-device <id>] [--target-socket <CAM_A..CAM_J> | --target-housing <housing>]"
+                     " [--target-device <id>] [--target-socket <CAM_A..CAM_J> | --target-housing <housing>] [--voxel-size <meters>]"
                   << std::endl;
     };
     try {
@@ -80,6 +81,9 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
                 i += 2;
             } else if(arg == "--target-housing") {
                 parsed.targetHousing = parseEnum(value(), dai::HousingCoordinateSystem::CAM_A, dai::HousingCoordinateSystem::IMU);
+                i += 2;
+            } else if(arg == "--voxel-size") {
+                parsed.voxelSize = std::stof(value());
                 i += 2;
             } else if(arg == "-h" || arg == "--help") {
                 printUsage();
@@ -134,6 +138,10 @@ int main(int argc, char** argv) {
     auto pc = pipeline.create<dai::node::PointCloud>();
     pc->initialConfig->setLengthUnit(dai::LengthUnit::METER);
     pc->sync->setSyncThreshold(std::chrono::milliseconds(static_cast<int>(1000 / FPS)));  // one frame period: the devices are not hardware-synchronized
+    if(parsed->voxelSize.has_value()) {
+        // Voxel fusion: where the devices overlap, one point per voxel (closer cameras weigh more) instead of duplicates
+        pc->initialConfig->setFusionMode(dai::PointCloudConfig::FusionMode::VOXEL).setVoxelSize(*parsed->voxelSize);
+    }
     if(parsed->targetDevice.has_value()) {
         // Express the merged cloud in a coordinate system of one particular device. Frames of the other
         // devices are carried over through the multi-device calibration and that device's own calibration.

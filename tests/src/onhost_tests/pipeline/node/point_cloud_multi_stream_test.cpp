@@ -1018,3 +1018,236 @@ TEST_CASE("Backend setters update existing serialized properties without a secon
     REQUIRE(props.computeMethod == Method::GPU);
     REQUIRE(props.gpuDevice == 2);
 }
+
+//------------------------------------------------------------------
+// Fusion (PointCloudConfig::FusionMode)
+//------------------------------------------------------------------
+
+#include "depthai/pipeline/node/internal/PointCloudVoxelFusion.hpp"
+
+namespace {
+using VoxelFusion = dai::node::internal::VoxelGridFusion;
+}  // namespace
+
+TEST_CASE("Voxel fusion weighs the points of a voxel by their distance to the camera", "[PointCloud][Fusion]") {
+    VoxelFusion fusion;
+    // Both points fall into the voxel [0,10)x[0,10)x[1000,1010). A is 1000 away from its camera, B 2000: weights 1 : 1/4
+    std::vector<dai::Point3f> a = {{0.f, 0.f, 1000.f}};
+    std::vector<dai::Point3f> b = {{4.f, 0.f, 1000.f}};
+    std::vector<VoxelFusion::Source<dai::Point3f>> sources = {{a.data(), a.size(), {0.f, 0.f, 0.f}}, {b.data(), b.size(), {4.f, 0.f, -1000.f}}};
+    std::vector<dai::Point3f> fused;
+    REQUIRE(fusion.fuse(sources, 10.f, fused) == 1);
+    REQUIRE(fusion.getVoxelCount() == 1);
+    REQUIRE(fused[0].x == Catch::Approx(0.8f).margin(1e-4f));
+    REQUIRE(fused[0].y == Catch::Approx(0.f).margin(1e-4f));
+    REQUIRE(fused[0].z == Catch::Approx(1000.f).margin(1e-3f));
+}
+
+TEST_CASE("Voxel fusion keeps separate voxels in order of first appearance and averages colors", "[PointCloud][Fusion][Colored]") {
+    VoxelFusion fusion;
+    // Two points in the voxel at x in [100,110) (equal distances: plain centroid), one in [-10,0), one in [200,210)
+    std::vector<dai::Point3fRGBA> points = {
+        {101.f, 0.f, 1000.f, 255, 0, 0}, {-5.f, 0.f, 1000.f, 0, 255, 0}, {105.f, 0.f, 1000.f, 0, 0, 255}, {205.f, 0.f, 1000.f, 10, 20, 30}};
+    // Camera far away along -z so that every point is (nearly) equally far from it
+    std::vector<VoxelFusion::Source<dai::Point3fRGBA>> sources = {{points.data(), points.size(), {100.f, 0.f, -1e6f}}};
+    std::vector<dai::Point3fRGBA> fused;
+    REQUIRE(fusion.fuse(sources, 10.f, fused) == 3);
+    REQUIRE(fused[0].x == Catch::Approx(103.f).margin(1e-2f));
+    REQUIRE(fused[0].r == 128);
+    REQUIRE(fused[0].g == 0);
+    REQUIRE(fused[0].b == 128);
+    REQUIRE(fused[0].a == 255);
+    REQUIRE(fused[1].x == Catch::Approx(-5.f).margin(1e-3f));
+    REQUIRE(fused[1].g == 255);
+    REQUIRE(fused[2].x == Catch::Approx(205.f).margin(1e-3f));
+    REQUIRE(fused[2].b == 30);
+}
+
+TEST_CASE("Voxel fusion grows its table and is deterministic across calls", "[PointCloud][Fusion]") {
+    VoxelFusion fusion;
+    // 60000 points on a 1 mm grid, each in its own voxel: far more voxels than the initial table expects
+    constexpr size_t N = 60000;
+    std::vector<dai::Point3f> points;
+    points.reserve(N);
+    for(size_t i = 0; i < N; ++i) {
+        points.push_back({static_cast<float>(i % 300) + 0.5f, static_cast<float>(i / 300) + 0.5f, 500.5f});
+    }
+    std::vector<VoxelFusion::Source<dai::Point3f>> sources = {{points.data(), points.size(), {0.f, 0.f, 0.f}}};
+    std::vector<dai::Point3f> first, second;
+    REQUIRE(fusion.fuse(sources, 1.f, first) == N);
+    REQUIRE(fusion.fuse(sources, 1.f, second) == N);
+    for(size_t i = 0; i < N; ++i) {
+        // A single point per voxel: weight * p / weight, up to float rounding
+        REQUIRE(first[i].x == Catch::Approx(points[i].x).margin(1e-3f));
+        REQUIRE(first[i].y == Catch::Approx(points[i].y).margin(1e-3f));
+        REQUIRE(first[i].z == Catch::Approx(points[i].z).margin(1e-3f));
+        REQUIRE(second[i].x == first[i].x);
+        REQUIRE(second[i].z == first[i].z);
+    }
+    // Everything in one voxel
+    std::vector<dai::Point3f> single;
+    REQUIRE(fusion.fuse(sources, 1e6f, single) == 1);
+    REQUIRE(single[0].z == Catch::Approx(500.5f).margin(1e-2f));
+}
+
+TEST_CASE("PointCloudConfig fusion settings serialize", "[PointCloud][Fusion][Config]") {
+    dai::PointCloudConfig config;
+    REQUIRE(config.getFusionMode() == dai::PointCloudConfig::FusionMode::NONE);
+    REQUIRE(config.getVoxelSize() == 0.f);
+    config.setFusionMode(dai::PointCloudConfig::FusionMode::VOXEL).setVoxelSize(0.02f).setLengthUnit(dai::LengthUnit::METER);
+
+    dai::PointCloudConfig restored;
+    dai::utility::deserialize(dai::utility::serialize(config), restored);
+    REQUIRE(restored.getFusionMode() == dai::PointCloudConfig::FusionMode::VOXEL);
+    REQUIRE(restored.getVoxelSize() == Catch::Approx(0.02f));
+    REQUIRE(restored.getLengthUnit() == dai::LengthUnit::METER);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Voxel fusion merges fully overlapping streams into one cloud", "[PointCloud][Fusion][MultiStream]") {
+    // 5 mm voxels; the synthetic pixels are 10 mm apart, so every pixel of one stream is its own voxel
+    pc->initialConfig->setFusionMode(dai::PointCloudConfig::FusionMode::VOXEL).setVoxelSize(5.f);
+    auto depthA = pc->inputDepth.createInputQueue();
+    auto depthB = pc->getDepthInput("second").createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto extrinsics = makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0");
+    depthA->send(makeDepthFrame(extrinsics, now));
+    depthB->send(makeDepthFrame(extrinsics, now + std::chrono::milliseconds(1)));
+
+    auto pcd = waitForOutput(*outQ);
+    REQUIRE_FALSE(pcd->isOrganized());
+    REQUIRE(pcd->getHeight() == 1);
+    REQUIRE(pcd->getWidth() == W * H);
+    auto points = pcd->getPoints();
+    REQUIRE(points.size() == W * H);
+    // Identical streams: every voxel holds the same point twice, the centroid is the point itself, in first-appearance (pixel) order
+    requirePointsClose(points, 0, 0.f, 0.f, 0.f);
+    REQUIRE(pcd->getTransformation().getSize() == std::make_pair<size_t, size_t>(W * H, 1));
+    REQUIRE_FALSE(pcd->isColor());
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Voxel fusion of shifted streams weighs the closer camera more", "[PointCloud][Fusion][MultiStream]") {
+    // Stream B is the same camera moved 2 mm along X and twice as far from the scene: its points land in the same 10 mm voxels
+    // (pixel pitch 10 mm at 1000 mm, 20 mm at 2000 mm is not the case here: both streams see depth 1000, B is only shifted)
+    pc->initialConfig->setFusionMode(dai::PointCloudConfig::FusionMode::VOXEL).setVoxelSize(10.f);
+    auto depthA = pc->inputDepth.createInputQueue();
+    auto depthB = pc->getDepthInput("second").createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto extrinsicsA = makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0");
+    // Camera B sits 1000 mm behind camera A (z = -1000) and sees the same surface at depth 2000: same world points, 2 mm shifted
+    const auto extrinsicsB = makeExtrinsics(2.f, 0.f, -1000.f, dai::CameraBoardSocket::CAM_A, "dev0");
+    depthA->send(makeDepthFrame(extrinsicsA, now, 1000));
+    depthB->send(makeDepthFrame(extrinsicsB, now, 2000));
+
+    auto pcd = waitForOutput(*outQ);
+    auto points = pcd->getPoints();
+    // Stream B spans twice the footprint, so its outer pixels add voxels of their own; the voxel of pixel (CX, CY) holds
+    // A's point (0, 0, 1000) [distance 1000, weight 1] and B's point (2, 0, 1000) [distance 2000, weight 1/4]
+    bool found = false;
+    for(const auto& p : points) {
+        if(std::abs(p.z - 1000.f) < 1e-2f && std::abs(p.y) < 1e-2f && p.x >= 0.f && p.x < 10.f) {
+            REQUIRE(p.x == Catch::Approx(0.4f).margin(1e-3f));
+            found = true;
+        }
+    }
+    REQUIRE(found);
+    // The fused cloud is smaller than the concatenation
+    REQUIRE(points.size() < 2 * W * H);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Voxel fusion uses a 10 mm default and downsamples a single stream", "[PointCloud][Fusion]") {
+    pc->initialConfig->setFusionMode(dai::PointCloudConfig::FusionMode::VOXEL);  // voxel size left at 0: 10 mm
+    auto depthQ = pc->inputDepth.createInputQueue();
+    auto configQ = pc->inputConfig.createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    const auto extrinsics = makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0");
+    depthQ->send(makeDepthFrame(extrinsics, std::chrono::steady_clock::now()));
+    auto pcd = waitForOutput(*outQ);
+    // 10 mm pixel pitch at 1000 mm: one voxel per pixel
+    REQUIRE(pcd->getWidth() == W * H);
+    requirePointsClose(pcd->getPoints(), 0, 0.f, 0.f, 0.f);
+
+    // Runtime config: 100 mm voxels in METER units merge the 80x60 mm patch into 2x2 voxels
+    auto config = std::make_shared<dai::PointCloudConfig>();
+    config->setLengthUnit(dai::LengthUnit::METER).setFusionMode(dai::PointCloudConfig::FusionMode::VOXEL).setVoxelSize(0.1f);
+    configQ->send(config);
+    std::shared_ptr<dai::PointCloudData> coarse;
+    for(int attempt = 0; attempt < 10; ++attempt) {
+        depthQ->send(makeDepthFrame(extrinsics, std::chrono::steady_clock::now()));
+        coarse = waitForOutput(*outQ);
+        if(coarse->getWidth() == 4) break;
+    }
+    REQUIRE(coarse->getWidth() == 4);
+    for(const auto& p : coarse->getPoints()) {
+        REQUIRE(p.z == Catch::Approx(1.f).margin(1e-4f));
+        REQUIRE(std::abs(p.x) < 0.1f);
+        REQUIRE(std::abs(p.y) < 0.1f);
+    }
+
+    // Back to concatenation
+    auto plain = std::make_shared<dai::PointCloudConfig>();
+    plain->setFusionMode(dai::PointCloudConfig::FusionMode::NONE);
+    configQ->send(plain);
+    std::shared_ptr<dai::PointCloudData> restored;
+    for(int attempt = 0; attempt < 10; ++attempt) {
+        depthQ->send(makeDepthFrame(extrinsics, std::chrono::steady_clock::now()));
+        restored = waitForOutput(*outQ);
+        if(restored->getWidth() == W * H) break;
+    }
+    REQUIRE(restored->getWidth() == W * H);
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Organized output with fusion degrades to a single row", "[PointCloud][Fusion]") {
+    pc->initialConfig->setOrganized(true);
+    pc->initialConfig->setFusionMode(dai::PointCloudConfig::FusionMode::VOXEL).setVoxelSize(5.f);
+    auto depthA = pc->inputDepth.createInputQueue();
+    auto depthB = pc->getDepthInput("second").createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto extrinsics = makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0");
+    depthA->send(makeDepthFrame(extrinsics, now));
+    depthB->send(makeDepthFrame(extrinsics, now, 0));  // all-invalid depth contributes nothing to the fused cloud
+
+    auto pcd = waitForOutput(*outQ);
+    REQUIRE_FALSE(pcd->isOrganized());
+    REQUIRE(pcd->getHeight() == 1);
+    REQUIRE(pcd->getWidth() == W * H);
+    for(const auto& p : pcd->getPoints()) REQUIRE(p.z == Catch::Approx(1000.f).margin(1e-3f));
+}
+
+TEST_CASE_METHOD(HostPointCloudFixture, "Fused colorized cloud averages the colors of overlapping streams", "[PointCloud][Fusion][Colored]") {
+    pc->initialConfig->setFusionMode(dai::PointCloudConfig::FusionMode::VOXEL).setVoxelSize(5.f);
+    auto depthA = pc->inputDepth.createInputQueue();
+    auto colorA = pc->getColorInput().createInputQueue();
+    auto depthB = pc->getDepthInput("second").createInputQueue();
+    auto colorB = pc->getColorInput("second").createInputQueue();
+    auto outQ = pc->outputPointCloud.createOutputQueue(4, false);
+    pipeline.start();
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto extrinsics = makeExtrinsics(0.f, 0.f, 0.f, dai::CameraBoardSocket::CAM_A, "dev0");
+    depthA->send(makeDepthFrame(extrinsics, now));
+    colorA->send(makeColorFrame(extrinsics, now, 200, 0, 0));
+    depthB->send(makeDepthFrame(extrinsics, now));
+    colorB->send(makeColorFrame(extrinsics, now, 0, 0, 100));
+
+    auto pcd = waitForOutput(*outQ);
+    REQUIRE(pcd->isColor());
+    auto points = pcd->getPointsRGB();
+    REQUIRE(points.size() == W * H);
+    for(const auto& p : points) {
+        REQUIRE(p.r == 100);
+        REQUIRE(p.g == 0);
+        REQUIRE(p.b == 50);
+        REQUIRE(p.a == 255);
+    }
+}

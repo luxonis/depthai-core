@@ -43,6 +43,7 @@ python3 multi_device_point_cloud.py -d 10.0.0.11 10.0.0.12 -c rig.json
 python3 multi_device_point_cloud.py --size 320 200                  # lighter streams when many devices share one link
 python3 multi_device_point_cloud.py --target-device <id> --target-socket CAM_A
 python3 multi_device_point_cloud.py --target-device <id> --target-housing VESA_A
+python3 multi_device_point_cloud.py --voxel-size 0.01                 # fuse the streams: one point per 1 cm voxel
 ```
 
 | Option | Meaning |
@@ -53,10 +54,28 @@ python3 multi_device_point_cloud.py --target-device <id> --target-housing VESA_A
 | `--target-device` | Express the merged cloud in a coordinate system of this device instead of the common origin. |
 | `--target-socket` | Camera socket of the target device, for example `CAM_A` (default). |
 | `--target-housing` | Housing coordinate system of the target device instead of a socket, for example `VESA_A`. |
+| `--voxel-size` | Fuse the streams into one point per voxel of this edge length in meters instead of concatenating them. |
 
 With `--target-device` the frames of the other devices are carried over through the multi-device
 calibration and that device's own calibration, so the cloud can be expressed in any camera or housing
 of any device in the pipeline.
+
+### Fusion
+
+By default the merged cloud is the concatenation of the streams, so regions seen by several devices
+carry duplicate points and the noise of every camera. `PointCloudConfig.FusionMode.VOXEL` bins the
+points into cubic voxels and emits one point per voxel: the centroid of the points inside it, weighted
+so that points closer to the camera that measured them count more. This removes the duplicates,
+averages the noise where the devices overlap, bounds the output size and works for a single stream as
+a downsampler. The voxel edge length is given in the length unit of the config (default 10 mm); a fused
+cloud is never organized.
+
+```python
+pc.initialConfig.setFusionMode(dai.PointCloudConfig.FusionMode.VOXEL)
+pc.initialConfig.setVoxelSize(0.01)  # 1 cm voxels with LengthUnit.METER
+```
+
+Both settings are part of `PointCloudConfig`, so they can also be changed at runtime through `pc.inputConfig`.
 
 ### Compute backend
 

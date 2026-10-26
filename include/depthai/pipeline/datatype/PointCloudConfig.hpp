@@ -30,6 +30,16 @@ class PointCloudConfig : public Buffer {
         HOUSING         ///< Transform to housing coordinate system
     };
 
+    /// How the points of several depth streams (or of a single dense stream) are fused into the output cloud
+    enum class FusionMode : uint8_t {
+        /// Concatenate the points of every depth stream (default)
+        NONE,
+        /// One point per voxel of `voxelSize`: the weighted centroid of the points inside it, where points closer to the
+        /// camera that measured them weigh more. Removes duplicates and averages noise where streams overlap and
+        /// bounds the output size. The output is never organized.
+        VOXEL
+    };
+
    private:
     CoordinateSystemType coordSystemType = CoordinateSystemType::DEFAULT;
     CameraBoardSocket targetCameraSocket = CameraBoardSocket::AUTO;
@@ -37,6 +47,10 @@ class PointCloudConfig : public Buffer {
     bool useSpecTranslation = false;
     // Device owning the target camera socket / housing. Empty: the device owning the reference camera of the depth frame.
     std::string targetDeviceId;
+
+    FusionMode fusionMode = FusionMode::NONE;
+    // Voxel edge length for FusionMode::VOXEL in `lengthUnit`; 0 selects the default of 10 millimeters
+    float voxelSize = 0.f;
 
    public:
     PointCloudConfig() = default;
@@ -129,6 +143,29 @@ class PointCloudConfig : public Buffer {
     PointCloudConfig& setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation);
 
     /**
+     * Select how the points of the depth streams are fused into the output cloud.
+     * FusionMode::NONE (default) concatenates the streams; FusionMode::VOXEL emits one point per voxel (see setVoxelSize).
+     * A fused cloud is never organized: with setOrganized(true) the node warns once and emits an unorganized cloud.
+     */
+    PointCloudConfig& setFusionMode(FusionMode mode);
+
+    /**
+     * Set the voxel edge length used by FusionMode::VOXEL, in the length unit of this config (setLengthUnit).
+     * @param size Voxel edge length; 0 (default) selects 10 millimeters expressed in the length unit
+     */
+    PointCloudConfig& setVoxelSize(float size);
+
+    /**
+     * Retrieve the fusion mode.
+     */
+    FusionMode getFusionMode() const;
+
+    /**
+     * Retrieve the voxel edge length of FusionMode::VOXEL in the length unit of this config; 0 stands for the 10 millimeter default.
+     */
+    float getVoxelSize() const;
+
+    /**
      * Retrieve the coordinate system type.
      */
     CoordinateSystemType getCoordinateSystemType() const;
@@ -172,7 +209,9 @@ class PointCloudConfig : public Buffer {
                       targetCameraSocket,
                       targetHousingCS,
                       useSpecTranslation,
-                      targetDeviceId);
+                      targetDeviceId,
+                      fusionMode,
+                      voxelSize);
 };
 
 }  // namespace dai

@@ -23,6 +23,10 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
         .value("CAMERA_SOCKET", PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET)
         .value("HOUSING", PointCloudConfig::CoordinateSystemType::HOUSING);
 
+    py::enum_<PointCloudConfig::FusionMode>(config, "FusionMode", DOC(dai, PointCloudConfig, FusionMode))
+        .value("NONE", PointCloudConfig::FusionMode::NONE)
+        .value("VOXEL", PointCloudConfig::FusionMode::VOXEL);
+
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -59,6 +63,10 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
             DOC(dai, PointCloudConfig, setTransformationMatrix))
         .def("getLengthUnit", &PointCloudConfig::getLengthUnit, DOC(dai, PointCloudConfig, getLengthUnit))
         .def("setLengthUnit", &PointCloudConfig::setLengthUnit, DOC(dai, PointCloudConfig, setLengthUnit))
+        .def("setFusionMode", &PointCloudConfig::setFusionMode, py::arg("mode"), DOC(dai, PointCloudConfig, setFusionMode))
+        .def("getFusionMode", &PointCloudConfig::getFusionMode, DOC(dai, PointCloudConfig, getFusionMode))
+        .def("setVoxelSize", &PointCloudConfig::setVoxelSize, py::arg("size"), DOC(dai, PointCloudConfig, setVoxelSize))
+        .def("getVoxelSize", &PointCloudConfig::getVoxelSize, DOC(dai, PointCloudConfig, getVoxelSize))
         .def("setTargetCoordinateSystem",
              py::overload_cast<CameraBoardSocket>(&PointCloudConfig::setTargetCoordinateSystem),
              py::arg("targetCamera"),
