@@ -1360,6 +1360,12 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             auto level = spdlogLevelToLogLevel(logger::get_level());
             setLogLevel(config.logLevel.value_or(level));
 
+            if(config.dangerousIrPowerOverride) {
+                if(getPlatform() != Platform::RVC2) throw std::invalid_argument("dangerousIrPowerOverride is only supported on RVC2");
+                pimpl->rpcCallCheckedVoid("enableDangerousIrPowerOverride");
+                pimpl->logger.warn("DANGEROUS: IR dot/flood shared power budget disabled. Full power can cause power instability and device crashes.");
+            }
+
             // Sets system inforation logging rate. By default 1s
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
             hasMockedFeatures = false;  // Handle reconnection case
