@@ -34,6 +34,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/build/version.hpp"
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -48,6 +49,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/StartupNotifications.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // libraries
@@ -381,6 +383,10 @@ HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, con
     return DeviceHealthCheck::run(devInfo, config);
 }
 
+HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop) {
+    return DeviceHealthCheck::run(devInfo, config, shouldStop);
+}
+
 /*
 std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices(){
     return XLinkConnection::getAllConnectedDevices();
@@ -403,6 +409,8 @@ class DeviceBase::Impl {
     std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> stdoutColorSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     // Device Logger
     DeviceLogger logger{"host", stdoutColorSink};
+
+    std::thread startupNotificationsThread;
 
     // RPC
     std::mutex rpcMutex;
@@ -953,6 +961,7 @@ void DeviceBase::closeImpl() {
     if(loggingThread.joinable()) loggingThread.join();
     // And at the end stop profiling thread
     if(profilingThread.joinable()) profilingThread.join();
+    if(pimpl->startupNotificationsThread.joinable()) pimpl->startupNotificationsThread.join();
 
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
@@ -1253,6 +1262,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     {
         std::lock_guard<std::mutex> lock(deviceInfoMtx);
         deviceInfo.state = expectedBootState;
+        deviceInfo.protocol = connection->getDeviceInfo().protocol;
     }
 
     // prepare rpc for both attached and host controlled mode
@@ -1349,6 +1359,12 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         try {
             auto level = spdlogLevelToLogLevel(logger::get_level());
             setLogLevel(config.logLevel.value_or(level));
+
+            if(config.dangerousIrPowerOverride) {
+                if(getPlatform() != Platform::RVC2) throw std::invalid_argument("dangerousIrPowerOverride is only supported on RVC2");
+                pimpl->rpcCallCheckedVoid("enableDangerousIrPowerOverride");
+                pimpl->logger.warn("DANGEROUS: IR dot/flood shared power budget disabled. Full power can cause power instability and device crashes.");
+            }
 
             // Sets system inforation logging rate. By default 1s
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
@@ -1500,6 +1516,34 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             // Rethrow original exception
             throw;
         }
+
+        // Handle startup notifications
+#ifdef DEPTHAI_ENABLE_CURL
+        if(!reconnect) {
+            try {
+                const auto disableNotificationsEnv = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS", "");
+                if(disableNotificationsEnv != "1" && disableNotificationsEnv != "true") {
+                    pimpl->startupNotificationsThread = std::thread([this, platform = getPlatform(), protocol = getProtocol()]() {
+                        try {
+                            if(isClosing) return;
+                            // getOSVersion() locks closedMtx, which close() holds while joining this thread.
+                            const auto osVersion = pimpl->rpcCallChecked<std::string>("getOSVersion");
+                            if(isClosing) return;
+                            const auto deviceSKU = getProductName();
+                            if(isClosing) return;
+                            utility::printStartupNotifications(build::VERSION, platform, protocol, osVersion, deviceSKU, &isClosing);
+                        } catch(const std::exception& ex) {
+                            if(!isClosing) {
+                                pimpl->logger.debug("Startup notification print failed: {}", ex.what());
+                            }
+                        }
+                    });
+                }
+            } catch(const std::exception& ex) {
+                pimpl->logger.debug("Startup notification print failed: {}", ex.what());
+            }
+        }
+#endif
     }
 }
 
@@ -2696,6 +2740,10 @@ Platform DeviceBase::getPlatform() const {
 
 std::string DeviceBase::getPlatformAsString() const {
     return platform2string(this->getPlatform());
+}
+
+XLinkProtocol_t DeviceBase::getProtocol() const {
+    return getDeviceInfo().protocol;
 }
 
 }  // namespace dai

@@ -10,3 +10,8 @@ dai_add_example(PointCloudShowcase PointCloudShowcase.cpp OFF OFF)
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_example(PointCloudVisualizer PointCloudVisualizer.cpp ON OFF)
 endif()
+
+# Needs at least two devices and a multi-device calibration: registered without a test so it never runs in CI
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION AND DEPTHAI_BUILD_BETA)
+    dai_add_example(MultiDevicePointCloud MultiDevicePointCloud.cpp OFF OFF)
+endif()

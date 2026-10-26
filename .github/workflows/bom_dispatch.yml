@@ -1,35 +1,21 @@
 name: BOM tests dispatch
 
-# Dispatches the luxonis-bom tests for a commit after its "Depthai Python CI/CD" push run succeeded, and
-# waits for the result. This was the dispatch-bom-tests job of python-main.yml: its polling loop kept an
-# ubuntu runner busy for 135-361 min (develop runs of 2026-10-06..08) and the next push to the branch
-# cancelled it, so every develop run of python-main.yml ended as "cancelled" since 2025-11-28.
-# A workflow_run workflow only triggers when this file is on the default branch (main).
+# Dispatches the luxonis-bom "Main Workflow" (dispatch_main.yml) for the commit of the calling run and puts a
+# link to that run in the job summary. It does not wait for the result: a BOM run can take longer than the
+# 6 h job limit of GitHub-hosted runners (6 h 51 min on 2026-10-22, with 84 min in the queue). The BOM
+# tests install the wheels that upload-wheels-to-ak (python-main.yml) published, so call it only after that
+# job passed. Callers:
+#   - python-main.yml, for pushes to main, release branches and tags.
+#   - hil_testing_nightly.yml, for the nightly develop build, at the same time as the HIL tests.
 
 on:
-  workflow_run:
-    workflows: ["Depthai Python CI/CD"]
-    types: [completed]
-
-# A newer push to the same branch supersedes the running wait, as the old in-run job did.
-concurrency:
-  group: bom-dispatch-${{ github.event.workflow_run.head_branch }}
-  cancel-in-progress: true
+  workflow_call:
 
 jobs:
   dispatch-bom-tests:
-    # The BOM tests install the wheels that upload-wheels-to-ak published, so the whole run must have passed.
-    if: github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    outputs:
-      runner_conclusion: ${{ steps.get_runner.outputs.runner_conclusion }}
-    env:
-      HEAD_REF: ${{ github.event.workflow_run.head_branch }}
-      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: actions/setup-python@v7
         with:
@@ -38,13 +24,11 @@ jobs:
       - name: Get dev version from script
         id: get_version
         run: |
-          # A tag push reports the tag name as head_branch, but a branch name can also start with 'v'
-          # (v2_stable), so require a tag of that name that points at the commit.
-          if git fetch -q --depth 1 origin "refs/tags/$HEAD_REF" 2>/dev/null \
-             && [[ "$(git rev-parse 'FETCH_HEAD^{commit}')" == "$HEAD_SHA" ]]; then
+          # The same rule as BUILD_COMMIT_HASH in python-main.yml: a v* tag has the release version.
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_version())")
           else
-            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_dev_version('$HEAD_SHA'))")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_dev_version('$GITHUB_SHA'))")
           fi
           echo "VERSION=$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -58,34 +42,18 @@ jobs:
           repo: "luxonis-bom"
           owner: "luxonis"
           workflow: "dispatch_main.yml"
-          workflow_inputs: '{"depthai": "${{ github.event.workflow_run.head_branch }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
+          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
 
-      - name: Wait for the dispatched workflow to complete
-        id: get_runner
+      - name: Link the BOM run
         env:
-          RUN_ID: ${{ steps.return_dispatch.outputs.run_id }}
-          TOKEN: ${{ secrets.BOM_GITHUB_TOKEN }}
+          RUN_URL: ${{ steps.return_dispatch.outputs.run_url }}
+          DEPTHAI_VERSION: ${{ steps.get_version.outputs.version }}
         run: |
-            OWNER="luxonis"
-            REPO="luxonis-bom"
-
-            echo "STARTING TO WAIT FOR RUN https://github.com/$OWNER/$REPO/actions/runs/$RUN_ID"
-
-            STATUS=$(curl -s --header "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
-
-            while [ "$STATUS" != "completed" ]; do
-              echo "Waiting for the workflow run to complete..."
-              sleep 60
-              STATUS=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
-              echo "Current status $STATUS"
-            done
-            CONCLUSION=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .conclusion)
-
-            echo "Run $RUN_ID is completed. Conclusion is $CONCLUSION"
-
-            # Set outputs for the job using GITHUB_OUTPUT file
-            echo "runner_conclusion=$CONCLUSION" >> $GITHUB_OUTPUT
-            if [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "skipped" ]; then
-                echo "Failed job"
-                exit 1
-            fi
+          echo "::notice title=BOM tests started::$RUN_URL"
+          {
+            echo "### BOM tests"
+            echo ""
+            echo "luxonis-bom Main Workflow for \`$GITHUB_REF_NAME\` (depthai \`$DEPTHAI_VERSION\`): $RUN_URL"
+            echo ""
+            echo "This job does not wait for the result; see the BOM run for it."
+          } >> "$GITHUB_STEP_SUMMARY"

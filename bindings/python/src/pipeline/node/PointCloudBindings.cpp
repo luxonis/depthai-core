@@ -26,17 +26,50 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
+    py::enum_<PointCloudProperties::ComputeMethod>(properties, "ComputeMethod", DOC(dai, PointCloudProperties, ComputeMethod))
+        .value("CPU", PointCloudProperties::ComputeMethod::CPU)
+        .value("CPU_MT", PointCloudProperties::ComputeMethod::CPU_MT)
+        .value("GPU", PointCloudProperties::ComputeMethod::GPU);
+    auto backend = m.attr("ImageManipProperties").attr("Backend");
+    properties.attr("Backend") = backend;
+    node.attr("Backend") = backend;
+    m.attr("Backend") = backend;
+
     properties.def_readwrite("initialConfig", &PointCloudProperties::initialConfig, DOC(dai, PointCloudProperties, initialConfig))
-        .def_readwrite("numFramesPool", &PointCloudProperties::numFramesPool, DOC(dai, PointCloudProperties, numFramesPool));
+        .def_readwrite("numFramesPool", &PointCloudProperties::numFramesPool, DOC(dai, PointCloudProperties, numFramesPool))
+        .def_readwrite("computeMethod", &PointCloudProperties::computeMethod, DOC(dai, PointCloudProperties, computeMethod))
+        .def_readwrite("numThreads", &PointCloudProperties::numThreads, DOC(dai, PointCloudProperties, numThreads))
+        .def_readwrite("gpuDevice", &PointCloudProperties::gpuDevice, DOC(dai, PointCloudProperties, gpuDevice));
 
     // Node
     node.def_readonly("inputConfig", &PointCloud::inputConfig, DOC(dai, node, PointCloud, inputConfig), DOC(dai, node, PointCloud, inputConfig))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+        .def("getColorInput",
+             py::overload_cast<>(&PointCloud::getColorInput),
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, PointCloud, getColorInput))
         .def_property_readonly(
             "inputDepth", [](PointCloud& node) -> Node::Input* { return &node.inputDepth; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "inputColor", [](PointCloud& node) -> Node::Input* { return &node.getColorInput(); }, py::return_value_policy::reference_internal)
+        .def(
+            "getDepthInput",
+            [](PointCloud& node, const std::string& name) -> Node::Input* { return &node.getDepthInput(name); },
+            py::arg("name"),
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, PointCloud, getDepthInput))
+        .def(
+            "getColorInput",
+            [](PointCloud& node, const std::string& name) -> Node::Input* { return &node.getColorInput(name); },
+            py::arg("name") = std::string(),
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, PointCloud, getColorInput, 2))
+        .def("getDepthInputNames", &PointCloud::getDepthInputNames, DOC(dai, node, PointCloud, getDepthInputNames))
 #endif
+        .def_static("getDepthInputKey", &PointCloud::getDepthInputKey, py::arg("name"), DOC(dai, node, PointCloud, getDepthInputKey))
+        .def_static("getColorInputKey", &PointCloud::getColorInputKey, py::arg("name"), DOC(dai, node, PointCloud, getColorInputKey))
+        .def_property_readonly(
+            "sync", [](PointCloud& node) { return &(*node.sync); }, py::return_value_policy::reference_internal, DOC(dai, node, PointCloud, sync))
         .def_readonly(
             "outputPointCloud", &PointCloud::outputPointCloud, DOC(dai, node, PointCloud, outputPointCloud), DOC(dai, node, PointCloud, outputPointCloud))
         .def_readonly(
@@ -44,6 +77,14 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
         .def_readonly("initialConfig", &PointCloud::initialConfig, DOC(dai, node, PointCloud, initialConfig), DOC(dai, node, PointCloud, initialConfig))
         .def("setNumFramesPool", &PointCloud::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, PointCloud, setNumFramesPool))
         .def("setRunOnHost", &PointCloud::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, PointCloud, setRunOnHost))
+        .def("setBackend", &PointCloud::setBackend, py::arg("backend"), py::return_value_policy::reference_internal, DOC(dai, node, PointCloud, setBackend))
+        .def("getBackend", &PointCloud::getBackend, DOC(dai, node, PointCloud, getBackend))
+        .def("setNumThreads",
+             &PointCloud::setNumThreads,
+             py::arg("numThreads"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, PointCloud, setNumThreads))
+        .def("getNumThreads", &PointCloud::getNumThreads, DOC(dai, node, PointCloud, getNumThreads))
         .def("useCPU", &PointCloud::useCPU, DOC(dai, node, PointCloud, useCPU))
         .def("useCPUMT", &PointCloud::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, PointCloud, useCPUMT))
         .def("useGPU", &PointCloud::useGPU, py::arg("device") = 0, DOC(dai, node, PointCloud, useGPU))
@@ -55,6 +96,21 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
              py::overload_cast<HousingCoordinateSystem>(&PointCloud::setTargetCoordinateSystem),
              py::arg("housingCS"),
              DOC(dai, node, PointCloud, setTargetCoordinateSystem, 2))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<const std::string&, CameraBoardSocket>(&PointCloud::setTargetCoordinateSystem),
+             py::arg("targetDeviceId"),
+             py::arg("targetCamera"),
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 3))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<const std::string&, HousingCoordinateSystem>(&PointCloud::setTargetCoordinateSystem),
+             py::arg("targetDeviceId"),
+             py::arg("housingCS"),
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 4))
+        .def("setDeviceCalibration",
+             &PointCloud::setDeviceCalibration,
+             py::arg("deviceId"),
+             py::arg("calibration"),
+             DOC(dai, node, PointCloud, setDeviceCalibration))
         .def("setTargetCoordinateSystem",
              py::overload_cast<CameraBoardSocket, bool>(&PointCloud::setTargetCoordinateSystem),
              py::arg("targetCamera"),
