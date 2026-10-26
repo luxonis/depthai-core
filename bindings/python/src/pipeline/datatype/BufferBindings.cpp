@@ -69,16 +69,21 @@ void bind_buffer(pybind11::module& m, void* pCallstack) {
     buffer.def(py::init<>(), DOC(dai, Buffer, Buffer))
         .def(py::init<size_t>(), DOC(dai, Buffer, Buffer, 2))
         .def("__repr__", &Buffer::str)
-        // obj is "Python" object, which we used then to bind the numpy arrays lifespan to
         .def(
             "getData",
-            [](py::object& obj) {
-                // creates numpy array (zero-copy) which holds correct information such as shape, ...
-                dai::Buffer& a = obj.cast<dai::Buffer&>();
-                return py::array_t<uint8_t>(a.getData().size(), a.getData().data(), obj);
+            [](Buffer& buffer) {
+                // Keep the allocation alive even when setData replaces the buffer's storage.
+                auto memory = std::make_unique<std::shared_ptr<Memory>>(buffer.data);
+                const auto data = (*memory)->getData();
+                py::capsule owner(memory.get(), [](void* ptr) { delete static_cast<std::shared_ptr<Memory>*>(ptr); });
+                memory.release();
+                return py::array_t<uint8_t>(data.size(), data.data(), owner);
             },
             DOC(dai, Buffer, getData))
-        .def("setData", py::overload_cast<const std::vector<std::uint8_t>&>(&Buffer::setData), DOC(dai, Buffer, setData))
+        .def(
+            "setData",
+            [](Buffer& buffer, const std::vector<std::uint8_t>& data) { buffer.setData(std::vector<std::uint8_t>(data)); },
+            DOC(dai, Buffer, setData))
         .def(
             "setData",
             [](Buffer& buffer, py::array_t<std::uint8_t, py::array::c_style | py::array::forcecast> array) {
@@ -87,7 +92,7 @@ void bind_buffer(pybind11::module& m, void* pCallstack) {
             DOC(dai, Buffer, setData))
         .def(
             "setData",
-            [](Buffer& buffer, py::buffer data) {
+            [](Buffer& buffer, py::bytes data) {
                 std::string str = data.cast<std::string>();
                 buffer.setData({str.data(), str.data() + str.size()});
             },

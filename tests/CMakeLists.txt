@@ -304,7 +304,11 @@ endif()
 
 set(test_env
     # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
+    "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
+    # vcpkg dependencies are built without ASan: protobuf containers then give false container-overflow
+    # reports (inline code from instrumented objects annotates memory that libprotobuf.a then writes)
+    # TODO: remove when the vcpkg dependencies are built with ASan
+    "ASAN_OPTIONS=detect_container_overflow=0"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=30000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
@@ -540,6 +544,10 @@ dai_set_test_labels(bootloader_version_test onhost ci)
 dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
 dai_set_test_labels(bootloader_config_test onhost ci)
 
+# Crash dump serialization test
+dai_add_test(crash_dump_serialization_test src/onhost_tests/crash_dump_serialization_test.cpp)
+dai_set_test_labels(crash_dump_serialization_test onhost ci)
+
 # Environment test
 dai_add_test(env_test src/onhost_tests/utility/env_test.cpp)
 dai_set_test_labels(env_test onhost ci)
@@ -554,6 +562,14 @@ dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
 dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
+
+# Startup notification filtering
+if(DEPTHAI_ENABLE_CURL)
+    dai_add_test(startup_notifications_test src/onhost_tests/utility/startup_notifications_test.cpp)
+    target_link_libraries(startup_notifications_test PRIVATE httplib::httplib)
+    target_compile_definitions(startup_notifications_test PRIVATE DEPTHAI_ENABLE_CURL)
+    dai_set_test_labels(startup_notifications_test onhost ci)
+endif()
 
 # Telemetry fork safety test
 dai_add_test(telemetry_fork_test src/onhost_tests/utility/telemetry_fork_test.cpp)
@@ -593,6 +609,14 @@ dai_set_test_labels(pointclouddata_test onhost ci)
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
 
+# PointCloud node multi-stream (merged) tests
+dai_add_test(point_cloud_multi_stream_test src/onhost_tests/pipeline/node/point_cloud_multi_stream_test.cpp)
+dai_set_test_labels(point_cloud_multi_stream_test onhost ci)
+
+# Model zoo settings tests (also valid without libcurl)
+dai_add_test(model_zoo_settings_test src/onhost_tests/model_zoo_settings_test.cpp)
+dai_set_test_labels(model_zoo_settings_test onhost ci)
+
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
@@ -601,21 +625,19 @@ dai_set_test_labels(model_slug_test onhost ci)
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
-if(DEPTHAI_BUILD_BETA)
-    # Stitching device-node configuration tests (must not require host OpenCV support)
-    dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
-    dai_set_test_labels(stitching_device_node_test onhost ci)
+# Stitching device-node configuration tests (must not require host OpenCV support)
+dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
+dai_set_test_labels(stitching_device_node_test onhost ci)
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
-        dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
-        target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
-        dai_set_test_labels(stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING AND DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(stitching_node_test src/onhost_tests/pipeline/node/stitching_node_test.cpp)
+    target_compile_definitions(stitching_node_test PRIVATE KITCHEN_IMAGE_PATH="${kitchen_image}")
+    dai_set_test_labels(stitching_node_test onhost ci)
+endif()
 
-    if(DEPTHAI_HAVE_OPENCV_STITCHING)
-        dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
-        dai_set_test_labels(planar_stitching_node_test onhost ci)
-    endif()
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(planar_stitching_node_test src/onhost_tests/pipeline/node/planar_stitching_node_test.cpp)
+    dai_set_test_labels(planar_stitching_node_test onhost ci)
 endif()
 
 # Remote connection tests
@@ -756,6 +778,10 @@ dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
+dai_add_test(pointcloud_gpu_test src/ondevice_tests/pointcloud_gpu_test.cpp)
+dai_set_test_labels(pointcloud_gpu_test ondevice rvc4)
+dai_add_test(pointcloud_multi_stream_device_test src/ondevice_tests/pointcloud_multi_stream_device_test.cpp)
+dai_set_test_labels(pointcloud_multi_stream_device_test ondevice rvc4 ci)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
@@ -867,6 +893,10 @@ dai_set_test_labels(segmentation_parser_test ondevice rvc4 ci)
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
 dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 
+dai_add_test(neural_network_nnarchive_behavior_test src/ondevice_tests/pipeline/node/neural_network_nnarchive_behavior_test.cpp)
+target_link_libraries(neural_network_nnarchive_behavior_test PRIVATE LibArchive::LibArchive liblzma::liblzma BZip2::BZip2)
+dai_set_test_labels(neural_network_nnarchive_behavior_test ondevice rvc4 ci)
+
 # NeuralNetwork node test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
@@ -947,6 +977,10 @@ dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
+# Pixel geometry regression: synthetic inputs through on-device stereo and alignment.
+dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
+dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
+
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
@@ -999,6 +1033,9 @@ endif()
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
+
+dai_add_test(camera_test_rvc4 src/ondevice_tests/pipeline/node/camera_test_rvc4.cpp)
+dai_set_test_labels(camera_test_rvc4 ondevice rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)

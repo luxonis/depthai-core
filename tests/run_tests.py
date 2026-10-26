@@ -25,6 +25,11 @@ class ResultThread(threading.Thread):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding="utf-8",
+            # Test output can contain bytes that are not valid UTF-8 (e.g. Catch2 prints
+            # uint8_t image data as raw chars). A strict decode would kill this thread and
+            # abort the whole run, so escape such bytes instead.
+            errors="backslashreplace",
         )
 
         for output in process.stdout:
@@ -298,7 +303,7 @@ if __name__ == "__main__":
     for name, resultThread in resultThreads:
         resultThread.join()
         result = resultThread.result
-        if result.returncode != 0:
+        if result is None or result.returncode != 0:
             print(f"Tests failed for configuration: {name}")
             any_failures = True
         else:

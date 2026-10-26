@@ -36,7 +36,16 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack) {
 
     trackerIdAssignmentPolicy.value("UNIQUE_ID", TrackerIdAssignmentPolicy::UNIQUE_ID).value("SMALLEST_ID", TrackerIdAssignmentPolicy::SMALLEST_ID);
 
-    objectTrackerProperties.def_readwrite("trackerThreshold", &ObjectTrackerProperties::trackerThreshold, DOC(dai, ObjectTrackerProperties, trackerThreshold))
+    objectTrackerProperties.def(py::init<>());
+
+    objectTrackerProperties
+        .def_readwrite(
+            "occlusionRatioThreshold", &dai::ObjectTrackerProperties::occlusionRatioThreshold, DOC(dai, ObjectTrackerProperties, occlusionRatioThreshold))
+        .def_readwrite("trackingPerClass", &dai::ObjectTrackerProperties::trackingPerClass, DOC(dai, ObjectTrackerProperties, trackingPerClass))
+        .def_readwrite(
+            "trackletBirthThreshold", &dai::ObjectTrackerProperties::trackletBirthThreshold, DOC(dai, ObjectTrackerProperties, trackletBirthThreshold))
+        .def_readwrite("trackletMaxLifespan", &dai::ObjectTrackerProperties::trackletMaxLifespan, DOC(dai, ObjectTrackerProperties, trackletMaxLifespan))
+        .def_readwrite("trackerThreshold", &ObjectTrackerProperties::trackerThreshold, DOC(dai, ObjectTrackerProperties, trackerThreshold))
         .def_readwrite("maxObjectsToTrack", &ObjectTrackerProperties::maxObjectsToTrack, DOC(dai, ObjectTrackerProperties, maxObjectsToTrack))
         .def_readwrite("detectionLabelsToTrack", &ObjectTrackerProperties::detectionLabelsToTrack, DOC(dai, ObjectTrackerProperties, detectionLabelsToTrack))
         .def_readwrite("trackerType", &ObjectTrackerProperties::trackerType, DOC(dai, ObjectTrackerProperties, trackerType))
