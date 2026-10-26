@@ -297,7 +297,9 @@ class OCSTracker::State {
                    float inertia_ = 0.2,
                    bool use_byte_ = false);
 
-        std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData, bool trackOnly = false);
+        std::vector<Eigen::RowVectorXf> update(const std::vector<TrackerDetection>& detections,
+                                               const std::vector<Point3f>& spatialData,
+                                               bool trackOnly = false);
     };
 
    private:
@@ -379,7 +381,7 @@ class OCSTracker::State {
         has_previous_frame_ts = true;
     }
 
-    std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData, bool trackOnly = false);
+    std::vector<Eigen::RowVectorXf> update(const std::vector<TrackerDetection>& detections, const std::vector<Point3f>& spatialData, bool trackOnly = false);
     void remove_tracklets(const std::vector<int32_t>& ids) {
         for(auto& [_, cs] : class_states) {
             cs.remove_tracklets(ids);
@@ -576,7 +578,7 @@ OCSTracker::State::ClassState::ClassState(State* parent_,
     inertia = inertia_;
     use_byte = use_byte_;
 }
-std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std::vector<ImgDetection>& detections,
+std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std::vector<TrackerDetection>& detections,
                                                                       const std::vector<Point3f>& spatialData,
                                                                       bool trackOnly) {
     /*
@@ -602,13 +604,12 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
 
     for(size_t i = 0; i < detections.size(); i++) {
         const auto& detection = detections[i];
-        // Convert normalized coordinates to absolute coordinates
-        dets(i, 0) = detection.xmin;        // x1
-        dets(i, 1) = detection.ymin;        // y1
-        dets(i, 2) = detection.xmax;        // x2
-        dets(i, 3) = detection.ymax;        // y2
-        dets(i, 4) = detection.confidence;  // confidence
-        dets(i, 5) = detection.label;       // class_id
+        dets(i, 0) = detection.roi.x;                         // x1
+        dets(i, 1) = detection.roi.y;                         // y1
+        dets(i, 2) = detection.roi.x + detection.roi.width;   // x2
+        dets(i, 3) = detection.roi.y + detection.roi.height;  // y2
+        dets(i, 4) = detection.source.confidence;             // confidence
+        dets(i, 5) = detection.source.label;                  // class_id
         dets(i, 6) = i;
         const SpatialPosition spatialMeasurement(spatialData[i]);
         dets_spatial.row(i) << spatialMeasurement.position(0), spatialMeasurement.position(1), spatialMeasurement.position(2),
@@ -687,7 +688,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         uint32_t index = dets_first(m(0), 6);
         trackers[m(1)].update(&(tmp_bbox), dets_first(m(0), 5), &spatialData[index]);
         tracklets[m(1)].update(Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)), spatialData[index]);
-        tracklets[m(1)].srcImgDetection = detections[index];
+        tracklets[m(1)].srcImgDetection = detections[index].source;
         sync_tracklet_motion(m(1));
         if(tracklets[m(1)].status == Tracklet::TrackingStatus::LOST) {
             tracklets[m(1)].updateStatus(Tracklet::TrackingStatus::TRACKED);
@@ -790,7 +791,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                 uint32_t index = dets_second(det_ind, 6);
                 trackers[trk_ind].update(&tmp_box, dets_second(det_ind, 5), &spatialData[index]);
                 tracklets[trk_ind].update(Rect(tmp_box(0), tmp_box(1), tmp_box(2) - tmp_box(0), tmp_box(3) - tmp_box(1)), spatialData[index]);
-                tracklets[trk_ind].srcImgDetection = detections[index];
+                tracklets[trk_ind].srcImgDetection = detections[index].source;
                 sync_tracklet_motion(trk_ind);
                 if(tracklets[trk_ind].status == Tracklet::TrackingStatus::LOST) {
                     tracklets[trk_ind].updateStatus(Tracklet::TrackingStatus::TRACKED);
@@ -865,7 +866,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                 uint32_t index = dets_first(det_ind, 6);
                 trackers.at(trk_ind).update(&tmp_bbox, dets_first(det_ind, 5), &spatialData[index]);
                 tracklets[trk_ind].update(Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)), spatialData[index]);
-                tracklets[trk_ind].srcImgDetection = detections[index];
+                tracklets[trk_ind].srcImgDetection = detections[index].source;
                 sync_tracklet_motion(trk_ind);
                 if(tracklets[trk_ind].status == Tracklet::TrackingStatus::LOST) {
                     tracklets[trk_ind].updateStatus(Tracklet::TrackingStatus::TRACKED);
@@ -921,7 +922,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                                                      cls_,
                                                      1,
                                                      Tracklet::TrackingStatus::NEW,
-                                                     detections[index],
+                                                     detections[index].source,
                                                      spatialData[index],
                                                      std::nullopt,
                                                      std::nullopt}});
@@ -954,16 +955,16 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
     return ret;
 }
 
-std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgDetection>& detections,
+std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<TrackerDetection>& detections,
                                                           const std::vector<Point3f>& spatialData,
                                                           bool trackOnly) {
     std::vector<Eigen::RowVectorXf> ret;
-    std::unordered_map<uint32_t, std::pair<std::vector<ImgDetection>, std::vector<Point3f>>> dets_map;
+    std::unordered_map<uint32_t, std::pair<std::vector<TrackerDetection>, std::vector<Point3f>>> dets_map;
     for(auto& [index, cs] : class_states) {
-        dets_map.try_emplace(index, std::pair<std::vector<ImgDetection>, std::vector<Point3f>>());
+        dets_map.try_emplace(index, std::pair<std::vector<TrackerDetection>, std::vector<Point3f>>());
     }
     for(size_t i = 0; i < detections.size(); i++) {
-        uint32_t index = track_by_class ? detections[i].label : 0;
+        uint32_t index = track_by_class ? detections[i].source.label : 0;
         dets_map[index].first.push_back(detections[i]);
         if(i < spatialData.size()) {
             dets_map[index].second.push_back(spatialData[i]);
@@ -1982,7 +1983,7 @@ OCSTracker::OCSTracker(const ObjectTrackerProperties& properties)
       spatialDistanceThreshold(std::max(properties.spatialDistanceThreshold * 1000.0f, kSpatialMinGateMm)),
       spatialDepthAwareScale(std::max(properties.spatialDepthAwareScale, 0.0f)) {}
 OCSTracker::~OCSTracker() {}
-void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
+void OCSTracker::init(const ImgFrame& frame, const std::vector<TrackerDetection>& detections, const std::vector<Point3f>& spatialData) {
     this->state = std::make_unique<State>(0.f,
                                           this->trackletMaxLifespan,
                                           this->trackletBirthThreshold,
@@ -2001,7 +2002,7 @@ void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& de
     this->state->update_frame_timestamp(frame);
     this->state->update(detections, spatialData);
 }
-void OCSTracker::update(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
+void OCSTracker::update(const ImgFrame& frame, const std::vector<TrackerDetection>& detections, const std::vector<Point3f>& spatialData) {
     if(!this->state) {
         throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
     }
@@ -2013,7 +2014,7 @@ void OCSTracker::track(const ImgFrame& frame) {
         throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
     }
     this->state->update_frame_timestamp(frame);
-    this->state->update(std::vector<ImgDetection>(), std::vector<Point3f>(), true);
+    this->state->update(std::vector<TrackerDetection>(), std::vector<Point3f>(), true);
 }
 void OCSTracker::configure(const ObjectTrackerConfig& config) {
     if(!this->state) {

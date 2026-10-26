@@ -1005,6 +1005,10 @@ dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
 
 # ObjectTracker tests
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(object_tracker_host_test src/onhost_tests/pipeline/node/object_tracker_test.cpp)
+    dai_set_test_labels(object_tracker_host_test onhost ci)
+endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
     dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
