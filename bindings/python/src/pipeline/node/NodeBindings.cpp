@@ -247,6 +247,8 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_stereodepth);
     callstack.push_front(bind_neuralnetwork);
     callstack.push_front(bind_videoencoder);
+    // ImageManip's enum must be registered before PointCloud's methods bind on unwind.
+    callstack.push_front(bind_pointcloud);
     callstack.push_front(bind_imagemanip);
     callstack.push_front(bind_warp);
     callstack.push_front(bind_spiout);
@@ -266,7 +268,6 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_uvc);
     callstack.push_front(bind_thermal);
     callstack.push_front(bind_tof);
-    callstack.push_front(bind_pointcloud);
     callstack.push_front(bind_sync);
     callstack.push_front(bind_messagedemux);
     callstack.push_front(bind_hostnode);

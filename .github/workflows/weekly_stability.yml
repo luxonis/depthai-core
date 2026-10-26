@@ -19,12 +19,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           since=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
-          run_id=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/python-main.yml/runs" \
-            -f branch=develop -f event=push -f status=success -f "created=>=$since" -F per_page=1 \
-            --jq '.workflow_runs[0].id // empty' 2>/dev/null || true)
-          if [[ -n "$run_id" ]] && gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" \
-               -f name=audited-wheels-combined-linux-x86_64 \
-               --jq '.artifacts[] | select(.expired == false) | .id' 2>/dev/null | grep -q .; then
+          # develop is built in hil_testing_nightly.yml (job build_wheels). The HIL and BOM results of that run
+          # do not matter here, so require the report job of the wheel build to have passed.
+          run_id=""
+          for id in $(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/hil_testing_nightly.yml/runs" \
+                        -f branch=develop -f status=completed -f "created=>=$since" -F per_page=20 \
+                        --jq '.workflow_runs[].id' 2>/dev/null || true); do
+            if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --paginate \
+                 --jq '.jobs[] | select(.name == "build_wheels / Required Python CI report" and .conclusion == "success") | .id' 2>/dev/null | grep -q . \
+               && gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts" \
+                 -f name=audited-wheels-combined-linux-x86_64 \
+                 --jq '.artifacts[] | select(.expired == false) | .id' 2>/dev/null | grep -q .; then
+              run_id=$id
+              break
+            fi
+          done
+          if [[ -n "$run_id" ]]; then
             echo "Reusing the wheels of run https://github.com/$GITHUB_REPOSITORY/actions/runs/$run_id"
             echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
           else

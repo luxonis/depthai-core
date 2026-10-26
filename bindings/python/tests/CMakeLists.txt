@@ -24,6 +24,7 @@ set(PYBIND11_TEST_FILES
     "calibration_constructor_test.py"
     "openvino_version_test.py"
     "pcldata_set_points_test.py"
+    "backend_compatibility_test.py"
     "remote_connection_service_test.py"
     "messsage_queue_test.py"
     "imgframe_test.py"

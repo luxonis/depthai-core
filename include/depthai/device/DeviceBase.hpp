@@ -201,6 +201,16 @@ class DeviceBase {
     static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 
     /**
+     * Performs a device health check
+     *
+     * @param devInfo DeviceInfo which specifies which device to check
+     * @param config Health-check steps to execute
+     * @param shouldStop stop function called in between runs. Return true to stop the health check
+     * @returns HealthCheckMetrics collected until the check completed or stopped. Steps that did not run are NOT_RUN
+     */
+    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop);
+
+    /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      */

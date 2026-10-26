@@ -13,6 +13,7 @@
 
 // std
 #include <filesystem>
+#include <optional>
 
 // std::chrono bindings
 #include <pybind11/chrono.h>
@@ -544,8 +545,21 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_static(
             "performHealthCheck",
             [](const DeviceInfo& deviceInfo, const HealthCheckConfig& config) {
-                py::gil_scoped_release release;
-                return DeviceBase::performHealthCheck(deviceInfo, config);
+                // Python runs signal handlers only between bytecodes, so the long C++ call checks for them itself
+                // and stops when a handler raises (e.g. KeyboardInterrupt on Ctrl+C)
+                std::optional<py::error_already_set> pendingError;
+                HealthCheckMetrics metrics;
+                {
+                    py::gil_scoped_release release;
+                    metrics = DeviceBase::performHealthCheck(deviceInfo, config, [&pendingError]() {
+                        // reacquires python GIL for PyErr_CheckSignals call
+                        py::gil_scoped_acquire acquire;
+                        if(!pendingError && PyErr_CheckSignals() != 0) pendingError.emplace();
+                        return pendingError.has_value();
+                    });
+                }
+                if(pendingError) throw *pendingError;
+                return metrics;
             },
             py::arg("deviceInfo"),
             py::arg("config") = HealthCheckConfig(),
