@@ -119,8 +119,14 @@ struct Rig {
         // RAM only: the EEPROM is never written.
         device->setCalibration(synthesizeCalibration(layout));
 
-        lowestQueue = pipeline.create<dai::node::Camera>()->build(layout.lowest, std::nullopt, 10.0f)->requestOutput({640, 400}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, 10.0f)->createOutputQueue(4, false);
-        rootQueue = pipeline.create<dai::node::Camera>()->build(layout.root, std::nullopt, 10.0f)->requestOutput({640, 400}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, 10.0f)->createOutputQueue(4, false);
+        lowestQueue = pipeline.create<dai::node::Camera>()
+                          ->build(layout.lowest, std::nullopt, 10.0f)
+                          ->requestOutput({640, 400}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, 10.0f)
+                          ->createOutputQueue(4, false);
+        rootQueue = pipeline.create<dai::node::Camera>()
+                        ->build(layout.root, std::nullopt, 10.0f)
+                        ->requestOutput({640, 400}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, 10.0f)
+                        ->createOutputQueue(4, false);
     }
 
     std::vector<dai::MultiDeviceExtrinsics> graphFor(dai::CameraBoardSocket socket) const {

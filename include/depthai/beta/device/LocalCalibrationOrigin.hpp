@@ -45,9 +45,10 @@ inline LocalCalibrationOrigin describeLocalCalibration(const std::optional<Eepro
             if(eeprom->cameraData.empty()) {
                 throw std::runtime_error("No camera data available in the calibration data.");
             }
-            return std::min_element(eeprom->cameraData.begin(), eeprom->cameraData.end(), [](const auto& a, const auto& b) {
-                       return static_cast<int>(a.first) < static_cast<int>(b.first);
-                   })->first;
+            return std::min_element(eeprom->cameraData.begin(),
+                                    eeprom->cameraData.end(),
+                                    [](const auto& a, const auto& b) { return static_cast<int>(a.first) < static_cast<int>(b.first); })
+                ->first;
         };
         return local;
     }
