@@ -71,7 +71,8 @@ def test_nndata_view_survives_adding_tensor(mode, dtype):
         datatype = {np.int32: dai.TensorInfo.DataType.INT, np.float32: dai.TensorInfo.DataType.FP32, np.float64: dai.TensorInfo.DataType.FP64}[dtype]
         message.addTensor("second", tensor, datatype)
     else:
-        message.addTensor("second", tensor.tolist() if mode == "storage_order_list" else tensor, dai.TensorInfo.StorageOrder.NC)
+        data = tensor.tolist() if mode == "storage_order_list" else tensor.reshape(1, -1)
+        message.addTensor("second", data, dai.TensorInfo.StorageOrder.NC)
     np.testing.assert_array_equal(previous, expected)
     np.testing.assert_array_equal(message.getTensor("second").ravel(), tensor)
 
