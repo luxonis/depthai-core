@@ -509,7 +509,7 @@ def vcpkg_from_source(repo: Path, vcpkg_root: Path, triplet: str, inventory: dic
 
     with tempfile.TemporaryDirectory() as scratch:
         def dry_run(extra: list[str]) -> dict[str, dict[str, Any]]:
-            output = run([str(vcpkg), "install", "--dry-run", f"--x-manifest-root={repo}",
+            output = run([str(vcpkg), "install", "--dry-run", "--x-wait-for-lock", f"--x-manifest-root={repo}",
                           f"--x-install-root={Path(scratch) / 'installed'}", f"--triplet={triplet}",
                           "--x-no-default-features", *extra], cwd=repo)
             return parse_plan(output)

@@ -289,6 +289,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("p2Config", &StereoDepthConfig::CostAggregation::p2Config, DOC(dai, StereoDepthConfig, CostAggregation, p2Config));
 
     stereoDepthConfig.def(py::init<>())
+        .def(py::init<>())
+        .def_readwrite("filtersBackend", &dai::StereoDepthConfig::filtersBackend, DOC(dai, StereoDepthConfig, filtersBackend))
         .def_readwrite("algorithmControl", &StereoDepthConfig::algorithmControl, DOC(dai, StereoDepthConfig, algorithmControl))
         .def_readwrite("postProcessing", &StereoDepthConfig::postProcessing, DOC(dai, StereoDepthConfig, postProcessing))
         .def_readwrite("censusTransform", &StereoDepthConfig::censusTransform, DOC(dai, StereoDepthConfig, censusTransform))
@@ -297,8 +299,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("confidenceMetrics", &StereoDepthConfig::confidenceMetrics, DOC(dai, StereoDepthConfig, confidenceMetrics));
 
     // Message
-    stereoDepthConfig.def(py::init<>())
-        .def("__repr__", &StereoDepthConfig::str)
+    stereoDepthConfig.def("__repr__", &StereoDepthConfig::str)
         .def("setDepthAlign", &StereoDepthConfig::setDepthAlign, py::arg("align"), DOC(dai, StereoDepthConfig, setDepthAlign))
         .def("setConfidenceThreshold", &StereoDepthConfig::setConfidenceThreshold, py::arg("confThr"), DOC(dai, StereoDepthConfig, setConfidenceThreshold))
         .def("setMedianFilter", &StereoDepthConfig::setMedianFilter, py::arg("median"), DOC(dai, StereoDepthConfig, setMedianFilter))

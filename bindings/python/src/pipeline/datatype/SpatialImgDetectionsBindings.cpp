@@ -66,7 +66,14 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
              py::arg("confidence"),
              py::arg("label"),
              DOC(dai, SpatialImgDetection, SpatialImgDetection))
-        .def("__repr__", &SpatialImgDetection::str)
+        .def("transform",
+             &dai::SpatialImgDetection::transform,
+             py::arg("source"),
+             py::arg("target"),
+             py::arg("lengthUnit") = LengthUnit::MILLIMETER,
+             DOC(dai, SpatialImgDetection, transform));
+
+    spatialImgDetection.def("__repr__", &SpatialImgDetection::str)
         .def_readwrite("label", &SpatialImgDetection::label)
         .def_readwrite("labelName", &SpatialImgDetection::labelName)
         .def_readwrite("confidence", &SpatialImgDetection::confidence)

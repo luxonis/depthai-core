@@ -16,7 +16,6 @@ on:
   push:
     branches:
       - main
-      - develop
       - 'release*'
     tags:
       - 'v*'
@@ -24,7 +23,9 @@ on:
     branches:
       - main
       - develop
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
+  pull_request_review:
+    types: [submitted]
 
 ###################################
 ###################################
@@ -38,6 +39,8 @@ jobs:
   # The precheck job determines whether a workflow should be run in full
   precheck:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
       wheel_python_versions: ${{ steps.check.outputs.wheel_python_versions }}
@@ -49,6 +52,9 @@ jobs:
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
         CHECK_GITHUB_REF: ${{ github.ref }}
+        CHECK_REVIEW_STATE: ${{ github.event.review.state }}
+        CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        CHECK_ACTION: ${{ github.event.action }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
         GITHUB_REF="$CHECK_GITHUB_REF"
@@ -69,10 +75,15 @@ jobs:
           WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
         fi
 
-        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+        if [[ "$EVENT_NAME" == "pull_request" || "$EVENT_NAME" == "pull_request_review" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
-          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+          if [[ "$EVENT_NAME" == "pull_request" && "$CHECK_ACTION" != "labeled" ]]; then
+            # Run the binding precheck on edits; retain the existing full-build triggers.
+            SHOULD_RUN="false"
+          elif [[ "$EVENT_NAME" == "pull_request" ]] && ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          elif [[ "$EVENT_NAME" == "pull_request_review" && ("$CHECK_REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop")) ]]; then
             SHOULD_RUN="false"
           fi
         fi
@@ -81,6 +92,29 @@ jobs:
         echo "wheel_python_versions=$WHEEL_PYTHON_VERSIONS" >> "$GITHUB_OUTPUT"
         echo "wheel_python_sets=$WHEEL_PYTHON_SETS" >> "$GITHUB_OUTPUT"
         echo "wheel_macos_runners=$WHEEL_MACOS_RUNNERS" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+    - name: Install binding precheck dependencies
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      run: python -m pip install -r ci/requirements-binding-check.txt
+    - name: Test binding precheck
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      run: python -m unittest discover -s ci/tests -p 'test_python_bindings.py'
+    - name: Check new public APIs have Python bindings
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      env:
+        BINDING_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+      run: |
+        if [[ -z "$BINDING_BASE" || "$BINDING_BASE" =~ ^0+$ ]]; then
+          BINDING_BASE=HEAD^
+        fi
+        python ci/check_python_bindings.py --base "$BINDING_BASE"
 
   # Job which builds docstrings for the rest of the wheel builds
   build-docstrings:
@@ -92,9 +126,10 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore
         with:
@@ -149,9 +184,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
@@ -188,7 +224,9 @@ jobs:
 
       - name: Setup cmake
         if: matrix.os == 'macos-latest'
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+        with:
+          useCloudCache: false
 
 
       - name: Install pytest
@@ -238,9 +276,10 @@ jobs:
       CMAKE_GENERATOR_TOOLSET: v143
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '4.2.x'
+          cmakeVersion: '4.2.x'
+          useCloudCache: false
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
@@ -332,9 +371,10 @@ jobs:
       DEPTHAI_BUILD_KOMPUTE: ON
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
       - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
@@ -870,3 +910,12 @@ jobs:
         env:
           AK_URL: ${{ secrets.AK_URL }}
           AK_TOKEN: ${{ secrets.AK_TOKEN }}
+
+  # BOM tests for pushes to main, release branches and tags; they install the wheels that this run uploaded.
+  # The job only dispatches the BOM run and links it. develop is not built on push: hil_testing_nightly.yml
+  # starts the BOM tests of the nightly build at the same time as its HIL tests.
+  dispatch-bom-tests:
+    if: github.event_name == 'push' && !failure() && !cancelled()
+    needs: [required_python_ci_report, upload-wheels-to-ak, deploy]
+    uses: ./.github/workflows/bom_dispatch.yml
+    secrets: inherit
