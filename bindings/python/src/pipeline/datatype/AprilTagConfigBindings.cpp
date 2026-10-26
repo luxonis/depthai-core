@@ -52,6 +52,7 @@ void bind_apriltagconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("deglitch", &AprilTagConfig::QuadThresholds::deglitch, DOC(dai, AprilTagConfig, QuadThresholds, deglitch));
 
     aprilTagConfig.def(py::init<>())
+        .def(py::init<>())
         .def_readwrite("family", &AprilTagConfig::family, DOC(dai, AprilTagConfig, family))
         .def_readwrite("quadDecimate", &AprilTagConfig::quadDecimate, DOC(dai, AprilTagConfig, quadDecimate))
         .def_readwrite("quadSigma", &AprilTagConfig::quadSigma, DOC(dai, AprilTagConfig, quadSigma))
@@ -61,9 +62,7 @@ void bind_apriltagconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("quadThresholds", &AprilTagConfig::quadThresholds, DOC(dai, AprilTagConfig, quadThresholds));
 
     // Message
-    aprilTagConfig.def(py::init<>())
-        .def("__repr__", &AprilTagConfig::str)
-        .def("setFamily", &AprilTagConfig::setFamily, py::arg("family"), DOC(dai, AprilTagConfig, setFamily))
+    aprilTagConfig.def("__repr__", &AprilTagConfig::str).def("setFamily", &AprilTagConfig::setFamily, py::arg("family"), DOC(dai, AprilTagConfig, setFamily))
         // .def("set", &AprilTagConfig::set, DOC(dai, AprilTagConfig, set))
         // .def("get", &AprilTagConfig::get, DOC(dai, AprilTagConfig, get))
         ;

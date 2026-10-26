@@ -19,6 +19,10 @@ on:
         default: develop
         type: string
 
+# The jobs run code of WARM_REF; actions/cache does not need token permissions.
+permissions:
+  contents: read
+
 env:
   WARM_REF: ${{ inputs.ref || 'develop' }}
   CMAKE_WINDOWS_SDK_VERSION: '10.0.26100.0'
@@ -40,9 +44,10 @@ jobs:
           submodules: 'recursive'
 
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version: ${{ runner.os == 'Windows' && '4.2.x' || '3.22.x' }}
+          cmakeVersion: ${{ runner.os == 'Windows' && '4.2.x' || '3.22.x' }}
+          useCloudCache: false
 
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore
@@ -105,9 +110,10 @@ jobs:
           submodules: 'recursive'
 
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version: ${{ runner.os == 'Windows' && '4.2.x' || '3.31.x' }}
+          cmakeVersion: ${{ runner.os == 'Windows' && '4.2.x' || '3.31.x' }}
+          useCloudCache: false
 
       - name: Restore vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/restore

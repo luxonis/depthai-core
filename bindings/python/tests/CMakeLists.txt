@@ -9,13 +9,20 @@ endif()
 
 set(PYBIND11_TEST_FILES
     "test.py"
+    "api_binding_coverage_test.py"
+    # TODO: validate api_binding_device_test.py on RVC2/RVC4 in HIL before enabling.
+    "queue_gil_test.py"
     "xlink_exceptions_test.cpp"
     "xlink_protocol_test.py"
     "utf8_support_test.py"
-    # "dai_path_conversion_test.py" requires device
+    "dai_path_conversion_test.py"
     "nn_archive_gil_test.py"
     "test_registration_test.py"
     "nndata_tensor_test.py"
+    "nndata_dtype_test.py"
+    "buffer_lifetime_test.py"
+    "calibration_constructor_test.py"
+    "openvino_version_test.py"
     "pcldata_set_points_test.py"
     "backend_compatibility_test.py"
     "remote_connection_service_test.py"

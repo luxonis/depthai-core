@@ -87,6 +87,14 @@ class DeviceBase {
         bool nonExclusiveMode = false;
         std::optional<LogLevel> outputLogLevel;
         std::optional<LogLevel> logLevel;
+
+        /**
+         * DANGEROUS: bypass the shared IR dot/flood power budget on RVC2 boards that enforce it, including certain EL2086 OAK-ToF variants.
+         * Individual emitter current and duty-cycle limits still apply. This flag does not turn on the emitters or control ToF illumination.
+         * The override lasts until firmware reboot. Requires supporting firmware; unsupported devices or firmware cause initialization to fail.
+         * @warning Full dot and flood power can cause power instability and device crashes.
+         */
+        bool dangerousIrPowerOverride = false;
     };
 
     // static API
