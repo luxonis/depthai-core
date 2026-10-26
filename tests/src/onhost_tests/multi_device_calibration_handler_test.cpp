@@ -272,24 +272,69 @@ TEST_CASE("Multi-device calibration validates a device's local calibration origi
     }
 }
 
-TEST_CASE("describeLocalCalibration reports the extrinsics chain root as the local origin") {
+TEST_CASE("describeLocalCalibration applies the platform's local origin rule") {
+    // Chain CAM_B -> CAM_C -> AUTO on a board without CAM_A: the chain root (CAM_C) is not the
+    // lowest-id socket (CAM_B). This is the layout of a two-camera FFC calibrated as a stereo pair.
     EepromData eeprom;
     CameraInfo root;
     root.extrinsics.toCameraSocket = CameraBoardSocket::AUTO;
     CameraInfo child;
-    child.extrinsics.toCameraSocket = CameraBoardSocket::CAM_A;
+    child.extrinsics.toCameraSocket = CameraBoardSocket::CAM_C;
     child.extrinsics.rotationMatrix = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
     child.extrinsics.translation = {7.5f, 0.0f, 0.0f};
-    eeprom.cameraData[CameraBoardSocket::CAM_A] = root;
+    eeprom.cameraData[CameraBoardSocket::CAM_C] = root;
     eeprom.cameraData[CameraBoardSocket::CAM_B] = child;
 
-    const auto local = dai::beta::describeLocalCalibration(CalibrationHandler(eeprom));
-    REQUIRE(local.available);
-    REQUIRE(local.hasSocket(CameraBoardSocket::CAM_B));
-    REQUIRE_FALSE(local.hasSocket(CameraBoardSocket::CAM_C));
-    REQUIRE(local.originOf(CameraBoardSocket::CAM_A) == CameraBoardSocket::CAM_A);
-    REQUIRE(local.originOf(CameraBoardSocket::CAM_B) == CameraBoardSocket::CAM_A);
+    SECTION("RVC4 resolves the extrinsics chain root") {
+        const auto local = dai::beta::describeLocalCalibration(eeprom, dai::Platform::RVC4);
+        REQUIRE(local.available);
+        REQUIRE(local.hasSocket(CameraBoardSocket::CAM_B));
+        REQUIRE(local.hasSocket(CameraBoardSocket::CAM_C));
+        REQUIRE_FALSE(local.hasSocket(CameraBoardSocket::CAM_A));
+        REQUIRE(local.originOf(CameraBoardSocket::CAM_B) == CameraBoardSocket::CAM_C);
+        REQUIRE(local.originOf(CameraBoardSocket::CAM_C) == CameraBoardSocket::CAM_C);
+        REQUIRE(std::string(local.originRule) == "extrinsics chain root");
+    }
+    SECTION("RVC2 resolves the lowest-id socket for every socket") {
+        const auto local = dai::beta::describeLocalCalibration(eeprom, dai::Platform::RVC2);
+        REQUIRE(local.available);
+        REQUIRE(local.originOf(CameraBoardSocket::CAM_B) == CameraBoardSocket::CAM_B);
+        REQUIRE(local.originOf(CameraBoardSocket::CAM_C) == CameraBoardSocket::CAM_B);
+        REQUIRE(std::string(local.originRule) == "lowest-id socket");
+    }
+    SECTION("the chain root rule rejects dangling links and cycles") {
+        EepromData dangling = eeprom;
+        dangling.cameraData[CameraBoardSocket::CAM_C].extrinsics.toCameraSocket = CameraBoardSocket::CAM_D;
+        REQUIRE_THROWS_WITH(dai::beta::describeLocalCalibration(dangling, dai::Platform::RVC4).originOf(CameraBoardSocket::CAM_B),
+                            Catch::Matchers::ContainsSubstring("Invalid camera link"));
+        EepromData cyclic = eeprom;
+        cyclic.cameraData[CameraBoardSocket::CAM_C].extrinsics.toCameraSocket = CameraBoardSocket::CAM_B;
+        REQUIRE_THROWS_WITH(dai::beta::describeLocalCalibration(cyclic, dai::Platform::RVC4).originOf(CameraBoardSocket::CAM_B),
+                            Catch::Matchers::ContainsSubstring("Cyclic extrinsics"));
+    }
+    SECTION("missing calibration is unavailable on every platform") {
+        REQUIRE_FALSE(dai::beta::describeLocalCalibration(std::nullopt, dai::Platform::RVC2).available);
+        REQUIRE_FALSE(dai::beta::describeLocalCalibration(std::nullopt, dai::Platform::RVC4).available);
+    }
 
-    const auto missing = dai::beta::describeLocalCalibration(std::nullopt);
-    REQUIRE_FALSE(missing.available);
+    // The same graph is admitted or rejected per platform, exactly as the firmware will decide.
+    const auto graphWith = [](CameraBoardSocket socket) {
+        MultiDeviceExtrinsics edge;
+        edge.fromDeviceId = "virtual-device";
+        edge.fromSocket = CameraBoardSocket::CAM_A;
+        edge.extrinsics = makeExtrinsics("this-device", socket, {1.0f, 0.0f, 0.0f});
+        return MultiDeviceCalibrationHandler(std::vector<MultiDeviceExtrinsics>{edge});
+    };
+    SECTION("an RVC2 device accepts the lowest-socket graph and rejects the chain-root graph") {
+        const auto local = dai::beta::describeLocalCalibration(eeprom, dai::Platform::RVC2);
+        REQUIRE_NOTHROW(graphWith(CameraBoardSocket::CAM_B).validateLocalOrigin("this-device", local));
+        REQUIRE_THROWS_WITH(graphWith(CameraBoardSocket::CAM_C).validateLocalOrigin("this-device", local),
+                            Catch::Matchers::ContainsSubstring("graph expects socket CAM_C, local calibration resolves to CAM_B (lowest-id socket)"));
+    }
+    SECTION("an RVC4 device accepts the chain-root graph and rejects the lowest-socket graph") {
+        const auto local = dai::beta::describeLocalCalibration(eeprom, dai::Platform::RVC4);
+        REQUIRE_NOTHROW(graphWith(CameraBoardSocket::CAM_C).validateLocalOrigin("this-device", local));
+        REQUIRE_THROWS_WITH(graphWith(CameraBoardSocket::CAM_B).validateLocalOrigin("this-device", local),
+                            Catch::Matchers::ContainsSubstring("graph expects socket CAM_B, local calibration resolves to CAM_C (extrinsics chain root)"));
+    }
 }

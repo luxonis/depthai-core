@@ -295,8 +295,9 @@ void MultiDeviceCalibrationHandler::validateLocalOrigin(const std::string& devic
 
     const auto discoveredOrigin = local.originOf ? local.originOf(*graphSocket) : CameraBoardSocket::AUTO;
     if(discoveredOrigin != *graphSocket) {
+        const std::string rule = local.originRule != nullptr ? std::string(" (") + local.originRule + ")" : "";
         throw std::runtime_error("Multi-device calibration local origin mismatch for device '" + deviceId + "': graph expects socket " + toString(*graphSocket)
-                                 + ", local calibration resolves to " + toString(discoveredOrigin) + ".");
+                                 + ", local calibration resolves to " + toString(discoveredOrigin) + rule + ".");
     }
 }
 

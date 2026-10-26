@@ -18,9 +18,11 @@ namespace beta {
  * Facts about a device's local calibration that
  * MultiDeviceCalibrationHandler::validateLocalOrigin checks against the graph.
  *
- * Each platform fills this in with its own rule for the local origin: the host
- * and RVC4 use the extrinsics chain root (see LocalCalibrationOrigin.hpp), RVC2
- * frame sources publish extrinsics to the lowest-id socket.
+ * The rule for the local origin depends on the platform whose frame sources
+ * publish the extrinsics: RVC4 and the host use the extrinsics chain root, RVC2
+ * frame sources publish extrinsics to the lowest-id socket. describeLocalCalibration
+ * in LocalCalibrationOrigin.hpp applies the right rule for a platform and is
+ * what the host and both firmwares call.
  */
 struct LocalCalibrationOrigin {
     /** False when the device has no local calibration data at all. */
@@ -29,6 +31,8 @@ struct LocalCalibrationOrigin {
     std::function<bool(CameraBoardSocket)> hasSocket;
     /** Socket that the local calibration uses as the extrinsics origin of the given socket. */
     std::function<CameraBoardSocket(CameraBoardSocket)> originOf;
+    /** Human-readable name of the rule behind originOf, quoted in mismatch errors (optional). */
+    const char* originRule = nullptr;
 };
 
 /**

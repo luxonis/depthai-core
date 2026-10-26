@@ -378,11 +378,12 @@ void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<M
             if(!handler->getDeviceSocket(deviceId).has_value()) {
                 continue;
             }
-            std::optional<CalibrationHandler> calibration;
+            std::optional<EepromData> calibration;
             if(isCalibrationDataAvailable(devices[i])) {
-                calibration = getCalibrationData(devices[i]);
+                calibration = getCalibrationData(devices[i]).getEepromData();
             }
-            handler->validateLocalOrigin(deviceId, beta::describeLocalCalibration(calibration));
+            // The origin rule follows the device platform so this check matches the firmware's own.
+            handler->validateLocalOrigin(deviceId, beta::describeLocalCalibration(calibration, devices[i]->getPlatform()));
         }
     }
 
