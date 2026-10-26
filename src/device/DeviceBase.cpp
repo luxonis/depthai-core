@@ -2,6 +2,7 @@
 
 // std
 #include <chrono>
+#include <exception>
 #include <iostream>
 #include <stdexcept>
 
@@ -1673,17 +1674,38 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
-        std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
-            int64_t offset = 0;
-            do {
-                int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
-                stream.write(&assetStorage[offset], toTransfer);
-                offset += toTransfer;
-            } while(offset < static_cast<int64_t>(assetStorage.size()));
+        // An exception that leaves a std::thread calls std::terminate, so the writer
+        // stores it here and the calling thread rethrows it after join
+        std::exception_ptr writeError;
+        std::thread t1([this, &streamAssetStorage, &assetStorage, &writeError]() {
+            try {
+                XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+                int64_t offset = 0;
+                do {
+                    int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
+                    stream.write(&assetStorage[offset], toTransfer);
+                    offset += toTransfer;
+                } while(offset < static_cast<int64_t>(assetStorage.size()));
+            } catch(const std::exception& e) {
+                logger::debug("Asset storage write failed: {}", e.what());
+                writeError = std::current_exception();
+            } catch(...) {
+                writeError = std::current_exception();
+            }
         });
         try {
             pimpl->rpcCall(std::chrono::milliseconds(0), "readAssetStorageFromXLink", streamAssetStorage, assetStorage.size());
+        } catch(const std::system_error& e) {
+            // The RPC transport failed, so the link to the device dropped during the transfer
+            if(t1.joinable()) {
+                t1.join();
+            }
+            logger::debug("Asset storage transfer RPC failed: {}", e.what());
+            auto msg = fmt::format("Connection to device {} was lost during the asset storage transfer ({:.1f} MiB). Pipeline start aborted.",
+                                   deviceInfo.getMxId(),
+                                   assetStorage.size() / (1024.0 * 1024.0));
+            logger::error("{}", msg);
+            throw std::runtime_error(msg);
         } catch(const std::exception& e) {
             if(t1.joinable()) {
                 t1.join();
@@ -1693,6 +1715,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
             return false;
         }
         t1.join();
+        if(writeError) std::rethrow_exception(writeError);
     }
 
     // print assets on device side for test
