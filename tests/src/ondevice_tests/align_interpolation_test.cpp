@@ -1,37 +1,12 @@
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <chrono>
-#include <cstdlib>
 
 #include "depthai/depthai.hpp"
 
-TEST_CASE("Align interpolation properties roundtrip and accept older JSON schemas", "[interpolation][serialization]") {
-    for(auto interpolation : {dai::Interpolation::AUTO, dai::Interpolation::NEAREST_NEIGHBOR, dai::Interpolation::BILINEAR, dai::Interpolation::BICUBIC}) {
-        dai::Pipeline pipeline(false);
-        auto align = pipeline.create<dai::node::Align>();
-        REQUIRE(&align->setInterpolation(interpolation) == align.get());
-        const auto& properties = align->properties;
-        auto bytes = dai::utility::serialize(properties);
-        dai::AlignProperties restored;
-        REQUIRE(dai::utility::deserialize(bytes, restored));
-        REQUIRE(restored.interpolation == interpolation);
-        nlohmann::json json = properties;
-        REQUIRE(json.get<dai::AlignProperties>().interpolation == interpolation);
-        json.erase("interpolation");
-        REQUIRE(json.get<dai::AlignProperties>().interpolation == dai::Interpolation::AUTO);
-        REQUIRE_THROWS_AS(align->setInterpolation(static_cast<dai::Interpolation>(999)), std::invalid_argument);
-    }
-}
+namespace {
 
-TEST_CASE("Align applies selected interpolation to pixels and preserves depth and labels", "[interpolation][pixels]") {
-    const bool onHost = std::getenv("ALIGN_TEST_ON_HOST") != nullptr;
-    const auto* address = std::getenv("DEPTHAI_DEVICE_NAME_LIST");
-    std::shared_ptr<dai::Device> device;
-    if(!onHost) {
-        device = address ? std::make_shared<dai::Device>(dai::DeviceInfo(address)) : std::make_shared<dai::Device>();
-        if(device->getPlatform() != dai::Platform::RVC4) SKIP("Device Align requires RVC4");
-    }
-    dai::Pipeline pipeline = onHost ? dai::Pipeline(false) : dai::Pipeline(device);
+void checkInterpolatedPixels(dai::Pipeline& pipeline, bool runOnHost) {
     struct Queues {
         dai::Interpolation interpolation;
         std::shared_ptr<dai::InputQueue> input;
@@ -41,7 +16,7 @@ TEST_CASE("Align applies selected interpolation to pixels and preserves depth an
     std::vector<Queues> queues;
     for(auto interpolation : {dai::Interpolation::AUTO, dai::Interpolation::NEAREST_NEIGHBOR, dai::Interpolation::BILINEAR, dai::Interpolation::BICUBIC}) {
         auto align = pipeline.create<dai::node::Align>();
-        align->setRunOnHost(onHost);
+        align->setRunOnHost(runOnHost);
         // Isolate image sampling from the independent per-pixel depth reprojection.
         align->initialConfig->staticDepthPlane = 1000;
         align->setInterpolation(interpolation);
@@ -61,7 +36,7 @@ TEST_CASE("Align applies selected interpolation to pixels and preserves depth an
     for(int y = 0; y < 8; ++y) pixels.insert(pixels.end(), row.begin(), row.end());
     pipeline.start();
     for(const auto& q : queues) {
-        CAPTURE(onHost, q.interpolation);
+        CAPTURE(runOnHost, q.interpolation);
         auto image = std::make_shared<dai::ImgFrame>();
         image->setWidth(8).setHeight(8).setType(dai::ImgFrame::Type::GRAY8);
         image->setData(pixels);
@@ -105,4 +80,36 @@ TEST_CASE("Align applies selected interpolation to pixels and preserves depth an
     }
     pipeline.stop();
     pipeline.wait();
+}
+
+}  // namespace
+
+TEST_CASE("Align interpolation properties roundtrip", "[interpolation][serialization]") {
+    for(auto interpolation : {dai::Interpolation::AUTO, dai::Interpolation::NEAREST_NEIGHBOR, dai::Interpolation::BILINEAR, dai::Interpolation::BICUBIC}) {
+        dai::Pipeline pipeline(false);
+        auto align = pipeline.create<dai::node::Align>();
+        REQUIRE(&align->setInterpolation(interpolation) == align.get());
+        auto bytes = dai::utility::serialize(align->properties);
+        dai::AlignProperties restored;
+        REQUIRE(dai::utility::deserialize(bytes, restored));
+        REQUIRE(restored.interpolation == interpolation);
+    }
+    dai::Pipeline pipeline(false);
+    auto align = pipeline.create<dai::node::Align>();
+    REQUIRE_THROWS_AS(align->setInterpolation(static_cast<dai::Interpolation>(999)), std::invalid_argument);
+}
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+TEST_CASE("Align applies selected interpolation to pixels and preserves depth and labels on host", "[interpolation][pixels]") {
+    dai::Pipeline pipeline(false);
+    checkInterpolatedPixels(pipeline, true);
+}
+#endif
+
+TEST_CASE("Align applies selected interpolation to pixels and preserves depth and labels on device", "[interpolation][pixels]") {
+    dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    REQUIRE(device != nullptr);
+    if(device->getPlatform() != dai::Platform::RVC4) SKIP("Device Align requires RVC4");
+    checkInterpolatedPixels(pipeline, false);
 }

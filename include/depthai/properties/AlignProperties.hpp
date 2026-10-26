@@ -21,15 +21,6 @@ struct AlignProperties : PropertiesSerializable<Properties, AlignProperties> {
     ~AlignProperties() override;
 };
 
-// Accept pipeline schemas from SDKs predating interpolation selection.
-inline void to_json(nlohmann::json& j, const AlignProperties& properties) {
-    j = nlohmann::json{{"initialConfig", properties.initialConfig}, {"numFramesPool", properties.numFramesPool}, {"interpolation", properties.interpolation}};
-}
-inline void from_json(const nlohmann::json& j, AlignProperties& properties) {
-    j.at("initialConfig").get_to(properties.initialConfig);
-    j.at("numFramesPool").get_to(properties.numFramesPool);
-    properties.interpolation = j.value("interpolation", Interpolation::AUTO);
-}
-NOP_EXTERNAL_STRUCTURE(AlignProperties, initialConfig, numFramesPool, interpolation);
+DEPTHAI_SERIALIZE_EXT(AlignProperties, initialConfig, numFramesPool, interpolation);
 
 }  // namespace dai
