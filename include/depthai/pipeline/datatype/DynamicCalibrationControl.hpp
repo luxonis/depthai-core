@@ -65,6 +65,7 @@ class DynamicCalibrationControl : public Buffer {
          * * Evaluates the provided calibration data and computes relevant quality metrics.
          */
         struct ComputeCalibrationMetrics {
+            ComputeCalibrationMetrics() = default;
             explicit ComputeCalibrationMetrics(dai::CalibrationHandler& calibration) : calibration(calibration) {}
             dai::CalibrationHandler calibration;
             DEPTHAI_SERIALIZE(ComputeCalibrationMetrics, calibration);
@@ -99,14 +100,18 @@ class DynamicCalibrationControl : public Buffer {
         /**
          * @brief Command to stop a running dynamic calibration process.
          */
-        struct StopCalibration {};
+        struct StopCalibration {
+            DEPTHAI_SERIALIZE_EMPTY(StopCalibration);
+        };
 
         /**
          * @brief Command to load a single image for calibration.
          *
          * Useful for manual step-by-step calibration sequences.
          */
-        struct LoadImage {};
+        struct LoadImage {
+            DEPTHAI_SERIALIZE_EMPTY(LoadImage);
+        };
 
         /**
          * @brief Command to apply a new calibration to the device.
@@ -116,14 +121,16 @@ class DynamicCalibrationControl : public Buffer {
             explicit ApplyCalibration(const CalibrationHandler& calibration, bool flash = false) : calibration(calibration), flash(flash) {}
 
             CalibrationHandler calibration;  ///< Calibration data to apply.
-            bool flash;
+            bool flash = false;
             DEPTHAI_SERIALIZE(ApplyCalibration, calibration, flash);
         };
 
         /**
          * @brief Command to reset accumulated calibration and quality data.
          */
-        struct ResetData {};
+        struct ResetData {
+            DEPTHAI_SERIALIZE_EMPTY(ResetData);
+        };
 
         /**
          * @brief Command to select the calibration performance mode.
@@ -266,6 +273,8 @@ class DynamicCalibrationControl : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::DynamicCalibrationControl;
     }
+
+    DEPTHAI_SERIALIZE(DynamicCalibrationControl, command);
 };
 
 inline std::string toString(DynamicCalibrationControl::PerformanceMode mode) {
