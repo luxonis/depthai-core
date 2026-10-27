@@ -43,6 +43,7 @@
 #include "depthai/depthai.hpp"
 #include "utility/Environment.hpp"
 
+// Linux sets MSG_NOSIGNAL on each send(); macOS has no MSG_NOSIGNAL and sets SO_NOSIGPIPE on the socket (noSigPipe)
 #ifndef MSG_NOSIGNAL
     #define MSG_NOSIGNAL 0
 #endif
@@ -105,6 +106,16 @@ sockaddr_in makeAddress(const std::string& ip, uint16_t port) {
     return addr;
 }
 
+// A send() to a socket that the peer reset must not raise SIGPIPE and end the test process
+void noSigPipe(int fd) {
+#ifdef SO_NOSIGPIPE
+    int one = 1;
+    setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+#else
+    (void)fd;
+#endif
+}
+
 int bindLocal(int type, uint16_t port) {
     int fd = socket(AF_INET, type, 0);
     if(fd < 0) {
@@ -150,6 +161,7 @@ std::string gateRequest(const std::string& ip, const std::string& method, const 
     if(fd < 0) {
         throw std::runtime_error("socket() failed");
     }
+    noSigPipe(fd);
     timeval timeout{5, 0};
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
@@ -168,6 +180,11 @@ std::string gateRequest(const std::string& ip, const std::string& method, const 
         }
     }
     close(fd);
+    // Status line: "HTTP/1.1 200 OK"
+    auto statusStart = response.find(' ');
+    if(statusStart == std::string::npos || response.compare(statusStart + 1, 1, "2") != 0) {
+        throw std::runtime_error("Gate request " + method + " " + path + " failed: " + response.substr(0, response.find("\r\n")));
+    }
     auto bodyStart = response.find("\r\n\r\n");
     return bodyStart == std::string::npos ? std::string() : response.substr(bodyStart + 4);
 }
@@ -281,6 +298,7 @@ class LinkFaultProxy {
             if(poll(&pfd, 1, 100) <= 0) continue;
             int client = accept(listenFd, nullptr, nullptr);
             if(client < 0) continue;
+            noSigPipe(client);
             if(vanished()) {
                 resetSocket(client);
                 continue;
@@ -297,6 +315,7 @@ class LinkFaultProxy {
         while(!stop && std::chrono::steady_clock::now() < deadline) {
             int fd = socket(AF_INET, SOCK_STREAM, 0);
             if(fd >= 0 && connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0) {
+                noSigPipe(fd);
                 return fd;
             }
             if(fd >= 0) close(fd);
@@ -508,6 +527,7 @@ struct Outcome {
     std::chrono::milliseconds duration{0};
     bool assetStreamSeen = false;
     bool faultApplied = false;
+    std::string faultActionError;
 };
 
 Outcome runScenario(const FaultPlan& plan, std::size_t assetSize, const FaultAction& onFault = {}) {
@@ -566,7 +586,14 @@ Outcome runScenario(const FaultPlan& plan, std::size_t assetSize, const FaultAct
         });
 
         if(onFault && proxy->waitForFault(FAULT_TIMEOUT)) {
-            onFault(context);
+            // An exception here would leave the starter thread joinable (std::terminate); record it and fail after the join
+            try {
+                onFault(context);
+            } catch(const std::exception& e) {
+                outcome.faultActionError = e.what();
+            } catch(...) {
+                outcome.faultActionError = "unknown exception";
+            }
         }
         if(doneFuture.wait_for(START_TIMEOUT) != std::future_status::ready) {
             proxy->release();
@@ -585,6 +612,8 @@ Outcome runScenario(const FaultPlan& plan, std::size_t assetSize, const FaultAct
     proxy.reset();
 
     UNSCOPED_INFO("start() took " << outcome.duration.count() << " ms; threw: " << outcome.threw << "; message: " << outcome.message);
+    INFO("Fault action failed: " << outcome.faultActionError);
+    REQUIRE(outcome.faultActionError.empty());
     return outcome;
 }
 
@@ -664,9 +693,10 @@ TEST_CASE_METHOD(NoCrashdumpFixture, "Asset storage: firmware is killed during t
             }
         }
         // Stop only the session of this test, and only if it is the only new one
-        if(mine.size() == 1) {
-            gateRequest(context.boardIp, "POST", "/api/v1/sessions/" + mine.front() + "/stop");
+        if(mine.size() != 1) {
+            throw std::runtime_error("Cannot find the session of this test: " + std::to_string(mine.size()) + " new RUNNING sessions");
         }
+        gateRequest(context.boardIp, "POST", "/api/v1/sessions/" + mine.front() + "/stop");
     });
     requireLinkLostError(outcome);
 }

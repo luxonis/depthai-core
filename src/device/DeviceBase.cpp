@@ -1284,12 +1284,14 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
         }
 
+        bool writeTimedOut = false;
         try {
             // Send request to device
             auto writeTimeout = getRPCWriteTimeout();
             if(writeTimeout > 0) {
                 auto success = rpcStream->write(std::move(request), std::chrono::milliseconds(writeTimeout));
                 if(!success) {
+                    writeTimedOut = true;
                     throw std::runtime_error("RPC write timed out in " + std::to_string(writeTimeout) + "ms");
                 }
             } else {
@@ -1306,6 +1308,10 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         } catch(const std::exception& e) {
             // If any exception is thrown, log it and rethrow
             pimpl->logger.debug("RPC error: {}", e.what());
+            // A write timeout does not mean that the link dropped
+            if(writeTimedOut) {
+                throw std::system_error(std::make_error_code(std::errc::timed_out), e.what());
+            }
             throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
         }
     });
@@ -2682,14 +2688,20 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         try {
             pimpl->rpcCallCheckedVoid(std::chrono::milliseconds(0), "readAssetStorageFromXLink", streamAssetStorage, assetStorage.size());
         } catch(const std::system_error& e) {
-            // The RPC transport failed, so the link to the device dropped during the transfer
             if(t1.joinable()) {
                 t1.join();
             }
             logger::debug("Asset storage transfer RPC failed: {}", e.what());
-            auto msg = fmt::format("Connection to device {} was lost during the asset storage transfer ({:.1f} MiB). Pipeline start aborted.",
-                                   deviceInfo.getDeviceId(),
-                                   assetStorage.size() / (1024.0 * 1024.0));
+            // The RPC transport reports a dropped link as io_error; a timeout or a closed device is not a lost connection
+            auto deviceId = getDeviceInfo().getDeviceId();
+            auto sizeMiB = assetStorage.size() / (1024.0 * 1024.0);
+            std::string msg;
+            if(e.code() == std::errc::io_error) {
+                msg =
+                    fmt::format("Connection to device {} was lost during the asset storage transfer ({:.1f} MiB). Pipeline start aborted.", deviceId, sizeMiB);
+            } else {
+                msg = fmt::format("Asset storage transfer to device {} failed ({:.1f} MiB): {}. Pipeline start aborted.", deviceId, sizeMiB, e.what());
+            }
             logger::error("{}", msg);
             throw std::runtime_error(msg);
         } catch(const std::exception& e) {
