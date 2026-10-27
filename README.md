@@ -109,10 +109,11 @@ leave them unset (`any`) when mixing local and remote devices.
 - CMake >= 3.20
 - C/C++17 compiler
 - [Linux] libudev >= 1.0.0
+- [x86/x64 Linux] NASM for OpenH264 assembly (enabled by default with OpenCV support)
 - [optional] OpenCV 4 (required if building examples and for record and replay)
 - [optional] PCL (required for point cloud example)
 
-To install libudev on Debian based systems (Ubuntu, etc.): `sudo apt install libudev-dev`
+To install libudev and NASM on x86/x64 Debian based systems (Ubuntu, etc.): `sudo apt install libudev-dev nasm`
 
 To install OpenCV:
 MacOS: `brew install opencv`

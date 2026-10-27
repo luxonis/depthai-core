@@ -22,6 +22,7 @@ option(DEPTHAI_FETCH_ARTIFACTS "Enable fetching artifacts from remote repository
 
 # ---------- Optional Features (public) -------------
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_ENABLE_OPENH264 "Enable H.264 decoding in VideoDecoder (requires OpenCV)" ON)
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 

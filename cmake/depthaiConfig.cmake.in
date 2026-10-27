@@ -22,6 +22,10 @@ if(DEPTHAI_XTENSOR_SUPPORT)
     find_dependency(xtensor CONFIG REQUIRED)
 endif()
 
+if("@DEPTHAI_HAVE_OPENH264_SUPPORT@" AND NOT "@BUILD_SHARED_LIBS@")
+    find_dependency(OpenH264 CONFIG)
+endif()
+
 # Add the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_EXPORT_GROUP@.cmake")
 

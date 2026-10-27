@@ -201,7 +201,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d" "opencv_stitching")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgcodecs" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d" "opencv_stitching")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -212,6 +212,10 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+        if(DEPTHAI_ENABLE_OPENH264)
+            find_package(OpenH264 CONFIG REQUIRED)
+            set(DEPTHAI_HAVE_OPENH264_SUPPORT ON)
+        endif()
         if("opencv_stitching" IN_LIST OpenCV_LIBS)
             set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
         endif()
@@ -560,6 +564,7 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/HostCamera.cpp
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/host/VideoDecoder.cpp
     src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
@@ -711,6 +716,10 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    if(DEPTHAI_HAVE_OPENH264_SUPPORT)
+        target_link_libraries(${TARGET_CORE_NAME} PRIVATE OpenH264::OpenH264)
+        target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_OPENH264_SUPPORT)
+    endif()
 
 endif()
 if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -1077,14 +1086,8 @@ endif()
 macro(add_runtime_dependencies depending_target dependency)
     set(dlls "")
     if(TARGET ${dependency})
-        get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-        message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
-        foreach(cfg ${imported_configs})
-            message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
-            get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
-            list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
-        endforeach()
+        # Let CMake resolve imported configuration mappings and fallbacks.
+        set(dlls "$<TARGET_FILE:${dependency}>")
         message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
     endif()
     # Create a list of required dll files
@@ -1218,6 +1221,13 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})
 
+    # Resolve bundled shared dependencies beside the installed library.
+    if(APPLE)
+        set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
+    elseif(UNIX)
+        set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
+    endif()
+
     # Add default flags
     add_default_flags(${TARGET_OPENCV_NAME})
 
@@ -1227,6 +1237,10 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    if(DEPTHAI_HAVE_OPENH264_SUPPORT)
+        target_link_libraries(${TARGET_OPENCV_NAME} PRIVATE OpenH264::OpenH264)
+        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENH264_SUPPORT)
+    endif()
     if(DEPTHAI_HAVE_OPENCV_STITCHING)
         target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_STITCHING)
     endif()
@@ -1242,6 +1256,17 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
 endif()
 
+
+if(DEPTHAI_HAVE_OPENH264_SUPPORT)
+    get_target_property(openh264_library_type OpenH264::OpenH264 TYPE)
+    if(openh264_library_type STREQUAL "SHARED_LIBRARY")
+        if(DEPTHAI_MERGED_TARGET)
+            add_runtime_dependencies(${TARGET_CORE_NAME} OpenH264::OpenH264)
+        else()
+            add_runtime_dependencies(${TARGET_OPENCV_NAME} OpenH264::OpenH264)
+        endif()
+    endif()
+endif()
 
 ########################
 # PCL Support 2
@@ -1584,7 +1609,16 @@ if(DEPTHAI_INSTALL)
             set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_BINDIR}")
         endif()
         message(STATUS "Required dlls for core are: ${required_dll_files} and they will be installed to ${DLL_INSTALLATION_DIR}")
-        install(FILES ${required_dll_files} DESTINATION "${DLL_INSTALLATION_DIR}")
+        if(IS_ABSOLUTE "${DLL_INSTALLATION_DIR}")
+            set(runtime_install_destination "${DLL_INSTALLATION_DIR}")
+        else()
+            set(runtime_install_destination "\${CMAKE_INSTALL_PREFIX}/${DLL_INSTALLATION_DIR}")
+        endif()
+        foreach(runtime_file IN LISTS required_dll_files)
+            # Include the SONAME links and versioned library selected by the imported target.
+            install(CODE "file(INSTALL DESTINATION \"${runtime_install_destination}\"
+                TYPE FILE FOLLOW_SYMLINK_CHAIN FILES \"${runtime_file}\")")
+        endforeach()
     endif()
 
     # Install export group (information about targets)

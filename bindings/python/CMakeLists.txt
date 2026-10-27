@@ -108,6 +108,7 @@ set(SOURCE_LIST
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
+    src/pipeline/node/VideoDecoderBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
     src/pipeline/node/StitchingBindings.cpp
     src/pipeline/node/AlignBindings.cpp

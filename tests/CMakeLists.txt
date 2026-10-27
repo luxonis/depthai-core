@@ -1086,3 +1086,14 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
+
+# Host JPEG decoding and VideoEncoder integration require OpenCV.
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(video_decoder_test src/onhost_tests/video_decoder_test.cpp)
+    dai_set_test_labels(video_decoder_test onhost ci)
+    if(DEPTHAI_HAVE_OPENH264_SUPPORT)
+        target_link_libraries(video_decoder_test PRIVATE OpenH264::OpenH264)
+    endif()
+    dai_add_test(video_decoder_device_test src/ondevice_tests/video_decoder_test.cpp)
+    dai_set_test_labels(video_decoder_device_test ondevice rvc2_all rvc4 ci)
+endif()
