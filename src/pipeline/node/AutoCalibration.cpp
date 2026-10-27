@@ -314,8 +314,9 @@ bool AutoCalibration::runOnHost() const {
 }
 
 void AutoCalibration::postBuildStage() {
-    if(!runOnHost()) {
-        // The gated frames stay on the device, there is no link to throttle.
+    // The firmware constructs the node without its subnodes, and when the node runs on the device the gated frames
+    // never cross the link, so there is nothing to throttle in either case.
+    if(gate.operator->() == nullptr || !runOnHost()) {
         return;
     }
     auto xlinkBridge = gate->output.getXLinkBridge();
