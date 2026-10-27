@@ -133,6 +133,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     std::shared_ptr<dai::CalibrationHandler> getNewCalibration(unsigned int maxNumIteration, Report& report);
 
     void loadData(unsigned int numImages);
+    void discardQueuedFrames();
     /// Creates the logger and telemetry state and resolves config defaults. Runs from buildInternal() on the host and
     /// from run() on the device, where the firmware constructs the node without calling buildInternal().
     void ensureInitialized();
