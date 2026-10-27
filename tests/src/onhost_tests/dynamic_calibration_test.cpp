@@ -356,3 +356,59 @@ TEST_CASE("DynamicCalibration - Commands", "[DynamicCalibrationControl]") {
         auto& c = std::get<DCC::Commands::ComputeCalibrationMetrics>(cmd->command);
     }
 }
+
+namespace {
+
+template <dai::SerializationType Type>
+dai::DynamicCalibrationControl roundTrip(const dai::DynamicCalibrationControl& control) {
+    const auto bytes = dai::utility::serialize<Type>(control);
+    REQUIRE(!bytes.empty());
+    dai::DynamicCalibrationControl parsed;
+    REQUIRE(dai::utility::deserialize<Type>(bytes, parsed));
+    return parsed;
+}
+
+template <dai::SerializationType Type>
+void requireControlRoundTrips() {
+    using DCC = dai::DynamicCalibrationControl;
+    using Commands = DCC::Commands;
+
+    // Device-run nodes receive the message over the link, so every command has to survive serialization.
+    const auto start = roundTrip<Type>(*DCC::startCalibration(0.25f, 7.5f, false));
+    REQUIRE(std::holds_alternative<Commands::StartCalibration>(start.command));
+    REQUIRE(std::get<Commands::StartCalibration>(start.command).loadImagePeriod == Catch::Approx(0.25f));
+    REQUIRE(std::get<Commands::StartCalibration>(start.command).calibrationPeriod == Catch::Approx(7.5f));
+    REQUIRE_FALSE(std::get<Commands::StartCalibration>(start.command).keepCameraCenters);
+
+    const auto calibrate = roundTrip<Type>(*DCC::calibrate(true, false));
+    REQUIRE(std::holds_alternative<Commands::Calibrate>(calibrate.command));
+    REQUIRE(std::get<Commands::Calibrate>(calibrate.command).force);
+    REQUIRE_FALSE(std::get<Commands::Calibrate>(calibrate.command).keepCameraCenters);
+
+    const auto mode = roundTrip<Type>(*DCC::setPerformanceMode(DCC::PerformanceMode::OPTIMIZE_SPEED));
+    REQUIRE(std::holds_alternative<Commands::SetPerformanceMode>(mode.command));
+    REQUIRE(std::get<Commands::SetPerformanceMode>(mode.command).performanceMode == DCC::PerformanceMode::OPTIMIZE_SPEED);
+
+    REQUIRE(std::holds_alternative<Commands::StopCalibration>(roundTrip<Type>(*DCC::stopCalibration()).command));
+    REQUIRE(std::holds_alternative<Commands::LoadImage>(roundTrip<Type>(*DCC::loadImage()).command));
+    REQUIRE(std::holds_alternative<Commands::ResetData>(roundTrip<Type>(*DCC::resetData()).command));
+    REQUIRE(std::holds_alternative<std::monostate>(roundTrip<Type>(DCC{}).command));
+
+    dai::CalibrationHandler calibration;
+    calibration.setCameraIntrinsics(Socket::CAM_B, std::vector<std::vector<float>>{{800.f, 0.f, 640.f}, {0.f, 800.f, 400.f}, {0.f, 0.f, 1.f}}, 1280, 800);
+    const auto apply = roundTrip<Type>(*DCC::applyCalibration(calibration, true));
+    REQUIRE(std::holds_alternative<Commands::ApplyCalibration>(apply.command));
+    REQUIRE(std::get<Commands::ApplyCalibration>(apply.command).flash);
+    REQUIRE(std::get<Commands::ApplyCalibration>(apply.command).calibration.getCameraIntrinsics(Socket::CAM_B, 1280, 800)[0][0] == Catch::Approx(800.f));
+
+    const auto metrics = roundTrip<Type>(*DCC::computeCalibrationMetrics(calibration));
+    REQUIRE(std::holds_alternative<Commands::ComputeCalibrationMetrics>(metrics.command));
+}
+
+}  // namespace
+
+TEST_CASE("DynamicCalibrationControl commands survive serialization", "[DynamicCalibrationControl]") {
+    requireControlRoundTrips<dai::SerializationType::LIBNOP>();
+    requireControlRoundTrips<dai::SerializationType::JSON>();
+    requireControlRoundTrips<dai::SerializationType::JSON_MSGPACK>();
+}
