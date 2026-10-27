@@ -1062,6 +1062,11 @@ dai_add_test(runtime_calibration_test src/ondevice_tests/runtime_calibration_tes
 dai_set_test_labels(runtime_calibration_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # NeuralDepth test
+add_executable(neural_depth_mask_graph_test src/onhost_tests/neural_depth_mask_graph_test.cpp)
+target_link_libraries(neural_depth_mask_graph_test PRIVATE depthai::core)
+add_test(NAME neural_depth_mask_graph_test COMMAND neural_depth_mask_graph_test)
+dai_set_test_labels(neural_depth_mask_graph_test onhost ci)
+
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_depth_node_test src/ondevice_tests/neural_depth_node_test.cpp)
     dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci noreplayci)

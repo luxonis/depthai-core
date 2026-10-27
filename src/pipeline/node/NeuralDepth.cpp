@@ -59,6 +59,15 @@ NeuralDepth& NeuralDepth::setRectification(bool enable) {
     return *this;
 }
 
+void NeuralDepth::buildStage1() {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // Defer the default connection until callers have had a chance to supply their own mask.
+    if(rectification->properties.enableRectification && !inputValidMask.isConnected()) {
+        rectification->validMask1.link(inputValidMask);
+    }
+#endif
+}
+
 void NeuralDepth::buildInternal() {
     if(device) {
         auto platform = device->getPlatform();

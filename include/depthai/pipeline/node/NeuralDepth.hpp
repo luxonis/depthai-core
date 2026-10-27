@@ -71,6 +71,16 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::NeuralDepthConfig, false}}}}};
 
     /**
+     * Optional RAW8/GRAY8 usable-area mask in the final depth image coordinates and size.
+     * Zero mask pixels force final depth to zero after post-processing; nonzero pixels retain depth.
+     * When connected, waits for the initial mask and retains it until another mask arrives.
+     * Send a mask after every pipeline start. Unconnected inputs leave depth unchanged.
+     * When rectification is enabled, its internal mask is connected automatically at pipeline build
+     * unless an external mask output or host input queue is already connected here.
+     */
+    Input inputValidMask{*this, {"inputValidMask", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Mask, false}}}}};
+
+    /**
      * Input NNData to parse
      */
     Input nnDataInput{*this, {"nnDataInput", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::NNData, false}}}}};
@@ -106,6 +116,7 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
     Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     void buildInternal() override;
+    void buildStage1() override;
 };
 
 }  // namespace node

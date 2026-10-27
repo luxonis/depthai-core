@@ -40,6 +40,8 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
         .def_readonly("passthrough2", &Rectification::passthrough2, DOC(dai, node, Rectification, passthrough2))
         .def_readonly("output1", &Rectification::output1, DOC(dai, node, Rectification, output1))
         .def_readonly("output2", &Rectification::output2, DOC(dai, node, Rectification, output2))
+        .def_readonly("validMask1", &Rectification::validMask1, DOC(dai, node, Rectification, validMask1))
+        .def_readonly("validMask2", &Rectification::validMask2, DOC(dai, node, Rectification, validMask2))
         .def_readonly("input1", &Rectification::input1, DOC(dai, node, Rectification, input1))
         .def_readonly("input2", &Rectification::input2, DOC(dai, node, Rectification, input2))
         .def("setRunOnHost", &Rectification::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Rectification, setRunOnHost))

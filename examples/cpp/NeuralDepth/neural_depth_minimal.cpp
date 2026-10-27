@@ -38,6 +38,8 @@ int main() {
     auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
     neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_LARGE);
 
+    // Its rectification mask automatically excludes padded areas from the final depth.
+
     // Create an output queue to get the depth frames from the node
     auto depthQueue = neuralDepth->depth.createOutputQueue();
 

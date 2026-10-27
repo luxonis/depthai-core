@@ -14,6 +14,8 @@ with dai.Pipeline() as pipeline:
 
     neuralDepth = pipeline.create(dai.node.NeuralDepth).build(leftOutput, rightOutput, dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
 
+    # Its rectification mask automatically excludes padded areas from the final depth.
+
     depthQueue = neuralDepth.depth.createOutputQueue()
 
     # Connect to device and start pipeline

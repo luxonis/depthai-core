@@ -79,6 +79,22 @@ std::string matToString(const cv::Mat& mat) {
     return oss.str();
 }
 
+cv::Mat createValidMask(cv::Size inputSize, const cv::Mat& mapX, const cv::Mat& mapY) {
+    // Floating-point support detects even partially padded interpolation at the borders.
+    cv::Mat support(inputSize, CV_32FC1, cv::Scalar(1));
+    cv::Mat remappedSupport, mask;
+    cv::remap(support, remappedSupport, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+    cv::compare(remappedSupport, 1, mask, cv::CMP_EQ);
+    return mask;
+}
+
+std::shared_ptr<ImgFrame> createMaskFrame(const cv::Mat& mask, const ImgFrame& rectifiedFrame) {
+    auto frame = std::make_shared<ImgFrame>();
+    frame->setMetadata(rectifiedFrame);
+    frame->setData(std::vector<uint8_t>(mask.data, mask.data + mask.total()));
+    return frame;
+}
+
 }  // namespace
 
 std::vector<std::vector<float> > applyRectificationMatrix(const dai::Extrinsics& extrinsics, const cv::Mat& rectificationMatrix) {
@@ -120,6 +136,10 @@ void Rectification::run() {
     bool initialized = false;
     cv::Mat cv_rectificationMap1X, cv_rectificationMap1Y;
     cv::Mat cv_rectificationMap2X, cv_rectificationMap2Y;
+    cv::Mat validMask1Data, validMask2Data;
+    const bool sendValidMask1 = !validMask1.getConnections().empty() || !validMask1.getQueueConnections().empty();
+    const bool sendValidMask2 = !validMask2.getConnections().empty() || !validMask2.getQueueConnections().empty();
+    cv::Size previousInput1Size, previousInput2Size;
 
     cv::Mat cv_targetCameraMatrix1, cv_targetCameraMatrix2;
     std::array<std::array<float, 3>, 3> targetM1, targetM2;
@@ -154,12 +174,16 @@ void Rectification::run() {
             output2FrameHeight = input2Frame->getHeight();
         }
 
-        if(!previousInput1Transformation.isEqualTransformation(input1Frame->transformation)
+        const cv::Size input1Size(input1Frame->getWidth(), input1Frame->getHeight());
+        const cv::Size input2Size(input2Frame->getWidth(), input2Frame->getHeight());
+        if(input1Size != previousInput1Size || input2Size != previousInput2Size
+           || !previousInput1Transformation.isEqualTransformation(input1Frame->transformation)
            || !previousInput2Transformation.isEqualTransformation(input2Frame->transformation)) {
             initialized = false;
         }
 
-        if(!initialized) {
+        const bool rectificationChanged = !initialized;
+        if(rectificationChanged) {
             dai::ImgTransformation input1ImgTransformation = input1Frame->transformation;
             dai::ImgTransformation input2ImgTransformation = input2Frame->transformation;
 
@@ -237,6 +261,9 @@ void Rectification::run() {
             output1ImgTransformation = createRectifiedImgTransformation(output1Extrinsics, cv_targetCameraMatrix1, output1FrameWidth, output1FrameHeight);
             output2ImgTransformation = createRectifiedImgTransformation(output2Extrinsics, cv_targetCameraMatrix2, output2FrameWidth, output2FrameHeight);
 
+            if(sendValidMask1) validMask1Data = createValidMask(input1Size, cv_rectificationMap1X, cv_rectificationMap1Y);
+            if(sendValidMask2) validMask2Data = createValidMask(input2Size, cv_rectificationMap2X, cv_rectificationMap2Y);
+
             logger->debug("R = {}", matToString(cv_R));
             logger->debug("T = {}", matToString(cv_T));
             logger->debug("M1 = {}", matToString(cv_M1));
@@ -249,6 +276,8 @@ void Rectification::run() {
             initialized = true;
             previousInput1Transformation = input1Frame->transformation;
             previousInput2Transformation = input2Frame->transformation;
+            previousInput1Size = input1Size;
+            previousInput2Size = input2Size;
         }
 
         std::shared_ptr<dai::ImgFrame> rectifiedFrame1 = std::make_shared<dai::ImgFrame>();
@@ -300,6 +329,8 @@ void Rectification::run() {
             auto blockEvent = this->outputBlockEvent();
             output1.send(rectifiedFrame1);
             output2.send(rectifiedFrame2);
+            if(rectificationChanged && sendValidMask1) validMask1.send(createMaskFrame(validMask1Data, *rectifiedFrame1));
+            if(rectificationChanged && sendValidMask2) validMask2.send(createMaskFrame(validMask2Data, *rectifiedFrame2));
 
             // Passthrough the message
             passthrough1.send(input1Frame);
