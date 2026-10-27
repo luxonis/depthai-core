@@ -11,6 +11,7 @@
 #include <optional>
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -269,17 +270,72 @@ const DynamicCalibration::ConnectedSensor* DynamicCalibration::findConnectedSens
 
 void DynamicCalibration::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
-}
-/**
- * Check if the node is set to run on host
- */
-bool DynamicCalibration::runOnHost() const {
-    return runOnHostVar;
+    // The Sync subnode has to live where the node lives, otherwise every frame would still cross the link.
+    if(sync.operator->() != nullptr) {
+        sync->setRunOnHost(runOnHost);
+    }
 }
 
-void DynamicCalibration::buildInternal() {
-    pimplDCL = spimpl::make_impl<Impl>();
+bool DynamicCalibration::runOnHost() const {
+    if(runOnHostVar) {
+        return *runOnHostVar;
+    }
+    // RVC4 firmware ships the dynamic calibration library, RVC2 does not.
+    return !(device != nullptr && device->getPlatform() == Platform::RVC4);
+}
+
+void DynamicCalibration::buildStage1() {
+    if(sync.operator->() != nullptr) {
+        sync->setRunOnHost(runOnHost());
+    }
+}
+
+std::shared_ptr<Device> DynamicCalibration::requireDevice() const {
+    if(!device) {
+        throw std::runtime_error("DynamicCalibration node does not have access to any device");
+    }
+    return device;
+}
+
+CalibrationHandler DynamicCalibration::readCurrentCalibration() {
+    return requireDevice()->getCalibration();
+}
+
+CalibrationHandler DynamicCalibration::readFactoryCalibration() {
+    return requireDevice()->readFactoryCalibration();
+}
+
+std::vector<StereoPair> DynamicCalibration::getStereoPairs() {
+    return requireDevice()->getStereoPairs();
+}
+
+Platform DynamicCalibration::getPlatform() const {
+    return requireDevice()->getPlatform();
+}
+
+std::pair<std::string, std::string> DynamicCalibration::getProductAndBoardName() {
+    auto daiDevice = requireDevice();
+    return {daiDevice->getProductName(), daiDevice->readCalibrationOrDefault().getEepromData().boardName};
+}
+
+void DynamicCalibration::applyCalibration(const CalibrationHandler& handler, bool flash) {
+    auto daiDevice = requireDevice();
+    daiDevice->setCalibration(handler);
+    if(flash) {
+        daiDevice->flashCalibration(handler);
+    }
+}
+
+std::string DynamicCalibration::getTelemetryDeviceId() {
+    return device ? device->getTemporaryTelemetryDeviceId() : std::string{};
+}
+
+void DynamicCalibration::ensureInitialized() {
     logger = pimpl->logger;
+    if(pimplDCL) {
+        return;
+    }
+    pimplDCL = spimpl::make_impl<Impl>();
     auto telemetryState = pimplDCL->telemetryAggregateState;
     pimplDCL->telemetryAggregateMetricsHandle = utility::Telemetry::getInstance().addAggregateMetrics([telemetryState](nlohmann::json& properties) {
         std::lock_guard<std::mutex> stateLock(telemetryState->mutex);
@@ -299,11 +355,16 @@ void DynamicCalibration::buildInternal() {
 
         addDynamicCalibrationTelemetryProperties(deviceProperties, *telemetryState);
     });
+}
+
+void DynamicCalibration::buildInternal() {
+    ensureInitialized();
     sync->out.link(syncInput);
-    sync->setRunOnHost(true);
+    sync->setRunOnHost(runOnHost());
 }
 
 void DynamicCalibration::postBuildStage() {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     auto eraseIfUnused = [&](const std::string& name) {
         auto it = inputs.find({inputs.name, name});
         if(it != inputs.end() && !it->second.isConnected() && inputs.size() > 1) {
@@ -315,6 +376,7 @@ void DynamicCalibration::postBuildStage() {
     eraseIfUnused(leftInputName);
     eraseIfUnused(rightInputName);
     eraseIfUnused(rgbInputName);
+#endif
 }
 
 std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToDcl(const CalibrationHandler& currentCalibration,
@@ -456,11 +518,8 @@ float sampsonErrorToPixels(float sampsonErrorNormalized, float sampsonErrorScale
 }
 
 void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash) {
-    logger->trace("Applying calibration to device");
-    device->setCalibration(handler);
-    if(flash) {
-        device->flashCalibration(handler);
-    }
+    logger->trace("Applying calibration to device (flash={})", flash);
+    applyCalibration(handler, flash);
     calibrationHandler = handler;
 
     for(const auto& sensor : connectedSensors) {
@@ -555,8 +614,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         std::string productName;
         std::string boardName;
         try {
-            productName = device->getProductName();
-            boardName = device->readCalibrationOrDefault().getEepromData().boardName;
+            std::tie(productName, boardName) = getProductAndBoardName();
         } catch(const std::exception& ex) {
             logger->warn("DynamicCalibration could not read the device name, assuming a non-modular board: {}", ex.what());
         }
@@ -594,14 +652,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     if(hasUnobservedCameras) {
         if(!pimplDCL->factoryCalibration) {
             try {
-                pimplDCL->factoryCalibration = device->readFactoryCalibration();
+                pimplDCL->factoryCalibration = readFactoryCalibration();
             } catch(const std::exception& ex) {
                 return reportCalibrationFailure(std::string("Failed to read factory calibration from EEPROM: ") + ex.what());
             }
         }
         // getStereoPairs() never throws; it returns an empty list when no calibration is available,
         // which assembleDynamicCalibration() reports explicitly.
-        stereoPairs = device->getStereoPairs();
+        stereoPairs = getStereoPairs();
     }
 
     CalibrationHandler newCalibrationHandler;
@@ -612,7 +670,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                                                                    calibratedPoses,
                                                                    std::holds_alternative<HousingCoordinateSystem>(daiSocketBase),
                                                                    stereoPairs,
-                                                                   device->getPlatform());
+                                                                   getPlatform());
     } catch(const std::exception& ex) {
         return reportCalibrationFailure(std::string("Failed to assemble calibration: ") + ex.what());
     }
@@ -761,8 +819,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     return DynamicCalibration::ErrorCode::OK;
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device>& daiDevice) {
-    logger->trace("Initializing DynamicCalibration pipeline for device: {}", daiDevice->getDeviceId());
+DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline() {
+    logger->trace("Initializing DynamicCalibration pipeline");
 
     auto inSyncGroup = syncInput.get<dai::MessageGroup>();
     if(!inSyncGroup) {
@@ -789,7 +847,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    calibrationHandler = daiDevice->getCalibration();
+    calibrationHandler = readCurrentCalibration();
     auto eepromData = calibrationHandler.getEepromData();
 
     try {
@@ -843,7 +901,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
     logger->trace("Converting dai calibration to dcl");
 
-    auto platform = daiDevice->getPlatform();
+    auto platform = getPlatform();
     if(platform == dai::Platform::RVC2 && !eepromData.stereoEnableDistortionCorrection && !oldCalibrationWarningIssued) {
         logger->trace("The calibration on the device is old (distortion correction is disabled), for optimal performance full re-calibration is recommended!");
         oldCalibrationWarningIssued = true;
@@ -1038,23 +1096,27 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
 }
 
 void DynamicCalibration::run() {
-    if(!device) {
-        logger->error("Dynamic calibration node does not have access to any device.");
-        return;
-    }
+    // The firmware constructs the node without buildInternal(), so the DCL state is created here on the device.
+    ensureInitialized();
 
     auto& telemetryState = *pimplDCL->telemetryAggregateState;
     {
         std::lock_guard<std::mutex> lock(telemetryState.mutex);
-        telemetryState.telemetryDeviceId = device->getTemporaryTelemetryDeviceId();
+        telemetryState.telemetryDeviceId = getTelemetryDeviceId();
     }
 
-    logger->trace("DynamicCalibration node started ");
+    logger->trace("DynamicCalibration node started");
 
     auto previousLoadingTimeFloat =
         std::chrono::steady_clock::now() + std::chrono::duration<float>(DynamicCalibrationControl::Commands::StartCalibration{}.calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
-    auto initResult = initializePipeline(device);
+    DynamicCalibration::ErrorCode initResult;
+    try {
+        initResult = initializePipeline();
+    } catch(const std::exception& ex) {
+        logger->error("DynamicCalibration initialization failed: {}", ex.what());
+        return;
+    }
     if(initResult != DynamicCalibration::ErrorCode::OK) {
         logger->error("DynamicCalibration initialization failed with error code {}", static_cast<int>(initResult));
         return;

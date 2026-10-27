@@ -5,7 +5,12 @@
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
 #include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
+#include "depthai/common/StereoPair.hpp"
+#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
 
@@ -18,8 +23,12 @@ class CameraSensorHandle;
 namespace dai {
 namespace node {
 
-/*u
+/**
  * @brief Dynamic calibration node. Performs calibration check and dynamically calibrates the device
+ *
+ * On RVC4 the node runs on the device by default, so no camera frames cross the link: the images are
+ * consumed by the dynamic calibration library inside the firmware and only control and result messages
+ * are exchanged with the host. On RVC2 the node runs on the host. Use setRunOnHost() to override.
  *
  * Calibrated cameras retain their DCL-produced poses relative to housing when available.
  * Other cameras preserve their measured factory transforms from the default stereo-depth reference camera
@@ -107,11 +116,14 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     void buildInternal() override;
 
     Subnode<node::Sync> sync{*this, "sync"};
-    InputMap& inputs = sync->inputs;
     std::string leftInputName = "left";
     std::string rightInputName = "right";
     std::string rgbInputName = "rgb";
     std::vector<std::string> names;
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // The firmware instantiates the Sync subnode as a separate pipeline node, so the input map only
+    // exists on the host side of the node.
+    InputMap& inputs = sync->inputs;
     /**
      * Input left image
      */
@@ -126,20 +138,42 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Input rgb image
      */
     Input& rgb = inputs[rgbInputName];
+#endif
 
     /**
-     * Specify whether to run on host or device
-     * By default, the node will run on host on RVC2 and on device on RVC4.
+     * Specify whether to run on host or device.
+     * By default, the node runs on the host on RVC2 and on the device on RVC4. The Sync subnode follows the
+     * placement of the node.
      */
-
     void setRunOnHost(bool runOnHost);
 
+    /**
+     * Whether the node runs on the host. Without an explicit setRunOnHost() call this is decided by the
+     * platform of the assigned device: RVC4 runs on the device, everything else on the host.
+     */
     bool runOnHost() const override;
+
+    void buildStage1() override;
 
     void postBuildStage() override;
 
    protected:
     Properties& getProperties() override;
+
+    /**
+     * Calibration access used by the node. The host implementation goes through the dai::Device handle; the
+     * RVC4 firmware overrides these to use the device pipeline and the EEPROM directly.
+     */
+    virtual CalibrationHandler readCurrentCalibration();
+    virtual CalibrationHandler readFactoryCalibration();
+    virtual std::vector<StereoPair> getStereoPairs();
+    virtual Platform getPlatform() const;
+    /// Product and board name as stored in the EEPROM, used to detect modular (FFC) boards.
+    virtual std::pair<std::string, std::string> getProductAndBoardName();
+    /// Install a calibration at runtime and optionally persist it to the EEPROM user area.
+    virtual void applyCalibration(const CalibrationHandler& handler, bool flash);
+    /// Identifier attached to telemetry; empty disables the per-device aggregates.
+    virtual std::string getTelemetryDeviceId();
 
    private:
     struct ConnectedSensor {
@@ -183,7 +217,13 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 #endif
     ErrorCode computeCoverage();
 
-    ErrorCode initializePipeline(const std::shared_ptr<dai::Device>& daiDevice);
+    ErrorCode initializePipeline();
+
+    std::shared_ptr<Device> requireDevice() const;
+
+    /// Creates the DCL state and logger. Runs from buildInternal() on the host and from run() on the device,
+    /// where the firmware constructs the node without calling buildInternal().
+    void ensureInitialized();
 
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
@@ -225,7 +265,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Starting of Calibration
      * - Resetting of data
      */
-    bool runOnHostVar = true;
+    std::optional<bool> runOnHostVar;
 
     // When old calibration is encountered, issue a warning once
     bool oldCalibrationWarningIssued = false;
