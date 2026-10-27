@@ -767,32 +767,30 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         calibratedPoses.emplace(connectedSensors[idx].socket, DclUtils::calibrationHandleToTransform(dclResult.value.calibrations[idx]));
     }
     if(!worldConstraints.empty()) {
-        // Report what the metric reference did to the baselines of the calibrated cameras.
+        // The metric reference turns cameras in place: report that the baselines stayed and how much the pairs turned.
         const auto cameraCenter = [](std::vector<std::vector<float>> baseToCamera) {
             matrix::invertSe3Matrix4x4InPlace(baseToCamera);
             return matrix::extractTranslationVector(baseToCamera);
         };
-        for(size_t idxA = 0; idxA < connectedSensors.size(); ++idxA) {
-            for(size_t idxB = idxA + 1; idxB < connectedSensors.size(); ++idxB) {
-                const auto socketA = connectedSensors[idxA].socket;
-                const auto socketB = connectedSensors[idxB].socket;
-                const auto centerA = cameraCenter(calibratedPoses.at(socketA));
-                const auto centerB = cameraCenter(calibratedPoses.at(socketB));
-                const float baselineAfter =
-                    std::sqrt((centerA[0] - centerB[0]) * (centerA[0] - centerB[0]) + (centerA[1] - centerB[1]) * (centerA[1] - centerB[1])
-                              + (centerA[2] - centerB[2]) * (centerA[2] - centerB[2]));
-                float baselineBefore = std::numeric_limits<float>::quiet_NaN();
-                try {
-                    baselineBefore = currentHandler.getBaselineDistance(socketA, socketB, true, LengthUnit::METER);
-                } catch(const std::exception&) {
-                }
-                logger->info("Marker constraints: baseline {}-{} {:.4f} m -> {:.4f} m ({:+.2f} %)",
-                             toString(socketA),
-                             toString(socketB),
-                             baselineBefore,
-                             baselineAfter,
-                             (baselineAfter / baselineBefore - 1.0f) * 100.0f);
+        for(const auto& [sensorPair, rotationChange] : dclResult.value.pairwiseRotationDifference) {
+            const auto sensorA =
+                std::find_if(connectedSensors.begin(), connectedSensors.end(), [&](const ConnectedSensor& s) { return s.sensorDcl == sensorPair.first; });
+            const auto sensorB =
+                std::find_if(connectedSensors.begin(), connectedSensors.end(), [&](const ConnectedSensor& s) { return s.sensorDcl == sensorPair.second; });
+            if(sensorA == connectedSensors.end() || sensorB == connectedSensors.end() || rotationChange.size() < 3) {
+                continue;
             }
+            const auto centerA = cameraCenter(calibratedPoses.at(sensorA->socket));
+            const auto centerB = cameraCenter(calibratedPoses.at(sensorB->socket));
+            const float baseline = std::sqrt((centerA[0] - centerB[0]) * (centerA[0] - centerB[0]) + (centerA[1] - centerB[1]) * (centerA[1] - centerB[1])
+                                             + (centerA[2] - centerB[2]) * (centerA[2] - centerB[2]));
+            logger->info("Marker constraints: {}-{} relative rotation changed by ({:.4f}, {:.4f}, {:.4f}) deg, baseline kept at {:.4f} m",
+                         toString(sensorA->socket),
+                         toString(sensorB->socket),
+                         rotationChange[0],
+                         rotationChange[1],
+                         rotationChange[2],
+                         baseline);
         }
     }
 

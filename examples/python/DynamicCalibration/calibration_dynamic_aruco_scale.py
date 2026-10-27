@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Dynamic calibration with a metric reference from ArUco markers.
 
-Image features fix the relative rotation and the direction of the stereo baseline, but not its length.
-Known distances between marker centers (or from a marker center to a camera socket) supply that length.
+Image features fix the relative pose of the stereo pair except for its vergence, the turn about the axis
+perpendicular to the baseline and the optical axis, which sets the depth scale while barely changing the
+epipolar error. Known distances between marker centers (or from a marker center to a camera socket) fix that
+turn; camera centers and the baseline length are never changed.
 Place the markers from the JSON file in view of both cameras and run:
 
     python3 calibration_dynamic_aruco_scale.py [--constraints aruco_scene_constraints.json] [--host]
@@ -36,8 +38,6 @@ with dai.Pipeline() as pipeline:
 
     device = pipeline.getDefaultDevice()
     current = device.getCalibration()
-    baselineBefore = current.getBaselineDistance(dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C, True)
-    print(f"Baseline CAM_B-CAM_C before: {baselineBefore:.4f} cm")
 
     pipeline.start()
     time.sleep(1)
@@ -55,8 +55,9 @@ with dai.Pipeline() as pipeline:
         print(f"Dynamic calibration status: {result.info}")
         if result.calibrationData:
             new = result.calibrationData.newCalibration
-            baselineAfter = new.getBaselineDistance(dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C, True)
-            print(f"Baseline CAM_B-CAM_C after:  {baselineAfter:.4f} cm ({(baselineAfter / baselineBefore - 1) * 100:+.2f} %)")
+            diff = result.calibrationData.calibrationDifference
+            for (socketA, socketB), rotation in diff.pairwiseRotationDifference.items():
+                print(f"Rotation change {socketA}-{socketB}: {tuple(round(float(r), 4) for r in rotation)} deg")
             if args.apply:
                 control.send(dai.DynamicCalibrationControl.applyCalibration(new))
             break

@@ -120,9 +120,11 @@ Mean Sampson error current    = 0.38 px
 - Loads a JSON description of ArUco markers in the scene: measured distances between marker centers and from
   marker centers to camera sockets (`setArucoConstraintsFromFile`, also available on `AutoCalibration`)
 - Detects the markers in every loaded image set; their centers are collected together with the image features
-- Runs the calibration: image features fix the rotation and the baseline direction, the marker distances fix
-  the baseline **length**, which image features alone cannot observe
-- Prints the CAM_B-CAM_C baseline before and after
+- Runs the calibration: image features fix the relative pose except for the **vergence**, the turn about the
+  axis perpendicular to the baseline and the optical axis, which moves image points along the epipolar lines
+  and so sets the depth scale almost unseen; the marker distances fix that turn. Camera centers and the
+  baseline length are never changed.
+- Prints the relative rotation change reported by the node
 
 ```json
 {
