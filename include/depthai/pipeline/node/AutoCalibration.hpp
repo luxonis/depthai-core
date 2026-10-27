@@ -10,8 +10,12 @@
 #include <depthai/pipeline/node/DynamicCalibrationNode.hpp>
 #include <depthai/pipeline/node/Gate.hpp>
 #include <depthai/properties/AutoCalibrationProperties.hpp>
+#include <filesystem>
 #include <map>
 #include <nlohmann/json.hpp>
+#include <optional>
+
+#include "depthai/common/ArucoMarkerConstraints.hpp"
 
 namespace spdlog {
 class async_logger;
@@ -51,6 +55,19 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     bool runOnHost() const override;
 
     void buildInternal() override;
+
+    /**
+     * Give the calibration a metric reference through ArUco markers in the scene, see
+     * DynamicCalibration::setArucoConstraints(). Forwarded to the DynamicCalibration subnode; set before the
+     * pipeline starts.
+     */
+    void setArucoConstraints(const ArucoMarkerConstraints& constraints);
+    /// Same as setArucoConstraints() with the JSON form described in ArucoMarkerConstraints.
+    void setArucoConstraintsFromJson(const std::string& json);
+    /// Same as setArucoConstraints() with the JSON form described in ArucoMarkerConstraints read from a file.
+    void setArucoConstraintsFromFile(const std::filesystem::path& path);
+    void clearArucoConstraints();
+    std::optional<ArucoMarkerConstraints> getArucoConstraints() const;
 
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::AutoCalibrationResult, false}}}}};
 

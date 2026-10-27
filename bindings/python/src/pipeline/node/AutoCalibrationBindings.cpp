@@ -1,3 +1,5 @@
+#include <pybind11/stl/filesystem.h>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -42,5 +44,17 @@ void bind_auto_calibration(pybind11::module& m, void* pCallstack) {
                 // Assigning the shared_ptr directly
                 self.initialConfig = cfg;
             },
-            DOC(dai, node, AutoCalibration, initialConfig));
+            DOC(dai, node, AutoCalibration, initialConfig))
+        .def("runOnHost", &AutoCalibration::runOnHost, DOC(dai, node, AutoCalibration, runOnHost))
+        .def("setArucoConstraints", &AutoCalibration::setArucoConstraints, py::arg("constraints"), DOC(dai, node, AutoCalibration, setArucoConstraints))
+        .def("setArucoConstraintsFromJson",
+             &AutoCalibration::setArucoConstraintsFromJson,
+             py::arg("json"),
+             DOC(dai, node, AutoCalibration, setArucoConstraintsFromJson))
+        .def("setArucoConstraintsFromFile",
+             &AutoCalibration::setArucoConstraintsFromFile,
+             py::arg("path"),
+             DOC(dai, node, AutoCalibration, setArucoConstraintsFromFile))
+        .def("clearArucoConstraints", &AutoCalibration::clearArucoConstraints, DOC(dai, node, AutoCalibration, clearArucoConstraints))
+        .def("getArucoConstraints", &AutoCalibration::getArucoConstraints, DOC(dai, node, AutoCalibration, getArucoConstraints));
 }

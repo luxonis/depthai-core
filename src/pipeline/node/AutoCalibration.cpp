@@ -136,6 +136,15 @@ void AutoCalibration::logConfig() const {
     logger->info("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
     logger->info("Validation Set Size:    {}", initialConfig->validationSetSize);
     logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
+    if(const auto constraints = dynamicCalibration->getArucoConstraints()) {
+        logger->info("Marker Constraints:     {} markers, {} marker distances, {} socket distances ({})",
+                     constraints->referencedMarkerIds().size(),
+                     constraints->markerDistances.size(),
+                     constraints->socketDistances.size(),
+                     toString(constraints->dictionary));
+    } else {
+        logger->info("Marker Constraints:     none");
+    }
     logger->info("===========================================");
 }
 
@@ -319,6 +328,26 @@ void AutoCalibration::buildInternal() {
     if(initialConfig->dataConfidenceThreshold < 0.0) {
         initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
     }
+}
+
+void AutoCalibration::setArucoConstraints(const ArucoMarkerConstraints& constraints) {
+    dynamicCalibration->setArucoConstraints(constraints);
+}
+
+void AutoCalibration::setArucoConstraintsFromJson(const std::string& json) {
+    dynamicCalibration->setArucoConstraintsFromJson(json);
+}
+
+void AutoCalibration::setArucoConstraintsFromFile(const std::filesystem::path& path) {
+    dynamicCalibration->setArucoConstraintsFromFile(path);
+}
+
+void AutoCalibration::clearArucoConstraints() {
+    dynamicCalibration->clearArucoConstraints();
+}
+
+std::optional<ArucoMarkerConstraints> AutoCalibration::getArucoConstraints() const {
+    return dynamicCalibration->getArucoConstraints();
 }
 
 /**

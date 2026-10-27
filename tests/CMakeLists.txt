@@ -711,6 +711,12 @@ endif()
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    dai_add_test(aruco_marker_constraints_test src/onhost_tests/aruco_marker_constraints_test.cpp)
+    target_link_libraries(aruco_marker_constraints_test PRIVATE dynamic_calibration_imported)
+    dai_set_test_labels(aruco_marker_constraints_test onhost ci)
+endif()
+
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
 dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4)
 

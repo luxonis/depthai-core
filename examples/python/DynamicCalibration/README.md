@@ -112,6 +112,34 @@ Mean Sampson error current    = 0.38 px
 
 ---
 
+## 1c) Dynamic calibration with a metric reference from ArUco markers
+
+**Script:** `calibration_dynamic_aruco_scale.py` (scene description: `aruco_scene_constraints.json`)
+
+**What it does:**
+- Loads a JSON description of ArUco markers in the scene: measured distances between marker centers and from
+  marker centers to camera sockets (`setArucoConstraintsFromFile`, also available on `AutoCalibration`)
+- Detects the markers in every loaded image set; their centers are collected together with the image features
+- Runs the calibration: image features fix the rotation and the baseline direction, the marker distances fix
+  the baseline **length**, which image features alone cannot observe
+- Prints the CAM_B-CAM_C baseline before and after
+
+```json
+{
+    "dictionary": "DICT_4X4_50",
+    "lengthUnit": "m",
+    "markers": [37, 43],
+    "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}]
+}
+```
+
+Either list may be left empty. A socket that is not an image input (`CAM_A` above with a `CAM_B`/`CAM_C`
+pair) is used through its current calibration. Marker size does not matter, only the centers are used, and a
+marker needs to be visible in at least two of the calibrated cameras.
+
+---
+
 ## 1b) Real-time dynamic calibration with 3 sensors
 
 **Script:** `calibration_dynamic_3_sensors.py`
@@ -237,6 +265,7 @@ python calibration_dynamic.py
 
 # Live calibration with CAM_A + CAM_B + CAM_C
 python calibration_dynamic_3_sensors.py
+python calibration_dynamic_aruco_scale.py --constraints aruco_scene_constraints.json
 
 # Legacy quality evaluation flow
 python calibration_quality_dynamic.py

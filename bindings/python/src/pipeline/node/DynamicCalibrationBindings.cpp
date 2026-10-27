@@ -1,3 +1,5 @@
+#include <pybind11/stl/filesystem.h>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -42,7 +44,18 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "rgb", [](DynamicCalibration& node) { return &node.rgb; }, py::return_value_policy::reference_internal)
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
-        .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost));
+        .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost))
+        .def("setArucoConstraints", &DynamicCalibration::setArucoConstraints, py::arg("constraints"), DOC(dai, node, DynamicCalibration, setArucoConstraints))
+        .def("setArucoConstraintsFromJson",
+             &DynamicCalibration::setArucoConstraintsFromJson,
+             py::arg("json"),
+             DOC(dai, node, DynamicCalibration, setArucoConstraintsFromJson))
+        .def("setArucoConstraintsFromFile",
+             &DynamicCalibration::setArucoConstraintsFromFile,
+             py::arg("path"),
+             DOC(dai, node, DynamicCalibration, setArucoConstraintsFromFile))
+        .def("clearArucoConstraints", &DynamicCalibration::clearArucoConstraints, DOC(dai, node, DynamicCalibration, clearArucoConstraints))
+        .def("getArucoConstraints", &DynamicCalibration::getArucoConstraints, DOC(dai, node, DynamicCalibration, getArucoConstraints));
 
     // Keep the Properties class attached to the node type
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;
