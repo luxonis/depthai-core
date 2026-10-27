@@ -18,7 +18,12 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass, field
+import json
+import math
+import os
+from pathlib import Path
 import signal
+import sys
 import time
 from typing import Any, Optional
 
@@ -58,11 +63,11 @@ class PipelineContext:
 
 
 def on_exit(_sig: int, _frame: Any) -> None:
-    cv2.destroyAllWindows()
     raise KeyboardInterrupt
 
 
 signal.signal(signal.SIGINT, on_exit)
+signal.signal(signal.SIGTERM, on_exit)
 
 
 def clamp(value: float, low: float, high: float) -> float:
@@ -492,6 +497,12 @@ def send_manual_exposure(control_queues: list[Any], exposure: int, iso: int) -> 
 def stress_test() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mxid", default="", help="Device ID, device name, or IP address")
+    parser.add_argument("--burro", action="store_true", help="Use Burro at 10.12.204.228 with the tested poe-perf firmware")
+    parser.add_argument("--firmware", type=Path, help="Load this firmware binary into RAM (does not flash)")
+    parser.add_argument("--headless", action="store_true", help="Drain streams without displaying images")
+    parser.add_argument("--duration", type=float, default=0, help="Run for this many seconds after startup; 0 runs until interrupted")
+    parser.add_argument("--stall-timeout", type=float, default=20, help="Fail if any output or system logger is silent for this many seconds")
+    parser.add_argument("--report", type=Path, help="Write final stream statistics and outcome as JSON")
     parser.add_argument("-ne", "--n-edge-detectors", default=0, type=int)
     parser.add_argument("--no-nnet", action="store_true", help="Do not create a detection network")
     parser.add_argument("--nn-model", default=NN_MODEL, help="Model zoo name of the detection model")
@@ -519,7 +530,26 @@ def stress_test() -> None:
     parser.add_argument("--rampup-seconds", type=float, default=5.0)
     args = parser.parse_args()
 
-    device = dai.Device(args.mxid) if args.mxid else dai.Device()
+    if not math.isfinite(args.duration) or args.duration < 0 or not math.isfinite(args.stall_timeout) or args.stall_timeout <= 0:
+        parser.error("--duration must be finite and nonnegative; --stall-timeout must be finite and positive")
+    if args.burro:
+        args.mxid = args.mxid or "10.12.204.228"
+        if args.firmware is None and not os.environ.get("DEPTHAI_DEVICE_BINARY"):
+            args.firmware = (
+                Path(__file__).resolve().parents[2] / "capture" / "poe-perf-20261027"
+                / "depthai-device-openvino-universal-dcc78c03f6df6b5efc9ad4a9dda73beb0716d50c.cmd"
+            )
+    if args.firmware is not None:
+        if not args.firmware.is_file():
+            parser.error(f"Firmware not found: {args.firmware}; supply --firmware with the poe-perf .cmd path")
+        os.environ["DEPTHAI_DEVICE_BINARY"] = str(args.firmware.resolve())
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+    with (dai.Device(dai.DeviceInfo(args.mxid)) if args.mxid else dai.Device()) as device:
+        run_stress(device, args)
+
+
+def run_stress(device: dai.Device, args: argparse.Namespace) -> None:
     pipeline, streams, control_queues, system_queue, context = build_pipeline(device, args)
 
     dot_intensity = 0.5
@@ -544,12 +574,26 @@ def stress_test() -> None:
     last_dot = None
     last_flood = None
     last_frames: dict[str, np.ndarray] = {}
+    stats = {
+        stream.name: {"packets": 0, "first_s": None, "last_s": None, "max_gap_s": 0.0}
+        for stream in streams
+    }
+    last_system_s = 0.0
+    next_status_s = 5.0
+    peak_temperature = None
+    peak_ddr_used = 0
+    outcome = "failed"
+    error = None
 
     try:
         usb_speed = device.getUsbSpeed()
         connection = f" over USB {usb_speed.name}" if usb_speed != dai.UsbSpeed.UNKNOWN else ""
         print(f"Started on {device.getPlatformAsString()}{connection}")
         while pipeline.isRunning():
+            elapsed_s = time.monotonic() - start_time
+            if args.duration and elapsed_s >= args.duration:
+                outcome = "passed"
+                break
             if ramp_start is not None:
                 elapsed = time.monotonic() - ramp_start
                 fraction = 1.0 if args.rampup_seconds <= 0 else clamp(elapsed / args.rampup_seconds, 0.0, 1.0)
@@ -571,6 +615,16 @@ def stress_test() -> None:
                 packet = stream.queue.tryGet()
                 if packet is None:
                     continue
+                entry = stats[stream.name]
+                received_s = time.monotonic() - start_time
+                if entry["last_s"] is not None:
+                    entry["max_gap_s"] = max(entry["max_gap_s"], received_s - entry["last_s"])
+                if entry["first_s"] is None:
+                    entry["first_s"] = received_s
+                entry["last_s"] = received_s
+                entry["packets"] += 1
+                if args.headless:
+                    continue
                 if stream.kind == "tof" or stream.kind == "depth":
                     last_frames[stream.name] = colorize_depth(packet.getCvFrame())
                 elif stream.kind == "image":
@@ -584,17 +638,39 @@ def stress_test() -> None:
 
             system_info = system_queue.tryGet()
             if system_info is not None:
+                last_system_s = time.monotonic() - start_time
+                temperature = float(system_info.chipTemperature.average)
+                peak_temperature = temperature if peak_temperature is None else max(peak_temperature, temperature)
+                peak_ddr_used = max(peak_ddr_used, int(system_info.ddrMemoryUsage.used))
                 print(f"[{int(time.monotonic() - start_time)}s]{connection}")
                 if isinstance(system_info, dai.SystemInformationRVC4):
                     print_system_information_rvc4(system_info)
                 else:
                     print_system_information(system_info)
 
+            elapsed_s = time.monotonic() - start_time
+            silent = [name for name, entry in stats.items() if elapsed_s - (entry["last_s"] or 0) > args.stall_timeout]
+            if elapsed_s - last_system_s > args.stall_timeout:
+                silent.append("system logger")
+            if silent:
+                raise RuntimeError(f"No packets for {args.stall_timeout}s from: {', '.join(silent)}")
+            if elapsed_s >= next_status_s:
+                print(
+                    "Streams:",
+                    ", ".join(f"{name}: {entry['packets'] / elapsed_s:.2f} FPS ({entry['packets']} packets)" for name, entry in stats.items()),
+                    flush=True,
+                )
+                next_status_s = elapsed_s + 5.0
+
+            if args.headless:
+                time.sleep(0.001)
+                continue
             for name, frame in last_frames.items():
                 cv2.imshow(name, frame)
 
             key = cv2.waitKey(1)
             if key == ord("q"):
+                outcome = "interrupted"
                 break
             if key == ord("a"):
                 dot_intensity = clamp(dot_intensity - DOT_STEP, 0.0, 1.0)
@@ -621,11 +697,39 @@ def stress_test() -> None:
                 exposure = int(clamp(exposure + 500, 0, 33000))
                 send_manual_exposure(control_queues, exposure, iso)
     except KeyboardInterrupt:
-        pass
+        outcome = "interrupted"
+    except Exception as exc:
+        error = str(exc)
+        raise
     finally:
-        cv2.destroyAllWindows()
-        pipeline.stop()
-        pipeline.wait()
+        elapsed_s = time.monotonic() - start_time
+        if outcome == "failed" and error is None:
+            error = "Pipeline stopped before the requested duration"
+        missing = [name for name, entry in stats.items() if entry["packets"] == 0]
+        if outcome == "passed" and (missing or last_system_s == 0):
+            outcome = "failed"
+            error = f"Outputs never received: {missing}; system logger received: {last_system_s != 0}"
+        for entry in stats.values():
+            span = (entry["last_s"] or 0) - (entry["first_s"] or 0)
+            entry["host_fps"] = (entry["packets"] - 1) / span if span > 0 else 0.0
+        report = {
+            "outcome": outcome, "error": error, "device": device.getDeviceInfo().name,
+            "sdk": dai.__version__, "firmware": os.environ.get("DEPTHAI_DEVICE_BINARY"),
+            "duration_s": elapsed_s, "peak_temperature_c": peak_temperature,
+            "peak_ddr_used_bytes": peak_ddr_used, "streams": stats,
+            "arguments": {name: str(value) if isinstance(value, Path) else value for name, value in vars(args).items()},
+        }
+        try:
+            if args.report:
+                args.report.write_text(json.dumps(report, indent=2) + "\n")
+            print(json.dumps(report, indent=2), flush=True)
+        finally:
+            if not args.headless:
+                cv2.destroyAllWindows()
+            pipeline.stop()
+            pipeline.wait()
+    if outcome != "passed":
+        sys.exit(130 if outcome == "interrupted" else 1)
 
 
 if __name__ == "__main__":
