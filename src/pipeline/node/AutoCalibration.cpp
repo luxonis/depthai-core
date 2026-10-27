@@ -329,15 +329,23 @@ void AutoCalibration::postBuildStage() {
     xlinkBridge->xLinkOut->input.setBlocking(false);
 }
 
+void AutoCalibration::discardQueuedFrames() {
+    // Drop frames that passed the gate before it closed so the next load starts from a fresh pair. On the device the
+    // DynamicCalibration node is a separate pipeline node; its input queue holds a single frame and is left alone.
+    if(dynamicCalibration.operator->() != nullptr) {
+        dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+    }
+}
+
 void AutoCalibration::loadData(unsigned int numImages) {
-    gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
+    gateControlQueue.send(dai::GateControl::openGate(-1, GATE_FPS_DEFAULT));
     coverageQueue.tryGetAll<dai::CoverageData>();
     for(unsigned int i = 0; i < numImages; i++) {
         dynamicCalibrationCommandQueue.send(DCC::loadImage());
         coverageQueue.get<dai::CoverageData>();  // wait until the data are loaded
     }
     gateControlQueue.send(dai::GateControl::closeGate());
-    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+    discardQueuedFrames();
 }
 
 std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration) {
@@ -377,7 +385,7 @@ return calibration from DynamicCalibration node
 **/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
     auto startTime = std::chrono::steady_clock::now();  // Start timer
-    gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
+    gateControlQueue.send(dai::GateControl::openGate(-1, GATE_FPS_DEFAULT));
     {
         auto& state = *telemetryAggregateState;
         std::lock_guard<std::mutex> lock(state.mutex);
@@ -402,7 +410,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             if(dynCalibrationResult->calibrationData) {
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
-                    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+                    discardQueuedFrames();
                     dynamicCalibrationCommandQueue.send(DCC::resetData());
                     report.numIterationPerRecalibration = i + 1;
                     report.numImagesLoadedForSuccessfulRecalibration = numLoadedImages + 1;
@@ -434,7 +442,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     report.recalibrationPassed = false;
     report.numIterationPerRecalibration = maxNumIteration;
     gateControlQueue.send(dai::GateControl::closeGate());
-    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+    discardQueuedFrames();
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     report.elapsedRecalibrationSeconds = elapsed.count();
@@ -570,7 +578,7 @@ bool AutoCalibration::validateIncomingData() {
     bool timedout = true;
 
     while(mainLoop()) {
-        gateControlQueue.send(dai::GateControl::openGate(1, gate->initialConfig->fps));
+        gateControlQueue.send(dai::GateControl::openGate(1, GATE_FPS_DEFAULT));
         auto messageGroup = gateOutput.get<MessageGroup>(waitingTime, timedout);
 
         if(!timedout && messageGroup) {
@@ -606,10 +614,6 @@ bool AutoCalibration::validateIncomingData() {
 }
 
 void AutoCalibration::run() {
-    if(!initialized) {
-        // Constructed by the firmware from the serialized properties: take the config the host serialized.
-        *initialConfig = properties.initialConfig;
-    }
     ensureInitialized();
     logger->info("AutoCalibration started to work!");
     if(!validateIncomingData()) {

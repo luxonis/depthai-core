@@ -45,7 +45,21 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     std::shared_ptr<AutoCalibration> build(const std::shared_ptr<Camera>& cameraLeft, const std::shared_ptr<Camera>& cameraRight);
 
     constexpr static const char* NAME = "AutoCalibration";
-    using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    AutoCalibration() = default;
+    AutoCalibration(const std::shared_ptr<Device>& device) : DeviceNodeCRTP(device) {}
+    // Constructed from serialized properties (the firmware, or a pipeline loaded from a schema): the config the
+    // host serialized becomes the initial config. getProperties() keeps the properties in sync with later edits.
+    AutoCalibration(std::unique_ptr<Properties> props) : DeviceNodeCRTP(std::move(props)) {
+        *initialConfig = properties.initialConfig;
+    }
+    AutoCalibration(std::unique_ptr<Properties> props, bool confMode) : DeviceNodeCRTP(std::move(props), confMode) {
+        *initialConfig = properties.initialConfig;
+    }
+    AutoCalibration(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
+        : DeviceNodeCRTP(device, std::move(props), confMode) {
+        *initialConfig = properties.initialConfig;
+    }
 
     ~AutoCalibration() override;
 
@@ -133,6 +147,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     std::shared_ptr<dai::CalibrationHandler> getNewCalibration(unsigned int maxNumIteration, Report& report);
 
     void loadData(unsigned int numImages);
+    void discardQueuedFrames();
     /// Creates the logger and telemetry state and resolves config defaults. Runs from buildInternal() on the host and
     /// from run() on the device, where the firmware constructs the node without calling buildInternal().
     void ensureInitialized();
