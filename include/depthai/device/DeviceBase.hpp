@@ -19,6 +19,7 @@
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
+#include "depthai/common/CameraStats.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/UsbSpeed.hpp"
@@ -676,6 +677,19 @@ class DeviceBase {
      * @returns Map/dictionary with camera sensor names, indexed by socket
      */
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
+
+    /**
+     * Get cumulative camera-side health statistics for every discovered sensor.
+     * Reads do not reset counters. Key results by physical socket and compute
+     * interval deltas only within one CameraStats::sessionId. Host queue discards
+     * are excluded. Sensors are sampled sequentially, with individual timestamps.
+     * RVC2 returns UNSUPPORTED entries. RVC4 requires firmware implementing this
+     * RPC; CSL counters additionally require the optional CamX statistics extension.
+     * Unsupported or temporarily unavailable counters are empty, not zero.
+     * @returns Per-sensor snapshots, including inactive sensors.
+     * @throws std::runtime_error For missing firmware support or an RPC failure.
+     */
+    std::vector<CameraStats> getCameraStats();
 
     /**
      * Get connected IMU type

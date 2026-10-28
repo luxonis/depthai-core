@@ -26,6 +26,7 @@
 #include "capabilities/CapabilityBindings.hpp"
 #include "capabilities/CapabilityRangeBindings.hpp"
 #include "capabilities/ImgFrameCapabilityBindings.hpp"
+#include "common/CameraStatsBindings.hpp"
 #include "common/ModelTypeBindings.hpp"
 #include "depthai/depthai.hpp"
 #include "log/LogBindings.hpp"
@@ -78,6 +79,7 @@ PYBIND11_MODULE(depthai, m)
     std::deque<StackFunction> callstack;
     DatatypeBindings::addToCallstack(callstack);
     callstack.push_front(&ModelTypeBindings::bind);
+    callstack.push_front(&bind_camera_stats);
     callstack.push_front(&LogBindings::bind);
     callstack.push_front(&VersionBindings::bind);
     callstack.push_front(&MessageQueueBindings::bind);

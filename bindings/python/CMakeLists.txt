@@ -69,6 +69,7 @@ set(SOURCE_LIST
     src/PlatformBindings.cpp
     src/CrashDumpBindings.cpp
     src/common/ModelTypeBindings.cpp
+    src/common/CameraStatsBindings.cpp
 
     src/pipeline/node/NodeBindings.cpp
 
