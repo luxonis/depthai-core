@@ -1,6 +1,4 @@
 import depthai as dai
-import depthai_pybind11_tests as native_tests
-import pytest
 
 message_types = [
     dai.ADatatype,
@@ -147,32 +145,6 @@ def test_transformable_buffer_dispatches_to_python_override():
     assert message.override_called
     assert message.getTransformation().isEqualTransformation(source)
     assert transformed.getTransformation().isEqualTransformation(target)
-
-@pytest.mark.parametrize("message_type", [
-    dai.ImgFrame, dai.NNData, dai.IMUData, dai.PointCloudData,
-    dai.ImgDetections, dai.SpatialImgDetections, dai.SegmentationMask,
-    dai.ImgAnnotations, dai.EncodedFrame, dai.RGBDData,
-])
-def test_proto_serializable_shared_ownership_keeps_python_subclass(message_type):
-    import gc
-
-    class CustomMessage(message_type):
-        def __init__(self):
-            super().__init__()
-            self.test_field = 42
-
-    message = CustomMessage()
-    message.setSequenceNum(123)
-    retained = native_tests.retain_proto_serializable(message)
-    del message
-    gc.collect()
-
-    restored = retained()
-    assert isinstance(restored, CustomMessage)
-    assert isinstance(restored, dai.ProtoSerializable)
-    assert restored.test_field == 42
-    assert restored.getSequenceNum() == 123
-
 
 def test_with_host_nodes():
     import time

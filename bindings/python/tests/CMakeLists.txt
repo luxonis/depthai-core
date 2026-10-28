@@ -15,7 +15,6 @@ set(PYBIND11_TEST_FILES
     # "dai_path_conversion_test.py" requires device
     "nn_archive_gil_test.py"
     "test_registration_test.py"
-    "freethreading_test.py"
     "nndata_tensor_test.py"
     "pcldata_set_points_test.py"
     "remote_connection_service_test.py"
@@ -29,6 +28,10 @@ set(PYBIND11_TEST_FILES
     "stitching_test.py"
     "neural_network_model_test.cpp"
 )
+
+if(DEPTHAI_PYTHON_GIL_FREE)
+    list(APPEND PYBIND11_TEST_FILES "freethreading_test.py")
+endif()
 
 if(DEPTHAI_ENABLE_CURL)
     list(APPEND PYBIND11_TEST_FILES
@@ -47,6 +50,8 @@ string(REPLACE ".cpp" ".py" PYBIND11_PYTEST_FILES "${PYBIND11_TEST_FILES}")
 
 # Create the binding library at the end
 pybind11_add_module(${TARGET_TEST_MODULE} THIN_LTO ${TARGET_TEST_MODULE}.cpp ${PYBIND11_TEST_FILES})
+target_compile_definitions(${TARGET_TEST_MODULE} PRIVATE
+    "DEPTHAI_PYTHON_GIL_FREE=$<BOOL:${DEPTHAI_PYTHON_GIL_FREE}>")
 
 set(DEPTHAI_PYTEST_COMMAND
     ${CMAKE_COMMAND} -E env

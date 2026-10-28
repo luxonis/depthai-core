@@ -20,6 +20,8 @@ python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifacto
 ```
 ## Building from source
 
+GIL-free support is opt-in with `-DDEPTHAI_PYTHON_GIL_FREE=ON` (default OFF). Select a free-threaded Python interpreter separately to build for its ABI.
+
 ### Dependencies
  - cmake >= 3.4
  - C++14 compiler (clang, gcc, msvc, ...)

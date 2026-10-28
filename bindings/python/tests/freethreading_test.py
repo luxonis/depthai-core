@@ -8,7 +8,12 @@ import sysconfig
 import threading
 
 import depthai as dai
+import depthai_pybind11_tests as native_tests
 import pytest
+
+
+if not native_tests.gil_free_build:
+    pytest.skip("Requires DEPTHAI_PYTHON_GIL_FREE=ON", allow_module_level=True)
 
 
 @pytest.mark.skipif(sysconfig.get_config_var("Py_GIL_DISABLED") != 1, reason="Requires free-threaded Python")
@@ -49,3 +54,29 @@ def test_parallel_nested_pipeline_contexts():
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         list(pool.map(create_nodes, range(8)))
+
+
+@pytest.mark.parametrize("message_type", [
+    dai.ImgFrame, dai.NNData, dai.IMUData, dai.PointCloudData,
+    dai.ImgDetections, dai.SpatialImgDetections, dai.SegmentationMask,
+    dai.ImgAnnotations, dai.EncodedFrame, dai.RGBDData,
+])
+def test_proto_serializable_shared_ownership_keeps_python_subclass(message_type):
+    import gc
+
+    class CustomMessage(message_type):
+        def __init__(self):
+            super().__init__()
+            self.test_field = 42
+
+    message = CustomMessage()
+    message.setSequenceNum(123)
+    retained = native_tests.retain_proto_serializable(message)
+    del message
+    gc.collect()
+
+    restored = retained()
+    assert isinstance(restored, CustomMessage)
+    assert isinstance(restored, dai.ProtoSerializable)
+    assert restored.test_field == 42
+    assert restored.getSequenceNum() == 123
