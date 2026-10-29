@@ -9,6 +9,51 @@
 
 namespace dai {
 namespace node {
+namespace {
+// Inputs latched between rounds: the runtime config, the reference transformation and the source mask of each key.
+struct Latched {
+    ImgDetectionsFilterConfig config;
+    std::optional<ImgTransformation> reference;
+    std::vector<std::shared_ptr<ImgFrame>> sourceMasks;
+    bool referenceReceived = false;
+
+    // Apply the last queued valid config. Its reference applies until the first reference frame arrives.
+    void updateConfig(Node::Input& input, spdlog::logger& logger) {
+        std::shared_ptr<ImgDetectionsFilterConfig> next;
+        while(auto queued = input.tryGet<ImgDetectionsFilterConfig>()) next = std::move(queued);
+        if(!next) return;
+        if(!next->validate()) {
+            logger.warn("ImgDetectionsFilter ignored invalid runtime config: check ranges, IoU threshold, and pixel ROI coordinates");
+            return;
+        }
+        config = *next;
+        if(!referenceReceived && config.reference) reference = config.reference;
+    }
+    // Latch the newest valid reference frame. It supersedes the config reference permanently.
+    void updateReference(Node::Input& input, spdlog::logger& logger) {
+        while(auto frame = input.tryGet<ImgFrame>()) {
+            const auto& next = frame->getTransformation();
+            if(!next.isValid()) {
+                logger.warn("ImgDetectionsFilter ignored reference frame with invalid ImgTransformation");
+                continue;
+            }
+            referenceReceived = true;
+            if(!reference || !reference->isEqualTransformation(next)) reference = next;
+        }
+    }
+    // Latch the newest mask of each linked key. Return whether every linked mask matches the output transformation.
+    bool updateMasks(const std::vector<Node::Input*>& inputs, const std::optional<ImgTransformation>& target) {
+        bool ready = true;
+        for(std::size_t key = 0; key < inputs.size(); ++key) {
+            if(!inputs[key]) continue;
+            while(auto mask = inputs[key]->tryGet<ImgFrame>()) sourceMasks[key] = std::move(mask);
+            if(!sourceMasks[key] || !target || !sourceMasks[key]->getTransformation().isEqualTransformation(*target)) ready = false;
+        }
+        return ready;
+    }
+};
+}  // namespace
+
 ImgDetectionsFilter::~ImgDetectionsFilter() = default;
 ImgDetectionsFilter::ImgDetectionsFilter(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ImgDetectionsFilter, ImgDetectionsFilterProperties>(std::move(props)),
@@ -50,11 +95,15 @@ void ImgDetectionsFilter::buildStage1() {
 }
 void ImgDetectionsFilter::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    auto config = getProperties().initialConfig;
-    auto reference = config.reference;
-    std::vector<std::shared_ptr<ImgFrame>> sourceMasks(linkedInputs.size());
+    // Read the member, not getProperties(): that writes the properties, which Pipeline::start() serializes concurrently for telemetry.
+    Latched latched{*initialConfig, initialConfig->reference, std::vector<std::shared_ptr<ImgFrame>>(linkedInputs.size())};
     std::vector<impl::MaskRemapCache> maskRemaps(linkedInputs.size());
-    bool inputReferenceReceived = false, dropping = false, droppingMasks = false;
+    bool dropping = false, droppingMasks = false;
+    // Warn once for each episode of dropped rounds.
+    const auto drop = [&logger](bool& episode, const char* reason) {
+        if(!episode) logger->warn(reason);
+        episode = true;
+    };
     while(mainLoop()) {
         const auto beginning = std::chrono::steady_clock::now();
         std::vector<std::shared_ptr<ImgDetections>> messages;
@@ -70,45 +119,20 @@ void ImgDetectionsFilter::run() {
         }
         if(messages.size() != linkedInputs.size()) continue;
         const auto gotInput = std::chrono::steady_clock::now();
-        std::shared_ptr<ImgDetectionsFilterConfig> nextConfig;
-        while(auto next = inputConfig.tryGet<ImgDetectionsFilterConfig>()) nextConfig = std::move(next);
-        if(nextConfig) {
-            if(!nextConfig->validate())
-                logger->warn("ImgDetectionsFilter ignored invalid runtime config: check ranges, IoU threshold, and pixel ROI coordinates");
-            else {
-                config = *nextConfig;
-                if(!inputReferenceReceived && config.reference) reference = config.reference;
-            }
-        }
-        while(auto frame = inputReference.tryGet<ImgFrame>()) {
-            const auto& next = frame->getTransformation();
-            if(!next.isValid()) {
-                logger->warn("ImgDetectionsFilter ignored reference frame with invalid ImgTransformation");
-                continue;
-            }
-            inputReferenceReceived = true;
-            if(!reference || !reference->isEqualTransformation(next)) reference = next;
-        }
-        bool masksReady = true;
-        const auto& target = reference ? reference : messages.front()->transformation;
-        for(std::size_t key = 0; key < linkedSourceMasks.size(); ++key) {
-            if(!linkedSourceMasks[key]) continue;
-            while(auto mask = linkedSourceMasks[key]->tryGet<ImgFrame>()) sourceMasks[key] = std::move(mask);
-            if(!sourceMasks[key] || !target || !sourceMasks[key]->getTransformation().isEqualTransformation(*target)) masksReady = false;
-        }
-        if(!reference && inputReference.isConnected()) {
-            if(!dropping) logger->warn("ImgDetectionsFilter dropping rounds until a valid reference arrives");
-            dropping = true;
+        latched.updateConfig(inputConfig, *logger);
+        latched.updateReference(inputReference, *logger);
+        const bool masksReady = latched.updateMasks(linkedSourceMasks, latched.reference ? latched.reference : messages.front()->transformation);
+        if(!latched.reference && inputReference.isConnected()) {
+            drop(dropping, "ImgDetectionsFilter dropping rounds until a valid reference arrives");
             continue;
         }
         dropping = false;
         if(!masksReady) {
-            if(!droppingMasks) logger->warn("ImgDetectionsFilter dropping rounds until all linked source masks match the output transformation");
-            droppingMasks = true;
+            drop(droppingMasks, "ImgDetectionsFilter dropping rounds until all linked source masks match the output transformation");
             continue;
         }
         droppingMasks = false;
-        auto output = impl::filterDetectionRound(messages, config, reference, sourceMasks, &maskRemaps);
+        auto output = impl::filterDetectionRound(messages, latched.config, latched.reference, latched.sourceMasks, &maskRemaps);
         if(output->detections.size() > 255 && output->getSegmentationMaskWidth() > 0)
             logger->warn("ImgDetectionsFilter mask represents only output detections 0 through 254; all detections remain in the list");
         const auto processed = std::chrono::steady_clock::now();
