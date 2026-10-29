@@ -369,6 +369,9 @@ function(dai_add_test test_name test_src)
     # Add test
     add_test(NAME ${test_name} COMMAND ${test_name})
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
+    # Catch2 returns 4 when every selected test case is skipped. Preserve that
+    # result in CTest without hiding assertion failures or empty selections.
+    set_tests_properties(${test_name} PROPERTIES SKIP_RETURN_CODE 4)
 
 
     # Copy over required DLLs (Windows)
@@ -451,6 +454,10 @@ add_default_flags(telemetry_multi_device_test_child LEAN)
 target_link_libraries(telemetry_multi_device_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
 
 ### On-host tests #############################################################
+
+# Exercise Catch2's all-skipped exit code through the shared CTest registration.
+dai_add_test(catch2_skip_test src/onhost_tests/catch2_skip_test.cpp)
+dai_set_test_labels(catch2_skip_test onhost ci)
 
 # Superblob test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -648,6 +655,10 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_set_test_labels(remote_connection_test onhost ci nowindows)
 endif()
 ### On-device tests ###########################################################
+
+# CBA EEPROM shared-bus regression
+dai_add_test(cba_eeprom_access_test src/ondevice_tests/cba_eeprom_access_test.cpp)
+dai_set_test_labels(cba_eeprom_access_test ondevice rvc2 usb ci cba_eeprom noreplayci)
 
 # Camera stream restart test
 dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
