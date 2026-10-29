@@ -1111,8 +1111,18 @@ dai_add_test(img_detections_filter_device_test src/ondevice_tests/pipeline/node/
 dai_set_test_labels(img_detections_filter_device_test ondevice rvc2_all rvc4 ci)
 set_tests_properties(img_detections_filter_device_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
 
+# Explicit Align interpolation on host and on RVC4
+dai_add_test(align_interpolation_test src/ondevice_tests/align_interpolation_test.cpp)
+dai_set_test_labels(align_interpolation_test ondevice rvc4 ci)
+
 # Link drop during the asset storage transfer (RVC4 over TCP/IP, local proxy uses POSIX sockets)
 if(UNIX)
     dai_add_test(asset_storage_link_drop_test src/ondevice_tests/asset_storage_link_drop_test.cpp)
     dai_set_test_labels(asset_storage_link_drop_test ondevice rvc4 ci noreplayci nousb)
+endif()
+
+# PoE link reset: the host must close its XLink socket (RVC2 PoE and RVC4 over TCP/IP, connect(AF_UNSPEC) resets a TCP socket only on Linux)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    dai_add_test(poe_link_reset_test src/ondevice_tests/poe_link_reset_test.cpp)
+    dai_set_test_labels(poe_link_reset_test ondevice rvc2 poe rvc4 ci noreplayci nousb)
 endif()
