@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>
@@ -28,17 +29,12 @@ struct DepthTestAccess {
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {}) {
-        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, modelFilter);
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter);
         return {selection.algorithm, selection.config};
     }
 
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {
         return Depth::exceedsStereoDepthMaxResolution(width, height);
-    }
-
-    static std::vector<Depth::Algorithm> getSupportedAlgorithms(const Depth& depth, const std::shared_ptr<Device>& device) {
-        const auto models = device->getPlatform() == Platform::RVC4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
-        return depth.getSupportedAlgorithms(device, models);
     }
 };
 
@@ -146,6 +142,9 @@ StereoPair requireFirstStereoPairForTest(const std::shared_ptr<Device>& device) 
 void requireDepthAutoBackend(const node::Depth& depth, Platform platform, bool hasTofSensor) {
     if(platform == Platform::RVC4) {
         switch(depth.getResolvedAlgorithm()) {
+            case node::Depth::Algorithm::TOF:
+                requireDepthSingleBackendChild(depth, "ToF");
+                break;
             case node::Depth::Algorithm::NEURAL:
                 requireDepthSingleBackendChild(depth, "NeuralDepth");
                 break;
@@ -453,12 +452,91 @@ TEST_CASE("Depth: host-only pipeline cannot create node") {
     REQUIRE_THROWS_AS(pipeline.create<node::Depth>(), std::runtime_error);
 }
 
+TEST_CASE("Depth: available methods can be queried before creating a pipeline", "[available-methods]") {
+    const auto device = std::make_shared<Device>();
+    const bool hasStereoPair = !device->getStereoPairs().empty();
+    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
+    const bool hasTof = deviceReportsTofSensor(device);
+    const auto models = isRvc4 && hasStereoPair ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+    std::vector<node::Depth::Algorithm> expected;
+    if(hasStereoPair) {
+        expected.push_back(node::Depth::Algorithm::STEREO);
+    }
+    if(hasStereoPair && isRvc4 && device->isNeuralDepthSupported()) {
+        const std::vector<DeviceModelZoo> neuralModels = {
+            DeviceModelZoo::NEURAL_DEPTH_1248X780,
+            DeviceModelZoo::NEURAL_DEPTH_768X480,
+            DeviceModelZoo::NEURAL_DEPTH_576X360,
+            DeviceModelZoo::NEURAL_DEPTH_480X300,
+            DeviceModelZoo::NEURAL_DEPTH_384X240,
+            DeviceModelZoo::NEURAL_DEPTH_1056X660,
+            DeviceModelZoo::NEURAL_DEPTH_960X600,
+            DeviceModelZoo::NEURAL_DEPTH_864X540,
+            DeviceModelZoo::NEURAL_DEPTH_288X180,
+            DeviceModelZoo::NEURAL_DEPTH_192X120,
+        };
+        if(std::find_first_of(models.begin(), models.end(), neuralModels.begin(), neuralModels.end()) != models.end()) {
+            expected.push_back(node::Depth::Algorithm::NEURAL);
+        }
+        if(std::find(models.begin(), models.end(), DeviceModelZoo::NEURAL_DEPTH_NANO) != models.end()) {
+            expected.push_back(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
+        }
+    }
+    if(deviceSupportsGpuStereo(device)) {
+        expected.push_back(node::Depth::Algorithm::GPU_STEREO);
+    }
+    if(hasTof) {
+        expected.push_back(node::Depth::Algorithm::TOF);
+    }
+    if(isRvc4 && hasStereoPair && hasTof && std::find(models.begin(), models.end(), DeviceModelZoo::NEURAL_DEPTH_MEDIUM) != models.end()
+       && std::find(models.begin(), models.end(), DeviceModelZoo::TOF_NEURAL_FUSION_672X804) != models.end()) {
+        expected.push_back(node::Depth::Algorithm::TOF_STEREO_FUSION);
+    }
+
+    REQUIRE(node::Depth::getSupportedAlgorithms(device) == expected);
+}
+
 TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     Pipeline pipeline;
     (void)requireDefaultDevice(pipeline);
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW((void)&depth->depth());
     REQUIRE_NOTHROW((void)&depth->confidence());
+}
+
+TEST_CASE("Depth: default algorithm query matches AUTO before creating a pipeline", "[default-algorithm]") {
+    const auto device = std::make_shared<Device>();
+    const auto supported = node::Depth::getSupportedAlgorithms(device);
+    if(device->getStereoPairs().empty() && !deviceReportsTofSensor(device)) {
+        REQUIRE_THROWS(node::Depth::getDefaultAlgorithm(device));
+        return;
+    }
+
+    const auto algorithm = node::Depth::getDefaultAlgorithm(device);
+    REQUIRE(algorithm != node::Depth::Algorithm::AUTO);
+    REQUIRE(std::find(supported.begin(), supported.end(), algorithm) != supported.end());
+
+    Pipeline pipeline(device);
+    auto depth = pipeline.create<node::Depth>();
+    (void)depth->depth();
+    REQUIRE(depth->getResolvedAlgorithm() == algorithm);
+}
+
+TEST_CASE("Depth: RVC4 ToF-only default query matches AUTO wiring", "[default-algorithm][tof-only]") {
+    const auto device = std::make_shared<Device>();
+    if(device->getPlatform() != Platform::RVC4 || !device->getStereoPairs().empty() || !deviceReportsTofSensor(device)) {
+        SKIP("Requires an RVC4 device with ToF and no stereo pair.");
+    }
+    REQUIRE(node::Depth::getSupportedAlgorithms(device) == std::vector{node::Depth::Algorithm::TOF});
+    const auto algorithm = node::Depth::getDefaultAlgorithm(device);
+    REQUIRE(algorithm == node::Depth::Algorithm::TOF);
+
+    Pipeline pipeline(device);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::AUTO);
+    REQUIRE_NOTHROW((void)depth->depth());
+    REQUIRE_NOTHROW((void)depth->confidence());
+    REQUIRE(depth->getResolvedAlgorithm() == algorithm);
+    requireDepthSingleBackendChild(*depth, "ToF");
 }
 
 TEST_CASE("Depth: build(algorithm) exposes algorithm via getRequestedAlgorithm") {
@@ -473,7 +551,7 @@ TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
     auto device = requireDefaultDevice(pipeline);
     const auto platform = device->getPlatform();
     const auto hasTofSensor = deviceReportsTofSensor(device);
-    if(platform != Platform::RVC2 || !hasTofSensor) {
+    if(!hasTofSensor) {
         (void)requireFirstStereoPairForTest(device);
     }
 
@@ -880,7 +958,7 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from size and fps") {
     (void)requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>();
-    const auto supported = node::DepthTestAccess::getSupportedAlgorithms(*depth, device);
+    const auto supported = node::Depth::getSupportedAlgorithms(device);
     const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels());
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(expected.second) == DeviceModelZoo::NEURAL_DEPTH_576X360);
@@ -915,8 +993,8 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
     (void)rightQueue;
 
     auto depth = pipeline.create<node::Depth>();
-    const auto expected = node::DepthTestAccess::selectBackend(
-        std::make_pair(640u, 400u), 20.f, node::DepthTestAccess::getSupportedAlgorithms(*depth, device), device->getSupportedDeviceModels());
+    const auto expected =
+        node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 20.f, node::Depth::getSupportedAlgorithms(device), device->getSupportedDeviceModels());
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
     REQUIRE_NOTHROW((void)&depth->depth());
