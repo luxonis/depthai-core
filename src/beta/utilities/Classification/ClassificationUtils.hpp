@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -142,7 +143,7 @@ std::vector<float> getFlattenedTensorData(const dai::NNData& nnData, const std::
  * @param tensorName Name of the tensor to retrieve.
  * @return Dequantized tensor values with the tensor shape.
  */
-ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::string& tensorName);
+ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::string& tensorName, std::optional<TensorInfo::StorageOrder> order = std::nullopt);
 
 }  // namespace ClassificationUtils
 }  // namespace utilities

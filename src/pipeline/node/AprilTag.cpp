@@ -7,6 +7,7 @@
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/AprilTagConfig.hpp"
 #include "properties/AprilTagProperties.hpp"
+#include "utility/ImgFrameView.hpp"
 
 #ifdef DEPTHAI_HAS_APRIL_TAG
 
@@ -252,7 +253,7 @@ void AprilTag::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::NV12) {
+        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::RAW8 || frameType == ImgFrame::Type::NV12) {
             width = static_cast<int32_t>(inFrame->getWidth());
             height = static_cast<int32_t>(inFrame->getHeight());
             stride = static_cast<int32_t>(inFrame->getStride());
@@ -260,7 +261,7 @@ void AprilTag::run() {
         } else {
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             cvimgPtr = std::make_unique<cv::Mat>();
-            cv::cvtColor(inFrame->getCvFrame(), *cvimgPtr, cv::COLOR_BGR2GRAY);
+            cv::cvtColor(utility::getCvFrameView(*inFrame), *cvimgPtr, cv::COLOR_BGR2GRAY);
             width = cvimgPtr->cols;
             height = cvimgPtr->rows;
             stride = cvimgPtr->cols;

@@ -41,18 +41,7 @@ namespace {
  * stored order is honored; the data is permuted to NCHW, not just re-labeled.
  */
 utilities::ClassificationUtils::ShapedTensorData getNchwTensorData(dai::NNData& nnData, const std::string& tensorName) {
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-    xt::xarray<float> tensor = nnData.getTensor<float>(tensorName, TensorInfo::StorageOrder::NCHW, true);
-    utilities::ClassificationUtils::ShapedTensorData result;
-    result.dims.assign(tensor.shape().begin(), tensor.shape().end());
-    result.values.assign(tensor.begin(), tensor.end());
-    return result;
-#else
-    (void)nnData;
-    (void)tensorName;
-    throw std::runtime_error(
-        "FastSAMParser requires xtensor support to convert the model output tensors to NCHW orientation, but xtensor support is not available.");
-#endif
+    return utilities::ClassificationUtils::getShapedTensorData(nnData, tensorName, TensorInfo::StorageOrder::NCHW);
 }
 
 }  // namespace
