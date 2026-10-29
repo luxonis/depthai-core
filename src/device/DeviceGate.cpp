@@ -82,6 +82,21 @@ static std::vector<uint8_t> getGateFirmware(XLinkPlatform_t platform) {
     }
 }
 
+class DeviceGate::FirmwarePackage {
+    XLinkPlatform_t platform;
+    std::optional<std::vector<uint8_t>> bytes;
+
+   public:
+    explicit FirmwarePackage(XLinkPlatform_t platform) : platform(platform) {
+        if(platform == X_LINK_RVC2NG) bytes = getGateFirmware(platform);
+    }
+
+    const std::vector<uint8_t>& get() {
+        if(!bytes) bytes = getGateFirmware(platform);
+        return *bytes;
+    }
+};
+
 DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     if((deviceInfo.state != X_LINK_GATE) && (deviceInfo.state != X_LINK_GATE_SETUP)) {
         throw std::invalid_argument(
@@ -241,12 +256,12 @@ DeviceGate::VersionInfo DeviceGate::USBImpl::getAllVersion() {
 }
 
 bool DeviceGate::createSession(bool exclusive) {
-    const auto package = getGateFirmware(platform);
-    return impl->createSession(version, exclusive, package, sessionId, sessionCreated);
+    FirmwarePackage firmware(platform);
+    return impl->createSession(version, exclusive, firmware, sessionId, sessionCreated);
 }
 
 bool DeviceGate::HTTPImpl::createSession(
-    std::string version, bool exclusive, const std::vector<uint8_t>& package, std::string& sessionId, std::atomic_bool& sessionCreated) {
+    std::string version, bool exclusive, FirmwarePackage& firmware, std::string& sessionId, std::atomic_bool& sessionCreated) {
     lastError.clear();
 
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
@@ -273,6 +288,7 @@ bool DeviceGate::HTTPImpl::createSession(
         bool fwpExists = resp["fwp_exists"].get<bool>();
 
         if(!fwpExists) {
+            const auto& package = firmware.get();
             // TODO(themarpe) - Inefficient
             httplib::MultipartFormDataItems items = {
                 {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
@@ -306,7 +322,7 @@ bool DeviceGate::HTTPImpl::createSession(
 }
 
 bool DeviceGate::USBImpl::createSession(
-    std::string version, bool exclusive, const std::vector<uint8_t>& package, std::string& sessionId, std::atomic_bool& sessionCreated) {
+    std::string version, bool exclusive, FirmwarePackage& firmware, std::string& sessionId, std::atomic_bool& sessionCreated) {
     lastError.clear();
 
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
@@ -350,6 +366,7 @@ bool DeviceGate::USBImpl::createSession(
     bool fwpExists = resp["fwp_exists"].get<bool>();
 
     if(!fwpExists) {
+        const auto& package = firmware.get();
         const auto sessionIdLen = static_cast<uint32_t>(sessionId.size());
         const auto packageSize = static_cast<uint64_t>(package.size());
         const auto payloadSize = static_cast<uint64_t>(sizeof(uint32_t)) + sessionIdLen + packageSize;
