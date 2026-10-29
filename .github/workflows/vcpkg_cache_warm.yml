@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-2025]
+        os: [ubuntu-24.04, macos-latest, windows-2025]
         family: [core, core-tests]
     runs-on: ${{ matrix.os }}
     steps:
@@ -88,9 +88,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             family: py-docstrings
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             family: py-pytest
           - os: windows-2025
             family: wheel
@@ -196,7 +196,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
             family: wheel-manylinux-x86_64
           - os: ubuntu-24.04-arm

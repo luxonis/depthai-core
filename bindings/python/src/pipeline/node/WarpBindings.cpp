@@ -9,7 +9,6 @@ void bind_warp(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
 
     // Node and Properties declare upfront
-    // TODO(themarpe) - properties
     py::class_<Warp::Properties> warpProperties(m, "WarpProperties", DOC(dai, WarpProperties));
     auto warp = ADD_NODE(Warp);
 
@@ -25,7 +24,16 @@ void bind_warp(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    // properties
+    warpProperties.def(py::init<>())
+        .def_readwrite("interpolation", &WarpProperties::interpolation, DOC(dai, WarpProperties, interpolation))
+        .def_readwrite("meshHeight", &WarpProperties::meshHeight, DOC(dai, WarpProperties, meshHeight))
+        .def_readwrite("meshUri", &WarpProperties::meshUri, DOC(dai, WarpProperties, meshUri))
+        .def_readwrite("meshWidth", &WarpProperties::meshWidth, DOC(dai, WarpProperties, meshWidth))
+        .def_readwrite("numFramesPool", &WarpProperties::numFramesPool, DOC(dai, WarpProperties, numFramesPool))
+        .def_readwrite("outputFrameSize", &WarpProperties::outputFrameSize, DOC(dai, WarpProperties, outputFrameSize))
+        .def_readwrite("outputHeight", &WarpProperties::outputHeight, DOC(dai, WarpProperties, outputHeight))
+        .def_readwrite("outputWidth", &WarpProperties::outputWidth, DOC(dai, WarpProperties, outputWidth))
+        .def_readwrite("warpHwIds", &WarpProperties::warpHwIds, DOC(dai, WarpProperties, warpHwIds));
 
     // ImageManip Node
     warp

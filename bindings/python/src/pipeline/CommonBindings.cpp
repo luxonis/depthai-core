@@ -2,6 +2,7 @@
 
 #include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl_bind.h>
 
 #include <array>
 #include <vector>
@@ -55,6 +56,11 @@
 
 void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
+
+    py::bind_vector<std::vector<uint8_t>>(m, "VectorUInt8");
+    py::implicitly_convertible<py::list, std::vector<uint8_t>>();
+    py::implicitly_convertible<py::bytes, std::vector<uint8_t>>();
+    py::implicitly_convertible<py::bytearray, std::vector<uint8_t>>();
 
     py::class_<Timestamp> timestamp(m, "Timestamp", DOC(dai, Timestamp));
     py::class_<Point2f> point2f(m, "Point2f", DOC(dai, Point2f));
@@ -127,6 +133,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
+    m.attr("ConnectionInterface") = connectionInterface;
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -153,7 +160,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("label") = 0,
              py::arg("labelName") = "",
              DOC(dai, Keypoint, Keypoint))
-        .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
+        .def("transform", &dai::Keypoint::transform, py::arg("source"), py::arg("target"), DOC(dai, Keypoint, transform));
+
+    keypoint.def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
         .def_readwrite("confidence", &Keypoint::confidence, DOC(dai, Keypoint, confidence))
         .def_readwrite("label", &Keypoint::label, DOC(dai, Keypoint, label))
         .def_readwrite("labelName", &Keypoint::labelName, DOC(dai, Keypoint, labelName));
@@ -161,6 +170,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     keypointsList.def(py::init<>())
         .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))
         .def(py::init<std::vector<Keypoint>>(), py::arg("keypoints"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def("transformTo", &dai::KeypointsList::transformTo, py::arg("source"), py::arg("target"), DOC(dai, KeypointsList, transformTo));
+
+    keypointsList
         .def(
             "setKeypoints",
             [](KeypointsList& self, const std::vector<Keypoint>& kps) { self.Base::setKeypoints(kps); },
@@ -224,7 +236,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     spatialKeypointsList.def(py::init<>())
         .def(py::init<std::vector<SpatialKeypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))
         .def(py::init<std::vector<SpatialKeypoint>>(), py::arg("keypoints"), DOC(dai, KeypointsListT, KeypointsListT))
-        .def_readwrite("unit", &SpatialKeypointsList::unit, DOC(dai, SpatialKeypointsList, unit))
+        .def("transformTo", &dai::SpatialKeypointsList::transformTo, py::arg("source"), py::arg("target"), DOC(dai, SpatialKeypointsList, transformTo));
+
+    spatialKeypointsList.def_readwrite("unit", &SpatialKeypointsList::unit, DOC(dai, SpatialKeypointsList, unit))
         .def(
             "setKeypoints",
             [](SpatialKeypointsList& self, const std::vector<SpatialKeypoint>& kps) { self.Base::setKeypoints(kps); },
@@ -282,6 +296,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(py::init<Point2f, Size2f, bool>(), py::arg("top_left"), py::arg("size"), py::arg("normalized"), DOC(dai, Rect, Rect, 5))
         .def(py::init<Point2f, Point2f>(), py::arg("point_1"), py::arg("point_2"), DOC(dai, Rect, Rect, 6))
         .def(py::init<Point2f, Point2f, bool>(), py::arg("point_1"), py::arg("point_2"), py::arg("normalized"), DOC(dai, Rect, Rect, 7))
+        .def_readwrite("normalized", &dai::Rect::normalized, DOC(dai, Rect, normalized))
+        .def_readwrite("hasNormalized", &dai::Rect::hasNormalized, DOC(dai, Rect, hasNormalized))
 
         .def("topLeft", &Rect::topLeft, DOC(dai, Rect, topLeft))
         .def("bottomRight", &Rect::bottomRight, DOC(dai, Rect, bottomRight))
@@ -317,6 +333,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     point2f.def(py::init<>(), DOC(dai, Point2f, Point2f))
         .def(py::init<float, float>(), py::arg("x"), py::arg("y"), DOC(dai, Point2f, Point2f, 2))
         .def(py::init<float, float, bool>(), py::arg("x"), py::arg("y"), py::arg("normalized"), DOC(dai, Point2f, Point2f, 3))
+        .def_readwrite("normalized", &dai::Point2f::normalized, DOC(dai, Point2f, normalized))
+        .def_readwrite("hasNormalized", &dai::Point2f::hasNormalized, DOC(dai, Point2f, hasNormalized))
         .def_readwrite("x", &Point2f::x)
         .def_readwrite("y", &Point2f::y)
         .def("isNormalized", &Point2f::isNormalized);
@@ -357,6 +375,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     size2f.def(py::init<>())
         .def(py::init<float, float>(), py::arg("width"), py::arg("height"))
         .def(py::init<float, float, bool>(), py::arg("width"), py::arg("height"), py::arg("normalized"))
+        .def_readwrite("normalized", &dai::Size2f::normalized, DOC(dai, Size2f, normalized))
+        .def_readwrite("hasNormalized", &dai::Size2f::hasNormalized, DOC(dai, Size2f, hasNormalized))
         .def_readwrite("width", &Size2f::width)
         .def_readwrite("height", &Size2f::height)
         .def("isNormalized", &Size2f::isNormalized);
@@ -366,7 +386,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     // Deprecated
     HEDLEY_DIAGNOSTIC_PUSH
     HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-    cameraBoardSocket.value("AUTO", CameraBoardSocket::AUTO)
+    cameraBoardSocket.value("CAM_I", dai::CameraBoardSocket::CAM_I)
+        .value("CAM_J", dai::CameraBoardSocket::CAM_J)
+        .value("AUTO", CameraBoardSocket::AUTO)
         .value("CAM_A", CameraBoardSocket::CAM_A)
         .value("CAM_B", CameraBoardSocket::CAM_B)
         .value("CAM_C", CameraBoardSocket::CAM_C)
@@ -406,7 +428,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     HEDLEY_DIAGNOSTIC_POP
 
     // HousingCoordinateSystem enum bindings
-    housingCoordinateSystem.value("CAM_A", HousingCoordinateSystem::CAM_A)
+    housingCoordinateSystem.value("AUTO", dai::HousingCoordinateSystem::AUTO)
+        .value("CAM_A", HousingCoordinateSystem::CAM_A)
         .value("CAM_B", HousingCoordinateSystem::CAM_B)
         .value("CAM_C", HousingCoordinateSystem::CAM_C)
         .value("CAM_D", HousingCoordinateSystem::CAM_D)
@@ -444,7 +467,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("SLAVE", ExternalFrameSyncRole::SLAVE);
 
     // CameraSensorType enum bindings
-    cameraSensorType.value("COLOR", CameraSensorType::COLOR)
+    cameraSensorType.value("AUTO", dai::CameraSensorType::AUTO)
+        .value("COLOR", CameraSensorType::COLOR)
         .value("MONO", CameraSensorType::MONO)
         .value("TOF", CameraSensorType::TOF)
         .value("THERMAL", CameraSensorType::THERMAL);
@@ -459,6 +483,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // CameraFeatures
     cameraFeatures.def(py::init<>())
+        .def_readwrite("additionalNames", &dai::CameraFeatures::additionalNames, DOC(dai, CameraFeatures, additionalNames))
         .def_readwrite("socket", &CameraFeatures::socket)
         .def_readwrite("sensorName", &CameraFeatures::sensorName)
         .def_readwrite("width", &CameraFeatures::width)
@@ -479,6 +504,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // CameraSensorConfig
     cameraSensorConfig.def(py::init<>())
+        .def_readwrite("hdr", &dai::CameraSensorConfig::hdr, DOC(dai, CameraSensorConfig, hdr))
+        .def_readwrite("hfr", &dai::CameraSensorConfig::hfr, DOC(dai, CameraSensorConfig, hfr))
         .def_readwrite("width", &CameraSensorConfig::width)
         .def_readwrite("height", &CameraSensorConfig::height)
         .def_readwrite("minFps", &CameraSensorConfig::minFps)
@@ -542,6 +569,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("extrinsicsMatrix"),
              py::arg("toCameraSocket"),
              py::arg("lengthUnit") = LengthUnit::CENTIMETER)
+        .def("withLengthUnit", &dai::Extrinsics::withLengthUnit, py::arg("unit"), DOC(dai, Extrinsics, withLengthUnit))
         .def_readwrite("rotationMatrix", &Extrinsics::rotationMatrix)
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
@@ -594,6 +622,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // CameraInfo
     cameraInfo.def(py::init<>())
+        .def_readwrite("lensPosition", &dai::CameraInfo::lensPosition, DOC(dai, CameraInfo, lensPosition))
         .def_readwrite("width", &CameraInfo::width)
         .def_readwrite("height", &CameraInfo::height)
         .def_readwrite("intrinsicMatrix", &CameraInfo::intrinsicMatrix)
@@ -686,7 +715,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     serializationType.value("LIBNOP", SerializationType::LIBNOP).value("JSON", SerializationType::JSON).value("JSON_MSGPACK", SerializationType::JSON_MSGPACK);
 
-    detectionParserOptions.def_readwrite("nnFamily", &DetectionParserOptions::nnFamily)
+    detectionParserOptions.def(py::init<>())
+        .def_readwrite("classNames", &dai::DetectionParserOptions::classNames, DOC(dai, DetectionParserOptions, classNames))
+        .def_readwrite("decodeSegmentation", &dai::DetectionParserOptions::decodeSegmentation, DOC(dai, DetectionParserOptions, decodeSegmentation))
+        .def_readwrite("keypointLabelNames", &dai::DetectionParserOptions::keypointLabelNames, DOC(dai, DetectionParserOptions, keypointLabelNames))
+        .def_readwrite("nKeypoints", &dai::DetectionParserOptions::nKeypoints, DOC(dai, DetectionParserOptions, nKeypoints))
+        .def_readwrite("outputNamesToUse", &dai::DetectionParserOptions::outputNamesToUse, DOC(dai, DetectionParserOptions, outputNamesToUse))
+        .def_readwrite("strides", &dai::DetectionParserOptions::strides, DOC(dai, DetectionParserOptions, strides))
+        .def_readwrite("subtype", &dai::DetectionParserOptions::subtype, DOC(dai, DetectionParserOptions, subtype))
+        .def_readwrite("nnFamily", &DetectionParserOptions::nnFamily)
         .def_readwrite("confidenceThreshold", &DetectionParserOptions::confidenceThreshold)
         .def_readwrite("classes", &DetectionParserOptions::classes)
         .def_readwrite("coordinates", &DetectionParserOptions::coordinates)
@@ -737,7 +774,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     frameEvent.value("NONE", FrameEvent::NONE).value("READOUT_START", FrameEvent::READOUT_START).value("READOUT_END", FrameEvent::READOUT_END);
 
-    interpolation.value("BILINEAR", Interpolation::BILINEAR)
+    interpolation.value("AUTO", dai::Interpolation::AUTO)
+        .value("BILINEAR", Interpolation::BILINEAR)
         .value("BICUBIC", Interpolation::BICUBIC)
         .value("NEAREST_NEIGHBOR", Interpolation::NEAREST_NEIGHBOR)
         .value("BYPASS", Interpolation::BYPASS)
@@ -750,7 +788,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     profilingData.def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead));
 
-    deviceModelZoo.value("NEURAL_DEPTH_1248X780", DeviceModelZoo::NEURAL_DEPTH_1248X780)
+    deviceModelZoo.value("TOF_NEURAL_FUSION_672X804", dai::DeviceModelZoo::TOF_NEURAL_FUSION_672X804)
+        .value("NEURAL_DEPTH_1248X780", DeviceModelZoo::NEURAL_DEPTH_1248X780)
         .value("NEURAL_DEPTH_1056X660", DeviceModelZoo::NEURAL_DEPTH_1056X660)
         .value("NEURAL_DEPTH_960X600", DeviceModelZoo::NEURAL_DEPTH_960X600)
         .value("NEURAL_DEPTH_864X540", DeviceModelZoo::NEURAL_DEPTH_864X540)

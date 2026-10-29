@@ -37,6 +37,7 @@ void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack);
 void bind_trackedfeatures(pybind11::module& m, void* pCallstack);
 void bind_tracklets(pybind11::module& m, void* pCallstack);
 void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
+void bind_objecttrackerconfig(pybind11::module& m, void* pCallstack);
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
 void bind_pipelineevent(pybind11::module& m, void* pCallstack);
@@ -118,6 +119,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_tracklets);
     callstack.push_front(bind_benchmarkreport);
     callstack.push_front(bind_pointcloudconfig);
+    callstack.push_front(bind_objecttrackerconfig);
     callstack.push_front(bind_pointclouddata);
     callstack.push_front(bind_pipelineevent);
     callstack.push_front(bind_pipelinestate);
@@ -181,7 +183,14 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     m.def("isDatatypeSubclassOf", &isDatatypeSubclassOf);
 
-    datatypeEnum.value("ADatatype", DatatypeEnum::ADatatype)
+    datatypeEnum.value("CalibrationMetrics", dai::DatatypeEnum::CalibrationMetrics)
+        .value("GateControl", dai::DatatypeEnum::GateControl)
+        .value("NeuralDepthConfig", dai::DatatypeEnum::NeuralDepthConfig)
+        .value("ObjectTrackerConfig", dai::DatatypeEnum::ObjectTrackerConfig)
+        .value("PacketizedData", dai::DatatypeEnum::PacketizedData)
+        .value("PipelineEventAggregationConfig", dai::DatatypeEnum::PipelineEventAggregationConfig)
+        .value("COUNT", dai::DatatypeEnum::COUNT)
+        .value("ADatatype", DatatypeEnum::ADatatype)
         .value("Buffer", DatatypeEnum::Buffer)
         .value("Transformable", DatatypeEnum::Transformable)
         .value("ImgFrame", DatatypeEnum::ImgFrame)

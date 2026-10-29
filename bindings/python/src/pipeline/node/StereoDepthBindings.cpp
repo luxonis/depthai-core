@@ -38,7 +38,10 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def_readwrite("stepWidth", &StereoDepthProperties::RectificationMesh::stepWidth, DOC(dai, StereoDepthProperties, RectificationMesh, stepWidth))
         .def_readwrite("stepHeight", &StereoDepthProperties::RectificationMesh::stepHeight, DOC(dai, StereoDepthProperties, RectificationMesh, stepHeight));
 
-    stereoDepthProperties.def_readwrite("initialConfig", &StereoDepthProperties::initialConfig, DOC(dai, StereoDepthProperties, initialConfig))
+    stereoDepthProperties.def(py::init<>());
+
+    stereoDepthProperties.def_readwrite("enableFrameSync", &dai::StereoDepthProperties::enableFrameSync, DOC(dai, StereoDepthProperties, enableFrameSync))
+        .def_readwrite("initialConfig", &StereoDepthProperties::initialConfig, DOC(dai, StereoDepthProperties, initialConfig))
         .def_readwrite("depthAlignCamera", &StereoDepthProperties::depthAlignCamera, DOC(dai, StereoDepthProperties, depthAlignCamera))
         .def_readwrite("enableRectification", &StereoDepthProperties::enableRectification, DOC(dai, StereoDepthProperties, enableRectification))
         .def_readwrite("rectifyEdgeFillColor", &StereoDepthProperties::rectifyEdgeFillColor, DOC(dai, StereoDepthProperties, rectifyEdgeFillColor))
@@ -99,6 +102,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              }),
              py::arg("autoCreateCameras"),
              py::arg("presetMode") = StereoDepth::PresetMode::DEFAULT)
+        .def("setFrameSync", &dai::node::StereoDepth::setFrameSync, py::arg("enableFrameSync"), DOC(dai, node, StereoDepth, setFrameSync))
         .def("build",
              static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(Node::Output&, Node::Output&, StereoDepth::PresetMode)>(&StereoDepth::build),
              py::arg("left"),

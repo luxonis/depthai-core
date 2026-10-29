@@ -23,6 +23,7 @@ void ImgFrameCapabilityBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // ImgFrameCapability
     imgFrameCapability.def(py::init<>())
+        .def_readwrite("ispOutput", &dai::ImgFrameCapability::ispOutput, DOC(dai, ImgFrameCapability, ispOutput))
         .def_readwrite("size", &ImgFrameCapability::size)
         .def_readwrite("fps", &ImgFrameCapability::fps)
         .def_readwrite("type", &ImgFrameCapability::type)

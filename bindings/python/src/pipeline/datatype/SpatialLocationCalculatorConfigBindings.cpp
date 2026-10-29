@@ -51,6 +51,7 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .value("MEDIAN", SpatialLocationCalculatorAlgorithm::MEDIAN);
 
     spatialLocationCalculatorConfigData.def(py::init<>())
+        .def_readwrite("stepSize", &dai::SpatialLocationCalculatorConfigData::stepSize, DOC(dai, SpatialLocationCalculatorConfigData, stepSize))
         .def_readwrite("roi", &SpatialLocationCalculatorConfigData::roi, DOC(dai, SpatialLocationCalculatorConfigData, roi))
         .def_readwrite("depthThresholds", &SpatialLocationCalculatorConfigData::depthThresholds, DOC(dai, SpatialLocationCalculatorConfigData, depthThresholds))
         .def_readwrite("calculationAlgorithm",
@@ -59,6 +60,17 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
 
     // Message
     spatialLocationCalculatorConfig.def(py::init<>())
+        .def_readwrite("bBoxScaleFactor", &dai::SpatialLocationCalculatorConfig::bBoxScaleFactor, DOC(dai, SpatialLocationCalculatorConfig, bBoxScaleFactor))
+        .def_readwrite("config", &dai::SpatialLocationCalculatorConfig::config, DOC(dai, SpatialLocationCalculatorConfig, config))
+        .def_readwrite("globalCalculationAlgorithm",
+                       &dai::SpatialLocationCalculatorConfig::globalCalculationAlgorithm,
+                       DOC(dai, SpatialLocationCalculatorConfig, globalCalculationAlgorithm))
+        .def_readwrite("globalKeypointRadius",
+                       &dai::SpatialLocationCalculatorConfig::globalKeypointRadius,
+                       DOC(dai, SpatialLocationCalculatorConfig, globalKeypointRadius))
+        .def_readwrite("segmentationPassthrough",
+                       &dai::SpatialLocationCalculatorConfig::segmentationPassthrough,
+                       DOC(dai, SpatialLocationCalculatorConfig, segmentationPassthrough))
         .def("__repr__", &SpatialLocationCalculatorConfig::str)
         .def_readwrite("globalStepSize", &SpatialLocationCalculatorConfig::globalStepSize)
         .def_readwrite("globalLowerThreshold", &SpatialLocationCalculatorConfig::globalLowerThreshold)
@@ -69,7 +81,11 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .def("setROIs", &SpatialLocationCalculatorConfig::setROIs, py::arg("ROIs"), DOC(dai, SpatialLocationCalculatorConfig, setROIs))
         .def("addROI", &SpatialLocationCalculatorConfig::addROI, py::arg("ROI"), DOC(dai, SpatialLocationCalculatorConfig, addROI))
         .def("getConfigData", &SpatialLocationCalculatorConfig::getConfigData, DOC(dai, SpatialLocationCalculatorConfig, getConfigData))
-        .def("setDepthThresholds", &SpatialLocationCalculatorConfig::setDepthThresholds, DOC(dai, SpatialLocationCalculatorConfig, setDepthThresholds))
+        .def("setDepthThresholds",
+             &SpatialLocationCalculatorConfig::setDepthThresholds,
+             py::arg("lowerThreshold") = MIN_LOWER_THRESHOLD,
+             py::arg("upperThreshold") = MAX_UPPER_THRESHOLD,
+             DOC(dai, SpatialLocationCalculatorConfig, setDepthThresholds))
         .def("setCalculationAlgorithm",
              &SpatialLocationCalculatorConfig::setCalculationAlgorithm,
              DOC(dai, SpatialLocationCalculatorConfig, setCalculationAlgorithm))

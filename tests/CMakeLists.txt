@@ -407,6 +407,8 @@ function(dai_set_test_labels test_name)
         elseif(label STREQUAL "noreplayci")
             # Exclude these tests from the replay-enabled CI job.
             list(APPEND expanded_labels ${label})
+        elseif(label STREQUAL "nousb")
+            list(APPEND expanded_labels ${label})
         else()
             list(APPEND expanded_labels ${label})
         endif()
@@ -1005,6 +1007,10 @@ dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
 
 # ObjectTracker tests
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(object_tracker_host_test src/onhost_tests/pipeline/node/object_tracker_test.cpp)
+    dai_set_test_labels(object_tracker_host_test onhost ci)
+endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
     dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
@@ -1029,6 +1035,9 @@ endif()
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
+
+dai_add_test(camera_test_rvc4 src/ondevice_tests/pipeline/node/camera_test_rvc4.cpp)
+dai_set_test_labels(camera_test_rvc4 ondevice rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
@@ -1101,3 +1110,9 @@ endif()
 dai_add_test(img_detections_filter_device_test src/ondevice_tests/pipeline/node/img_detections_filter_device_test.cpp)
 dai_set_test_labels(img_detections_filter_device_test ondevice rvc2_all rvc4 ci)
 set_tests_properties(img_detections_filter_device_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+
+# Link drop during the asset storage transfer (RVC4 over TCP/IP, local proxy uses POSIX sockets)
+if(UNIX)
+    dai_add_test(asset_storage_link_drop_test src/ondevice_tests/asset_storage_link_drop_test.cpp)
+    dai_set_test_labels(asset_storage_link_drop_test ondevice rvc4 ci noreplayci nousb)
+endif()
