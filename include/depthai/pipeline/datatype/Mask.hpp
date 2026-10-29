@@ -9,12 +9,21 @@ namespace dai {
 /**
  * Depth validity mask in the final depth image coordinates and size.
  * Zero pixels invalidate depth; nonzero pixels retain depth.
- * Serializes as ImgFrame, so receivers should read it as an ImgFrame.
+ * Preserves its Mask datatype when sent between host and device.
  */
 class Mask : public ImgFrame {
    public:
     Mask() {
         setType(Type::RAW8);
+    }
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::Mask;
+    }
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        ImgFrame::serialize(metadata, datatype);
+        datatype = DatatypeEnum::Mask;
     }
 
     bool empty() const {

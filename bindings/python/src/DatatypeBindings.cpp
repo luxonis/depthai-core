@@ -194,6 +194,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("Buffer", DatatypeEnum::Buffer)
         .value("Transformable", DatatypeEnum::Transformable)
         .value("ImgFrame", DatatypeEnum::ImgFrame)
+        .value("Mask", DatatypeEnum::Mask)
         .value("EncodedFrame", DatatypeEnum::EncodedFrame)
         .value("NNData", DatatypeEnum::NNData)
         .value("ImageManipConfig", DatatypeEnum::ImageManipConfig)

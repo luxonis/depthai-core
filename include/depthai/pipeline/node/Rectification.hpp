@@ -41,12 +41,12 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
      * When connected, emits on the first image and whenever the rectification maps change.
      * Metadata identifies the first image using the updated maps. Reuse the mask until the next update.
      */
-    Output validMask1{*this, {"validMask1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output validMask1{*this, {"validMask1", DEFAULT_GROUP, {{{DatatypeEnum::Mask, false}}}}};
 
     /**
      * RAW8 usable-area mask for output2. Uses the same validity rules as validMask1.
      */
-    Output validMask2{*this, {"validMask2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output validMask2{*this, {"validMask2", DEFAULT_GROUP, {{{DatatypeEnum::Mask, false}}}}};
 
     /**
      * Specify whether to run on host or device

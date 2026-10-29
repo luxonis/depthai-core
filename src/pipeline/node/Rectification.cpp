@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/Rectification.hpp"
+#include "depthai/pipeline/datatype/Mask.hpp"
 
 #include <array>
 #include <chrono>
@@ -88,8 +89,8 @@ cv::Mat createValidMask(cv::Size inputSize, const cv::Mat& mapX, const cv::Mat& 
     return mask;
 }
 
-std::shared_ptr<ImgFrame> createMaskFrame(const cv::Mat& mask, const ImgFrame& rectifiedFrame) {
-    auto frame = std::make_shared<ImgFrame>();
+std::shared_ptr<Mask> createMaskFrame(const cv::Mat& mask, const ImgFrame& rectifiedFrame) {
+    auto frame = std::make_shared<Mask>();
     frame->setMetadata(rectifiedFrame);
     frame->setData(std::vector<uint8_t>(mask.data, mask.data + mask.total()));
     return frame;
