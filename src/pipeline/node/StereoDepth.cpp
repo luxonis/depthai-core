@@ -198,6 +198,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
         case Platform::RVC4:
             setRvc4ProfilePreset(mode);
             break;
+        case Platform::RVC2NG:
         case Platform::RVC3:
         default:
             DAI_CHECK_V(false, "Unsupported platform: {}", device->getPlatformAsString());

@@ -119,6 +119,7 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("X_LINK_MYRIAD_X", X_LINK_MYRIAD_X)
         .value("X_LINK_RVC3", X_LINK_RVC3)
         .value("X_LINK_RVC4", X_LINK_RVC4)
+        .value("X_LINK_RVC2NG", X_LINK_RVC2NG)
         .export_values();
 
     xLinkConnection.def(py::init<const DeviceInfo&, std::vector<std::uint8_t> >())

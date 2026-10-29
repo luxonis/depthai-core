@@ -8,7 +8,7 @@ namespace dai {
 /**
  * @brief Hardware platform type
  */
-enum class Platform { RVC2, RVC3, RVC4 };
+enum class Platform { RVC2, RVC3, RVC4, RVC2NG };
 
 /**
  * @brief Convert Platform enum to string

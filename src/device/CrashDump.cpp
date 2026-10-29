@@ -119,6 +119,7 @@ std::unique_ptr<CrashDump> CrashDump::load(const fs::path& tarPath) {
         case Platform::RVC4:
             result = std::make_unique<CrashDumpRVC4>(tarPath);
             break;
+        case Platform::RVC2NG:
         case Platform::RVC3:
         default:
             throw std::runtime_error("Unsupported platform in crash dump: " + platform2string(platform));

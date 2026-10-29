@@ -496,6 +496,17 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(nn_archive_test onhost ci)
 endif()
 
+dai_add_test(device_platform_test src/onhost_tests/device_platform_test.cpp)
+dai_set_test_labels(device_platform_test onhost ci)
+if(UNIX)
+    dai_add_test(device_gate_rvc2ng_test src/onhost_tests/device_gate_rvc2ng_test.cpp)
+    target_link_libraries(device_gate_rvc2ng_test PRIVATE httplib::httplib)
+    dai_set_test_labels(device_gate_rvc2ng_test onhost ci)
+    add_test(NAME device_gate_rvc2ng_unset_test COMMAND device_gate_rvc2ng_test "[unset-firmware]")
+    dai_set_test_labels(device_gate_rvc2ng_unset_test onhost ci)
+    set_tests_properties(device_gate_rvc2ng_test device_gate_rvc2ng_unset_test PROPERTIES RUN_SERIAL TRUE TIMEOUT 20 ENVIRONMENT "${test_env}")
+endif()
+
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
 dai_set_test_labels(naming_test onhost ci)

@@ -63,6 +63,8 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
             dump = collectDumpRVC4();
         } break;
 
+        case Platform::RVC2NG:
+            throw std::runtime_error("RVC2NG crash dumps are not supported yet");
         default:
             throw std::runtime_error("Unsupported platform");
     }

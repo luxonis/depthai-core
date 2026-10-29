@@ -62,7 +62,8 @@ class DeviceGate {
         virtual ~GateImpl();
         std::string lastError;
         virtual bool isOkay() = 0;
-        virtual bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) = 0;
+        virtual bool createSession(
+            std::string version, bool exclusive, const std::vector<uint8_t>& package, std::string& sessionId, std::atomic_bool& sessionCreated) = 0;
         virtual bool startSession(std::string sessionId) = 0;
         virtual bool stopSession(std::string sessionId) = 0;
         virtual bool deleteSession(std::string sessionId) = 0;
@@ -78,7 +79,8 @@ class DeviceGate {
         USBImpl(const DeviceInfo& deviceInfo, int timeout);
         ~USBImpl() = default;
         bool isOkay() override;
-        bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) override;
+        bool createSession(
+            std::string version, bool exclusive, const std::vector<uint8_t>& package, std::string& sessionId, std::atomic_bool& sessionCreated) override;
         bool startSession(std::string sessionId) override;
         bool stopSession(std::string sessionId) override;
         bool deleteSession(std::string sessionId) override;
@@ -98,7 +100,8 @@ class DeviceGate {
         HTTPImpl(DeviceInfo deviceInfo);
         ~HTTPImpl() = default;
         bool isOkay() override;
-        bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) override;
+        bool createSession(
+            std::string version, bool exclusive, const std::vector<uint8_t>& package, std::string& sessionId, std::atomic_bool& sessionCreated) override;
         bool startSession(std::string sessionId) override;
         bool stopSession(std::string sessionId) override;
         bool deleteSession(std::string sessionId) override;

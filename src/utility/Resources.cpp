@@ -363,6 +363,10 @@ std::vector<std::uint8_t> Resources::getDeviceRVC4Fwp() const {
 #endif
 }
 
+std::vector<std::uint8_t> Resources::getDeviceRVC2NGFwp() const {
+    return getDeviceFwp("", "DEPTHAI_DEVICE_RVC2NG_FWP");
+}
+
 std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, const std::string& envPath) const {
     std::string pathToFwp;
 
@@ -391,6 +395,9 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
         // Read the file and return its contents
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
+        if(fwPath.empty()) {
+            throw std::runtime_error(fmt::format("No embedded device FWP is configured. Provide firmware with {}.", envPath));
+        }
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
         // Load from resources
         auto fs = cmrc::depthai::get_filesystem();

@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <exception>
+#include <initializer_list>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -158,11 +159,15 @@ bool isLoopbackDeviceName(std::string name) {
     return name == "localhost" || name == "::1" || name == "[::1]" || name.rfind("127.", 0) == 0;
 }
 
-std::optional<std::chrono::milliseconds> waitForDestroyedSessionExit(dai::DeviceGate& gate, std::chrono::milliseconds timeout) {
+std::optional<std::chrono::milliseconds> waitForSessionStateChange(dai::DeviceGate& gate,
+                                                                   std::chrono::milliseconds timeout,
+                                                                   std::initializer_list<dai::DeviceGate::SessionState> pendingStates) {
     using namespace std::chrono;
     constexpr auto pollInterval = milliseconds(20);
     const auto start = steady_clock::now();
-    while(gate.getState() == dai::DeviceGate::SessionState::DESTROYED) {
+    while(true) {
+        const auto state = gate.getState();
+        if(std::find(pendingStates.begin(), pendingStates.end(), state) == pendingStates.end()) break;
         if(steady_clock::now() - start >= timeout) {
             return std::nullopt;
         }
@@ -821,6 +826,7 @@ void DeviceBase::waitForGateAndCollectCrashDump() {
     if(!isCrashDumpCollectionEnabled()) {
         return;
     }
+    if(getPlatform() != Platform::RVC4) return;
 
     pimpl->logger.warn("FW crashed - trying to get out the crash dump");
     std::this_thread::sleep_for(std::chrono::seconds(5));  // Allow for the generation of the crash dump and the log file
@@ -950,6 +956,15 @@ void DeviceBase::closeImpl() {
     connection->close();
 
     if(gate && !waitForGate) {
+        if(getPlatform() == Platform::RVC2NG) {
+            try {
+                if(!waitForSessionStateChange(*gate, GATE_SESSION_EXIT_TIMEOUT, {DeviceGate::SessionState::RUNNING, DeviceGate::SessionState::STOPPING})) {
+                    pimpl->logger.warn("Gate session is still running after {} ms; destroying it", GATE_SESSION_EXIT_TIMEOUT.count());
+                }
+            } catch(const std::exception& ex) {
+                pimpl->logger.debug("Waiting for the gate session before destruction failed: {}", ex.what());
+            }
+        }
         gate->destroySession();
     }
     {
@@ -987,7 +1002,7 @@ void DeviceBase::closeImpl() {
         }
     } else if(gate) {
         try {
-            if(auto waited = waitForDestroyedSessionExit(*gate, GATE_SESSION_EXIT_TIMEOUT)) {
+            if(auto waited = waitForSessionStateChange(*gate, GATE_SESSION_EXIT_TIMEOUT, {DeviceGate::SessionState::DESTROYED})) {
                 pimpl->logger.debug("Destroyed gate session ended after {} ms", waited->count());
             } else {
                 pimpl->logger.warn("Destroyed gate session did not end within {} ms", GATE_SESSION_EXIT_TIMEOUT.count());
@@ -2790,6 +2805,8 @@ Platform DeviceBase::getPlatform() const {
             return Platform::RVC3;
         case X_LINK_RVC4:
             return Platform::RVC4;
+        case X_LINK_RVC2NG:
+            return Platform::RVC2NG;
         case X_LINK_ANY_PLATFORM:
         case X_LINK_MYRIAD_2:
         default:

@@ -66,19 +66,37 @@ class DeviceGate::HTTPImpl::Impl {
 };
 DeviceGate::~DeviceGate() {}
 
+static std::vector<uint8_t> getGateFirmware(XLinkPlatform_t platform) {
+    switch(platform) {
+        case X_LINK_RVC3:
+            return Resources::getInstance().getDeviceRVC3Fwp();
+        case X_LINK_RVC4:
+            return Resources::getInstance().getDeviceRVC4Fwp();
+        case X_LINK_RVC2NG:
+            return Resources::getInstance().getDeviceRVC2NGFwp();
+        case X_LINK_ANY_PLATFORM:
+        case X_LINK_MYRIAD_2:
+        case X_LINK_MYRIAD_X:
+        default:
+            throw std::invalid_argument("Unsupported Gate platform");
+    }
+}
+
 DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     if((deviceInfo.state != X_LINK_GATE) && (deviceInfo.state != X_LINK_GATE_SETUP)) {
         throw std::invalid_argument(
             "Device is already used by another application/process. Make sure to close all applications/processes using the device before starting a new one.");
     }
-    if(deviceInfo.platform != X_LINK_RVC3 && deviceInfo.platform != X_LINK_RVC4) {
-        throw std::invalid_argument("Gate only supports RVC3 and RVC4 platforms");
+    if(deviceInfo.platform != X_LINK_RVC3 && deviceInfo.platform != X_LINK_RVC4 && deviceInfo.platform != X_LINK_RVC2NG) {
+        throw std::invalid_argument("Gate only supports RVC3, RVC4 and RVC2NG platforms");
     }
     this->platform = deviceInfo.platform;
     if(deviceInfo.platform == X_LINK_RVC3) {
         version = DEPTHAI_DEVICE_RVC3_VERSION;
     } else if(deviceInfo.platform == X_LINK_RVC4) {
         version = DEPTHAI_DEVICE_RVC4_VERSION;
+    } else if(deviceInfo.platform == X_LINK_RVC2NG) {
+        version = DEPTHAI_DEVICE_RVC2NG_VERSION;
     } else {
         throw std::runtime_error("Unknown platform");  // Should never happen
     }
@@ -223,11 +241,12 @@ DeviceGate::VersionInfo DeviceGate::USBImpl::getAllVersion() {
 }
 
 bool DeviceGate::createSession(bool exclusive) {
-    return impl->createSession(version, exclusive, platform, sessionId, sessionCreated);
+    const auto package = getGateFirmware(platform);
+    return impl->createSession(version, exclusive, package, sessionId, sessionCreated);
 }
 
 bool DeviceGate::HTTPImpl::createSession(
-    std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) {
+    std::string version, bool exclusive, const std::vector<uint8_t>& package, std::string& sessionId, std::atomic_bool& sessionCreated) {
     lastError.clear();
 
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
@@ -254,16 +273,6 @@ bool DeviceGate::HTTPImpl::createSession(
         bool fwpExists = resp["fwp_exists"].get<bool>();
 
         if(!fwpExists) {
-            std::vector<uint8_t> package;
-            std::string path;
-            if(!path.empty()) {
-                std::ifstream fwStream(path, std::ios::binary);
-                if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
-                package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
-            } else {
-                package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
-            }
-
             // TODO(themarpe) - Inefficient
             httplib::MultipartFormDataItems items = {
                 {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
@@ -297,7 +306,7 @@ bool DeviceGate::HTTPImpl::createSession(
 }
 
 bool DeviceGate::USBImpl::createSession(
-    std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) {
+    std::string version, bool exclusive, const std::vector<uint8_t>& package, std::string& sessionId, std::atomic_bool& sessionCreated) {
     lastError.clear();
 
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
@@ -341,16 +350,6 @@ bool DeviceGate::USBImpl::createSession(
     bool fwpExists = resp["fwp_exists"].get<bool>();
 
     if(!fwpExists) {
-        std::vector<uint8_t> package;
-        std::string path;
-        if(!path.empty()) {
-            std::ifstream fwStream(path, std::ios::binary);
-            if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
-            package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
-        } else {
-            package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
-        }
-
         const auto sessionIdLen = static_cast<uint32_t>(sessionId.size());
         const auto packageSize = static_cast<uint64_t>(package.size());
         const auto payloadSize = static_cast<uint64_t>(sizeof(uint32_t)) + sessionIdLen + packageSize;
