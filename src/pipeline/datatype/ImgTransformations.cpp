@@ -445,6 +445,8 @@ dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai
         vPoints[i] = {point.x, point.y};
     }
     auto transformed = impl::getOuterRotatedRect(vPoints);
+    transformed.center.hasNormalized = transformed.size.hasNormalized = true;
+    transformed.center.normalized = transformed.size.normalized = false;
     if(normalized) {
         transformed = transformed.normalize(to.width, to.height);
     }

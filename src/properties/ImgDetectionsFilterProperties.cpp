@@ -1,9 +1,4 @@
-#include "depthai/beta/properties/ImgDetectionsFilterProperties.hpp"
-
+#include "depthai/properties/ImgDetectionsFilterProperties.hpp"
 namespace dai {
-namespace beta {
-
 ImgDetectionsFilterProperties::~ImgDetectionsFilterProperties() = default;
-
-}  // namespace beta
 }  // namespace dai

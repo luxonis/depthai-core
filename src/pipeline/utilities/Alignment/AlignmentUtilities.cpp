@@ -3,6 +3,7 @@
 #include <spdlog/async_logger.h>
 
 #include <depthai/utility/matrixOps.hpp>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -62,6 +63,12 @@ std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& t
     auto distortionCoeffs = transformation.getDistortionCoefficients();
 
     std::array<float, 3> pxSensor = dai::matrix::matVecMul(intrinsicMatrixInv, pxHomogeneous);
+    if(distortionModel == dai::CameraModel::Equirectangular || distortionModel == dai::CameraModel::Cylindrical) {
+        const float longitude = pxSensor[0] / pxSensor[2];
+        const float latitude = pxSensor[1] / pxSensor[2];
+        if(distortionModel == dai::CameraModel::Cylindrical) return {std::sin(longitude), latitude, std::cos(longitude)};
+        return {std::cos(latitude) * std::sin(longitude), std::sin(latitude), std::cos(latitude) * std::cos(longitude)};
+    }
     std::array<float, 3> undistortedRay = undistortPoint(pxSensor, distortionModel, distortionCoeffs);
     std::array<float, 3> ray = {undistortedRay[0] / undistortedRay[2], undistortedRay[1] / undistortedRay[2], 1.0f};
     return ray;
@@ -71,6 +78,15 @@ dai::Point2f rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransform
     auto distortionModel = transformation.getDistortionModel();
     auto distortionCoeffs = transformation.getDistortionCoefficients();
     auto intrinsicMatrix = transformation.getSourceIntrinsicMatrix();
+    if(distortionModel == dai::CameraModel::Equirectangular || distortionModel == dai::CameraModel::Cylindrical) {
+        const float radius = std::hypot(ray[0], ray[2]);
+        if(radius == 0) return {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN(), false};
+        const float longitude = std::atan2(ray[0], ray[2]);
+        const float latitude = distortionModel == dai::CameraModel::Cylindrical ? ray[1] / radius : std::atan2(ray[1], radius);
+        const auto pixel = dai::matrix::matVecMul(intrinsicMatrix, {longitude, latitude, 1.0f});
+        return {pixel[0] / pixel[2], pixel[1] / pixel[2], false};
+    }
+    if(ray[2] <= 0) return {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN(), false};
     std::array<float, 3> distortedRay = distortPoint(ray, distortionModel, distortionCoeffs);
 
     std::array<float, 3> rayHomogeneous = {distortedRay[0] / distortedRay[2], distortedRay[1] / distortedRay[2], 1.0f};

@@ -7,7 +7,7 @@ counterparts live in `examples/cpp/MultiDeviceCalibration/`.
 
 | Script | Shows |
 | --- | --- |
-| `multi_device_calibration.py` | The minimal flow: one stereo pair per device, scale from the factory stereo calibration, result saved to JSON. |
+| `multi_device_calibration.py` | Uses CAM_B/CAM_C where available, otherwise CAM_A. At least one device needs a factory-calibrated stereo pair for metric scale. Saves the result to JSON. |
 | `multi_device_calibration_constraints.py` | The optional configuration: a measured camera-to-camera distance (`setKnownDistance`), an approximate rig layout or a previous result as starting point (`setInitialGuess`, `setInitialGuesses`), calibration loaded from files (`setDeviceCalibration`) and `getSampleCount()`. |
 
 Generic multi-device plumbing (frame sync, host nodes, device-to-device relay)
@@ -112,12 +112,14 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
 
 1. One pipeline, no implicit device. Every device is added explicitly with
    `pipeline.addDevice`, and each `Camera` is created on its own device.
-2. `CAM_B` and `CAM_C` of every device are registered. `addCamera` reads the
+2. `CAM_B` and `CAM_C` of every device are registered (the Python example falls
+   back to `CAM_A` on devices without that pair). `addCamera` reads the
    device ID and socket from the `Camera` node that owns the output.
    Full-resolution frames give the solver the most features; 5 fps keeps the
    host load low.
-3. Two cameras per device give the solver a factory-calibrated baseline, which
-   fixes the metric scale. No `setStereoPair` call is needed for that.
+3. Two cameras on at least one device give the solver a factory-calibrated
+   baseline, which fixes the metric scale. No `setStereoPair` call is needed for
+   that.
 4. The sync threshold is generous (5 s) because the devices are not hardware
    synchronized and the scene is static. Tighten it if the scene moves, or use
    FSYNC/PTP as shown in `multi_device_frame_sync.py`.
@@ -310,9 +312,11 @@ edge; this one maps device `232264861` to device `1531764865`, both via their
 
 - **`At least two devices are required`** — fewer than two devices were
   discovered. Pass them explicitly with `-d`.
-- **`Camera socket not found on the connected device`** — a selected device has
-  no `CAM_B`/`CAM_C`. Pick devices with a stereo pair or change the sockets and
-  stereo pair in the script.
+- **`Camera socket not found on the connected device`** — a selected device lacks
+  a requested socket. The Python example detects CAM_B/CAM_C and falls back to
+  CAM_A; at least one device still needs a factory-calibrated stereo pair. For
+  rigs with only single-camera devices, use the constraints example with
+  `--known-distance`.
 - **No result within the timeout** — groups never complete. Check that every
   camera streams, raise the sync threshold, or lower the fps.
 - **`DynamicCalibration failed: ... optimization failed`** — the views do not
