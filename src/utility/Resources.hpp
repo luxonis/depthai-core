@@ -60,6 +60,7 @@ class Resources {
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
     std::vector<std::uint8_t> getDeviceRVC3Fwp() const;
     std::vector<std::uint8_t> getDeviceRVC4Fwp() const;
+    std::vector<std::uint8_t> getDeviceRVC2NGFwp() const;
     TarXzAccessor getEmbeddedVisualizer() const;
 };
 

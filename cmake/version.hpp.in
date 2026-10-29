@@ -23,5 +23,6 @@ namespace build
     constexpr static const char* BOOTLOADER_VERSION = "${DEPTHAI_BOOTLOADER_VERSION}";
     constexpr static const char* DEVICE_RVC3_VERSION = "${DEPTHAI_DEVICE_RVC3_VERSION}";
     constexpr static const char* DEVICE_RVC4_VERSION = "${DEPTHAI_DEVICE_RVC4_VERSION}";
+    constexpr static const char* DEVICE_RVC2NG_VERSION = "${DEPTHAI_DEVICE_RVC2NG_VERSION}";
 } // namespace build
 } // namespace dai

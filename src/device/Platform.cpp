@@ -14,6 +14,8 @@ std::string platform2string(Platform platform) {
             return "RVC3";
         case Platform::RVC4:
             return "RVC4";
+        case Platform::RVC2NG:
+            return "RVC2NG";
     }
     throw std::invalid_argument("Unknown platform");
 }
@@ -32,6 +34,9 @@ Platform string2platform(const std::string& platform) {
     }
     if(lower == "rvc4") {
         return Platform::RVC4;
+    }
+    if(lower == "rvc2ng") {
+        return Platform::RVC2NG;
     }
 
     throw std::invalid_argument("Unknown platform: " + platform);

@@ -57,6 +57,8 @@ std::string platformToString(XLinkPlatform_t platform) {
             return "X_LINK_RVC3";
         case X_LINK_RVC4:
             return "X_LINK_RVC4";
+        case X_LINK_RVC2NG:
+            return "X_LINK_RVC2NG";
         default:
             return "INVALID_ENUM_VALUE";
     }

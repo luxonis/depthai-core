@@ -145,6 +145,8 @@ static XLinkPlatform_t getDefaultPlatform() {
         defaultPlatform = X_LINK_RVC3;
     } else if(protocolStr == "rvc4") {
         defaultPlatform = X_LINK_RVC4;
+    } else if(protocolStr == "rvc2ng") {
+        defaultPlatform = X_LINK_RVC2NG;
     } else {
         spdlog::warn("Unsupported platform specified");
     }
