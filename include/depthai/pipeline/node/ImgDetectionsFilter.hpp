@@ -18,7 +18,8 @@ namespace node {
  * Multiple inputs or linked source masks run on the host. One input otherwise runs on RVC4, or on the host for RVC2
  * and device-free pipelines.
  * Remapping uses calibration and rotation without depth or camera translation. For panorama alignment,
- * use Stitching PANORAMA with setUseInputCalibration(true); full 360 degree seam-crossing boxes are unsupported.
+ * use Stitching PANORAMA with setUseInputCalibration(true). In upright panoramas, boxes crossing the longitude join produce separate detections
+ * for each visible fragment.
  */
 class ImgDetectionsFilter : public DeviceNodeCRTP<DeviceNode, ImgDetectionsFilter, ImgDetectionsFilterProperties>, public HostRunnable {
    protected:

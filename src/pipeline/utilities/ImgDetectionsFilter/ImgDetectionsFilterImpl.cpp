@@ -60,11 +60,21 @@ RotatedRect axisAlignedBounds(const std::vector<std::array<float, 2>>& points) {
     return RotatedRect(Point2f((minX + maxX) / 2, (minY + maxY) / 2, false), Size2f(maxX - minX, maxY - minY, false), 0);
 }
 
+struct MaskMember {
+    std::size_t key, index;
+    std::array<float, 2> xBounds{-std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity()};
+};
+
+struct MaskTarget {
+    std::uint8_t index;
+    std::array<float, 2> xBounds;
+};
+
 struct Candidate {
     ImgDetection detection;
     RotatedRect box;
     std::size_t key;
-    std::vector<std::pair<std::size_t, std::size_t>> maskMembers;
+    std::vector<MaskMember> maskMembers;
     double visibility = 1.0;
 };
 
@@ -134,9 +144,11 @@ class DetectionRound {
                 throw std::invalid_argument("ImgDetectionsFilter source mask payload is too small");
         }
     }
-    bool remap(Candidate& candidate, const ImgTransformation& source, bool pixels) const {
+    void remap(Candidate candidate, const ImgTransformation& source, bool pixels) {
         auto& detection = candidate.detection;
         const bool identity = source.isEqualTransformation(*reference);
+        std::vector<RotatedRect> boxes;
+        bool seamFragment = false;
         if(!identity) {
             const auto model = reference->getDistortionModel();
             const bool panorama = model == CameraModel::Cylindrical || model == CameraModel::Equirectangular;
@@ -150,7 +162,7 @@ class DetectionRound {
                 for(std::size_t sample = 0; sample < edgeSamples; ++sample) {
                     const float t = static_cast<float>(sample) / edgeSamples;
                     const auto mapped = source.remapPointTo(*reference, Point2f(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y), false));
-                    if(!std::isfinite(mapped.x) || !std::isfinite(mapped.y)) return false;
+                    if(!std::isfinite(mapped.x) || !std::isfinite(mapped.y)) return;
                     points.push_back({mapped.x, mapped.y});
                 }
             }
@@ -158,15 +170,45 @@ class DetectionRound {
             // border, and a normalized RotatedRect stays a rectangle only at angle 0. A panorama keeps the mean camera Y axis
             // vertical, so its boxes are the axis-aligned bounds of the sampled edges; perspective references keep the box
             // orientation, which an in-plane camera roll maps exactly.
-            candidate.box = panorama ? axisAlignedBounds(points) : standardize(getOuterRotatedRect(points));
+            const auto intrinsics = reference->getIntrinsicMatrix();
+            if(panorama && intrinsics[0][1] == 0 && intrinsics[1][0] == 0 && intrinsics[2][0] == 0 && intrinsics[2][1] == 0) {
+                // Longitude wraps at +/- pi. Unwrap before taking bounds, then split at that join, which need not be the canvas edges.
+                const float period = 2 * std::acos(-1.0f) * std::abs(intrinsics[0][0] / intrinsics[2][2]);
+                if(!std::isfinite(period) || period <= 0) return;
+                const float center = intrinsics[0][2] / intrinsics[2][2];
+                const float left = center - period / 2, right = center + period / 2;
+                const float anchor = points.front()[0];
+                float previous = anchor, unwrapped = anchor;
+                for(auto& point : points) {
+                    const float x = point[0];
+                    unwrapped += std::remainder(x - previous, period);
+                    previous = x;
+                    point[0] = unwrapped;
+                }
+                const float winding = unwrapped - anchor + std::remainder(anchor - previous, period);
+                candidate.box = axisAlignedBounds(points);
+                if(std::abs(winding) > period / 2) {
+                    // A footprint enclosing a pole spans all longitudes; sampled extrema must not introduce a gap.
+                    candidate.box.center.x = center;
+                    candidate.box.size.width = period;
+                } else {
+                    const auto outer = candidate.box.getOuterRect();
+                    if(outer[0] < left || outer[2] > right) {
+                        seamFragment = true;
+                        for(const float shift : {-period, 0.0f, period}) {
+                            const float minX = std::max(left, outer[0] + shift), maxX = std::min(right, outer[2] + shift);
+                            if(maxX > minX)
+                                boxes.emplace_back(
+                                    Point2f((minX + maxX) / 2, candidate.box.center.y, false), Size2f(maxX - minX, candidate.box.size.height, false), 0);
+                        }
+                    }
+                }
+            } else {
+                candidate.box = panorama ? axisAlignedBounds(points) : standardize(getOuterRotatedRect(points));
+            }
             candidate.box.center.hasNormalized = candidate.box.size.hasNormalized = true;
             candidate.box.center.normalized = candidate.box.size.normalized = false;
         }
-        if(intersectionArea(candidate.box, RotatedRect(Rect(0, 0, size.first, size.second, false))) <= 0) return false;
-        // Preserve exact normalized coordinates when the input already has standard form.
-        if(!identity || pixels || !detection.boundingBox || candidate.box.angle != detection.boundingBox->angle) writeBox(candidate);
-        detection.boundingBox->center.hasNormalized = detection.boundingBox->size.hasNormalized = true;
-        detection.boundingBox->center.normalized = detection.boundingBox->size.normalized = true;
         if(detection.keypoints) {
             for(auto& point : detection.keypoints->keypoints) {
                 const auto mapped = source.remapPointTo(*reference, Point2f(point.imageCoordinates.x, point.imageCoordinates.y, true));
@@ -178,7 +220,25 @@ class DetectionRound {
                 }
             }
         }
-        return true;
+        if(boxes.empty()) boxes.push_back(candidate.box);
+        for(const auto& box : boxes) {
+            if(intersectionArea(box, RotatedRect(Rect(0, 0, size.first, size.second, false))) <= 0) continue;
+            auto fragment = candidate;
+            fragment.box = box;
+            // Preserve exact normalized coordinates when the input already has standard form.
+            if(!identity || pixels || !detection.boundingBox || box.angle != detection.boundingBox->angle) writeBox(fragment);
+            fragment.detection.boundingBox->center.hasNormalized = fragment.detection.boundingBox->size.hasNormalized = true;
+            fragment.detection.boundingBox->center.normalized = fragment.detection.boundingBox->size.normalized = true;
+            if(seamFragment) {
+                // Keep each member's original partition when its output box is later averaged.
+                fragment.maskMembers.front().xBounds = {fragment.detection.xmin, fragment.detection.xmax};
+                if(fragment.detection.keypoints) {
+                    for(auto& point : fragment.detection.keypoints->keypoints)
+                        if(point.imageCoordinates.x < fragment.detection.xmin || point.imageCoordinates.x > fragment.detection.xmax) point.confidence = 0;
+                }
+            }
+            candidates.push_back(std::move(fragment));
+        }
     }
     void collect() {
         for(std::size_t key = 0; key < messages.size(); ++key) {
@@ -200,7 +260,10 @@ class DetectionRound {
                     box.size = {box.size.width, box.size.height, !pixels};
                     const auto sourceSize = message->transformation->getSize();
                     candidate.box = standardize(box.denormalize(sourceSize.first, sourceSize.second));
-                    if(reference && !remap(candidate, *message->transformation, pixels)) continue;
+                    if(reference) {
+                        remap(std::move(candidate), *message->transformation, pixels);
+                        continue;
+                    }
                 }
                 candidates.push_back(std::move(candidate));
             }
@@ -344,7 +407,7 @@ class DetectionRound {
                    std::size_t width,
                    std::size_t height,
                    std::size_t key,
-                   const std::array<std::uint8_t, 256>& indexMap,
+                   const std::array<std::vector<MaskTarget>, 256>& indexMap,
                    const std::vector<std::uint8_t>& sourceMask) {
         const auto& message = messages[key];
         const auto sourceWidth = message->getSegmentationMaskWidth(), sourceHeight = message->getSegmentationMaskHeight();
@@ -373,21 +436,24 @@ class DetectionRound {
                 if(!reference && (x >= sourceWidth || y >= sourceHeight)) continue;
                 const auto sourceIndex = reference ? cache.sourceIndices[y * width + x] : y * sourceWidth + x;
                 if(sourceIndex >= sourceMask.size()) continue;
-                const auto index = indexMap[sourceMask[sourceIndex]];
-                auto& previous = mask[y * width + x];
-                if(index != 255
-                   && (previous == 255 || output->detections[index].confidence > output->detections[previous].confidence
-                       || (output->detections[index].confidence == output->detections[previous].confidence && index < previous)))
-                    previous = index;
+                for(const auto& target : indexMap[sourceMask[sourceIndex]]) {
+                    const float px = (x + 0.5f) / width;
+                    if(px < target.xBounds[0] || px > target.xBounds[1]) continue;
+                    const auto index = target.index;
+                    const auto& detection = output->detections[index];
+                    auto& previous = mask[y * width + x];
+                    if(previous == 255 || detection.confidence > output->detections[previous].confidence
+                       || (detection.confidence == output->detections[previous].confidence && index < previous))
+                        previous = index;
+                }
             }
         }
     }
     void buildMask() {
-        std::vector<std::array<std::uint8_t, 256>> indexMaps(messages.size());
-        for(auto& map : indexMaps) map.fill(255);
+        std::vector<std::array<std::vector<MaskTarget>, 256>> indexMaps(messages.size());
         for(std::size_t index = 0; index < kept.size() && index < 255; ++index)
             for(const auto& member : candidates[kept[index]].maskMembers)
-                if(member.second < 255) indexMaps[member.first][member.second] = static_cast<std::uint8_t>(index);
+                if(member.index < 255) indexMaps[member.key][member.index].push_back({static_cast<std::uint8_t>(index), member.xBounds});
         std::vector<std::uint8_t> mask;
         std::size_t width = 0, height = 0;
         for(std::size_t key = 0; key < messages.size(); ++key) {
