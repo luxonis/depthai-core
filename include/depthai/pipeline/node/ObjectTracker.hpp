@@ -50,6 +50,8 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
 
     /**
      * Outputs Tracklets message that carries object tracking results.
+     * Each tracklet's srcImgDetection preserves the original input detection and its coordinate representation.
+     * The tracked roi is normalized relative to inputTrackerFrame.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Tracklets, false}}}}};
 

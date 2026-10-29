@@ -407,6 +407,8 @@ function(dai_set_test_labels test_name)
         elseif(label STREQUAL "noreplayci")
             # Exclude these tests from the replay-enabled CI job.
             list(APPEND expanded_labels ${label})
+        elseif(label STREQUAL "nousb")
+            list(APPEND expanded_labels ${label})
         else()
             list(APPEND expanded_labels ${label})
         endif()
@@ -1009,6 +1011,10 @@ dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
 
 # ObjectTracker tests
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(object_tracker_host_test src/onhost_tests/pipeline/node/object_tracker_test.cpp)
+    dai_set_test_labels(object_tracker_host_test onhost ci)
+endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
     dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
@@ -1086,3 +1092,15 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
+
+# Link drop during the asset storage transfer (RVC4 over TCP/IP, local proxy uses POSIX sockets)
+if(UNIX)
+    dai_add_test(asset_storage_link_drop_test src/ondevice_tests/asset_storage_link_drop_test.cpp)
+    dai_set_test_labels(asset_storage_link_drop_test ondevice rvc4 ci noreplayci nousb)
+endif()
+
+# PoE link reset: the host must close its XLink socket (RVC2 PoE and RVC4 over TCP/IP, connect(AF_UNSPEC) resets a TCP socket only on Linux)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    dai_add_test(poe_link_reset_test src/ondevice_tests/poe_link_reset_test.cpp)
+    dai_set_test_labels(poe_link_reset_test ondevice rvc2 poe rvc4 ci noreplayci nousb)
+endif()

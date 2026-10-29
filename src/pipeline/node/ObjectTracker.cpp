@@ -159,7 +159,7 @@ void ObjectTracker::run() {
         // Either update or track, not both
         if(gotDetections) {
             // TODO: sync messages (currently OK since only imageless tracker is supported)
-            std::vector<ImgDetection> detections;
+            std::vector<impl::TrackerDetection> detections;
             std::vector<Point3f> spatialData;
             detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
             spatialData.reserve(detections.size());
@@ -185,14 +185,14 @@ void ObjectTracker::run() {
 
                     const auto [minx, miny, maxx, maxy] = remapped.getOuterRect();
 
-                    ImgDetection det(detection);
-                    det.xmin = std::max(0.f, minx);
-                    det.ymin = std::max(0.f, miny);
-                    det.xmax = std::min((float)inputTrackerImg->getWidth(), maxx);
-                    det.ymax = std::min((float)inputTrackerImg->getHeight(), maxy);
+                    Rect roi;
+                    roi.x = std::max(0.f, minx);
+                    roi.y = std::max(0.f, miny);
+                    roi.width = std::min(static_cast<float>(inputTrackerImg->getWidth()), maxx) - roi.x;
+                    roi.height = std::min(static_cast<float>(inputTrackerImg->getHeight()), maxy) - roi.y;
 
-                    if(det.xmin < det.xmax && det.ymin < det.ymax) {
-                        detections.push_back(det);
+                    if(roi.width > 0.f && roi.height > 0.f) {
+                        detections.push_back({detection, roi});
                         if(inputSpatialImgDetections) {
                             spatialData.push_back(inputSpatialImgDetections->detections[i].spatialCoordinates);
                         } else {
