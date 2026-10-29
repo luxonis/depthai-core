@@ -90,7 +90,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
 
     std::unique_ptr<Subnode<ImageAlign>> depthAlign;
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     /**
      * Input message with data to be inferred upon
      * Default queue is blocking with size 5

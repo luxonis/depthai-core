@@ -144,7 +144,7 @@ class ToF : public DeviceNodeGroup {
     Output rawDepthPlaceholder{*this, {"rawDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}, false};
 
    public:
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     /**
      * Raw depth output from ToF sensor.
      * On RVC2 this is connected to the unfiltered base depth output.

@@ -71,7 +71,7 @@ std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<da
     auto* rightOutput = right->requestOutput(neuralDepthInputSize, ImgFrame::Type::GRAY8, ImgResizeMode::STRETCH, fps, true, 0.0f);
     neuralDepth->build(*leftOutput, *rightOutput, neuralDepthModel);
     neuralDepth->initialConfig->setConfidenceThreshold(209);
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD
     leftOutput->link(neuralDepth->sync->inputs["left"]);
     rightOutput->link(neuralDepth->sync->inputs["right"]);
 #endif

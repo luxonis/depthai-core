@@ -127,7 +127,11 @@ set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use inste
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
 # Options for internal use
-option(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4 "This build is part of the rvc4 firmware build" OFF)
+option(DEPTHAI_INTERNAL_DEVICE_BUILD "This build is part of the device firmware build" OFF)
+option(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4 "Compatibility option for existing device firmware builds" OFF)
+if(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+    set(DEPTHAI_INTERNAL_DEVICE_BUILD ON)
+endif()
 option(DEPTHAI_GENERATE_HOUSING_COORDS "Generate housing coordinate system data from JSON files" ON)
 option(DEPTHAI_TESTS_ENABLE_REPLAY "Set DEPTHAI_REPLAY for all tests" OFF)
 set(DEPTHAI_TEST_DEVICE_SEARCH_TIMEOUT 30 CACHE STRING "Seconds test_wrapper waits for a device before giving up")

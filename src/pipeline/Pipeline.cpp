@@ -1405,7 +1405,7 @@ void PipelineImpl::build() {
             autoCalibrationMode = parseAutoCalibrationMode(autoCalibrationString);
         }
     }
-    #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     if((autoCalibrationMode == PipelineAutoCalibrationMode::CONTINUOUS || autoCalibrationMode == PipelineAutoCalibrationMode::ON_START)
        && hasDynamicCalibration()) {
         Logging::getInstance().logger.info("Pipeline contains DynamicCalibration/AutoCalibration node. Disabling implicit AutoCalibration at startup.");

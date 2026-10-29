@@ -17,7 +17,7 @@ namespace node {
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
     : DeviceNodeGroup(device, std::make_unique<Properties>(), false),
       properties(static_cast<Properties&>(*propertiesHolder))
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
       ,
       input{neuralNetwork->input},
       outNetwork{neuralNetwork->out},
@@ -38,7 +38,7 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& 
 SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<Properties> props)
     : DeviceNodeGroup(std::move(props), true),
       properties(static_cast<Properties&>(*propertiesHolder))
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
       ,
       input{neuralNetwork->input},
       outNetwork{neuralNetwork->out},
@@ -60,7 +60,7 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<Properties> pro
 SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
     : DeviceNodeGroup(std::move(props), confMode),
       properties(static_cast<Properties&>(*propertiesHolder))
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
       ,
       input{neuralNetwork->input},
       outNetwork{neuralNetwork->out},
@@ -82,7 +82,7 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<Properties> pro
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
     : DeviceNodeGroup(device, std::move(props), confMode),
       properties(static_cast<Properties&>(*propertiesHolder))
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
       ,
       input{neuralNetwork->input},
       outNetwork{neuralNetwork->out},

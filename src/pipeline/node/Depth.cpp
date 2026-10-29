@@ -838,7 +838,7 @@ void Depth::buildInternal() {
             tofBackend_ = ToF::create(device);
             add(tofBackend_);
             tofBackend_->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, stereoOutputFps_);
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD
             depthOut_ = &tofBackend_->tofBaseNode.depth;
             confidenceOut_ = &tofBackend_->tofBaseNode.confidence;
 #else
@@ -883,7 +883,7 @@ void Depth::buildInternal() {
             add(nasBackend_);
             const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
             nasBackend_->build(*stereo.left, *stereo.right, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD
             depthOut_ = &(*nasBackend_->stereoDepth).depth;
 #else
             depthOut_ = &nasBackend_->depth;

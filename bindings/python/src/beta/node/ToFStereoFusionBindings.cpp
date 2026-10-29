@@ -33,7 +33,7 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
             "neuralNetwork", [](ToFStereoFusion& n) -> dai::node::NeuralNetwork& { return *n.neuralNetwork; }, py::return_value_policy::reference_internal)
         .def("build", &ToFStereoFusion::build, py::arg("left"), py::arg("right"), py::arg("fps") = 30.0f, DOC(dai, beta, node, ToFStereoFusion, build));
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     node.def_property_readonly(
             "inputLeft",
             [](ToFStereoFusion& n) { return &n.inputLeft; },
