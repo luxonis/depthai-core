@@ -611,7 +611,7 @@ std::string PointCloud::getColorInputKey(const std::string& name) {
     return makeStreamKey(colorInputName, name);
 }
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
 Node::Input& PointCloud::getSyncInput(const std::string& key) {
     const bool created = !syncInputs.has(key);
     auto& input = syncInputs[key];
@@ -922,7 +922,7 @@ static void logMatrix4x4(const std::shared_ptr<spdlog::logger>& logger,
 // ── PointCloud helper methods ──
 
 CalibrationHandler PointCloud::getCalibrationFor(const std::string& deviceId) {
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     // Explicit overrides (offline streams, tests) win over live device calibrations
     const auto overrideIt = deviceCalibrations.find(deviceId);
     if(overrideIt != deviceCalibrations.end()) {
@@ -979,7 +979,7 @@ std::vector<std::vector<float>> PointCloud::getReferenceToDeviceOrigin(const std
                                                                        const std::string& targetDeviceId,
                                                                        CameraBoardSocket& targetOriginSocket,
                                                                        LengthUnit unit) {
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD
     (void)referenceSocket;
     (void)targetOriginSocket;
     (void)unit;
@@ -1240,7 +1240,7 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
     // extrinsics, worker threads of CPU_MT), so the streams do not share mutable state. GPU Impls stay sequential:
     // their Vulkan resources are not meant to be driven from several threads at once.
     bool parallel = count > 1;
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD
     parallel = false;
 #else
     for(auto* stream : streams) parallel = parallel && !getImpl(*stream).usesGPU();
@@ -1291,7 +1291,7 @@ size_t PointCloud::computeStreams(const std::vector<StreamFrames>& frames, bool 
 //------------------------------------------------------------------
 
 void PointCloud::run() {
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD
     // On device, apply the deserialized config from properties. On the host initialConfig is the
     // source of truth (properties are only refreshed from it when the pipeline is serialized).
     *initialConfig = properties.initialConfig;

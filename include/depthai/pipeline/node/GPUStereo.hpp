@@ -46,7 +46,7 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
     Subnode<MessageDemux> messageDemux{*this, "messageDemux"};
     std::unique_ptr<Subnode<Rectification>> rectification;
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     Input& left{sync->inputs["left"]};
     Input& right{sync->inputs["right"]};
 #endif

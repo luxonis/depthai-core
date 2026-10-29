@@ -282,7 +282,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
             auto align = pipeline.create<node::ImageAlign>();
             auto* colorCamOutput = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, tofFps, true);
             colorCamOutput->link(align->inputAlignTo);
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD
             tof->tofBaseNode.depth.link(align->input);
 #else
             tof->depth.link(align->input);
@@ -565,7 +565,7 @@ void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof,
 
     auto align = pipeline.create<node::ImageAlign>();
     colorCamOutput->link(inColor);
-#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD
     tof->tofBaseNode.depth.link(align->input);
 #else
     tof->depth.link(align->input);

@@ -75,7 +75,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
         std::vector<std::pair<double, double>> coveragesAcquired;
         std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>> pairwiseRotationDifference;
     };
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     /**
      * Input left image
      */

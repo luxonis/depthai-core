@@ -77,7 +77,7 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     /** Confidence output produced by the ToF-neural fusion network, with the same optional crop and transformation as depth. */
     Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     /** Left camera input used when the node runs outside the RVC4 device build. */
     Input& inputLeft{neuralDepth->sync->inputs["left"]};
     /** Right camera input used when the node runs outside the RVC4 device build. */

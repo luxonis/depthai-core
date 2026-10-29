@@ -45,7 +45,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 
     Subnode<node::Sync> sync{*this, "sync"};
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
    private:
     // Own inactive inputs without exposing them to Sync; public references keep their addresses.
     std::unordered_map<InputMap::key_type, Input, InputMap::hasher> unusedSyncInputs;
@@ -65,7 +65,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     const std::string depthName = "depth";
     const std::string confidenceName = "confidence";
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
 
     /**
      * Input for left rectified ImgFrame

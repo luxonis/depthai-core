@@ -91,7 +91,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         DOC(dai, node, ToF, imageFiltersNode));
 #endif
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     tof.def_property_readonly(
            "inputConfig",
            [](ToF& self) -> Node::Input& { return self.inputConfig; },

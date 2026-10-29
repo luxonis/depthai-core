@@ -24,7 +24,7 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Node
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     node.def_property_readonly(
             "left",
             [](const NeuralAssistedStereo& n) { return &n.rectification->input1; },

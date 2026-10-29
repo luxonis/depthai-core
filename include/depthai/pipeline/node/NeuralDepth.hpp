@@ -44,7 +44,7 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
     Subnode<Rectification> rectification{*this, "rectification"};
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     /**
      * Input for left ImgFrame of left-right pair
      */

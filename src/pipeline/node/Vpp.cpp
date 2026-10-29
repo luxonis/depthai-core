@@ -9,7 +9,7 @@ namespace node {
 Vpp::~Vpp() = default;
 
 std::shared_ptr<Vpp> Vpp::build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput) {
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     leftInput.link(left);
     rightInput.link(right);
     disparityInput.link(disparity);
@@ -38,7 +38,7 @@ void Vpp::buildInternal() {
 }
 
 void Vpp::postBuildStage() {
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     sync->inputs.merge(unusedSyncInputs);
     auto isConnected = [&](const std::string& name) { return sync->inputs.has(name) && sync->inputs[name].isConnected(); };
     const bool hasDisparity = isConnected(disparityName);
@@ -63,7 +63,7 @@ void Vpp::postBuildStage() {
 }
 
 void Vpp::buildStage1() {
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     // Ignore the automatic Sync connection when detecting a direct producer.
     // Do this before host/device bridges replace the original connections.
     for(const auto& connection : sync->out.getConnections()) {

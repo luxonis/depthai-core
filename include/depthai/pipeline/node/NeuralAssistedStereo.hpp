@@ -73,7 +73,7 @@ class NeuralAssistedStereo : public DeviceNodeGroup {
     Subnode<node::Vpp> vpp{*this, "vpp"};
     Subnode<node::StereoDepth> stereoDepth{*this, "stereoDepth"};
 
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     // /**
     //  * Input for left ImgFrame
     //  */

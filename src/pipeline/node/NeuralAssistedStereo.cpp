@@ -72,7 +72,7 @@ void NeuralAssistedStereo::setInitialValues() {
 
 std::shared_ptr<NeuralAssistedStereo> NeuralAssistedStereo::build(Output& leftInput, Output& rightInput, DeviceModelZoo neuralModel, bool rectifyImages) {
     if(rectifyImages) {
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
         leftInput.link(left);
         rightInput.link(right);
 #endif

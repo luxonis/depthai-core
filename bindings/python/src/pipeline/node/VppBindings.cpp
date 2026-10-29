@@ -32,7 +32,7 @@ void bind_vpp(pybind11::module& m, void* pCallstack) {
 
     // Node
     vpp.def_readonly("inputConfig", &Vpp::inputConfig, DOC(dai, node, Vpp, inputConfig))
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
         .def_property_readonly(
             "left", [](Vpp& node) -> Node::Input& { return node.left; }, py::return_value_policy::reference_internal)
         .def_property_readonly(

@@ -105,7 +105,7 @@ bool isSocketAlreadyConnected(const Pipeline& pipeline, CameraBoardSocket boardS
 }  // namespace
 
 void ToF::postBuildStage() {
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
     auto& logger = pimpl->logger;
     if(device->getPlatform() == Platform::RVC2) {
         if(tofBase->properties.enableUndistortion) {
@@ -136,7 +136,7 @@ ToF::ToF(const std::shared_ptr<Device>& device)
 #endif
       ,
       autoCamera{usesAutoCamera(device) ? std::make_unique<Subnode<Camera>>(*this, "autoCamera") : nullptr}
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
       ,
       rawDepth{device && device->getPlatform() == Platform::RVC2 ? tofBase->depth : rawDepthPlaceholder}
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -151,7 +151,7 @@ ToF::ToF(const std::shared_ptr<Device>& device)
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(imageFilters) {
         imageFiltersNode = &**imageFilters;
-    #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD
         imageFiltersInputConfig = &(*imageFilters)->inputConfig;
     #endif
     }
