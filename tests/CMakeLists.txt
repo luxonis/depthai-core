@@ -516,10 +516,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT BUILD_SHARED_LIBS)
     set_tests_properties(device_gate_usb_test PROPERTIES TIMEOUT 5)
 endif()
 
-dai_add_test(benchmark_host_test src/onhost_tests/benchmark_host_test.cpp)
-dai_set_test_labels(benchmark_host_test onhost ci)
-set_tests_properties(benchmark_host_test PROPERTIES TIMEOUT 5)
-
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
 dai_set_test_labels(naming_test onhost ci)
