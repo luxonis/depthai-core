@@ -18,6 +18,7 @@
 #include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "utility/ErrorMacros.hpp"
+#include "utility/ImgFrameView.hpp"
 
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     #include "depthai/shaders/rgbd2pointcloud.hpp"
@@ -35,7 +36,7 @@ class RGBD::Impl {
         if(!intrinsicsSet) {
             throw std::runtime_error("Intrinsics not set");
         }
-        points.reserve(size);
+        points.resize(size);
         switch(computeMethod) {
             case ComputeMethod::CPU:
                 computePointCloudCPU(depthData, colorData, points);
@@ -141,7 +142,7 @@ class RGBD::Impl {
             p.r = colorData[i * 3 + 0];
             p.g = colorData[i * 3 + 1];
             p.b = colorData[i * 3 + 2];
-            points.emplace_back(p);
+            points[i] = p;
         }
 #else
         (void)depthData;
@@ -152,7 +153,6 @@ class RGBD::Impl {
     }
     void calcPointsChunk(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& outChunk, int startRow, int endRow) {
         float scale = scaleFactor;
-        outChunk.reserve((endRow - startRow) * width);
 
         for(int row = startRow; row < endRow; row++) {
             int rowStart = row * width;
@@ -170,7 +170,7 @@ class RGBD::Impl {
                 uint8_t g = colorData[i * 3 + 1];
                 uint8_t b = colorData[i * 3 + 2];
 
-                outChunk.push_back(Point3fRGBA{xCoord, yCoord, z, r, g, b});
+                outChunk[i] = Point3fRGBA{xCoord, yCoord, z, r, g, b};
             }
         }
     }
@@ -181,29 +181,19 @@ class RGBD::Impl {
     }
 
     void computePointCloudCPUMT(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
+        if(threadNum == 0) {
+            computePointCloudCPU(depthData, colorData, points);
+            return;
+        }
         int rowsPerThread = height / threadNum;
-        std::vector<std::future<std::vector<Point3fRGBA>>> futures;
-
-        // Each thread returns a local vector
-        auto processRows = [&](int startRow, int endRow) {
-            std::vector<Point3fRGBA> localPoints;
-            calcPointsChunk(depthData, colorData, localPoints, startRow, endRow);
-            return localPoints;
-        };
-
+        std::vector<std::future<void>> futures;
+        auto processRows = [&](int startRow, int endRow) { calcPointsChunk(depthData, colorData, points, startRow, endRow); };
         for(int t = 0; t < threadNum; ++t) {
             int startRow = t * rowsPerThread;
             int endRow = (t == threadNum - 1) ? height : (startRow + rowsPerThread);
             futures.emplace_back(std::async(std::launch::async, processRows, startRow, endRow));
         }
-
-        // Merge all results
-        for(auto& f : futures) {
-            auto localPoints = f.get();
-            // Now we do one lock per merge if needed
-            // If this is not called concurrently from multiple places, no lock needed
-            points.insert(points.end(), localPoints.begin(), localPoints.end());
-        }
+        for(auto& future : futures) future.get();
     }
     enum class ComputeMethod { CPU, CPU_MT, GPU };
     ComputeMethod computeMethod = ComputeMethod::CPU;
@@ -328,18 +318,6 @@ void RGBD::initialize(const std::shared_ptr<MessageGroup>& frames) {
     // Initialize the camera intrinsics
     // Check if width, width and cameraID match
     auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inColor.getName()));
-    if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
-#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-        try {
-            auto rgb888iFrame = colorFrame->getCvFrame();
-            colorFrame->setCvFrame(rgb888iFrame, ImgFrame::Type::RGB888i);
-        } catch(const std::exception& e) {
-            throw std::runtime_error("Color space conversion to RGB888i failed: " + std::string(e.what()));
-        }
-#else
-        throw std::runtime_error("RGBD node only supports RGB888i frames");
-#endif
-    }
     auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inDepth.getName()));
     if(colorFrame->getWidth() != depthFrame->getWidth() || colorFrame->getHeight() != depthFrame->getHeight()) {
         throw std::runtime_error("Color and depth frame sizes do not match");
@@ -375,8 +353,15 @@ void RGBD::run() {
             if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
                 try {
-                    auto rgb888iFrame = colorFrame->getCvFrame();
-                    colorFrame->setCvFrame(rgb888iFrame, ImgFrame::Type::RGB888i);
+                    auto converted = std::make_shared<ImgFrame>(static_cast<size_t>(colorFrame->getWidth()) * colorFrame->getHeight() * 3);
+                    converted->setMetadata(*colorFrame);
+                    converted->setType(ImgFrame::Type::RGB888i);
+                    converted->setStride(colorFrame->getWidth() * 3);
+                    auto destination = converted->getFrame();
+                    const auto source = utility::getCvFrameView(*colorFrame);
+                    CV_Assert(source.channels() == 3);
+                    cv::cvtColor(source, destination, cv::COLOR_BGR2RGB);
+                    colorFrame = std::move(converted);
                 } catch(const std::exception& e) {
                     throw std::runtime_error("Color space conversion to RGB888i failed: " + std::string(e.what()));
                 }

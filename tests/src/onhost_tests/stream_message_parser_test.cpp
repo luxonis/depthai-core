@@ -1,4 +1,6 @@
 #include <catch2/catch_all.hpp>
+#include <cstdlib>
+#include <cstring>
 
 // Include depthai library
 #include <depthai/depthai.hpp>
@@ -155,3 +157,34 @@ TEST_CASE("Beta parser Config has a clear error when beta support is disabled") 
                         Catch::Matchers::ContainsSubstring("Cannot parse beta datatype: depthai-core was built without beta support"));
 }
 #endif
+
+TEST_CASE("Message parsing retains transferred payload storage", "[copy]") {
+    dai::ImgFrame frame;
+    frame.setSize(4, 2).setType(dai::ImgFrame::Type::RAW8);
+    const std::vector<uint8_t> pixels{1, 2, 3, 4, 5, 6, 7, 8};
+    frame.setData(pixels);
+    const auto metadata = dai::StreamMessageParser::serializeMetadata(frame);
+    auto serialized = pixels;
+    serialized.insert(serialized.end(), metadata.begin(), metadata.end());
+    auto* original = serialized.data();
+    auto message = dai::StreamMessageParser::parseMessage(std::move(serialized));
+    REQUIRE(message->data->getData().data() == original);
+    REQUIRE(message->data->getSize() == pixels.size());
+    REQUIRE(std::equal(pixels.begin(), pixels.end(), message->data->getData().begin()));
+    REQUIRE(dai::StreamMessageParser::serializeMetadata(message) == metadata);
+
+    dai::StreamPacketDesc packet;
+    packet.length = pixels.size() + metadata.size();
+    packet.data = static_cast<uint8_t*>(std::malloc(packet.length));
+    REQUIRE(packet.data != nullptr);
+    std::memcpy(packet.data, pixels.data(), pixels.size());
+    std::memcpy(packet.data + pixels.size(), metadata.data(), metadata.size());
+    auto* packetStorage = packet.data;
+    auto moved = dai::StreamMessageParser::parseMessage(std::move(packet));
+    REQUIRE(packet.data == nullptr);
+    REQUIRE(moved->data->getData().data() == packetStorage);
+    REQUIRE(moved->data->getSize() == pixels.size());
+    REQUIRE(std::equal(pixels.begin(), pixels.end(), moved->data->getData().begin()));
+
+    REQUIRE_THROWS(dai::StreamMessageParser::parseMessage(std::vector<uint8_t>{1, 2, 3}));
+}

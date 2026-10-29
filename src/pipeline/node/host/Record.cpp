@@ -13,6 +13,7 @@
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/utility/span.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "utility/ImgFrameView.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
@@ -120,13 +121,16 @@ void RecordVideo::run() {
             if(streamType == DatatypeEnum::ImgFrame) {
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
                 auto imgFrame = std::dynamic_pointer_cast<ImgFrame>(msg);
-                auto frame = imgFrame->getCvFrame();
+                const cv::Mat source = utility::getCvFrameView(*imgFrame);
                 bool isGrayscale = imgFrame->getType() == ImgFrame::Type::GRAY8 || imgFrame->getType() == ImgFrame::Type::GRAYF16
                                    || (ImgFrame::Type::RAW16 <= imgFrame->getType() && imgFrame->getType() <= ImgFrame::Type::RAW8);
+                cv::Mat converted;
                 if(isGrayscale) {
-                    cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
+                    cv::cvtColor(source, converted, cv::COLOR_GRAY2BGR);
+                } else if(!source.isContinuous()) {
+                    source.copyTo(converted);
                 }
-                assert(frame.isContinuous());
+                const cv::Mat frame = converted.empty() ? source : converted;
                 span cvData(frame.data, frame.total() * frame.elemSize());
                 videoRecorder->write(cvData, frame.step);
                 if(recordMetadata) {
