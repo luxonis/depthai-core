@@ -685,6 +685,14 @@ TEST_CASE("ImgDetectionsFilter R-18: outside test uses rotated rectangle", "[Img
                .01f);
 }
 
+TEST_CASE("ImgDetectionsFilter R-19: a box behind the reference leaves its duplicate group", "[ImgDetectionsFilter][RM-11][OV-4]") {
+    FilterSettings s;
+    s.reference = transformation();
+    s.mode = GENERATE(Mode::NMS, Mode::AVERAGE);
+    // Camera b looks backward. Its box has the higher confidence, but it cannot be projected, so it must not suppress or move box a.
+    const ExpectedDetection a{256, 256, 100, 100, .8f, 5};
+    checkRound(s, {message(transformation(), {a}), message(transformation(512, 512, rotation(180, true)), {{256, 256, 100, 100, .9f, 5}})}, {a});
+}
 TEST_CASE("ImgDetectionsFilter O-1: highest IoU duplicate from each key", "[ImgDetectionsFilter][OV-1][OV-4][OV-6][OV-7][OUT-2][OUT-5]") {
     for(const auto mode : {Mode::NMS, Mode::AVERAGE}) {
         for(const bool renamed : {false, true}) {
@@ -1146,6 +1154,24 @@ TEST_CASE("ImgDetectionsFilter M-10: unrepresentable index cannot win a pixel", 
     requireMask(*checkRound(s, {a, b}, expected), 8, 4, row + "\n" + row + "\n" + row + "\n" + row);
 }
 
+TEST_CASE("ImgDetectionsFilter M-11: duplicate masks from cameras with different transformations", "[ImgDetectionsFilter][MK-8][MK-14][MK-15]") {
+    FilterSettings s;
+    s.reference = transformation(8, 4);
+    std::string expected;
+    SECTION("NMS keeps the leader mask") {
+        s.mode = Mode::NMS;
+        expected = ". . . . . . . .\n. . . . . 0 . .\n. . . . . 0 . .\n. . . . . . . .";
+    }
+    SECTION("average unions the member masks") {
+        s.mode = Mode::AVERAGE;
+        expected = ". . . . . . . .\n. . . . . 0 0 .\n. . . . . 0 0 .\n. . . . . . . .";
+    }
+    // Camera b shows the right half of the reference. Both cameras see the same box at reference center (6, 2), but mark different columns.
+    auto a = message(*s.reference, {{6, 2, 2, 2, .9f}}), b = message(cropped(*s.reference, 4, 0, 4, 4), {{2, 2, 2, 2, .8f}});
+    a->setSegmentationMask(maskBytes(". . . . . . . .\n. . . . . 0 . .\n. . . . . 0 . .\n. . . . . . . ."), 8, 4);
+    b->setSegmentationMask(maskBytes(". . . .\n. . 0 .\n. . 0 .\n. . . ."), 4, 4);
+    requireMask(*checkRound(s, {a, b}, {{6, 2, 2, 2, .9f}}, .01f, .01f), 8, 4, expected);
+}
 TEST_CASE("ImgDetectionsFilter reuses mask geometry with current pixel owners", "[ImgDetectionsFilter][MK-12][RT-4]") {
     const auto t = transformation(4, 2);
     dai::ImgDetectionsFilterConfig config;

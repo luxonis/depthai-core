@@ -142,14 +142,27 @@ ExpectedDetection span(float from, float to, float confidence = .9f) {
     return {(column(from) + column(to)) / 2, 256, column(to) - column(from), 120, confidence, 5};
 }
 
-void requireColumns(const dai::ImgDetections& out, const std::vector<std::array<float, 2>>& columns) {
+void requireColumns(const dai::ImgDetections& out, const std::vector<std::array<float, 2>>& columns, float tolerance = .02f) {
     REQUIRE(out.detections.size() == columns.size());
     for(std::size_t i = 0; i < columns.size(); ++i) {
         CAPTURE(i);
         const auto box = out.detections[i].getBoundingBox().denormalize(360, 180);
-        REQUIRE_THAT(box.center.x - box.size.width / 2, Catch::Matchers::WithinAbs(columns[i][0], .02));
-        REQUIRE_THAT(box.center.x + box.size.width / 2, Catch::Matchers::WithinAbs(columns[i][1], .02));
+        REQUIRE_THAT(box.center.x - box.size.width / 2, Catch::Matchers::WithinAbs(columns[i][0], tolerance));
+        REQUIRE_THAT(box.center.x + box.size.width / 2, Catch::Matchers::WithinAbs(columns[i][1], tolerance));
     }
+}
+
+// A degreePanorama() source mask that shows only the right or only the left half of the canvas.
+std::shared_ptr<dai::ImgFrame> halfMask(bool right) {
+    auto mask = std::make_shared<dai::ImgFrame>();
+    mask->setType(dai::ImgFrame::Type::GRAY8);
+    mask->setSize(360, 180);
+    mask->setTransformation(degreePanorama());
+    std::vector<std::uint8_t> pixels(360 * 180, 0);
+    for(std::size_t i = 0; i < pixels.size(); ++i)
+        if((i % 360 >= 180) == right) pixels[i] = 255;
+    mask->setData(pixels);
+    return mask;
 }
 }  // namespace
 
@@ -212,6 +225,75 @@ TEST_CASE("ImgDetectionsFilter drops fragments narrower than one pixel at the lo
     h.pipeline.start();
     h.send(message(transformation(512, 512, BACKWARD), {box}));
     requireColumns(*h.receive(), expected);
+}
+
+TEST_CASE("ImgDetectionsFilter groups a box across the longitude join with a box beside it", "[ImgDetectionsFilter][panorama]") {
+    // Camera a sees longitudes 172 to 192 across the join, camera b 171 to 179.5 beside it: IoU 0.357.
+    FilterSettings s;
+    s.reference = degreePanorama();
+    s.iou = .3f;
+    s.mode = GENERATE(Mode::NMS, Mode::AVERAGE);
+    const bool aLeads = GENERATE(true, false);
+    FilterHarness h(s, {"a", "b"});
+    h.pipeline.start();
+    h.send(message(transformation(512, 512, BACKWARD), {span(-8, 12, aLeads ? .9f : .6f)}), "a");
+    h.send(message(transformation(512, 512, BACKWARD), {span(-9, -.5f, aLeads ? .6f : .9f)}), "b");
+    std::vector<std::array<float, 2>> expected;
+    if(*s.mode == Mode::NMS)
+        expected = aLeads ? std::vector<std::array<float, 2>>{{0, 12}, {352, 360}} : std::vector<std::array<float, 2>>{{351, 359.5f}};
+    else  // The confidence weighted average crosses the join in both cases.
+        expected = aLeads ? std::vector<std::array<float, 2>>{{0, 7}, {351.6f, 360}} : std::vector<std::array<float, 2>>{{0, 4.5f}, {351.4f, 360}};
+    requireColumns(*h.receive(), expected);
+}
+
+TEST_CASE("ImgDetectionsFilter keeps a fragment that any camera of the duplicate group sees", "[ImgDetectionsFilter][panorama]") {
+    // Both cameras report longitudes 172 to 192. The mask of camera a shows only the 8 px part at the right canvas edge,
+    // the mask of camera b only the 12 px part at the left edge, so camera b has the greater visible fraction.
+    FilterSettings s;
+    s.reference = degreePanorama();
+    s.mode = GENERATE(Mode::OFF, Mode::NMS, Mode::AVERAGE);
+    FilterHarness h(s, {"a", "b"});
+    h.linkMask("a");
+    h.linkMask("b");
+    h.pipeline.start();
+    h.sendMask(halfMask(true), "a");
+    h.sendMask(halfMask(false), "b");
+    h.send(message(transformation(512, 512, BACKWARD), {span(-8, 12, .9f)}), "a");
+    h.send(message(transformation(512, 512, BACKWARD), {span(-8, 12, .8f)}), "b");
+    // OFF keeps the part that each camera sees. Camera b leads the group, and camera a still shows the part at the right edge.
+    if(*s.mode == Mode::OFF)
+        requireColumns(*h.receive(), {{352, 360}, {0, 12}});
+    else
+        requireColumns(*h.receive(), {{0, 12}, {352, 360}});
+}
+
+TEST_CASE("ImgDetectionsFilter splits a distorted camera box at the longitude join", "[ImgDetectionsFilter][panorama]") {
+    FilterSettings s;
+    s.reference = degreePanorama();
+    const auto camera = transformation(512, 512, BACKWARD, dai::CameraModel::Perspective, {-.2f, .05f, 0, 0, 0});
+    const auto box = span(-8, 12);
+    // Sample the box edges four times more densely than the filter does, and unwrap the columns past the join.
+    float minX = std::numeric_limits<float>::infinity(), maxX = -minX;
+    const std::array<std::array<float, 2>, 4> corners = {{{box.x - box.width / 2, box.y - box.height / 2},
+                                                          {box.x + box.width / 2, box.y - box.height / 2},
+                                                          {box.x + box.width / 2, box.y + box.height / 2},
+                                                          {box.x - box.width / 2, box.y + box.height / 2}}};
+    for(std::size_t edge = 0; edge < corners.size(); ++edge) {
+        const auto a = corners[edge], b = corners[(edge + 1) % corners.size()];
+        for(int sample = 0; sample < 64; ++sample) {
+            const float t = sample / 64.f;
+            const auto mapped = camera.remapPointTo(*s.reference, dai::Point2f(a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), false));
+            const float x = mapped.x < 180 ? mapped.x + 360 : mapped.x;
+            minX = std::min(minX, x);
+            maxX = std::max(maxX, x);
+        }
+    }
+    REQUIRE(minX < 360);
+    REQUIRE(maxX > 360);
+    FilterHarness h(s);
+    h.pipeline.start();
+    h.send(message(camera, {box}));
+    requireColumns(*h.receive(), {{0, maxX - 360}, {minX, 360}}, .25f);
 }
 
 TEST_CASE("ImgDetectionsFilter keeps wrapped mask indices with their fragments", "[ImgDetectionsFilter][panorama]") {

@@ -77,6 +77,8 @@ struct Candidate {
     std::size_t key;
     std::vector<MaskMember> maskMembers;
     double visibility = 1.0;
+    // Keys of the cameras in the duplicate group, also those that NMS suppressed.
+    std::vector<std::size_t> viewers;
 };
 
 class DetectionRound {
@@ -188,9 +190,9 @@ class DetectionRound {
         }
         for(const auto& [shift, box] : pieces(candidate.box)) {
             if(!insideCanvas(box)) continue;
-            // Keep a fragment that a contributing camera sees: one without a source mask, or one whose mask shows a pixel of it.
-            if(!sourceMasks.empty() && std::none_of(candidate.maskMembers.begin(), candidate.maskMembers.end(), [this, &box](const auto& member) {
-                   return !sourceMasks[member.key] || visiblePixels(box, *sourceMasks[member.key]) > 0;
+            // Keep a fragment that a camera of the duplicate group sees: one without a source mask, or one whose mask shows a pixel of it.
+            if(!sourceMasks.empty() && std::none_of(candidate.viewers.begin(), candidate.viewers.end(), [this, &box](auto key) {
+                   return !sourceMasks[key] || visiblePixels(box, *sourceMasks[key]) > 0;
                }))
                 continue;
             auto fragment = candidate;
@@ -383,7 +385,7 @@ class DetectionRound {
         for(std::size_t key = 0; key < messages.size(); ++key) {
             const auto& message = messages[key];
             for(std::size_t index = 0; index < message->detections.size(); ++index) {
-                Candidate candidate{message->detections[index], {}, key, {{key, index}}};
+                Candidate candidate{message->detections[index], {}, key, {{key, index}}, 1.0, {key}};
                 const auto& detection = candidate.detection;
                 if(rejectedByLabelOrConfidence(detection)) continue;
                 if(reference || geometry) {
@@ -481,6 +483,7 @@ class DetectionRound {
                 grouped[*best] = true;
                 removed[*best] = true;
                 members.push_back(*best);
+                candidates[leaderIndex].viewers.push_back(candidates[*best].key);
             }
             if(config.overlapMode == ImgDetectionsFilterConfig::OverlapMode::AVERAGE && members.size() > 1) average(members);
         }

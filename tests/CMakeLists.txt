@@ -1094,7 +1094,7 @@ dai_add_test(img_detections_filter_helpers_test ${FILTER_TEST_DIR}/img_detection
 dai_set_test_labels(img_detections_filter_helpers_test onhost ci)
 set_tests_properties(img_detections_filter_helpers_test PROPERTIES FIXTURES_SETUP img_detections_filter_fixtures)
 
-foreach(name img_detections_filter_test img_detections_filter_panorama_test img_detections_filter_errors_test)
+foreach(name img_detections_filter_test img_detections_filter_panorama_test img_detections_filter_errors_test img_detections_filter_combinations_test)
     dai_add_test(${name} ${FILTER_TEST_DIR}/${name}.cpp)
     dai_set_test_labels(${name} onhost ci)
     set_tests_properties(${name} PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
