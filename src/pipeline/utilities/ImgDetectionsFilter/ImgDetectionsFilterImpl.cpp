@@ -133,6 +133,13 @@ class DetectionRound {
             if(maxX > minX)
                 parts.emplace_back(shift, RotatedRect(Point2f((minX + maxX) / 2, box.center.y, false), Size2f(maxX - minX, box.size.height, false), 0));
         }
+        if(parts.size() > 1) {
+            const float widest = std::max_element(parts.begin(), parts.end(), [](const auto& a, const auto& b) {
+                                     return a.second.size.width < b.second.size.width;
+                                 })->second.size.width;
+            const float minimum = std::min(1.0f, widest);
+            parts.erase(std::remove_if(parts.begin(), parts.end(), [minimum](const auto& part) { return part.second.size.width < minimum; }), parts.end());
+        }
         return parts;
     }
     // Intersection area, also across the longitude join for unwrapped panorama boxes, which are narrower than one period.

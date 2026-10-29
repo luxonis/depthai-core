@@ -191,6 +191,29 @@ TEST_CASE("ImgDetectionsFilter applies size limits and ROI to whole boxes at the
     requireColumns(*h.receive(), expected);
 }
 
+TEST_CASE("ImgDetectionsFilter drops fragments narrower than one pixel at the longitude join", "[ImgDetectionsFilter][panorama]") {
+    FilterSettings s;
+    s.reference = degreePanorama();
+    ExpectedDetection box{};
+    std::vector<std::array<float, 2>> expected;
+    SECTION("sliver") {
+        box = span(-10, .5f);
+        expected = {{350, 360}};
+    }
+    SECTION("one pixel fragment") {
+        box = span(-10, 1.5f);
+        expected = {{0, 1.5f}, {350, 360}};
+    }
+    SECTION("box narrower than two pixels keeps its wider part") {
+        box = span(-.3f, .6f);
+        expected = {{0, .6f}};
+    }
+    FilterHarness h(s);
+    h.pipeline.start();
+    h.send(message(transformation(512, 512, BACKWARD), {box}));
+    requireColumns(*h.receive(), expected);
+}
+
 TEST_CASE("ImgDetectionsFilter keeps wrapped mask indices with their fragments", "[ImgDetectionsFilter][panorama]") {
     const auto model = GENERATE(dai::CameraModel::Equirectangular, dai::CameraModel::Cylindrical);
     FilterSettings s;
