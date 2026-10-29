@@ -1113,6 +1113,10 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
 
+# Explicit Align interpolation on host and on RVC4
+dai_add_test(align_interpolation_test src/ondevice_tests/align_interpolation_test.cpp)
+dai_set_test_labels(align_interpolation_test ondevice rvc4 ci)
+
 # Link drop during the asset storage transfer (RVC4 over TCP/IP, local proxy uses POSIX sockets)
 if(UNIX)
     dai_add_test(asset_storage_link_drop_test src/ondevice_tests/asset_storage_link_drop_test.cpp)
