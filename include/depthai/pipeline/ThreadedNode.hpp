@@ -88,6 +88,10 @@ class ThreadedNode : public Node {
     spimpl::impl_ptr<Impl> pimpl;
 
    protected:
+    /**
+     * Wait until the deadline or until this node stops.
+     * @return True if the deadline elapsed while the node was running, false if stopped.
+     */
     bool waitUntil(std::chrono::steady_clock::time_point deadline) const;
 };
 
