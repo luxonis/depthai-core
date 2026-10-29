@@ -243,26 +243,40 @@ TEST_CASE("ImgDetectionsFilter unions original seam masks after averaging", "[Im
 }
 
 TEST_CASE("ImgDetectionsFilter keeps full longitude coverage around a pole", "[ImgDetectionsFilter][panorama]") {
-    float sign = 1;
+    // One pixel is one degree. The box corners lie 35.264 degrees from the pole, its edge midpoints 26.565 degrees.
+    float sign = 1, side = 256, minY = 0, maxY = 35.264f;
     bool crop = false;
+    auto model = dai::CameraModel::Equirectangular;
     SECTION("north pole") {}
     SECTION("south pole") {
         sign = -1;
+        minY = 144.736f;
+        maxY = 180;
     }
     SECTION("crop inside the former longitude gap") {
         crop = true;
+        minY = -33;
+        maxY = 2.264f;
+    }
+    SECTION("cylindrical pole reaches the canvas edge") {
+        // The sampled edges span rows 16.661 to 38.142; the pole lies at infinity above them.
+        model = dai::CameraModel::Cylindrical;
+        side = 400;
+        maxY = 38.142f;
     }
     FilterSettings s;
-    s.reference = transformation(360, 180, IDENTITY, dai::CameraModel::Equirectangular, {}, 360 / (2 * std::acos(-1.0f)));
+    s.reference = transformation(360, 180, IDENTITY, model, {}, 360 / (2 * std::acos(-1.0f)));
     if(crop) s.reference->addCrop(226, 33, 1, 3);
     const Rotation pitch = {{{1, 0, 0}, {0, 0, -sign}, {0, sign, 0}}};
     FilterHarness h(s);
     h.pipeline.start();
-    h.send(message(transformation(512, 512, pitch), {{256, 256, 256, 256}}));
+    h.send(message(transformation(512, 512, pitch), {{256, 256, side, side}}));
     const auto out = h.receive();
     REQUIRE(out->detections.size() == 1);
     const auto size = s.reference->getSize();
     const auto box = out->detections[0].getBoundingBox().denormalize(size.first, size.second);
     REQUIRE_THAT(box.center.x, Catch::Matchers::WithinAbs(crop ? -46 : 180, .01));
     REQUIRE_THAT(box.size.width, Catch::Matchers::WithinAbs(360, .01));
+    REQUIRE_THAT(box.center.y, Catch::Matchers::WithinAbs((minY + maxY) / 2, .01));
+    REQUIRE_THAT(box.size.height, Catch::Matchers::WithinAbs(maxY - minY, .01));
 }

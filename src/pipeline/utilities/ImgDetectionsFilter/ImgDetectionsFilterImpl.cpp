@@ -188,9 +188,17 @@ class DetectionRound {
                 const float winding = unwrapped - anchor + std::remainder(anchor - previous, period);
                 candidate.box = axisAlignedBounds(points);
                 if(std::abs(winding) > period / 2) {
-                    // A footprint enclosing a pole spans all longitudes; sampled extrema must not introduce a gap.
-                    candidate.box.center.x = center;
-                    candidate.box.size.width = period;
+                    // A footprint enclosing a pole spans all longitudes and reaches the pole, which no edge sample does. Source rays
+                    // lie in one hemisphere, so the middle of the sampled latitudes is on the side of the enclosed pole.
+                    const float equator = intrinsics[1][2] / intrinsics[2][2];
+                    const bool above = candidate.box.center.y < equator;
+                    // Cylindrical poles lie at infinity, so the box extends to the canvas edge instead.
+                    float pole = above ? 0.0f : static_cast<float>(size.second);
+                    if(model == CameraModel::Equirectangular)
+                        pole = equator + (above ? -1.0f : 1.0f) * std::abs(intrinsics[1][1] / intrinsics[2][2]) * std::acos(-1.0f) / 2;
+                    const auto outer = candidate.box.getOuterRect();
+                    const float minY = std::min(outer[1], pole), maxY = std::max(outer[3], pole);
+                    candidate.box = RotatedRect(Point2f(center, (minY + maxY) / 2, false), Size2f(period, maxY - minY, false), 0);
                 } else {
                     const auto outer = candidate.box.getOuterRect();
                     if(outer[0] < left || outer[2] > right) {
