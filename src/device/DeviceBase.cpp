@@ -158,6 +158,19 @@ bool isLoopbackDeviceName(std::string name) {
     return name == "localhost" || name == "::1" || name == "[::1]" || name.rfind("127.", 0) == 0;
 }
 
+std::optional<std::chrono::milliseconds> waitForDestroyedSessionExit(dai::DeviceGate& gate, std::chrono::milliseconds timeout) {
+    using namespace std::chrono;
+    constexpr auto pollInterval = milliseconds(20);
+    const auto start = steady_clock::now();
+    while(gate.getState() == dai::DeviceGate::SessionState::DESTROYED) {
+        if(steady_clock::now() - start >= timeout) {
+            return std::nullopt;
+        }
+        std::this_thread::sleep_for(pollInterval);
+    }
+    return duration_cast<milliseconds>(steady_clock::now() - start);
+}
+
 }  // namespace
 
 namespace dai {
@@ -168,6 +181,7 @@ const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT_MS = 9000;
+constexpr std::chrono::milliseconds GATE_SESSION_EXIT_TIMEOUT{5000};
 const unsigned int DEFAULT_RPC_READ_TIMEOUT = 10000;
 const unsigned int DEFAULT_RPC_WRITE_TIMEOUT = 0;  // 0 means blocking
 
@@ -970,6 +984,16 @@ void DeviceBase::closeImpl() {
             waitForGateAndCollectCrashDump();
         } else {
             gate->waitForSessionEnd();
+        }
+    } else if(gate) {
+        try {
+            if(auto waited = waitForDestroyedSessionExit(*gate, GATE_SESSION_EXIT_TIMEOUT)) {
+                pimpl->logger.debug("Destroyed gate session ended after {} ms", waited->count());
+            } else {
+                pimpl->logger.warn("Destroyed gate session did not end within {} ms", GATE_SESSION_EXIT_TIMEOUT.count());
+            }
+        } catch(const std::exception& ex) {
+            pimpl->logger.debug("Waiting for the destroyed gate session failed: {}", ex.what());
         }
     }
 
