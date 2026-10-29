@@ -19,7 +19,7 @@ struct MaskRemapCache {
     std::vector<std::size_t> sourceIndices;
 };
 
-// Inputs must be in key order; each vector entry represents a different linked key.
+// Inputs must be in key order; each vector entry represents a different linked key. Invalid message data throws std::runtime_error.
 std::shared_ptr<ImgDetections> filterDetectionRound(const std::vector<std::shared_ptr<ImgDetections>>& messages,
                                                     const ImgDetectionsFilterConfig& config,
                                                     const std::optional<ImgTransformation>& reference,

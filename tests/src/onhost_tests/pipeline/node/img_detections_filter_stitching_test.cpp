@@ -195,8 +195,15 @@ TEST_CASE("ImgDetectionsFilter latches and updates optional source masks", "[Img
     FilterSettings settings;
     settings.reference = transformation();
     FilterHarness h(settings);
-    const auto masks = h.node->inputSourceMasks["cam"].createInputQueue();
+    auto& masks = h.node->inputSourceMasks["cam"];
+    masks.createInputQueue();
     h.pipeline.start();
+    SECTION("missing mask") {}
+    SECTION("mismatched mask transformation") {
+        auto mismatched = std::make_shared<dai::ImgFrame>();
+        mismatched->setTransformation(scaled(transformation(), .5f));
+        masks.send(mismatched);
+    }
     h.send(message());
     h.requireNoOutput();
     auto mask = std::make_shared<dai::ImgFrame>();
@@ -204,7 +211,8 @@ TEST_CASE("ImgDetectionsFilter latches and updates optional source masks", "[Img
     pixels(cv::Rect(0, 0, 256, 512)).setTo(0);
     mask->setCvFrame(pixels, dai::ImgFrame::Type::GRAY8);
     mask->setTransformation(transformation());
-    masks->send(mask);
+    // Deliver directly to the host input before queuing detections; InputQueue has its own forwarding thread.
+    masks.send(mask);
     for(int round = 0; round < 2; ++round) {
         h.send(message(transformation(), {{100, 100, 64, 64, .9f, 1}, {400, 100, 64, 64, .8f, 2}}));
         requireOutput(*h.receive(), transformation(), {{400, 100, 64, 64, .8f, 2}});
@@ -212,7 +220,7 @@ TEST_CASE("ImgDetectionsFilter latches and updates optional source masks", "[Img
     auto replacement = std::make_shared<dai::ImgFrame>();
     replacement->setCvFrame(cv::Mat::zeros(512, 512, CV_8U), dai::ImgFrame::Type::GRAY8);
     replacement->setTransformation(transformation());
-    masks->send(replacement);
+    masks.send(replacement);
     h.send(message(transformation(), {{400, 100, 64, 64, .8f, 2}}));
     REQUIRE(h.receive()->detections.empty());
 }

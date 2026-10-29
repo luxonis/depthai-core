@@ -30,7 +30,7 @@ class ImgDetectionsFilterConfig : public Buffer {
     float minWidth = 0.0f, maxWidth = std::numeric_limits<float>::max();
     /** Inclusive height range in output pixels, measured in standard box form. */
     float minHeight = 0.0f, maxHeight = std::numeric_limits<float>::max();
-    /** All four box corners must lie inside this rectangle in output pixels. */
+    /** All four box corners must lie inside this rectangle in output pixels. Normalized rectangles are rejected. */
     std::optional<Rect> regionOfInterest = std::nullopt;
     /** Keep the highest confidence detections without changing their order. Zero keeps none. */
     std::optional<std::uint32_t> maxDetections = std::nullopt;
@@ -38,7 +38,7 @@ class ImgDetectionsFilterConfig : public Buffer {
     bool sortByConfidence = false;
     /** Duplicate handling; has no effect with one input. */
     OverlapMode overlapMode = OverlapMode::NMS;
-    /** Rotated rectangle IoU must be strictly greater than this threshold. */
+    /** Finite nonnegative threshold; rotated rectangle IoU must be strictly greater. Values above 1 disable suppression. */
     float overlapIouThreshold = 0.4f;
     /** Latched reference, superseded permanently by the first valid inputReference frame. */
     std::optional<ImgTransformation> reference = std::nullopt;
@@ -59,7 +59,7 @@ class ImgDetectionsFilterConfig : public Buffer {
     ImgDetectionsFilterConfig& setWidthRange(float min = 0.0f, float max = std::numeric_limits<float>::max());
     /** Set the inclusive box height range in output pixels. */
     ImgDetectionsFilterConfig& setHeightRange(float min = 0.0f, float max = std::numeric_limits<float>::max());
-    /** Return whether each range has a minimum strictly less than its maximum. */
+    /** Validate ordered ranges, a finite nonnegative IoU threshold, and pixel ROI coordinates. */
     bool validate() const;
     /** Return whether any output pixel geometry limit is active. */
     bool hasGeometryFilters() const;

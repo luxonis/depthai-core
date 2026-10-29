@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <limits>
 
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "img_detections_filter_test_cases.hpp"
@@ -76,7 +77,7 @@ TEST_CASE("ImgDetectionsFilter A-6: unlinked keys do not participate", "[ImgDete
     h.send(message(), "a");
     requireOutput(*h.receive(), transformation(), {{100, 100, 64, 64, .9f, 1}});
 }
-TEST_CASE("ImgDetectionsFilter A-7: invalid initial ranges", "[ImgDetectionsFilter][CF-4][CF-5][ER-11]") {
+TEST_CASE("ImgDetectionsFilter A-7: invalid initial config", "[ImgDetectionsFilter][CF-4][CF-5][ER-11]") {
     FilterSettings s;
     SECTION("reversed confidence") {
         s.minConfidence = .8f;
@@ -106,6 +107,19 @@ TEST_CASE("ImgDetectionsFilter A-7: invalid initial ranges", "[ImgDetectionsFilt
         s.minHeight = 10;
         s.maxHeight = 5;
     }
+    SECTION("negative IoU threshold") {
+        s.iou = -1;
+    }
+    SECTION("NaN IoU threshold") {
+        s.iou = std::numeric_limits<float>::quiet_NaN();
+    }
+    SECTION("infinite IoU threshold") {
+        s.iou = std::numeric_limits<float>::infinity();
+    }
+    SECTION("normalized ROI") {
+        s.roi = dai::Rect(0, 0, 1, 1, true);
+    }
+    REQUIRE_FALSE(makeConfig(s)->validate());
     FilterHarness h(s);
     REQUIRE_THROWS(h.pipeline.start());
 }
@@ -1325,8 +1339,24 @@ TEST_CASE("ImgDetectionsFilter U-5: invalid runtime config is ignored", "[ImgDet
     h.pipeline.start();
     h.send(message(transformation(), {x, y}));
     requireOutput(*h.receive(), transformation(), {x});
-    s.minConfidence = .8f;
-    s.maxConfidence = .5f;
+    // Accepting any of these configs would also change the confidence filter.
+    s.minConfidence = .2f;
+    SECTION("reversed confidence range") {
+        s.minConfidence = .8f;
+        s.maxConfidence = .5f;
+    }
+    SECTION("negative IoU threshold") {
+        s.iou = -1;
+    }
+    SECTION("NaN IoU threshold") {
+        s.iou = std::numeric_limits<float>::quiet_NaN();
+    }
+    SECTION("infinite IoU threshold") {
+        s.iou = std::numeric_limits<float>::infinity();
+    }
+    SECTION("normalized ROI") {
+        s.roi = dai::Rect(0, 0, 1, 1, true);
+    }
     h.configure(s);
     for(int i = 0; i < 2; ++i) {
         h.send(message(transformation(), {x, y}));

@@ -281,21 +281,21 @@ class DetectionRound {
             const auto yBegin = static_cast<std::size_t>(std::clamp(std::floor(static_cast<double>(outer[1])), 0.0, static_cast<double>(size.second)));
             const auto xEnd = static_cast<std::size_t>(std::clamp(std::ceil(static_cast<double>(outer[2])), 0.0, static_cast<double>(size.first)));
             const auto yEnd = static_cast<std::size_t>(std::clamp(std::ceil(static_cast<double>(outer[3])), 0.0, static_cast<double>(size.second)));
-            const double radians = box.angle * std::acos(-1.0) / 180.0;
+            const double radians = static_cast<double>(box.angle) * std::acos(-1.0) / 180.0;
             const double cosine = std::cos(radians), sine = std::sin(radians);
             const std::size_t stride = mask->getStride();
             std::size_t visiblePixels = 0;
             // A seam can hide the center while leaving much of the object visible. Check the whole rotated footprint.
             for(auto y = yBegin; y < yEnd; ++y) {
-                const double dy = static_cast<double>(y) + 0.5 - box.center.y;
+                const double dy = static_cast<double>(y) + 0.5 - static_cast<double>(box.center.y);
                 const auto row = mask->fb.p1Offset + y * stride;
                 for(auto x = xBegin; x < xEnd; ++x) {
-                    const double dx = static_cast<double>(x) + 0.5 - box.center.x;
-                    visiblePixels += data[row + x] != 0 && std::abs(dx * cosine + dy * sine) <= box.size.width / 2
-                                     && std::abs(dy * cosine - dx * sine) <= box.size.height / 2;
+                    const double dx = static_cast<double>(x) + 0.5 - static_cast<double>(box.center.x);
+                    visiblePixels += data[row + x] != 0 && std::abs(dx * cosine + dy * sine) <= static_cast<double>(box.size.width) / 2
+                                     && std::abs(dy * cosine - dx * sine) <= static_cast<double>(box.size.height) / 2;
                 }
             }
-            candidate.visibility = std::min(1.0, visiblePixels / (static_cast<double>(box.size.width) * box.size.height));
+            candidate.visibility = std::min(1.0, visiblePixels / (static_cast<double>(box.size.width) * static_cast<double>(box.size.height)));
         }
         candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [](const auto& candidate) { return candidate.visibility == 0; }),
                          candidates.end());
@@ -309,7 +309,8 @@ class DetectionRound {
         auto& leader = candidates[members.front()];
         const bool equalWeights = std::all_of(members.begin(), members.end(), [this](auto i) { return candidates[i].detection.confidence == 0; });
         double totalWeight = 0;
-        for(const auto index : members) totalWeight += (equalWeights ? 1.0f : candidates[index].detection.confidence) * candidates[index].visibility;
+        for(const auto index : members)
+            totalWeight += static_cast<double>(equalWeights ? 1.0f : candidates[index].detection.confidence) * candidates[index].visibility;
         RotatedRect mean(Point2f(0, 0, false), Size2f(0, 0, false), 0);
         for(const auto index : members) {
             auto box = candidates[index].box;
@@ -322,7 +323,8 @@ class DetectionRound {
                 std::swap(box.size.width, box.size.height);
             }
             const auto& candidate = candidates[index];
-            const float weight = static_cast<float>((equalWeights ? 1.0f : candidate.detection.confidence) * candidate.visibility / totalWeight);
+            const float weight =
+                static_cast<float>(static_cast<double>(equalWeights ? 1.0f : candidate.detection.confidence) * candidate.visibility / totalWeight);
             mean.center.x += weight * box.center.x;
             mean.center.y += weight * box.center.y;
             mean.size.width += weight * box.size.width;
@@ -502,7 +504,12 @@ std::shared_ptr<ImgDetections> filterDetectionRound(const std::vector<std::share
     std::vector<MaskRemapCache> localCache;
     auto& cache = maskRemaps ? *maskRemaps : localCache;
     cache.resize(messages.size());
-    return DetectionRound(messages, config, reference, sourceMasks, cache).process();
+    try {
+        return DetectionRound(messages, config, reference, sourceMasks, cache).process();
+    } catch(const std::invalid_argument& ex) {
+        // ThreadedNode catches runtime_error when stopping a failed processing thread.
+        throw std::runtime_error(ex.what());
+    }
 }
 }  // namespace impl
 }  // namespace dai

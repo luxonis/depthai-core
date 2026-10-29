@@ -1,5 +1,7 @@
 #include "depthai/pipeline/datatype/ImgDetectionsFilterConfig.hpp"
 
+#include <cmath>
+
 namespace dai {
 ImgDetectionsFilterConfig::~ImgDetectionsFilterConfig() = default;
 
@@ -29,7 +31,8 @@ ImgDetectionsFilterConfig& ImgDetectionsFilterConfig::setHeightRange(float min, 
     return *this;
 }
 bool ImgDetectionsFilterConfig::validate() const {
-    return minConfidence < maxConfidence && minArea < maxArea && minWidth < maxWidth && minHeight < maxHeight;
+    return minConfidence < maxConfidence && minArea < maxArea && minWidth < maxWidth && minHeight < maxHeight && std::isfinite(overlapIouThreshold)
+           && overlapIouThreshold >= 0 && (!regionOfInterest || !regionOfInterest->isNormalized());
 }
 bool ImgDetectionsFilterConfig::hasGeometryFilters() const {
     const auto unlimited = std::numeric_limits<float>::max();

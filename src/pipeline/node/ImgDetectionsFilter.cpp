@@ -42,7 +42,8 @@ void ImgDetectionsFilter::buildStage1() {
         linkedSourceMasks[std::distance(linkedInputs.begin(), input)] = &entry.second;
     }
     if(linkedInputs.empty()) throw std::invalid_argument("ImgDetectionsFilter requires at least one linked input");
-    if(!initialConfig->validate()) throw std::invalid_argument("ImgDetectionsFilter requires minimum < maximum for confidence, area, width and height ranges");
+    if(!initialConfig->validate())
+        throw std::invalid_argument("ImgDetectionsFilter requires minimum < maximum ranges, a finite nonnegative IoU threshold, and a pixel ROI");
     if(linkedInputs.size() > 1 && runOnHostVar == false) throw std::invalid_argument("ImgDetectionsFilter device execution supports only one linked input");
     if(linkedInputs.size() > 1 && !inputReference.isConnected() && !initialConfig->reference)
         throw std::invalid_argument("ImgDetectionsFilter with multiple inputs requires inputReference or a config reference");
@@ -53,7 +54,7 @@ void ImgDetectionsFilter::run() {
     auto reference = config.reference;
     std::vector<std::shared_ptr<ImgFrame>> sourceMasks(linkedInputs.size());
     std::vector<impl::MaskRemapCache> maskRemaps(linkedInputs.size());
-    bool inputReferenceReceived = false, dropping = false;
+    bool inputReferenceReceived = false, dropping = false, droppingMasks = false;
     while(mainLoop()) {
         const auto beginning = std::chrono::steady_clock::now();
         std::vector<std::shared_ptr<ImgDetections>> messages;
@@ -63,7 +64,7 @@ void ImgDetectionsFilter::run() {
                 auto raw = input.second->get();
                 if(!raw) break;
                 auto message = std::dynamic_pointer_cast<ImgDetections>(raw);
-                if(!message) throw std::invalid_argument("ImgDetectionsFilter inputs accept only ImgDetections");
+                if(!message) throw std::runtime_error("ImgDetectionsFilter inputs accept only ImgDetections");
                 messages.push_back(std::move(message));
             }
         }
@@ -73,7 +74,7 @@ void ImgDetectionsFilter::run() {
         while(auto next = inputConfig.tryGet<ImgDetectionsFilterConfig>()) nextConfig = std::move(next);
         if(nextConfig) {
             if(!nextConfig->validate())
-                logger->warn("ImgDetectionsFilter ignored invalid runtime config: each minimum must be less than its maximum");
+                logger->warn("ImgDetectionsFilter ignored invalid runtime config: check ranges, IoU threshold, and pixel ROI coordinates");
             else {
                 config = *nextConfig;
                 if(!inputReferenceReceived && config.reference) reference = config.reference;
@@ -101,7 +102,12 @@ void ImgDetectionsFilter::run() {
             continue;
         }
         dropping = false;
-        if(!masksReady) continue;
+        if(!masksReady) {
+            if(!droppingMasks) logger->warn("ImgDetectionsFilter dropping rounds until all linked source masks match the output transformation");
+            droppingMasks = true;
+            continue;
+        }
+        droppingMasks = false;
         auto output = impl::filterDetectionRound(messages, config, reference, sourceMasks, &maskRemaps);
         if(output->detections.size() > 255 && output->getSegmentationMaskWidth() > 0)
             logger->warn("ImgDetectionsFilter mask represents only output detections 0 through 254; all detections remain in the list");

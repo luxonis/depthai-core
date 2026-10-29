@@ -2,6 +2,26 @@
 
 using namespace filtertest;
 
+TEST_CASE("ImgDetectionsFilter invalid messages stop the pipeline without terminating the process", "[ImgDetectionsFilter][ER-5]") {
+    FilterSettings settings;
+    settings.reference = transformation();
+    FilterHarness h(settings);
+    auto detections = message();
+    std::shared_ptr<dai::ADatatype> input = detections;
+    SECTION("wrong input datatype") {
+        input = std::make_shared<dai::ImgFrame>();
+    }
+    SECTION("unsupported panorama input remap") {
+        detections->setTransformation(transformation(512, 512, IDENTITY, dai::CameraModel::Equirectangular));
+    }
+    SECTION("unsupported distortion model") {
+        detections->setTransformation(transformation(512, 512, IDENTITY, dai::CameraModel::RadialDivision, {.2f}));
+    }
+    h.pipeline.start();
+    h.node->inputs["cam"].send(input);
+    h.requireStopped();
+}
+
 TEST_CASE("ImgDetectionsFilter X-1: remap requires input transformation", "[ImgDetectionsFilter][ER-5]") {
     FilterSettings s;
     s.reference = transformation();
@@ -127,7 +147,8 @@ TEST_CASE("ImgDetectionsFilter validates source mask payloads", "[ImgDetectionsF
     FilterSettings settings;
     settings.reference = transformation();
     FilterHarness h(settings);
-    const auto masks = h.node->inputSourceMasks["cam"].createInputQueue();
+    auto& masks = h.node->inputSourceMasks["cam"];
+    masks.createInputQueue();
     auto mask = std::make_shared<dai::ImgFrame>();
     mask->setWidth(512);
     mask->setHeight(512);
@@ -147,7 +168,7 @@ TEST_CASE("ImgDetectionsFilter validates source mask payloads", "[ImgDetectionsF
         mask->fb.p1Offset = 512 * 512 + 1;
     }
     h.pipeline.start();
-    masks->send(mask);
+    masks.send(mask);
     h.send(message());
     h.requireStopped();
 }
