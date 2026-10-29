@@ -504,7 +504,16 @@ if(UNIX)
     dai_set_test_labels(device_gate_rvc2ng_test onhost ci)
     add_test(NAME device_gate_rvc2ng_unset_test COMMAND device_gate_rvc2ng_test "[unset-firmware]")
     dai_set_test_labels(device_gate_rvc2ng_unset_test onhost ci)
-    set_tests_properties(device_gate_rvc2ng_test device_gate_rvc2ng_unset_test PROPERTIES RUN_SERIAL TRUE TIMEOUT 20 ENVIRONMENT "${test_env}")
+    add_test(NAME device_gate_rvc2ng_cached_test COMMAND device_gate_rvc2ng_test "[cached-firmware]")
+    dai_set_test_labels(device_gate_rvc2ng_cached_test onhost ci)
+    set_tests_properties(device_gate_rvc2ng_test device_gate_rvc2ng_unset_test device_gate_rvc2ng_cached_test PROPERTIES RUN_SERIAL TRUE TIMEOUT 20 ENVIRONMENT "${test_env}")
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT BUILD_SHARED_LIBS)
+    dai_add_test(device_gate_usb_test src/onhost_tests/device_gate_usb_test.cpp)
+    target_link_options(device_gate_usb_test PRIVATE "-Wl,--wrap=XLinkGateRead" "-Wl,--wrap=XLinkGateWrite")
+    dai_set_test_labels(device_gate_usb_test onhost ci)
+    set_tests_properties(device_gate_usb_test PROPERTIES TIMEOUT 5)
 endif()
 
 # Eeprom naming parsing tests
