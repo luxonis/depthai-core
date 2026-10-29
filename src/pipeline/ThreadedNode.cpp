@@ -69,7 +69,11 @@ void ThreadedNode::stop() {
     onStop();
     // TBD
     // Sets running to false
-    running = false;
+    {
+        std::lock_guard<std::mutex> lock(pimpl->stopMutex);
+        running = false;
+    }
+    pimpl->stopCondition.notify_all();
     // closes all the queueus, then waits for the thread to join
     for(auto& in : getInputRefs()) {
         in->close();
@@ -89,6 +93,11 @@ dai::LogLevel ThreadedNode::getLogLevel() const {
 
 bool ThreadedNode::isRunning() const {
     return running;
+}
+
+bool ThreadedNode::waitUntil(std::chrono::steady_clock::time_point deadline) const {
+    std::unique_lock<std::mutex> lock(pimpl->stopMutex);
+    return !pimpl->stopCondition.wait_until(lock, deadline, [this] { return !isRunning(); });
 }
 
 bool ThreadedNode::mainLoop() {

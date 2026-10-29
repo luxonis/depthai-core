@@ -76,11 +76,7 @@ void BenchmarkOut::run() {
         if(useTiming) {
             nextFrameTime += frameDuration;
 
-            auto now = steady_clock::now();
-            if(nextFrameTime > now) {
-                auto sleepTime = nextFrameTime - now;
-                std::this_thread::sleep_for(sleepTime);
-            }
+            if(!waitUntil(nextFrameTime)) break;
         }
     }
 

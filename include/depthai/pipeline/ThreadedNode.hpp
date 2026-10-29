@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/utility/AtomicBool.hpp"
@@ -84,6 +86,9 @@ class ThreadedNode : public Node {
 
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;
+
+   protected:
+    bool waitUntil(std::chrono::steady_clock::time_point deadline) const;
 };
 
 }  // namespace dai
