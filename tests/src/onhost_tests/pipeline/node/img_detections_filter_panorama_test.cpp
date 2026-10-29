@@ -127,6 +127,70 @@ TEST_CASE("ImgDetectionsFilter splits boxes crossing the longitude join", "[ImgD
     snapshot.requireEqual(*input);
 }
 
+namespace {
+// Cameras looking at longitude 180, which is the join at the canvas edges of degreePanorama().
+const Rotation BACKWARD = {{{-1, 0, 0}, {0, 1, 0}, {0, 0, -1}}}, BACKWARD_UPSIDE_DOWN = {{{1, 0, 0}, {0, -1, 0}, {0, 0, -1}}};
+
+// One pixel is one degree.
+dai::ImgTransformation degreePanorama() {
+    return transformation(360, 180, IDENTITY, dai::CameraModel::Equirectangular, {}, 360 / (2 * std::acos(-1.0f)));
+}
+
+// A 120 px high box between two angles from the optical axis of a 512 px camera with a 256 px focal length.
+ExpectedDetection span(float from, float to, float confidence = .9f) {
+    const auto column = [](float degrees) { return 256 + 256 * std::tan(degrees * std::acos(-1.0f) / 180); };
+    return {(column(from) + column(to)) / 2, 256, column(to) - column(from), 120, confidence, 5};
+}
+
+void requireColumns(const dai::ImgDetections& out, const std::vector<std::array<float, 2>>& columns) {
+    REQUIRE(out.detections.size() == columns.size());
+    for(std::size_t i = 0; i < columns.size(); ++i) {
+        CAPTURE(i);
+        const auto box = out.detections[i].getBoundingBox().denormalize(360, 180);
+        REQUIRE_THAT(box.center.x - box.size.width / 2, Catch::Matchers::WithinAbs(columns[i][0], .02));
+        REQUIRE_THAT(box.center.x + box.size.width / 2, Catch::Matchers::WithinAbs(columns[i][1], .02));
+    }
+}
+}  // namespace
+
+TEST_CASE("ImgDetectionsFilter finds duplicates of whole boxes across the longitude join", "[ImgDetectionsFilter][panorama]") {
+    // Camera a sees longitudes 172 to 192 and camera b 178 to 198: the boxes have IoU 0.54, their parts left of the join only 0.25.
+    const bool upsideDown = GENERATE(false, true);  // Unwraps the box of camera b one period away from the box of camera a.
+    FilterSettings s;
+    s.reference = degreePanorama();
+    s.mode = GENERATE(Mode::NMS, Mode::AVERAGE);
+    FilterHarness h(s, {"a", "b"});
+    h.pipeline.start();
+    h.send(message(transformation(512, 512, BACKWARD), {span(-8, 12, .9f)}), "a");
+    h.send(upsideDown ? message(transformation(512, 512, BACKWARD_UPSIDE_DOWN), {span(-18, 2, .8f)})
+                      : message(transformation(512, 512, BACKWARD), {span(-2, 18, .8f)}),
+           "b");
+    // NMS keeps camera a. AVERAGE weights the box centers 182 and 188 by confidence.
+    const float minX = *s.mode == Mode::NMS ? 352 : 354.824f;
+    requireColumns(*h.receive(), {{0, minX - 340}, {minX, 360}});
+}
+
+TEST_CASE("ImgDetectionsFilter applies size limits and ROI to whole boxes at the longitude join", "[ImgDetectionsFilter][panorama]") {
+    // The box spans longitudes 172 to 192: 20 px, split into parts 12 and 8 px wide.
+    FilterSettings s;
+    s.reference = degreePanorama();
+    std::vector<std::array<float, 2>> expected;
+    SECTION("minimum width counts both parts") {
+        s.minWidth = 15;
+        expected = {{0, 12}, {352, 360}};
+    }
+    SECTION("maximum width counts both parts") {
+        s.maxWidth = 15;
+    }
+    SECTION("ROI must contain every part") {
+        s.roi = dai::Rect(300, 0, 60, 180, false);
+    }
+    FilterHarness h(s);
+    h.pipeline.start();
+    h.send(message(transformation(512, 512, BACKWARD), {span(-8, 12)}));
+    requireColumns(*h.receive(), expected);
+}
+
 TEST_CASE("ImgDetectionsFilter keeps wrapped mask indices with their fragments", "[ImgDetectionsFilter][panorama]") {
     const auto model = GENERATE(dai::CameraModel::Equirectangular, dai::CameraModel::Cylindrical);
     FilterSettings s;

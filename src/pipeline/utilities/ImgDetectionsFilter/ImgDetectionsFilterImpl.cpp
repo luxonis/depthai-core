@@ -63,6 +63,7 @@ RotatedRect axisAlignedBounds(const std::vector<std::array<float, 2>>& points) {
 struct MaskMember {
     std::size_t key, index;
     std::array<float, 2> xBounds{-std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity()};
+    std::array<float, 2> extent{};
 };
 
 struct MaskTarget {
@@ -87,8 +88,10 @@ class DetectionRound {
     const bool geometry;
     std::shared_ptr<ImgDetections> output = std::make_shared<ImgDetections>();
     std::pair<std::size_t, std::size_t> size{0, 0};
-    std::vector<Candidate> candidates;
-    std::vector<std::size_t> ranked, kept;
+    bool upright = false;
+    float period = 0, left = 0, right = 0;
+    std::vector<Candidate> candidates, kept;
+    std::vector<std::size_t> ranked;
     std::vector<bool> removed;
 
     static RotatedRect standardize(RotatedRect box) {
@@ -111,6 +114,99 @@ class DetectionRound {
         candidate.detection.xmax = outer[2] / size.first;
         candidate.detection.ymax = outer[3] / size.second;
     }
+    bool insideCanvas(const RotatedRect& box) const {
+        return intersectionArea(box, RotatedRect(Rect(0, 0, size.first, size.second, false))) > 0;
+    }
+    // Only an unwrapped upright panorama box can cross the longitude join.
+    bool crossesJoin(const RotatedRect& box) const {
+        if(period <= 0 || box.angle != 0) return false;
+        const auto outer = box.getOuterRect();
+        return outer[0] < left || outer[2] > right;
+    }
+    // The parts of a box in the longitude range, left to right, each with the period shift that moves the box onto it.
+    std::vector<std::pair<float, RotatedRect>> pieces(const RotatedRect& box) const {
+        if(!crossesJoin(box)) return {{0.0f, box}};
+        const auto outer = box.getOuterRect();
+        std::vector<std::pair<float, RotatedRect>> parts;
+        for(const float shift : {-period, 0.0f, period}) {
+            const float minX = std::max(left, outer[0] + shift), maxX = std::min(right, outer[2] + shift);
+            if(maxX > minX)
+                parts.emplace_back(shift, RotatedRect(Point2f((minX + maxX) / 2, box.center.y, false), Size2f(maxX - minX, box.size.height, false), 0));
+        }
+        return parts;
+    }
+    // Intersection area, also across the longitude join for unwrapped panorama boxes, which are narrower than one period.
+    float overlap(const RotatedRect& lhs, RotatedRect rhs) const {
+        if(period <= 0) return intersectionArea(lhs, rhs);
+        rhs.center.x -= period * std::round((rhs.center.x - lhs.center.x) / period);
+        float area = 0;
+        for(const float shift : {-period, 0.0f, period}) {
+            auto shifted = rhs;
+            shifted.center.x += shift;
+            area += intersectionArea(lhs, shifted);
+        }
+        return area;
+    }
+    // Source mask pixels that are set and whose centers lie inside a box in output pixels.
+    std::size_t visiblePixels(const RotatedRect& box, const ImgFrame& mask) const {
+        const auto outer = box.getOuterRect();
+        if(box.size.width <= 0 || box.size.height <= 0 || !std::all_of(outer.begin(), outer.end(), [](float value) { return std::isfinite(value); })) return 0;
+        const auto data = mask.getData();
+        const auto xBegin = static_cast<std::size_t>(std::clamp(std::floor(static_cast<double>(outer[0])), 0.0, static_cast<double>(size.first)));
+        const auto yBegin = static_cast<std::size_t>(std::clamp(std::floor(static_cast<double>(outer[1])), 0.0, static_cast<double>(size.second)));
+        const auto xEnd = static_cast<std::size_t>(std::clamp(std::ceil(static_cast<double>(outer[2])), 0.0, static_cast<double>(size.first)));
+        const auto yEnd = static_cast<std::size_t>(std::clamp(std::ceil(static_cast<double>(outer[3])), 0.0, static_cast<double>(size.second)));
+        const double radians = static_cast<double>(box.angle) * std::acos(-1.0) / 180.0;
+        const double cosine = std::cos(radians), sine = std::sin(radians);
+        const std::size_t stride = mask.getStride();
+        std::size_t visible = 0;
+        // A seam can hide the center while leaving much of the object visible. Check the whole rotated footprint.
+        for(auto y = yBegin; y < yEnd; ++y) {
+            const double dy = static_cast<double>(y) + 0.5 - static_cast<double>(box.center.y);
+            const auto row = mask.fb.p1Offset + y * stride;
+            for(auto x = xBegin; x < xEnd; ++x) {
+                const double dx = static_cast<double>(x) + 0.5 - static_cast<double>(box.center.x);
+                visible += data[row + x] != 0 && std::abs(dx * cosine + dy * sine) <= static_cast<double>(box.size.width) / 2
+                           && std::abs(dy * cosine - dx * sine) <= static_cast<double>(box.size.height) / 2;
+            }
+        }
+        return visible;
+    }
+    // Output detections for a candidate: the candidate itself, or one fragment on each side of the longitude join.
+    std::vector<Candidate> split(Candidate candidate) const {
+        std::vector<Candidate> fragments;
+        if(!crossesJoin(candidate.box)) {
+            fragments.push_back(std::move(candidate));
+            return fragments;
+        }
+        for(const auto& [shift, box] : pieces(candidate.box)) {
+            if(!insideCanvas(box)) continue;
+            // Keep a fragment that a contributing camera sees: one without a source mask, or one whose mask shows a pixel of it.
+            if(!sourceMasks.empty() && std::none_of(candidate.maskMembers.begin(), candidate.maskMembers.end(), [this, &box](const auto& member) {
+                   return !sourceMasks[member.key] || visiblePixels(box, *sourceMasks[member.key]) > 0;
+               }))
+                continue;
+            auto fragment = candidate;
+            fragment.box = box;
+            writeBox(fragment);
+            fragment.detection.boundingBox->center.hasNormalized = fragment.detection.boundingBox->size.hasNormalized = true;
+            fragment.detection.boundingBox->center.normalized = fragment.detection.boundingBox->size.normalized = true;
+            // Each member paints only its own pixels on this side of the join.
+            fragment.maskMembers.clear();
+            for(auto member : candidate.maskMembers) {
+                const float minX = std::max(left, member.extent[0] + shift), maxX = std::min(right, member.extent[1] + shift);
+                if(maxX <= minX) continue;
+                member.xBounds = {minX / size.first, maxX / size.first};
+                fragment.maskMembers.push_back(member);
+            }
+            if(fragment.detection.keypoints) {
+                for(auto& point : fragment.detection.keypoints->keypoints)
+                    if(point.imageCoordinates.x < fragment.detection.xmin || point.imageCoordinates.x > fragment.detection.xmax) point.confidence = 0;
+            }
+            fragments.push_back(std::move(fragment));
+        }
+        return fragments;
+    }
     void prepare() {
         if(messages.empty()) throw std::invalid_argument("ImgDetectionsFilter requires at least one linked input");
         auto newest = messages.front();
@@ -132,6 +228,19 @@ class DetectionRound {
         output->setBufferMetadataFrom(newest.get());
         output->transformation = reference ? reference : messages.front()->getTransformation();
         if(output->transformation) size = output->transformation->getSize();
+        if(reference) {
+            const auto model = reference->getDistortionModel();
+            const auto intrinsics = reference->getIntrinsicMatrix();
+            upright = (model == CameraModel::Cylindrical || model == CameraModel::Equirectangular) && intrinsics[0][1] == 0 && intrinsics[1][0] == 0
+                      && intrinsics[2][0] == 0 && intrinsics[2][1] == 0;
+            const float wrap = 2 * std::acos(-1.0f) * std::abs(intrinsics[0][0] / intrinsics[2][2]);
+            if(upright && std::isfinite(wrap) && wrap > 0) {
+                period = wrap;
+                const float center = intrinsics[0][2] / intrinsics[2][2];
+                left = center - period / 2;
+                right = center + period / 2;
+            }
+        }
         if(!sourceMasks.empty() && sourceMasks.size() != messages.size()) throw std::invalid_argument("ImgDetectionsFilter source mask count mismatch");
         for(const auto& mask : sourceMasks) {
             if(!mask) continue;
@@ -147,8 +256,6 @@ class DetectionRound {
     void remap(Candidate candidate, const ImgTransformation& source, bool pixels) {
         auto& detection = candidate.detection;
         const bool identity = source.isEqualTransformation(*reference);
-        std::vector<RotatedRect> boxes;
-        bool seamFragment = false;
         if(!identity) {
             const auto model = reference->getDistortionModel();
             const bool panorama = model == CameraModel::Cylindrical || model == CameraModel::Equirectangular;
@@ -170,13 +277,10 @@ class DetectionRound {
             // border, and a normalized RotatedRect stays a rectangle only at angle 0. A panorama keeps the mean camera Y axis
             // vertical, so its boxes are the axis-aligned bounds of the sampled edges; perspective references keep the box
             // orientation, which an in-plane camera roll maps exactly.
-            const auto intrinsics = reference->getIntrinsicMatrix();
-            if(panorama && intrinsics[0][1] == 0 && intrinsics[1][0] == 0 && intrinsics[2][0] == 0 && intrinsics[2][1] == 0) {
-                // Longitude wraps at +/- pi. Unwrap before taking bounds, then split at that join, which need not be the canvas edges.
-                const float period = 2 * std::acos(-1.0f) * std::abs(intrinsics[0][0] / intrinsics[2][2]);
-                if(!std::isfinite(period) || period <= 0) return;
-                const float center = intrinsics[0][2] / intrinsics[2][2];
-                const float left = center - period / 2, right = center + period / 2;
+            if(upright) {
+                // Longitude wraps at +/- pi. Unwrap before taking bounds; select() splits at that join, which need not be the canvas edges.
+                if(period <= 0) return;
+                const auto intrinsics = reference->getIntrinsicMatrix();
                 const float anchor = points.front()[0];
                 float previous = anchor, unwrapped = anchor;
                 for(auto& point : points) {
@@ -198,18 +302,9 @@ class DetectionRound {
                         pole = equator + (above ? -1.0f : 1.0f) * std::abs(intrinsics[1][1] / intrinsics[2][2]) * std::acos(-1.0f) / 2;
                     const auto outer = candidate.box.getOuterRect();
                     const float minY = std::min(outer[1], pole), maxY = std::max(outer[3], pole);
+                    // The center x keeps the box exactly inside [left, right], so it is never split.
+                    const float center = intrinsics[0][2] / intrinsics[2][2];
                     candidate.box = RotatedRect(Point2f(center, (minY + maxY) / 2, false), Size2f(period, maxY - minY, false), 0);
-                } else {
-                    const auto outer = candidate.box.getOuterRect();
-                    if(outer[0] < left || outer[2] > right) {
-                        seamFragment = true;
-                        for(const float shift : {-period, 0.0f, period}) {
-                            const float minX = std::max(left, outer[0] + shift), maxX = std::min(right, outer[2] + shift);
-                            if(maxX > minX)
-                                boxes.emplace_back(
-                                    Point2f((minX + maxX) / 2, candidate.box.center.y, false), Size2f(maxX - minX, candidate.box.size.height, false), 0);
-                        }
-                    }
                 }
             } else {
                 candidate.box = panorama ? axisAlignedBounds(points) : standardize(getOuterRotatedRect(points));
@@ -228,25 +323,15 @@ class DetectionRound {
                 }
             }
         }
-        if(boxes.empty()) boxes.push_back(candidate.box);
-        for(const auto& box : boxes) {
-            if(intersectionArea(box, RotatedRect(Rect(0, 0, size.first, size.second, false))) <= 0) continue;
-            auto fragment = candidate;
-            fragment.box = box;
-            // Preserve exact normalized coordinates when the input already has standard form.
-            if(!identity || pixels || !detection.boundingBox || box.angle != detection.boundingBox->angle) writeBox(fragment);
-            fragment.detection.boundingBox->center.hasNormalized = fragment.detection.boundingBox->size.hasNormalized = true;
-            fragment.detection.boundingBox->center.normalized = fragment.detection.boundingBox->size.normalized = true;
-            if(seamFragment) {
-                // Keep each member's original partition when its output box is later averaged.
-                fragment.maskMembers.front().xBounds = {fragment.detection.xmin, fragment.detection.xmax};
-                if(fragment.detection.keypoints) {
-                    for(auto& point : fragment.detection.keypoints->keypoints)
-                        if(point.imageCoordinates.x < fragment.detection.xmin || point.imageCoordinates.x > fragment.detection.xmax) point.confidence = 0;
-                }
-            }
-            candidates.push_back(std::move(fragment));
-        }
+        const auto parts = pieces(candidate.box);
+        if(std::none_of(parts.begin(), parts.end(), [this](const auto& part) { return insideCanvas(part.second); })) return;
+        // Preserve exact normalized coordinates when the input already has standard form.
+        if(!identity || pixels || !detection.boundingBox || candidate.box.angle != detection.boundingBox->angle) writeBox(candidate);
+        detection.boundingBox->center.hasNormalized = detection.boundingBox->size.hasNormalized = true;
+        detection.boundingBox->center.normalized = detection.boundingBox->size.normalized = true;
+        const auto outer = candidate.box.getOuterRect();
+        candidate.maskMembers.front().extent = {outer[0], outer[2]};
+        candidates.push_back(std::move(candidate));
     }
     void collect() {
         for(std::size_t key = 0; key < messages.size(); ++key) {
@@ -278,32 +363,10 @@ class DetectionRound {
         }
         for(auto& candidate : candidates) {
             if(sourceMasks.empty() || !sourceMasks[candidate.key]) continue;
-            candidate.visibility = 0;
             const auto& box = candidate.box;
-            const auto outer = box.getOuterRect();
-            if(box.size.width <= 0 || box.size.height <= 0 || !std::all_of(outer.begin(), outer.end(), [](float value) { return std::isfinite(value); }))
-                continue;
-            const auto& mask = sourceMasks[candidate.key];
-            const auto data = mask->getData();
-            const auto xBegin = static_cast<std::size_t>(std::clamp(std::floor(static_cast<double>(outer[0])), 0.0, static_cast<double>(size.first)));
-            const auto yBegin = static_cast<std::size_t>(std::clamp(std::floor(static_cast<double>(outer[1])), 0.0, static_cast<double>(size.second)));
-            const auto xEnd = static_cast<std::size_t>(std::clamp(std::ceil(static_cast<double>(outer[2])), 0.0, static_cast<double>(size.first)));
-            const auto yEnd = static_cast<std::size_t>(std::clamp(std::ceil(static_cast<double>(outer[3])), 0.0, static_cast<double>(size.second)));
-            const double radians = static_cast<double>(box.angle) * std::acos(-1.0) / 180.0;
-            const double cosine = std::cos(radians), sine = std::sin(radians);
-            const std::size_t stride = mask->getStride();
-            std::size_t visiblePixels = 0;
-            // A seam can hide the center while leaving much of the object visible. Check the whole rotated footprint.
-            for(auto y = yBegin; y < yEnd; ++y) {
-                const double dy = static_cast<double>(y) + 0.5 - static_cast<double>(box.center.y);
-                const auto row = mask->fb.p1Offset + y * stride;
-                for(auto x = xBegin; x < xEnd; ++x) {
-                    const double dx = static_cast<double>(x) + 0.5 - static_cast<double>(box.center.x);
-                    visiblePixels += data[row + x] != 0 && std::abs(dx * cosine + dy * sine) <= static_cast<double>(box.size.width) / 2
-                                     && std::abs(dy * cosine - dx * sine) <= static_cast<double>(box.size.height) / 2;
-                }
-            }
-            candidate.visibility = std::min(1.0, visiblePixels / (static_cast<double>(box.size.width) * static_cast<double>(box.size.height)));
+            std::size_t visible = 0;
+            for(const auto& part : pieces(box)) visible += visiblePixels(part.second, *sourceMasks[candidate.key]);
+            candidate.visibility = visible == 0 ? 0.0 : std::min(1.0, visible / (static_cast<double>(box.size.width) * static_cast<double>(box.size.height)));
         }
         candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [](const auto& candidate) { return candidate.visibility == 0; }),
                          candidates.end());
@@ -322,6 +385,9 @@ class DetectionRound {
         RotatedRect mean(Point2f(0, 0, false), Size2f(0, 0, false), 0);
         for(const auto index : members) {
             auto box = candidates[index].box;
+            // Unwrapped panorama boxes of one object can differ by a whole longitude period.
+            const float shift = period > 0 ? -period * std::round((box.center.x - leader.box.center.x) / period) : 0.0f;
+            box.center.x += shift;
             while(box.angle - leader.box.angle > 45) {
                 box.angle -= 90;
                 std::swap(box.size.width, box.size.height);
@@ -338,8 +404,12 @@ class DetectionRound {
             mean.size.width += weight * box.size.width;
             mean.size.height += weight * box.size.height;
             mean.angle += weight * box.angle;
-            if(index != members.front())
-                leader.maskMembers.insert(leader.maskMembers.end(), candidates[index].maskMembers.begin(), candidates[index].maskMembers.end());
+            if(index == members.front()) continue;
+            for(auto member : candidates[index].maskMembers) {
+                member.extent[0] += shift;
+                member.extent[1] += shift;
+                leader.maskMembers.push_back(member);
+            }
         }
         leader.box = standardize(mean);
         writeBox(leader);
@@ -362,7 +432,7 @@ class DetectionRound {
                 for(const auto index : ranked) {
                     const auto& candidate = candidates[index];
                     if(grouped[index] || candidate.key != key || candidate.detection.label != leader.detection.label) continue;
-                    const float intersection = intersectionArea(leader.box, candidate.box);
+                    const float intersection = overlap(leader.box, candidate.box);
                     const float unionArea =
                         leader.box.size.width * leader.box.size.height + candidate.box.size.width * candidate.box.size.height - intersection;
                     const float iou = unionArea > 0 ? intersection / unionArea : 0;
@@ -381,37 +451,49 @@ class DetectionRound {
         }
     }
     void select() {
+        std::vector<std::size_t> rank(candidates.size()), keptRanks;
+        for(std::size_t i = 0; i < ranked.size(); ++i) rank[ranked[i]] = i;
         for(std::size_t index = 0; index < candidates.size(); ++index) {
             if(removed[index]) continue;
+            // Size limits apply to the whole object, also when the longitude join splits it.
             const auto& box = candidates[index].box;
             if(geometry) {
                 const float area = box.size.width * box.size.height;
                 if(area < config.minArea || area > config.maxArea || box.size.width < config.minWidth || box.size.width > config.maxWidth
                    || box.size.height < config.minHeight || box.size.height > config.maxHeight)
                     continue;
-                if(config.regionOfInterest) {
-                    const auto& roi = *config.regionOfInterest;
-                    const auto corners = box.getPoints();
-                    if(!std::all_of(corners.begin(), corners.end(), [&roi](const auto& p) {
-                           return p.x >= roi.x && p.y >= roi.y && p.x <= roi.x + roi.width && p.y <= roi.y + roi.height;
-                       }))
-                        continue;
-                }
             }
-            kept.push_back(index);
+            auto fragments = split(std::move(candidates[index]));
+            if(geometry && config.regionOfInterest) {
+                const auto& roi = *config.regionOfInterest;
+                const auto inside = [&roi](const auto& p) { return p.x >= roi.x && p.y >= roi.y && p.x <= roi.x + roi.width && p.y <= roi.y + roi.height; };
+                if(!std::all_of(fragments.begin(), fragments.end(), [&inside](const auto& fragment) {
+                       const auto corners = fragment.box.getPoints();
+                       return std::all_of(corners.begin(), corners.end(), inside);
+                   }))
+                    continue;
+            }
+            for(auto& fragment : fragments) {
+                kept.push_back(std::move(fragment));
+                keptRanks.push_back(rank[index]);
+            }
         }
+        // The count limits output detections, so it can keep one fragment of a split object.
         if(config.maxDetections && kept.size() > *config.maxDetections) {
-            std::vector<std::size_t> best;
-            for(const auto index : ranked)
-                if(std::find(kept.begin(), kept.end(), index) != kept.end()) best.push_back(index);
-            best.resize(*config.maxDetections);
-            kept.erase(std::remove_if(kept.begin(), kept.end(), [&best](auto i) { return std::find(best.begin(), best.end(), i) == best.end(); }), kept.end());
+            std::vector<std::size_t> order(kept.size());
+            std::iota(order.begin(), order.end(), 0);
+            std::stable_sort(order.begin(), order.end(), [&keptRanks](auto a, auto b) { return keptRanks[a] < keptRanks[b]; });
+            std::vector<bool> best(kept.size(), false);
+            for(std::size_t i = 0; i < *config.maxDetections; ++i) best[order[i]] = true;
+            std::vector<Candidate> limited;
+            for(std::size_t i = 0; i < kept.size(); ++i)
+                if(best[i]) limited.push_back(std::move(kept[i]));
+            kept = std::move(limited);
         }
         if(config.sortByConfidence)
-            std::stable_sort(
-                kept.begin(), kept.end(), [this](auto a, auto b) { return candidates[a].detection.confidence > candidates[b].detection.confidence; });
+            std::stable_sort(kept.begin(), kept.end(), [](const auto& a, const auto& b) { return a.detection.confidence > b.detection.confidence; });
         output->detections.reserve(kept.size());
-        for(const auto index : kept) output->detections.push_back(candidates[index].detection);
+        for(const auto& candidate : kept) output->detections.push_back(candidate.detection);
     }
     void mergeMask(std::vector<std::uint8_t>& mask,
                    std::size_t width,
@@ -462,7 +544,7 @@ class DetectionRound {
     void buildMask() {
         std::vector<std::array<std::vector<MaskTarget>, 256>> indexMaps(messages.size());
         for(std::size_t index = 0; index < kept.size() && index < 255; ++index)
-            for(const auto& member : candidates[kept[index]].maskMembers)
+            for(const auto& member : kept[index].maskMembers)
                 if(member.index < 255) indexMaps[member.key][member.index].push_back({static_cast<std::uint8_t>(index), member.xBounds});
         std::vector<std::uint8_t> mask;
         std::size_t width = 0, height = 0;
