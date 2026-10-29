@@ -230,7 +230,7 @@ TEST_CASE("ImgDetectionsFilter keeps wrapped mask indices with their fragments",
         s.maxDetections = 1;
     }
     FilterHarness h(s);
-    const auto maskQueue = h.node->inputSourceMasks["cam"].createInputQueue();
+    h.linkMask();
     auto mask = std::make_shared<dai::ImgFrame>();
     mask->setType(dai::ImgFrame::Type::GRAY8);
     mask->setSize(256, 128);
@@ -242,7 +242,7 @@ TEST_CASE("ImgDetectionsFilter keeps wrapped mask indices with their fragments",
     const auto input = message(transformation(512, 512, rotation(179, true)), {{256, 256, 80, 120}});
     input->setSegmentationMask(std::vector<std::uint8_t>(8 * 8, 0), 8, 8);
     h.pipeline.start();
-    maskQueue->send(mask);
+    h.sendMask(mask);
     h.send(input);
     const auto out = h.receive();
     REQUIRE(out->detections.size() == (visibleSide != 0 || s.maxDetections ? 1 : 2));

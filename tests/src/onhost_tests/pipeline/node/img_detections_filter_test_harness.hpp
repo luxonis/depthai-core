@@ -108,6 +108,32 @@ class FilterHarness {
         source.link(node->inputReference);
     }
 
+    // Link the source mask input of a key before start; the filter then drops rounds until a matching mask arrives.
+    void linkMask(const std::string& key = "cam") {
+        node->inputSourceMasks[key].createInputQueue();
+    }
+
+    // Deliver directly to the host input. An InputQueue has its own forwarding thread, so detections sent later could arrive first.
+    void sendMask(const std::shared_ptr<dai::ImgFrame>& mask, const std::string& key = "cam") {
+        node->inputSourceMasks[key].send(mask);
+    }
+
+    // Deliver directly to the host input and wait until the filter takes the message, so a message on another input cannot overtake it.
+    void sendTaken(const std::shared_ptr<dai::ImgDetections>& msg, const std::string& key = "cam") {
+        auto& input = node->inputs[key];
+        input.send(msg);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while(input.getSize() > 0 && std::chrono::steady_clock::now() < deadline) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        REQUIRE(input.getSize() == 0);
+    }
+
+    // Wait until another node has delivered a message to a filter input. The filter reads masks and references only after detections arrive.
+    static void waitForMessage(const dai::Node::Input& input) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while(input.getSize() == 0 && std::chrono::steady_clock::now() < deadline) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        REQUIRE(input.getSize() > 0);
+    }
+
     void accessUnlinked(const std::string& key) {
         unlinked = &node->inputs[key];
     }
