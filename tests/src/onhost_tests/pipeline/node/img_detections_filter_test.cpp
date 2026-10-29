@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <limits>
+#include <numeric>
+#include <optional>
 
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "img_detections_filter_test_cases.hpp"
@@ -1394,4 +1396,147 @@ TEST_CASE("ImgDetectionsFilter U-5: invalid runtime config is ignored", "[ImgDet
     h.configure(s);
     h.send(message(transformation(), {x, y}));
     requireOutput(*h.receive(), transformation(), {x, y});
+}
+
+namespace {
+struct Object {
+    float x, y, width, height;
+    std::uint32_t label;
+};
+
+// Separated objects in reference pixels, seen by cameras with different poses, crops, scales and distortion.
+struct Scene {
+    dai::ImgTransformation reference;
+    std::vector<dai::ImgTransformation> cameras;
+    std::vector<Object> objects;
+};
+
+const std::vector<float> DISTORTION = {-.1f, .02f, 0, 0, 0};
+
+Scene perspectiveScene() {
+    const auto reference = transformation();
+    return {reference,
+            {reference,
+             cropped(reference, 64, 32, 384, 384),
+             scaled(reference, .5f),
+             transformation(512, 512, rotation(12)),
+             transformation(512, 512, rotation(8, true)),
+             transformation(512, 512, IDENTITY, dai::CameraModel::Perspective, DISTORTION)},
+            {{160, 160, 60, 80, 1}, {330, 190, 70, 50, 1}, {250, 340, 80, 70, 2}, {380, 380, 50, 60, 3}}};
+}
+
+Scene panoramaScene() {
+    // Two pixels per degree; longitude 0 is column 360.
+    return {transformation(720, 360, IDENTITY, dai::CameraModel::Equirectangular, {}, 360 / std::acos(-1.0f)),
+            {transformation(512, 512, rotation(0, true)),
+             transformation(512, 512, rotation(15, true)),
+             transformation(512, 512, rotation(-12, true)),
+             transformation(512, 512, rotation(5)),
+             transformation(512, 512, rotation(10, true)),
+             transformation(512, 512, IDENTITY, dai::CameraModel::Perspective, DISTORTION)},
+            {{340, 170, 30, 40, 1}, {385, 185, 24, 30, 1}, {360, 215, 28, 28, 2}, {320, 195, 20, 24, 3}}};
+}
+
+// The box of an object as a camera reports it, or nothing when the camera does not see all of it.
+std::optional<ExpectedDetection> observe(const Scene& scene, const dai::ImgTransformation& camera, const Object& object, float confidence) {
+    const dai::RotatedRect box(dai::Point2f(object.x, object.y, false), dai::Size2f(object.width, object.height, false), 0);
+    const auto seen = scene.reference.remapRectTo(camera, box);
+    const auto size = camera.getSize();
+    for(const auto& p : seen.getPoints())
+        if(!std::isfinite(p.x) || !std::isfinite(p.y) || p.x < 0 || p.y < 0 || p.x > size.first || p.y > size.second) return std::nullopt;
+    return ExpectedDetection{seen.center.x, seen.center.y, seen.size.width, seen.size.height, confidence, object.label, seen.angle};
+}
+
+std::vector<dai::ImgDetection> filterRound(const dai::ImgTransformation& reference,
+                                           Mode mode,
+                                           const std::vector<std::shared_ptr<dai::ImgDetections>>& inputs,
+                                           std::optional<std::uint32_t> maxDetections = std::nullopt) {
+    FilterSettings s;
+    s.reference = reference;
+    s.mode = mode;
+    s.maxDetections = maxDetections;
+    std::vector<std::string> keys;
+    for(std::size_t i = 0; i < inputs.size(); ++i) keys.emplace_back(1, static_cast<char>('a' + i));
+    FilterHarness h(s, keys);
+    h.pipeline.start();
+    for(std::size_t i = 0; i < inputs.size(); ++i) h.send(inputs[i], keys[i]);
+    return h.receive()->detections;
+}
+
+void requireSame(const std::vector<dai::ImgDetection>& actual, const std::vector<dai::ImgDetection>& expected) {
+    REQUIRE(actual.size() == expected.size());
+    for(std::size_t i = 0; i < actual.size(); ++i) {
+        CAPTURE(i);
+        REQUIRE(dai::utility::serialize(actual[i]) == dai::utility::serialize(expected[i]));
+    }
+}
+}  // namespace
+
+TEST_CASE("ImgDetectionsFilter C-1: cameras combine consistently with their single camera results", "[ImgDetectionsFilter][OV-1][OV-4][MC-1]") {
+    const bool panorama = GENERATE(false, true);
+    const auto selection = GENERATE(std::vector<std::size_t>{0, 1},
+                                    std::vector<std::size_t>{2, 3},
+                                    std::vector<std::size_t>{4, 5},
+                                    std::vector<std::size_t>{1, 3, 5},
+                                    std::vector<std::size_t>{0, 2, 4});
+    CAPTURE(panorama, selection);
+    const auto scene = panorama ? panoramaScene() : perspectiveScene();
+    std::vector<std::shared_ptr<dai::ImgDetections>> inputs;
+    std::vector<std::vector<std::size_t>> objectsOf(selection.size());
+    for(std::size_t k = 0; k < selection.size(); ++k) {
+        std::vector<ExpectedDetection> seen;
+        for(std::size_t j = 0; j < scene.objects.size(); ++j) {
+            // Camera a has the highest confidence, so it leads every duplicate group that it is part of.
+            const auto detection = observe(scene, scene.cameras[selection[k]], scene.objects[j], .9f - .1f * k - .01f * j);
+            if(!detection) continue;
+            seen.push_back(*detection);
+            objectsOf[k].push_back(j);
+        }
+        inputs.push_back(message(scene.cameras[selection[k]], seen));
+    }
+    // Every object must have a duplicate, or the round would not test duplicate removal.
+    for(std::size_t j = 0; j < scene.objects.size(); ++j) {
+        CAPTURE(j);
+        REQUIRE(std::count_if(objectsOf.begin(), objectsOf.end(), [j](const auto& objects) { return std::count(objects.begin(), objects.end(), j) > 0; }) >= 2);
+    }
+
+    // One camera never suppresses itself, so its result is the same with and without duplicate removal.
+    std::vector<std::vector<dai::ImgDetection>> singles;
+    for(const auto& input : inputs) {
+        singles.push_back(filterRound(scene.reference, Mode::OFF, {input}));
+        requireSame(filterRound(scene.reference, Mode::NMS, {input}), singles.back());
+    }
+    std::vector<dai::ImgDetection> all, firstViews;
+    std::vector<bool> reported(scene.objects.size(), false);
+    for(std::size_t k = 0; k < singles.size(); ++k) {
+        REQUIRE(singles[k].size() == objectsOf[k].size());
+        for(std::size_t i = 0; i < singles[k].size(); ++i) {
+            all.push_back(singles[k][i]);
+            if(reported[objectsOf[k][i]]) continue;
+            reported[objectsOf[k][i]] = true;
+            firstViews.push_back(singles[k][i]);
+        }
+    }
+    // OFF concatenates the single camera results in key order.
+    requireSame(filterRound(scene.reference, Mode::OFF, inputs), all);
+    // NMS keeps the view of the first camera that sees each object.
+    const auto nms = filterRound(scene.reference, Mode::NMS, inputs);
+    requireSame(nms, firstViews);
+    // AVERAGE keeps the same groups and leaders and moves only the boxes.
+    const auto average = filterRound(scene.reference, Mode::AVERAGE, inputs);
+    REQUIRE(average.size() == nms.size());
+    for(std::size_t i = 0; i < nms.size(); ++i) {
+        CAPTURE(i);
+        REQUIRE(average[i].label == nms[i].label);
+        REQUIRE(average[i].confidence == nms[i].confidence);
+    }
+    // The count keeps the two most confident NMS detections in their output order.
+    std::vector<std::size_t> order(nms.size());
+    std::iota(order.begin(), order.end(), 0);
+    std::stable_sort(order.begin(), order.end(), [&nms](auto a, auto b) { return nms[a].confidence > nms[b].confidence; });
+    order.resize(2);
+    std::sort(order.begin(), order.end());
+    std::vector<dai::ImgDetection> limited;
+    for(const auto i : order) limited.push_back(nms[i]);
+    requireSame(filterRound(scene.reference, Mode::NMS, inputs, 2), limited);
 }
