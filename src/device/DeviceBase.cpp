@@ -9,6 +9,7 @@
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <exception>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -157,6 +158,19 @@ bool isLoopbackDeviceName(std::string name) {
     return name == "localhost" || name == "::1" || name == "[::1]" || name.rfind("127.", 0) == 0;
 }
 
+std::optional<std::chrono::milliseconds> waitForDestroyedSessionExit(dai::DeviceGate& gate, std::chrono::milliseconds timeout) {
+    using namespace std::chrono;
+    constexpr auto pollInterval = milliseconds(20);
+    const auto start = steady_clock::now();
+    while(gate.getState() == dai::DeviceGate::SessionState::DESTROYED) {
+        if(steady_clock::now() - start >= timeout) {
+            return std::nullopt;
+        }
+        std::this_thread::sleep_for(pollInterval);
+    }
+    return duration_cast<milliseconds>(steady_clock::now() - start);
+}
+
 }  // namespace
 
 namespace dai {
@@ -167,6 +181,7 @@ const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT_MS = 9000;
+constexpr std::chrono::milliseconds GATE_SESSION_EXIT_TIMEOUT{5000};
 const unsigned int DEFAULT_RPC_READ_TIMEOUT = 10000;
 const unsigned int DEFAULT_RPC_WRITE_TIMEOUT = 0;  // 0 means blocking
 
@@ -970,6 +985,16 @@ void DeviceBase::closeImpl() {
         } else {
             gate->waitForSessionEnd();
         }
+    } else if(gate) {
+        try {
+            if(auto waited = waitForDestroyedSessionExit(*gate, GATE_SESSION_EXIT_TIMEOUT)) {
+                pimpl->logger.debug("Destroyed gate session ended after {} ms", waited->count());
+            } else {
+                pimpl->logger.warn("Destroyed gate session did not end within {} ms", GATE_SESSION_EXIT_TIMEOUT.count());
+            }
+        } catch(const std::exception& ex) {
+            pimpl->logger.debug("Waiting for the destroyed gate session failed: {}", ex.what());
+        }
     }
 
     // Close rpcStream
@@ -1283,12 +1308,14 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
         }
 
+        bool writeTimedOut = false;
         try {
             // Send request to device
             auto writeTimeout = getRPCWriteTimeout();
             if(writeTimeout > 0) {
                 auto success = rpcStream->write(std::move(request), std::chrono::milliseconds(writeTimeout));
                 if(!success) {
+                    writeTimedOut = true;
                     throw std::runtime_error("RPC write timed out in " + std::to_string(writeTimeout) + "ms");
                 }
             } else {
@@ -1305,6 +1332,10 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         } catch(const std::exception& e) {
             // If any exception is thrown, log it and rethrow
             pimpl->logger.debug("RPC error: {}", e.what());
+            // A write timeout does not mean that the link dropped
+            if(writeTimedOut) {
+                throw std::system_error(std::make_error_code(std::errc::timed_out), e.what());
+            }
             throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
         }
     });
@@ -2684,19 +2715,46 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
-        std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
-            int64_t offset = 0;
-            do {
-                int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
-                stream.write(&assetStorage[offset], toTransfer);
-                offset += toTransfer;
-            } while(offset < static_cast<int64_t>(assetStorage.size()));
+        // An exception that leaves a std::thread calls std::terminate, so the writer
+        // stores it here and the calling thread rethrows it after join
+        std::exception_ptr writeError;
+        std::thread t1([this, &streamAssetStorage, &assetStorage, &writeError]() {
+            try {
+                XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+                int64_t offset = 0;
+                do {
+                    int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
+                    stream.write(&assetStorage[offset], toTransfer);
+                    offset += toTransfer;
+                } while(offset < static_cast<int64_t>(assetStorage.size()));
+            } catch(const std::exception& e) {
+                logger::debug("Asset storage write failed: {}", e.what());
+                writeError = std::current_exception();
+            } catch(...) {
+                writeError = std::current_exception();
+            }
         });
 
         logger::trace("Transfering assets of size {} with no timeout.", assetStorage.size());
         try {
             pimpl->rpcCallCheckedVoid(std::chrono::milliseconds(0), "readAssetStorageFromXLink", streamAssetStorage, assetStorage.size());
+        } catch(const std::system_error& e) {
+            if(t1.joinable()) {
+                t1.join();
+            }
+            logger::debug("Asset storage transfer RPC failed: {}", e.what());
+            // The RPC transport reports a dropped link as io_error; a timeout or a closed device is not a lost connection
+            auto deviceId = getDeviceInfo().getDeviceId();
+            auto sizeMiB = assetStorage.size() / (1024.0 * 1024.0);
+            std::string msg;
+            if(e.code() == std::errc::io_error) {
+                msg =
+                    fmt::format("Connection to device {} was lost during the asset storage transfer ({:.1f} MiB). Pipeline start aborted.", deviceId, sizeMiB);
+            } else {
+                msg = fmt::format("Asset storage transfer to device {} failed ({:.1f} MiB): {}. Pipeline start aborted.", deviceId, sizeMiB, e.what());
+            }
+            logger::error("{}", msg);
+            throw std::runtime_error(msg);
         } catch(const std::exception& e) {
             if(t1.joinable()) {
                 t1.join();
@@ -2706,6 +2764,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
             return false;
         }
         t1.join();
+        if(writeError) std::rethrow_exception(writeError);
     }
 
     // // print assets on device side for test

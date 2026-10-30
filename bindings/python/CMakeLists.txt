@@ -111,6 +111,8 @@ set(SOURCE_LIST
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
     src/pipeline/node/StitchingBindings.cpp
+    src/pipeline/datatype/ImgDetectionsFilterConfigBindings.cpp
+    src/pipeline/node/ImgDetectionsFilterBindings.cpp
     src/pipeline/node/AlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
@@ -208,7 +210,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/FastSAMParserBindings.cpp
         src/beta/node/HRNetParserBindings.cpp
         src/beta/node/ImageOutputParserBindings.cpp
-        src/beta/node/ImgDetectionsFilterBindings.cpp
         src/beta/node/KeypointParserBindings.cpp
         src/beta/node/LaneDetectionParserBindings.cpp
         src/beta/node/MapOutputParserBindings.cpp
