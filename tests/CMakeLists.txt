@@ -714,6 +714,11 @@ dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
 dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4)
 
+# Camera module (CCM) and camera board (CBA) EEPROM access, including cameras sharing an I2C bus (RVC4 only)
+dai_add_test(camera_eeprom_test src/ondevice_tests/camera_eeprom_test.cpp)
+dai_set_test_labels(camera_eeprom_test ondevice rvc4 ci)
+set_property(TEST camera_eeprom_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_ALLOW_FACTORY_FLASHING=868632271")
+
 # Neural network test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
