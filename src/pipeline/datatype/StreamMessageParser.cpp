@@ -15,7 +15,6 @@
     #include "depthai/beta/datatype/Clusters.hpp"
     #include "depthai/beta/datatype/FastSAMParserConfig.hpp"
     #include "depthai/beta/datatype/HRNetParserConfig.hpp"
-    #include "depthai/beta/datatype/ImgDetectionsFilterConfig.hpp"
     #include "depthai/beta/datatype/Keypoints.hpp"
     #include "depthai/beta/datatype/Lines.hpp"
     #include "depthai/beta/datatype/MLSDParserConfig.hpp"
@@ -63,6 +62,7 @@
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/ImgDetectionsFilterConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MapData.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -360,12 +360,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<VppConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         }
+        case DatatypeEnum::ImgDetectionsFilterConfig:
+            return parseDatatype<ImgDetectionsFilterConfig>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::PacketizedData: {
             return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data, fd);
         } break;
 #ifdef DEPTHAI_HAVE_BETA
-        case DatatypeEnum::ImgDetectionsFilterConfig:
-            return parseDatatype<beta::ImgDetectionsFilterConfig>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::Classifications:
             return parseDatatype<beta::Classifications>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::Keypoints:
@@ -409,7 +409,6 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::MultiDeviceCalibrationResult:
             return parseDatatype<beta::MultiDeviceCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
 #else
-        case DatatypeEnum::ImgDetectionsFilterConfig:
         case DatatypeEnum::Classifications:
         case DatatypeEnum::Keypoints:
         case DatatypeEnum::Clusters:

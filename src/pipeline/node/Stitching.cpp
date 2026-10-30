@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/Stitching.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -36,6 +37,14 @@ void Stitching::buildStage1() {
     if(device && device->getPlatform() == Platform::RVC2 && !runOnHost()) {
         setRunOnHost(true);
         pimpl->logger->info("Stitching cannot run on-device on RVC2. Running on host.");
+    }
+    for(auto& entry : outSourceMasks) {
+        auto& output = entry.second;
+        if(output.getConnections().empty() && output.getQueueConnections().empty()) continue;
+        if(!runOnHost() || properties.mode != Mode::PANORAMA || !properties.useInputCalibration)
+            throw std::invalid_argument("Stitching source masks require calibrated PANORAMA mode on the host");
+        if(std::find(inputNames.begin(), inputNames.end(), output.getName()) == inputNames.end())
+            throw std::invalid_argument("Stitching source mask key must match a stitched input");
     }
 }
 
@@ -256,11 +265,12 @@ Stitching::SeamFinder Stitching::getSeamFinder() const {
     return properties.seamFinder;
 }
 
-#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_OPENCV_STITCHING)
+#ifndef DEPTHAI_HAVE_OPENCV_STITCHING
 void Stitching::initializeHostState() {}
 
 void Stitching::run() {
-    throw std::runtime_error("Stitching requires OpenCV support to run on the host. Enable OpenCV support or use setRunOnHost(false) with an RVC4 device.");
+    throw std::runtime_error(
+        "Stitching requires OpenCV stitching support to run on the host. Enable OpenCV stitching support or use setRunOnHost(false) with an RVC4 device.");
 }
 #endif
 
