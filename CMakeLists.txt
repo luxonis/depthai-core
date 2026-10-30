@@ -768,6 +768,7 @@ include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/versi
 include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
 include(Depthai/DepthaiDeviceKbConfig)      # depthai-device-kb fwp commit/version configuration
 include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
+include(Depthai/DepthaiDeviceRVC2NGConfig)
 include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
 
 # Include downloaders
@@ -870,6 +871,25 @@ if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
 endif()
 
+if(DEPTHAI_ENABLE_DEVICE_RVC2NG_FW AND DEPTHAI_BINARIES_RESOURCE_COMPILE AND NOT DEPTHAI_INTERNAL_DEVICE_BUILD)
+    set(DEPTHAI_DEVICE_RVC2NG_FWP_FILENAME "depthai-device-rvc2ng-fwp-${DEPTHAI_DEVICE_RVC2NG_VERSION}.tar.xz")
+    set(DEPTHAI_DEVICE_RVC2NG_FWP_PATH "${DEPTHAI_RESOURCES_OUTPUT_DIR}/${DEPTHAI_DEVICE_RVC2NG_FWP_FILENAME}")
+    file(DOWNLOAD
+        "https://artifacts.luxonis.com/api/v1/repositories/luxonis-rvc2ng-snapshot-local/download/depthai-device-rvc2ng/${DEPTHAI_DEVICE_RVC2NG_VERSION}/${DEPTHAI_DEVICE_RVC2NG_FWP_FILENAME}"
+        "${DEPTHAI_DEVICE_RVC2NG_FWP_PATH}"
+        EXPECTED_HASH "SHA256=${DEPTHAI_DEVICE_RVC2NG_SHA256}"
+        TLS_VERIFY ON
+        TIMEOUT 300
+        INACTIVITY_TIMEOUT 60
+        STATUS DEPTHAI_DEVICE_RVC2NG_DOWNLOAD_STATUS
+    )
+    list(GET DEPTHAI_DEVICE_RVC2NG_DOWNLOAD_STATUS 0 DEPTHAI_DEVICE_RVC2NG_DOWNLOAD_CODE)
+    if(NOT DEPTHAI_DEVICE_RVC2NG_DOWNLOAD_CODE EQUAL 0)
+        message(FATAL_ERROR "Could not download RVC2NG firmware: ${DEPTHAI_DEVICE_RVC2NG_DOWNLOAD_STATUS}")
+    endif()
+    list(APPEND RESOURCE_COMPILED_FILES "${DEPTHAI_DEVICE_RVC2NG_FWP_PATH}")
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC2NG_FW)
+endif()
 
 if(DEPTHAI_EMBED_FRONTEND)
     DepthaiVisualizerDownloader(

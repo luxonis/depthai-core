@@ -115,7 +115,7 @@ option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" OFF)
 option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
-set(DEPTHAI_DEVICE_RVC2NG_VERSION "0.0.0+local" CACHE STRING "Version of the local RVC2NG firmware package")
+option(DEPTHAI_ENABLE_DEVICE_RVC2NG_FW "Enable RVC2NG Device FW" ON)
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 
 # ---------- Development Aids -------------------

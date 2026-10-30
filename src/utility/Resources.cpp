@@ -345,6 +345,12 @@ constexpr static auto CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ = "depthai-device-kb-fwp
 constexpr static auto CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ = "depthai-device-rvc4-fwp-" DEPTHAI_DEVICE_RVC4_VERSION ".tar.xz";
 #endif
 
+#ifdef DEPTHAI_ENABLE_DEVICE_RVC2NG_FW
+constexpr static auto CMRC_DEPTHAI_DEVICE_RVC2NG_FWP_TAR_XZ = "depthai-device-rvc2ng-fwp-" DEPTHAI_DEVICE_RVC2NG_VERSION ".tar.xz";
+#else
+constexpr static auto CMRC_DEPTHAI_DEVICE_RVC2NG_FWP_TAR_XZ = "";
+#endif
+
 std::vector<std::uint8_t> Resources::getDeviceRVC3Fwp() const {
 // First check if device bootloader fw is enabled
 #ifndef DEPTHAI_ENABLE_DEVICE_RVC3_FW
@@ -364,7 +370,7 @@ std::vector<std::uint8_t> Resources::getDeviceRVC4Fwp() const {
 }
 
 std::vector<std::uint8_t> Resources::getDeviceRVC2NGFwp() const {
-    return getDeviceFwp("", "DEPTHAI_DEVICE_RVC2NG_FWP");
+    return getDeviceFwp(CMRC_DEPTHAI_DEVICE_RVC2NG_FWP_TAR_XZ, "DEPTHAI_DEVICE_RVC2NG_FWP");
 }
 
 std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, const std::string& envPath) const {
