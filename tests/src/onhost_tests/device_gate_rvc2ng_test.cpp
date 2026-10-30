@@ -10,6 +10,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <thread>
 #include <vector>
 
@@ -154,21 +155,49 @@ TEST_CASE("RVC2NG uses the Gate firmware and session lifecycle", "[platform][gat
     REQUIRE_FALSE(fixture.creation.contains("fwp_checksum"));
 }
 
-TEST_CASE("RVC2NG rejects an unset firmware package before creating a session", "[.][platform][gate][unset-firmware]") {
+TEST_CASE("RVC2NG uses its embedded firmware when no override is set", "[.][platform][gate][unset-firmware]") {
     FirmwareOverride firmwareOverride;
-    GateFixture fixture;
     unsetenv("DEPTHAI_DEVICE_RVC2NG_FWP");
+#ifdef DEPTHAI_TEST_RVC2NG_FWP_PATH
+    std::ifstream firmware(DEPTHAI_TEST_RVC2NG_FWP_PATH, std::ios::binary);
+    REQUIRE(firmware.is_open());
+    const std::string expectedFirmware{std::istreambuf_iterator<char>(firmware), {}};
+    REQUIRE_FALSE(expectedFirmware.empty());
+#endif
     dai::DeviceInfo info("127.0.0.1");
     info.platform = X_LINK_RVC2NG;
     info.state = X_LINK_GATE;
-    dai::DeviceGate gate(info);
-    REQUIRE(gate.isOkay());
-    REQUIRE_THROWS_WITH(gate.createSession(), "No embedded device FWP is configured. Provide firmware with DEPTHAI_DEVICE_RVC2NG_FWP.");
-    REQUIRE(gate.getState() == dai::DeviceGate::SessionState::NOT_CREATED);
-    fixture.server.stop();
-    fixture.thread.join();
-    REQUIRE(fixture.requests.empty());
-    REQUIRE(fixture.upload.empty());
+    for(const bool cached : {false, true}) {
+        CAPTURE(cached);
+        GateFixture fixture(cached);
+        dai::DeviceGate gate(info);
+        REQUIRE(gate.isOkay());
+#ifdef DEPTHAI_TEST_RVC2NG_FWP_PATH
+        REQUIRE(gate.createSession());
+        REQUIRE(gate.startSession());
+        REQUIRE(gate.getState() == dai::DeviceGate::SessionState::RUNNING);
+        REQUIRE(gate.destroySession());
+        REQUIRE(gate.getState() == dai::DeviceGate::SessionState::DESTROYED);
+#else
+        REQUIRE_THROWS_WITH(gate.createSession(), "No embedded device FWP is configured. Provide firmware with DEPTHAI_DEVICE_RVC2NG_FWP.");
+        REQUIRE(gate.getState() == dai::DeviceGate::SessionState::NOT_CREATED);
+#endif
+        fixture.server.stop();
+        fixture.thread.join();
+#ifdef DEPTHAI_TEST_RVC2NG_FWP_PATH
+        REQUIRE(fixture.creation.at("fwp_version") == DEPTHAI_TEST_RVC2NG_VERSION);
+        if(cached) {
+            REQUIRE(fixture.requests == std::vector<std::string>{"create", "start", "destroy"});
+            REQUIRE(fixture.upload.empty());
+        } else {
+            REQUIRE(fixture.requests == std::vector<std::string>{"create", "upload", "start", "destroy"});
+            REQUIRE(fixture.upload == expectedFirmware);
+        }
+#else
+        REQUIRE(fixture.requests.empty());
+        REQUIRE(fixture.upload.empty());
+#endif
+    }
 }
 
 TEST_CASE("Legacy Gate sessions use cached firmware without a local package", "[platform][gate][legacy-cache]") {

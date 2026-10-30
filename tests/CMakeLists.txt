@@ -501,6 +501,12 @@ dai_set_test_labels(device_platform_test onhost ci)
 if(UNIX)
     dai_add_test(device_gate_rvc2ng_test src/onhost_tests/device_gate_rvc2ng_test.cpp)
     target_link_libraries(device_gate_rvc2ng_test PRIVATE httplib::httplib)
+    if(DEPTHAI_DEVICE_RVC2NG_FWP_PATH)
+        target_compile_definitions(device_gate_rvc2ng_test PRIVATE
+            DEPTHAI_TEST_RVC2NG_FWP_PATH="${DEPTHAI_DEVICE_RVC2NG_FWP_PATH}"
+            DEPTHAI_TEST_RVC2NG_VERSION="${DEPTHAI_DEVICE_RVC2NG_VERSION}"
+        )
+    endif()
     dai_set_test_labels(device_gate_rvc2ng_test onhost ci)
     add_test(NAME device_gate_rvc2ng_unset_test COMMAND device_gate_rvc2ng_test "[unset-firmware]")
     dai_set_test_labels(device_gate_rvc2ng_unset_test onhost ci)
