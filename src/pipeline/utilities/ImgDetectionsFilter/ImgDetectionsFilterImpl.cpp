@@ -191,7 +191,7 @@ class DetectionRound {
         for(const auto& [shift, box] : pieces(candidate.box)) {
             if(!insideCanvas(box)) continue;
             // Keep a fragment that a camera of the duplicate group sees: one without a source mask, or one whose mask shows a pixel of it.
-            if(!sourceMasks.empty() && std::none_of(candidate.viewers.begin(), candidate.viewers.end(), [this, &box](auto key) {
+            if(!sourceMasks.empty() && std::none_of(candidate.viewers.begin(), candidate.viewers.end(), [this, &box = box](auto key) {
                    return !sourceMasks[key] || visiblePixels(box, *sourceMasks[key]) > 0;
                }))
                 continue;
