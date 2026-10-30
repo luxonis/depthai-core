@@ -280,6 +280,27 @@ std::optional<Extrinsics> MultiDeviceCalibrationHandler::getExtrinsicsToOrigin(c
     return resolved->built.bridges.at(coordinate);
 }
 
+void MultiDeviceCalibrationHandler::validateLocalOrigin(const std::string& deviceId, const LocalCalibrationOrigin& local) const {
+    const auto graphSocket = getDeviceSocket(deviceId);
+    if(!graphSocket.has_value()) {
+        return;
+    }
+
+    if(!local.available) {
+        throw std::runtime_error("Multi-device calibration requires local calibration data for device '" + deviceId + "'.");
+    }
+    if(!local.hasSocket || !local.hasSocket(*graphSocket)) {
+        throw std::runtime_error("Multi-device calibration requires local calibration socket " + toString(*graphSocket) + " on device '" + deviceId + "'.");
+    }
+
+    const auto discoveredOrigin = local.originOf ? local.originOf(*graphSocket) : CameraBoardSocket::AUTO;
+    if(discoveredOrigin != *graphSocket) {
+        const std::string rule = local.originRule != nullptr ? std::string(" (") + local.originRule + ")" : "";
+        throw std::runtime_error("Multi-device calibration local origin mismatch for device '" + deviceId + "': graph expects socket " + toString(*graphSocket)
+                                 + ", local calibration resolves to " + toString(discoveredOrigin) + rule + ".");
+    }
+}
+
 const std::vector<MultiDeviceExtrinsics>& MultiDeviceCalibrationHandler::getGraph() const {
     return graph;
 }

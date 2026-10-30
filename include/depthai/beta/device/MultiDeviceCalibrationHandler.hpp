@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -12,6 +13,27 @@
 
 namespace dai {
 namespace beta {
+
+/**
+ * Facts about a device's local calibration that
+ * MultiDeviceCalibrationHandler::validateLocalOrigin checks against the graph.
+ *
+ * The rule for the local origin depends on the platform whose frame sources
+ * publish the extrinsics: RVC4 and the host use the extrinsics chain root, RVC2
+ * frame sources publish extrinsics to the lowest-id socket. describeLocalCalibration
+ * in LocalCalibrationOrigin.hpp applies the right rule for a platform and is
+ * what the host and both firmwares call.
+ */
+struct LocalCalibrationOrigin {
+    /** False when the device has no local calibration data at all. */
+    bool available = false;
+    /** True when the local calibration holds the given socket. */
+    std::function<bool(CameraBoardSocket)> hasSocket;
+    /** Socket that the local calibration uses as the extrinsics origin of the given socket. */
+    std::function<CameraBoardSocket(CameraBoardSocket)> originOf;
+    /** Human-readable name of the rule behind originOf, quoted in mismatch errors (optional). */
+    const char* originRule = nullptr;
+};
 
 /**
  * Resolves cross-device calibration edges into a common origin for each
@@ -60,6 +82,18 @@ class MultiDeviceCalibrationHandler {
      * local socket does not match the graph.
      */
     std::optional<Extrinsics> getExtrinsicsToOrigin(const std::string& deviceId, CameraBoardSocket localOriginSocket) const;
+
+    /**
+     * Verify that a device's local calibration origin matches the socket the
+     * graph uses for it. A device absent from the graph always passes.
+     *
+     * @param deviceId The device's stable identifier
+     * @param local The device's local calibration as the platform sees it
+     * @throws std::runtime_error naming both the expected and the discovered
+     * identity when the local calibration is missing, lacks the graph socket or
+     * resolves to a different origin.
+     */
+    void validateLocalOrigin(const std::string& deviceId, const LocalCalibrationOrigin& local) const;
 
    private:
     struct ResolvedGraph;

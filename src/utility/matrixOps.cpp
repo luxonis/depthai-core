@@ -339,6 +339,11 @@ std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::array<
     return createTransformationMatrixInternal(rotation, {translation.x, translation.y, translation.z});
 }
 
+std::array<std::array<float, 4>, 4> rebaseTransformation(const std::array<std::array<float, 4>, 4>& sourceToLocalOrigin,
+                                                         const std::array<std::array<float, 4>, 4>& localOriginToTarget) {
+    return matMul(localOriginToTarget, sourceToLocalOrigin);
+}
+
 dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix, const dai::Point3f& point) {
     auto res = matVecMul(matrix, std::array<float, 4>{point.x, point.y, point.z, 1.0f});
     auto dehomogenized = dehomogenizePoint4(res);

@@ -817,6 +817,10 @@ if(DEPTHAI_BUILD_BETA)
     dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
     dai_set_test_labels(multi_device_calibration_result_test onhost ci)
 
+    # One RVC2 device with a RAM-only calibration whose chain root is not the lowest socket.
+    dai_add_test(multi_device_calibration_origin_test src/ondevice_tests/multi_device_calibration_origin_test.cpp)
+    dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci)
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 

@@ -382,7 +382,7 @@ ImgTransformation& ImgTransformation::rebaseExtrinsics(const Extrinsics& localOr
 
     const auto sourceToLocal = extrinsics.getTransformationMatrix(false, LengthUnit::CENTIMETER);
     const auto localToTarget = localOriginToTarget.getTransformationMatrix(false, LengthUnit::CENTIMETER);
-    auto sourceToTarget = matrix::matMul(localToTarget, sourceToLocal);
+    const auto sourceToTarget = matrix::rebaseTransformation(sourceToLocal, localToTarget);
 
     Extrinsics rebased(sourceToTarget, localOriginToTarget.toCameraSocket, LengthUnit::CENTIMETER);
     rebased.toDeviceId = localOriginToTarget.toDeviceId;
