@@ -69,14 +69,15 @@ with pipeline:
         if time.monotonic() >= nextPoll:
             for current in device.getCameraStats():
                 if current.socket == dai.CameraBoardSocket.AUTO:
-                    print(f"cameraId={current.cameraId}: statistics unavailable; physical socket mapping is unverified", flush=True)
+                    print(f"cameraId={current.cameraId}: statistics unavailable; physical socket mapping is unverified", end="\n\n", flush=True)
                     continue
                 if current.socket not in sockets:
                     continue
                 old = previous.get(current.socket)
+                # Counter presence determines validity, including HAL errors in UNAVAILABLE snapshots.
                 sameSession = (
                     old is not None
-                    and old.status == current.status == dai.CameraStats.Status.AVAILABLE
+                    and bool(current.sessionId)
                     and old.sessionId == current.sessionId
                     and current.timestampNs > old.timestampNs
                 )
@@ -102,7 +103,7 @@ with pipeline:
                         if name == "completedCaptures":
                             text += f" {delta * 1e9 / (current.timestampNs - old.timestampNs):.1f} fps"
                     values.append(text)
-                print(f"{current.socket.name} {current.status.name}: " + ", ".join(values), flush=True)
+                print(f"{current.socket.name} {current.status.name}: " + ", ".join(values), end="\n\n", flush=True)
                 previous[current.socket] = current
             nextPoll += 1
         time.sleep(0.005)

@@ -70,13 +70,13 @@ int main(int argc, char** argv) {
         if(std::chrono::steady_clock::now() >= nextPoll) {
             for(const auto& current : device->getCameraStats()) {
                 if(current.socket == dai::CameraBoardSocket::AUTO) {
-                    std::cout << "cameraId=" << current.cameraId << ": statistics unavailable; physical socket mapping is unverified\n";
+                    std::cout << "cameraId=" << current.cameraId << ": statistics unavailable; physical socket mapping is unverified\n\n";
                     continue;
                 }
                 if(current.socket != sockets[0] && current.socket != sockets[1]) continue;
                 const auto old = previous.find(current.socket);
-                const bool sameSession = old != previous.end() && old->second.status == dai::CameraStats::Status::AVAILABLE
-                                         && current.status == dai::CameraStats::Status::AVAILABLE && old->second.sessionId == current.sessionId
+                // Counter presence determines validity, including HAL errors in UNAVAILABLE snapshots.
+                const bool sameSession = old != previous.end() && !current.sessionId.empty() && old->second.sessionId == current.sessionId
                                          && current.timestampNs > old->second.timestampNs;
                 std::cout << current.socket << " status=" << statuses.at(static_cast<size_t>(current.status)) << " session=" << current.sessionId
                           << " timestampNs=" << current.timestampNs << '\n';
@@ -98,6 +98,7 @@ int main(int argc, char** argv) {
                     }
                     std::cout << '\n';
                 }
+                std::cout << '\n';
                 previous[current.socket] = current;
             }
             nextPoll += std::chrono::seconds(1);
