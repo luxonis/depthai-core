@@ -660,6 +660,11 @@ dai_set_test_labels(imgframe_test onhost ci)
 dai_add_test(tofconfig_device_test src/ondevice_tests/tofconfig_device_test.cpp)
 dai_set_test_labels(tofconfig_device_test ondevice rvc2_all rvc4 ci)
 
+if(DEPTHAI_HAS_APRIL_TAG)
+    dai_add_test(apriltag_node_test src/onhost_tests/pipeline/node/apriltag_node_test.cpp)
+    dai_set_test_labels(apriltag_node_test onhost ci)
+endif()
+
 # PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
 dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
 dai_set_test_labels(pointclouddata_test onhost ci)
