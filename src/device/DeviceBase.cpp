@@ -1864,6 +1864,27 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
     return pimpl->rpcCallChecked<std::unordered_map<CameraBoardSocket, std::string>>("getCameraSensorNames");
 }
 
+std::vector<CameraStats> DeviceBase::getCameraStats() {
+    if(getPlatform() != Platform::RVC4) {
+        std::vector<CameraStats> stats;
+        for(const auto socket : getConnectedCameras()) {
+            CameraStats entry;
+            entry.socket = socket;
+            entry.status = CameraStats::Status::UNSUPPORTED;
+            stats.push_back(std::move(entry));
+        }
+        return stats;
+    }
+    try {
+        return pimpl->rpcCallChecked<std::vector<CameraStats>>("getCameraStats");
+    } catch(const nanorpc::core::exception::logic& error) {
+        if(std::string(error.what()) == "[nanorpc::core::server::execute] Function not found. (getCameraStats)") {
+            throw std::runtime_error("getCameraStats requires RVC4 firmware with camera-health statistics support. Update the device firmware.");
+        }
+        throw;
+    }
+}
+
 std::string DeviceBase::getConnectedIMU() {
     isClosed();
     return pimpl->rpcCallChecked<std::string>("getConnectedIMU");

@@ -647,7 +647,14 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
     dai_set_test_labels(remote_connection_test onhost ci nowindows)
 endif()
+dai_add_test(camera_stats_serialization_test src/onhost_tests/camera_stats_test.cpp)
+dai_set_test_labels(camera_stats_serialization_test onhost ci)
+
 ### On-device tests ###########################################################
+
+# Camera statistics
+dai_add_test(camera_stats_device_test src/ondevice_tests/camera_stats_test.cpp)
+dai_set_test_labels(camera_stats_device_test ondevice rvc4 rvc2_all)
 
 # Camera stream restart test
 dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
