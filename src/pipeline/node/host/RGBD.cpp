@@ -360,7 +360,10 @@ void RGBD::run() {
                     auto destination = converted->getFrame();
                     const auto source = utility::getCvFrameView(*colorFrame);
                     CV_Assert(source.channels() == 3);
-                    cv::cvtColor(source, destination, cv::COLOR_BGR2RGB);
+                    cv::Mat depthConverted;
+                    if(source.depth() != CV_8U) source.convertTo(depthConverted, CV_8UC3);
+                    const cv::Mat& bgr8 = depthConverted.empty() ? source : depthConverted;
+                    cv::cvtColor(bgr8, destination, cv::COLOR_BGR2RGB);
                     colorFrame = std::move(converted);
                 } catch(const std::exception& e) {
                     throw std::runtime_error("Color space conversion to RGB888i failed: " + std::string(e.what()));
