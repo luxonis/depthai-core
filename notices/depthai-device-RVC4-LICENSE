@@ -2264,7 +2264,7 @@ eigen
 
 License: MPL-2.0
 Version: 3147391d946bb4b6c68edd901f2add6ac1f31f8c
-Source: https://gitlab.com/libeigen/eigen.git
+Source: https://eigen.googlesource.com/mirror
 
 Eigen is primarily MPL2 licensed. See COPYING.MPL2 and these links:
   http://www.mozilla.org/MPL/2.0/
