@@ -84,9 +84,6 @@ cv::Rect toCvRect(const Rect& r) {
 Rect fromCvRect(cv::Rect r) {
     return Rect(r.x, r.y, r.width, r.height);
 }
-Rect detToRect(const ImgDetection& det) {
-    return Rect(Point2f(det.xmin, det.ymin), Point2f(det.xmax, det.ymax));
-}
 #endif
 
 template <typename T>
@@ -174,12 +171,14 @@ void ObjectTracker::run() {
             for(size_t i = 0; i < (inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size()); ++i) {
                 const auto& detection = inputImgDetections ? inputImgDetections->detections[i] : inputSpatialImgDetections->detections[i].getImgDetection();
                 if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
-                    // Denormalize and remap to inputTrackerImg
+                    // Denormalize and remap the outer bounds to inputTrackerImg
                     uint32_t width = detectionsTransformation.getSize().first;
                     uint32_t height = detectionsTransformation.getSize().second;
 
-                    RotatedRect detRRect(detToRect(detection));
-                    if(detRRect.size.width <= 1.5f && detRRect.size.height <= 1.5f) detRRect = detRRect.denormalize(width, height, true);
+                    const auto outer = detection.getOuterBoundingBox();
+                    const bool normalized = detection.getBoundingBox().isNormalized();
+                    RotatedRect detRRect{Rect{Point2f{outer[0], outer[1], normalized}, Point2f{outer[2], outer[3], normalized}, normalized}};
+                    if(normalized) detRRect = detRRect.denormalize(width, height);
 
                     auto remapped = detectionsTransformation.remapRectTo(inputTrackerImg->transformation, detRRect);
 

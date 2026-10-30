@@ -9,6 +9,7 @@
 #include <depthai/utility/matrixOps.hpp>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -50,6 +51,18 @@ void validateRebaseExtrinsics(const Extrinsics& extrinsics, const char* name) {
 }  // namespace
 
 constexpr float ROUND_UP_EPS = 1e-3f;
+
+// The fitter wraps the angle to [0, 90) and swaps the sides when it wraps, so a box at -0.001 deg becomes
+// a box at 89.999 deg with swapped sides. Use the equal form (angle + k * 90 deg, sides swapped for odd k)
+// whose angle is nearest to the angle of the source rectangle.
+inline dai::RotatedRect keepSourceAngle(dai::RotatedRect fitted, float sourceAngle) {
+    const long quarterTurns = std::lround((sourceAngle - fitted.angle) / 90.0f);
+    fitted.angle += 90.0f * static_cast<float>(quarterTurns);
+    if(quarterTurns % 2 != 0) {
+        std::swap(fitted.size.width, fitted.size.height);
+    }
+    return fitted;
+}
 
 // Function to check if a point is inside a rotated rectangle
 inline bool isPointInRotatedRectangle(const dai::Point2f& p, const dai::RotatedRect& rect) {
@@ -111,7 +124,7 @@ dai::RotatedRect interSourceFrameTransform(const dai::RotatedRect& sourceRect, c
         auto point = interSourceFrameTransform(points[i], from, to);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getOuterRotatedRect(vPoints);
+    return keepSourceAngle(impl::getOuterRotatedRect(vPoints), sourceRect.angle);
 }
 
 void ImgTransformation::calcCrops() {
@@ -170,7 +183,7 @@ dai::RotatedRect ImgTransformation::transformRect(const dai::RotatedRect& rect) 
         auto point = transformPoint(points[i]);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getOuterRotatedRect(vPoints);
+    return keepSourceAngle(impl::getOuterRotatedRect(vPoints), rect.angle);
 }
 dai::Point2f ImgTransformation::invTransformPoint(dai::Point2f point) const {
     auto transformed = matrix::dehomogenizePoint3(matrix::matVecMul(transformationMatrixInv, {point.x, point.y, 1}));
@@ -183,7 +196,7 @@ dai::RotatedRect ImgTransformation::invTransformRect(const dai::RotatedRect& rec
         auto point = invTransformPoint(points[i]);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getOuterRotatedRect(vPoints);
+    return keepSourceAngle(impl::getOuterRotatedRect(vPoints), rect.angle);
 }
 
 std::pair<size_t, size_t> ImgTransformation::getSize() const {
@@ -444,7 +457,7 @@ dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai
         auto point = remapPointTo(to, points[i]);
         vPoints[i] = {point.x, point.y};
     }
-    auto transformed = impl::getOuterRotatedRect(vPoints);
+    auto transformed = keepSourceAngle(impl::getOuterRotatedRect(vPoints), rect.angle);
     transformed.center.hasNormalized = transformed.size.hasNormalized = true;
     transformed.center.normalized = transformed.size.normalized = false;
     if(normalized) {
@@ -506,7 +519,7 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
     return targetPoint;
 }
 
-dai::RotatedRect ImgTransformation::projectRectTo(const ImgTransformation& to, RotatedRect& rect, float depth) const {
+dai::RotatedRect ImgTransformation::projectRectTo(const ImgTransformation& to, RotatedRect rect, float depth) const {
     bool normalized = rect.isNormalized();
     if(normalized) {
         rect = rect.denormalize(width, height);
@@ -519,7 +532,7 @@ dai::RotatedRect ImgTransformation::projectRectTo(const ImgTransformation& to, R
         auto projectedPoint = projectPointTo(to, points[i], depth);
         projectedPoints[i] = {projectedPoint.x, projectedPoint.y};
     }
-    dai::RotatedRect transformed = impl::getOuterRotatedRect(projectedPoints);
+    dai::RotatedRect transformed = keepSourceAngle(impl::getOuterRotatedRect(projectedPoints), rect.angle);
     if(normalized) {
         auto targetSize = to.getSize();
         transformed = transformed.normalize(targetSize.first, targetSize.second);

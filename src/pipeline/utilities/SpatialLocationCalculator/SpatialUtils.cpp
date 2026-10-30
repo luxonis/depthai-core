@@ -171,9 +171,12 @@ dai::SpatialKeypoint createSpatialKeypoint(const dai::Keypoint& keypoint, const 
     return spatialKeypoint;
 }
 
-dai::SpatialImgDetection createSpatialDetection(const dai::ImgDetection& detection, const dai::Point3f& spatialCoordinates) {
+dai::SpatialImgDetection createSpatialDetection(const dai::ImgDetection& detection,
+                                                const dai::Point3f& spatialCoordinates,
+                                                const dai::ImgTransformation& detectionsTransformation) {
     dai::SpatialImgDetection spatialDetection;
-    spatialDetection.setBoundingBox(detection.getBoundingBox());
+    const auto size = detectionsTransformation.getSize();
+    spatialDetection.setBoundingBox(detection.getBoundingBox(), static_cast<unsigned int>(size.first), static_cast<unsigned int>(size.second));
     spatialDetection.label = detection.label;
     spatialDetection.labelName = detection.labelName;
     spatialDetection.confidence = detection.confidence;
@@ -321,7 +324,10 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
 
     const dai::RotatedRect detectionBBox = detection.getBoundingBox();
     dai::RotatedRect denormalizedRect = scaleRect(detectionBBox, config.bBoxScaleFactor);
-    boundingBoxMapping.roi = dai::Rect(denormalizedRect);
+    // dai::Rect(RotatedRect) rotates normalized values; calculate the outer bounds in pixels of the detections frame.
+    const auto detectionsSize = detectionsTransformation.getSize();
+    const auto [roiXmin, roiYmin, roiXmax, roiYmax] = denormalizedRect.getOuterRectInFrame(detectionsSize.first, detectionsSize.second);
+    boundingBoxMapping.roi = dai::Rect(roiXmin, roiYmin, roiXmax - roiXmin, roiYmax - roiYmin);
     if(!areAligned) denormalizedRect = detectionsTransformation.remapRectTo(*depthTransformation, denormalizedRect);
     denormalizedRect = denormalizedRect.denormalize(depthWidth, depthHeight);
 
@@ -350,7 +356,7 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
     dai::Point3f spatialCoordinates =
         calculateSpatialCoordinates(depthStats.calculateDepth(calculationAlgorithm), detectionsTransformation.getIntrinsicMatrix(), centerPoint);
 
-    dai::SpatialImgDetection spatialDetection = createSpatialDetection(detection, spatialCoordinates);
+    dai::SpatialImgDetection spatialDetection = createSpatialDetection(detection, spatialCoordinates, detectionsTransformation);
 
     if(config.calculateSpatialKeypoints) {  // keypoint depths
         std::vector<dai::SpatialKeypoint> spatialKeypoints;
