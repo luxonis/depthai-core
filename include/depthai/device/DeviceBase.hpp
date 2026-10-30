@@ -21,6 +21,7 @@
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/PtpFrameSyncStatus.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
@@ -1240,6 +1241,11 @@ class DeviceBase {
      * @returns Gets external frame sync role
      */
     ExternalFrameSyncRole getExternalFrameSyncRole();
+
+    /**
+     * Gets the state of the lock of the FSYNC period to the PTP time grid (see Pipeline::setPtpFrameSync)
+     */
+    PtpFrameSyncStatus getPtpFrameSyncStatus();
 
     /**
      * Sets the relative external strobe limits.

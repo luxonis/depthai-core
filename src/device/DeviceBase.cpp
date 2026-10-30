@@ -1891,6 +1891,10 @@ ExternalFrameSyncRole DeviceBase::getExternalFrameSyncRole() {
     return pimpl->rpcCallChecked<ExternalFrameSyncRole>("getExternalFrameSyncRole");
 }
 
+PtpFrameSyncStatus DeviceBase::getPtpFrameSyncStatus() {
+    return pimpl->rpcCallChecked<PtpFrameSyncStatus>("getPtpFrameSyncStatus");
+}
+
 std::tuple<bool, std::string> DeviceBase::setExternalStrobeRelativeLimits(float min, float max) {
     return pimpl->rpcCallChecked<std::tuple<bool, std::string>>("setExternalStrobeRelativeLimits", min, max);
 }
