@@ -64,7 +64,6 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsFilterConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/pipeline/datatype/Mask.hpp"
 #include "depthai/pipeline/datatype/MapData.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
@@ -201,9 +200,6 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             throw std::runtime_error(
                 "Cannot parse custom Transformable on device; use a supported type such as ImgDetections, AprilTags, or Tracklets or run as host form custom "
                 "Transformable messages");
-
-        case DatatypeEnum::Mask:
-            return parseDatatype<Mask>(metadataStart, serializedObjectSize, data, fd);
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);

@@ -35,18 +35,18 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     Output output2{*this, {"output2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
-     * RAW8 usable-area mask for output1, with matching geometry and metadata.
-     * Pixels are 255 when all contributing interpolation samples are inside the input image,
-     * and 0 when border padding contributes. Real black image pixels remain usable.
+     * SegmentationMask usable-area mask for output1, with matching geometry and metadata.
+     * Pixels are class 0 (valid) when all contributing interpolation samples are inside the input image,
+     * and 255 (background/invalid) when border padding contributes. Real black image pixels remain usable.
      * When connected, emits on the first image and whenever the rectification maps change.
      * Metadata identifies the first image using the updated maps. Reuse the mask until the next update.
      */
-    Output validMask1{*this, {"validMask1", DEFAULT_GROUP, {{{DatatypeEnum::Mask, false}}}}};
+    Output validMask1{*this, {"validMask1", DEFAULT_GROUP, {{{DatatypeEnum::SegmentationMask, false}}}}};
 
     /**
-     * RAW8 usable-area mask for output2. Uses the same validity rules as validMask1.
+     * SegmentationMask usable-area mask for output2. Uses the same validity rules as validMask1.
      */
-    Output validMask2{*this, {"validMask2", DEFAULT_GROUP, {{{DatatypeEnum::Mask, false}}}}};
+    Output validMask2{*this, {"validMask2", DEFAULT_GROUP, {{{DatatypeEnum::SegmentationMask, false}}}}};
 
     /**
      * Specify whether to run on host or device

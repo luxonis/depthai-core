@@ -385,7 +385,6 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::MapOutputParserConfig:
         case DatatypeEnum::XFeatMonoParserConfig:
         case DatatypeEnum::XFeatStereoParserConfig:
-        case DatatypeEnum::Mask:
         case DatatypeEnum::COUNT:
             return false;
     }

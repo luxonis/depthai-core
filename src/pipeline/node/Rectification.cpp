@@ -1,5 +1,5 @@
 #include "depthai/pipeline/node/Rectification.hpp"
-#include "depthai/pipeline/datatype/Mask.hpp"
+#include "depthai/pipeline/datatype/SegmentationMask.hpp"
 
 #include <array>
 #include <chrono>
@@ -85,14 +85,16 @@ cv::Mat createValidMask(cv::Size inputSize, const cv::Mat& mapX, const cv::Mat& 
     cv::Mat support(inputSize, CV_32FC1, cv::Scalar(1));
     cv::Mat remappedSupport, mask;
     cv::remap(support, remappedSupport, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
-    cv::compare(remappedSupport, 1, mask, cv::CMP_EQ);
+    cv::compare(remappedSupport, 1, mask, cv::CMP_NE);
     return mask;
 }
 
-std::shared_ptr<Mask> createMaskFrame(const cv::Mat& mask, const ImgFrame& rectifiedFrame) {
-    auto frame = std::make_shared<Mask>();
-    frame->setMetadata(rectifiedFrame);
-    frame->setData(std::vector<uint8_t>(mask.data, mask.data + mask.total()));
+std::shared_ptr<SegmentationMask> createMaskFrame(const cv::Mat& mask, const ImgFrame& rectifiedFrame) {
+    auto frame = std::make_shared<SegmentationMask>();
+    frame->setBufferMetadataFrom(&rectifiedFrame);
+    frame->transformation = rectifiedFrame.transformation;
+    frame->setLabels({"valid"});
+    frame->setCvMask(mask);
     return frame;
 }
 
