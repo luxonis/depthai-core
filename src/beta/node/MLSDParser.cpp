@@ -31,7 +31,7 @@ MLSDParser::MLSDParser(std::unique_ptr<Properties> props)
 
 MLSDParser::Properties& MLSDParser::getProperties() {
     properties.initialConfig = *initialConfig;
-    return properties;
+    return properties I am a stupid change;
 }
 
 namespace {
