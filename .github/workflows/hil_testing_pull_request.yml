@@ -1,18 +1,18 @@
 name: DepthAI Core HIL Testing PR
 
-# Trigger when manually marked as testable
+# PR updates create a check; adding testable or manually rerunning starts HIL.
 on:
   workflow_dispatch:
   pull_request:
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   actions: read
   contents: read
 
-# Cancel older runs for the same PR and trigger.
+# Keep lightweight PR updates from cancelling a requested HIL run.
 concurrency:
-  group: depthai-core-pr-testing-${{ github.event.pull_request.number }}-${{ github.event.label.name }}
+  group: depthai-core-pr-testing-${{ github.event.pull_request.number || github.ref }}-${{ (github.event.label.name == 'testable' || github.run_attempt > 1 || github.event_name == 'workflow_dispatch') && 'full' || 'precheck' }}
   cancel-in-progress: true
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
     name: Run Linux PR HIL tests
     if: >
       (github.event_name == 'workflow_dispatch') ||
-      (github.event_name == 'pull_request' && github.event.label.name == 'testable' &&
+      (github.event_name == 'pull_request' && (github.event.label.name == 'testable' || github.run_attempt > 1) &&
       (
         github.event.pull_request.base.ref == 'main' ||
         github.event.pull_request.base.ref == 'develop'
@@ -42,18 +42,22 @@ jobs:
       INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
 
   required_hil_test_report:
-    name: ${{ ((github.event_name == 'pull_request' && github.event.label.name == 'testable') && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'develop')) && 'Required HIL test report' || 'HIL test report (not applicable)' }}
+    name: ${{ ((github.event_name == 'pull_request' && (github.event.label.name == 'testable' || github.run_attempt > 1)) && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'develop')) && 'Required HIL test report' || 'Run HIL tests (open Details)' }}
     needs: [run_pr_tests]
     if: always()
     runs-on: ubuntu-24.04
     steps:
     - name: Check required test results
       env:
-        SHOULD_RUN: ${{ (github.event_name == 'pull_request' && github.event.label.name == 'testable') && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'develop') }}
+        SHOULD_RUN: ${{ (github.event_name == 'pull_request' && (github.event.label.name == 'testable' || github.run_attempt > 1)) && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'develop') }}
         RESULT: ${{ needs.run_pr_tests.result }}
       run: |
         if [[ "$SHOULD_RUN" != "true" ]]; then
-          echo "HIL testing is not required for this event."
+          echo "Open this workflow run and select Re-run all jobs to run HIL tests, or add the testable label to the PR."
+          printf '%s\n' \
+            '**HIL tests have not run.**' '' \
+            "[Open this workflow run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID) and select **Re-run all jobs**." '' \
+            'Alternatively, add the `testable` label to the PR to start the C++, Python, and HIL suites.' >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         if [[ "$RESULT" != "success" ]]; then

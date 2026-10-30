@@ -1,7 +1,7 @@
 name: DepthAI Core CI/CD
 
 concurrency:
-  group: depthai-core-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'pull_request' && github.event.action != 'labeled') && 'format' || 'full' }}
+  group: depthai-core-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'pull_request' && github.event.label.name != 'testable' && github.run_attempt == 1) && 'format' || 'full' }}-${{ github.run_attempt > 1 && format('rerun-{0}-{1}', github.run_id, github.run_attempt) || 'initial' }}
   cancel-in-progress: true
 
 on:
@@ -30,22 +30,14 @@ jobs:
       id: check
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
-        CHECK_ACTION: ${{ github.event.action }}
+        CHECK_TEST_REQUESTED: ${{ github.event.action == 'labeled' && github.event.label.name == 'testable' }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
 
-        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
-        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
-          LABELS="[]"
-        else
-          LABELS="$RAW_LABELS"
-        fi
-
         SHOULD_RUN="true"
-        if [[ "$EVENT_NAME" == "pull_request" ]]; then
-          if [[ "$CHECK_ACTION" != "labeled" ]] || ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
-            SHOULD_RUN="false"
-          fi
+        # PR tests require adding testable or explicitly rerunning the workflow.
+        if [[ "$EVENT_NAME" == "pull_request" && "$GITHUB_RUN_ATTEMPT" -eq 1 && "$CHECK_TEST_REQUESTED" != "true" ]]; then
+          SHOULD_RUN="false"
         fi
 
         echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
@@ -410,7 +402,7 @@ jobs:
     #     ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
   required_core_ci_report:
-    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Core CI report (not applicable)' }}
+    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Run C++ tests (open Details)' }}
     needs: [precheck, consistency, style, tidy, minimal-build, device-manager-build, build, integration]
     if: always()
     runs-on: ubuntu-24.04
@@ -421,7 +413,11 @@ jobs:
         RESULTS: ${{ join(needs.*.result, ' ') }}
       run: |
         if [[ "$SHOULD_RUN" != "true" && "$RESULTS" != *failure* && "$RESULTS" != *cancelled* ]]; then
-          echo "Core CI is not required for this event."
+          echo "Open this workflow run and select Re-run all jobs to run C++ tests, or add the testable label to the PR."
+          printf '%s\n' \
+            '**C++ tests have not run.**' '' \
+            "[Open this workflow run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID) and select **Re-run all jobs**." '' \
+            'Alternatively, add the `testable` label to the PR to start the C++, Python, and HIL suites.' >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         if [[ "$RESULTS" == *failure* || "$RESULTS" == *cancelled* || "$RESULTS" == *skipped* ]]; then
