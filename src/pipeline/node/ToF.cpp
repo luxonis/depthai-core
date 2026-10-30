@@ -112,7 +112,7 @@ void ToF::postBuildStage() {
             if(logger) logger->warn("ToF output undistortion is not supported on RVC2.");
         }
         if(!confidence.getConnections().empty()) {
-            if(logger) logger->warn("Confidence is not supported on this platform and will stream aplitude instead.");
+            if(logger) logger->warn("Confidence is not supported on this platform and will stream amplitude instead.");
         }
     }
     if(device->getPlatform() == Platform::RVC4) {

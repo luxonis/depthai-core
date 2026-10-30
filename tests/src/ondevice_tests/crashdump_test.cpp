@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -263,6 +264,45 @@ TEST_CASE("Crashdump callback is invoked on device crash regardless of reconnect
     }
 }
 
+TEST_CASE("Crashdump callback is delivered once when processing fails") {
+    ScopedEnvVar disableUpload("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", "1");
+    ScopedEnvVar crashDevice("DEPTHAI_CRASH_DEVICE", "1");
+    ScopedEnvVar reconnectTimeout("DEPTHAI_RECONNECT_TIMEOUT", "0");
+    ScopedEnvVar crashdumpTimeout("DEPTHAI_CRASHDUMP_TIMEOUT", "10000");
+    const auto crashDumpDir = makeCrashDumpDir();
+    ScopedEnvVar crashdumpPath("DEPTHAI_CRASHDUMP", crashDumpDir.string());
+    bool throwFromCallback = false;
+    SECTION("callback throws") {
+        throwFromCallback = true;
+    }
+    SECTION("archive creation throws") {
+        throwFromCallback = false;
+    }
+
+    CrashObserver observer;
+    {
+        dai::Device device;
+        skipIfRvc4OverUsb(device);
+        device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) {
+            if(!throwFromCallback) {
+                // Invalid UTF-8 makes extra.json serialization throw during archive creation.
+                (*dump)["invalidUtf8"] = std::string(1, static_cast<char>(0xff));
+            }
+            observer.callback(dump);
+            if(throwFromCallback) throw std::runtime_error("Injected crashdump callback failure");
+        });
+
+        device.crashDevice();
+        REQUIRE(observer.waitForCount(1, CRASH_DUMP_CALLBACK_TIMEOUT));
+        requireCrashDumpPayload(observer.get(0));
+        REQUIRE_FALSE(observer.waitForCount(2, NO_CALLBACK_TIMEOUT));
+        // Closing joins collection and also exercises the shutdown fallback.
+        device.close();
+        REQUIRE(observer.count() == 1);
+    }
+    fs::remove_all(crashDumpDir);
+}
+
 // Verifies the file-output path of automatic collection: when DEPTHAI_CRASHDUMP points
 // to a directory, the collected archive is saved there and can be loaded back successfully.
 TEST_CASE("Crashdump is written to the configured path") {
@@ -283,6 +323,10 @@ TEST_CASE("Crashdump is written to the configured path") {
         device.crashDevice();
         REQUIRE(observer.waitForCount(1, CRASH_DUMP_CALLBACK_TIMEOUT));
         requireCrashDumpPayload(observer.get(0));
+
+        // The callback runs before the archive is written. Closing joins the
+        // collection thread, so a visible filename cannot still be incomplete.
+        device.close();
 
         fs::path expectedPath;
         REQUIRE(waitUntil(

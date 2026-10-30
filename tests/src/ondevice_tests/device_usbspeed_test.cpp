@@ -73,3 +73,12 @@ TEST_CASE("Usb config modes") {
     dai::Device d(speed);
     REQUIRE(d.getUsbSpeed() == speed);
 }
+
+TEST_CASE("Device protocol resolves wildcard requests to USB") {
+    auto [found, deviceInfo] = dai::Device::getAnyAvailableDevice();
+    REQUIRE(found);
+    deviceInfo.protocol = X_LINK_ANY_PROTOCOL;
+
+    const dai::Device device(deviceInfo);
+    REQUIRE(device.getProtocol() == X_LINK_USB_VSC);
+}

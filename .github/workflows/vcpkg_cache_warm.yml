@@ -1,0 +1,253 @@
+name: Warm vcpkg binary caches
+
+# Keeps the vcpkg binary caches of every CI cache family fresh under the default branch (main), where
+# all workflow runs can restore them. A run can restore caches of its own ref, of the default branch
+# and, for pull_request events only (not pull_request_review), of the base branch; main itself only gets
+# pushes at releases. Scheduled runs always execute on the default branch, so the entries saved here get
+# the main scope. The jobs run the configure step of the real jobs on the given ref (default: develop),
+# which builds the missing ports; the save action then prunes unused archives and saves only on change.
+# The configure commands must match the real
+# jobs in main.workflow.yml, python-main.yml and bindings/python/setup.py.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or commit whose dependencies to warm
+        default: develop
+        type: string
+
+# The jobs run code of WARM_REF; actions/cache does not need token permissions.
+permissions:
+  contents: read
+
+env:
+  WARM_REF: ${{ inputs.ref || 'develop' }}
+  CMAKE_WINDOWS_SDK_VERSION: '10.0.26100.0'
+
+jobs:
+  # main.workflow.yml: family 'core-tests' (build job) and 'core' (integration, tidy, minimal-build,
+  # device-manager-build).
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-2025]
+        family: [core, core-tests]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.WARM_REF }}
+          submodules: 'recursive'
+
+      - name: Setup cmake
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+        with:
+          cmakeVersion: ${{ runner.os == 'Windows' && '4.2.x' || '3.22.x' }}
+          useCloudCache: false
+
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: ${{ matrix.family }}
+          fallback-families: ${{ matrix.family == 'core' && 'core-tests' || 'core' }}
+
+      - name: Install dependencies
+        if: runner.os == 'macOS'
+        run: brew install opencv@4
+
+      - name: Install dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
+
+      - name: Install dependencies
+        if: runner.os == 'Windows'
+        run: |
+          choco install opencv --version=4.13.0 --yes
+          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CMAKE_GENERATOR=Visual Studio 18 2026" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CMAKE_GENERATOR_PLATFORM=x64" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CMAKE_GENERATOR_TOOLSET=v143" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Configure (${{ matrix.family }})
+        run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release ${{ matrix.family == 'core-tests' && '-D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON' || '-D BUILD_SHARED_LIBS=true' }}
+
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: build/vcpkg_installed
+
+  # python-main.yml: build-docstrings, pytest, build-windows-x86_64 and build-macos.
+  python:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            family: py-docstrings
+          - os: ubuntu-24.04
+            family: py-pytest
+          - os: windows-2025
+            family: wheel
+          - os: macos-14
+            family: wheel-macos-14
+          - os: macos-15-intel
+            family: wheel-macos-15-intel
+    runs-on: ${{ matrix.os }}
+    env:
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.WARM_REF }}
+          submodules: 'recursive'
+
+      - name: Setup cmake
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+        with:
+          cmakeVersion: ${{ runner.os == 'Windows' && '4.2.x' || '3.31.x' }}
+          useCloudCache: false
+
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: ${{ matrix.family }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
+          python -m pip install --upgrade pip
+          python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libusb
+          brew install nasm
+
+      - name: Select Windows SDK and Fortran compiler
+        if: runner.os == 'Windows'
+        run: |
+          echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CMAKE_GENERATOR=Visual Studio 18 2026" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CMAKE_GENERATOR_TOOLSET=v143" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # VS Flang lacks intrinsic modules; hide it so vcpkg uses its MinGW fallback (as build-windows-x86_64).
+          Get-ChildItem "$env:ProgramFiles\Microsoft Visual Studio\18\*\VC\Tools\Llvm" -Recurse -Filter "flang*.exe" |
+            ForEach-Object { Rename-Item -LiteralPath $_.FullName -NewName "$($_.Name).disabled" -Verbose }
+
+      - name: Configure (build-docstrings)
+        if: matrix.family == 'py-docstrings'
+        run: |
+          cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DVCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
+            -DDEPTHAI_BASALT_SUPPORT=ON \
+            -DDEPTHAI_PCL_SUPPORT=ON \
+            -DDEPTHAI_RTABMAP_SUPPORT=ON \
+            -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
+
+      - name: Configure (pytest)
+        if: matrix.family == 'py-pytest'
+        run: |
+          cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D VCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
+            -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
+
+      - name: Configure (wheel, through setup.py)
+        if: startsWith(matrix.family, 'wheel')
+        shell: bash
+        env:
+          DEPTHAI_BUILD_BASALT: ${{ runner.os == 'Windows' && 'OFF' || 'ON' }}
+          DEPTHAI_CONFIGURE_ONLY: "1"
+        run: |
+          # The same build requirements as pyproject.toml, minus the cmake pin (the action above provides CMake).
+          python -m pip install --upgrade pip
+          python -m pip install "setuptools>=77.0.3" "wheel>=0.45.1" mypy numpy jinja2
+          cd bindings/python && python setup.py build_py build_ext
+
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: ${{ startsWith(matrix.family, 'wheel') && 'bindings/python/build/temp.*/vcpkg_installed bindings/python/build/temp.*/Release/vcpkg_installed' || 'build/vcpkg_installed' }}
+
+  # python-main.yml: build-linux-x86_64 and build-linux-arm64 (manylinux containers).
+  manylinux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
+            family: wheel-manylinux-x86_64
+          - os: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_28_aarch64:2025.11.10-2
+            family: wheel-manylinux-arm64
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.image }}
+    env:
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
+      DEPTHAI_CONFIGURE_ONLY: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.WARM_REF }}
+          submodules: 'recursive'
+
+      - name: Use system binaries for vcpkg (arm64, as build-linux-arm64)
+        if: matrix.family == 'wheel-manylinux-arm64'
+        run: echo "VCPKG_FORCE_SYSTEM_BINARIES=1" >> "$GITHUB_ENV"
+
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: ${{ matrix.family }}
+
+      - name: Install dependencies (x86_64)
+        if: matrix.family == 'wheel-manylinux-x86_64'
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
+
+      - name: Install dependencies (arm64)
+        if: matrix.family == 'wheel-manylinux-arm64'
+        run: |
+          yum install -y libusb1-devel perl-core curl zip unzip tar zlib-devel curl-devel libxcb-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake libX11-devel pkgconfig
+          git clone https://github.com/ninja-build/ninja.git
+          cd ninja
+          git checkout v1.10.2
+          cmake -Bbuild-cmake
+          cmake --build build-cmake --target install
+
+      - name: Configure (wheel, through setup.py)
+        run: |
+          PYBIN=/opt/python/cp312-cp312/bin
+          "$PYBIN/python" -m pip install --upgrade pip
+          "$PYBIN/python" -m pip install "setuptools>=77.0.3" "wheel>=0.45.1" mypy numpy jinja2
+          cd bindings/python && "$PYBIN/python" setup.py build_py build_ext
+
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: bindings/python/build/temp.*/vcpkg_installed bindings/python/build/temp.*/Release/vcpkg_installed

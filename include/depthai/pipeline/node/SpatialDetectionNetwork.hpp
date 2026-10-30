@@ -61,7 +61,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      * @param depthSource Depth source node (StereoDepth, NeuralDepth, ToF, or Depth)
      * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps Desired frames per second
-     * @param resizeMode Resize mode for input color frames
+     * @param resizeMode Override the archive's resize mode. If omitted, CROP resize mode is used.
      * @returns Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
@@ -76,7 +76,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      * @param inputRgb Camera node
      * @param depthSource Depth source node (StereoDepth, NeuralDepth, ToF, or Depth)
      * @param model: Neural network model description, NNArchive or HubAI model id string
-     * @param capability: Camera capabilities
+     * @param capability Camera capabilities override
      * @returns Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
@@ -285,6 +285,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
+    NNArchive decodeModel(const Model& model);
 
     // Unified depth alignment helper
     void alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera);

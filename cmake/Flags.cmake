@@ -57,6 +57,8 @@ function(add_default_flags target)
         if(WIN32)
             get_target_property(_EXPORT ${target} WINDOWS_EXPORT_ALL_SYMBOLS)
             if(_EXPORT)
+                # CMake 4.1+ drops VS's /Zc:inline default; retain it to limit DLL exports.
+                target_compile_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/Zc:inline>)
                 if(CMAKE_BUILD_TYPE)
                     string(TOUPPER "_${CMAKE_BUILD_TYPE}" _BUILD_TYPE)
                 else()

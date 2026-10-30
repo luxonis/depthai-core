@@ -89,9 +89,13 @@ struct StereoPairTestContext {
         auto calibration = originalCalibration;
         const auto [socket1, socket2] = featureOrderForPair();
         const auto intrinsics = makeIntrinsics();
+        const std::vector<float> zeroTranslation = {0.0f, 0.0f, 0.0f};
 
         calibration.setCameraIntrinsics(socket1, intrinsics, 1280, 800);
         calibration.setCameraIntrinsics(socket2, intrinsics, 1280, 800);
+        // Keep these translation-sign tests independent of the orientation of the live pair selected by the fixture.
+        // An identity destination root represents the legacy forward-facing/single-pair case deterministically.
+        calibration.setCameraExtrinsics(socket2, dai::CameraBoardSocket::AUTO, makeIdentityRotation(), zeroTranslation, zeroTranslation);
         calibration.setCameraExtrinsics(socket1, socket2, makeIdentityRotation(), translation, translation);
         return calibration;
     }

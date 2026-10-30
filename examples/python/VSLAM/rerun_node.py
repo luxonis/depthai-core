@@ -13,7 +13,7 @@ import cv2
 class RerunNode(dai.node.ThreadedHostNode):
     def __init__(self):
         dai.node.ThreadedHostNode.__init__(self)
-        self.inputTrans = dai.Node.Input(self)
+        self.inputPose = dai.Node.Input(self)
         self.inputImg = dai.Node.Input(self)
         self.inputObstaclePCL = dai.Node.Input(self)
         self.inputGroundPCL = dai.Node.Input(self)
@@ -37,16 +37,16 @@ class RerunNode(dai.node.ThreadedHostNode):
         rr.log("world", rr.ViewCoordinates.FLU)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001])) 
         while self.mainLoop():
-            transData = self.inputTrans.get()
+            poseData = self.inputPose.get()
             imgFrame = self.inputImg.get()
             if not self.intrinsicsSet:
                 self.getFocalLengthFromImage(imgFrame)
             pclObstData = self.inputObstaclePCL.tryGet()
             pclGrndData = self.inputGroundPCL.tryGet()
             mapData = self.inputGrid.tryGet()
-            if transData is not None:
-                trans = transData.getTranslation()
-                quat = transData.getQuaternion()
+            if poseData is not None:
+                trans = poseData.getTranslation()
+                quat = poseData.getQuaternion()
                 position = rr.datatypes.Vec3D([trans.x, trans.y, trans.z])
                 rr.log("world/camera", rr.Transform3D(translation=position, rotation=rr.datatypes.Quaternion(xyzw=[quat.qx, quat.qy, quat.qz, quat.qw])))
                 self.positions.append(position)

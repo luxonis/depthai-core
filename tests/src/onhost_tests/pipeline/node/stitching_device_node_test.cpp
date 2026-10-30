@@ -3,15 +3,15 @@
 #include <vector>
 
 TEST_CASE("Stitching accepts deserialized properties", "[Stitching]") {
-    auto properties = std::make_unique<dai::beta::StitchingProperties>();
-    properties->mode = dai::beta::StitchingProperties::Mode::PLANAR_PROJECTION;
+    auto properties = std::make_unique<dai::StitchingProperties>();
+    properties->mode = dai::StitchingProperties::Mode::PLANAR_PROJECTION;
     properties->useInputCalibration = true;
     properties->maxViewWidth = 1280;
     properties->numInputs = 2;
 
-    auto stitching = std::make_shared<dai::beta::node::Stitching>(std::move(properties));
+    auto stitching = std::make_shared<dai::node::Stitching>(std::move(properties));
 
-    REQUIRE(stitching->properties.mode == dai::beta::StitchingProperties::Mode::PLANAR_PROJECTION);
+    REQUIRE(stitching->properties.mode == dai::StitchingProperties::Mode::PLANAR_PROJECTION);
     REQUIRE(stitching->getUseInputCalibration());
     REQUIRE(stitching->properties.maxViewWidth == 1280);
     REQUIRE(stitching->getNumInputs() == 2);
@@ -21,7 +21,7 @@ TEST_CASE("Stitching accepts deserialized properties", "[Stitching]") {
 
 TEST_CASE("Stitching validates every source before building", "[Stitching]") {
     dai::Pipeline pipeline(false);
-    auto stitching = pipeline.create<dai::beta::node::Stitching>();
+    auto stitching = pipeline.create<dai::node::Stitching>();
     const std::vector<dai::Node::Output*> sources = {nullptr, nullptr};
 
     REQUIRE_THROWS(stitching->build(sources));
@@ -31,9 +31,9 @@ TEST_CASE("Stitching validates every source before building", "[Stitching]") {
 
 TEST_CASE("Stitching serializes as a device node", "[Stitching]") {
     dai::Pipeline pipeline(false);
-    auto stitching = pipeline.create<dai::beta::node::Stitching>()->build(2);
+    auto stitching = pipeline.create<dai::node::Stitching>()->build(2);
     stitching->setRunOnHost(false);
-    stitching->setMode(dai::beta::node::Stitching::Mode::PLANAR_PROJECTION);
+    stitching->setMode(dai::node::Stitching::Mode::PLANAR_PROJECTION);
     stitching->setUseInputCalibration(true);
     stitching->setPlane({1.0f, 2.0f, 3.0f}, {0.0f, 1.0f, 0.0f}, dai::LengthUnit::METER);
     stitching->setMaxViewSize(1280, 720);
@@ -43,9 +43,9 @@ TEST_CASE("Stitching serializes as a device node", "[Stitching]") {
     REQUIRE_FALSE(stitching->runOnHost());
 
     const auto serialized = dai::utility::serialize(stitching->properties);
-    dai::beta::StitchingProperties properties;
+    dai::StitchingProperties properties;
     REQUIRE(dai::utility::deserialize(serialized, properties));
-    REQUIRE(properties.mode == dai::beta::node::Stitching::Mode::PLANAR_PROJECTION);
+    REQUIRE(properties.mode == dai::node::Stitching::Mode::PLANAR_PROJECTION);
     REQUIRE(properties.useInputCalibration);
     REQUIRE(properties.numInputs == 2);
     REQUIRE(properties.plane.has_value());
@@ -59,7 +59,7 @@ TEST_CASE("Stitching serializes as a device node", "[Stitching]") {
 
 TEST_CASE("Stitching and its internal Sync follow host/device placement", "[Stitching]") {
     dai::Pipeline pipeline(false);
-    auto stitching = pipeline.create<dai::beta::node::Stitching>();
+    auto stitching = pipeline.create<dai::node::Stitching>();
 
     REQUIRE(stitching->runOnHost());
     REQUIRE(stitching->sync->runOnHost());

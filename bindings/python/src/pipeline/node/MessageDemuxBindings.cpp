@@ -33,7 +33,9 @@ void bind_messagedemux(pybind11::module& m, void* pCallstack) {
     messageDemux.def_readonly("outputs", &MessageDemux::outputs, DOC(dai, node, MessageDemux, outputs))
         .def_readonly("input", &MessageDemux::input, DOC(dai, node, MessageDemux, input))
         .def("setProcessor", &MessageDemux::setProcessor, DOC(dai, node, MessageDemux, setProcessor))
-        .def("getProcessor", &MessageDemux::getProcessor, DOC(dai, node, MessageDemux, getProcessor));
+        .def("getProcessor", &MessageDemux::getProcessor, DOC(dai, node, MessageDemux, getProcessor))
+        .def("setRunOnHost", &MessageDemux::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, MessageDemux, setRunOnHost))
+        .def("runOnHost", &MessageDemux::runOnHost, DOC(dai, node, MessageDemux, runOnHost));
 
     daiNodeModule.attr("MessageDemux").attr("Properties") = messageDemuxProperties;
 }

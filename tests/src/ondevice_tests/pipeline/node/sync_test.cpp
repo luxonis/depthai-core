@@ -3,6 +3,7 @@
 #include <chrono>
 #include <optional>
 #include <thread>
+#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -45,7 +46,10 @@ std::shared_ptr<dai::Buffer> makeBuffer(const TestBufferTimestamps& timestamps) 
     buffer->setTimestamp(timestamps.hostTimestamp);
     buffer->setTimestampDevice(timestamps.deviceTimestamp);
     buffer->setTimestampSystem(timestamps.systemTimestamp);
-    buffer->setData({static_cast<uint8_t>(timestamps.sequenceNum & 0xFF)});
+    // Explicit vector: a one-element braced list selects Buffer::setData(long fd), which wraps the
+    // value as a file descriptor that the buffer closes on destruction (1 and 2 are stdout/stderr)
+    buffer->setData(std::vector<uint8_t>{static_cast<uint8_t>(timestamps.sequenceNum & 0xFF)});
+    REQUIRE(buffer->getData().size() == 1);
     return buffer;
 }
 

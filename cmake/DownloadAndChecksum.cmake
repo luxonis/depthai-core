@@ -49,7 +49,7 @@
 
             # if hashes don't match
             if(NOT (_downloaded_checksum STREQUAL _file_checksum))
-                message(STATUS "Downloaded file checksum mismatch: ${_downloaded_checksum} != {_file_checksum}")
+                message(STATUS "Downloaded file checksum mismatch: ${_downloaded_checksum} != ${_file_checksum}")
                 set("${status_var}" "99" PARENT_SCOPE)
                 continue()
             endif()

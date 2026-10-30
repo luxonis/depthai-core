@@ -8,26 +8,34 @@ from xml.etree import ElementTree as ET
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 SUMMARY_RE = re.compile(
-    r"\[(?P<config>[^\]]+)\]\s+\d+% tests passed,\s+(?P<failed>\d+) tests failed out of (?P<total>\d+)"
+    r"^\[(?P<config>[^\]]+)\]\s+\d+% tests passed,\s+(?P<failed>\d+) tests failed out of (?P<total>\d+)"
 )
-FAILED_LIST_RE = re.compile(
-    r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+)\s*-\s*(?P<name>.+?)"
+# Items of the "The following tests FAILED:" / "The following tests did not run:" lists at the end of a ctest run
+LIST_ITEM_RE = re.compile(
+    r"^\[(?P<config>[^\]]+)\]\s+(?P<num>\d+)\s*-\s*(?P<name>.+?)"
     r"(?:\s+\((?P<cause>[^)]+)\))?\s*$"
 )
+FAILED_LIST_START_RE = re.compile(r"^\[(?P<config>[^\]]+)\]\s+The following tests FAILED:\s*$")
+NOT_RUN_LIST_START_RE = re.compile(r"^\[(?P<config>[^\]]+)\]\s+The following tests did not run:\s*$")
 TEST_OUTPUT_RE = re.compile(
-    r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
+    r"^\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
 )
-PASSED_RE = re.compile(
-    # matches similar lines: 103/172 Test #185: gpu_stereo ...............................   Passed   58.15 sec
-    r"^\[(?P<config>[^\]]+)\]\s+\d+/\d+\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.{3,}\s+Passed\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
+START_RE = re.compile(
+    #         Start 229: py_camera_max_resolution
+    r"^\[(?P<config>[^\]]+)\]\s+Start\s+(?P<num>\d+):\s+(?P<name>.+?)\s*$"
 )
-SKIPPED_RE = re.compile(
-    # 51/172 Test #107: april_tags ...............................***Skipped  33.29 sec
-    r"^\[(?P<config>[^\]]+)\]\s+\d+/\d+\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.{3,}\s+\*\*\*Skipped\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
+RESULT_RE = re.compile(
+    # matches the per-test result line of every outcome, e.g.:
+    # 103/172 Test #185: gpu_stereo ...............................   Passed   58.15 sec
+    #   1/178 Test  #37: camera_stream_restart_test ...............***Failed   29.20 sec
+    #  51/172 Test #107: april_tags ...............................***Skipped  33.29 sec
+    #  27/177 Test  #90: fsync_test ...............................***Timeout 1000.08 sec
+    r"^\[(?P<config>[^\]]+)\]\s+\d+/(?P<planned>\d+)\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.*\s*"
+    r"(?P<status>Passed|\*\*\*.+?)\s+(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
 )
 TESTSUITE_RE = re.compile(
     # print(f"Running tests for configuration: linux_rvc2_test / RVC2 - POE, on platform: RVC4, on protocol: POE, with labels: {labels if labels is not None else ""}")
-    r"^(Running tests for configuration: )(?P<name>.+?), on platform: (?P<platform>.+?), on protocol: (?P<protocol>.+?), with labels: (?P<labels>.+?)$"
+    r"^(Running tests for configuration: )(?P<name>.+?), on platform: (?P<platform>.+?), on protocol: (?P<protocol>.+?), with labels:\s*(?P<labels>.*)$"
 )
 TESTBED_RE = re.compile(
     # [INFO] Using testbed: slo304-4d
@@ -47,6 +55,16 @@ def parse_args(argv):
     context = " ".join(argv[3:]).strip()
     return log_path, junit_path, context
 
+def classify_status(status: str):
+    """Map a ctest result status ("Passed", "***Failed", "***Timeout", ...) to (kind, cause)."""
+    cause = normalize_name(status.lstrip("*"))
+    if cause == "Passed":
+        return "passed", ""
+    if cause.startswith("Skipped") or cause == "Not Run (Disabled)":
+        return "skipped", cause
+    return "failed", cause
+
+
 def parse_log(log_path: Path):
     order = []
     summaries = {}
@@ -55,7 +73,12 @@ def parse_log(log_path: Path):
     skips = {}
     test_outputs = {}
     descriptions = {}
+    started = {}
+    planned = {}
     testbedId = None
+    # Config whose "The following tests FAILED:" / "did not run:" list is being read, and which list it is
+    list_config = None
+    list_kind = None
 
     def ensure_config(config: str) -> None:
         if config not in summaries:
@@ -64,8 +87,17 @@ def parse_log(log_path: Path):
             passes[config] = OrderedDict()
             skips[config] = OrderedDict()
             test_outputs[config] = {}
+            started[config] = OrderedDict()
             order.append(config)
             descriptions[config] = {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''}
+
+    def add_failure(config: str, num: str, name: str, cause: str) -> None:
+        if num not in failures[config]:
+            failures[config][num] = (name, cause)
+        else:
+            _, prev_cause = failures[config][num]
+            if not prev_cause and cause:
+                failures[config][num] = (name, cause)
 
     with log_path.open("r", errors="ignore") as handle:
         for raw_line in handle:
@@ -86,6 +118,7 @@ def parse_log(log_path: Path):
             if description_match:
                 config = description_match.group("name").strip()
                 ensure_config(config)
+                descriptions[config]["name"] = config
                 descriptions[config]["DEPTHAI_PLATFORM"] = description_match.group("platform").strip()
                 descriptions[config]["DEPTHAI_PROTOCOL"] = description_match.group("protocol").strip()
                 descriptions[config]["labels"] = description_match.group("labels").strip()
@@ -99,46 +132,69 @@ def parse_log(log_path: Path):
                 if text:
                     test_outputs[config].setdefault(num, []).append(text)
 
-            failed_match = FAILED_LIST_RE.search(line)
-            if failed_match:
-                config = failed_match.group("config").strip()
+            start_match = START_RE.search(line)
+            if start_match:
+                config = start_match.group("config").strip()
                 ensure_config(config)
-                num = failed_match.group("num").strip()
-                name = normalize_name(failed_match.group("name"))
-                cause = failed_match.group("cause")
-                cause = normalize_name(cause) if cause else ""
-                if num not in failures[config]:
-                    failures[config][num] = (name, cause)
+                started[config][start_match.group("num")] = normalize_name(start_match.group("name"))
+
+            # Every test gets a result line, also when the run is cancelled before the final summary
+            result_match = RESULT_RE.search(line)
+            if result_match:
+                config = result_match.group("config").strip()
+                ensure_config(config)
+                num = result_match.group("num").strip()
+                name = normalize_name(result_match.group("name"))
+                seconds = float(result_match.group("seconds"))
+                planned[config] = max(planned.get(config, 0), int(result_match.group("planned")))
+                kind, cause = classify_status(result_match.group("status"))
+                if kind == "passed":
+                    passes[config][num] = (name, seconds)
+                elif kind == "skipped":
+                    skips[config][num] = (name, seconds)
                 else:
-                    prev_name, prev_cause = failures[config][num]
-                    if not prev_cause and cause:
-                        failures[config][num] = (name, cause)
-                    else:
-                        failures[config][num] = (prev_name, prev_cause)
+                    add_failure(config, num, name, cause)
 
-            passed_match = PASSED_RE.search(line)
-            if passed_match:
-                config = passed_match.group("config").strip()
-                ensure_config(config)
-                num = passed_match.group("num").strip()
-                name = normalize_name(passed_match.group("name"))
-                seconds = float(passed_match.group('seconds'))
-                passes[config][num] = (name, seconds)
+            list_start = FAILED_LIST_START_RE.search(line) or NOT_RUN_LIST_START_RE.search(line)
+            if list_start:
+                list_config = list_start.group("config").strip()
+                list_kind = "failed" if "FAILED" in line else "skipped"
+                ensure_config(list_config)
+                continue
 
-            skipped_match = SKIPPED_RE.search(line)
-            if skipped_match:
-                config = skipped_match.group("config").strip()
-                ensure_config(config)
-                num = skipped_match.group("num").strip()
-                name = normalize_name(skipped_match.group("name"))
-                seconds = float(skipped_match.group('seconds'))
-                skips[config][num] = (name, seconds)
+            # Only accept list items directly below a list header, other "[cfg] N - text" lines are test output
+            item_match = LIST_ITEM_RE.search(line) if list_config is not None else None
+            if item_match and item_match.group("config").strip() == list_config:
+                num = item_match.group("num").strip()
+                name = normalize_name(item_match.group("name"))
+                cause = item_match.group("cause")
+                cause = normalize_name(cause) if cause else ""
+                if list_kind == "failed":
+                    add_failure(list_config, num, name, cause)
+                elif num not in skips[list_config]:
+                    skips[list_config][num] = (name, 0.0)
+            elif list_config is not None and line.startswith(f"[{list_config}]"):
+                list_config = None
+                list_kind = None
 
             if testbedId is None:
                 testbedMatch = TESTBED_RE.search(line)
                 if testbedMatch:
                     testbedId = testbedMatch.group("name")
-    return order, summaries, failures, passes, skips, test_outputs, descriptions, testbedId
+
+    # Tests that started but have no result line: the run was cancelled or the log is truncated
+    unfinished = {}
+    for config in order:
+        unfinished[config] = OrderedDict(
+            (num, name)
+            for num, name in started[config].items()
+            if num not in passes[config] and num not in skips[config] and num not in failures[config]
+        )
+        for num, name in unfinished[config].items():
+            add_failure(config, num, name, "Did not finish")
+            test_outputs[config].setdefault(num, []).append("Test did not finish: no ctest result line (run cancelled or log truncated).")
+
+    return order, summaries, failures, passes, skips, test_outputs, descriptions, testbedId, unfinished, planned
 
 
 def iter_configs(order, summaries, failures):
@@ -176,8 +232,12 @@ def write_junit(
     skips,
     test_outputs,
     descriptions,
-    testbedId
+    testbedId,
+    unfinished=None,
+    planned=None
 ):
+    unfinished = unfinished or {}
+    planned = planned or {}
     root = ET.Element("testsuites")
     all_tests = 0
     all_failures = 0
@@ -211,16 +271,25 @@ def write_junit(
         parsed_passes = passes.get(config, OrderedDict())
         parsed_skips = skips.get(config, OrderedDict())
         description = descriptions.get(config, {"name": "null", "DEPTHAI_PLATFORM": 'null', "DEPTHAI_PROTOCOL": 'null', "labels": ''})
-        
-        declared_failed = summary[1] if summary else len(parsed_failures)
-        declared_total = summary[2] if summary else len(parsed_failures) + len(parsed_passes)
-        declared_passed = summary[0] if summary else len(parsed_passes)
+        parsed_unfinished = unfinished.get(config, OrderedDict())
+        finished_count = len(parsed_passes) + len(parsed_skips) + len(parsed_failures) - len(parsed_unfinished)
 
-        suite_failures = max(declared_failed, len(parsed_failures))
-        suite_passes = max(declared_passed, len(parsed_passes))
+        # An announced configuration can crash before any tests start.
+        incomplete = summary is None and (
+            description["name"] != "null" or finished_count > 0 or len(parsed_unfinished) > 0
+        )
+        written_failures = len(parsed_failures) + (1 if incomplete else 0)
+
+        # Counts come from the per-test result lines; ctest's own "passed" count includes skipped tests
+        suite_failures = max(summary[1] if summary else 0, written_failures)
+        suite_passes = len(parsed_passes)
         suite_skips = len(parsed_skips)
         suite_name = f"{context} / {config}" if context else config
         suite_tests = suite_failures+suite_passes+suite_skips
+
+        declared_failed = summary[1] if summary else suite_failures
+        declared_total = summary[2] if summary else suite_tests
+        declared_passed = summary[0] if summary else declared_total - declared_failed
 
         suite = ET.SubElement(
             root,
@@ -265,7 +334,28 @@ def write_junit(
                 output_lines=output_lines,
             )
 
-        missing_failures = suite_failures - len(parsed_failures)
+        if incomplete:
+            not_started = max(planned.get(config, 0) - finished_count - len(parsed_unfinished), 0)
+            case = ET.SubElement(
+                suite,
+                "testcase",
+                classname=suite_name,
+                name="#0 ctest_incomplete",
+                time="0",
+            )
+            failure = ET.SubElement(
+                case,
+                "failure",
+                type="failure",
+                message="CTest run did not complete",
+            )
+            failure.text = (
+                "No CTest summary line found: the run was cancelled, timed out or crashed. "
+                f"{finished_count} tests finished, {len(parsed_unfinished)} did not finish, "
+                f"{not_started} of {planned.get(config, 0)} planned tests did not start."
+            )
+
+        missing_failures = suite_failures - written_failures
         for index in range(1, missing_failures + 1):
             case = ET.SubElement(
                 suite,
@@ -337,7 +427,7 @@ def main() -> int:
         print(f"Log file not found: {log_path}")
         return 0
 
-    order, summaries, failures, passes, skips, test_outputs, descriptions, testbedId = parse_log(log_path)
+    order, summaries, failures, passes, skips, test_outputs, descriptions, testbedId, unfinished, planned = parse_log(log_path)
     write_junit(
         junit_path=junit_path,
         context=context,
@@ -348,7 +438,9 @@ def main() -> int:
         skips=skips,
         test_outputs=test_outputs,
         descriptions=descriptions,
-        testbedId=testbedId
+        testbedId=testbedId,
+        unfinished=unfinished,
+        planned=planned
     )
     print(f"Wrote JUnit report: {junit_path}")
     return 0

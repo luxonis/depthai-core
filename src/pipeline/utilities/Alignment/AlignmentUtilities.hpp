@@ -20,6 +20,7 @@
 
 /**
  * Turn a 3D ray in camera space into a pixel coordinate on the sensor image plane, applying distortion if necessary.
+ * Non-panorama models return NaN coordinates for rays with z <= 0. Panorama models can project rays behind their forward axis.
  */
 dai::Point2f rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransformation& transformation);
 

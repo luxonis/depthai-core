@@ -40,6 +40,37 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
 
 ---
 
+## Extrinsics for cameras outside calibration
+
+The result preserves DCL-produced camera poses relative to housing, when housing
+calibration is available. Cameras that are not calibration inputs are positioned
+using measured factory extrinsics, rather than their previous housing poses.
+Every unobserved camera is anchored to a default stereo-depth reference camera: the
+result's transform from that anchor into the camera equals the measured factory
+transform. The anchor is taken from the first pair in `device.getStereoPairs()`
+whose reference camera is a calibration input, so calibrating a pair other than
+the device default still anchors to that pair's reference camera. Reference
+selection mirrors the firmware default: RVC4 selects the right camera when
+its measured distance to CAM_A is less than 80% of the left camera’s distance;
+otherwise it selects left, including when CAM_A extrinsics are unavailable.
+RVC2 selects left. StereoDepth keeps `AUTO` unchanged on the wire so firmware
+continues to resolve initial and runtime alignment. When any unobserved cameras
+are present, a stereo pair whose reference camera is a calibration input must
+exist; otherwise calibration fails explicitly. Fully observed rigs do not require
+a stereo pair.
+
+For the B–C–D–A chain with B as the default depth reference camera, calibrating B/C preserves factory B–D and B–A while keeping
+DCL's B/C poses. C–D is consequently recomputed; it is no longer constrained to
+its factory value. Housing–A is updated to represent the resulting poses.
+This behavior also applies through `AutoCalibration`.
+
+Factory calibration is required if any cameras in the handler are not calibration
+inputs. Missing factory data causes an explicit failure; current/user calibration
+is not used as a fallback. With no housing calibration, only relative camera poses
+can be represented. Intrinsics and design (`specTranslation`) values are retained.
+
+---
+
 ## 1) Real-time dynamic calibration (apply new calibration)
 
 **Script:** `calibration_dynamic.py`

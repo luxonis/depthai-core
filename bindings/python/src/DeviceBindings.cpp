@@ -13,6 +13,7 @@
 
 // std
 #include <filesystem>
+#include <optional>
 
 // std::chrono bindings
 #include <pybind11/chrono.h>
@@ -27,6 +28,7 @@
 
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>);
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::UART>);
+PYBIND11_MAKE_OPAQUE(std::unordered_map<dai::CameraBoardSocket, dai::BoardConfig::Camera>);
 
 // static std::vector<std::string> deviceGetQueueEventsHelper(dai::Device& d, const std::vector<std::string>& queueNames, std::size_t maxNumEvents,
 // std::chrono::microseconds timeout){
@@ -143,6 +145,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<UsbGeneration> usbGeneration(m, "UsbGeneration", DOC(dai, UsbGeneration));
     py::enum_<HealthCheckResult> healthCheckResult(m, "HealthCheckResult", DOC(dai, HealthCheckResult));
     py::class_<BoardConfig> boardConfig(m, "BoardConfig", DOC(dai, BoardConfig));
+    py::class_<BoardConfig::Camera> boardCamera(boardConfig, "Camera", DOC(dai, BoardConfig, Camera));
+    py::class_<BoardConfig::IMU> boardImu(boardConfig, "IMU", DOC(dai, BoardConfig, IMU));
     py::class_<BoardConfig::USB> boardConfigUsb(boardConfig, "USB", DOC(dai, BoardConfig, USB));
     py::class_<BoardConfig::Network> boardConfigNetwork(boardConfig, "Network", DOC(dai, BoardConfig, Network));
     py::class_<BoardConfig::GPIO> boardConfigGpio(boardConfig, "GPIO", DOC(dai, BoardConfig, GPIO));
@@ -159,6 +163,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::bind_map<std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>>(boardConfig, "GPIOMap");
     py::bind_map<std::unordered_map<std::int8_t, dai::BoardConfig::UART>>(boardConfig, "UARTMap");
+    using CameraMap = std::unordered_map<CameraBoardSocket, BoardConfig::Camera>;
+    auto boardCameraMap = py::bind_map<CameraMap>(boardConfig, "CameraMap");
 
     // pybind11 limitation of having actual classes as exceptions
     // Possible but requires a larger workaround
@@ -175,6 +181,73 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
+    deviceBase
+        .def("isCalibrationAvailable",
+             &dai::DeviceBase::isCalibrationAvailable,
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, isCalibrationAvailable))
+        .def(
+            "tryGetCalibration",
+            [](DeviceBase& self) -> std::optional<CalibrationHandler> {
+                auto calibration = self.tryGetCalibration();
+                if(!calibration) return std::nullopt;
+                return *calibration;
+            },
+            py::call_guard<py::gil_scoped_release>(),
+            DOC(dai, DeviceBase, tryGetCalibration))
+        .def("getNodeLogLevel",
+             &dai::DeviceBase::getNodeLogLevel,
+             py::arg("id"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, getNodeLogLevel))
+        .def("setNodeLogLevel",
+             &dai::DeviceBase::setNodeLogLevel,
+             py::arg("id"),
+             py::arg("level"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, setNodeLogLevel))
+        .def("setCameraTuningBlob",
+             &dai::DeviceBase::setCameraTuningBlob,
+             py::arg("uri"),
+             py::arg("size"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, setCameraTuningBlob))
+        .def("setCameraSocketTuningBlob",
+             &dai::DeviceBase::setCameraSocketTuningBlob,
+             py::arg("socket"),
+             py::arg("uri"),
+             py::arg("size"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, setCameraSocketTuningBlob))
+        .def("setCameraSocketTuningBlobs",
+             &dai::DeviceBase::setCameraSocketTuningBlobs,
+             py::arg("blobs"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, setCameraSocketTuningBlobs))
+        .def_static("getDefaultSearchTime", &dai::DeviceBase::getDefaultSearchTime, DOC(dai, DeviceBase, getDefaultSearchTime));
+
+    boardCamera.def(py::init<>())
+        .def_readwrite("name", &dai::BoardConfig::Camera::name, DOC(dai, BoardConfig, Camera, name))
+        .def_readwrite("sensorType", &dai::BoardConfig::Camera::sensorType, DOC(dai, BoardConfig, Camera, sensorType))
+        .def_readwrite("orientation", &dai::BoardConfig::Camera::orientation, DOC(dai, BoardConfig, Camera, orientation));
+
+    boardCameraMap.def(py::init([](const py::dict& cameras) {
+        CameraMap map;
+        for(auto item : cameras) {
+            map.emplace(item.first.cast<CameraBoardSocket>(), item.second.cast<BoardConfig::Camera>());
+        }
+        return map;
+    }));
+    py::implicitly_convertible<py::dict, CameraMap>();
+
+    boardImu.def(py::init<>())
+        .def_readwrite("bus", &dai::BoardConfig::IMU::bus, DOC(dai, BoardConfig, IMU, bus))
+        .def_readwrite("interrupt", &dai::BoardConfig::IMU::interrupt, DOC(dai, BoardConfig, IMU, interrupt))
+        .def_readwrite("wake", &dai::BoardConfig::IMU::wake, DOC(dai, BoardConfig, IMU, wake))
+        .def_readwrite("csGpio", &dai::BoardConfig::IMU::csGpio, DOC(dai, BoardConfig, IMU, csGpio))
+        .def_readwrite("boot", &dai::BoardConfig::IMU::boot, DOC(dai, BoardConfig, IMU, boot))
+        .def_readwrite("reset", &dai::BoardConfig::IMU::reset, DOC(dai, BoardConfig, IMU, reset));
+
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -263,7 +336,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Bind BoardConfig
     boardConfig.def(py::init<>())
-        .def_readwrite("usb", &BoardConfig::usb, DOC(dai, BoardConfig, usb))
+        .def_readwrite("camera", &dai::BoardConfig::camera, DOC(dai, BoardConfig, camera))
+        .def_readwrite("imu", &dai::BoardConfig::imu, DOC(dai, BoardConfig, imu))
+        .def_readwrite("defaultImuExtr", &dai::BoardConfig::defaultImuExtr, DOC(dai, BoardConfig, defaultImuExtr))
+        .def_readwrite("nonExclusiveMode", &dai::BoardConfig::nonExclusiveMode, DOC(dai, BoardConfig, nonExclusiveMode));
+
+    boardConfig.def_readwrite("usb", &BoardConfig::usb, DOC(dai, BoardConfig, usb))
         .def_readwrite("network", &BoardConfig::network, DOC(dai, BoardConfig, network))
         .def_readwrite("sysctl", &BoardConfig::sysctl, DOC(dai, BoardConfig, sysctl))
         .def_readwrite("watchdogTimeoutMs", &BoardConfig::watchdogTimeoutMs, DOC(dai, BoardConfig, watchdogTimeoutMs))
@@ -286,7 +364,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("board", &Device::Config::board)
         .def_readwrite("nonExclusiveMode", &Device::Config::nonExclusiveMode)
         .def_readwrite("outputLogLevel", &Device::Config::outputLogLevel)
-        .def_readwrite("logLevel", &Device::Config::logLevel);
+        .def_readwrite("logLevel", &Device::Config::logLevel)
+        .def_readwrite("dangerousIrPowerOverride", &Device::Config::dangerousIrPowerOverride, DOC(dai, DeviceBase, Config, dangerousIrPowerOverride));
 
     // Bind UsbGeneration
     usbGeneration.value("UNKNOWN", UsbGeneration::UNKNOWN, DOC(dai, UsbGeneration, UNKNOWN))
@@ -467,8 +546,21 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_static(
             "performHealthCheck",
             [](const DeviceInfo& deviceInfo, const HealthCheckConfig& config) {
-                py::gil_scoped_release release;
-                return DeviceBase::performHealthCheck(deviceInfo, config);
+                // Python runs signal handlers only between bytecodes, so the long C++ call checks for them itself
+                // and stops when a handler raises (e.g. KeyboardInterrupt on Ctrl+C)
+                std::optional<py::error_already_set> pendingError;
+                HealthCheckMetrics metrics;
+                {
+                    py::gil_scoped_release release;
+                    metrics = DeviceBase::performHealthCheck(deviceInfo, config, [&pendingError]() {
+                        // reacquires python GIL for PyErr_CheckSignals call
+                        py::gil_scoped_acquire acquire;
+                        if(!pendingError && PyErr_CheckSignals() != 0) pendingError.emplace();
+                        return pendingError.has_value();
+                    });
+                }
+                if(pendingError) throw *pendingError;
+                return metrics;
             },
             py::arg("deviceInfo"),
             py::arg("config") = HealthCheckConfig(),
@@ -922,6 +1014,19 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.setCalibration(ch);
             },
             DOC(dai, DeviceBase, setCalibration))
+        .def("setCalibration",
+             py::overload_cast<const std::optional<EepromData>&>(&DeviceBase::setCalibration),
+             py::arg("eepromData"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, setCalibration, 2))
+        .def(
+            "setMultiDeviceCalibration",
+            [](DeviceBase& d, std::optional<std::vector<MultiDeviceExtrinsics>> graph) {
+                py::gil_scoped_release release;
+                return d.setMultiDeviceCalibration(graph);
+            },
+            py::arg("graph"),
+            DOC(dai, DeviceBase, setMultiDeviceCalibration))
         .def(
             "getCalibration",
             [](DeviceBase& d) {
@@ -1121,7 +1226,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 py::gil_scoped_release release;
                 return d.setExternalFrameSyncRole(role);
             },
-            py::arg("role"),
+            py::arg("role") = ExternalFrameSyncRole::AUTO_DETECT,
             DOC(dai, DeviceBase, setExternalFrameSyncRole))
         .def(
             "getExternalFrameSyncRole",
@@ -1212,6 +1317,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getSupportedDeviceModels();
             },
             DOC(dai, DeviceBase, getSupportedDeviceModels))
+        .def("getProtocol", &DeviceBase::getProtocol, DOC(dai, DeviceBase, getProtocol))
         .def("getPlatform", &DeviceBase::getPlatform, DOC(dai, DeviceBase, getPlatform))
         .def("getPlatformAsString", &DeviceBase::getPlatformAsString, DOC(dai, DeviceBase, getPlatformAsString));
 

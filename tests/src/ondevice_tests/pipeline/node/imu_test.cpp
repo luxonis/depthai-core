@@ -106,10 +106,12 @@ const std::vector<std::vector<float>> kIdentityRotation = {
     {0.0f, 0.0f, 1.0f},
 };
 
+// Proper rotation (orthonormal, det = +1): Rz(60 deg) * Ry(45 deg) * Rx(30 deg).
+// setImuExtrinsics validates the matrix, so an arbitrary non-orthonormal matrix would be rejected.
 const std::vector<std::vector<float>> kTestNonIdentityMatrix = {
-    {0.25f, -0.5f, 0.75f},
-    {1.0f, 0.125f, -0.25f},
-    {-0.375f, 0.625f, 0.875f},
+    {0.353553f, -0.573223f, 0.739199f},
+    {0.612372f, 0.739199f, 0.280330f},
+    {-0.707107f, 0.353553f, 0.612372f},
 };
 
 Vec3 applyCalibration(const std::vector<std::vector<float>>& calibration, const Vec3& input) {

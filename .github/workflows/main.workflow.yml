@@ -1,7 +1,7 @@
 name: DepthAI Core CI/CD
 
 concurrency:
-  group: depthai-core-${{ github.event.pull_request.number || github.ref }}
+  group: depthai-core-${{ github.event.pull_request.number || github.ref }}-${{ (github.event_name == 'pull_request' && github.event.action != 'labeled') && 'format' || 'full' }}
   cancel-in-progress: true
 
 on:
@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - main
-      - develop
       - 'release*'
     tags:
       - 'v*'
@@ -17,15 +16,13 @@ on:
     branches:
       - main
       - develop
-    types: [labeled]
-  pull_request_review:
-    types: [submitted]
+    types: [opened, synchronize, reopened, labeled]
 
 jobs:
 
   # The precheck job determines whether a workflow should be run in full
   precheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
@@ -33,8 +30,7 @@ jobs:
       id: check
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
-        CHECK_REVIEW_STATE: ${{ github.event.review.state }}
-        CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        CHECK_ACTION: ${{ github.event.action }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
 
@@ -47,11 +43,7 @@ jobs:
 
         SHOULD_RUN="true"
         if [[ "$EVENT_NAME" == "pull_request" ]]; then
-          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
-            SHOULD_RUN="false"
-          fi
-        elif [[ "$EVENT_NAME" == "pull_request_review" ]]; then
-          if [[ "$CHECK_REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop") ]]; then
+          if [[ "$CHECK_ACTION" != "labeled" ]] || ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
             SHOULD_RUN="false"
           fi
         fi
@@ -64,7 +56,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
@@ -81,24 +73,21 @@ jobs:
 
   style:
     runs-on: ubuntu-24.04
-    needs: [precheck, consistency]
-    if: needs.precheck.outputs.should_run == 'true'
+    needs: [precheck]
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
+    - uses: actions/checkout@v7
 
-    - name: Install format dependencies
+    - name: Install clang-format
       run: |
-        sudo apt-get update
-        sudo apt-get install clang-format-18 libopencv-dev libudev-dev
-
-    - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=/usr/bin/clang-format-18
+        if ! command -v clang-format-18 >/dev/null; then
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+        fi
+        clang-format-18 --version
 
     - name: check style
-      run: ci/check_format.sh build
+      run: CLANG_FORMAT_BIN=/usr/bin/clang-format-18 ci/check_format.sh
 
 
   tidy:
@@ -107,9 +96,15 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
+
+    - name: Restore vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/restore
+      with:
+        family: core
+        fallback-families: core-tests
 
     - name: Install dependencies
       run: |
@@ -118,6 +113,12 @@ jobs:
 
     - name: configure
       run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=/usr/bin/clang-tidy-18
+
+    - name: Prune vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/save
+      with:
+        vcpkg-installed-dir: build/vcpkg_installed
+        save: "false"
 
     - name: Run clang-tidy
       run: cmake --build build --parallel 4
@@ -128,20 +129,72 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
       with:
-        cmake-version: '3.29.x'
+        cmakeVersion: '3.29.x'
+        useCloudCache: false
+
+    - name: Restore vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/restore
+      with:
+        family: core
+        fallback-families: core-tests
 
     - name: Configure minimal build
       run: cmake --preset minimal
 
+    - name: Prune vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/save
+      with:
+        vcpkg-installed-dir: build-minimal/vcpkg_installed
+        save: "false"
+
     - name: Build minimal target set
       run: cmake --build --preset minimal
+
+  device-manager-build:
+    runs-on: ubuntu-24.04
+    needs: [precheck, consistency]
+    if: needs.precheck.outputs.should_run == 'true'
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: 'recursive'
+
+    - name: Setup cmake
+      uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+      with:
+        cmakeVersion: '3.29.x'
+        useCloudCache: false
+
+    - name: Restore vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/restore
+      with:
+        family: core
+        fallback-families: core-tests
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libudev-dev libusb-1.0-0-dev
+
+    - name: Configure device-manager build
+      run: cmake --preset device-manager
+
+    - name: Prune vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/save
+      with:
+        vcpkg-installed-dir: build-device-manager/vcpkg_installed
+        save: "false"
+
+    - name: Build depthai::device-manager
+      run: cmake --build --preset device-manager
 
   build:
     runs-on: ${{ matrix.os }}
@@ -149,18 +202,38 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-2022, ubuntu-latest]
+        os: [macos-latest, ubuntu-24.04]
         cmake: ['3.22.x', '4.0.x']
+        include:
+          # The Windows 2025 image uses VS 2026, which requires CMake 4.2+.
+          - os: windows-2025
+            cmake: '4.2.x'
+            cache-saver: true
+          # One job per OS saves the 'core-tests' vcpkg binary cache.
+          # vcpkg uses its own CMake on Linux/macOS, so both CMake matrix entries have the same package ABIs.
+          - os: macos-latest
+            cmake: '3.22.x'
+            cache-saver: true
+          - os: ubuntu-24.04
+            cmake: '3.22.x'
+            cache-saver: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
       with:
-        cmake-version: ${{ matrix.cmake }}
+        cmakeVersion: ${{ matrix.cmake }}
+        useCloudCache: false
+
+    - name: Restore vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/restore
+      with:
+        family: core-tests
+        fallback-families: core
 
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
@@ -168,21 +241,32 @@ jobs:
         brew install opencv@4
 
     - name: Install dependencies
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       run: |
         sudo apt-get update
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: |
         choco install opencv --version=4.13.0 --yes
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR=Visual Studio 18 2026" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR_PLATFORM=x64" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        # Match the v143 toolset used by the pinned vcpkg baseline.
+        echo "CMAKE_GENERATOR_TOOLSET=v143" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Configure
+      run: cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
+
+    - name: Save vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/save
+      with:
+        vcpkg-installed-dir: build/vcpkg_installed
+        save: ${{ matrix.cache-saver == true }}
 
     - name: Build
-      run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
-        cmake --build build --parallel 4 --config Release
+      run: cmake --build build --parallel 4 --config Release
 
   integration:
     runs-on: ${{ matrix.os }}
@@ -190,25 +274,43 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-2022, ubuntu-latest]
+        os: [macos-latest, windows-2025, ubuntu-24.04]
         build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
         platform: [x64]
+        include:
+          # One job per OS saves the 'core' vcpkg binary cache.
+          # The default triplets build Debug and Release of every port, so both build types share the ABIs.
+          - os: macos-latest
+            build-type: Release
+            cache-saver: true
+          - os: windows-2025
+            build-type: Release
+            cache-saver: true
+          - os: ubuntu-24.04
+            build-type: Release
+            cache-saver: true
         # TODO(Morato) - add back Win32 and shared builds to CI
         # include:
         #   - platform: Win32
-        #     os: windows-latest
+        #     os: windows-2025
         #     shared: true
         #     build-type: Debug
         #   - platform: Win32
-        #     os: windows-latest
+        #     os: windows-2025
         #     shared: true
         #     build-type: Release
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
+
+    - name: Restore vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/restore
+      with:
+        family: core
+        fallback-families: core-tests
 
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
@@ -216,29 +318,37 @@ jobs:
         brew install opencv@4
 
     - name: Install dependencies
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       run: |
         sudo apt-get update
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: |
         choco install opencv --version=4.13.0 --yes
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "CMAKE_GENERATOR=Visual Studio 17 2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR=Visual Studio 18 2026" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CMAKE_GENERATOR_PLATFORM=${{ matrix.platform }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR_TOOLSET=v143" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
+      uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
       with:
-        cmake-version: '3.29.x'
+        cmakeVersion: ${{ runner.os == 'Windows' && '4.2.x' || '3.29.x' }}
+        useCloudCache: false
 
     - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX="${{ github.workspace }}/depthai_install" ${{ env.CMAKE_ARGS }}
 
+    - name: Save vcpkg binary cache
+      uses: ./.github/actions/vcpkg-cache/save
+      with:
+        vcpkg-installed-dir: build/vcpkg_installed
+        save: ${{ matrix.cache-saver == true }}
+
     - name: Set path to shared library dll (Windows)
-      if: matrix.os == 'windows-2022'
+      if: runner.os == 'Windows'
       run: echo "${{ github.workspace }}/depthai_install/bin/" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Build and install
@@ -248,16 +358,32 @@ jobs:
       shell: bash
       run: python scripts/verify_license_artifact.py install-tree "${{ github.workspace }}/depthai_install"
 
+    - name: Generate SBOM of the install tree
+      if: matrix.build-type == 'Release'
+      shell: bash
+      run: python scripts/generate_sbom.py build --build-dir build --output-dir "${{ github.workspace }}/depthai_install/share/depthai/sbom"
+
+    - name: Generate source SBOM
+      if: runner.os == 'Linux' && matrix.build-type == 'Release'
+      run: python3 scripts/generate_sbom.py source --build-dir build --output-dir sbom-source
+
+    - name: Upload source SBOM
+      if: runner.os == 'Linux' && matrix.build-type == 'Release'
+      uses: actions/upload-artifact@v7
+      with:
+        name: sbom-source
+        path: sbom-source/
+
     - name: Upload Win64 shared library
-      if: matrix.os == 'windows-2022' && matrix.shared && matrix.platform == 'x64'
-      uses: actions/upload-artifact@v4
+      if: runner.os == 'Windows' && matrix.shared && matrix.platform == 'x64'
+      uses: actions/upload-artifact@v7
       with:
         name: windows-prebuilt-win64-${{ matrix.build-type }}
         path: ${{ github.workspace }}/depthai_install/
     # TODO(Morato) - add back Win32 and shared builds to CI
     # - name: Upload Win32 shared library
-    #   if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
-    #   uses: actions/upload-artifact@v4
+    #   if: runner.os == 'Windows' && matrix.shared && matrix.platform == 'Win32'
+    #   uses: actions/upload-artifact@v7
     #   with:
     #     name: windows-prebuilt-win32-no-opencv-${{ matrix.build-type }}
     #     path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
@@ -285,9 +411,9 @@ jobs:
 
   required_core_ci_report:
     name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Core CI report (not applicable)' }}
-    needs: [precheck, consistency, style, tidy, minimal-build, build, integration]
+    needs: [precheck, consistency, style, tidy, minimal-build, device-manager-build, build, integration]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Check required CI results
       env:
@@ -306,106 +432,79 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, style, integration, minimal-build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
 
     # Clone repository
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
     # Get tag version
-    # TODO(themarpe) - Node12, has to be updated
     - name: Get latest release version number
       id: tag
-      uses: battila7/get-version-action@v2
+      run: echo "version=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
 
     # Check if version matches (TODO)
     #- name: Check if version matches
     #   run: |
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v7
       with:
-        python-version: '3.8'
+        python-version: '3.12'
     - name: Install dependencies
-      run: python3.8 -m pip install git-archive-all
+      run: python -m pip install git-archive-all
 
     - name: Download Win64 artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         pattern: windows-prebuilt-win64*
         merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win64
 
     # - name: Download Win32 artifacts
-    #   uses: actions/download-artifact@v4
+    #   uses: actions/download-artifact@v8
     #   with:
     #     pattern: windows-prebuilt-win32-no-opencv*
     #     merge-multiple: true
     #     path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
+
+    - name: Download source SBOM
+      uses: actions/download-artifact@v8
+      with:
+        name: sbom-source
+        path: sbom-source
 
     - name: Create release assets
       run: |
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.tar.gz
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.zip
         zip -r depthai-core-${{ steps.tag.outputs.version }}-win64.zip depthai-core-${{ steps.tag.outputs.version }}-win64
+        for format in spdx cdx; do
+          cp sbom-source/depthai-core.$format.json depthai-core-${{ steps.tag.outputs.version }}.$format.json
+          cp depthai-core-${{ steps.tag.outputs.version }}-win64/share/depthai/sbom/depthai-core.$format.json depthai-core-${{ steps.tag.outputs.version }}-win64.$format.json
+        done
         # zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
-    # Create GitHub release
-    - uses: actions/create-release@master
-      id: createRelease
-      name: Create ${{ steps.tag.outputs.version }} depthai-core release
+    - name: Create draft release and upload assets
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        body: |
-          ## Features
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_VERSION: ${{ steps.tag.outputs.version }}
+      run: |
+        gh release create "$GITHUB_REF_NAME" --verify-tag --draft \
+          --title "Release $GITHUB_REF" --notes-file - \
+          "depthai-core-$RELEASE_VERSION.zip" \
+          "depthai-core-$RELEASE_VERSION.tar.gz" \
+          "depthai-core-$RELEASE_VERSION-win64.zip" \
+          "depthai-core-$RELEASE_VERSION.spdx.json" \
+          "depthai-core-$RELEASE_VERSION.cdx.json" \
+          "depthai-core-$RELEASE_VERSION-win64.spdx.json" \
+          "depthai-core-$RELEASE_VERSION-win64.cdx.json" <<'EOF'
+        ## Features
 
-          ## Bug fixes
+        ## Bug fixes
 
-          ## Misc
-
-        draft: true
-
-    # Upload release assets
-    - name: Upload source package (zip)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.zip
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}.zip
-        asset_content_type: application/octet-stream
-
-    - name: Upload source package (tar.gz)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.tar.gz
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}.tar.gz
-        asset_content_type: application/octet-stream
-
-    - name: Upload Win64 package (zip)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win64.zip
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.zip
-        asset_content_type: application/octet-stream
-
-    # - name: Upload Win32 package (zip)
-    #   uses: actions/upload-release-asset@v1.0.1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.createRelease.outputs.upload_url }}
-    #     asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
-    #     asset_name: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
-    #     asset_content_type: application/octet-stream
+        ## Misc
+        EOF

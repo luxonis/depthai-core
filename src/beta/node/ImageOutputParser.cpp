@@ -301,7 +301,7 @@ bool ImageOutputParser::runOnHost() const {
 
 void ImageOutputParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("ImageOutputParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     // The color output frame type is resolved from the pipeline's default device platform once at
     // startup, mirroring the source parser: BGR888p on RVC2, BGR888i otherwise. A device-less
@@ -317,6 +317,7 @@ void ImageOutputParser::run() {
     std::string resolvedOutputLayerName = properties.outputLayerName;
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -325,6 +326,7 @@ void ImageOutputParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         // Extract
         const auto layerNames = nnData->getAllLayerNames();
@@ -347,10 +349,13 @@ void ImageOutputParser::run() {
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("ImageOutputParser created image message with size {}x{}", message->getWidth(), message->getHeight());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

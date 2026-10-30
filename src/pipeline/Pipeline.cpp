@@ -1,8 +1,13 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
 #include <cstring>
+#include <vector>
 
+#include "common/ExternalFrameSyncRoles.hpp"
+#include "depthai/beta/device/LocalCalibrationOrigin.hpp"
+#include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "device/Platform.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
 #endif
@@ -328,6 +333,83 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
 
 void PipelineImpl::setGlobalProperties(const GlobalProperties& globalProperties) {
     this->globalProperties = globalProperties;
+}
+
+void PipelineImpl::setMultiDeviceCalibration(const std::vector<MultiDeviceExtrinsics>& graph) {
+    applyMultiDeviceCalibration(graph);
+}
+
+std::optional<std::vector<MultiDeviceExtrinsics>> PipelineImpl::getMultiDeviceCalibration() const {
+    std::lock_guard<std::mutex> lock(multiDeviceCalibMtx);
+    return globalProperties.multiDeviceCalibration;
+}
+
+void PipelineImpl::clearMultiDeviceCalibration() {
+    applyMultiDeviceCalibration(std::nullopt);
+}
+
+void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph) {
+    // Structural validation happens on the host for every graph, built or not.
+    std::optional<beta::MultiDeviceCalibrationHandler> handler;
+    if(graph.has_value()) {
+        handler.emplace(*graph);
+    }
+
+    // Hold the lock across the whole update so concurrent callers cannot interleave pushes across devices.
+    std::lock_guard<std::mutex> lock(multiDeviceCalibMtx);
+
+    if(!isBuilt()) {
+        globalProperties.multiDeviceCalibration = graph;
+        return;
+    }
+
+    // The devices already received the schema, so the change has to be pushed at runtime.
+    const auto devices = getAllAssignedDevices();
+    std::vector<std::string> deviceIds;
+    deviceIds.reserve(devices.size());
+    for(const auto& device : devices) {
+        deviceIds.push_back(device->getDeviceId());
+    }
+
+    // Mirror the device-side check up front so that no device is touched when any would reject the graph.
+    if(handler.has_value()) {
+        for(size_t i = 0; i < devices.size(); ++i) {
+            const auto& deviceId = deviceIds[i];
+            if(!handler->getDeviceSocket(deviceId).has_value()) {
+                continue;
+            }
+            std::optional<EepromData> calibration;
+            if(isCalibrationDataAvailable(devices[i])) {
+                calibration = getCalibrationData(devices[i]).getEepromData();
+            }
+            // The origin rule follows the device platform so this check matches the firmware's own.
+            handler->validateLocalOrigin(deviceId, beta::describeLocalCalibration(calibration, devices[i]->getPlatform()));
+        }
+    }
+
+    const auto previous = globalProperties.multiDeviceCalibration;
+    for(size_t i = 0; i < devices.size(); ++i) {
+        try {
+            devices[i]->setMultiDeviceCalibration(graph);
+        } catch(const std::exception& ex) {
+            // Best-effort rollback so that all devices keep sharing one graph. The failing device is
+            // included because the RPC may have failed after the device already applied the graph.
+            std::string rollbackNote;
+            for(size_t j = 0; j <= i; ++j) {
+                try {
+                    devices[j]->setMultiDeviceCalibration(previous);
+                } catch(const std::exception& rollbackEx) {
+                    Logging::getInstance().logger.warn(
+                        "Failed to restore previous multi-device calibration on device '{}': {}", deviceIds[j], rollbackEx.what());
+                    if(j == i) {
+                        rollbackNote = " (its multi-device calibration state could not be confirmed)";
+                    }
+                }
+            }
+            throw std::runtime_error(fmt::format("Failed to set multi-device calibration on device '{}': {}{}", deviceIds[i], ex.what(), rollbackNote));
+        }
+    }
+    globalProperties.multiDeviceCalibration = graph;
 }
 
 void PipelineImpl::setDefaultDeviceProperties(const DeviceProperties& deviceProperties) {
@@ -1718,33 +1800,90 @@ void PipelineImpl::start() {
 
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
-        DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
-        // Start all devices in parallel, all-or-nothing: if any fails, close the
-        // ones that started and rethrow
-        std::vector<std::thread> startThreads;
-        std::vector<std::exception_ptr> startErrors(devices.size());
-        // Each thread writes only its own index; read after join
-        std::vector<uint8_t> started(devices.size(), 0);
-        for(std::size_t i = 0; i < devices.size(); i++) {
-            startThreads.emplace_back([this, &devices, &startErrors, &started, i]() {
-                try {
-                    devices[i]->startPipeline(Pipeline(shared_from_this()));
-                    started[i] = true;
-                } catch(...) {
-                    startErrors[i] = std::current_exception();
-                }
-            });
-        }
-        for(auto& thread : startThreads) {
-            thread.join();
-        }
-        for(std::size_t i = 0; i < devices.size(); i++) {
-            if(startErrors[i]) {
-                for(std::size_t j = 0; j < devices.size(); j++) {
-                    if(started[j]) devices[j]->close();
-                }
-                std::rethrow_exception(startErrors[i]);
+        std::vector<std::shared_ptr<dai::Device>> masterDevices;
+        std::vector<std::shared_ptr<dai::Device>> slaveDevices;
+
+        for(auto d : devices) {
+            auto role = dai::ExternalFrameSyncRole::AUTO_DETECT;
+
+            if(d->getPlatform() != dai::Platform::RVC4) {
+                role = dai::ExternalFrameSyncRole::MASTER;
+            } else {
+                role = d->getExternalFrameSyncRole();
             }
+
+            if(role == dai::ExternalFrameSyncRole::MASTER) {
+                masterDevices.push_back(d);
+            } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
+                slaveDevices.push_back(d);
+            } else {
+                throw std::runtime_error("Unknown external frame sync role");
+            }
+        }
+
+        DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
+        DAI_CHECK_V(slaveDevices.size() + masterDevices.size() == devices.size(),
+                    "Number of devices assigned to device nodes does not match the number of master and slave devices");
+        // Start masters before slaves, in parallel within each group. If either
+        // group fails, roll back every device that started in either group.
+        // Each thread writes only its own index; read after join
+        std::vector<uint8_t> masterStarted(masterDevices.size(), 0);
+        std::vector<uint8_t> slaveStarted(slaveDevices.size(), 0);
+
+        auto startDevices = [this](const std::vector<std::shared_ptr<dai::Device>>& devices, std::vector<uint8_t>& started) {
+            std::vector<std::thread> startThreads;
+            std::vector<std::exception_ptr> startErrors(devices.size());
+            startThreads.reserve(devices.size());
+            try {
+                for(std::size_t i = 0; i < devices.size(); i++) {
+                    startThreads.emplace_back([this, &devices, &startErrors, &started, i]() {
+                        try {
+                            devices[i]->startPipeline(Pipeline(shared_from_this()));
+                            started[i] = true;
+                        } catch(...) {
+                            startErrors[i] = std::current_exception();
+                        }
+                    });
+                }
+            } catch(...) {
+                // Thread creation can fail after other devices have begun starting.
+                // Join them before their state is inspected or destroyed by rollback.
+                for(auto& thread : startThreads) {
+                    thread.join();
+                }
+                throw;
+            }
+            for(auto& thread : startThreads) {
+                thread.join();
+            }
+            for(const auto& error : startErrors) {
+                if(error) {
+                    std::rethrow_exception(error);
+                }
+            }
+        };
+
+        try {
+            startDevices(masterDevices, masterStarted);
+            startDevices(slaveDevices, slaveStarted);
+        } catch(...) {
+            auto closeStartedDevices = [](const std::vector<std::shared_ptr<dai::Device>>& devices, const std::vector<uint8_t>& started) {
+                for(std::size_t i = 0; i < devices.size(); i++) {
+                    if(!started[i]) continue;
+                    try {
+                        devices[i]->close();
+                    } catch(const std::exception& ex) {
+                        Logging::getInstance().logger.error(
+                            "Failed to close device {} during startup rollback: {}", devices[i]->getDeviceInfo().getDeviceId(), ex.what());
+                    } catch(...) {
+                        Logging::getInstance().logger.error("Failed to close device {} during startup rollback: unknown exception",
+                                                            devices[i]->getDeviceInfo().getDeviceId());
+                    }
+                }
+            };
+            closeStartedDevices(slaveDevices, slaveStarted);
+            closeStartedDevices(masterDevices, masterStarted);
+            throw;
         }
     }
 
@@ -1897,10 +2036,12 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
 
     bool shouldStop = false;
     const bool fatal = fatalDevices.count(devicePtr.get()) > 0;
+    const bool strict = stopOnDeviceLoss;
     if(state == DeviceState::FAILED) {
-        // Fatal device (consumes other devices' streams) or last device running any node ->
-        // stop. A device that carries no node (added with addDevice but unused, or the
-        // implicit device of a host-only pipeline) does not affect the streams.
+        // Fatal device (consumes other devices' streams), last device running any node or
+        // any device running a node in strict mode -> stop. A device that carries no node
+        // (added with addDevice but unused, or the implicit device of a host-only pipeline)
+        // does not affect the streams.
         const auto assignedDevices = getAllAssignedDevices();
         bool carriesNodes = false;
         bool anyAlive = false;
@@ -1914,7 +2055,7 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
                 }
             }
         }
-        shouldStop = fatal || (carriesNodes && !anyAlive);
+        shouldStop = fatal || (carriesNodes && (strict || !anyAlive));
     }
     if(callback) {
         try {
@@ -1926,7 +2067,9 @@ void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
     if(shouldStop) {
         Logging::getInstance().logger.warn("Stopping pipeline - device {} is gone for good and was {}",
                                            devicePtr->getDeviceInfo().getDeviceId(),
-                                           fatal ? "a fatal device" : "the last device alive");
+                                           fatal    ? "a fatal device"
+                                           : strict ? "running nodes with stopOnDeviceLoss set"
+                                                    : "the last device alive");
         // Stop from a separate thread: this runs on the device's monitor thread, which
         // stop() joins indirectly when closing the devices. The thread owns no reference to
         // the pipeline - wait(), start() and the destructor join it - so the pipeline can

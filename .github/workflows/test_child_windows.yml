@@ -18,20 +18,29 @@ on:
         required: true
       CI_TELEMETRY_API_KEY:
         required: true
+      INFLUXDB_TEST_REPORT_BUCKET:
+        required: true
+      INFLUXDB_ORG:
+        required: true
+      INFLUXDB_TOKEN:
+        required: true
+      INFLUXDB_URL:
+        required: true
 
 jobs:
   build_windows_tests:
-    runs-on: windows-2022
+    runs-on: windows-2025
     outputs:
         artifact_id: ${{ steps.reuse.outputs.artifact_id || steps.artifact-upload-step.outputs.artifact-id }}
     env:
       BUILD_TYPE: Release
+      CMAKE_GENERATOR: Visual Studio 18 2026
+      CMAKE_GENERATOR_PLATFORM: x64
+      CMAKE_GENERATOR_TOOLSET: v143
       VCPKG_ROOT: C:\vcpkg
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
       VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
-      VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
-      VCPKG_BINARY_SOURCES: clear;files,C:\vcpkg_binaries,readwrite
     steps:
     - name: Decide kind of test (long/short)
       id: kind
@@ -57,54 +66,46 @@ jobs:
         Write-Host "ArtifactName: $env:ARTIFACT_NAME"
         Write-Host ""
 
-        $jsonLines = gh api --paginate "repos/$env:REPO/actions/artifacts?per_page=100" `
-          --jq '.artifacts[] | @json' |
-          Select-Object -First 2500
-
-        $match = $null
-        foreach ($line in $jsonLines) {
-          $a = $line | ConvertFrom-Json
-
-          # Optional micro-filter to reduce comparisons
-          if ($a.name -notlike "depthai-core-win-*") { continue }
-
-          if ($a.name -eq $env:ARTIFACT_NAME -and $a.expired -eq $false) {
-            $match = $a
-            break
-          }
-        }
+        # The artifacts API filters by name server-side; one request instead of paging through
+        # up to 2500 artifacts (the repository holds ~9000).
+        $match = gh api "repos/$env:REPO/actions/artifacts?name=$env:ARTIFACT_NAME&per_page=10" `
+          --jq '[.artifacts[] | select(.expired == false)][0] | @json' | ConvertFrom-Json
 
         if ($match) {
           Write-Host "Found artifact id=$($match.id); skipping build."
           "skip_build=true"  >> $env:GITHUB_OUTPUT
           "artifact_id=$($match.id)" >> $env:GITHUB_OUTPUT
         } else {
-          Write-Host "No existing non-expired artifact named $env:ARTIFACT_NAME found in newest 2500 artifacts."
+          Write-Host "No existing non-expired artifact named $env:ARTIFACT_NAME found."
           "skip_build=false" >> $env:GITHUB_OUTPUT
         }
 
     - name: Checkout depthai
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       if: steps.reuse.outputs.skip_build != 'true'
       with:
         submodules: recursive
 
-    - name: Ensure cache dirs and build dir
+    - name: Ensure build dir
       shell: powershell
       if: steps.reuse.outputs.skip_build != 'true'
       run: |
-        New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
         New-Item -ItemType Directory -Force -Path "C:\depthai-core" | Out-Null
         Write-Host "Copying source from $env:GITHUB_WORKSPACE to C:\depthai-core ..."
         Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
 
-    - name: Restore vcpkg cache
+    - name: Setup cmake
       if: steps.reuse.outputs.skip_build != 'true'
-      uses: actions/cache/restore@v4
-      id: vcpkg-restore
+      uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
       with:
-        path: C:\vcpkg_binaries
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        cmakeVersion: '4.2.x'
+        useCloudCache: false
+
+    - name: Restore vcpkg binary cache
+      if: steps.reuse.outputs.skip_build != 'true'
+      uses: ./.github/actions/vcpkg-cache/restore
+      with:
+        family: hil-windows-${{ steps.kind.outputs.test_kind }}
 
     - name: Configure and Build
       if: steps.reuse.outputs.skip_build != 'true'
@@ -152,24 +153,32 @@ jobs:
         Write-Host "cmake args:`n$($cmakeArgs -join ' ')"
         & cmake @cmakeArgs
 
-        $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 2 --config Release"
+        # windows-2025 runners have 4 vCPUs; the integration job of main.workflow.yml builds with 4 as well.
+        $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 4 --config Release"
         Write-Host "Running: $cmakeBuildCommand"
         Invoke-Expression $cmakeBuildCommand
 
-    - name: Save vcpkg cache (refresh)
-      if: ${{ github.event_name != 'pull_request' && steps.reuse.outputs.skip_build != 'true' }}
-      uses: actions/cache/save@v4
+    - name: Save vcpkg binary cache
+      if: steps.reuse.outputs.skip_build != 'true'
+      uses: ./.github/actions/vcpkg-cache/save
       with:
-        path: C:\vcpkg_binaries
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        vcpkg-installed-dir: C:/depthai-core/build/vcpkg_installed
 
     - name: Upload artifact
       if: steps.reuse.outputs.skip_build != 'true'
       id: artifact-upload-step
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: depthai-core-win-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
-        path: C:\depthai-core
+        path: |
+          C:\depthai-core
+          !C:\depthai-core\.git
+          !C:\depthai-core\build\vcpkg\.git
+          !C:\depthai-core\build\vcpkg\buildtrees
+          !C:\depthai-core\build\vcpkg\packages
+          !C:\depthai-core\build\vcpkg\downloads
+          !C:\depthai-core\build\**\*.obj
+          !C:\depthai-core\winpython.zip
         retention-days: 1
 
   run_windows_tests_rvc4:
@@ -189,7 +198,7 @@ jobs:
 
       - name: Upload test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ctest-log-windows-rvc4_test-rvc4os=${{ matrix.rvc4os }}
           path: windows_rvc4_test_output.log
@@ -212,7 +221,7 @@ jobs:
 
       - name: Upload test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ctest-log-windows-rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
           path: windows_rvc4_usb_test_output.log
@@ -221,17 +230,38 @@ jobs:
   report_windows_test_results:
     name: Report Windows test results
     needs: [run_windows_tests_rvc4, run_windows_tests_rvc4_usb]
-    if: always()
+    # Skip the report when the run was cancelled (by a user or by concurrency).
+    # Keep it for crashes, failures and job timeouts.
+    if: ${{ !cancelled() }}
     runs-on: ['self-hosted', 'testbed-runner']
     permissions:
+      actions: read
       contents: read
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
     - name: Download test logs
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         pattern: ctest-log-windows-*
         path: ctest-logs
+    - name: Restore single-artifact log directory
+      if: hashFiles('ctest-logs/*.log') != ''
+      uses: actions/github-script@v9
+      env:
+        ARTIFACT_PREFIX: ctest-log-windows-
+      with:
+        script: |
+          const fs = require('node:fs');
+          const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+            ...context.repo, run_id: context.runId
+          });
+          const artifact = artifacts.find(a => !a.expired && a.name.startsWith(process.env.ARTIFACT_PREFIX));
+          if (!artifact) throw new Error('Test log artifact not found');
+          const directory = `ctest-logs/${artifact.name}`;
+          fs.mkdirSync(directory, {recursive: true});
+          for (const file of fs.readdirSync('ctest-logs').filter(f => f.endsWith('.log'))) {
+            fs.renameSync(`ctest-logs/${file}`, `${directory}/${file}`);
+          }
     - name: Generate combined summary
       env:
         INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
@@ -281,7 +311,7 @@ jobs:
         fi
     - name: Upload JUnit XML reports
       if: always() && hashFiles('ctest-reports/*.xml') != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: junit-reports-windows
         path: ctest-reports/*.xml

@@ -6,6 +6,7 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/beta/node/ToFStereoFusion.hpp"
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/Device.hpp"
@@ -47,6 +48,7 @@ class Depth : public DeviceNodeGroup {
         NEURAL_ASSISTED_STEREO,
         TOF,
         GPU_STEREO,
+        TOF_STEREO_FUSION,
     };
 
     /**
@@ -145,6 +147,26 @@ class Depth : public DeviceNodeGroup {
     }
 
     /**
+     * Get depth methods supported by a device and its connected sensors.
+     * Can be called before creating a pipeline or Depth node.
+     * Availability does not guarantee a particular FPS or resolution.
+     * @param device Device to query; must not be null.
+     * @return Supported concrete algorithms (AUTO is excluded); empty if none are supported.
+     * @throws std::runtime_error If device is null.
+     */
+    [[nodiscard]] static std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device);
+
+    /**
+     * Get the algorithm AUTO would select without FPS, size, config, or existing camera overrides.
+     * Uses the device's native stereo resolution and a target of 30 FPS.
+     * Can be called before creating a pipeline or Depth node.
+     * @param device Device to query; must not be null.
+     * @return The concrete default algorithm (never AUTO).
+     * @throws std::runtime_error If device is null or lacks the sensors required for AUTO selection.
+     */
+    [[nodiscard]] static Algorithm getDefaultAlgorithm(const std::shared_ptr<Device>& device);
+
+    /**
      * Set the requested algorithm before wiring.
      * @param algorithm Backend to use; AUTO re-enables auto-selection
      */
@@ -199,11 +221,10 @@ class Depth : public DeviceNodeGroup {
 
     void requireNotBuilt(const char* method) const;
 
-    std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device, const std::vector<DeviceModelZoo>& supportedModels) const;
-
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
-    static Selection selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
+    static Selection selectBackend(Platform platform,
+                                   std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                    float targetFps,
                                    const std::vector<Algorithm>& supportedAlgorithms,
                                    const std::vector<DeviceModelZoo>& modelFilter = {},
@@ -234,6 +255,7 @@ class Depth : public DeviceNodeGroup {
     std::unique_ptr<::dai::Subnode<GPUStereo>> gpuStereoBackend_;
     std::shared_ptr<NeuralAssistedStereo> nasBackend_;
     std::shared_ptr<ToF> tofBackend_;
+    std::shared_ptr<beta::node::ToFStereoFusion> tofStereoFusionBackend_;
     std::unique_ptr<::dai::Subnode<ImageAlign>> imageAlignBackend_;
 };
 

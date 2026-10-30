@@ -24,7 +24,7 @@ with dai.Pipeline() as p:
     right.requestOutput((width, height)).link(odom.right)
     imu.out.link(odom.imu)
     odom.passthrough.link(rerunViewer.inputImg)
-    odom.transform.link(rerunViewer.inputTrans)
+    odom.transform.link(rerunViewer.inputPose)
     p.start()
     while p.isRunning():
         time.sleep(0.01)

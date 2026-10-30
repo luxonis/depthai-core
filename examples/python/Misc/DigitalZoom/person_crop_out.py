@@ -28,7 +28,7 @@ def displayFrame(name: str, frame: dai.ImgFrame, imgDetections: dai.ImgDetection
         normShape = imgDetections.getTransformation().getSize()
 
         # Create rotated rectangle to remap
-        rotRect = dai.RotatedRect(dai.Rect(dai.Point2f(detection.xmin, detection.ymin), dai.Point2f(detection.xmax, detection.ymax)).denormalize(normShape[0], normShape[1]), 0)
+        rotRect = dai.RotatedRect(dai.Rect(dai.Point2f(detection.xmin, detection.ymin), dai.Point2f(detection.xmax, detection.ymax), True).denormalize(normShape[0], normShape[1]), 0)
         # Remap the detection rectangle to target frame
         remapped = imgDetections.getTransformation().remapRectTo(frame.getTransformation(), rotRect)
         # Remapped rectangle could be rotated, so we get the bounding box
@@ -58,13 +58,13 @@ def transformDetectionToSource(imgDetections: dai.ImgDetections, detection: dai.
     normShape = imgDetections.getTransformation().getSize()
     sourceSize = imgDetections.getTransformation().getSourceSize()
     width, height = sourceSize
-    rotRect = dai.RotatedRect(dai.Rect(dai.Point2f(detection.xmin, detection.ymin), dai.Point2f(detection.xmax, detection.ymax)).denormalize(normShape[0], normShape[1]), 0)
+    rotRect = dai.RotatedRect(dai.Rect(dai.Point2f(detection.xmin, detection.ymin), dai.Point2f(detection.xmax, detection.ymax), True).denormalize(normShape[0], normShape[1]), 0)
     rotRect = imgDetections.getTransformation().invTransformRect(rotRect)
     outerRect = rotRect.getOuterRect()
 
     firstPoint = dai.Point2f(max(0, min(outerRect[0], width)), max(0, min(outerRect[1], height)))
     secondPoint = dai.Point2f(max(0, min(outerRect[2], width)), max(0, min(outerRect[3], height)))
-    return dai.Rect(firstPoint, secondPoint)
+    return dai.Rect(firstPoint, secondPoint, True)
 
 
 device = dai.Device()

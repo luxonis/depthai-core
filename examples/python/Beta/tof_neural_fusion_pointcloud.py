@@ -26,6 +26,7 @@ with dai.Pipeline() as pipeline:
     right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=30)
     fusion = pipeline.create(dai.beta.node.ToFStereoFusion).build(left, right)
     fusion.initialConfig.confidenceThreshold = 0.3
+    fusion.initialConfig.setCropToOverlap(False)
 
     colorizer = pipeline.create(DepthColorizer)
     fusion.depth.link(colorizer.input)

@@ -44,6 +44,8 @@ else()
     )
 endif()
 
+set(ENABLE_ZLIB ON)
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
@@ -74,7 +76,7 @@ vcpkg_cmake_configure(
         -DENABLE_TEST=OFF
         -DENABLE_WERROR=OFF
         -DENABLE_XATTR=OFF
-        -DENABLE_ZLIB=OFF
+        -DENABLE_ZLIB=${ENABLE_ZLIB}
         -DENABLE_ZSTD=OFF
 )
 

@@ -2,8 +2,14 @@ name: DepthAI Core HIL Testing Nightly
 
 on:
   workflow_dispatch:
+    inputs:
+      build_and_bom:
+        description: Build the Python wheels, then run the BOM tests at the same time as the HIL tests (the nightly develop build)
+        type: boolean
+        default: false
 
 permissions:
+  actions: read
   contents: read
 
 # Only allow latest nightly run on same branch to be tested
@@ -12,15 +18,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build_wheels:
+    if: inputs.build_and_bom
+    uses: ./.github/workflows/python-main.yml
+    with:
+      concurrency_suffix: nightly
+    secrets: inherit
+
   run_ci_and_ci_nightly_tests:
+    needs: build_wheels
+    if: ${{ !cancelled() }}
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
       job_prefix: "vanilla-ci-nightly"
       rvc2_protocol: "all"
       test_label: "ci|ci_nightly"
-      luxonis_os_versions_to_test: "['1.33.0']"
-      luxonis_os_versions_to_test_usb: "['1.33.0']"
+      luxonis_os_versions_to_test: "['1.44.0']"
+      luxonis_os_versions_to_test_usb: "['1.44.0']"
+      usb_link_speed_sanity: true
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -30,3 +46,9 @@ jobs:
       INFLUXDB_ORG: ${{ secrets.INFLUXDB_ORG }}
       INFLUXDB_TOKEN: ${{ secrets.INFLUXDB_TOKEN }}
       INFLUXDB_URL: ${{ secrets.INFLUXDB_URL }}
+
+  dispatch_bom_tests:
+    needs: build_wheels
+    if: ${{ !cancelled() && needs.build_wheels.result == 'success' }}
+    uses: ./.github/workflows/bom_dispatch.yml
+    secrets: inherit

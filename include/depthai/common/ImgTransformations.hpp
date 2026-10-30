@@ -22,7 +22,9 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    // Full camera model of the image (projection surface + distortion model, see dai::CameraModel), not only its distortion. The name is historical.
     CameraModel distortionModel = CameraModel::Perspective;
+    // Coefficients of the distortion model that `distortionModel` selects; empty or all-zero for an undistorted image
     std::vector<float> distortionCoefficients;
     Extrinsics extrinsics = {};
 
@@ -140,8 +142,9 @@ struct ImgTransformation {
      */
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
     /**
-     * Retrieve the distortion model of the source sensor
-     * @return Distortion model
+     * Retrieve the camera model of the source sensor. Despite the name it is the full dai::CameraModel: the projection surface the image is rendered on
+     * (pinhole plane, sphere or cylinder) together with the distortion model its coefficients parametrize. Panorama models carry no distortion at all.
+     * @return Camera model, see dai::CameraModel for the table of projections and distortions
      */
     CameraModel getDistortionModel() const;
     /**
@@ -204,6 +207,21 @@ struct ImgTransformation {
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**
+     * Re-express the source extrinsics relative to a new target coordinate
+     * system.
+     *
+     * The supplied transform must map the current local calibration origin to
+     * the new target. Only the extrinsics are changed; all image-space
+     * transformation data is preserved. The rebased extrinsics translation is
+     * stored in centimeters.
+     *
+     * @param localOriginToTarget Transform from the current local calibration
+     * origin to the new target coordinate system.
+     * @return This transformation.
+     */
+    ImgTransformation& rebaseExtrinsics(const Extrinsics& localOriginToTarget);
+
+    /**
      * Returns true if the point is inside the transformed region of interest (determined by crops used).
      */
     bool getSrcMaskPt(size_t x, size_t y);
@@ -258,6 +276,10 @@ struct ImgTransformation {
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
     ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
+    /**
+     * Set the camera model of the source sensor: projection surface and distortion model in one dai::CameraModel value. The name is historical, see
+     * getDistortionModel().
+     */
     ImgTransformation& setDistortionModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
 
@@ -266,7 +288,10 @@ struct ImgTransformation {
      * intrinsics to remap the point.
      * @param to Transformation to remap to
      * @param point Point to remap
-     * @note This function assumes both transformations have the same source (eg. same source camera socket). If they don't, remapping will be inaccurate.
+     * @note Uses intrinsics, distortion and relative rotation, without object depth or camera translation.
+     * Perspective, Equirectangular and Cylindrical destinations are supported. An unprojectable point has non-finite coordinates.
+     * Non-panorama destinations return NaN coordinates for rays with z <= 0.
+     * Different cameras must share an extrinsics coordinate system; near objects can be displaced by parallax.
      */
     dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point) const;
     /**
@@ -283,6 +308,7 @@ struct ImgTransformation {
      * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param to Transformation to remap to
      * @param rect RotatedRect to remap
+     * @return Minimum enclosing rotated rectangle, preserving the angle and side ordering returned by the rectangle fitter.
      */
     dai::RotatedRect remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const;
     /**

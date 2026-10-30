@@ -16,7 +16,6 @@ on:
   push:
     branches:
       - main
-      - develop
       - 'release*'
     tags:
       - 'v*'
@@ -24,7 +23,7 @@ on:
     branches:
       - main
       - develop
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
   pull_request_review:
     types: [submitted]
 
@@ -32,14 +31,16 @@ on:
 ###################################
 
 env:
-  CMAKE_WINDOWS_SDK_VERSION: '10.0.18362.0'
+  CMAKE_WINDOWS_SDK_VERSION: '10.0.26100.0'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
 
   # The precheck job determines whether a workflow should be run in full
   precheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
       wheel_python_versions: ${{ steps.check.outputs.wheel_python_versions }}
@@ -53,10 +54,10 @@ jobs:
         CHECK_GITHUB_REF: ${{ github.ref }}
         CHECK_REVIEW_STATE: ${{ github.event.review.state }}
         CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        CHECK_ACTION: ${{ github.event.action }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
         GITHUB_REF="$CHECK_GITHUB_REF"
-        REVIEW_STATE="$CHECK_REVIEW_STATE"
 
         RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
         if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
@@ -77,9 +78,12 @@ jobs:
         if [[ "$EVENT_NAME" == "pull_request" || "$EVENT_NAME" == "pull_request_review" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
-          if [[ "$EVENT_NAME" == "pull_request" ]] && ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+          if [[ "$EVENT_NAME" == "pull_request" && "$CHECK_ACTION" != "labeled" ]]; then
+            # Run the binding precheck on edits; retain the existing full-build triggers.
             SHOULD_RUN="false"
-          elif [[ "$EVENT_NAME" == "pull_request_review" && ("$REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop")) ]]; then
+          elif [[ "$EVENT_NAME" == "pull_request" ]] && ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          elif [[ "$EVENT_NAME" == "pull_request_review" && ("$CHECK_REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop")) ]]; then
             SHOULD_RUN="false"
           fi
         fi
@@ -89,38 +93,51 @@ jobs:
         echo "wheel_python_sets=$WHEEL_PYTHON_SETS" >> "$GITHUB_OUTPUT"
         echo "wheel_macos_runners=$WHEEL_MACOS_RUNNERS" >> "$GITHUB_OUTPUT"
 
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+    - name: Install binding precheck dependencies
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      run: python -m pip install -r ci/requirements-binding-check.txt
+    - name: Test binding precheck
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      run: python -m unittest discover -s ci/tests -p 'test_python_bindings.py'
+    - name: Check new public APIs have Python bindings
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      env:
+        BINDING_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+      run: |
+        if [[ -z "$BINDING_BASE" || "$BINDING_BASE" =~ ^0+$ ]]; then
+          BINDING_BASE=HEAD^
+        fi
+        python ci/check_python_bindings.py --base "$BINDING_BASE"
+
   # Job which builds docstrings for the rest of the wheel builds
   build-docstrings:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [precheck]
     if: needs.precheck.outputs.should_run == 'true'
-    env:
-      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version : '3.31.x'
-      - name: Cache vcpkg folder
-        uses: actions/cache@v3
-        with:
-          path: /home/runner/.vcpkg
-          key: vcpkg-ubuntu-latest
-      - name: List vcpkg cache directory
-        run: ls -a -l /home/runner/.vcpkg || true
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Setup cmake
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          python-version: 3.8
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: py-docstrings
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - name: Install dependencies
         run: |
           sudo apt update
@@ -139,6 +156,10 @@ jobs:
             -DDEPTHAI_PCL_SUPPORT=ON \
             -DDEPTHAI_RTABMAP_SUPPORT=ON \
             -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: build/vcpkg_installed
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Print out vcpkg logs if building port fails
@@ -146,7 +167,7 @@ jobs:
         run: bash ./bindings/python/ci/show_vcpkg_logs.sh
 
       - name: Upload docstring artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docstrings
           path: bindings/python/docstrings/
@@ -156,58 +177,40 @@ jobs:
   # Build and test bindings
   pytest:
     needs: build-docstrings
-    env:
-      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     strategy:
       matrix:
-        # os: [ubuntu-latest, windows-2022, macos-latest]
-        os: [ubuntu-latest] # TODO(Morato) - re-enable windows & macos
+        # os: [ubuntu-24.04, windows-2025, macos-latest]
+        os: [ubuntu-24.04] # TODO(Morato) - re-enable windows & macos
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
-      - name: Print home directory
-        run: echo Home directory inside container $HOME
-
-      - name: Cache vcpkg folder
-        if: matrix.os != 'windows-2022'
-        uses: actions/cache@v3
-        with:
-          path: /home/runner/.vcpkg/
-          key: vcpkg-${{ matrix.os }}
-      - name: Cache vcpkg folder
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v3
-        with:
-          path: C:/.vcpkg/
-          key: vcpkg-${{ matrix.os }}
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - uses: actions/checkout@v3
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
 
-      - uses: actions/download-artifact@v4
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: py-pytest
+
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10"
 
       - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           sudo apt update
           python -m pip install --upgrade pip
@@ -221,14 +224,16 @@ jobs:
 
       - name: Setup cmake
         if: matrix.os == 'macos-latest'
-        uses: jwlawson/actions-setup-cmake@v1.13
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+        with:
+          useCloudCache: false
 
 
       - name: Install pytest
         run: |
           python -m pip install pytest numpy opencv-python jinja2 websockets
 
-      - name: Compile
+      - name: Configure
         run: |
             cmake -S . \
             -B build \
@@ -238,7 +243,13 @@ jobs:
             -D VCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
             -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
-            cmake --build build --parallel 4
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: build/vcpkg_installed
+          save: ${{ strategy.job-index == 0 }}
+      - name: Compile
+        run: cmake --build build --parallel 4
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -250,7 +261,7 @@ jobs:
   # This job builds wheels for Windows x86_64 arch
   build-windows-x86_64:
     needs: [precheck, build-docstrings]
-    runs-on: windows-2022
+    runs-on: windows-2025
     strategy:
       matrix:
         python-version: ${{ fromJson(needs.precheck.outputs.wheel_python_versions) }}
@@ -261,28 +272,23 @@ jobs:
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
-      VCPKG_BINARY_SOURCES: "clear;files,C:\\.vcpkg,readwrite"
+      CMAKE_GENERATOR: Visual Studio 18 2026
+      CMAKE_GENERATOR_TOOLSET: v143
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
-      - name: Cache vcpkg folder
-        uses: actions/cache@v3
-        with:
-          path: C:/.vcpkg
-          key: vcpkg-windows-2022
-      - uses: actions/checkout@v3
+          cmakeVersion: '4.2.x'
+          useCloudCache: false
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
         with:
-          script: |
-           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+          family: wheel
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
@@ -292,8 +298,14 @@ jobs:
       - name: Select Windows SDK
         run: echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Use vcpkg's Fortran compiler
+        run: |
+          # VS Flang lacks intrinsic modules; hide it so vcpkg uses its MinGW fallback.
+          Get-ChildItem "$env:ProgramFiles\Microsoft Visual Studio\18\*\VC\Tools\Llvm" -Recurse -Filter "flang*.exe" |
+            ForEach-Object { Rename-Item -LiteralPath $_.FullName -NewName "$($_.Name).disabled" -Verbose }
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.python-architecture }}
@@ -309,6 +321,12 @@ jobs:
           python -m pip install --upgrade pip
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          # setuptools builds under temp.win-*/Release on Windows (one level deeper than on Linux and macOS)
+          vcpkg-installed-dir: bindings/python/build/temp.*/Release/vcpkg_installed
+          save: ${{ strategy.job-index == 0 }}
       - name: Verify wheel license files
         shell: bash
         run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
@@ -332,7 +350,7 @@ jobs:
         shell: bash
         run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-windows-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
@@ -347,37 +365,25 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
-      VCPKG_BINARY_SOURCES: "clear;files,/Users/runner/.vcpkg,readwrite"
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
     steps:
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          cmake-version : '3.31.x'
-      - name: Cache vcpkg folder
-        uses: actions/cache@v3
-        with:
-          path: /Users/runner/.vcpkg
-          key: vcpkg-${{ matrix.os }}
-      - name: List vcpkg cache directory
-        run: |
-          ls -a -l /Users/runner/.vcpkg || true
-          echo "PATH=$PATH"
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - uses: actions/checkout@v3
+          cmakeVersion: '3.31.x'
+          useCloudCache: false
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: wheel-${{ matrix.os }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
@@ -385,7 +391,7 @@ jobs:
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Append build hash if not a tagged commit
@@ -399,6 +405,12 @@ jobs:
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: bindings/python/build/temp.*/vcpkg_installed
+          # The first Python version of the matrix saves; all versions produce the same package ABIs.
+          save: ${{ matrix.python-version == fromJson(needs.precheck.outputs.wheel_python_versions)[0] }}
       - name: Verify wheel license files
         shell: bash
         run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
@@ -411,7 +423,7 @@ jobs:
         shell: bash
         run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-macos-${{ matrix.os }}-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
@@ -424,12 +436,12 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Download audited wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-macos-${{ matrix.os }}-*
           path: bindings/python/wheelhouse/audited/
@@ -440,7 +452,7 @@ jobs:
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-combined-macos-${{ matrix.os }}
           path: bindings/python/wheelhouse/audited/*
@@ -468,7 +480,7 @@ jobs:
   # This job builds wheels for x86_64 arch
   build-linux-x86_64:
     needs: [precheck, build-docstrings]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
       env:
@@ -481,28 +493,20 @@ jobs:
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
-      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
-      - name: Cache vcpkg folder
-        uses: actions/cache@v3
-        with:
-          path: /home/runner/.vcpkg
-          key: vcpkg-manylinux-x86_64
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: wheel-manylinux-x86_64
       - name: Installing libusb1-devel dependency
         run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
       - name: Create folder structure
         run: cd bindings/python && mkdir -p wheelhouse/audited/
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
@@ -516,12 +520,17 @@ jobs:
       - name: Building source distribution
         run: |
           cd bindings/python
-          /opt/python/cp310-cp310/bin/python3.10 -m pip install --upgrade setuptools
+          /opt/python/cp310-cp310/bin/python3.10 -m pip install --upgrade setuptools packaging
           /opt/python/cp310-cp310/bin/python3.10 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: bindings/python/build/temp.*/vcpkg_installed
+          save: ${{ strategy.job-index == 0 }}
       - name: Verify wheel license files
         run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
@@ -533,22 +542,22 @@ jobs:
       - name: Verify repaired wheel license files
         run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-linux-x86_64-${{ matrix.python-set }}
           path: bindings/python/wheelhouse/audited/*
 
   combine-linux-x86_64-wheels:
     needs: build-linux-x86_64
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
       env:
         PLAT: manylinux_2_28_x86_64
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Download audited wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-linux-x86_64-*
           path: bindings/python/wheelhouse/audited/
@@ -562,7 +571,7 @@ jobs:
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-combined-linux-x86_64
           path: bindings/python/wheelhouse/audited/*
@@ -605,26 +614,18 @@ jobs:
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
-      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
     steps:
-      - name: Cache vcpkg folder
-        uses: actions/cache@v3
-        with:
-          path: /home/runner/.vcpkg
-          key: vcpkg-manylinux-arm64
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: wheel-manylinux-arm64
       - name: Installing libusb1-devel dependency
         run: yum install -y libusb1-devel perl-core curl zip unzip tar zlib-devel curl-devel libxcb-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake libX11-devel pkgconfig 
       - name: Setup ninja required for arm64 builds
@@ -637,7 +638,7 @@ jobs:
       - name: Create folder structure
         run: cd bindings/python && mkdir -p wheelhouse/audited/
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: 'docstrings'
           path: bindings/python/docstrings
@@ -650,6 +651,11 @@ jobs:
       - name: Building wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: bindings/python/build/temp.*/vcpkg_installed
+          save: ${{ strategy.job-index == 0 }}
       - name: Verify wheel license files
         run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
@@ -661,7 +667,7 @@ jobs:
       - name: Verify repaired wheel license files
         run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-linux-arm64-${{ matrix.python-set }}
           path: bindings/python/wheelhouse/audited/*
@@ -675,9 +681,9 @@ jobs:
       env:
         PLAT: manylinux_2_28_aarch64
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Download audited wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-linux-arm64-*
           path: bindings/python/wheelhouse/audited/
@@ -691,7 +697,7 @@ jobs:
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-combined-linux-arm64
           path: bindings/python/wheelhouse/audited/*
@@ -721,17 +727,17 @@ jobs:
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
-    runs-on: windows-2022
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Download audited wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-windows-*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Combine wheels
@@ -743,7 +749,7 @@ jobs:
           echo "Combining repaired wheels into one master wheel"
           python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: audited-wheels-combined-windows-x86_64
           path: bindings/python/wheelhouse/audited/*
@@ -776,7 +782,7 @@ jobs:
     name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Python CI report' || 'Python CI report (not applicable)' }}
     needs: [precheck, pytest, combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Check required CI results
       env:
@@ -795,11 +801,11 @@ jobs:
   upload-wheels-to-ak:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-combined-*
           merge-multiple: true
@@ -814,13 +820,13 @@ jobs:
   notify-slack:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     needs: [upload-wheels-to-ak]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.8'
+          python-version: '3.12'
 
       - name: Send Slack notification
         env:
@@ -836,10 +842,10 @@ jobs:
 
           # Determine the version and the install command
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_version())")
             INSTALL_COMMAND="\`python3 -m pip install depthai==$VERSION\`"
           else
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
             INSTALL_COMMAND="\`python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==$VERSION\`"
           fi
 
@@ -862,30 +868,30 @@ jobs:
     # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
     # needs: [pytest, build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
     needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v7
       with:
-        python-version: '3.8'
+        python-version: '3.12'
 
     - name: Check if version matches
-      run: cd bindings/python && python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
+      run: cd bindings/python && python -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
 
   # Deploy to PyPI and Artifact Keeper. Only when a commit is tagged
   deploy:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: audited-wheels-combined-*
           merge-multiple: true
@@ -905,69 +911,11 @@ jobs:
           AK_URL: ${{ secrets.AK_URL }}
           AK_TOKEN: ${{ secrets.AK_TOKEN }}
 
+  # BOM tests for pushes to main, release branches and tags; they install the wheels that this run uploaded.
+  # The job only dispatches the BOM run and links it. develop is not built on push: hil_testing_nightly.yml
+  # starts the BOM tests of the nightly build at the same time as its HIL tests.
   dispatch-bom-tests:
-    needs: [build-linux-x86_64, deploy]
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
-    outputs:
-      runner_conclusion: ${{ steps.get_runner.outputs.runner_conclusion }}
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.8'
-
-      - name: Get dev version from script
-        id: get_version
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
-          else
-            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
-          fi
-          echo "VERSION=$VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-
-      - name: Dispatch action and get run ID
-        uses: codex-/return-dispatch@v2
-        id: return_dispatch
-        with:
-          token: ${{ secrets.BOM_GITHUB_TOKEN }}
-          ref: "main"
-          repo: "luxonis-bom"
-          owner: "luxonis"
-          workflow: "dispatch_main.yml"
-          workflow_timeout_seconds: 120
-          workflow_job_steps_retry_seconds: 2
-          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
-
-      - name: Wait for the dispatched workflow to complete
-        id: get_runner
-        run: |
-            RUN_ID=${{ steps.return_dispatch.outputs.run_id }}
-            TOKEN=${{ secrets.BOM_GITHUB_TOKEN }}
-            OWNER="luxonis"
-            REPO="luxonis-bom"
-
-            echo "STARTING TO WAIT FOR RUN https://github.com/$OWNER/$REPO/actions/runs/$RUN_ID"
-
-            STATUS=$(curl -s --header "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
-
-            while [ "$STATUS" != "completed" ]; do
-              echo "Waiting for the workflow run to complete..."
-              sleep 60
-              STATUS=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
-              echo "Current status $STATUS"
-            done
-            CONCLUSION=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .conclusion)
-
-            echo "Run $RUN_ID is completed. Conclusion is $CONCLUSION"
-
-            # Set outputs for the job using GITHUB_OUTPUT file
-            echo "runner_conclusion=$CONCLUSION" >> $GITHUB_OUTPUT
-            if [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "skipped" ]; then
-                echo "Failed job"
-                exit 1
-            fi
+    if: github.event_name == 'push' && !failure() && !cancelled()
+    needs: [required_python_ci_report, upload-wheels-to-ak, deploy]
+    uses: ./.github/workflows/bom_dispatch.yml
+    secrets: inherit

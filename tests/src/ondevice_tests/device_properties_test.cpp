@@ -57,29 +57,14 @@ TEST_CASE("Test pipeline device property setters apply before start") {
     const uint32_t sippSize = dai::DeviceProperties::SIPP_BUFFER_DEFAULT_SIZE + 1024;
     const uint32_t sippDmaSize = dai::DeviceProperties::SIPP_DMA_BUFFER_DEFAULT_SIZE + 1024;
 
-    auto tuningPath = writeTempFile("dai_cam_tuning", {1, 2, 3, 4, 5, 6});
-    auto tuningSocketPath = writeTempFile("dai_cam_tuning_cam_a", {7, 8, 9});
-
     pipeline.setXLinkChunkSize(xlinkSize);
     pipeline.setSippBufferSize(static_cast<int>(sippSize));
     pipeline.setSippDmaBufferSize(static_cast<int>(sippDmaSize));
-    pipeline.setCameraTuningBlobPath(tuningPath.getPath());
-    pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, tuningSocketPath.getPath());
 
     auto props = device->getProperties();
     REQUIRE(props.xlinkChunkSize == xlinkSize);
     REQUIRE(props.sippBufferSize == sippSize);
     REQUIRE(props.sippDmaBufferSize == sippDmaSize);
-
-    REQUIRE(props.cameraTuningBlobSize.has_value());
-    REQUIRE(props.cameraTuningBlobSize.value() == getFileSize(tuningPath));
-    REQUIRE(props.cameraTuningBlobUri == "asset:camTuning");
-
-    REQUIRE(props.cameraSocketTuningBlobSize.count(dai::CameraBoardSocket::CAM_A) == 1);
-    REQUIRE(props.cameraSocketTuningBlobUri.count(dai::CameraBoardSocket::CAM_A) == 1);
-    REQUIRE(props.cameraSocketTuningBlobSize.at(dai::CameraBoardSocket::CAM_A) == getFileSize(tuningSocketPath));
-    REQUIRE(props.cameraSocketTuningBlobUri.at(dai::CameraBoardSocket::CAM_A)
-            == "asset:camTuning_" + std::to_string(static_cast<int>(dai::CameraBoardSocket::CAM_A)));
 
     pipeline.build();
     pipeline.start();
@@ -94,6 +79,34 @@ TEST_CASE("Test pipeline device property setters apply before start") {
     REQUIRE(propsAfterStart.sippDmaBufferSize == sippDmaSize);
 
     pipeline.stop();
+}
+
+TEST_CASE("Test pipeline camera tuning blob setters update device properties") {
+    dai::Pipeline pipeline;
+
+    pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A)->requestOutput({640, 480})->createOutputQueue();
+
+    auto device = pipeline.getDefaultDevice();
+    REQUIRE(device != nullptr);
+
+    // The blobs are not valid camera tuning data. Only check that the setters update the device properties.
+    // Do not start the pipeline: the camera would use the invalid tuning data (RVC2 does not validate it).
+    auto tuningPath = writeTempFile("dai_cam_tuning", {1, 2, 3, 4, 5, 6});
+    auto tuningSocketPath = writeTempFile("dai_cam_tuning_cam_a", {7, 8, 9});
+
+    pipeline.setCameraTuningBlobPath(tuningPath.getPath());
+    pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, tuningSocketPath.getPath());
+
+    auto props = device->getProperties();
+    REQUIRE(props.cameraTuningBlobSize.has_value());
+    REQUIRE(props.cameraTuningBlobSize.value() == getFileSize(tuningPath));
+    REQUIRE(props.cameraTuningBlobUri == "asset:camTuning");
+
+    REQUIRE(props.cameraSocketTuningBlobSize.count(dai::CameraBoardSocket::CAM_A) == 1);
+    REQUIRE(props.cameraSocketTuningBlobUri.count(dai::CameraBoardSocket::CAM_A) == 1);
+    REQUIRE(props.cameraSocketTuningBlobSize.at(dai::CameraBoardSocket::CAM_A) == getFileSize(tuningSocketPath));
+    REQUIRE(props.cameraSocketTuningBlobUri.at(dai::CameraBoardSocket::CAM_A)
+            == "asset:camTuning_" + std::to_string(static_cast<int>(dai::CameraBoardSocket::CAM_A)));
 }
 
 TEST_CASE("Test device setProperties before and after start") {

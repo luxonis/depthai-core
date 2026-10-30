@@ -67,9 +67,20 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
              py::overload_cast<HousingCoordinateSystem>(&PointCloudConfig::setTargetCoordinateSystem),
              py::arg("housingCS"),
              DOC(dai, PointCloudConfig, setTargetCoordinateSystem, 2))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<const std::string&, CameraBoardSocket>(&PointCloudConfig::setTargetCoordinateSystem),
+             py::arg("targetDeviceId"),
+             py::arg("targetCamera"),
+             DOC(dai, PointCloudConfig, setTargetCoordinateSystem, 3))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<const std::string&, HousingCoordinateSystem>(&PointCloudConfig::setTargetCoordinateSystem),
+             py::arg("targetDeviceId"),
+             py::arg("housingCS"),
+             DOC(dai, PointCloudConfig, setTargetCoordinateSystem, 4))
         .def("getCoordinateSystemType", &PointCloudConfig::getCoordinateSystemType, DOC(dai, PointCloudConfig, getCoordinateSystemType))
         .def("getTargetCameraSocket", &PointCloudConfig::getTargetCameraSocket, DOC(dai, PointCloudConfig, getTargetCameraSocket))
         .def("getTargetHousingCS", &PointCloudConfig::getTargetHousingCS, DOC(dai, PointCloudConfig, getTargetHousingCS))
+        .def("getTargetDeviceId", &PointCloudConfig::getTargetDeviceId, DOC(dai, PointCloudConfig, getTargetDeviceId))
         .def("getUseSpecTranslation", &PointCloudConfig::getUseSpecTranslation, DOC(dai, PointCloudConfig, getUseSpecTranslation))
         .def("setTargetCoordinateSystem",
              py::overload_cast<CameraBoardSocket, bool>(&PointCloudConfig::setTargetCoordinateSystem),

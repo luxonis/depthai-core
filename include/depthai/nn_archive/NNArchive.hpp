@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/device/Device.hpp"  // For platform enum
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
@@ -87,6 +88,13 @@ class NNArchive {
      * @return int: inputHeight
      */
     std::optional<uint32_t> getInputHeight(uint32_t index = 0) const;
+
+    /**
+     * @brief Get resize mode of the model input
+     * @param index: Index of input
+     * @return std::optional<ImgResizeMode>: Resize mode, or nullopt if the archive does not specify one
+     */
+    std::optional<ImgResizeMode> getInputResizeMode(uint32_t index = 0) const;
 
     /**
      * @brief Get supported platforms

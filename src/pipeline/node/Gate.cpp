@@ -2,6 +2,8 @@
 #include <depthai/pipeline/node/Gate.hpp>
 #include <thread>
 
+#include "pipeline/ThreadedNodeImpl.hpp"
+
 namespace dai {
 namespace node {
 
@@ -90,6 +92,8 @@ std::shared_ptr<GateControl> Gate::waitForCommand() {
 }
 
 void Gate::run() {
+    auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     auto currentCommand = std::make_shared<GateControl>(*initialConfig);
 
     // Initialize the timer baseline

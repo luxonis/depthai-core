@@ -1,17 +1,20 @@
 name: DepthAI Core HIL Testing Develop Schedule
 
+# Scheduled workflows run only from the default branch (main), so changes here take effect on main.
 on:
   schedule:
-    - cron: '0 1 * * *' # Every day at 01:00 UTC
+    - cron: '0 20 * * *' # Every day at 20:00 Ljubljana time
+      timezone: 'Europe/Ljubljana'
     - cron: '0 3 * * 6' # Saturdays at 03:00 UTC
     - cron: '0 3 * * 0' # Sundays at 03:00 UTC
 
 permissions:
   actions: write
+  contents: read
 
 jobs:
   dispatch:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Trigger develop HIL testing
         if: github.event.schedule == '0 3 * * 6'
@@ -25,11 +28,44 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run weekly_stability.yml --repo "$GITHUB_REPOSITORY" --ref develop
 
-      - name: Trigger nightly develop HIL testing
-        if: github.event.schedule == '0 1 * * *'
+      - name: Trigger nightly develop build and HIL testing
+        # contains(): the docs do not say if github.event.schedule also holds the timezone.
+        if: contains(github.event.schedule, '0 20 * * *')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop
+        run: |
+          # Pushes to develop do not start a build, so build the newest develop commit here. Skip a build that
+          # passed for the commit or still runs; a failed or cancelled build runs again.
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/develop" --jq .sha)
+          runs() { gh run list --repo "$GITHUB_REPOSITORY" --workflow "$1" --branch develop --commit "$sha" --json databaseId,event,status,conclusion --jq "$2"; }
+          for workflow in main.workflow.yml containers.yml; do
+            if [[ $(runs "$workflow" 'any(.[]; .event != "pull_request" and (.status != "completed" or .conclusion == "success"))') == true ]]; then
+              echo "$workflow passed or runs for develop commit $sha; skipping"
+            else
+              echo "Triggering $workflow for develop commit $sha"
+              gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY" --ref develop
+            fi
+          done
+
+          # The wheels of a commit can be uploaded only once (upload-ak.sh: twine upload without --skip-existing).
+          # Look for a passed upload job in the nightly runs and in python-main.yml runs (manual runs, and push
+          # runs from before develop was built nightly). A python-main.yml run that still runs uploads them.
+          have_wheels=$(runs python-main.yml 'any(.[]; .event != "pull_request" and .status != "completed")')
+          for workflow in hil_testing_nightly.yml python-main.yml; do
+            for id in $(runs "$workflow" '.[].databaseId'); do
+              if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --paginate \
+                   --jq '.jobs[] | select((.name | endswith("upload-wheels-to-ak")) and .conclusion == "success") | .id' | grep -q .; then
+                have_wheels=true
+              fi
+            done
+          done
+          if [[ "$have_wheels" == true ]]; then
+            echo "The wheels of develop commit $sha are uploaded (or a running build uploads them); running the HIL tests only"
+            gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop
+          else
+            echo "Building the wheels of develop commit $sha, then the HIL tests and the BOM tests"
+            gh workflow run hil_testing_nightly.yml --repo "$GITHUB_REPOSITORY" --ref develop -f build_and_bom=true
+          fi
 
       - name: Notify Slack
         if: github.event.schedule == '0 3 * * 6'

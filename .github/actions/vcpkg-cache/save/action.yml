@@ -1,0 +1,85 @@
+name: Save vcpkg binary cache
+description: >
+  Prunes archives the build did not use from the vcpkg binary cache and saves the cache when its
+  content changed, this job is the family's designated saver, the event is not a pull request and
+  the build is not a tag build (tag builds run without a cache, see the restore action).
+  Must follow .github/actions/vcpkg-cache/restore and the vcpkg install (CMake configure) step.
+
+inputs:
+  vcpkg-installed-dir:
+    description: >
+      Directory that holds vcpkg/status for this build. Shell globs allowed, several separated by spaces;
+      the first match is used (setuptools on Windows builds under temp.win-*/Release, one level deeper).
+    required: true
+  save:
+    description: >
+      "true" when this job is the designated saver of its family. Exactly one job per family and OS
+      saves, so parallel jobs do not race for the same key and prune each other's archives.
+    required: false
+    default: "true"
+
+outputs:
+  changed:
+    description: "true when archives were added or removed by this job."
+    value: ${{ steps.prune.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - name: Prune vcpkg binary cache
+      id: prune
+      shell: bash
+      continue-on-error: true
+      env:
+        INSTALLED_GLOB: ${{ inputs.vcpkg-installed-dir }}
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          echo "tag build: vcpkg binary cache disabled by the restore action; nothing to prune or save."
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        shopt -s nullglob
+        # shellcheck disable=SC2206 # the input is a glob on purpose
+        matches=( $INSTALLED_GLOB )
+        if (( ${#matches[@]} == 0 )); then
+          echo "::error::no vcpkg_installed directory matches '$INSTALLED_GLOB'"
+          exit 1
+        fi
+        # The script lives next to this action in the repository; the workspace copy is the fallback
+        # (the action path is a native path on Windows).
+        action_path="$GITHUB_ACTION_PATH"
+        if command -v cygpath >/dev/null 2>&1; then action_path=$(cygpath -u "$action_path"); fi
+        script="$action_path/../../../../ci/prune_vcpkg_binary_cache.sh"
+        [[ -f "$script" ]] || script="$GITHUB_WORKSPACE/ci/prune_vcpkg_binary_cache.sh"
+        bash "$script" "$VCPKG_CACHE_DIR" "${matches[0]}" "$VCPKG_CACHE_MARKER"
+
+    # A reader may continue after a failed prune (it changes nothing), the family's saver may not:
+    # a saver that cannot prune saves nothing and the family stays cold without anyone noticing.
+    - name: Fail the designated saver when the prune failed
+      if: inputs.save == 'true' && steps.prune.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::error::vcpkg binary cache: the prune failed in the designated saver of this family, so no entry would be saved. Check the vcpkg-installed-dir input and the vcpkg status file."
+        exit 1
+
+    - name: Report cache state
+      shell: bash
+      env:
+        ADDED: ${{ steps.prune.outputs.added }}
+        CHANGED: ${{ steps.prune.outputs.changed }}
+        SAVE: ${{ inputs.save }}
+        EVENT: ${{ github.event_name }}
+      run: |
+        if [[ -n "${VCPKG_CACHE_RESTORED_KEY:-}" && "${ADDED:-0}" -gt 0 ]]; then
+          echo "::warning::vcpkg built $ADDED package(s) from source although cache '$VCPKG_CACHE_RESTORED_KEY' was restored. This is expected once after a port, compiler, runner image or vcpkg tool change; if it repeats, the family's saver no longer produces the ABIs this job needs."
+        fi
+        if [[ "$CHANGED" == "true" && ( "$SAVE" != "true" || "$EVENT" == pull_request* ) ]]; then
+          echo "::notice::vcpkg binary cache content changed but this job does not save it (save=$SAVE, event=$EVENT)."
+        fi
+
+    - name: Save vcpkg binary cache
+      if: inputs.save == 'true' && steps.prune.outputs.changed == 'true' && !startsWith(github.event_name, 'pull_request') && !startsWith(github.ref, 'refs/tags/')
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ env.VCPKG_CACHE_DIR }}
+        key: ${{ env.VCPKG_CACHE_KEY }}

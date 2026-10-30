@@ -17,7 +17,9 @@ function(DepthaiVerifyDownloadedLicense downloaded expected)
             "Committed:  ${expected}\n"
             "Downloaded SHA256: ${downloaded_sha}\n"
             "Committed SHA256:  ${expected_sha}\n"
-            "Update the committed notice file if the third-party licenses changed intentionally."
+            "Update the committed notice file if the third-party licenses changed intentionally.\n"
+            "To update it, copy the downloaded license over the committed one, then review and commit it:\n"
+            "  cmake -E copy \"${downloaded}\" \"${expected}\""
         )
     else()
         message(STATUS "Downloaded license matches committed source license.")

@@ -1,7 +1,8 @@
+#include <fp16/fp16.h>
+
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cstring>
-#include <fp16/fp16.h>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
@@ -23,7 +24,7 @@ std::shared_ptr<dai::NNData> makeDetections(bool yolo) {
     info.dims = yolo ? std::vector<unsigned>{1, 6, 1, 2} : std::vector<unsigned>{1, 1, 2, 7};
     info.strides = yolo ? std::vector<unsigned>{24, 4, 4, 2} : std::vector<unsigned>{28, 28, 14, 2};
     const std::vector<float> values = yolo ? std::vector<float>{0.5f, 1, 0.5f, 0.5f, 1, 0.5f, 0.5f, 0.5f, 1, 1, 0.75f, 0.5f}
-                                         : std::vector<float>{0, 0, 0.75f, 0, 0, 0.75f, 1, 0, 0, 0.5f, 0.25f, 0, 1, 1};
+                                           : std::vector<float>{0, 0, 0.75f, 0, 0, 0.75f, 1, 0, 0, 0.5f, 0.25f, 0, 1, 1};
     auto bytes = data->emplaceTensor(info);
     for(size_t i = 0; i < values.size(); ++i) {
         const auto value = fp16_ieee_from_fp32_value(values[i]);
@@ -50,11 +51,28 @@ TEST_CASE("DetectionParser updates runtime thresholds", "[detection-parser-runti
     parser->setIouThreshold(0.3f);
     parser->inputConfig.setWaitForMessage(syncConfig);
     auto input = parser->input.createInputQueue();
-    auto configInput = parser->inputConfig.createInputQueue();
+    auto configInput = TEST_ON_DEVICE ? parser->inputConfig.createInputQueue() : nullptr;
     auto output = parser->out.createOutputQueue();
     auto config = std::make_shared<dai::DetectionParserConfig>(*parser->initialConfig);
     auto data = makeDetections(yolo);
     pipeline.start();
+
+    auto sendConfig = [&]() {
+        auto snapshot = std::make_shared<dai::DetectionParserConfig>(*config);
+        if(TEST_ON_DEVICE) {
+            configInput->send(snapshot);
+        } else {
+            // Deliver before the next frame without an InputQueue forwarding thread.
+            parser->inputConfig.send(snapshot);
+        }
+    };
+    auto getOutput = [&]() {
+        bool timedOut = false;
+        auto result = output->get<dai::ImgDetections>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(result != nullptr);
+        return result;
+    };
 
     // In synchronous mode, a tensor alone must not produce a result.
     if(syncConfig) {
@@ -62,24 +80,27 @@ TEST_CASE("DetectionParser updates runtime thresholds", "[detection-parser-runti
         bool timedOut = false;
         REQUIRE(output->get<dai::ImgDetections>(std::chrono::milliseconds(100), timedOut) == nullptr);
         REQUIRE(timedOut);
-        configInput->send(config);
-        auto first = output->get<dai::ImgDetections>(std::chrono::seconds(5), timedOut);
-        REQUIRE_FALSE(timedOut);
-        REQUIRE(first != nullptr);
+        sendConfig();
+        auto first = getOutput();
         REQUIRE(first->detections.size() == (yolo ? 1 : 2));
     }
 
-    auto checkCount = [&](size_t expected, bool sendConfig) {
-        if(sendConfig && !syncConfig) configInput->send(config);
-        // An asynchronous update may arrive while the parser is already waiting for a tensor.
-        for(int attempt = 0; attempt < 3; ++attempt) {
-            if(syncConfig) configInput->send(config);
+    auto checkCount = [&](size_t expected, bool updateConfig) {
+        if(updateConfig && !syncConfig) {
+            sendConfig();
+            if(!TEST_ON_DEVICE) {
+                // Wake a parser that may have checked for config before blocking on its input.
+                input->send(data);
+                getOutput();
+            }
+        }
+        // Only device transport still needs retries for asynchronous config delivery.
+        const int attempts = TEST_ON_DEVICE && !syncConfig ? 3 : 1;
+        for(int attempt = 0; attempt < attempts; ++attempt) {
+            if(syncConfig) sendConfig();
             input->send(data);
-            bool timedOut = false;
-            auto result = output->get<dai::ImgDetections>(std::chrono::seconds(5), timedOut);
-            REQUIRE_FALSE(timedOut);
-            REQUIRE(result != nullptr);
-            if(syncConfig || result->detections.size() == expected || attempt == 2) {
+            auto result = getOutput();
+            if(result->detections.size() == expected || attempt == attempts - 1) {
                 REQUIRE(result->detections.size() == expected);
                 break;
             }

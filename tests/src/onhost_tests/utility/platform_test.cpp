@@ -88,8 +88,11 @@ TEST_CASE("Process-level locking with dummy", "[platform]") {
     proc1.wait();
     proc2.wait();
 
-    std::cout << "proc1 stdout:\n" << proc1.communicate().first.buf.data() << std::endl;
-    std::cout << "proc2 stdout:\n" << proc2.communicate().first.buf.data() << std::endl;
+    // Buffer is not NUL-terminated: print only its valid length
+    const auto out1 = proc1.communicate().first;
+    const auto out2 = proc2.communicate().first;
+    std::cout << "proc1 stdout:\n" << std::string(out1.buf.data(), out1.length) << std::endl;
+    std::cout << "proc2 stdout:\n" << std::string(out2.buf.data(), out2.length) << std::endl;
 
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

@@ -161,6 +161,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setEepromData(const std::optional<EepromData>& eepromData);
     std::optional<EepromData> getEepromData() const;
     uint32_t getEepromId() const;
+    void setMultiDeviceCalibration(const std::vector<MultiDeviceExtrinsics>& graph);
+    std::optional<std::vector<MultiDeviceExtrinsics>> getMultiDeviceCalibration() const;
+    void clearMultiDeviceCalibration();
+    void applyMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph);
     bool isHostOnly() const;
     bool isDeviceOnly() const;
     std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const;
@@ -222,6 +226,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Calibration mutex
     mutable std::mutex calibMtx;
+    // Serializes multi-device calibration updates (read previous, push to devices, rollback, store).
+    mutable std::mutex multiDeviceCalibMtx;
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
@@ -254,10 +260,13 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Devices that consume other devices' streams (B side of a relay feeding a device
     // node); losing one of these for good stops the pipeline. Derived at build().
     std::unordered_set<const Device*> fatalDevices;
+    // When set, losing any device that carries a node stops the pipeline (strict mode).
+    // Off by default: a lost device only idles its streams (permissive mode).
+    AtomicBool stopOnDeviceLoss{false};
 
     // Called from a device's monitor thread on state transitions. On FAILED, idles the
-    // device's XLink host nodes and stops the pipeline when the device was fatal or the
-    // last one alive.
+    // device's XLink host nodes and stops the pipeline when the device was fatal, the
+    // last one alive, or stopOnDeviceLoss is set.
     void onDeviceStateChanged(DeviceBase* device, DeviceState state);
 
     DeviceState getDeviceState(const std::shared_ptr<Device>& device) const;
@@ -645,6 +654,46 @@ class Pipeline {
     }
 
     /**
+     * Sets the cross-device calibration graph shared by all devices in the pipeline.
+     *
+     * The graph is validated with beta::MultiDeviceCalibrationHandler. Before the
+     * pipeline is built it is only stored and travels to the devices with the
+     * pipeline schema. On a built pipeline it is additionally checked against every
+     * assigned device's local calibration and pushed to all assigned devices at
+     * runtime, so already streaming Camera and ToF nodes switch to the new graph.
+     *
+     * @throws std::invalid_argument when the graph structure is invalid
+     * @throws std::runtime_error when a device's local calibration does not match
+     * the graph or a device rejects the update; devices updated before the failure
+     * are restored to the previous graph and the pipeline keeps the previous graph
+     * @param graph Directed cross-device calibration edges.
+     */
+    void setMultiDeviceCalibration(std::vector<MultiDeviceExtrinsics> graph) {
+        impl()->setMultiDeviceCalibration(graph);
+    }
+
+    /**
+     * Gets the cross-device calibration graph from the pipeline
+     *
+     * @return the graph when one is set, std::nullopt otherwise
+     */
+    std::optional<std::vector<MultiDeviceExtrinsics>> getMultiDeviceCalibration() const {
+        return impl()->getMultiDeviceCalibration();
+    }
+
+    /**
+     * Removes any cross-device calibration graph from the pipeline.
+     *
+     * On a built pipeline the removal is pushed to all assigned devices, which then
+     * publish their local calibration metadata again.
+     *
+     * @throws std::runtime_error when a device rejects the update
+     */
+    void clearMultiDeviceCalibration() {
+        impl()->clearMultiDeviceCalibration();
+    }
+
+    /**
      * Gets the eeprom id from the pipeline
      *
      * @return eeprom id from the pipeline
@@ -796,6 +845,7 @@ class Pipeline {
      * Get the pipeline-level state of a device: RUNNING, DISCONNECTED, RECONNECTING
      * or FAILED. Losing a device does not stop the pipeline (its streams go idle)
      * unless it was the last device alive or a device consuming other devices' streams.
+     * See setStopOnDeviceLoss to stop on any device loss.
      */
     DeviceState getDeviceState(const std::shared_ptr<Device>& device) const {
         return impl()->getDeviceState(device);
@@ -808,6 +858,28 @@ class Pipeline {
      */
     void setDeviceStateCallback(std::function<void(std::shared_ptr<Device>, DeviceState)> callback) {
         impl()->setDeviceStateCallback(std::move(callback));
+    }
+
+    /**
+     * Stop the pipeline when any device that runs a node is lost for good (strict mode).
+     * Off by default (permissive mode): the pipeline keeps running, the lost device's
+     * streams go idle and it stops only when the last device alive or a device consuming
+     * other devices' streams is lost.
+     *
+     * A device is lost for good when its state becomes FAILED - after the reconnection
+     * attempts are exhausted. To stop as soon as a device disconnects, disable reconnection
+     * on the devices (Device::setMaxReconnectionAttempts(0)). Can be changed while the
+     * pipeline runs.
+     *
+     * @param stop True to stop the pipeline on any device loss
+     */
+    void setStopOnDeviceLoss(bool stop) {
+        impl()->stopOnDeviceLoss = stop;
+    }
+
+    /// Get whether the pipeline stops when any device that runs a node is lost for good
+    bool getStopOnDeviceLoss() const {
+        return impl()->stopOnDeviceLoss;
     }
 
     /// Set a camera IQ (Image Quality) tuning blob for all cameras of the given pipeline device

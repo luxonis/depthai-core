@@ -136,8 +136,25 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
             }
             rtabmap::OdometryInfo info;
             auto pose = pimplRtabmap->odom->process(sensorData, &info);
+
+            Point3d velocity;
+            const auto& velocityGuess = pimplRtabmap->odom->getVelocityGuess();
+            if(!pose.isNull() && !velocityGuess.isNull()) {
+                // RTAB-Map reports velocity in the tracked body's local frame. Rotate it first
+                // into RTAB-Map's world frame and then into the published output frame.
+                const float worldX = pose.r11() * velocityGuess.x() + pose.r12() * velocityGuess.y() + pose.r13() * velocityGuess.z();
+                const float worldY = pose.r21() * velocityGuess.x() + pose.r22() * velocityGuess.y() + pose.r23() * velocityGuess.z();
+                const float worldZ = pose.r31() * velocityGuess.x() + pose.r32() * velocityGuess.y() + pose.r33() * velocityGuess.z();
+                velocity.x =
+                    pimplRtabmap->localTransform.r11() * worldX + pimplRtabmap->localTransform.r12() * worldY + pimplRtabmap->localTransform.r13() * worldZ;
+                velocity.y =
+                    pimplRtabmap->localTransform.r21() * worldX + pimplRtabmap->localTransform.r22() * worldY + pimplRtabmap->localTransform.r23() * worldZ;
+                velocity.z =
+                    pimplRtabmap->localTransform.r31() * worldX + pimplRtabmap->localTransform.r32() * worldY + pimplRtabmap->localTransform.r33() * worldZ;
+            }
+
             pose = pimplRtabmap->localTransform * pose * pimplRtabmap->localTransform.inverse();
-            auto out = rtabmapToTransformData(pose);
+            auto out = rtabmapToOdometry(pose, velocity);
             transform.send(out);
             passthroughRect.send(imgFrame);
             passthroughDepth.send(depthFrame);
