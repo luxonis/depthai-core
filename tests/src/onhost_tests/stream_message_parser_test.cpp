@@ -4,11 +4,25 @@
 
 // Include depthai library
 #include <depthai/depthai.hpp>
+#include <depthai/pipeline/datatype/ImgDetectionsFilterConfig.hpp>
 #include <depthai/pipeline/datatype/StreamMessageParser.hpp>
 
 // TODO(themarpe) - fuzz me instead
 
 constexpr auto MARKER_SIZE = 16;
+
+TEST_CASE("Promoted ImgDetectionsFilterConfig parses without beta dispatch") {
+    dai::ImgDetectionsFilterConfig config;
+    config.minConfidence = 0.42f;
+    config.labelsToKeep = std::vector<uint32_t>{2, 7};
+    const auto metadata = dai::StreamMessageParser::serializeMetadata(config);
+
+    auto restored = std::dynamic_pointer_cast<dai::ImgDetectionsFilterConfig>(dai::StreamMessageParser::parseMessage(metadata));
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->minConfidence == config.minConfidence);
+    REQUIRE(restored->labelsToKeep == config.labelsToKeep);
+    REQUIRE(dai::StreamMessageParser::serializeMetadata(restored) == metadata);
+}
 
 TEST_CASE("Correct message") {
     dai::ImgFrame frm;
