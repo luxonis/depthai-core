@@ -48,6 +48,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Node::Input;
     friend class DeviceBase;
     friend class utility::PipelineImplHelper;
+    friend class node::Camera;
 
    public:
     PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
@@ -94,6 +95,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // static functions
     static bool isSamePipeline(const Node::Output& out, const Node::Input& in);
     static bool canConnect(const Node::Output& out, const Node::Input& in);
+
+    // Apply all camera selections for a device before querying its features.
+    void prepareCameraSensors(const std::shared_ptr<Device>& device) const;
 
     // Functions
     Node::Id getNextUniqueId();

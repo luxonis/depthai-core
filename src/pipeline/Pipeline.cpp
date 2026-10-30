@@ -1375,9 +1375,40 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
     return stereoPair;
 }
 
+void PipelineImpl::prepareCameraSensors(const std::shared_ptr<Device>& device) const {
+    std::vector<std::shared_ptr<dai::node::Camera>> cameras;
+    std::unordered_map<CameraBoardSocket, CameraSensorType> types;
+    for(const auto& node : getAllNodes()) {
+        auto camera = std::dynamic_pointer_cast<dai::node::Camera>(node);
+        if(!camera || !camera->isBuilt || camera->device != device) continue;
+        cameras.push_back(camera);
+        const auto type = camera->properties.sensorType;
+        const auto socket = camera->properties.boardSocket;
+        // AUTO sockets retain the existing default-camera selection. An explicit
+        // socket is needed only when overriding a driver before discovery.
+        if(type != CameraSensorType::AUTO && socket != CameraBoardSocket::AUTO) {
+            auto inserted = types.emplace(socket, type);
+            if(!inserted.second && inserted.first->second != type) {
+                throw std::invalid_argument("Conflicting sensor types for the same camera socket");
+            }
+        }
+    }
+    const auto features = device->prepareCameraSensors(types);
+    for(const auto& camera : cameras) {
+        camera->resolveCameraFeatures(features);
+    }
+}
+
 void PipelineImpl::build() {
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     if(isBuild) return;
+
+    // Apply all camera selections together before replay/calibration can query the HAL.
+    for(const auto& node : getAllNodes()) {
+        if(auto camera = std::dynamic_pointer_cast<dai::node::Camera>(node)) {
+            camera->resolveCameraFeatures();
+        }
+    }
 
     // Replay setup can update runtime calibration, so run it before deriving AutoCalibration defaults.
     utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
@@ -1977,6 +2008,8 @@ void PipelineImpl::resetConnections(DeviceBase* device) {
     if(!isHostOnly()) {
         for(const auto& assignedDevice : getAllAssignedDevices()) {
             if(device == nullptr || assignedDevice.get() == device) {
+                // A reconnected firmware process has not received the profile selections.
+                if(assignedDevice->getPlatform() == Platform::RVC4) prepareCameraSensors(assignedDevice);
                 assignedDevice->startPipeline(Pipeline(shared_from_this()));
             }
         }

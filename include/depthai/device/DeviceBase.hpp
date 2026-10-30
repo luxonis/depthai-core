@@ -60,6 +60,9 @@ class DeviceBase {
     friend class PipelineImpl;      // Needed for reconnections
     friend class CrashDumpManager;  // Needed for gate access during crash dump collection
 
+    // Configure all camera nodes before the first RVC4 HAL enumeration.
+    std::vector<CameraFeatures> prepareCameraSensors(const std::unordered_map<CameraBoardSocket, CameraSensorType>& types);
+
    public:
     // constants
 

@@ -27,6 +27,9 @@ class Camera::Impl {
     int32_t nextOutputRequestId = 0;
 
     std::vector<OutputRequest> outputRequests;
+    bool featuresResolved = false;
+    std::optional<std::pair<uint32_t, uint32_t>> sensorResolution;
+    std::optional<float> sensorFps;
 
     Node::Output* requestOutput(Camera& parent, const Capability& genericCapability, bool onHost) {
         if(!parent.isBuilt) {
@@ -78,7 +81,34 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
         throw std::runtime_error("Device pointer is not valid");
     }
 
-    auto cameraFeaturesVector = device->getConnectedCameraFeatures();
+    properties.boardSocket = boardSocket;
+    pimpl->sensorResolution = sensorResolution;
+    pimpl->sensorFps = sensorFps;
+    // RVC4 receives every socket's selection together before CamX enumeration.
+    if(device->getPlatform() != Platform::RVC4) resolveCameraFeatures(device->getConnectedCameraFeatures());
+    isBuilt = true;
+    return std::static_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setSensorType(CameraSensorType sensorType) {
+    if(device && device->getPlatform() == Platform::RVC4 && pimpl->featuresResolved && sensorType != CameraSensorType::AUTO
+       && std::find(cameraFeatures.supportedTypes.begin(), cameraFeatures.supportedTypes.end(), sensorType) == cameraFeatures.supportedTypes.end()) {
+        throw std::runtime_error(
+            "Camera discovery has already initialized the sensor profile. Configure sensor types before querying camera features, "
+            "dimensions or full-resolution outputs.");
+    }
+    properties.sensorType = sensorType;
+    return std::static_pointer_cast<Camera>(shared_from_this());
+}
+
+void Camera::resolveCameraFeatures() const {
+    if(!isBuilt || pimpl->featuresResolved) return;
+    getParentPipeline().impl()->prepareCameraSensors(device);
+}
+
+void Camera::resolveCameraFeatures(const std::vector<CameraFeatures>& cameraFeaturesVector) {
+    auto boardSocket = properties.boardSocket;
+    const auto& sensorResolution = pimpl->sensorResolution;
     // First handle the case if the boardSocket is set to AUTO
     if(boardSocket == CameraBoardSocket::AUTO) {
         auto defaultSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C};
@@ -106,7 +136,7 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
             break;
         }
     }
-    auto fps = sensorFps.value_or(-1.0f);
+    auto fps = pimpl->sensorFps.value_or(-1.0f);
     // Check if the sensor resolution is valid, if specified
     if(sensorResolution.has_value()) {
         if(static_cast<int32_t>(sensorResolution->first) > cameraFeatures.width || static_cast<int32_t>(sensorResolution->second) > cameraFeatures.height) {
@@ -143,8 +173,7 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
     }
 
     properties.boardSocket = boardSocket;
-    isBuilt = true;
-    return std::static_pointer_cast<Camera>(shared_from_this());
+    pimpl->featuresResolved = true;
 }
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket, ReplayVideo& replay) {
@@ -170,6 +199,7 @@ CameraBoardSocket Camera::getBoardSocket() const {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before calling getBoardSocket()");
     }
+    if(properties.boardSocket == CameraBoardSocket::AUTO) resolveCameraFeatures();
     return properties.boardSocket;
 }
 
@@ -177,6 +207,7 @@ uint32_t Camera::getMaxWidth() const {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before calling getMaxWidth()");
     }
+    resolveCameraFeatures();
     return properties.resolutionWidth > 0 ? properties.resolutionWidth : cameraFeatures.width;
 }
 
@@ -184,6 +215,7 @@ uint32_t Camera::getMaxHeight() const {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before calling getMaxHeight()");
     }
+    resolveCameraFeatures();
     return properties.resolutionHeight > 0 ? properties.resolutionHeight : cameraFeatures.height;
 }
 
@@ -195,6 +227,7 @@ Node::Output* Camera::requestFullResolutionOutput(std::optional<ImgFrame::Type> 
         throw std::runtime_error("Invalid device pointer");
     }
 
+    resolveCameraFeatures();
     ImgFrameCapability cap;
     if(useHighestResolution) {
         cap.size.fixed({cameraFeatures.width, cameraFeatures.height});
@@ -307,6 +340,7 @@ Camera& Camera::setMockIsp(ReplayVideo& replay) {
 #endif
 
 void Camera::buildStage1() {
+    resolveCameraFeatures();
     return pimpl->buildStage1(*this);
 }
 

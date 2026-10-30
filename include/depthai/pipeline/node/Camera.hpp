@@ -51,7 +51,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      */
     Node::Output* requestIspOutput(std::optional<float> fps = std::nullopt);
     /**
-     * Build with a specific board socket
+     * Build with a specific board socket. On RVC4, camera discovery and validation are
+     * deferred until the pipeline is prepared or camera dimensions are requested.
      * @param boardSocket Board socket to use
      * @param sensorResolution Sensor resolution to use - by default it's auto-detected from the requested outputs
      * @param sensorFps Sensor FPS to use - by default it's auto-detected from the requested outputs (maximum is used)
@@ -62,12 +63,14 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
     /**
      * Set the sensor type to use
+     * On RVC4, configure every camera before querying device camera features/calibration,
+     * requesting camera dimensions/full-resolution output, or preparing the pipeline. OG05 defaults to color; MONO selects OG05B1B.
+     * Use an explicit board socket to select an OG05 driver profile; AUTO sockets use the default driver.
+     * Once initialized, only AUTO or a type supported by the active driver can be selected.
+     * Configure all camera selections before requesting full-resolution outputs from any camera.
      * @param sensorType Sensor type to use
      */
-    std::shared_ptr<Camera> setSensorType(CameraSensorType sensorType) {
-        getProperties().sensorType = sensorType;
-        return std::dynamic_pointer_cast<Camera>(shared_from_this());
-    }
+    std::shared_ptr<Camera> setSensorType(CameraSensorType sensorType);
 
     /**
      * Get the sensor type
@@ -282,6 +285,9 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Input& getReplayInput() override;
 
    private:
+    friend class dai::PipelineImpl;
+    void resolveCameraFeatures() const;
+    void resolveCameraFeatures(const std::vector<CameraFeatures>& features);
     bool isBuilt = false;
     CameraFeatures cameraFeatures;
 };

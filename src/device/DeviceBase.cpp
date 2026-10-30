@@ -1830,6 +1830,10 @@ std::vector<ConnectionInterface> DeviceBase::getConnectionInterfaces() {
     return pimpl->rpcCallChecked<std::vector<ConnectionInterface>>("getConnectionInterfaces");
 }
 
+std::vector<CameraFeatures> DeviceBase::prepareCameraSensors(const std::unordered_map<CameraBoardSocket, CameraSensorType>& types) {
+    return pimpl->rpcCallChecked<std::vector<CameraFeatures>>("prepareCameraSensors", types);
+}
+
 std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
     return pimpl->rpcCallChecked<std::vector<CameraFeatures>>("getConnectedCameraFeatures");
 }
