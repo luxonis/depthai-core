@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "../../src/utility/Platform.hpp"
+#include "beta/utilities/Classification/ClassificationUtils.hpp"
 #include "depthai/beta/datatypes.hpp"
 #include "depthai/beta/nodes.hpp"
 #include "depthai/depthai.hpp"
@@ -729,3 +730,55 @@ TEST_CASE("Runtime Config changes parser outputs for recorded NNData", "[beta][p
         CHECK(after->detections.empty());
     }
 }
+
+#ifdef DEPTHAI_XTENSOR_SUPPORT
+TEST_CASE("Direct tensor extraction preserves layout and leaves NNData unchanged", "[beta][copy]") {
+    using Order = dai::TensorInfo::StorageOrder;
+    const std::vector<Order> orders{Order::NCHW,
+                                    Order::NHWC,
+                                    Order::NHCW,
+                                    Order::CHW,
+                                    Order::HWC,
+                                    Order::WHC,
+                                    Order::HCW,
+                                    Order::WCH,
+                                    Order::CWH,
+                                    Order::NC,
+                                    Order::CN,
+                                    Order::C,
+                                    Order::H,
+                                    Order::W};
+    for(auto from : orders) {
+        CAPTURE(from);
+        std::vector<size_t> shape;
+        for(size_t encoded = static_cast<size_t>(from); encoded != 0; encoded /= 16) {
+            const size_t sizes[] = {0, 4, 3, 2, 1};
+            shape.push_back(sizes[encoded % 16]);
+        }
+        std::reverse(shape.begin(), shape.end());
+        const size_t count = std::accumulate(shape.begin(), shape.end(), size_t{1}, std::multiplies<size_t>());
+        xt::xarray<float, xt::layout_type::dynamic> tensor = xt::arange<float>(count);
+        tensor.reshape(shape);
+        dai::NNData nn;
+        nn.addTensor<float>("input", tensor, from);
+        nn.tensors[0].quantization = true;
+        nn.tensors[0].qpZp = 1;
+        nn.tensors[0].qpScale = 0.5f;
+        const std::vector<uint8_t> original(nn.getData().begin(), nn.getData().end());
+        for(auto to : orders) {
+            CAPTURE(to);
+            std::optional<xt::xarray<float>> expected;
+            try {
+                expected = nn.getTensor<float>("input", to, true);
+            } catch(const std::exception&) {
+                REQUIRE_THROWS(dai::beta::utilities::ClassificationUtils::getShapedTensorData(nn, "input", to));
+                continue;
+            }
+            const auto actual = dai::beta::utilities::ClassificationUtils::getShapedTensorData(nn, "input", to);
+            REQUIRE(actual.dims == std::vector<size_t>(expected->shape().begin(), expected->shape().end()));
+            REQUIRE(actual.values == std::vector<float>(expected->begin(), expected->end()));
+        }
+        REQUIRE(std::equal(original.begin(), original.end(), nn.getData().begin()));
+    }
+}
+#endif

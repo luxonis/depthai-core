@@ -5,6 +5,8 @@
 #include <limits>
 #include <vector>
 
+#include "utility/ImgFrameView.hpp"
+
 namespace dai {
 namespace utility {
 
@@ -100,9 +102,7 @@ cv::Mat colorizeDepthFrame(const cv::Mat& frame, float minDepth, float maxDepth,
 
 ImgFrame colorizeDepthFrame(const ImgFrame& frame, float minDepth, float maxDepth, cv::ColormapTypes colormap, bool useLog) {
     try {
-        // getCvFrame() is logically const; make a shallow copy to call it.
-        ImgFrame temp = frame;
-        cv::Mat src = temp.getCvFrame();
+        const cv::Mat src = getCvFrameView(frame);
         cv::Mat colored = colorizeDepthFrame(src, minDepth, maxDepth, colormap, useLog);
 
         ImgFrame output;

@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "beta/utilities/Classification/ClassificationUtils.hpp"
 #include "beta/utilities/Keypoints/KeypointsUtils.hpp"
 #include "depthai/common/ModelType.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
@@ -37,12 +38,7 @@ namespace {
 /**
  * Heatmap tensor values in NCHW orientation together with the tensor shape.
  */
-struct NchwTensorData {
-    /// Tensor values in row-major order over dims.
-    std::vector<float> values;
-    /// Tensor shape in NCHW orientation.
-    std::vector<std::size_t> dims;
-};
+using NchwTensorData = utilities::ClassificationUtils::ShapedTensorData;
 
 /**
  * Retrieve a tensor from NNData as dequantized FP32 values in NCHW orientation, matching the
@@ -50,17 +46,7 @@ struct NchwTensorData {
  * stored order is honored; the data is permuted to NCHW, not just re-labeled.
  */
 NchwTensorData getNchwTensorData(dai::NNData& nnData, const std::string& tensorName) {
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-    xt::xarray<float> tensor = nnData.getTensor<float>(tensorName, TensorInfo::StorageOrder::NCHW, true);
-    NchwTensorData result;
-    result.dims.assign(tensor.shape().begin(), tensor.shape().end());
-    result.values.assign(tensor.begin(), tensor.end());
-    return result;
-#else
-    (void)nnData;
-    (void)tensorName;
-    throw std::runtime_error("HRNetParser requires xtensor support to convert the heatmap tensor to NCHW orientation, but xtensor support is not available.");
-#endif
+    return utilities::ClassificationUtils::getShapedTensorData(nnData, tensorName, TensorInfo::StorageOrder::NCHW);
 }
 
 }  // namespace

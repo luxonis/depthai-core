@@ -465,8 +465,7 @@ PPTextDetections parsePaddleDetectionOutputs(
     DAI_CHECK_V(
         predictions.size() == height * width, "Cannot interpret {} prediction values as a probability map of shape {}.", predictions.size(), formatShape(dims));
 
-    cv::Mat predictionsMat(static_cast<int>(height), static_cast<int>(width), CV_32F);
-    std::memcpy(predictionsMat.ptr<float>(), predictions.data(), predictions.size() * sizeof(float));
+    const cv::Mat predictionsMat(static_cast<int>(height), static_cast<int>(width), CV_32F, const_cast<float*>(predictions.data()));
 
     // mask = (predictions > mask_threshold).astype(np.uint8); the threshold is exclusive
     cv::Mat mask(static_cast<int>(height), static_cast<int>(width), CV_8U);

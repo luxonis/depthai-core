@@ -8,6 +8,7 @@
 #include "common/ImgTransformations.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "utility/ImgFrameView.hpp"
 #include "utility/matrixOps.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
@@ -276,16 +277,14 @@ void Rectification::run() {
         rectifiedFrame2->setType(dai::ImgFrame::Type::RAW8);
         rectifiedFrame2->fb.stride = rectifiedFrame2->fb.width * rectifiedFrame2->getBytesPerPixel();
 
-        cv::Mat cv_input1 = input1Frame->getCvFrame();
-        cv::Mat cv_input2 = input2Frame->getCvFrame();
-
-        // convert to gray if needed
-        if(cv_input1.channels() == 3) {
-            cv::cvtColor(cv_input1, cv_input1, cv::COLOR_BGR2GRAY);
-        }
-        if(cv_input2.channels() == 3) {
-            cv::cvtColor(cv_input2, cv_input2, cv::COLOR_BGR2GRAY);
-        }
+        const auto grayInput = [](const cv::Mat& input) {
+            if(input.channels() != 3) return input;
+            cv::Mat gray;
+            cv::cvtColor(input, gray, cv::COLOR_BGR2GRAY);
+            return gray;
+        };
+        const cv::Mat cv_input1 = grayInput(utility::getCvFrameView(*input1Frame));
+        const cv::Mat cv_input2 = grayInput(utility::getCvFrameView(*input2Frame));
 
         cv::remap(
             cv_input1, rectifiedFrame1->getFrame(), cv_rectificationMap1X, cv_rectificationMap1Y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));

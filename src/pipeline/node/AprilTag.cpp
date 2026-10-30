@@ -2,11 +2,14 @@
 
 #include <math.h>
 
+#include <cstddef>
+#include <limits>
 #include <stdexcept>
 
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/AprilTagConfig.hpp"
 #include "properties/AprilTagProperties.hpp"
+#include "utility/ImgFrameView.hpp"
 
 #ifdef DEPTHAI_HAS_APRIL_TAG
 
@@ -252,15 +255,31 @@ void AprilTag::run() {
         }
         auto tGotInput = std::chrono::steady_clock::now();
 
-        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::NV12) {
-            width = static_cast<int32_t>(inFrame->getWidth());
-            height = static_cast<int32_t>(inFrame->getHeight());
-            stride = static_cast<int32_t>(inFrame->getStride());
-            imgbuf = inFrame->data->getData().data() + inFrame->fb.p1Offset;
+        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::RAW8 || frameType == ImgFrame::Type::NV12) {
+            const auto frameWidth = inFrame->getWidth();
+            const auto frameHeight = inFrame->getHeight();
+            const auto maxDimension = static_cast<unsigned int>(std::numeric_limits<int32_t>::max());
+            if(!inFrame->data || frameWidth == 0 || frameHeight == 0 || frameWidth > maxDimension || frameHeight > maxDimension) {
+                throw std::runtime_error("AprilTag node: invalid first-plane dimensions or missing buffer");
+            }
+            const std::size_t frameStride = inFrame->getStride();
+            if(frameStride < frameWidth || frameStride > maxDimension / frameHeight) {
+                throw std::runtime_error("AprilTag node: invalid first-plane stride or size");
+            }
+            const auto pixels = inFrame->getData();
+            const std::size_t offset = inFrame->fb.p1Offset;
+            // AprilTag can copy height * stride bytes, including the last row's padding.
+            if(pixels.data() == nullptr || offset > pixels.size() || frameHeight > (pixels.size() - offset) / frameStride) {
+                throw std::runtime_error("AprilTag node: first plane exceeds frame buffer");
+            }
+            width = static_cast<int32_t>(frameWidth);
+            height = static_cast<int32_t>(frameHeight);
+            stride = static_cast<int32_t>(frameStride);
+            imgbuf = pixels.data() + offset;
         } else {
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             cvimgPtr = std::make_unique<cv::Mat>();
-            cv::cvtColor(inFrame->getCvFrame(), *cvimgPtr, cv::COLOR_BGR2GRAY);
+            cv::cvtColor(utility::getCvFrameView(*inFrame), *cvimgPtr, cv::COLOR_BGR2GRAY);
             width = cvimgPtr->cols;
             height = cvimgPtr->rows;
             stride = cvimgPtr->cols;

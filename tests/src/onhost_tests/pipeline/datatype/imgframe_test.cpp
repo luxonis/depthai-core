@@ -17,6 +17,15 @@
 #endif
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "depthai/pipeline/Pipeline.hpp"
+    #include "depthai/pipeline/datatype/PointCloudData.hpp"
+    #include "depthai/pipeline/datatype/RGBDData.hpp"
+    #include "depthai/pipeline/node/Align.hpp"
+    #include "depthai/pipeline/node/host/RGBD.hpp"
+    #include "depthai/utility/ColorizeDepthFrame.hpp"
+    #include "utility/ImgFrameView.hpp"
+#endif
 
 using namespace std::chrono_literals;
 
@@ -565,5 +574,202 @@ TEST_CASE("ImgFrame OpenCV support", "[ImgFrame][OpenCV]") {
     ImgFrame empty;
     empty.setType(ImgFrame::Type::BGR888i);
     REQUIRE_THROWS_AS(empty.getFrame(), std::runtime_error);
+}
+TEST_CASE("ImgFrame setters copy only the selected ROI and retain independent storage", "[ImgFrame][OpenCV][Copy]") {
+    using Type = dai::ImgFrame::Type;
+    for(auto type : {Type::BGR888i,
+                     Type::BGR888p,
+                     Type::RGB888p,
+                     Type::GRAY8,
+                     Type::RAW16,
+                     Type::GRAYF16,
+                     Type::RAW32,
+                     Type::BGRF16F16F16i,
+                     Type::BGRF16F16F16p,
+                     Type::RGBF16F16F16p}) {
+        CAPTURE(type);
+        int cvType = CV_8UC3;
+        if(type == Type::GRAY8) cvType = CV_8UC1;
+        if(type == Type::RAW16) cvType = CV_16UC1;
+        if(type == Type::GRAYF16) cvType = CV_16FC1;
+        if(type == Type::RAW32) cvType = CV_32SC1;
+        if(type == Type::BGRF16F16F16i || type == Type::BGRF16F16F16p || type == Type::RGBF16F16F16p) cvType = CV_16FC3;
+        cv::Mat parent(4, 8, cvType, cv::Scalar(11, 22, 33));
+        auto roi = parent(cv::Rect(2, 1, 4, 1));
+        REQUIRE(roi.isContinuous());
+        auto expected = roi.clone();
+        dai::ImgFrame frame;
+        frame.setCvFrame(roi, type);
+        REQUIRE(frame.getData().size() == expected.total() * expected.elemSize());
+        REQUIRE(std::memcmp(roi.data, expected.data, expected.total() * expected.elemSize()) == 0);
+        roi.setTo(cv::Scalar::all(0));
+        auto restored = frame.getCvFrame();
+        REQUIRE(std::memcmp(restored.data, expected.data, expected.total() * expected.elemSize()) == 0);
+    }
+
+    cv::Mat parent(4, 8, CV_8UC1, cv::Scalar(5));
+    auto roi = parent(cv::Rect(2, 1, 4, 1));
+    roi.setTo(42);
+    dai::ImgFrame frame;
+    frame.setSize(roi.cols, roi.rows).setType(Type::RAW8);
+    frame.setFrame(roi);
+    REQUIRE(frame.getData().size() == 4);
+    REQUIRE(std::all_of(frame.getData().begin(), frame.getData().end(), [](uint8_t value) { return value == 42; }));
+}
+TEST_CASE("Depth colorization preserves shared input and matches Mat colorization", "[ImgFrame][OpenCV]") {
+    using Type = dai::ImgFrame::Type;
+    for(auto type : {Type::RAW16, Type::GRAY8, Type::GRAYF16, Type::BGR888i}) {
+        CAPTURE(type);
+        cv::Mat input(2, 4, type == Type::BGR888i ? CV_8UC3 : CV_16UC1, cv::Scalar::all(50));
+        dai::ImgFrame frame;
+        frame.setCvFrame(input, type);
+        const auto data = frame.getData();
+        const std::vector<uint8_t> original(data.begin(), data.end());
+        const auto expected = dai::utility::colorizeDepthFrame(frame.getCvFrame(), 1, 100, cv::COLORMAP_TURBO, false);
+        auto colored = dai::utility::colorizeDepthFrame(frame, 1, 100, cv::COLORMAP_TURBO, false);
+        REQUIRE(cv::norm(colored.getFrame(), expected, cv::NORM_INF) == 0);
+        REQUIRE(std::equal(original.begin(), original.end(), frame.getData().begin()));
+    }
+}
+
+TEST_CASE("Borrowed frame views are used read-only and preserve padded inputs", "[ImgFrame][OpenCV][copy]") {
+    using Type = dai::ImgFrame::Type;
+    for(auto type : {Type::BGR888i, Type::RAW8, Type::RAW16, Type::GRAYF16, Type::RGB888p}) {
+        CAPTURE(type);
+        dai::ImgFrame frame;
+        cv::Mat input(2, 4, type == Type::BGR888i || type == Type::RGB888p ? CV_8UC3 : CV_16UC1, cv::Scalar::all(10));
+        frame.setCvFrame(input, type);
+        if(type != Type::RGB888p) {
+            frame.setStride(frame.getStride() + 8);
+            frame.setData(std::vector<uint8_t>(static_cast<size_t>(frame.getStride()) * frame.getHeight(), 10));
+        }
+        const auto data = frame.getData();
+        const std::vector<uint8_t> original(data.begin(), data.end());
+        const dai::ImgFrame& readOnlyFrame = frame;
+        const cv::Mat view = dai::utility::getCvFrameView(readOnlyFrame);
+        REQUIRE((view.data == data.data()) == (type != Type::RGB888p));
+        cv::Mat converted;
+        view.convertTo(converted, CV_32F);
+        cv::Mat gray;
+        if(view.channels() == 3) cv::cvtColor(view, gray, cv::COLOR_BGR2GRAY);
+        REQUIRE(std::equal(original.begin(), original.end(), frame.getData().begin()));
+    }
+}
+
+TEST_CASE("RGBD converts color without modifying shared input frames", "[ImgFrame][OpenCV][copy]") {
+    using Type = dai::ImgFrame::Type;
+    const auto colorType = GENERATE(Type::BGR888i, Type::RGB161616, Type::BGRF16F16F16i);
+    CAPTURE(colorType);
+    int cvType = CV_8UC3;
+    cv::Scalar pixel(11, 22, 33);
+    cv::Vec3b expected(33, 22, 11);
+    if(colorType == Type::RGB161616) {
+        cvType = CV_16UC3;
+        pixel = cv::Scalar(11, 22, 300);
+        // setCvFrame stores RGB161616 with red first; preserve the previous RGBD conversion.
+        expected = cv::Vec3b(11, 22, 255);
+    } else if(colorType == Type::BGRF16F16F16i) {
+        cvType = CV_16FC3;
+        pixel = cv::Scalar(-4, 22.75, 300.5);
+        expected = cv::Vec3b(255, 23, 0);
+    }
+    for(auto threads : {0u, 1u, 3u}) {
+        CAPTURE(threads);
+        dai::Pipeline pipeline(false);
+        auto node = pipeline.create<dai::node::RGBD>()->build();
+        node->useCPUMT(threads);
+        node->sync->setRunOnHost(true);
+        auto colorQueue = node->inColor.createInputQueue();
+        auto depthQueue = node->inDepth.createInputQueue();
+        auto output = node->rgbd.createOutputQueue();
+        auto pointsOutput = node->pcl.createOutputQueue();
+        auto color = std::make_shared<dai::ImgFrame>();
+        color->setCvFrame(cv::Mat(2, 4, cvType, pixel), colorType);
+        auto depth = std::make_shared<dai::ImgFrame>();
+        depth->setCvFrame(cv::Mat(2, 4, CV_16UC1, cv::Scalar(1000)), dai::ImgFrame::Type::RAW16);
+        const auto timestamp = std::chrono::steady_clock::now();
+        color->setTimestamp(timestamp);
+        depth->setTimestamp(timestamp);
+        const std::vector<uint8_t> original(color->getData().begin(), color->getData().end());
+        pipeline.start();
+        colorQueue->send(color);
+        depthQueue->send(depth);
+        bool timedOut = false;
+        auto result = output->get<dai::RGBDData>(std::chrono::seconds(3), timedOut);
+        auto cloud = pointsOutput->get<dai::PointCloudData>(std::chrono::seconds(3), timedOut);
+        pipeline.stop();
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(result != nullptr);
+        REQUIRE(cloud != nullptr);
+        const auto points = cloud->getPointsRGB();
+        REQUIRE(points.size() == 8);
+        for(const auto& point : points) {
+            REQUIRE(point.r == expected[0]);
+            REQUIRE(point.g == expected[1]);
+            REQUIRE(point.b == expected[2]);
+        }
+        REQUIRE(result->getRGBFrame().has_value());
+        auto rgb = std::get<std::shared_ptr<dai::ImgFrame>>(*result->getRGBFrame());
+        REQUIRE(rgb->getType() == dai::ImgFrame::Type::RGB888i);
+        REQUIRE(rgb->getFrame().at<cv::Vec3b>(0, 0) == expected);
+        REQUIRE(color->getType() == colorType);
+        REQUIRE(std::equal(original.begin(), original.end(), color->getData().begin()));
+    }
+}
+
+TEST_CASE("Host Align remaps planar views without modifying the input", "[ImgFrame][OpenCV][copy]") {
+    using Type = dai::ImgFrame::Type;
+    for(auto type : {Type::BGR888p, Type::RGB888p}) {
+        for(bool padded : {false, true}) {
+            CAPTURE(type, padded);
+            dai::Pipeline pipeline(false);
+            auto align = pipeline.create<dai::node::Align>();
+            align->setRunOnHost(true);
+            auto input = align->input.createInputQueue();
+            auto target = align->inputAlignTo.createInputQueue();
+            auto output = align->outputAligned.createOutputQueue();
+            auto frame = std::make_shared<dai::ImgFrame>();
+            cv::Mat bgr(4, 8, CV_8UC3);
+            cv::randu(bgr, 0, 255);
+            frame->setCvFrame(bgr, type);
+            if(padded) {
+                const size_t stride = frame->getWidth() + 8;
+                const size_t planeSize = stride * frame->getHeight();
+                std::vector<uint8_t> bytes(planeSize * 3, 0xEE);
+                for(size_t plane = 0; plane < 3; ++plane) {
+                    for(size_t y = 0; y < frame->getHeight(); ++y) {
+                        for(size_t x = 0; x < frame->getWidth(); ++x) {
+                            bytes[plane * planeSize + y * stride + x] = bgr.at<cv::Vec3b>(y, x)[type == Type::RGB888p ? 2 - plane : plane];
+                        }
+                    }
+                }
+                frame->setStride(stride);
+                frame->fb.p1Offset = 0;
+                frame->fb.p2Offset = planeSize;
+                frame->fb.p3Offset = 2 * planeSize;
+                frame->setData(std::move(bytes));
+            }
+            dai::ImgTransformation transform(8, 4);
+            transform.setIntrinsicMatrix({{{100, 0, 4}, {0, 100, 2}, {0, 0, 1}}});
+            dai::Extrinsics extrinsics({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+            extrinsics.toDeviceId = "copy-test";
+            transform.setExtrinsics(extrinsics);
+            frame->setTransformation(transform);
+            auto reference = std::make_shared<dai::ImgFrame>();
+            reference->setCvFrame(cv::Mat(4, 8, CV_8UC1, cv::Scalar(0)), Type::GRAY8);
+            reference->setTransformation(transform);
+            const std::vector<uint8_t> original(frame->getData().begin(), frame->getData().end());
+            pipeline.start();
+            target->send(reference);
+            input->send(frame);
+            bool timedOut = false;
+            auto aligned = output->get<dai::ImgFrame>(std::chrono::seconds(3), timedOut);
+            pipeline.stop();
+            REQUIRE_FALSE(timedOut);
+            REQUIRE(aligned != nullptr);
+            REQUIRE(cv::norm(aligned->getCvFrame(), bgr, cv::NORM_INF) == 0);
+            REQUIRE(std::equal(original.begin(), original.end(), frame->getData().begin()));
+        }
+    }
 }
 #endif
