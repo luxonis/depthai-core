@@ -109,12 +109,9 @@ class DetectionRound {
         return box;
     }
     void writeBox(Candidate& candidate) const {
-        candidate.detection.boundingBox = candidate.box.normalize(size.first, size.second);
-        const auto outer = candidate.box.getOuterRect();
-        candidate.detection.xmin = outer[0] / size.first;
-        candidate.detection.ymin = outer[1] / size.second;
-        candidate.detection.xmax = outer[2] / size.first;
-        candidate.detection.ymax = outer[3] / size.second;
+        const auto width = static_cast<unsigned int>(size.first);
+        const auto height = static_cast<unsigned int>(size.second);
+        candidate.detection.setBoundingBox(candidate.box.normalize(width, height), width, height);
     }
     bool insideCanvas(const RotatedRect& box) const {
         return intersectionArea(box, RotatedRect(Rect(0, 0, size.first, size.second, false))) > 0;
