@@ -90,6 +90,15 @@ std::shared_ptr<dai::ImgDetections> createDetectionMessage(const std::vector<std
                                                            std::size_t segmentationMaskWidth = 0,
                                                            std::size_t segmentationMaskHeight = 0);
 
+/**
+ * Sets the transformation of the message and calculates the legacy bounds of each detection in pixels of its frame.
+ * setBoundingBox() without the frame size cannot calculate the bounds of rotated normalized boxes in non-square frames.
+ *
+ * @param message Detections message to update.
+ * @param transformation Transformation of the frame that the normalized boxes refer to.
+ */
+void setTransformationAndBounds(dai::ImgDetections& message, const dai::ImgTransformation& transformation);
+
 }  // namespace DetectionUtils
 }  // namespace utilities
 }  // namespace beta

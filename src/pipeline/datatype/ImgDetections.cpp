@@ -52,6 +52,16 @@ void ImgDetection::setBoundingBox(const RotatedRect boundingBox) {
     ymax = outerPoints[3];
 }
 
+void ImgDetection::setBoundingBox(const RotatedRect boundingBox, unsigned int width, unsigned int height) {
+    this->boundingBox = boundingBox;
+
+    const auto outerPoints = this->boundingBox->getOuterRectInFrame(width, height);
+    xmin = outerPoints[0];
+    ymin = outerPoints[1];
+    xmax = outerPoints[2];
+    ymax = outerPoints[3];
+}
+
 RotatedRect ImgDetection::getBoundingBox() const {
     if(boundingBox.has_value()) {
         return boundingBox.value();
@@ -78,10 +88,13 @@ void ImgDetection::setOuterBoundingBox(const float xmin, const float ymin, const
 }
 
 std::array<float, 4> ImgDetection::getOuterBoundingBox() const {
-    if(!boundingBox.has_value() && xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
-        throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
+    if(!(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f)) {
+        return {xmin, ymin, xmax, ymax};
     }
-    return {xmin, ymin, xmax, ymax};
+    if(boundingBox.has_value()) {
+        return boundingBox->getOuterRect();
+    }
+    throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
 }
 
 void ImgDetection::setKeypoints(const KeypointsList kp) {
@@ -162,17 +175,9 @@ float ImgDetection::getAngle() const {
 }
 
 void ImgDetection::transform(const ImgTransformation& source, const ImgTransformation& target) {
-    setBoundingBox(source.remapRectTo(target, getBoundingBox()));
-    // Expand rotated boxes in pixels before normalizing their axis-aligned bounds.
-    const auto transformedBox = getBoundingBox();
-    if(transformedBox.isNormalized()) {
-        const auto size = target.getSize();
-        const auto bounds = transformedBox.denormalize(size.first, size.second).getOuterRect();
-        xmin = bounds[0] / size.first;
-        ymin = bounds[1] / size.second;
-        xmax = bounds[2] / size.first;
-        ymax = bounds[3] / size.second;
-    }
+    // The bounding box is the minimum outer rotated rectangle of the mapped corners; the bounds enclose it.
+    const auto size = target.getSize();
+    setBoundingBox(source.remapRectTo(target, getBoundingBox()), static_cast<unsigned int>(size.first), static_cast<unsigned int>(size.second));
     if(keypoints.has_value()) {
         keypoints = keypoints->transformTo(source, target);
     }

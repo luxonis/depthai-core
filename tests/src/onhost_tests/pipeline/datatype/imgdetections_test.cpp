@@ -4,6 +4,11 @@
 #include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <memory>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
@@ -17,9 +22,14 @@
 
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Keypoint.hpp"
+#include "depthai/pipeline/MessageQueue.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
+#include "depthai/pipeline/datatype/Tracklets.hpp"
+#include "depthai/pipeline/node/ObjectTracker.hpp"
+#include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace {
@@ -84,6 +94,21 @@ TEST_CASE("ImgDetection bounding box operations", "[ImgDetections][ImgDetection]
         detection.setOuterBoundingBox(0.f, 0.f, 0.f, 0.f);
         const std::array<float, 4> expected{0.f, 0.f, 0.f, 0.f};
         REQUIRE(detection.getOuterBoundingBox() == expected);
+    }
+
+    SECTION("getOuterBoundingBox uses a directly assigned bounding box") {
+        const RotatedRect rect{Point2f{0.4F, 0.6F, true}, Size2f{0.2F, 0.3F, true}, 0.0F};
+        const auto expected = rect.getOuterRect();
+
+        ImgDetection detection;
+        detection.boundingBox = rect;
+        REQUIRE(detection.getOuterBoundingBox() == expected);
+
+        SpatialImgDetection spatial;
+        spatial.boundingBox = rect;
+        const auto converted = spatial.getImgDetection();
+        REQUIRE(converted.getOuterBoundingBox() == expected);
+        REQUIRE(std::array<float, 4>{converted.xmin, converted.ymin, converted.xmax, converted.ymax} == expected);
     }
 }
 
@@ -548,3 +573,549 @@ TEST_CASE("Transformed detection coordinates enclose the physical rotated box", 
         checkImgBounds(restoredSpatial.getImgDetection());
     }
 }
+
+TEST_CASE("Detections keep their size and angle through a small rotation", "[ImgDetections][Tracklets][Transformations]") {
+    // A rotation of -0.001 deg made the fitter return 89.999 deg with swapped sides.
+    const float rotation = GENERATE(-0.001f, 0.001f);
+    CAPTURE(rotation);
+
+    dai::ImgTransformation source(800, 500);
+    source.setExtrinsics(dai::Extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A});
+    auto target = source;
+    target.addRotation(rotation, dai::Point2f{400, 250, false});
+    const dai::RotatedRect pixels{dai::Point2f{400, 250, false}, dai::Size2f{200, 100, false}, 0.0f};
+    const auto box = pixels.normalize(800, 500);
+    // The rotation moves the corners by less than 0.01 px.
+    const auto expected = pixels.getOuterRect();
+    const std::array<float, 4> scale{800, 500, 800, 500};
+    const auto checkBounds = [&](const std::array<float, 4>& bounds) {
+        for(std::size_t i = 0; i < bounds.size(); ++i) {
+            REQUIRE_THAT(bounds[i] * scale[i], Catch::Matchers::WithinAbs(expected[i], 0.1));
+        }
+    };
+
+    dai::ImgDetections detections;
+    detections.setTransformation(source);
+    detections.detections.emplace_back(box);
+    const auto detection = detections.transformTo(target).detections.front();
+    REQUIRE_THAT(detection.getAngle(), Catch::Matchers::WithinAbs(rotation, 1e-2));
+    REQUIRE_THAT(detection.getWidth() * 800, Catch::Matchers::WithinAbs(200, 0.1));
+    REQUIRE_THAT(detection.getHeight() * 500, Catch::Matchers::WithinAbs(100, 0.1));
+    checkBounds(detection.getOuterBoundingBox());
+    // A detection made again from the box (as SpatialLocationCalculator does) has the same bounds.
+    checkBounds(dai::ImgDetection(detection.getBoundingBox()).getOuterBoundingBox());
+
+    dai::Tracklets tracklets;
+    tracklets.setTransformation(source);
+    dai::Tracklet tracklet;
+    tracklet.roi = dai::Rect{dai::Point2f{expected[0] / 800, expected[1] / 500, true}, dai::Point2f{expected[2] / 800, expected[3] / 500, true}, true};
+    tracklet.srcImgDetection = dai::ImgDetection(box);
+    tracklets.tracklets.push_back(tracklet);
+    const auto transformed = tracklets.transformTo(target).tracklets.front();
+    const auto& roi = transformed.roi;
+    REQUIRE(roi.isNormalized());
+    checkBounds({roi.x, roi.y, roi.x + roi.width, roi.y + roi.height});
+    checkBounds(transformed.srcImgDetection.getOuterBoundingBox());
+}
+
+namespace {
+
+dai::ImgTransformation makeDetectionTransformation(unsigned int width, unsigned int height) {
+    dai::ImgTransformation transformation(width, height);
+    transformation.setExtrinsics(dai::Extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A});
+    return transformation;
+}
+
+void requireBounds(const std::array<float, 4>& bounds, const std::array<float, 4>& expected, const std::array<float, 4>& scale, float margin) {
+    for(std::size_t i = 0; i < bounds.size(); ++i) {
+        REQUIRE_THAT(bounds[i] * scale[i], Catch::Matchers::WithinAbs(expected[i], margin));
+    }
+}
+
+}  // namespace
+
+TEST_CASE("setBoundingBox with the frame size calculates the bounds in pixels", "[ImgDetections][ImgDetection][SpatialImgDetections]") {
+    const dai::RotatedRect pixels{dai::Point2f{400, 250, false}, dai::Size2f{200, 100, false}, 30.0f};
+    const auto normalized = pixels.normalize(800, 500);
+    const auto expected = pixels.getOuterRect();
+    const std::array<float, 4> scale{800, 500, 800, 500};
+
+    dai::ImgDetection detection;
+    detection.setBoundingBox(normalized, 800, 500);
+    requireBounds(detection.getOuterBoundingBox(), expected, scale, 1e-3f);
+    dai::SpatialImgDetection spatial;
+    spatial.setBoundingBox(normalized, 800, 500);
+    requireBounds(spatial.getOuterBoundingBox(), expected, scale, 1e-3f);
+
+    // A pixel box does not use the frame size.
+    detection.setBoundingBox(pixels, 800, 500);
+    REQUIRE(detection.getOuterBoundingBox() == expected);
+
+    // Without the frame size, the bounds are calculated in normalized units (the documented limit).
+    detection.setBoundingBox(normalized);
+    REQUIRE(detection.getOuterBoundingBox() == normalized.getOuterRect());
+}
+
+TEST_CASE("A box made from legacy bounds has explicit units", "[ImgDetections][ImgDetection][SpatialImgDetections]") {
+    const auto source = makeDetectionTransformation(800, 500);
+    auto target = source;
+    target.addScale(0.5f, 0.5f);
+    const auto transformBounds = [&](const dai::ImgDetection& detection) {
+        dai::ImgDetections detections;
+        detections.setTransformation(source);
+        detections.detections.push_back(detection);
+        return detections.transformTo(target).detections.front().getOuterBoundingBox();
+    };
+
+    SECTION("bounds of 1 or less are normalized") {
+        dai::ImgDetection detection;
+        detection.xmin = 0.2f;
+        detection.ymin = 0.3f;
+        detection.xmax = 0.6f;
+        detection.ymax = 0.7f;
+        const auto box = detection.getBoundingBox();
+        REQUIRE(box.center.hasNormalized);
+        REQUIRE(box.size.hasNormalized);
+        REQUIRE(box.isNormalized());
+        REQUIRE_THAT(box.center.x, Catch::Matchers::WithinAbs(0.4, 1e-6));
+        REQUIRE_THAT(box.center.y, Catch::Matchers::WithinAbs(0.5, 1e-6));
+        REQUIRE_THAT(box.size.width, Catch::Matchers::WithinAbs(0.4, 1e-6));
+        REQUIRE_THAT(box.size.height, Catch::Matchers::WithinAbs(0.4, 1e-6));
+        // A scale does not change normalized bounds.
+        requireBounds(transformBounds(detection), {0.2f, 0.3f, 0.6f, 0.7f}, {1, 1, 1, 1}, 1e-5f);
+
+        dai::SpatialImgDetection spatial;
+        spatial.xmin = 0.2f;
+        spatial.ymin = 0.3f;
+        spatial.xmax = 0.6f;
+        spatial.ymax = 0.7f;
+        REQUIRE(spatial.getBoundingBox().center.hasNormalized);
+        REQUIRE(spatial.getBoundingBox().isNormalized());
+    }
+
+    SECTION("a bound above 1 means pixels") {
+        dai::ImgDetection detection;
+        detection.xmin = 100.0f;
+        detection.ymin = 50.0f;
+        detection.xmax = 300.0f;
+        detection.ymax = 250.0f;
+        const auto box = detection.getBoundingBox();
+        REQUIRE(box.center.hasNormalized);
+        REQUIRE_FALSE(box.isNormalized());
+        requireBounds(transformBounds(detection), {50.0f, 25.0f, 150.0f, 125.0f}, {1, 1, 1, 1}, 1e-3f);
+
+        dai::ImgDetection outside;
+        outside.xmin = 0.5f;
+        outside.ymin = 0.4f;
+        outside.xmax = 1.02f;
+        outside.ymax = 0.6f;
+        REQUIRE_FALSE(outside.getBoundingBox().isNormalized());
+
+        dai::SpatialImgDetection spatial;
+        spatial.xmin = 100.0f;
+        spatial.ymin = 50.0f;
+        spatial.xmax = 300.0f;
+        spatial.ymax = 250.0f;
+        REQUIRE(spatial.getBoundingBox().center.hasNormalized);
+        REQUIRE_FALSE(spatial.getBoundingBox().isNormalized());
+    }
+
+    SECTION("setOuterBoundingBox sets explicit units") {
+        dai::ImgDetection detection;
+        detection.setOuterBoundingBox(0.2f, 0.3f, 0.6f, 0.7f);
+        REQUIRE(detection.getBoundingBox().center.hasNormalized);
+        REQUIRE(detection.getBoundingBox().isNormalized());
+        detection.setOuterBoundingBox(100.0f, 50.0f, 300.0f, 250.0f);
+        REQUIRE(detection.getBoundingBox().center.hasNormalized);
+        REQUIRE_FALSE(detection.getBoundingBox().isNormalized());
+
+        dai::SpatialImgDetection spatial;
+        spatial.setOuterBoundingBox(0.2f, 0.3f, 0.6f, 0.7f);
+        REQUIRE(spatial.getBoundingBox().center.hasNormalized);
+        REQUIRE(spatial.getBoundingBox().isNormalized());
+    }
+}
+
+namespace {
+
+using Point = std::array<float, 2>;
+
+// Maps a pixel point with the 3x3 matrix of a test transform.
+Point mapPoint(const std::array<std::array<float, 3>, 3>& matrix, Point point) {
+    return {matrix[0][0] * point[0] + matrix[0][1] * point[1] + matrix[0][2], matrix[1][0] * point[0] + matrix[1][1] * point[1] + matrix[1][2]};
+}
+
+// The smallest rectangle that encloses a convex quadrilateral has one side on an edge of the quadrilateral.
+float minEnclosingArea(const std::array<Point, 4>& points) {
+    float best = std::numeric_limits<float>::infinity();
+    for(std::size_t i = 0; i < points.size(); ++i) {
+        const Point& a = points[i];
+        const Point& b = points[(i + 1) % points.size()];
+        const float length = std::hypot(b[0] - a[0], b[1] - a[1]);
+        const Point u{(b[0] - a[0]) / length, (b[1] - a[1]) / length};
+        float minU = std::numeric_limits<float>::infinity(), maxU = -minU, minV = minU, maxV = -minU;
+        for(const auto& p : points) {
+            const float pu = p[0] * u[0] + p[1] * u[1];
+            const float pv = -p[0] * u[1] + p[1] * u[0];
+            minU = std::min(minU, pu);
+            maxU = std::max(maxU, pu);
+            minV = std::min(minV, pv);
+            maxV = std::max(maxV, pv);
+        }
+        best = std::min(best, (maxU - minU) * (maxV - minV));
+    }
+    return best;
+}
+
+bool containsPoint(const dai::RotatedRect& rect, const Point& point, float margin) {
+    const float angle = rect.angle * 3.14159265358979323846f / 180.0f;
+    const float dx = point[0] - rect.center.x;
+    const float dy = point[1] - rect.center.y;
+    const float along = dx * std::cos(angle) + dy * std::sin(angle);
+    const float across = -dx * std::sin(angle) + dy * std::cos(angle);
+    return std::abs(along) <= rect.size.width / 2 + margin && std::abs(across) <= rect.size.height / 2 + margin;
+}
+
+// Checks that box is the minimum outer rotated rectangle of the mapped corners, and that bounds enclose box.
+void requireMinimumOuterRect(
+    const dai::RotatedRect& box, const std::array<float, 4>& bounds, const std::array<Point, 4>& corners, unsigned int width, unsigned int height) {
+    const auto pixels = box.denormalize(width, height);
+    REQUIRE_THAT(pixels.size.width * pixels.size.height, Catch::Matchers::WithinRel(minEnclosingArea(corners), 1e-3f));
+    for(const auto& corner : corners) {
+        REQUIRE(containsPoint(pixels, corner, 0.05f));
+    }
+    const bool normalized = box.isNormalized();
+    const std::array<float, 4> scale =
+        normalized ? std::array<float, 4>{static_cast<float>(width), static_cast<float>(height), static_cast<float>(width), static_cast<float>(height)}
+                   : std::array<float, 4>{1, 1, 1, 1};
+    requireBounds(bounds, pixels.getOuterRect(), scale, 1e-2f);
+}
+
+}  // namespace
+
+TEST_CASE("Transformed detections use the minimum outer rotated rectangle", "[ImgDetections][SpatialImgDetections][Transformations]") {
+    // A stretch or a shear changes a rotated box into a parallelogram. The bounding box must be the minimum outer rotated
+    // rectangle of the parallelogram, and the bounds must enclose that rectangle.
+    const auto [name, matrix] = GENERATE(table<std::string, std::array<std::array<float, 3>, 3>>({
+        {"scale (1, 0.625)", {{{1.0f, 0.0f, 0.0f}, {0.0f, 0.625f, 0.0f}, {0.0f, 0.0f, 1.0f}}}},
+        {"shear x += 0.5 * y", {{{1.0f, 0.5f, -125.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}}},
+    }));
+    const bool normalized = GENERATE(false, true);
+    CAPTURE(name, normalized);
+
+    const auto source = makeDetectionTransformation(800, 500);
+    auto target = source;
+    target.addTransformation(matrix);
+    const auto targetSize = target.getSize();
+    const auto width = static_cast<unsigned int>(targetSize.first);
+    const auto height = static_cast<unsigned int>(targetSize.second);
+
+    const dai::RotatedRect pixels{dai::Point2f{400, 250, false}, dai::Size2f{200, 100, false}, 30.0f};
+    std::array<Point, 4> corners{};
+    const auto sourceCorners = pixels.getPoints();
+    for(std::size_t i = 0; i < corners.size(); ++i) {
+        corners[i] = mapPoint(matrix, {sourceCorners[i].x, sourceCorners[i].y});
+    }
+    const auto box = normalized ? pixels.normalize(800, 500) : pixels;
+
+    dai::ImgDetections detections;
+    detections.setTransformation(source);
+    detections.detections.emplace_back(box);
+    const auto transformed = detections.transformTo(target).detections.front();
+    REQUIRE(transformed.getBoundingBox().isNormalized() == normalized);
+    requireMinimumOuterRect(transformed.getBoundingBox(), transformed.getOuterBoundingBox(), corners, width, height);
+
+    for(const float depth : {0.0f, 1000.0f}) {
+        CAPTURE(depth);
+        dai::SpatialImgDetection spatial(box, dai::Point3f{0, 0, depth});
+        spatial.transform(source, target, dai::LengthUnit::MILLIMETER);
+        requireMinimumOuterRect(spatial.getBoundingBox(), spatial.getOuterBoundingBox(), corners, width, height);
+        requireMinimumOuterRect(spatial.getBoundingBox(), spatial.getImgDetection().getOuterBoundingBox(), corners, width, height);
+    }
+}
+
+TEST_CASE("Tracklet roi encloses the minimum outer rotated rectangle", "[Tracklets][Transformations]") {
+    // A rotation followed by a stretch changes the roi into a parallelogram.
+    const bool normalized = GENERATE(false, true);
+    CAPTURE(normalized);
+    const auto source = makeDetectionTransformation(800, 800);
+    auto target = source;
+    target.addRotation(30.0f, dai::Point2f{400, 400, false});
+    target.addScale(1.0f, 0.625f);  // 800 x 500
+
+    const dai::Rect pixels{dai::Point2f{300, 350, false}, dai::Point2f{500, 450, false}, false};
+    const auto roi = normalized ? pixels.normalize(800, 800) : pixels;
+    const std::array<float, 4> scale = normalized ? std::array<float, 4>{800, 500, 800, 500} : std::array<float, 4>{1, 1, 1, 1};
+
+    dai::Tracklets tracklets;
+    tracklets.setTransformation(source);
+    dai::Tracklet tracklet;
+    tracklet.roi = roi;
+    tracklet.srcImgDetection = dai::ImgDetection(dai::RotatedRect(roi));
+    tracklets.tracklets.push_back(tracklet);
+    const auto result = tracklets.transformTo(target).tracklets.front().roi;
+    REQUIRE(result.isNormalized() == normalized);
+
+    // The roi is the outer rectangle of the minimum outer rotated rectangle (the remapped roi).
+    const auto fitted = source.remapRectTo(target, dai::RotatedRect(roi)).denormalize(800, 500);
+    requireBounds({result.x, result.y, result.x + result.width, result.y + result.height}, fitted.getOuterRect(), scale, 1e-2f);
+}
+
+TEST_CASE("SpatialImgDetection getOuterBoundingBox", "[SpatialImgDetections]") {
+    const dai::RotatedRect rect{dai::Point2f{0.4F, 0.6F, true}, dai::Size2f{0.2F, 0.3F, true}, 0.0F};
+
+    SECTION("returns the bounds set by setBoundingBox") {
+        dai::SpatialImgDetection spatial;
+        spatial.setBoundingBox(rect);
+        REQUIRE(spatial.getOuterBoundingBox() == rect.getOuterRect());
+    }
+
+    SECTION("uses a directly assigned bounding box") {
+        dai::SpatialImgDetection spatial;
+        spatial.boundingBox = rect;
+        REQUIRE(spatial.getOuterBoundingBox() == rect.getOuterRect());
+    }
+
+    SECTION("returns legacy bounds") {
+        dai::SpatialImgDetection spatial;
+        spatial.xmin = 0.1f;
+        spatial.ymin = 0.2f;
+        spatial.xmax = 0.3f;
+        spatial.ymax = 0.4f;
+        REQUIRE(spatial.getOuterBoundingBox() == std::array<float, 4>{0.1f, 0.2f, 0.3f, 0.4f});
+    }
+
+    SECTION("returns explicitly set zero bounds") {
+        dai::SpatialImgDetection spatial;
+        spatial.setOuterBoundingBox(0.f, 0.f, 0.f, 0.f);
+        REQUIRE(spatial.getOuterBoundingBox() == std::array<float, 4>{0.f, 0.f, 0.f, 0.f});
+    }
+
+    SECTION("throws when no geometry was set") {
+        dai::SpatialImgDetection spatial;
+        REQUIRE_THROWS_AS(spatial.getOuterBoundingBox(), std::runtime_error);
+    }
+}
+
+TEST_CASE("Legacy bounds that are all zero are not set", "[ImgDetections][ImgDetection][SpatialImgDetections]") {
+    const dai::RotatedRect rect{dai::Point2f{0.4F, 0.6F, true}, dai::Size2f{0.2F, 0.3F, true}, 0.0F};
+    dai::ImgDetection detection;
+    REQUIRE(detection.xmin == 0.f);
+    REQUIRE(detection.ymin == 0.f);
+    REQUIRE(detection.xmax == 0.f);
+    REQUIRE(detection.ymax == 0.f);
+    REQUIRE_THROWS_AS(detection.getBoundingBox(), std::runtime_error);
+    REQUIRE_THROWS_AS(detection.getOuterBoundingBox(), std::runtime_error);
+
+    dai::SpatialImgDetection spatial;
+    REQUIRE_THROWS_AS(spatial.getBoundingBox(), std::runtime_error);
+    REQUIRE_THROWS_AS(spatial.getOuterBoundingBox(), std::runtime_error);
+
+    SECTION("zero bounds with a bounding box use the bounding box") {
+        detection.boundingBox = rect;
+        REQUIRE(detection.getOuterBoundingBox() == rect.getOuterRect());
+        spatial.boundingBox = rect;
+        REQUIRE(spatial.getOuterBoundingBox() == rect.getOuterRect());
+        REQUIRE(spatial.getImgDetection().getOuterBoundingBox() == rect.getOuterRect());
+    }
+
+    SECTION("bounds with one value that is not 0 are set") {
+        detection.xmin = 0.1f;
+        REQUIRE_NOTHROW(detection.getBoundingBox());
+        REQUIRE(detection.getOuterBoundingBox() == std::array<float, 4>{0.1f, 0.f, 0.f, 0.f});
+    }
+
+    SECTION("serialization keeps the bounds that are not set") {
+        dai::ImgDetections message;
+        message.detections.push_back(detection);
+        dai::ImgDetections restored;
+        dai::utility::deserialize(dai::utility::serialize(message), restored);
+        REQUIRE_THROWS_AS(restored.detections.front().getBoundingBox(), std::runtime_error);
+    }
+}
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+TEST_CASE("Protobuf keeps transformed rotated detections", "[ImgDetections][SpatialImgDetections][Protobuf]") {
+    const auto source = makeDetectionTransformation(800, 500);
+    auto target = source;
+    target.addRotation(30.0f, dai::Point2f{400, 250, false});
+    const auto box = dai::RotatedRect{dai::Point2f{400, 250, false}, dai::Size2f{200, 100, false}, 0.0f}.normalize(800, 500);
+    const auto requireSameBox = [](const dai::RotatedRect& lhs, const dai::RotatedRect& rhs) {
+        REQUIRE(lhs.isNormalized() == rhs.isNormalized());
+        REQUIRE(lhs.center.x == rhs.center.x);
+        REQUIRE(lhs.center.y == rhs.center.y);
+        REQUIRE(lhs.size.width == rhs.size.width);
+        REQUIRE(lhs.size.height == rhs.size.height);
+        REQUIRE(lhs.angle == rhs.angle);
+    };
+
+    dai::ImgDetections detections;
+    detections.setTransformation(source);
+    detections.detections.emplace_back(box);
+    auto transformed = detections.transformTo(target);
+    dai::ImgDetection boxOnly;
+    boxOnly.boundingBox = box;
+    transformed.detections.push_back(boxOnly);
+
+    dai::ImgDetections restored;
+    restored.deserializeProto(transformed.serializeProto());
+    REQUIRE(restored.detections.size() == 2);
+    REQUIRE(restored.detections[0].getOuterBoundingBox() == transformed.detections[0].getOuterBoundingBox());
+    requireSameBox(restored.detections[0].getBoundingBox(), transformed.detections[0].getBoundingBox());
+    REQUIRE(restored.detections[1].xmin == 0.f);
+    requireSameBox(restored.detections[1].getBoundingBox(), box);
+    REQUIRE(restored.detections[1].getOuterBoundingBox() == box.getOuterRect());
+
+    dai::SpatialImgDetections spatialDetections;
+    spatialDetections.setTransformation(source);
+    spatialDetections.detections.emplace_back(box, dai::Point3f{0, 0, 1000});
+    const auto spatialTransformed = spatialDetections.transformTo(target);
+    dai::SpatialImgDetections spatialRestored;
+    spatialRestored.deserializeProto(spatialTransformed.serializeProto());
+    REQUIRE(spatialRestored.detections.size() == 1);
+    REQUIRE(spatialRestored.detections[0].getOuterBoundingBox() == spatialTransformed.detections[0].getOuterBoundingBox());
+    requireSameBox(spatialRestored.detections[0].getBoundingBox(), spatialTransformed.detections[0].getBoundingBox());
+}
+#endif
+
+namespace {
+
+constexpr std::chrono::seconds NODE_OUTPUT_TIMEOUT{10};
+
+// Axis-aligned 200x100 px box in an 800x500 frame, transformed to a frame that is rotated by 30 deg.
+// The outer bounds of the transformed box are 223.21 x 186.60 px.
+std::shared_ptr<dai::ImgDetections> makeRotatedDetections(const dai::ImgTransformation& source, const dai::ImgTransformation& target) {
+    dai::ImgDetections detections;
+    detections.setTransformation(source);
+    detections.detections.emplace_back(dai::RotatedRect{dai::Point2f{400, 250, false}, dai::Size2f{200, 100, false}, 0.0f}.normalize(800, 500), 1.0f, 0);
+    auto transformed = std::make_shared<dai::ImgDetections>(detections.transformTo(target));
+    transformed->setSequenceNum(1);
+    return transformed;
+}
+
+std::shared_ptr<dai::ImgFrame> makeFrame(const dai::ImgTransformation& transformation, dai::ImgFrame::Type type, std::vector<std::uint8_t> data) {
+    auto frame = std::make_shared<dai::ImgFrame>();
+    const auto size = transformation.getSize();
+    frame->setWidth(static_cast<unsigned int>(size.first));
+    frame->setHeight(static_cast<unsigned int>(size.second));
+    frame->setType(type);
+    frame->setData(data);
+    frame->transformation = transformation;
+    frame->setSequenceNum(1);
+    return frame;
+}
+
+template <typename Output>
+std::shared_ptr<Output> getNodeOutput(dai::Pipeline& pipeline, const std::shared_ptr<dai::MessageQueue>& queue) {
+    bool timedOut = false;
+    auto output = queue->get<Output>(NODE_OUTPUT_TIMEOUT, timedOut);
+    pipeline.stop();
+    pipeline.wait();
+    if(timedOut || output == nullptr) {
+        throw std::runtime_error("Timed out waiting for the node output");
+    }
+    return output;
+}
+
+}  // namespace
+
+TEST_CASE("SpatialLocationCalculator on host keeps the bounds of rotated detections", "[SpatialLocationCalculator][Transformations]") {
+    const auto source = makeDetectionTransformation(800, 500);
+    auto target = source;
+    target.addRotation(30.0f, dai::Point2f{400, 250, false});
+    const auto detections = makeRotatedDetections(source, target);
+    const auto& input = detections->detections.front();
+
+    // Depth frame of 1000 mm, aligned with the detections.
+    std::vector<std::uint16_t> depth(800 * 500, 1000);
+    std::vector<std::uint8_t> bytes(depth.size() * sizeof(std::uint16_t));
+    std::memcpy(bytes.data(), depth.data(), bytes.size());
+    const auto depthFrame = makeFrame(target, dai::ImgFrame::Type::RAW16, std::move(bytes));
+
+    dai::Pipeline pipeline(false);
+    auto calculator = pipeline.create<dai::node::SpatialLocationCalculator>();
+    calculator->setRunOnHost(true);
+    auto depthQueue = calculator->inputDepth.createInputQueue();
+    auto detectionsQueue = calculator->inputDetections.createInputQueue();
+    auto outputQueue = calculator->outputDetections.createOutputQueue();
+    pipeline.start();
+    depthQueue->send(depthFrame);
+    detectionsQueue->send(detections);
+    const auto output = getNodeOutput<dai::SpatialImgDetections>(pipeline, outputQueue);
+
+    REQUIRE(output->detections.size() == 1);
+    const auto& spatial = output->detections.front();
+    const std::array<float, 4> unit{1, 1, 1, 1};
+    // The output has the bounds of the input, which are calculated in pixels.
+    const auto inputBounds = input.getOuterBoundingBox();
+    requireBounds(spatial.getOuterBoundingBox(), inputBounds, unit, 1e-6f);
+    REQUIRE_THAT((inputBounds[2] - inputBounds[0]) * 800, Catch::Matchers::WithinAbs(223.21, 0.01));
+    REQUIRE_THAT((inputBounds[3] - inputBounds[1]) * 500, Catch::Matchers::WithinAbs(186.60, 0.01));
+    // The depth ROI is the outer rectangle of the box in pixels of the detections frame.
+    const auto& roi = spatial.boundingBoxMapping.roi;
+    requireBounds({roi.x, roi.y, roi.x + roi.width, roi.y + roi.height}, input.getBoundingBox().getOuterRectInFrame(800, 500), unit, 1e-5f);
+    REQUIRE_THAT(spatial.spatialCoordinates.z, Catch::Matchers::WithinAbs(1000.0, 1.0));
+}
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+namespace {
+
+// Runs the tracker on host for one frame and returns the roi of the first tracklet in pixels of the tracker frame.
+std::array<float, 4> trackOnce(const dai::ImgTransformation& trackerTransformation, const std::shared_ptr<dai::ImgDetections>& detections) {
+    const auto size = trackerTransformation.getSize();
+    const auto frame = makeFrame(trackerTransformation, dai::ImgFrame::Type::NV12, std::vector<std::uint8_t>(size.first * size.second * 3 / 2, 0));
+
+    dai::Pipeline pipeline(false);
+    auto tracker = pipeline.create<dai::node::ObjectTracker>();
+    tracker->setRunOnHost(true);
+    auto frameQueue = tracker->inputTrackerFrame.createInputQueue();
+    auto detectionsQueue = tracker->inputDetections.createInputQueue();
+    auto outputQueue = tracker->out.createOutputQueue();
+    pipeline.start();
+    frameQueue->send(frame);
+    detectionsQueue->send(detections);
+    const auto tracklets = getNodeOutput<dai::Tracklets>(pipeline, outputQueue);
+
+    REQUIRE(tracklets->tracklets.size() == 1);
+    const auto roi = tracklets->tracklets.front().roi.denormalize(static_cast<int>(size.first), static_cast<int>(size.second));
+    return {roi.x, roi.y, roi.x + roi.width, roi.y + roi.height};
+}
+
+}  // namespace
+
+TEST_CASE("ObjectTracker on host tracks the bounds of rotated detections", "[ObjectTracker][Transformations]") {
+    const auto source = makeDetectionTransformation(800, 500);
+    auto target = source;
+    target.addRotation(30.0f, dai::Point2f{400, 250, false});
+    const auto detections = makeRotatedDetections(source, target);
+    const auto bounds = detections->detections.front().getOuterBoundingBox();
+    const std::array<float, 4> unit{1, 1, 1, 1};
+    // The tracker works in whole pixels.
+    const float margin = 1.5f;
+
+    SECTION("tracker frame is the detections frame") {
+        requireBounds(trackOnce(target, detections), {bounds[0] * 800, bounds[1] * 500, bounds[2] * 800, bounds[3] * 500}, unit, margin);
+    }
+
+    SECTION("tracker frame is the frame before the rotation") {
+        // The outer bounds (223.21 x 186.60 px) turned back by 30 deg give an outer rectangle of 286.6 x 273.2 px.
+        const float width = 223.21f * 0.8660254f + 186.60f * 0.5f;
+        const float height = 223.21f * 0.5f + 186.60f * 0.8660254f;
+        requireBounds(trackOnce(source, detections), {400 - width / 2, 250 - height / 2, 400 + width / 2, 250 + height / 2}, unit, margin);
+    }
+}
+
+TEST_CASE("ObjectTracker on host uses the units of the detection box", "[ObjectTracker]") {
+    // A box of 1.2 x 1.2 px. The tracker must not read it as normalized because it is small.
+    const auto transformation = makeDetectionTransformation(800, 500);
+    auto detections = std::make_shared<dai::ImgDetections>();
+    detections->setTransformation(transformation);
+    detections->detections.emplace_back(dai::RotatedRect{dai::Point2f{400.6f, 250.6f, false}, dai::Size2f{1.2f, 1.2f, false}, 0.0f}, 1.0f, 0);
+    detections->setSequenceNum(1);
+
+    const auto roi = trackOnce(transformation, detections);
+    REQUIRE(roi[2] - roi[0] <= 2.0f);
+    REQUIRE(roi[3] - roi[1] <= 2.0f);
+    requireBounds(roi, {400.0f, 250.0f, 401.2f, 251.2f}, {1, 1, 1, 1}, 1.5f);
+}
+#endif

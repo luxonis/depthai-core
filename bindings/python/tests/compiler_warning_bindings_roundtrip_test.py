@@ -463,3 +463,86 @@ def test_tracklets_binding_roundtrip():
     tracklets.tracklets = expected_tracklets
 
     assert normalize(tracklets.tracklets) == normalize(expected_tracklets)
+
+
+# Rotated rectangles and detection bounds
+WIDTH, HEIGHT = 800, 500
+
+
+def pixel_rect(width, height, angle, cx=400.0, cy=250.0):
+    return dai.RotatedRect(dai.Point2f(cx, cy, False), dai.Size2f(width, height, False), angle)
+
+
+def assert_bounds(bounds, expected, scale=(1, 1, 1, 1), margin=1e-3):
+    for value, expected_value, factor in zip(bounds, expected, scale):
+        assert value * factor == pytest.approx(expected_value, abs=margin)
+
+
+def test_get_outer_rect_in_frame_rotates_normalized_rects_in_pixels():
+    pixels = pixel_rect(200, 100, 30)
+    expected = pixels.getOuterRect()
+    # Correct outer box: 223.21 x 186.60 px. getOuterRect() of the normalized box gives 253.21 x 149.10 px.
+    bounds = pixels.normalize(WIDTH, HEIGHT).getOuterRectInFrame(WIDTH, HEIGHT)
+    assert_bounds(bounds, expected, (WIDTH, HEIGHT, WIDTH, HEIGHT))
+    assert_bounds(pixels.getOuterRectInFrame(WIDTH, HEIGHT), expected)
+
+
+def test_set_bounding_box_with_frame_size():
+    pixels = pixel_rect(200, 100, 30)
+    expected = pixels.getOuterRect()
+    for detection in (dai.ImgDetection(), dai.SpatialImgDetection()):
+        detection.setBoundingBox(pixels.normalize(WIDTH, HEIGHT), WIDTH, HEIGHT)
+        assert_bounds(detection.getOuterBoundingBox(), expected, (WIDTH, HEIGHT, WIDTH, HEIGHT))
+        detection.setBoundingBox(pixels)
+        assert_bounds(detection.getOuterBoundingBox(), expected)
+
+
+def test_spatial_get_outer_bounding_box():
+    rect = dai.RotatedRect(dai.Point2f(0.4, 0.6, True), dai.Size2f(0.2, 0.3, True), 0)
+    spatial = dai.SpatialImgDetection()
+    with pytest.raises(RuntimeError):
+        spatial.getOuterBoundingBox()
+    spatial.boundingBox = rect
+    assert_bounds(spatial.getOuterBoundingBox(), rect.getOuterRect(), margin=1e-6)
+    assert_bounds(spatial.getImgDetection().getOuterBoundingBox(), rect.getOuterRect(), margin=1e-6)
+
+
+def test_legacy_bounds_have_explicit_units():
+    normalized = dai.ImgDetection()
+    normalized.xmin, normalized.ymin, normalized.xmax, normalized.ymax = 0.2, 0.3, 0.6, 0.7
+    assert normalized.getBoundingBox().isNormalized()
+
+    pixels = dai.ImgDetection()
+    pixels.xmin, pixels.ymin, pixels.xmax, pixels.ymax = 100, 50, 300, 250
+    assert not pixels.getBoundingBox().isNormalized()
+
+    with pytest.raises(RuntimeError):
+        dai.ImgDetection().getBoundingBox()
+
+
+@pytest.mark.parametrize("rotation", [-0.001, 0.001])
+def test_small_rotation_keeps_size_and_angle(rotation):
+    source = dai.ImgTransformation(WIDTH, HEIGHT)
+    target = dai.ImgTransformation(WIDTH, HEIGHT)
+    target.addRotation(rotation, dai.Point2f(WIDTH / 2, HEIGHT / 2, False))
+    message = dai.ImgDetections()
+    message.setTransformation(source)
+    message.detections = [dai.ImgDetection(pixel_rect(333.84, 293.66, 0).normalize(WIDTH, HEIGHT), 1.0, 0)]
+
+    detection = message.transformTo(target).detections[0]
+    box = detection.getBoundingBox()
+    assert box.angle == pytest.approx(rotation, abs=1e-2)
+    assert box.size.width * WIDTH == pytest.approx(333.84, abs=0.1)
+    assert box.size.height * HEIGHT == pytest.approx(293.66, abs=0.1)
+    bounds = detection.getOuterBoundingBox()
+    assert (bounds[2] - bounds[0]) * WIDTH == pytest.approx(333.84, abs=0.1)
+    assert (bounds[3] - bounds[1]) * HEIGHT == pytest.approx(293.66, abs=0.1)
+
+
+def test_frame_rotation_of_90_degrees_keeps_an_axis_aligned_box_at_0_degrees():
+    transformation = dai.ImgTransformation(WIDTH, HEIGHT)
+    transformation.addRotation(90, dai.Point2f(WIDTH / 2, HEIGHT / 2, False))
+    box = transformation.transformRect(pixel_rect(200, 100, 0))
+    assert box.angle == pytest.approx(0, abs=1e-2)
+    assert box.size.width == pytest.approx(100, abs=0.1)
+    assert box.size.height == pytest.approx(200, abs=0.1)

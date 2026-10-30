@@ -402,7 +402,7 @@ void SCRFDParser::run() {
         auto message =
             utilities::DetectionUtils::createDetectionMessage(detections.bboxes, detections.scores, /*angles=*/{}, labels, mappedLabelNames, keypoints);
         if(nnData->transformation.has_value()) {
-            message->setTransformation(*nnData->transformation);
+            utilities::DetectionUtils::setTransformationAndBounds(*message, *nnData->transformation);
         }
         message->setBufferMetadataFrom(nnData);
 

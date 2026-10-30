@@ -88,6 +88,8 @@ struct ImgTransformation {
     dai::Point2f transformPoint(dai::Point2f point) const;
     /**
      * Transform a rotated rect from the source frame to the current frame.
+     * @note The result is the smallest rectangle that encloses the mapped corners. Of its equal forms (angle + k * 90 degrees,
+     * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
@@ -100,6 +102,8 @@ struct ImgTransformation {
     dai::Point2f invTransformPoint(dai::Point2f point) const;
     /**
      * Transform a rotated rect from the current frame to the source frame.
+     * @note The result is the smallest rectangle that encloses the mapped corners. Of its equal forms (angle + k * 90 degrees,
+     * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
@@ -275,6 +279,8 @@ struct ImgTransformation {
     /**
      * Remap a rotated rect from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the
      * intrinsics to remap the rect.
+     * @note The result is the smallest rectangle that encloses the mapped corners. Of its equal forms (angle + k * 90 degrees,
+     * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param to Transformation to remap to
      * @param rect RotatedRect to remap
      */
@@ -309,11 +315,13 @@ struct ImgTransformation {
      * Project a rotated rectangle from the source frame defined by this transformation into the target frame defined by the to transformation. This function
      * assumes the rectangle is parallel to the image plane (i.e. the entire rectangle is at the same depth away). The function fits the smallest possible
      * rectangle on to the projected corners of the original rectangle.
+     * @note The result is the smallest rectangle that encloses the mapped corners. Of its equal forms (angle + k * 90 degrees,
+     * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param to Target transformation to project to
      * @param rect Source rotated rectangle in the current frame
      * @param depth (mm) Depth of the rectangle to project
      */
-    dai::RotatedRect projectRectTo(const ImgTransformation& to, RotatedRect& rect, float depth) const;
+    dai::RotatedRect projectRectTo(const ImgTransformation& to, RotatedRect rect, float depth) const;
 
     /**
      * Project a 3D spatial point from the source coordinate system (this transformation) into a 2D point in the target frame (to transformation).
