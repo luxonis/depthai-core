@@ -657,6 +657,22 @@ TEST_CASE("Borrowed frame views are used read-only and preserve padded inputs", 
 }
 
 TEST_CASE("RGBD converts color without modifying shared input frames", "[ImgFrame][OpenCV][copy]") {
+    using Type = dai::ImgFrame::Type;
+    const auto colorType = GENERATE(Type::BGR888i, Type::RGB161616, Type::BGRF16F16F16i);
+    CAPTURE(colorType);
+    int cvType = CV_8UC3;
+    cv::Scalar pixel(11, 22, 33);
+    cv::Vec3b expected(33, 22, 11);
+    if(colorType == Type::RGB161616) {
+        cvType = CV_16UC3;
+        pixel = cv::Scalar(11, 22, 300);
+        // setCvFrame stores RGB161616 with red first; preserve the previous RGBD conversion.
+        expected = cv::Vec3b(11, 22, 255);
+    } else if(colorType == Type::BGRF16F16F16i) {
+        cvType = CV_16FC3;
+        pixel = cv::Scalar(-4, 22.75, 300.5);
+        expected = cv::Vec3b(255, 23, 0);
+    }
     for(auto threads : {0u, 1u, 3u}) {
         CAPTURE(threads);
         dai::Pipeline pipeline(false);
@@ -668,7 +684,7 @@ TEST_CASE("RGBD converts color without modifying shared input frames", "[ImgFram
         auto output = node->rgbd.createOutputQueue();
         auto pointsOutput = node->pcl.createOutputQueue();
         auto color = std::make_shared<dai::ImgFrame>();
-        color->setCvFrame(cv::Mat(2, 4, CV_8UC3, cv::Scalar(11, 22, 33)), dai::ImgFrame::Type::BGR888i);
+        color->setCvFrame(cv::Mat(2, 4, cvType, pixel), colorType);
         auto depth = std::make_shared<dai::ImgFrame>();
         depth->setCvFrame(cv::Mat(2, 4, CV_16UC1, cv::Scalar(1000)), dai::ImgFrame::Type::RAW16);
         const auto timestamp = std::chrono::steady_clock::now();
@@ -688,15 +704,15 @@ TEST_CASE("RGBD converts color without modifying shared input frames", "[ImgFram
         const auto points = cloud->getPointsRGB();
         REQUIRE(points.size() == 8);
         for(const auto& point : points) {
-            REQUIRE(point.r == 33);
-            REQUIRE(point.g == 22);
-            REQUIRE(point.b == 11);
+            REQUIRE(point.r == expected[0]);
+            REQUIRE(point.g == expected[1]);
+            REQUIRE(point.b == expected[2]);
         }
         REQUIRE(result->getRGBFrame().has_value());
         auto rgb = std::get<std::shared_ptr<dai::ImgFrame>>(*result->getRGBFrame());
         REQUIRE(rgb->getType() == dai::ImgFrame::Type::RGB888i);
-        REQUIRE(rgb->getFrame().at<cv::Vec3b>(0, 0) == cv::Vec3b(33, 22, 11));
-        REQUIRE(color->getType() == dai::ImgFrame::Type::BGR888i);
+        REQUIRE(rgb->getFrame().at<cv::Vec3b>(0, 0) == expected);
+        REQUIRE(color->getType() == colorType);
         REQUIRE(std::equal(original.begin(), original.end(), color->getData().begin()));
     }
 }
