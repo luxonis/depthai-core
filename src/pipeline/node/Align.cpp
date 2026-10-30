@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -17,10 +18,12 @@
 #include "pipeline/datatype/DatatypeEnum.hpp"
 #include "pipeline/datatype/ImgDetections.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
+#include "pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/datatype/PointCloudData.hpp"
 #include "pipeline/datatype/SegmentationMask.hpp"
 #include "pipeline/datatype/SpatialImgDetections.hpp"
 #include "pipeline/datatype/Tracklets.hpp"
+#include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
@@ -365,11 +368,36 @@ std::shared_ptr<ImgFrame> makeRemapTarget(const ImgFrame& source, int width, int
     return frame;
 }
 
+<<<<<<< Updated upstream
 std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
                                         const ImgFrameRunState& state,
                                         bool isSegmentationMask,
                                         std::array<uint8_t, 3> bgColorRgb,
                                         Interpolation interpolation = Interpolation::AUTO) {
+=======
+void remapFrame(ImgFrame& src, ImgFrame& dst, const cv::Mat& mapX, const cv::Mat& mapY, bool isSegmentationMask, const cv::Scalar& bgColor) {
+    const auto inputFrameBpp = alignFrameTypeBytesPerPixel(src.getType());
+    const int interp = cv::INTER_NEAREST;
+    const int chromaInterp = isSegmentationMask ? cv::INTER_NEAREST : cv::INTER_LINEAR;
+    auto srcFrame = src.getFrame();
+    auto dstFrame = dst.getFrame();
+    if(inputFrameBpp == 1.5f) {
+        if(dst.getType() == ImgFrame::Type::NV12) {
+            remapNv12(srcFrame, dstFrame, mapX, mapY, chromaInterp, bgColor);
+        } else {  // YUV420p; no other frame type has 1.5 bytes per pixel
+            remapYuv420(srcFrame, dstFrame, mapX, mapY, chromaInterp, bgColor);
+        }
+    } else if(dst.getType() == ImgFrame::Type::RGB888p || dst.getType() == ImgFrame::Type::BGR888p) {
+        cv::Mat remapped;
+        cv::remap(src.getCvFrame(), remapped, mapX, mapY, interp, cv::BORDER_CONSTANT, bgColor);
+        dst.setCvFrame(remapped, dst.getType());
+    } else {
+        cv::remap(srcFrame, dstFrame, mapX, mapY, interp, cv::BORDER_CONSTANT, bgColor);
+    }
+}
+
+std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunState& state, bool isSegmentationMask, std::array<uint8_t, 3> bgColorRgb) {
+>>>>>>> Stashed changes
     const cv::Scalar bgColor(bgColorRgb[0], bgColorRgb[1], bgColorRgb[2]);
 
     const ImgFrame::Type inputFrameType = inputImg.getType();
@@ -391,6 +419,7 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
     const auto frameSize = static_cast<uint32_t>(roundf(width * height * inputFrameBpp));
     const auto outFrameSize = static_cast<uint32_t>(roundf(state.alignWidth * state.alignHeight * inputFrameBpp));
 
+<<<<<<< Updated upstream
     int interp = cv::INTER_NEAREST;
     switch(interpolation) {
         case Interpolation::AUTO:
@@ -427,9 +456,11 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
         }
     };
 
+=======
+>>>>>>> Stashed changes
     // warp1: undistort + rectify in the input camera frame
     auto rectified = makeRemapTarget(inputImg, width, height, frameSize);
-    remapFrame(inputImg, *rectified, state.mapX1, state.mapY1);
+    remapFrame(inputImg, *rectified, state.mapX1, state.mapY1, isSegmentationMask, bgColor);
 
     auto warp2Input = rectified;
     if(inputFrameType == ImgFrame::Type::RAW16 && state.staticDepthPlane == 0 && !state.degenerateStereoTransform) {
@@ -440,7 +471,7 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
 
     // warp2: rectify into the align camera frame
     auto alignedImg = makeRemapTarget(inputImg, state.alignWidth, state.alignHeight, outFrameSize);
-    remapFrame(*warp2Input, *alignedImg, state.mapX2, state.mapY2);
+    remapFrame(*warp2Input, *alignedImg, state.mapX2, state.mapY2, isSegmentationMask, bgColor);
 
     return alignedImg;
 }
@@ -651,6 +682,170 @@ std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>&
     throw std::runtime_error(fmt::format("Unsupported datatype for alignment: {}", static_cast<int>(inputType)));
 }
 
+// Calibration-dependent work is shared by all colorings and retained between groups.
+struct GroupRunState {
+    ImgTransformation inputTransform;
+    ImgTransformation targetTransform;
+    std::vector<std::array<float, 4> > rays;
+    std::array<float, 3> projectedTranslation = {};
+    float translationZ = 0;
+    cv::Mat mapX;
+    cv::Mat mapY;
+    cv::Mat zBuffer;
+};
+
+void prepareGroupMapping(GroupRunState& state, const ImgTransformation& source, const ImgTransformation& target) {
+    state.inputTransform = source;
+    state.targetTransform = target;
+    const auto [width, height] = source.getSize();
+    const auto [targetWidth, targetHeight] = target.getSize();
+    // OpenCV remap uses signed 16-bit coordinates internally.
+    if(width == 0 || height == 0 || targetWidth == 0 || targetHeight == 0 || width >= 32767 || height >= 32767 || targetWidth >= 32767
+       || targetHeight >= 32767) {
+        throw std::runtime_error("Align MessageGroup dimensions must be between 1 and 32766");
+    }
+    const auto extrinsics = source.getExtrinsics().getExtrinsicsTransformationTo(target.getExtrinsics(), false, LengthUnit::MILLIMETER);
+    const auto intrinsics = target.getIntrinsicMatrix();
+    const auto inputIntrinsicsInv = source.getIntrinsicMatrixInv();
+    const auto distortion = source.getDistortionCoefficients();
+    const auto model = source.getDistortionModel();
+    if(target.getDistortionModel() == CameraModel::Equirectangular || target.getDistortionModel() == CameraModel::Cylindrical) {
+        throw std::runtime_error("Align MessageGroup requires a pinhole target projection");
+    }
+    state.projectedTranslation = matrix::matVecMul(intrinsics, std::array<float, 3>{extrinsics[0][3], extrinsics[1][3], extrinsics[2][3]});
+    state.translationZ = extrinsics[2][3];
+    state.rays.resize(width * height);
+    for(size_t y = 0; y < height; ++y) {
+        for(size_t x = 0; x < width; ++x) {
+            const auto sensor = matrix::matVecMul(inputIntrinsicsInv, std::array<float, 3>{static_cast<float>(x), static_cast<float>(y), 1.0f});
+            const auto undistorted = undistortPoint(sensor, model, distortion);
+            const std::array<float, 3> ray = {undistorted[0] / undistorted[2], undistorted[1] / undistorted[2], 1.0f};
+            std::array<float, 3> rotated = {};
+            for(size_t row = 0; row < 3; ++row) {
+                for(size_t col = 0; col < 3; ++col) rotated[row] += extrinsics[row][col] * ray[col];
+            }
+            const auto projected = matrix::matVecMul(intrinsics, rotated);
+            state.rays[y * width + x] = {projected[0], projected[1], projected[2], rotated[2]};
+        }
+    }
+    state.mapX.create(static_cast<int>(targetHeight), static_cast<int>(targetWidth), CV_32FC1);
+    state.mapY.create(state.mapX.size(), CV_32FC1);
+    state.zBuffer.create(state.mapX.size(), CV_32FC1);
+}
+
+void updateGroupMapping(GroupRunState& state, ImgFrame& depth) {
+    const auto [width, height] = state.inputTransform.getSize();
+    state.mapX.setTo(-1);
+    state.mapY.setTo(-1);
+    state.zBuffer.setTo(std::numeric_limits<float>::infinity());
+    const auto depthPixels = depth.getFrame();
+    for(size_t y = 0; y < height; ++y) {
+        const auto* row = depthPixels.ptr<uint16_t>(static_cast<int>(y));
+        for(size_t x = 0; x < width; ++x) {
+            if(row[x] == 0) continue;
+            const auto& ray = state.rays[y * width + x];
+            const float z = ray[3] * row[x] + state.translationZ;
+            if(!std::isfinite(z) || z < 0.5f || z >= 65535.5f) continue;
+            const float divisor = ray[2] * row[x] + state.projectedTranslation[2];
+            if(!std::isfinite(divisor) || std::abs(divisor) < 1e-8f) continue;
+            const float px = (ray[0] * row[x] + state.projectedTranslation[0]) / divisor;
+            const float py = (ray[1] * row[x] + state.projectedTranslation[1]) / divisor;
+            if(!std::isfinite(px) || !std::isfinite(py) || px <= -0.5f || py <= -0.5f || px >= state.mapX.cols - 0.5f || py >= state.mapX.rows - 0.5f) continue;
+            const int targetX = static_cast<int>(std::round(px));
+            const int targetY = static_cast<int>(std::round(py));
+            auto& closest = state.zBuffer.at<float>(targetY, targetX);
+            if(z < closest) {
+                closest = z;
+                state.mapX.at<float>(targetY, targetX) = static_cast<float>(x);
+                state.mapY.at<float>(targetY, targetX) = static_cast<float>(y);
+            }
+        }
+    }
+}
+
+void remapGroupColor(ImgFrame& source, ImgFrame& target, const cv::Mat& mapX, const cv::Mat& mapY) {
+    if(source.getType() != ImgFrame::Type::RGB888p && source.getType() != ImgFrame::Type::BGR888p) {
+        remapFrame(source, target, mapX, mapY, true, cv::Scalar());
+        return;
+    }
+    // Remap planar color directly, avoiding full-frame interleave/deinterleave copies.
+    const size_t width = source.getWidth();
+    const size_t height = source.getHeight();
+    const size_t stride = source.getStride() == 0 ? width : source.getStride();
+    std::array<size_t, 3> offsets = {0, width * height, 2 * width * height};
+    if(source.fb.p1Offset != 0 || source.fb.p2Offset != 0 || source.fb.p3Offset != 0) {
+        offsets = {source.fb.p1Offset, source.fb.p2Offset, source.fb.p3Offset};
+    }
+    auto destination = target.getFrame();
+    for(size_t plane = 0; plane < offsets.size(); ++plane) {
+        if(offsets[plane] + (height - 1) * stride + width > source.getData().size()) {
+            throw std::runtime_error("Align MessageGroup planar buffer is smaller than its plane layout");
+        }
+        cv::Mat inputPlane(static_cast<int>(height), static_cast<int>(width), CV_8UC1, source.getData().data() + offsets[plane], stride);
+        auto outputPlane = destination.rowRange(static_cast<int>(plane) * target.getHeight(), static_cast<int>(plane + 1) * target.getHeight());
+        cv::remap(inputPlane, outputPlane, mapX, mapY, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar());
+    }
+}
+
+std::shared_ptr<MessageGroup> alignGroup(MessageGroup& group, const ImgTransformation& target, GroupRunState& state) {
+    const auto depthEntry = group.group.find("depth");
+    auto depth = depthEntry == group.group.end() ? nullptr : std::dynamic_pointer_cast<ImgFrame>(depthEntry->second);
+    if(!depth || depth->getType() != ImgFrame::Type::RAW16) {
+        throw std::runtime_error("Align MessageGroup requires a RAW16 'depth' ImgFrame in millimeters");
+    }
+    const auto& source = depth->transformation;
+    const auto [width, height] = source.getSize();
+    if(width == 0 || height == 0 || width >= 32767 || height >= 32767) {
+        throw std::runtime_error("Align MessageGroup dimensions must be between 1 and 32766");
+    }
+    for(const auto& entry : group.group) {
+        const auto frame = std::dynamic_pointer_cast<ImgFrame>(entry.second);
+        if(!frame || frame->getWidth() != width || frame->getHeight() != height || !frame->transformation.isEqualTransformation(source)
+           || alignFrameTypeBytesPerPixel(frame->getType()) <= 0 || frame->getType() == ImgFrame::Type::NV21) {
+            throw std::runtime_error("Align MessageGroup entries must be supported ImgFrames registered to the depth pixel grid and transformation");
+        }
+        const auto layout = frame->getFrame();
+        const size_t required = (layout.rows - 1) * layout.step[0] + layout.cols * layout.elemSize();
+        if(required > frame->getData().size()) {
+            throw std::runtime_error("Align MessageGroup frame buffer is smaller than its strided layout");
+        }
+        const auto [targetWidth, targetHeight] = target.getSize();
+        if(alignFrameTypeBytesPerPixel(frame->getType()) == 1.5f
+           && ((width % 2) != 0 || (height % 2) != 0 || (targetWidth % 2) != 0 || (targetHeight % 2) != 0)) {
+            throw std::runtime_error("Align MessageGroup YUV frames require even dimensions");
+        }
+    }
+    if(state.rays.empty() || !state.inputTransform.isEqualTransformation(source) || !state.targetTransform.isEqualTransformation(target)) {
+        prepareGroupMapping(state, source, target);
+    }
+    updateGroupMapping(state, *depth);
+    auto output = std::make_shared<MessageGroup>();
+    output->setBufferMetadataFrom(&group);
+    output->setTimestampSource(group.getTimestampSource());
+    auto outputTransform = target;
+    outputTransform.setDistortionCoefficients(std::vector<float>(target.getDistortionCoefficients().size(), 0.0f));
+    const auto [sourceWidth, sourceHeight] = target.getSourceSize();
+    for(const auto& entry : group.group) {
+        auto frame = std::static_pointer_cast<ImgFrame>(entry.second);
+        const float bpp = alignFrameTypeBytesPerPixel(frame->getType());
+        auto aligned = makeRemapTarget(*frame, state.mapX.cols, state.mapX.rows, static_cast<uint32_t>(state.mapX.total() * bpp));
+        if(entry.first == "depth") {
+            auto pixels = aligned->getFrame();
+            for(int y = 0; y < pixels.rows; ++y) {
+                auto* row = pixels.ptr<uint16_t>(y);
+                const auto* zRow = state.zBuffer.ptr<float>(y);
+                for(int x = 0; x < pixels.cols; ++x) row[x] = std::isfinite(zRow[x]) ? static_cast<uint16_t>(std::round(zRow[x])) : 0;
+            }
+        } else {
+            remapGroupColor(*frame, *aligned, state.mapX, state.mapY);
+        }
+        aligned->setSourceSize(static_cast<unsigned int>(sourceWidth), static_cast<unsigned int>(sourceHeight));
+        aligned->setTransformation(outputTransform);
+        output->add(entry.first, aligned);
+    }
+    return output;
+}
+
 }  // namespace
 
 void Align::run() {
@@ -664,6 +859,7 @@ void Align::run() {
     ImgFrameRunState runState;
     bool initialized = false;
     bool runStateValid = false;
+    GroupRunState groupState;
 
     while(mainLoop()) {
         std::shared_ptr<Buffer> inputMsg = nullptr;
@@ -690,6 +886,22 @@ void Align::run() {
         if(alignToMsg) {
             const DatatypeEnum alignToDatatype = classifyInputDatatype(alignToMsg);
             newAlignToTransform = extractTransformationFromBuffer(alignToMsg, alignToDatatype, *logger);
+        }
+        if(inputMsg && inputMsg->getDatatype() == DatatypeEnum::MessageGroup) {
+            std::shared_ptr<MessageGroup> aligned;
+            try {
+                aligned = alignGroup(*castInput<MessageGroup>(inputMsg), newAlignToTransform, groupState);
+            } catch(const std::exception& error) {
+                throw std::runtime_error(fmt::format("Align MessageGroup failed: {}", error.what()));
+            }
+            alignToTransform = newAlignToTransform;
+            initialized = true;
+            // A later single-message input must rebuild its independent rectification state.
+            runStateValid = false;
+            auto blockEvent = this->outputBlockEvent();
+            outputAligned.send(aligned);
+            passthroughInput.send(inputMsg);
+            continue;
         }
         const DatatypeEnum inputDatatype = classifyInputDatatype(inputMsg);
         ImgTransformation newInputTransform = extractTransformationFromBuffer(inputMsg, inputDatatype, *logger);

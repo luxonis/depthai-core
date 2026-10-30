@@ -12,7 +12,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief Align node. Aligns ImgFrame and Transformable messages using ImgTransformation metadata.
+ * @brief Align node. Aligns ImgFrame, Transformable and depth/color MessageGroup messages using ImgTransformation metadata.
  */
 class Align : public DeviceNodeCRTP<DeviceNode, Align, AlignProperties>, public HostRunnable {
    public:
@@ -36,9 +36,15 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, AlignProperties>, public 
 
     /**
      * Input message to be aligned. Can be either ImgFrame or any message that implements Transformable interface.
+     * On host, also accepts a MessageGroup containing a RAW16 "depth" frame in millimeters and any number of
+     * coloring ImgFrames registered to the same pixel grid and transformation as depth. All entries are warped
+     * together using depth, with nearest-surface occlusion handling. Names and group metadata are preserved.
+     * Use setRunOnHost(true) for MessageGroup inputs. Output images are undistorted; uncovered pixels are zero.
+     * Group alignment always uses measured depth, independently of staticDepthPlane.
      * Default queue is non-blocking with size 4.
      */
-    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
+    Input input{
+        *this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}, {DatatypeEnum::MessageGroup, false}}}};
 
     /**
      * Input align to message.
@@ -49,13 +55,16 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, AlignProperties>, public 
     /**
      * Outputs the input message aligned to the inputAlignTo message. Output message will be of the same type as input message.
      */
-    Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
+    Output outputAligned{
+        *this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}, {DatatypeEnum::MessageGroup, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInput{*this, {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
+    Output passthroughInput{
+        *this,
+        {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}, {DatatypeEnum::MessageGroup, false}}}};
 
     /**
      * Specify number of frames in the pool

@@ -956,6 +956,10 @@ dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
 # Align test
+if(DEPTHAI_OPENCV_SUPPORT)
+    dai_add_test(align_group_test src/onhost_tests/align_group_test.cpp)
+    dai_set_test_labels(align_group_test onhost ci)
+endif()
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
 dai_set_test_labels(align_node_test ondevice rvc4 ci)
 
