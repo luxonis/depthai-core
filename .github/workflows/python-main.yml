@@ -24,8 +24,6 @@ on:
       - main
       - develop
     types: [opened, synchronize, reopened, labeled]
-  pull_request_review:
-    types: [submitted]
 
 ###################################
 ###################################
@@ -52,8 +50,6 @@ jobs:
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
         CHECK_GITHUB_REF: ${{ github.ref }}
-        CHECK_REVIEW_STATE: ${{ github.event.review.state }}
-        CHECK_BASE_REF: ${{ github.event.pull_request.base.ref }}
         CHECK_ACTION: ${{ github.event.action }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
@@ -75,15 +71,13 @@ jobs:
           WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
         fi
 
-        if [[ "$EVENT_NAME" == "pull_request" || "$EVENT_NAME" == "pull_request_review" ]]; then
+        if [[ "$EVENT_NAME" == "pull_request" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
-          if [[ "$EVENT_NAME" == "pull_request" && "$CHECK_ACTION" != "labeled" ]]; then
+          if [[ "$CHECK_ACTION" != "labeled" ]]; then
             # Run the binding precheck on edits; retain the existing full-build triggers.
             SHOULD_RUN="false"
-          elif [[ "$EVENT_NAME" == "pull_request" ]] && ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
-            SHOULD_RUN="false"
-          elif [[ "$EVENT_NAME" == "pull_request_review" && ("$CHECK_REVIEW_STATE" != "approved" || ("$CHECK_BASE_REF" != "main" && "$CHECK_BASE_REF" != "develop")) ]]; then
+          elif ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
             SHOULD_RUN="false"
           fi
         fi
@@ -101,13 +95,13 @@ jobs:
       with:
         python-version: '3.12'
     - name: Install binding precheck dependencies
-      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      if: github.event_name == 'pull_request'
       run: python -m pip install -r ci/requirements-binding-check.txt
     - name: Test binding precheck
-      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      if: github.event_name == 'pull_request'
       run: python -m unittest discover -s ci/tests -p 'test_python_bindings.py'
     - name: Check new public APIs have Python bindings
-      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+      if: github.event_name == 'pull_request'
       env:
         BINDING_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
       run: |
