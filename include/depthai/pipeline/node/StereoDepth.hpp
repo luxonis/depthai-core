@@ -17,6 +17,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
    public:
     constexpr static const char* NAME = "StereoDepth";
     StereoDepth() = default;
+    StereoDepth(const std::shared_ptr<Device>& device);
 
     /**
      * Preset modes for stereo depth.
