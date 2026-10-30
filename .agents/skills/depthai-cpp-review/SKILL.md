@@ -268,6 +268,25 @@ guidelines in Part 2 where the two disagree.
 Check every modified file, examples included.
 Severity: MEDIUM
 
+## K. Frame access and ownership
+
+- `getFrame(false)` (the default) borrows pixels in the original format and
+  layout; `getFrame(true)` copies. Neither performs color conversion.
+- `getCvFrame()` returns owned pixels, converting to BGR interleaved or
+  grayscale as needed. Preserve this public ownership contract.
+- For internal synchronous readers, prefer `utility::getCvFrameView()` from
+  `src/utility/ImgFrameView.hpp`: it borrows compatible formats and converts
+  others. Declare borrowed views `const cv::Mat`.
+- Keep the owning frame/`Memory` alive and its buffer unchanged until the
+  last use. Retaining or asynchronous consumers must retain the owner or copy.
+  OpenCV constness is shallow: perform pixel mutations in separate owned
+  buffers, never through writable aliases of borrowed inputs.
+- Respect row strides and plane offsets. Write conversions into final output
+  storage where possible, and test that shared inputs remain unchanged when
+  removing copies.
+
+Severity: HIGH for lifetime or shared-input mutation; MEDIUM for redundant copies.
+
 # PART 2 — GENERAL C++ STANDARDS
 
 Derived from the C++ Core Guidelines. Rule IDs (R.11, ES.20, …) refer to
