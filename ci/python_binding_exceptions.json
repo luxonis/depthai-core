@@ -81,6 +81,7 @@
   "dai::ImgDetectionsFilterConfig::DEPTHAI_SERIALIZE(ImgDetectionsFilterConfig,Buffer::sequenceNum,Buffer::ts,Buffer::tsDevice,Buffer::tsSystem,labelsToKeep,labelsToReject,minConfidence,maxConfidence,minArea,maxArea,minWidth,maxWidth,minHeight,maxHeight,regionOfInterest,maxDetections,sortByConfidence,overlapMode,overlapIouThreshold,reference)": "C++ serialization macro; config fields and __repr__ are bound explicitly.",
   "dai::ImgDetectionsFilterConfig::getDatatype()const": "Already exposed through the inherited ADatatype.getDatatype binding with virtual dispatch; the checker does not resolve inheritance.",
   "dai::ImgDetectionsFilterConfig::serialize(std::vector<std::uint8_t>&,DatatypeEnum&)const": "Internal transport serialization hook; intentionally C++ only.",
+  "dai::ImgTransformation::projectRectTo(constImgTransformation&,RotatedRect,float)const": "Already exposed through the existing ImgTransformation.projectRectTo binding; only rect changed from RotatedRect& to RotatedRect (by value), and the checker does not match the unchanged member-function binding to the new signature.",
   "dai::MonoCameraProperties": "Deprecated MonoCamera properties; use Camera.",
   "dai::MonoCameraProperties::AUTO": "Deprecated MonoCamera properties; use Camera.",
   "dai::MonoCameraProperties::SensorResolution": "Deprecated MonoCamera properties; use Camera.",
