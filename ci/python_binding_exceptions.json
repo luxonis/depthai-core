@@ -123,6 +123,7 @@
   "dai::PipelineSchema::connections": "Internal pipeline serialization schema; intentionally C++ only.",
   "dai::PipelineSchema::globalProperties": "Internal pipeline serialization schema; intentionally C++ only.",
   "dai::PipelineSchema::nodes": "Internal pipeline serialization schema; intentionally C++ only.",
+  "dai::StreamMessageParser::parseMessage(std::vector<uint8_t>)": "Internal XLink packet reassembly; transfers ownership of serialized transport bytes. Python receives parsed messages through queues and does not expose StreamMessageParser.",
   "dai::beta::LocalCalibrationOrigin": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",
   "dai::beta::LocalCalibrationOrigin::available": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",
   "dai::beta::LocalCalibrationOrigin::hasSocket": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",
