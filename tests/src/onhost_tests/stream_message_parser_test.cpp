@@ -1,5 +1,8 @@
+#include <XLink/XLinkMacros.h>
+#include <XLink/XLinkPlatform.h>
+
 #include <catch2/catch_all.hpp>
-#include <cstdlib>
+#include <cstdint>
 #include <cstring>
 
 // Include depthai library
@@ -189,8 +192,9 @@ TEST_CASE("Message parsing retains transferred payload storage", "[copy]") {
 
     dai::StreamPacketDesc packet;
     packet.length = pixels.size() + metadata.size();
-    packet.data = static_cast<uint8_t*>(std::malloc(packet.length));
+    packet.data = static_cast<uint8_t*>(XLinkPlatformAllocateData(ALIGN_UP_UINT32(packet.length, __CACHE_LINE_SIZE), __CACHE_LINE_SIZE));
     REQUIRE(packet.data != nullptr);
+    REQUIRE(reinterpret_cast<std::uintptr_t>(packet.data) % __CACHE_LINE_SIZE == 0);
     std::memcpy(packet.data, pixels.data(), pixels.size());
     std::memcpy(packet.data + pixels.size(), metadata.data(), metadata.size());
     auto* packetStorage = packet.data;
