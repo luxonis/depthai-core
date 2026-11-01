@@ -1,5 +1,7 @@
 #include "PipelineImplHelper.hpp"
 
+#include <mutex>
+
 #include "pipeline/node/internal/PipelineEventAggregation.hpp"
 #include "pipeline/node/internal/PipelineStateMerge.hpp"
 #include "pipeline/node/internal/XLinkIn.hpp"
@@ -20,8 +22,13 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
     if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
     // TODO: Refactor this function to reduce complexity
+    std::shared_ptr<Device> defaultDevice;
+    {
+        std::lock_guard<std::mutex> lock(pipeline->nodesMtx);
+        defaultDevice = pipeline->defaultDevice;
+    }
     if(pipeline->buildingOnHost) {
-        if(pipeline->defaultDevice) {
+        if(defaultDevice) {
             auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
             auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
 
@@ -32,9 +39,9 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
                 throw std::runtime_error("Holistic record/replay is not supported with multiple devices yet");
             }
 
-            if(pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-               || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
-               || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {
+            if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+               || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
+               || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {
                 try {
 #ifdef DEPTHAI_MERGED_TARGET
                     if(pipeline->enableHolisticRecordReplay) {
@@ -56,7 +63,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
                     // The pipeline only needs the stable host-side device identifier here.
                     // Avoid a live RPC call during build(), which can fail if the device RPC
                     // client is not available for a reused/external Device instance.
-                    pipeline->defaultDeviceId = pipeline->defaultDevice->getDeviceInfo().getDeviceId();
+                    pipeline->defaultDeviceId = defaultDevice->getDeviceInfo().getDeviceId();
 
                     if(!recordPath.empty() && !replayPath.empty()) {
                         Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
@@ -67,8 +74,8 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
                                                                 pipeline->defaultDeviceId,
                                                                 pipeline->recordConfig,
                                                                 pipeline->recordReplayFilenames,
-                                                                pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-                                                                    || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+                                                                defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                    || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
                                     pipeline->recordConfig.state = RecordConfig::RecordReplayState::RECORD;
                                     Logging::getInstance().logger.info("Record enabled.");
                                 } else {
@@ -87,8 +94,8 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
                                                             pipeline->defaultDeviceId,
                                                             pipeline->recordConfig,
                                                             pipeline->recordReplayFilenames,
-                                                            pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-                                                                || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
                                 pipeline->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
                                 if(platform::checkPathExists(replayPath, true)) {
                                     pipeline->removeRecordReplayFiles = false;

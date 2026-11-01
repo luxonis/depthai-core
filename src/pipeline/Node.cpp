@@ -2,7 +2,9 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
+#include <mutex>
 #include <thread>
+#include <utility>
 
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -10,6 +12,25 @@
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
+namespace {
+
+// Runs `fn` under nodesMtx when the node is already published. `mutex` is null
+// for an unpublished node, whose graph writes happen-before PipelineImpl::add
+// on the constructing thread. The caller keeps the PipelineImpl alive.
+template <typename Fn>
+auto withMutex(std::mutex* mutex, Fn&& fn) -> decltype(fn()) {
+    if(mutex != nullptr) {
+        std::lock_guard<std::mutex> lock(*mutex);
+        return std::forward<Fn>(fn)();
+    }
+    return std::forward<Fn>(fn)();
+}
+
+}  // namespace
+
+std::mutex* Node::nodesMutex(PipelineImpl* pipeline) {
+    return pipeline == nullptr ? nullptr : &pipeline->nodesMtx;
+}
 
 const Pipeline Node::getParentPipeline() const {
     auto impl = parent.lock();
@@ -91,17 +112,26 @@ std::string Node::Input::getGroup() const {
 }
 
 bool Node::Input::isConnected() const {
-    return !connectedOutputs.empty();
+    auto pipeline = parent.get().parent.lock();
+    return withMutex(Node::nodesMutex(pipeline.get()), [this]() { return !connectedOutputs.empty(); });
 }
 
 std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
-    std::vector<Node::ConnectionInternal> myConnections;
-    for(const auto& conn : parent.get().connections) {
-        if(conn.out == this) {
-            myConnections.push_back(conn);
+    auto pipeline = parent.get().parent.lock();
+    return withMutex(Node::nodesMutex(pipeline.get()), [this]() {
+        std::vector<Node::ConnectionInternal> myConnections;
+        for(const auto& conn : parent.get().connections) {
+            if(conn.out == this) {
+                myConnections.push_back(conn);
+            }
         }
-    }
-    return myConnections;
+        return myConnections;
+    });
+}
+
+std::vector<Node::Output::QueueConnection> Node::Output::getQueueConnections() {
+    auto pipeline = parent.get().parent.lock();
+    return withMutex(Node::nodesMutex(pipeline.get()), [this]() { return queueConnections; });
 }
 
 bool Node::Output::isSamePipeline(const Input& in) {
@@ -147,23 +177,7 @@ bool Node::Output::canConnect(const Input& in) {
     return true;
 }
 
-void Node::Output::link(Input& in) {
-    // Linking across two different pipelines is not supported
-    auto outputPipeline = parent.get().parent.lock();
-    auto inputPipeline = in.getParent().parent.lock();
-    if(outputPipeline != nullptr && inputPipeline != nullptr && outputPipeline != inputPipeline) {
-        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}' - nodes are part of different pipelines",
-                                             getParent().getName(),
-                                             toString(),
-                                             in.getParent().getName(),
-                                             in.toString()));
-    }
-
-    // First check if can connect
-    if(!canConnect(in)) {
-        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
-    }
-
+void Node::Output::linkInputLocked(Input& in) {
     // Needed for serialization
     // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
@@ -181,6 +195,29 @@ void Node::Output::link(Input& in) {
     in.connectedOutputs.push_back(this);
 }
 
+void Node::Output::link(Input& in) {
+    // Linking across two different pipelines is not supported
+    auto outputPipeline = parent.get().parent.lock();
+    auto inputPipeline = in.getParent().parent.lock();
+    if(outputPipeline != nullptr && inputPipeline != nullptr && outputPipeline != inputPipeline) {
+        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}' - nodes are part of different pipelines",
+                                             getParent().getName(),
+                                             toString(),
+                                             in.getParent().getName(),
+                                             in.toString()));
+    }
+
+    // First check if can connect. This reads datatypes only, so it stays outside the lock.
+    if(!canConnect(in)) {
+        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // One pipeline: both nodes share it, or only one is published. The cross-pipeline
+    // case already threw. Do not lock a second mutex here.
+    auto pipeline = outputPipeline != nullptr ? outputPipeline : inputPipeline;
+    withMutex(Node::nodesMutex(pipeline.get()), [&]() { linkInputLocked(in); });
+}
+
 std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int maxSize, bool blocking) {
     // Check if pipeline is already started - if so, throw an error
     auto pipelinePtr = parent.get().getParentPipeline();
@@ -188,10 +225,15 @@ std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int 
         throw std::runtime_error("Cannot create queue after pipeline is built");
     }
     auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
-    link(queue);
 
-    // No need to expose this on the public pipeline interface
-    pipelinePtr.impl()->outputQueues.push_back(queue);
+    // getParentPipeline() succeeded, so this node is published. Record the queue on the
+    // output and on the pipeline together; stop() closes outputQueues under the same lock.
+    auto* impl = pipelinePtr.impl();
+    {
+        std::lock_guard<std::mutex> lock(*Node::nodesMutex(impl));
+        linkQueueLocked(queue);
+        impl->outputQueues.push_back(queue);
+    }
     return queue;
 }
 
@@ -224,7 +266,14 @@ bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) c
             && inputNode.lock() == rhs.inputNode.lock() && inputName == rhs.inputName && inputGroup == rhs.inputGroup);
 }
 
-void Node::Output::unlink(Input& in) {
+void Node::Output::detachInput(Input& in) {
+    // Input publicly inherits MessageQueue, so the address matches the pointer link() stored.
+    auto* queue = static_cast<MessageQueue*>(&in);
+    connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), queue), connectedInputs.end());
+    in.connectedOutputs.erase(std::remove(in.connectedOutputs.begin(), in.connectedOutputs.end(), this), in.connectedOutputs.end());
+}
+
+void Node::Output::unlinkInputLocked(Input& in) {
     // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
     if(parent.get().connections.count(connection) == 0) {
@@ -234,10 +283,44 @@ void Node::Output::unlink(Input& in) {
 
     // Unlink
     parent.get().connections.erase(connection);
+    detachInput(in);
+}
 
-    // Remove the shared_ptr to the input directly for host side
-    connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), &in), connectedInputs.end());
-    in.connectedOutputs.erase(std::remove(in.connectedOutputs.begin(), in.connectedOutputs.end(), this), in.connectedOutputs.end());
+void Node::Output::unlink(Input& in) {
+    auto outputPipeline = parent.get().parent.lock();
+    auto inputPipeline = in.getParent().parent.lock();
+    std::mutex* outputMutex = Node::nodesMutex(outputPipeline.get());
+    std::mutex* inputMutex = Node::nodesMutex(inputPipeline.get());
+    // The connection lives on the output node, and connectedOutputs lives on the input
+    // node. A cross-pipeline edge (link() rejects it once both are published) still
+    // mutates both, so lock both mutexes. scoped_lock orders them.
+    if(outputMutex != nullptr && inputMutex != nullptr && outputMutex != inputMutex) {
+        std::scoped_lock lock(*outputMutex, *inputMutex);
+        unlinkInputLocked(in);
+        return;
+    }
+    std::mutex* mutex = outputMutex != nullptr ? outputMutex : inputMutex;
+    withMutex(mutex, [&]() { unlinkInputLocked(in); });
+}
+
+void Node::Output::linkQueueLocked(const std::shared_ptr<MessageQueue>& queue) {
+    connectedInputs.push_back(queue.get());
+    queueConnections.push_back({this, queue});
+}
+
+void Node::Output::unlinkQueueLocked(const std::shared_ptr<MessageQueue>& queue) {
+    connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), queue.get()), connectedInputs.end());
+    queueConnections.erase(std::remove(queueConnections.begin(), queueConnections.end(), QueueConnection{this, queue}), queueConnections.end());
+}
+
+void Node::Output::link(const std::shared_ptr<MessageQueue>& queue) {
+    auto pipeline = parent.get().parent.lock();
+    withMutex(Node::nodesMutex(pipeline.get()), [&]() { linkQueueLocked(queue); });
+}
+
+void Node::Output::unlink(const std::shared_ptr<MessageQueue>& queue) {
+    auto pipeline = parent.get().parent.lock();
+    withMutex(Node::nodesMutex(pipeline.get()), [&]() { unlinkQueueLocked(queue); });
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
@@ -255,8 +338,10 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
     //         }
     //     }
     // }
+    // Host node threads are started at the end of start(), after build() has finished
+    // linking. The connection list is not edited from then on, so this iterates it in place.
     auto sendToInputs = [this, &msg]() {
-        for(auto& messageQueue : connectedInputs) {
+        for(auto* messageQueue : connectedInputs) {
             messageQueue->send(msg);
         }
     };
@@ -286,7 +371,7 @@ bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     //     }
     // }
     auto sendToInputs = [this, &msg, &success]() {
-        for(auto& messageQueue : connectedInputs) {
+        for(auto* messageQueue : connectedInputs) {
             success &= messageQueue->trySend(msg);
         }
     };
@@ -625,22 +710,31 @@ void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
 
 void Node::add(const std::shared_ptr<Node>& node) {
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
-    node->parentId = this->id;
-    nodeMap.push_back(node);
-    // If this node group is already in a pipeline, new children must be adopted too (lazy subgraphs).
-    if(auto pipeline = parent.lock()) {
-        pipeline->adoptSubtree(node);
+    if(node == nullptr) {
+        throw std::invalid_argument("Given node pointer is null");
     }
+    auto pipeline = parent.lock();
+    if(!pipeline) {
+        // The parent is not in a pipeline yet. This write happens-before PipelineImpl::add publishes it.
+        node->parentId = this->id;
+        nodeMap.push_back(node);
+        return;
+    }
+
+    std::vector<std::function<void()>> deferred;
+    {
+        // The parent is already published, so the child must be adopted under the same lock.
+        std::lock_guard<std::mutex> lock(pipeline->nodesMtx);
+        node->parentId = this->id;
+        deferred = pipeline->adoptLocked(node);
+        nodeMap.push_back(node);
+    }
+    PipelineImpl::runDeferred(deferred);
 }
 
-void Node::remove(const std::shared_ptr<Node>& node) {
+void Node::removeLocked(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Node>>& nodes) {
     // Remove the connection to the removed node and all it's children from all the nodes in the pipeline
-    auto pipeline = parent.lock();
-
-    DAI_CHECK_V(pipeline != nullptr, "Pipeline is null");
-    DAI_CHECK_V(!pipeline->isBuilt(), "Cannot remove node from pipeline once it is built.");
-
-    for(auto& n : pipeline->nodes) {
+    for(auto& n : nodes) {
         for(auto& childNode : node->nodeMap) {
             n->removeConnectionToNode(childNode);
         }
@@ -651,10 +745,24 @@ void Node::remove(const std::shared_ptr<Node>& node) {
     nodeMap.erase(std::remove(nodeMap.begin(), nodeMap.end(), node), nodeMap.end());
 }
 
+void Node::remove(const std::shared_ptr<Node>& node) {
+    auto pipeline = parent.lock();
+
+    DAI_CHECK_V(pipeline != nullptr, "Pipeline is null");
+    DAI_CHECK_V(!pipeline->isBuilt(), "Cannot remove node from pipeline once it is built.");
+    std::lock_guard<std::mutex> lock(pipeline->nodesMtx);
+    removeLocked(node, pipeline->nodes);
+}
+
 void Node::removeConnectionToNode(const std::shared_ptr<Node>& node) {
-    // Remove all connections to this node
+    // Caller holds nodesMtx. Also drop the host-side edge send() and isConnected() use.
+    // Edges stored on the removed node itself are left alone: createSubnode removes a
+    // node and adds it again, and that node's own links have to survive.
     for(auto it = connections.begin(); it != connections.end();) {
         if(it->inputNode.lock() == node || it->outputNode.lock() == node) {
+            if(it->out != nullptr && it->in != nullptr) {
+                it->out->detachInput(*it->in);
+            }
             it = connections.erase(it);
         } else {
             ++it;
@@ -681,14 +789,15 @@ Node::Input& SourceNode::getReplayInput() {
     throw std::runtime_error("Not implemented");
 }
 
-// Recursive helpers for pipelines
-Node::ConnectionMap Node::getConnectionMap() {
+// Recursive helpers for pipelines. The *Locked forms do not take nodesMtx:
+// PipelineImpl calls them while it already holds the lock, and the recursion would deadlock.
+Node::ConnectionMap Node::getConnectionMapLocked() {
     ConnectionMap map;
     // self first
     map[shared_from_this()] = connections;
     // then subnodes
     for(const auto& node : nodeMap) {
-        auto nodeConnMap = node->getConnectionMap();
+        auto nodeConnMap = node->getConnectionMapLocked();
         for(auto& kv : nodeConnMap) {
             auto& n = kv.first;
             map[n] = kv.second;
@@ -696,13 +805,34 @@ Node::ConnectionMap Node::getConnectionMap() {
     }
     return map;
 }
-std::shared_ptr<Node> Node::getNode(Node::Id id) {
+Node::ConnectionMap Node::getConnectionMap() {
+    auto pipeline = parent.lock();
+    return withMutex(nodesMutex(pipeline.get()), [this]() { return getConnectionMapLocked(); });
+}
+std::shared_ptr<Node> Node::getNodeLocked(Node::Id id) {
     // Edge case
     if(this->id == id) return shared_from_this();
 
     // Search all nodes
     for(auto& node : nodeMap) {
-        auto n = node->getNode(id);
+        auto n = node->getNodeLocked(id);
+        if(n != nullptr) {
+            return n;
+        }
+    }
+    return nullptr;
+}
+std::shared_ptr<Node> Node::getNode(Node::Id id) {
+    auto pipeline = parent.lock();
+    return withMutex(nodesMutex(pipeline.get()), [this, id]() { return getNodeLocked(id); });
+}
+std::shared_ptr<const Node> Node::getNodeLocked(Node::Id id) const {
+    // Edge case
+    if(this->id == id) return shared_from_this();
+
+    // Search all nodes
+    for(auto& node : nodeMap) {
+        auto n = node->getNodeLocked(id);
         if(n != nullptr) {
             return n;
         }
@@ -710,28 +840,27 @@ std::shared_ptr<Node> Node::getNode(Node::Id id) {
     return nullptr;
 }
 std::shared_ptr<const Node> Node::getNode(Node::Id id) const {
-    // Edge case
-    if(this->id == id) return shared_from_this();
-
-    // Search all nodes
-    for(auto& node : nodeMap) {
-        auto n = node->getNode(id);
-        if(n != nullptr) {
-            return n;
-        }
-    }
-    return nullptr;
+    auto pipeline = parent.lock();
+    return withMutex(nodesMutex(pipeline.get()), [this, id]() { return getNodeLocked(id); });
 }
-std::vector<std::shared_ptr<Node>> Node::getAllNodes() const {
+std::vector<std::shared_ptr<Node>> Node::getAllNodesLocked() const {
     std::vector<std::shared_ptr<Node>> nodes;
     for(auto& node : nodeMap) {
         // Add one own nodes first
         nodes.push_back(node);
         // And its subnodes
-        auto n = node->getAllNodes();
+        auto n = node->getAllNodesLocked();
         nodes.insert(nodes.end(), n.begin(), n.end());
     }
     return nodes;
+}
+std::vector<std::shared_ptr<Node>> Node::getAllNodes() const {
+    auto pipeline = parent.lock();
+    return withMutex(nodesMutex(pipeline.get()), [this]() { return getAllNodesLocked(); });
+}
+Node::NodeMap Node::getNodeMap() const {
+    auto pipeline = parent.lock();
+    return withMutex(nodesMutex(pipeline.get()), [this]() { return nodeMap; });
 }
 
 size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInternal& obj) const {

@@ -1,10 +1,12 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
 #include <cstring>
+#include <functional>
 #include <vector>
 
 #include "common/ExternalFrameSyncRoles.hpp"
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
+#include "depthai/depthai.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "device/Platform.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
@@ -424,33 +426,39 @@ void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<M
 }
 
 void PipelineImpl::setDefaultDeviceProperties(const DeviceProperties& deviceProperties) {
-    if(defaultDevice) {
-        defaultDevice->setProperties(deviceProperties);
-    } else if(defaultDeviceProperties != nullptr) {
-        defaultDeviceProperties->setFrom(deviceProperties);
-    }
+    withDefaultDevice(
+        [this, &deviceProperties] {
+            if(defaultDeviceProperties == nullptr) return;
+            // calib fields live in the same object. Keep the nodesMtx -> calibMtx order.
+            std::lock_guard<std::mutex> lock(calibMtx);
+            defaultDeviceProperties->setFrom(deviceProperties);
+        },
+        [&deviceProperties](Device& device) { device.setProperties(deviceProperties); });
 }
 
 void PipelineImpl::setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties) {
     if(deviceProperties == nullptr) {
         throw std::runtime_error("deviceProperties pointer cannot be null.");
     }
+    std::lock_guard<std::mutex> lock(nodesMtx);
     defaultDeviceProperties = deviceProperties;
 }
 
 std::optional<DeviceProperties> PipelineImpl::getDefaultDeviceProperties() const {
-    if(defaultDevice) {
-        return defaultDevice->getProperties();
-    } else if(defaultDeviceProperties != nullptr) {
-        return *defaultDeviceProperties;
-    }
-    return std::nullopt;
+    return withDefaultDevice(
+        [this]() -> std::optional<DeviceProperties> {
+            if(defaultDeviceProperties == nullptr) return std::nullopt;
+            std::lock_guard<std::mutex> lock(calibMtx);
+            return *defaultDeviceProperties;
+        },
+        [](Device& device) -> std::optional<DeviceProperties> { return device.getProperties(); });
 }
 
 std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
     // Search all nodes
+    std::lock_guard<std::mutex> lock(nodesMtx);
     for(const auto& node : nodes) {
-        auto n = node->getNode(id);
+        auto n = node->getNodeLocked(id);
         if(n != nullptr) {
             return n;
         }
@@ -459,12 +467,16 @@ std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
 }
 
 std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() const {
+    std::lock_guard<std::mutex> lock(nodesMtx);
+    return getAllNodesLocked();
+}
+std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodesLocked() const {
     std::vector<std::shared_ptr<Node>> allNodes;
-    for(auto& node : nodes) {
+    for(const auto& node : nodes) {
         // Insert the node in question
         allNodes.push_back(node);
         // And its subnodes
-        auto n = node->getAllNodes();
+        auto n = node->getAllNodesLocked();
         allNodes.insert(allNodes.end(), n.begin(), n.end());
     }
     return allNodes;
@@ -472,6 +484,7 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() const {
 
 std::vector<std::shared_ptr<Node>> PipelineImpl::getSourceNodes() {
     std::vector<std::shared_ptr<Node>> sourceNodes;
+    std::lock_guard<std::mutex> lock(nodesMtx);
     for(auto& node : nodes) {
         if(node->isSourceNode()) {
             sourceNodes.push_back(node);
@@ -538,8 +551,9 @@ nlohmann::json PipelineImpl::serializeToJson(bool includeAssets) const {
 PipelineImpl::NodeConnectionMap PipelineImpl::getConnectionMap() const {
     NodeConnectionMap map;
 
+    std::lock_guard<std::mutex> lock(nodesMtx);
     for(const auto& node : nodes) {
-        auto nodeConnMap = node->getConnectionMap();
+        auto nodeConnMap = node->getConnectionMapLocked();
         for(auto& kv : nodeConnMap) {
             auto& n = kv.first;
             map[n->id] = kv.second;
@@ -790,7 +804,7 @@ PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, boo
 
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
-    config.board = board;
+    config.board = getBoardConfig();
     return config;
 }
 
@@ -799,12 +813,13 @@ void PipelineImpl::setCameraTuningBlobPath(const fs::path& path) {
 
     auto asset = assetManager.set(assetKey, path);
 
-    if(defaultDevice) {
-        defaultDevice->setCameraTuningBlob(asset->getRelativeUri(), static_cast<uint32_t>(asset->getSize()));
-    } else if(defaultDeviceProperties != nullptr) {
-        defaultDeviceProperties->cameraTuningBlobUri = asset->getRelativeUri();
-        defaultDeviceProperties->cameraTuningBlobSize = static_cast<uint32_t>(asset->getSize());
-    }
+    withDefaultDevice(
+        [this, &asset] {
+            if(defaultDeviceProperties == nullptr) return;
+            defaultDeviceProperties->cameraTuningBlobUri = asset->getRelativeUri();
+            defaultDeviceProperties->cameraTuningBlobSize = static_cast<uint32_t>(asset->getSize());
+        },
+        [&asset](Device& device) { device.setCameraTuningBlob(asset->getRelativeUri(), static_cast<uint32_t>(asset->getSize())); });
 }
 
 void PipelineImpl::setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path) {
@@ -813,39 +828,41 @@ void PipelineImpl::setCameraTuningBlobPath(CameraBoardSocket socket, const fs::p
 
     auto asset = assetManager.set(assetKey, path);
 
-    if(defaultDevice) {
-        defaultDevice->setCameraSocketTuningBlob(socket, asset->getRelativeUri(), static_cast<uint32_t>(asset->getSize()));
-    } else if(defaultDeviceProperties != nullptr) {
-        defaultDeviceProperties->cameraSocketTuningBlobUri[socket] = asset->getRelativeUri();
-        defaultDeviceProperties->cameraSocketTuningBlobSize[socket] = static_cast<uint32_t>(asset->getSize());
-    }
+    withDefaultDevice(
+        [this, socket, &asset] {
+            if(defaultDeviceProperties == nullptr) return;
+            defaultDeviceProperties->cameraSocketTuningBlobUri[socket] = asset->getRelativeUri();
+            defaultDeviceProperties->cameraSocketTuningBlobSize[socket] = static_cast<uint32_t>(asset->getSize());
+        },
+        [socket, &asset](Device& device) { device.setCameraSocketTuningBlob(socket, asset->getRelativeUri(), static_cast<uint32_t>(asset->getSize())); });
 }
 
 void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
-    if(defaultDevice) {
-        defaultDevice->setXLinkChunkSize(sizeBytes);
-    } else if(defaultDeviceProperties != nullptr) {
-        defaultDeviceProperties->xlinkChunkSize = sizeBytes;
-    }
+    withDefaultDevice(
+        [this, sizeBytes] {
+            if(defaultDeviceProperties != nullptr) defaultDeviceProperties->xlinkChunkSize = sizeBytes;
+        },
+        [sizeBytes](Device& device) { device.setXLinkChunkSize(sizeBytes); });
 }
 
 void PipelineImpl::setSippBufferSize(int sizeBytes) {
-    if(defaultDevice) {
-        defaultDevice->setSippBufferSize(sizeBytes);
-    } else if(defaultDeviceProperties != nullptr) {
-        defaultDeviceProperties->sippBufferSize = sizeBytes;
-    }
+    withDefaultDevice(
+        [this, sizeBytes] {
+            if(defaultDeviceProperties != nullptr) defaultDeviceProperties->sippBufferSize = sizeBytes;
+        },
+        [sizeBytes](Device& device) { device.setSippBufferSize(sizeBytes); });
 }
 
 void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
-    if(defaultDevice) {
-        defaultDevice->setSippDmaBufferSize(sizeBytes);
-    } else if(defaultDeviceProperties != nullptr) {
-        defaultDeviceProperties->sippDmaBufferSize = sizeBytes;
-    }
+    withDefaultDevice(
+        [this, sizeBytes] {
+            if(defaultDeviceProperties != nullptr) defaultDeviceProperties->sippDmaBufferSize = sizeBytes;
+        },
+        [sizeBytes](Device& device) { device.setSippDmaBufferSize(sizeBytes); });
 }
 
 void PipelineImpl::setBoardConfig(const BoardConfig& boardCfg) {
+    std::lock_guard<std::mutex> lock(nodesMtx);
     board = boardCfg;
 }
 
@@ -860,6 +877,7 @@ PipelineAutoCalibrationMode PipelineImpl::getAutoCalibrationMode() const {
 }
 
 BoardConfig PipelineImpl::getBoardConfig() const {
+    std::lock_guard<std::mutex> lock(nodesMtx);
     return board;
 }
 
@@ -870,13 +888,14 @@ void PipelineImpl::remove(const std::shared_ptr<Node>& toRemove) {
     DAI_CHECK_V(toRemove->parent.lock() == shared_from_this(), "Cannot remove a node that is not a part of this pipeline");
 
     // First remove the node from the pipeline directly
+    std::lock_guard<std::mutex> lock(nodesMtx);
     auto it = std::remove(nodes.begin(), nodes.end(), toRemove);
     nodes.erase(it, nodes.end());
 
     // Then also remove it from all connections & subnodes
     for(auto& node : nodes) {
         // The function below handles removing all the connections and removes the node if the node is not directly attached to a pipline
-        node->remove(toRemove);
+        node->removeLocked(toRemove, nodes);
     }
 }
 
@@ -923,68 +942,70 @@ void PipelineImpl::setCalibrationData(const CalibrationHandler& calibrationDataH
 }
 
 bool PipelineImpl::isCalibrationDataAvailable() const {
-    if(defaultDevice) {
-        return defaultDevice->isCalibrationAvailable();
-    }
-    if(defaultDeviceProperties != nullptr) {
-        std::lock_guard<std::mutex> lock(calibMtx);
-        return defaultDeviceProperties->calibData.has_value();
-    }
-    return false;
+    return withDefaultDevice(
+        [this] {
+            if(defaultDeviceProperties == nullptr) return false;
+            std::lock_guard<std::mutex> lock(calibMtx);
+            return defaultDeviceProperties->calibData.has_value();
+        },
+        [](Device& device) { return device.isCalibrationAvailable(); });
 }
 
 CalibrationHandler PipelineImpl::getCalibrationData() const {
-    if(defaultDevice) {
-        return defaultDevice->getCalibration();
-    }
-    if(defaultDeviceProperties != nullptr && defaultDeviceProperties->calibData.has_value()) {
-        std::lock_guard<std::mutex> lock(calibMtx);
-        if(defaultDeviceProperties->calibData.has_value()) {
-            return CalibrationHandler(defaultDeviceProperties->calibData.value());
-        }
-    }
-    throw std::runtime_error("No default device properties set in pipeline");
+    return withDefaultDevice(
+        [this]() -> CalibrationHandler {
+            if(defaultDeviceProperties != nullptr) {
+                std::lock_guard<std::mutex> lock(calibMtx);
+                if(defaultDeviceProperties->calibData.has_value()) {
+                    return CalibrationHandler(defaultDeviceProperties->calibData.value());
+                }
+            }
+            throw std::runtime_error("No default device properties set in pipeline");
+        },
+        [](Device& device) { return device.getCalibration(); });
 }
 
 void PipelineImpl::setEepromData(const std::optional<EepromData>& eepromData) {
-    if(defaultDevice) {
-        defaultDevice->setCalibration(eepromData);
-    } else if(defaultDeviceProperties != nullptr) {
-        std::lock_guard<std::mutex> lock(calibMtx);
-        defaultDeviceProperties->calibData = eepromData;
-        defaultDeviceProperties->eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
-    }
+    withDefaultDevice(
+        [this, &eepromData] {
+            if(defaultDeviceProperties == nullptr) return;
+            std::lock_guard<std::mutex> lock(calibMtx);
+            defaultDeviceProperties->calibData = eepromData;
+            defaultDeviceProperties->eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
+        },
+        [&eepromData](Device& device) { device.setCalibration(eepromData); });
 }
 
 std::optional<EepromData> PipelineImpl::getEepromData() const {
-    if(defaultDevice) {
-        if(auto calibration = defaultDevice->tryGetCalibration()) {
-            return calibration->getEepromData();
-        }
-        return std::nullopt;
-    }
-    if(defaultDeviceProperties != nullptr) {
-        std::unique_lock<std::mutex> lock(calibMtx);
-        return defaultDeviceProperties->calibData;
-    }
-    return std::nullopt;
+    return withDefaultDevice(
+        [this]() -> std::optional<EepromData> {
+            if(defaultDeviceProperties == nullptr) return std::nullopt;
+            std::lock_guard<std::mutex> lock(calibMtx);
+            return defaultDeviceProperties->calibData;
+        },
+        [](Device& device) -> std::optional<EepromData> {
+            if(auto calibration = device.tryGetCalibration()) {
+                return calibration->getEepromData();
+            }
+            return std::nullopt;
+        });
 }
 
 uint32_t PipelineImpl::getEepromId() const {
-    if(defaultDevice) {
-        return defaultDevice->getProperties().eepromId;
-    }
-    if(defaultDeviceProperties != nullptr) {
-        std::unique_lock<std::mutex> lock(calibMtx);
-        return defaultDeviceProperties->eepromId;
-    }
-    return 0;
+    return withDefaultDevice(
+        [this]() -> uint32_t {
+            if(defaultDeviceProperties == nullptr) return 0;
+            std::lock_guard<std::mutex> lock(calibMtx);
+            return defaultDeviceProperties->eepromId;
+        },
+        [](Device& device) -> uint32_t { return device.getProperties().eepromId; });
 }
 
 std::shared_ptr<Device> PipelineImpl::resolvePipelineDevice(const std::shared_ptr<Device>& device) const {
     if(device == nullptr) {
         throw std::invalid_argument("Device is null");
     }
+    std::lock_guard<std::mutex> lock(nodesMtx);
     if(device == defaultDevice || std::find(devices.begin(), devices.end(), device) != devices.end()) {
         return device;
     }
@@ -1027,6 +1048,7 @@ void PipelineImpl::setSippDmaBufferSize(const std::shared_ptr<Device>& device, i
 
 void PipelineImpl::setBoardConfig(const std::shared_ptr<Device>& device, const BoardConfig& boardCfg) {
     resolvePipelineDevice(device);
+    std::lock_guard<std::mutex> lock(nodesMtx);
     if(device == defaultDevice) {
         board = boardCfg;
     } else {
@@ -1036,6 +1058,7 @@ void PipelineImpl::setBoardConfig(const std::shared_ptr<Device>& device, const B
 
 BoardConfig PipelineImpl::getBoardConfig(const std::shared_ptr<Device>& device) const {
     resolvePipelineDevice(device);
+    std::lock_guard<std::mutex> lock(nodesMtx);
     if(device == defaultDevice) {
         return board;
     }
@@ -1083,6 +1106,7 @@ DeviceProperties PipelineImpl::getDeviceProperties(const std::shared_ptr<Device>
 
 bool PipelineImpl::isHostOnly() const {
     bool hostOnly = true;
+    std::lock_guard<std::mutex> lock(nodesMtx);
     for(const auto& node : nodes) {
         if(!node->runOnHost()) {
             hostOnly = false;
@@ -1094,6 +1118,7 @@ bool PipelineImpl::isHostOnly() const {
 
 bool PipelineImpl::isDeviceOnly() const {
     bool deviceOnly = true;
+    std::lock_guard<std::mutex> lock(nodesMtx);
     for(const auto& node : nodes) {
         if(node->runOnHost()) {
             deviceOnly = false;
@@ -1116,16 +1141,28 @@ std::vector<std::shared_ptr<Device>> PipelineImpl::getAllAssignedDevices() const
 }
 
 std::shared_ptr<Device> PipelineImpl::registerDevice(std::shared_ptr<Device> device) {
+    std::function<void()> apply;
+    {
+        std::lock_guard<std::mutex> lock(nodesMtx);
+        apply = registerDeviceLocked(device);
+    }
+    if(apply) {
+        apply();
+    }
+    return device;
+}
+
+std::function<void()> PipelineImpl::registerDeviceLocked(const std::shared_ptr<Device>& device) {
     if(device == nullptr) {
         throw std::invalid_argument("Device is null");
     }
     // Already registered or the master itself - no-op
     if(device == defaultDevice) {
-        return device;
+        return {};
     }
     for(const auto& registered : devices) {
         if(registered == device) {
-            return device;
+            return {};
         }
     }
     // The device set is read from device monitor threads while running - it must not
@@ -1149,19 +1186,27 @@ std::shared_ptr<Device> PipelineImpl::registerDevice(std::shared_ptr<Device> dev
     // First device is promoted to master so getDefaultDevice() and nodes created
     // without an explicit device keep working
     if(defaultDevice == nullptr) {
-        promoteToMaster(device);
-    } else {
-        devices.push_back(device);
+        return promoteToMasterLocked(device);
     }
-    return device;
+    devices.push_back(device);
+    return {};
 }
 
-void PipelineImpl::promoteToMaster(const std::shared_ptr<Device>& device) {
+std::function<void()> PipelineImpl::promoteToMasterLocked(const std::shared_ptr<Device>& device) {
+    // Snapshot before publishing the master. Callers hold nodesMtx, and calib data is
+    // also covered by calibMtx, so this copy cannot race a parked-property writer.
+    // The RPCs run from the returned function, after nodesMtx is released.
+    std::optional<DeviceProperties> parked;
+    if(hostProperties.has_value()) {
+        std::lock_guard<std::mutex> lock(calibMtx);
+        parked = *hostProperties;
+    }
+
     defaultDevice = device;
 
     // Device nodes adopted before there was a master were left without a device; they are
     // documented to run on the master, so bind them now
-    for(const auto& node : getAllNodes()) {
+    for(const auto& node : getAllNodesLocked()) {
         if(auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(node)) {
             if(deviceNode->getDevice() == nullptr) {
                 deviceNode->setDevice(device);
@@ -1169,19 +1214,16 @@ void PipelineImpl::promoteToMaster(const std::shared_ptr<Device>& device) {
         }
     }
 
-    // Settings made through the no-device setters before the promotion were parked in the
-    // host-side properties; every reader consults the master first from now on, so carry
-    // over what was explicitly set
-    if(hostProperties.has_value()) {
+    if(!parked.has_value()) {
+        return {};
+    }
+    return [device, props = *parked]() {
+        // Settings made through the no-device setters before the promotion were parked in the
+        // host-side properties; every reader consults the master first from now on, so carry
+        // over what was explicitly set.
         const DeviceProperties defaults{};
-        const auto& props = *hostProperties;
-        std::optional<EepromData> calibData;
-        {
-            std::lock_guard<std::mutex> lock(calibMtx);
-            calibData = props.calibData;
-        }
-        if(calibData.has_value()) {
-            device->setCalibration(calibData);
+        if(props.calibData.has_value()) {
+            device->setCalibration(props.calibData);
         }
         if(props.xlinkChunkSize != defaults.xlinkChunkSize) {
             device->setXLinkChunkSize(props.xlinkChunkSize);
@@ -1199,10 +1241,11 @@ void PipelineImpl::promoteToMaster(const std::shared_ptr<Device>& device) {
             auto sizeIt = props.cameraSocketTuningBlobSize.find(socketUri.first);
             device->setCameraSocketTuningBlob(socketUri.first, socketUri.second, sizeIt != props.cameraSocketTuningBlobSize.end() ? sizeIt->second : 0);
         }
-    }
+    };
 }
 
 std::vector<std::shared_ptr<Device>> PipelineImpl::getDevices() const {
+    std::lock_guard<std::mutex> lock(nodesMtx);
     std::vector<std::shared_ptr<Device>> result;
     if(defaultDevice != nullptr) {
         result.push_back(defaultDevice);
@@ -1263,41 +1306,54 @@ PipelineStateApi PipelineImpl::getPipelineState() {
     return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
 }
 
-// Adopt children added after the parent node is already in the pipeline.
-void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
-    if(root == nullptr) {
-        return;
-    }
+std::vector<std::function<void()>> PipelineImpl::adoptLocked(const std::shared_ptr<Node>& root) {
+    auto subtree = collectSubtree(root);
+    auto deferred = registerSubtree(subtree);
+    adoptNodes(subtree);
+    return deferred;
+}
 
-    // Pass 1 (no mutation): collect the subtree, validate membership and register the
-    // devices it brings along - a rejected node or device must not leave a node half-adopted
+void PipelineImpl::runDeferred(const std::vector<std::function<void()>>& deferred) {
+    for(const auto& apply : deferred) {
+        apply();
+    }
+}
+
+std::vector<std::shared_ptr<Node>> PipelineImpl::collectSubtree(const std::shared_ptr<Node>& root) {
     std::vector<std::shared_ptr<Node>> subtree;
-    {
-        std::queue<std::shared_ptr<Node>> search;
-        search.push(root);
-        while(!search.empty()) {
-            auto curNode = search.front();
-            search.pop();
-            auto owner = curNode->parent.lock();
-            if(owner != nullptr && owner != shared_from_this()) {
-                throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
-            }
-            subtree.push_back(curNode);
-            for(auto& n : curNode->nodeMap) {
-                search.push(n);
-            }
+    std::queue<std::shared_ptr<Node>> search;
+    search.push(root);
+    while(!search.empty()) {
+        auto curNode = search.front();
+        search.pop();
+        auto owner = curNode->parent.lock();
+        if(owner != nullptr && owner != shared_from_this()) {
+            throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
+        }
+        subtree.push_back(curNode);
+        for(auto& n : curNode->nodeMap) {
+            search.push(n);
         }
     }
+    return subtree;
+}
+
+std::vector<std::function<void()>> PipelineImpl::registerSubtree(const std::vector<std::shared_ptr<Node>>& subtree) {
+    std::vector<std::function<void()>> deferred;
     for(const auto& node : subtree) {
         // Nodes arriving with an explicitly assigned device register it with the pipeline
         if(auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(node)) {
             if(deviceNode->getDevice() != nullptr) {
-                registerDevice(deviceNode->getDevice());
+                if(auto apply = registerDeviceLocked(deviceNode->getDevice())) {
+                    deferred.push_back(std::move(apply));
+                }
             }
         }
     }
+    return deferred;
+}
 
-    // Pass 2: the nodes are now part of this pipeline
+void PipelineImpl::adoptNodes(const std::vector<std::shared_ptr<Node>>& subtree) {
     for(const auto& curNode : subtree) {
         // Assign an ID to the node
         if(curNode->id == -1) {
@@ -1320,21 +1376,23 @@ void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
 
 void PipelineImpl::add(const std::shared_ptr<Node>& node) {
     if(node == nullptr) {
-        throw std::invalid_argument(fmt::format("Given node pointer is null"));
+        throw std::invalid_argument("Given node pointer is null");
     }
 
-    // First check if node has already been added
-    auto localNodes = getAllNodes();
-    for(auto& n : localNodes) {
-        if(node.get() == n.get()) {
-            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
+    std::vector<std::function<void()>> deferred;
+    {
+        std::lock_guard<std::mutex> lock(nodesMtx);
+        for(const auto& existing : getAllNodesLocked()) {
+            if(existing.get() == node.get()) {
+                throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
+            }
         }
+        deferred = adoptLocked(node);
+        // The node holds its children itself
+        nodes.push_back(node);
     }
-
-    adoptSubtree(node);  // BFS: ids, parent weak_ptr, default device for DeviceNodes
-
-    // Add to the map (node holds its children itself)
-    nodes.push_back(node);
+    // Device RPCs run after the graph lock is released. A failed call leaves the node added.
+    runDeferred(deferred);
 }
 
 bool PipelineImpl::isRunning() const {
@@ -1962,12 +2020,13 @@ void PipelineImpl::start() {
 }
 
 void PipelineImpl::resetConnections(DeviceBase* device) {
+    const auto master = copyDefaultDevice();
     // rebind XLink host nodes - all of them, or only the given device's bridges
     for(auto node : getAllNodes()) {
         auto tmp = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node);
         if(tmp) {
             auto it = bridgeHostDevices.find(tmp->id);
-            auto bridgeDevice = it != bridgeHostDevices.end() ? it->second : defaultDevice;
+            auto bridgeDevice = it != bridgeHostDevices.end() ? it->second : master;
             if(device == nullptr || (bridgeDevice != nullptr && bridgeDevice.get() == device)) {
                 if(bridgeDevice == nullptr || bridgeDevice->getConnection() == nullptr) throw std::runtime_error("Connection lost");
                 tmp->setConnection(bridgeDevice->getConnection());
@@ -1976,7 +2035,7 @@ void PipelineImpl::resetConnections(DeviceBase* device) {
         auto tmp2 = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node);
         if(tmp2) {
             auto it = bridgeHostDevices.find(tmp2->id);
-            auto bridgeDevice = it != bridgeHostDevices.end() ? it->second : defaultDevice;
+            auto bridgeDevice = it != bridgeHostDevices.end() ? it->second : master;
             if(device == nullptr || (bridgeDevice != nullptr && bridgeDevice.get() == device)) {
                 if(bridgeDevice == nullptr || bridgeDevice->getConnection() == nullptr) throw std::runtime_error("Connection lost");
                 tmp2->setConnection(bridgeDevice->getConnection());
@@ -1995,18 +2054,19 @@ void PipelineImpl::resetConnections(DeviceBase* device) {
 }
 
 void PipelineImpl::disconnectXLinkHosts(DeviceBase* device) {
+    const auto master = copyDefaultDevice();
     // make the (given device's) XLink host nodes exit instead of waiting to reconnect
     for(auto node : getAllNodes()) {
         auto tmp = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node);
         if(tmp) {
             auto it = bridgeHostDevices.find(tmp->id);
-            auto bridgeDevice = it != bridgeHostDevices.end() ? it->second : defaultDevice;
+            auto bridgeDevice = it != bridgeHostDevices.end() ? it->second : master;
             if(device == nullptr || (bridgeDevice != nullptr && bridgeDevice.get() == device)) tmp->disconnect();
         }
         auto tmp2 = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node);
         if(tmp2) {
             auto it = bridgeHostDevices.find(tmp2->id);
-            auto bridgeDevice = it != bridgeHostDevices.end() ? it->second : defaultDevice;
+            auto bridgeDevice = it != bridgeHostDevices.end() ? it->second : master;
             if(device == nullptr || (bridgeDevice != nullptr && bridgeDevice.get() == device)) tmp2->disconnect();
         }
     }
@@ -2014,7 +2074,7 @@ void PipelineImpl::disconnectXLinkHosts(DeviceBase* device) {
 
 void PipelineImpl::onDeviceStateChanged(DeviceBase* device, DeviceState state) {
     // Find the shared_ptr of the reporting device among this pipeline's devices (every
-    // device carrying a node is registered as well, see adoptSubtree)
+    // device carrying a node is registered as well, see adoptLocked)
     std::shared_ptr<Device> devicePtr;
     for(const auto& d : getDevices()) {
         if(static_cast<DeviceBase*>(d.get()) == device) {
@@ -2167,8 +2227,8 @@ void PipelineImpl::stop() {
             // Emitted without taking ownership of this pipeline: stop() may run on the
             // device-loss thread, and dropping the last reference there would destroy the
             // pipeline on a thread its destructor joins
-            if(defaultDevice) {
-                properties["device_id"] = defaultDevice->getTemporaryTelemetryDeviceId();
+            if(const auto master = copyDefaultDevice()) {
+                properties["device_id"] = master->getTemporaryTelemetryDeviceId();
             }
             dai::utility::Telemetry::getInstance().event("depthai_pipeline_stop", std::move(properties));
         } catch(const std::exception& ex) {
@@ -2184,8 +2244,14 @@ void PipelineImpl::stop() {
         }
     }
 
-    // Close all the output queues
-    for(auto& queue : outputQueues) {
+    // Close all the output queues. Copy under nodesMtx (stop already holds stateMtx;
+    // that order matches start -> build -> add) and close after releasing it.
+    std::vector<std::shared_ptr<MessageQueue>> queuesToClose;
+    {
+        std::lock_guard<std::mutex> nodesLock(nodesMtx);
+        queuesToClose = outputQueues;
+    }
+    for(auto& queue : queuesToClose) {
         queue->close();
     }
 
@@ -2276,6 +2342,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
                  }
                  return asset->getData();
              }
+             std::lock_guard<std::mutex> lock(p.nodesMtx);
              for(auto& node : p.nodes) {
                  auto& assetManager = node->getAssetManager();
                  auto asset = assetManager.get(uriString);

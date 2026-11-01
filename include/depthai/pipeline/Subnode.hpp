@@ -30,8 +30,8 @@ class Subnode {
                 }
             }
 
-            // Use Node::add (not raw nodeMap.push_back) so PipelineImpl::adoptSubtree runs when the
-            // parent is already in a pipeline; otherwise lazy subnodes never get parent weak_ptr.
+            // Use Node::add (not raw nodeMap.push_back) so the child is adopted when the
+            // parent is already in a pipeline; otherwise lazy subnodes never get a parent.
             parent.add(node);
 
             // Now that node is created, call buildInternal

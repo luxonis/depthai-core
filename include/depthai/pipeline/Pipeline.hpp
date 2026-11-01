@@ -3,7 +3,9 @@
 
 // standard
 #include <chrono>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <thread>
 #include <type_traits>
@@ -85,6 +87,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Access to nodes
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
+    std::vector<std::shared_ptr<Node>> getAllNodesLocked() const;
     std::shared_ptr<Node> getNode(Node::Id id) const;
     std::vector<std::shared_ptr<Node>> getSourceNodes();
 
@@ -224,6 +227,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Add a mutex for any state change
     std::mutex stateMtx;
 
+    // Guards pipeline membership (nodes, ids, and publication through nodeMap),
+    // the connection graph (connections, connectedInputs, connectedOutputs,
+    // queueConnections, and outputQueues), the device list (defaultDevice and
+    // devices), the master BoardConfig, and host properties parked before a
+    // master device exists. Copy a device out and release before constructing
+    // a node, making a device RPC, or sending on a MessageQueue. A node whose
+    // parent pipeline is still null is unpublished: the constructing thread
+    // mutates it without this lock, and that happens-before publication.
+    mutable std::mutex nodesMtx;
+
     // Calibration mutex
     mutable std::mutex calibMtx;
     // Serializes multi-device calibration updates (read previous, push to devices, rollback, store).
@@ -275,9 +288,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Register a device with this pipeline. The first registered device is promoted
     // to master (default device) if none exists. Registering the same device twice is a no-op.
     std::shared_ptr<Device> registerDevice(std::shared_ptr<Device> device);
-    // Make the device the master: binds the device nodes adopted without a device to it and
-    // carries over the settings parked in the host-side properties before there was a master
-    void promoteToMaster(const std::shared_ptr<Device>& device);
+    // Caller holds nodesMtx. Returns parked-property RPCs, or an empty function.
+    // The caller runs that function after releasing nodesMtx.
+    std::function<void()> registerDeviceLocked(const std::shared_ptr<Device>& device);
+    // Caller holds nodesMtx. Binds device-less nodes to the new master and returns
+    // the parked-property RPCs. Does not call into the device.
+    std::function<void()> promoteToMasterLocked(const std::shared_ptr<Device>& device);
 
     // All devices that are part of this pipeline: master (default device) first,
     // then the rest in registration order.
@@ -315,12 +331,35 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         }
     }
 
+    // Snapshot of the master device. The caller must not already hold nodesMtx.
+    std::shared_ptr<Device> copyDefaultDevice() const {
+        std::lock_guard<std::mutex> lock(nodesMtx);
+        return defaultDevice;
+    }
+
+    // onHost runs while nodesMtx is held, and only when there is no master device.
+    // It may lock calibMtx (order is nodesMtx, then calibMtx) and must not call
+    // back into the pipeline. onDevice runs after nodesMtx is released.
+    template <typename HostFn, typename DeviceFn>
+    auto withDefaultDevice(HostFn&& onHost, DeviceFn&& onDevice) const -> decltype(std::declval<DeviceFn&>()(std::declval<Device&>())) {
+        std::shared_ptr<Device> device;
+        {
+            std::lock_guard<std::mutex> lock(nodesMtx);
+            device = defaultDevice;
+            if(device == nullptr) {
+                return std::forward<HostFn>(onHost)();
+            }
+        }
+        return std::forward<DeviceFn>(onDevice)(*device);
+    }
+
     template <typename N>
     std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode() {
-        if(defaultDevice == nullptr) {
+        auto device = copyDefaultDevice();
+        if(device == nullptr) {
             throw std::runtime_error("Pipeline is host only, cannot create device node");
         }
-        return N::create(defaultDevice);
+        return N::create(device);
     }
 
     template <typename N, typename... Rest>
@@ -337,19 +376,20 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
                          && !std::is_same_v<std::decay_t<First>, std::shared_ptr<Device>>,
                      std::shared_ptr<N>>
     createNode(First&& first, Rest&&... rest) {
-        if(defaultDevice == nullptr) {
+        auto device = copyDefaultDevice();
+        if(device == nullptr) {
             throw std::runtime_error("Pipeline is host only, cannot create device node");
         }
-        return N::create(defaultDevice, std::forward<First>(first), std::forward<Rest>(rest)...);
+        return N::create(device, std::forward<First>(first), std::forward<Rest>(rest)...);
     }
 
     template <typename N>
     std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode() {
-        if(defaultDevice == nullptr) {
+        auto device = copyDefaultDevice();
+        if(device == nullptr) {
             return N::create();
-        } else {
-            return N::create(defaultDevice);
         }
+        return N::create(device);
     }
 
     template <typename N, typename... Rest>
@@ -366,10 +406,11 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
                          && !std::is_same_v<std::decay_t<First>, std::shared_ptr<Device>>,
                      std::shared_ptr<N>>
     createNode(First&& first, Rest&&... rest) {
-        if(defaultDevice == nullptr) {
+        auto device = copyDefaultDevice();
+        if(device == nullptr) {
             return N::create(std::forward<First>(first), std::forward<Rest>(rest)...);
         }
-        return N::create(defaultDevice, std::forward<First>(first), std::forward<Rest>(rest)...);
+        return N::create(device, std::forward<First>(first), std::forward<Rest>(rest)...);
     }
 
     template <typename N, typename... Args>
@@ -408,11 +449,14 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Add a node to nodeMap
     void add(const std::shared_ptr<Node>& node);
 
-    /**
-     * Wire subtree into this pipeline (assign ids, parent weak_ptr, default device).
-     * Used when a node that is already in the pipeline gains new children (lazy subgraphs).
-     */
-    void adoptSubtree(std::shared_ptr<Node> root);
+    // Caller holds nodesMtx. Collect the subtree, register the devices it brings
+    // (bookkeeping only), and assign ids, parents, and the default device.
+    // The returned functions perform device RPCs and must run after the mutex is released.
+    std::vector<std::function<void()>> adoptLocked(const std::shared_ptr<Node>& root);
+    static void runDeferred(const std::vector<std::function<void()>>& deferred);
+    std::vector<std::shared_ptr<Node>> collectSubtree(const std::shared_ptr<Node>& root);
+    std::vector<std::function<void()>> registerSubtree(const std::vector<std::shared_ptr<Node>>& subtree);
+    void adoptNodes(const std::vector<std::shared_ptr<Node>>& subtree);
 
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
@@ -802,10 +846,10 @@ class Pipeline {
      * @note In case of a host only pipeline, this function returns a nullptr
      */
     std::shared_ptr<Device> getDefaultDevice() {
-        return impl()->defaultDevice;
+        return impl()->copyDefaultDevice();
     }
     std::shared_ptr<const Device> getDefaultDevice() const {
-        return impl()->defaultDevice;
+        return impl()->copyDefaultDevice();
     }
 
     /**

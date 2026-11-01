@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <tuple>
@@ -147,6 +148,7 @@ class Node : public std::enable_shared_from_this<Node> {
     friend class Subnode;
 
     class Output {
+        friend class Node;
         friend class PipelineImpl;
 
        public:
@@ -259,12 +261,11 @@ class Node : public std::enable_shared_from_this<Node> {
         std::vector<ConnectionInternal> getConnections();
 
         /**
-         * Retrieve all queue connections from this output
+         * Retrieve all queue connections from this output.
+         * The vector is a snapshot taken under the pipeline lock when this node is already published.
          * @returns Vector of queue connections
          */
-        std::vector<QueueConnection> getQueueConnections() {
-            return queueConnections;
-        }
+        std::vector<QueueConnection> getQueueConnections();
 
         /** Default value for the blocking argument in the createOutputQueue method */
         static constexpr bool OUTPUT_QUEUE_DEFAULT_BLOCKING = false;
@@ -284,15 +285,14 @@ class Node : public std::enable_shared_from_this<Node> {
                                                              bool blocking = OUTPUT_QUEUE_DEFAULT_BLOCKING);
 
        private:
-        void link(const std::shared_ptr<dai::MessageQueue>& queue) {
-            connectedInputs.push_back(queue.get());
-            queueConnections.push_back({this, queue});
-        }
-
-        void unlink(const std::shared_ptr<dai::MessageQueue>& queue) {
-            connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), queue.get()), connectedInputs.end());
-            queueConnections.erase(std::remove(queueConnections.begin(), queueConnections.end(), QueueConnection{this, queue}), queueConnections.end());
-        }
+        // Caller holds nodesMtx, or both endpoints are still unpublished.
+        void linkInputLocked(Input& in);
+        void unlinkInputLocked(Input& in);
+        void detachInput(Input& in);
+        void linkQueueLocked(const std::shared_ptr<dai::MessageQueue>& queue);
+        void unlinkQueueLocked(const std::shared_ptr<dai::MessageQueue>& queue);
+        void link(const std::shared_ptr<dai::MessageQueue>& queue);
+        void unlink(const std::shared_ptr<dai::MessageQueue>& queue);
 
        public:
         /**
@@ -690,7 +690,14 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     Node() = default;
     Node(bool conf);
+    // Caller holds nodesMtx. removeConnectionToNode must not take it again.
     void removeConnectionToNode(const std::shared_ptr<Node>& node);
+    void removeLocked(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Node>>& nodes);
+    // Caller holds nodesMtx, or this node is not published yet.
+    std::vector<std::shared_ptr<Node>> getAllNodesLocked() const;
+    std::shared_ptr<const Node> getNodeLocked(Id id) const;
+    std::shared_ptr<Node> getNodeLocked(Id id);
+    ConnectionMap getConnectionMapLocked();
 
    public:
     virtual ~Node() = default;
@@ -731,7 +738,6 @@ class Node : public std::enable_shared_from_this<Node> {
     ConnectionMap getConnectionMap();
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
-    /// Get a reference to internal node map
 
     virtual void link(std::shared_ptr<Node> in);
     virtual Node::Output* requestOutput(const Capability& capability, bool onHost);
@@ -749,9 +755,13 @@ class Node : public std::enable_shared_from_this<Node> {
         return false;
     }
 
-    const NodeMap& getNodeMap() const {
-        return nodeMap;
-    }
+    /**
+     * @brief Snapshot of this node's direct children.
+     *
+     * The vector is a copy. When this node is already in a pipeline the copy is taken
+     * under the pipeline lock. Later additions are not visible through the returned vector.
+     */
+    NodeMap getNodeMap() const;
 
     /**
      * @brief Function called from within the `create` function to build the node.
@@ -759,6 +769,10 @@ class Node : public std::enable_shared_from_this<Node> {
      * stuff that cannot be perform in the constuctor.
      */
     virtual void buildInternal() {};
+
+   private:
+    // nodesMtx of a published pipeline, or nullptr when `pipeline` is null.
+    static std::mutex* nodesMutex(PipelineImpl* pipeline);
 };
 
 class SourceNode {
