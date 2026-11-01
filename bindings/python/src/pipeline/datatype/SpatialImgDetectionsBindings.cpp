@@ -66,7 +66,14 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
              py::arg("confidence"),
              py::arg("label"),
              DOC(dai, SpatialImgDetection, SpatialImgDetection))
-        .def("__repr__", &SpatialImgDetection::str)
+        .def("transform",
+             &dai::SpatialImgDetection::transform,
+             py::arg("source"),
+             py::arg("target"),
+             py::arg("lengthUnit") = LengthUnit::MILLIMETER,
+             DOC(dai, SpatialImgDetection, transform));
+
+    spatialImgDetection.def("__repr__", &SpatialImgDetection::str)
         .def_readwrite("label", &SpatialImgDetection::label)
         .def_readwrite("labelName", &SpatialImgDetection::labelName)
         .def_readwrite("confidence", &SpatialImgDetection::confidence)
@@ -77,7 +84,17 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
         .def_readwrite("spatialCoordinates", &SpatialImgDetection::spatialCoordinates)
         .def_readwrite("boundingBoxMapping", &SpatialImgDetection::boundingBoxMapping)
         .def_readwrite("boundingBox", &SpatialImgDetection::boundingBox)
-        .def("setBoundingBox", &SpatialImgDetection::setBoundingBox, py::arg("boundingBox"), DOC(dai, SpatialImgDetection, setBoundingBox))
+        .def("setBoundingBox",
+             py::overload_cast<RotatedRect>(&SpatialImgDetection::setBoundingBox),
+             py::arg("boundingBox"),
+             DOC(dai, SpatialImgDetection, setBoundingBox))
+        .def("setBoundingBox",
+             py::overload_cast<RotatedRect, unsigned int, unsigned int>(&SpatialImgDetection::setBoundingBox),
+             py::arg("boundingBox"),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, SpatialImgDetection, setBoundingBox, 2))
+        .def("getOuterBoundingBox", &SpatialImgDetection::getOuterBoundingBox, DOC(dai, SpatialImgDetection, getOuterBoundingBox))
         .def("getBoundingBox", &SpatialImgDetection::getBoundingBox, DOC(dai, SpatialImgDetection, getBoundingBox))
         .def("setOuterBoundingBox",
              &SpatialImgDetection::setOuterBoundingBox,

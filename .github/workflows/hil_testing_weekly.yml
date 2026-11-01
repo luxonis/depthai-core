@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   select_tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       test_all: ${{ steps.selection.outputs.test_all }}
     steps:
@@ -150,7 +150,7 @@ jobs:
       - run_windows_tests
       - run_replay_tests
       - run_vanilla_mac_tests
-    if: github.ref_name == 'develop'
+    if: ${{ always() && github.ref_name == 'develop' }}
     runs-on: ['self-hosted', 'testbed-runner']
     steps:
       - uses: actions/checkout@v7

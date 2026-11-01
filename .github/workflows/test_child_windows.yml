@@ -96,9 +96,10 @@ jobs:
 
     - name: Setup cmake
       if: steps.reuse.outputs.skip_build != 'true'
-      uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
+      uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
       with:
-        cmake-version: '4.2.x'
+        cmakeVersion: '4.2.x'
+        useCloudCache: false
 
     - name: Restore vcpkg binary cache
       if: steps.reuse.outputs.skip_build != 'true'
@@ -229,7 +230,9 @@ jobs:
   report_windows_test_results:
     name: Report Windows test results
     needs: [run_windows_tests_rvc4, run_windows_tests_rvc4_usb]
-    if: always()
+    # Skip the report when the run was cancelled (by a user or by concurrency).
+    # Keep it for crashes, failures and job timeouts.
+    if: ${{ !cancelled() }}
     runs-on: ['self-hosted', 'testbed-runner']
     permissions:
       actions: read
