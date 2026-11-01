@@ -37,6 +37,11 @@ struct RotatedRect {
           size(rect.width, rect.height, rect.isNormalized()),
           angle(angle) {}
 
+    /**
+     * Returns the outer non-rotated rectangle as a Rect.
+     * @note For a normalized rectangle, the result is correct only when the angle is 0 or 180 degrees, or the frame is square.
+     * Else use getOuterRectInFrame().
+     */
     operator Rect() const {
         const auto [minx, miny, maxx, maxy] = getOuterRect();
         return Rect(minx, miny, maxx - minx, maxy - miny);
@@ -81,6 +86,8 @@ struct RotatedRect {
 
     /**
      * Get the 4 corner points of the rotated rectangle
+     * @note For a normalized rectangle, the points are correct only when the angle is 0 or 180 degrees, or the frame is square.
+     * Else use denormalize() first.
      * @return 4 corner points
      */
     std::array<dai::Point2f, 4> getPoints() const {
@@ -114,6 +121,8 @@ struct RotatedRect {
     }
     /**
      * Returns the outer non-rotated rectangle
+     * @note For a normalized rectangle, the result is correct only when the angle is 0 or 180 degrees, or the frame is square.
+     * Else use getOuterRectInFrame().
      * @return [minx, miny, maxx, maxy]
      */
     std::array<float, 4> getOuterRect() const {
@@ -126,7 +135,23 @@ struct RotatedRect {
     }
 
     /**
+     * Returns the outer non-rotated rectangle in a frame of the given size.
+     * A normalized rectangle is rotated in pixels (as denormalize() does) and the result is normalized again.
+     * getOuterRect() rotates the normalized values, which is not correct for rotated rectangles in non-square frames.
+     * @param width Frame width in pixels
+     * @param height Frame height in pixels
+     * @return [minx, miny, maxx, maxy], in the units of the rectangle
+     */
+    std::array<float, 4> getOuterRectInFrame(unsigned int width, unsigned int height) const {
+        if(!isNormalized()) return getOuterRect();
+        const auto [minx, miny, maxx, maxy] = denormalize(width, height).getOuterRect();
+        return {minx / width, miny / height, maxx / width, maxy / height};
+    }
+
+    /**
      * Returns the outer non-rotated rectangle in the COCO (xmin, ymin, width, height) format.
+     * @note For a normalized rectangle, the result is correct only when the angle is 0 or 180 degrees, or the frame is square.
+     * Else use getOuterRectInFrame().
      * @return (top-left point, size)
      */
     std::tuple<dai::Point2f, dai::Size2f> getOuterXYWH() const {
@@ -136,6 +161,8 @@ struct RotatedRect {
 
     /**
      * Returns the outer non-rotated rectangle in the YOLO (xcenter, ycenter, width, height) format.
+     * @note For a normalized rectangle, the result is correct only when the angle is 0 or 180 degrees, or the frame is square.
+     * Else use getOuterRectInFrame().
      * @return (center point, size)
      */
     std::tuple<dai::Point2f, dai::Size2f> getOuterCXCYWH() const {

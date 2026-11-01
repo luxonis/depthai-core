@@ -471,6 +471,14 @@ void Stitching::run() {
     DAI_CHECK_V(!inputNames.empty(), "Stitching node was not built, call build() with the sources to stitch");
     auto& logger = pimpl->logger;
     bool modeLogged = false;
+    std::vector<std::pair<size_t, Node::Output*>> sourceMaskOutputs;
+    for(auto& entry : outSourceMasks) {
+        auto& output = entry.second;
+        if(output.getConnections().empty() && output.getQueueConnections().empty()) continue;
+        const auto input = std::find(inputNames.begin(), inputNames.end(), output.getName());
+        DAI_CHECK_V(input != inputNames.end(), "Stitching source mask key {} is not an input", output.getName());
+        sourceMaskOutputs.emplace_back(std::distance(inputNames.begin(), input), &output);
+    }
 
     while(mainLoop()) {
         std::shared_ptr<MessageGroup> group = nullptr;
@@ -490,6 +498,8 @@ void Stitching::run() {
         if(invalidateState) {
             impl->invalidate();
         }
+        DAI_CHECK_V(sourceMaskOutputs.empty() || (currentProperties.mode == Mode::PANORAMA && currentProperties.useInputCalibration),
+                    "Stitching source masks require calibrated PANORAMA mode");
         if(!modeLogged && logger && currentProperties.mode == Mode::PANORAMA) {
             if(currentProperties.useInputCalibration) {
                 logger->info("Panorama stitching using input calibration and coincident camera centers");
@@ -585,6 +595,14 @@ void Stitching::run() {
                                                                                               : FixedPanoramaCompositor::Composition::BLENDED;
                     impl->prepareFixedPanorama(images, cameras, 1.0, composition, currentProperties, calibratedPanoramaExtrinsics(transformations, alignment));
                     impl->fixedPanoramaTransformations = transformations;
+                    for(const auto& output : sourceMaskOutputs) {
+                        auto mask = std::make_shared<ImgFrame>();
+                        mask->setCvFrame(impl->fixedPanorama.getSourceMask(output.first), ImgFrame::Type::GRAY8);
+                        mask->setBufferMetadataFrom(first);
+                        mask->setTransformation(impl->fixedPanoramaView);
+                        auto blockEvent = outputBlockEvent();
+                        output.second->send(mask);
+                    }
                     if(logger) {
                         const auto size = impl->fixedPanorama.getCanvasSize();
                         const auto* compositionName = composition == FixedPanoramaCompositor::Composition::DIRECT ? "direct" : "blended";

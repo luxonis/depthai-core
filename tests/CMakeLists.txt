@@ -304,7 +304,11 @@ endif()
 
 set(test_env
     # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
+    "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
+    # vcpkg dependencies are built without ASan: protobuf containers then give false container-overflow
+    # reports (inline code from instrumented objects annotates memory that libprotobuf.a then writes)
+    # TODO: remove when the vcpkg dependencies are built with ASan
+    "ASAN_OPTIONS=detect_container_overflow=0"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=30000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
@@ -402,6 +406,8 @@ function(dai_set_test_labels test_name)
             endif()
         elseif(label STREQUAL "noreplayci")
             # Exclude these tests from the replay-enabled CI job.
+            list(APPEND expanded_labels ${label})
+        elseif(label STREQUAL "nousb")
             list(APPEND expanded_labels ${label})
         else()
             list(APPEND expanded_labels ${label})
@@ -540,6 +546,10 @@ dai_set_test_labels(bootloader_version_test onhost ci)
 dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
 dai_set_test_labels(bootloader_config_test onhost ci)
 
+# Crash dump serialization test
+dai_add_test(crash_dump_serialization_test src/onhost_tests/crash_dump_serialization_test.cpp)
+dai_set_test_labels(crash_dump_serialization_test onhost ci)
+
 # Environment test
 dai_add_test(env_test src/onhost_tests/utility/env_test.cpp)
 dai_set_test_labels(env_test onhost ci)
@@ -600,6 +610,10 @@ dai_set_test_labels(pointclouddata_test onhost ci)
 # PointCloud node tests
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
+
+# PointCloud node multi-stream (merged) tests
+dai_add_test(point_cloud_multi_stream_test src/onhost_tests/pipeline/node/point_cloud_multi_stream_test.cpp)
+dai_set_test_labels(point_cloud_multi_stream_test onhost ci)
 
 # Model zoo settings tests (also valid without libcurl)
 dai_add_test(model_zoo_settings_test src/onhost_tests/model_zoo_settings_test.cpp)
@@ -766,6 +780,10 @@ dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
+dai_add_test(pointcloud_gpu_test src/ondevice_tests/pointcloud_gpu_test.cpp)
+dai_set_test_labels(pointcloud_gpu_test ondevice rvc4)
+dai_add_test(pointcloud_multi_stream_device_test src/ondevice_tests/pointcloud_multi_stream_device_test.cpp)
+dai_set_test_labels(pointcloud_multi_stream_device_test ondevice rvc4 ci)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
@@ -798,6 +816,10 @@ if(DEPTHAI_BUILD_BETA)
 
     dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
     dai_set_test_labels(multi_device_calibration_result_test onhost ci)
+
+    # One RVC2 device with a RAM-only calibration whose chain root is not the lowest socket.
+    dai_add_test(multi_device_calibration_origin_test src/ondevice_tests/multi_device_calibration_origin_test.cpp)
+    dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci)
 
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
@@ -957,6 +979,10 @@ dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
+# Pixel geometry regression: synthetic inputs through on-device stereo and alignment.
+dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
+dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
+
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
@@ -985,6 +1011,10 @@ dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
 
 # ObjectTracker tests
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(object_tracker_host_test src/onhost_tests/pipeline/node/object_tracker_test.cpp)
+    dai_set_test_labels(object_tracker_host_test onhost ci)
+endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
     dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
@@ -1009,6 +1039,9 @@ endif()
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
+
+dai_add_test(camera_test_rvc4 src/ondevice_tests/pipeline/node/camera_test_rvc4.cpp)
+dai_set_test_labels(camera_test_rvc4 ondevice rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
@@ -1059,3 +1092,41 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
+
+set(FILTER_TEST_DIR src/onhost_tests/pipeline/node)
+dai_add_test(img_detections_filter_helpers_test ${FILTER_TEST_DIR}/img_detections_filter_helpers_test.cpp)
+dai_set_test_labels(img_detections_filter_helpers_test onhost ci)
+set_tests_properties(img_detections_filter_helpers_test PROPERTIES FIXTURES_SETUP img_detections_filter_fixtures)
+
+foreach(name img_detections_filter_test img_detections_filter_panorama_test img_detections_filter_errors_test)
+    dai_add_test(${name} ${FILTER_TEST_DIR}/${name}.cpp)
+    dai_set_test_labels(${name} onhost ci)
+    set_tests_properties(${name} PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+endforeach()
+
+# Stitching is public (not beta) in this tree; this fixture needs no downloaded assets.
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    dai_add_test(img_detections_filter_stitching_test ${FILTER_TEST_DIR}/img_detections_filter_stitching_test.cpp)
+    dai_set_test_labels(img_detections_filter_stitching_test onhost ci)
+    set_tests_properties(img_detections_filter_stitching_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+endif()
+
+dai_add_test(img_detections_filter_device_test src/ondevice_tests/pipeline/node/img_detections_filter_device_test.cpp)
+dai_set_test_labels(img_detections_filter_device_test ondevice rvc2_all rvc4 ci)
+set_tests_properties(img_detections_filter_device_test PROPERTIES FIXTURES_REQUIRED img_detections_filter_fixtures)
+
+# Explicit Align interpolation on host and on RVC4
+dai_add_test(align_interpolation_test src/ondevice_tests/align_interpolation_test.cpp)
+dai_set_test_labels(align_interpolation_test ondevice rvc4 ci)
+
+# Link drop during the asset storage transfer (RVC4 over TCP/IP, local proxy uses POSIX sockets)
+if(UNIX)
+    dai_add_test(asset_storage_link_drop_test src/ondevice_tests/asset_storage_link_drop_test.cpp)
+    dai_set_test_labels(asset_storage_link_drop_test ondevice rvc4 ci noreplayci nousb)
+endif()
+
+# PoE link reset: the host must close its XLink socket (RVC2 PoE and RVC4 over TCP/IP, connect(AF_UNSPEC) resets a TCP socket only on Linux)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    dai_add_test(poe_link_reset_test src/ondevice_tests/poe_link_reset_test.cpp)
+    dai_set_test_labels(poe_link_reset_test ondevice rvc2 poe rvc4 ci noreplayci nousb)
+endif()
