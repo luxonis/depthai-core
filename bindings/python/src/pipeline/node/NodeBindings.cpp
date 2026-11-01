@@ -36,7 +36,9 @@ void setImplicitPipeline(dai::Pipeline* pipeline) {
     implicitPipelines.push(pipeline);
 }
 void delImplicitPipeline() {
-    implicitPipelines.pop();
+    if(!implicitPipelines.empty()) {
+        implicitPipelines.pop();
+    }
 }
 void setCreatingNodeFromPipelineCreate() {
     pipelineCreateNodeGuards.push(true);
