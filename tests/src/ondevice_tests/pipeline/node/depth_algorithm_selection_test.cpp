@@ -15,6 +15,15 @@ using dai::node::StereoDepth;
 namespace dai::node {
 
 struct DepthTestAccess {
+    // Test the optional-output contract without connecting a device or building a backend.
+    static void setWiredOutputs(Depth& depth, Depth::Algorithm algorithm, Node::Output& depthOutput, Node::Output* left, Node::Output* right) {
+        depth.graphBuilt_ = true;
+        depth.resolved_.algorithm = algorithm;
+        depth.depthOut_ = &depthOutput;
+        depth.rectifiedLeftOut_ = left;
+        depth.rectifiedRightOut_ = right;
+    }
+
     static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
@@ -181,4 +190,35 @@ TEST_CASE("Depth::selectBackend honors supportedModels filter for NEURAL rows", 
     const auto sel = select(std::make_pair(640u, 400u), 30.f, kAllRvc4Backends, only);
     REQUIRE(sel.algorithm == Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(sel.config) == DeviceModelZoo::NEURAL_DEPTH_480X300);
+}
+
+TEST_CASE("Depth rectified outputs require a wired backend", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    REQUIRE_THROWS_WITH(depth->hasRectifiedOutputs(), Catch::Matchers::ContainsSubstring("attach the node to a pipeline"));
+    REQUIRE_THROWS(depth->rectifiedLeft());
+    REQUIRE_THROWS(depth->rectifiedRight());
+}
+
+TEST_CASE("Depth ToF has no rectified pair and keeps its depth output usable", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    auto stereo = StereoDepth::create();  // Only owns dummy outputs; no hardware connection.
+    dai::node::DepthTestAccess::setWiredOutputs(*depth, Depth::Algorithm::TOF, stereo->depth, nullptr, nullptr);
+    REQUIRE_FALSE(depth->hasRectifiedOutputs());
+    REQUIRE_THROWS_WITH(depth->rectifiedLeft(), Catch::Matchers::ContainsSubstring("unavailable for the TOF backend"));
+    REQUIRE_THROWS_WITH(depth->rectifiedRight(), Catch::Matchers::ContainsSubstring("unavailable for the TOF backend"));
+    REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::AUTO);
+    REQUIRE(depth->getResolvedAlgorithm() == Depth::Algorithm::TOF);
+    REQUIRE(&depth->depth() == &stereo->depth);
+    REQUIRE(depth->getNodeMap().empty());  // Querying did not create extra stereo nodes.
+}
+
+TEST_CASE("Depth rectified access forwards backend outputs and locks configuration", "[Depth][RectifiedOutputs]") {
+    auto depth = Depth::create();
+    auto stereo = StereoDepth::create();
+    dai::node::DepthTestAccess::setWiredOutputs(*depth, Depth::Algorithm::STEREO, stereo->depth, &stereo->rectifiedLeft, &stereo->rectifiedRight);
+    REQUIRE(depth->hasRectifiedOutputs());
+    REQUIRE(&depth->rectifiedLeft() == &stereo->rectifiedLeft);
+    REQUIRE(&depth->rectifiedRight() == &stereo->rectifiedRight);
+    REQUIRE(&depth->depth() == &stereo->depth);
+    REQUIRE_THROWS(depth->setAlgorithm(Depth::Algorithm::TOF));
 }
