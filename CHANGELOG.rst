@@ -4,8 +4,13 @@ Changelog for package depthai
 
 Forthcoming
 -----------
-* Rebase the ROS package onto v2_stable (DepthAI 2.33.0).
-* Export SDK targets through the ament package configuration.
+## Features
+* Add a `device.getState`function, which returns the firmware state of the device in runtime
+* Add `setProcessor` function to select the processor for `Sync` and `Demux` nodes
+
+## Misc
+* Expand crashdump data in firmware with more context on what caused the crash
+* Namespace installation
 
 2.31.1 (2026-01-23)
 -------------------
