@@ -665,8 +665,7 @@ TEST_CASE("RGBD converts color without modifying shared input frames", "[ImgFram
     cv::Vec3b expected(33, 22, 11);
     if(colorType == Type::RGB161616) {
         cvType = CV_16UC3;
-        pixel = cv::Scalar(11, 22, 300);
-        // setCvFrame stores RGB161616 with red first; preserve the previous RGBD conversion.
+        pixel = cv::Scalar(300, 22, 11);  // setCvFrame takes BGR input and stores native RGB.
         expected = cv::Vec3b(11, 22, 255);
     } else if(colorType == Type::BGRF16F16F16i) {
         cvType = CV_16FC3;
