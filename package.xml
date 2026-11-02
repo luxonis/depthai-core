@@ -3,7 +3,7 @@
   <version>2.33.0</version>
   <description>DepthAI core is a C++ library which comes with firmware and an API to interact with OAK Platform</description>
 
-  <maintainer email="adam.serafin@luxonis.com">Adam Serafin</maintainer>
+  <maintainer email="sebastjan.ahtik@luxonis.com">Aljaž Sebastjan Ahtik</maintainer>
   <author email="martin@luxonis.com">Martin Peterlin</author>
 
   <license>MIT</license>
