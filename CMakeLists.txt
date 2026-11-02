@@ -59,6 +59,10 @@ endif()
 
 # Create depthai project
 project(depthai VERSION "2.33.0" LANGUAGES CXX C)
+include(GNUInstallDirs)
+# Keep v2 public headers separate from other SDK versions in a shared prefix.
+# Do not change dependency install directories: Hunter has its own private prefix.
+set(DEPTHAI_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/depthai_v2")
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -420,6 +424,8 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
         WHENCE "${DEPTHAI_RESOURCES_OUTPUT_DIR}"
         "${RESOURCE_COMPILED_FILES}"
     )
+    # Static SDK installs export this archive; v3 also uses depthai-resources.
+    set_target_properties(${DEPTHAI_RESOURCE_LIBRARY_NAME} PROPERTIES OUTPUT_NAME depthai_v2-resources)
 
     # Link to resource library
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
@@ -437,8 +443,8 @@ endif()
 target_include_directories(${TARGET_CORE_NAME}
     PUBLIC
         # Relative path to include directories after installed
-        "$<INSTALL_INTERFACE:include>"
-        "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+        "$<INSTALL_INTERFACE:${DEPTHAI_INSTALL_INCLUDEDIR}>"
+        "$<INSTALL_INTERFACE:${DEPTHAI_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
 
         # Build time path to include directories
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
@@ -730,7 +736,6 @@ configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.hpp.in" "${CMAKE_CURRENT_
 ########################
 # Export and install
 ########################
-include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 # Add additional targets to export group
@@ -780,13 +785,13 @@ if(DEPTHAI_INSTALL)
     )
 
     # Install depthai public headers
-    install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(DIRECTORY include/ DESTINATION "${DEPTHAI_INSTALL_INCLUDEDIR}")
     # Install depthai-shared public headers
-    install(DIRECTORY "${DEPTHAI_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(DIRECTORY "${DEPTHAI_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${DEPTHAI_INSTALL_INCLUDEDIR}")
     # Install depthai-shared 3rdparty headers
-    install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
+    install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${DEPTHAI_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
     # Install depthai-bootloader-shared public headers
-    install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${DEPTHAI_INSTALL_INCLUDEDIR}")
     # Install Hunter dependencies
     install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
     # Install resources if not RC'd
