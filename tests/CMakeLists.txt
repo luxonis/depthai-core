@@ -963,6 +963,13 @@ dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
 dai_set_test_labels(align_node_test ondevice rvc4 ci)
 
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    # Shared ImageAlign/Align bounds checks and synthetic rotated depth coverage.
+    dai_add_test(align_coverage_test src/ondevice_tests/align_coverage_test.cpp)
+    target_include_directories(align_coverage_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src)
+    dai_set_test_labels(align_coverage_test ondevice rvc2_all rvc4 ci)
+endif()
+
 # Align device execution test (device-side Align is only available on RVC4)
 dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)
 dai_set_test_labels(align_node_device_test ondevice rvc4 ci)
