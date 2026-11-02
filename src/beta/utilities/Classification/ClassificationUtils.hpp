@@ -137,10 +137,13 @@ std::vector<float> getFlattenedTensorData(const dai::NNData& nnData, const std::
  *
  * Elements are read in the tensor's native storage order and dequantized with the tensor's
  * quantization parameters when present, matching NNData::getTensor(name, dequantize=true) with
- * the shape preserved.
+ * the shape preserved. When order is provided, values and dims are converted to the requested
+ * storage order by permuting axes, expanding missing axes with size 1, or squeezing size-1 axes.
+ * Non-singleton axes cannot be removed.
  *
  * @param nnData NNData message containing the tensor.
  * @param tensorName Name of the tensor to retrieve.
+ * @param order Requested storage order of the returned values and dims; defaults to the tensor's native order.
  * @return Dequantized tensor values with the tensor shape.
  */
 ShapedTensorData getShapedTensorData(const dai::NNData& nnData, const std::string& tensorName, std::optional<TensorInfo::StorageOrder> order = std::nullopt);
