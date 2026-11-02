@@ -1,2 +1,6 @@
 # Load the SDK configuration from the ament package entry point.
-include("${CMAKE_CURRENT_LIST_DIR}/../../../@CMAKE_INSTALL_LIBDIR@/cmake/@PROJECT_NAME@/@PROJECT_NAME@Config.cmake")
+if(IS_ABSOLUTE "@CMAKE_INSTALL_LIBDIR@")
+    include("@CMAKE_INSTALL_LIBDIR@/cmake/@PROJECT_NAME@/@PROJECT_NAME@Config.cmake")
+else()
+    include("${CMAKE_CURRENT_LIST_DIR}/../../../@CMAKE_INSTALL_LIBDIR@/cmake/@PROJECT_NAME@/@PROJECT_NAME@Config.cmake")
+endif()
