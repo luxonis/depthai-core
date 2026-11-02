@@ -28,7 +28,7 @@ struct adl_serializer<std::optional<T>> {
     }
     static std::optional<T> from_json(const json& j) {
         if(j.is_null())
-            return std::make_optional<T>();
+            return std::nullopt;
         else
             return std::make_optional<T>(j.get<T>());
     }

@@ -11,6 +11,21 @@
 
 static_assert(std::is_const_v<std::remove_reference_t<decltype((std::declval<const dai::Asset&>().data))>>);
 
+TEST_CASE("JSON optional decoding preserves null and present values") {
+    const nlohmann::json absent = nullptr;
+    REQUIRE_FALSE(absent.get<std::optional<int>>().has_value());
+    REQUIRE_FALSE(absent.get<std::optional<dai::EepromData>>().has_value());
+
+    std::optional<int> restored = 7;
+    absent.get_to(restored);
+    REQUIRE_FALSE(restored.has_value());
+
+    const nlohmann::json present = 42;
+    REQUIRE(present.get<std::optional<int>>() == std::optional<int>{42});
+    present.get_to(restored);
+    REQUIRE(restored == std::optional<int>{42});
+}
+
 TEST_CASE("Camera pool serialization preserves automatic and explicit byte limits") {
     const auto encoding = GENERATE(dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK);
     const auto limit = GENERATE(-1, 10 * 1024 * 1024, 64 * 1024 * 1024);
