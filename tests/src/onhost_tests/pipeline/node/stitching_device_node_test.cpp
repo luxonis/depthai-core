@@ -1,6 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
+#include <depthai/beta/node/Stitching.hpp>
 #include <depthai/depthai.hpp>
+#include <depthai/utility/CompilerWarnings.hpp>
+#include <type_traits>
 #include <vector>
+
+// The v3.10 beta names are deprecated aliases of the v3.12 types
+DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+static_assert(std::is_same_v<dai::beta::node::Stitching, dai::node::Stitching>);
+static_assert(std::is_same_v<dai::beta::StitchingProperties, dai::StitchingProperties>);
+DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
 TEST_CASE("Stitching accepts deserialized properties", "[Stitching]") {
     auto properties = std::make_unique<dai::StitchingProperties>();
