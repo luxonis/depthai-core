@@ -23,9 +23,4 @@ ToFConfig& ToFConfig::setMedianFilter(MedianFilter median) {
     return *this;
 }
 
-ToFConfig& ToFConfig::setMedianFilter(MedianFilter median) {
-    cfg.depthParams.median = median;
-    return *this;
-}
-
 }  // namespace dai

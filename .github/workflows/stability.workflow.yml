@@ -51,3 +51,4 @@ jobs:
         cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun_vanilla -D DEPTHAI_BUILD_TESTS=ON
         cmake --build build --parallel 8 --config Release --target stability_stress_test
         cd build
+        ../ci/stability_stress_test_combined.sh 86400
