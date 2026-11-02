@@ -299,7 +299,7 @@ void ImageAlign::run() {
         calibrationSet = true;
     };
 
-    auto remapNv12 = [&](cv::Mat& inputNV12, cv::Mat& outputNV12, cv::Mat& map_x, cv::Mat& map_y) {
+    auto remapNv12 = [&](const cv::Mat& inputNV12, cv::Mat& outputNV12, const cv::Mat& map_x, const cv::Mat& map_y) {
         cv::Mat bgrFrame;
         cv::cvtColor(inputNV12, bgrFrame, cv::COLOR_YUV2BGR_NV12);
 
@@ -309,7 +309,7 @@ void ImageAlign::run() {
         cv::cvtColor(remappedBGR, outputNV12, cv::COLOR_BGR2YUV_YV12);
     };
 
-    auto remapYuv420 = [&](cv::Mat& inputYUV420, cv::Mat& outputYUV420, cv::Mat& map_x, cv::Mat& map_y) {
+    auto remapYuv420 = [&](const cv::Mat& inputYUV420, cv::Mat& outputYUV420, const cv::Mat& map_x, const cv::Mat& map_y) {
         cv::Mat bgrFrame;
         cv::cvtColor(inputYUV420, bgrFrame, cv::COLOR_YUV2BGR_IYUV);
 
@@ -482,15 +482,15 @@ void ImageAlign::run() {
         depthImgRectified->setType(inputImg->getType());
         depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
 
-        auto inputFrame = inputImg->getFrame();
+        const auto inputFrame = inputImg->getFrame();
         auto depthImgRectifiedFrame = depthImgRectified->getFrame();
 
         if(inputFrameBpp == 1.5f) {
-            auto inputFrameCopy = inputFrame.clone();
+            const auto inputFrameView = inputFrame;
             if(depthImgRectified->getType() == ImgFrame::Type::NV12) {
-                remapNv12(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+                remapNv12(inputFrameView, depthImgRectifiedFrame, map_x_1, map_y_1);
             } else if(depthImgRectified->getType() == ImgFrame::Type::YUV420p) {
-                remapYuv420(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+                remapYuv420(inputFrameView, depthImgRectifiedFrame, map_x_1, map_y_1);
             } else {
                 logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)depthImgRectified->getType());
             }
@@ -577,7 +577,7 @@ void ImageAlign::run() {
             alignedImg->fb.p3Offset = alignedImg->fb.p2Offset + (alignedImg->fb.stride / 2) * (alignedImg->fb.height / 2);
         }
 
-        auto warp2InputFrame = warp2Input->getFrame();
+        const auto warp2InputFrame = warp2Input->getFrame();
         auto alignedImgFrame = alignedImg->getFrame();
         if(inputFrameBpp == 1.5f) {
             if(alignedImg->getType() == ImgFrame::Type::NV12) {

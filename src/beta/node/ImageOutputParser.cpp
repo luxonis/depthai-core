@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "beta/utilities/Classification/ClassificationUtils.hpp"
 #include "depthai/common/ModelType.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -29,29 +30,14 @@ namespace {
 /**
  * Tensor values in the tensor's stored order together with the tensor shape.
  */
-struct TensorData {
-    /// Tensor values in row-major order over dims.
-    std::vector<float> values;
-    /// Tensor shape in the tensor's stored order.
-    std::vector<std::size_t> dims;
-};
+using TensorData = utilities::ClassificationUtils::ShapedTensorData;
 
 /**
  * Retrieve a tensor from NNData as dequantized FP32 values in the tensor's stored order, matching
  * the source parser's output.getTensor(name, dequantize=True).
  */
 TensorData getTensorData(dai::NNData& nnData, const std::string& tensorName) {
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-    xt::xarray<float> tensor = nnData.getTensor<float>(tensorName, true);
-    TensorData result;
-    result.dims.assign(tensor.shape().begin(), tensor.shape().end());
-    result.values.assign(tensor.begin(), tensor.end());
-    return result;
-#else
-    (void)nnData;
-    (void)tensorName;
-    throw std::runtime_error("ImageOutputParser requires xtensor support to retrieve the output image tensor, but xtensor support is not available.");
-#endif
+    return utilities::ClassificationUtils::getShapedTensorData(nnData, tensorName);
 }
 
 /**

@@ -410,7 +410,7 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
     if(isSegmentationMask || inputFrameType == ImgFrame::Type::RAW16) interp = cv::INTER_NEAREST;
 
     const auto remapFrame = [&](ImgFrame& src, ImgFrame& dst, const cv::Mat& mapX, const cv::Mat& mapY) {
-        auto srcFrame = src.getFrame();
+        const auto srcFrame = src.getFrame();
         auto dstFrame = dst.getFrame();
         if(inputFrameBpp == 1.5f) {
             if(dst.getType() == ImgFrame::Type::NV12) {
@@ -419,9 +419,20 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
                 remapYuv420(srcFrame, dstFrame, mapX, mapY, interp, bgColor);
             }
         } else if(dst.getType() == ImgFrame::Type::RGB888p || dst.getType() == ImgFrame::Type::BGR888p) {
-            cv::Mat remapped;
-            cv::remap(src.getCvFrame(), remapped, mapX, mapY, interp, cv::BORDER_CONSTANT, bgColor);
-            dst.setCvFrame(remapped, dst.getType());
+            const auto planeOffsets = [](ImgFrame& frame) {
+                const size_t planeSize = static_cast<size_t>(frame.getStride()) * frame.getHeight();
+                return std::array<size_t, 3>{frame.fb.p1Offset,
+                                             frame.fb.p2Offset > frame.fb.p1Offset ? frame.fb.p2Offset : frame.fb.p1Offset + planeSize,
+                                             frame.fb.p3Offset > frame.fb.p2Offset ? frame.fb.p3Offset : frame.fb.p1Offset + 2 * planeSize};
+            };
+            const auto srcOffsets = planeOffsets(src);
+            const auto dstOffsets = planeOffsets(dst);
+            for(size_t plane = 0; plane < 3; ++plane) {
+                const cv::Mat srcPlane(src.getHeight(), src.getWidth(), CV_8UC1, src.getData().data() + srcOffsets[plane], src.getStride());
+                cv::Mat dstPlane(dst.getHeight(), dst.getWidth(), CV_8UC1, dst.getData().data() + dstOffsets[plane], dst.getStride());
+                const auto channel = dst.getType() == ImgFrame::Type::RGB888p ? 2 - plane : plane;
+                cv::remap(srcPlane, dstPlane, mapX, mapY, interp, cv::BORDER_CONSTANT, cv::Scalar(bgColor[channel]));
+            }
         } else {
             cv::remap(srcFrame, dstFrame, mapX, mapY, interp, cv::BORDER_CONSTANT, bgColor);
         }

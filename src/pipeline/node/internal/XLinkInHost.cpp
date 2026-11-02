@@ -104,12 +104,7 @@ std::shared_ptr<ADatatype> XLinkInHost::parsePacketizedData(const std::shared_pt
             + std::to_string(packetizedData->totalSize) + ", but received size: " + std::to_string(currentSize) + ".");
     }
 
-    streamPacketDesc_t packet{};
-    packet.data = payload.data();
-    packet.length = static_cast<uint32_t>(payload.size());
-    packet.fd = -1;
-
-    return StreamMessageParser::parseMessage(&packet);
+    return StreamMessageParser::parseMessage(std::move(payload));
 }
 
 void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& messageGroup) const {
