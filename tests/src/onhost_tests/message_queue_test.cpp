@@ -700,3 +700,28 @@ TEST_CASE("MessageQueue::waitAny Tests", "[MessageQueue]") {
         if(producer.joinable()) producer.join();
     }
 }
+
+TEST_CASE("Invalid node input stops the pipeline without terminating the process", "[ThreadedNode]") {
+    class InvalidInputNode : public dai::node::CustomThreadedNode<InvalidInputNode> {
+       public:
+        Input input{*this, {"input", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::Buffer, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+        void run() override {
+            input.get<dai::Buffer>();
+            throw std::invalid_argument("Unsupported input layout");
+        }
+    };
+    dai::Pipeline pipeline(false);
+    auto node = pipeline.create<InvalidInputNode>();
+    auto input = node->input.createInputQueue();
+    pipeline.start();
+    input->send(std::make_shared<dai::Buffer>());
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while(pipeline.isRunning() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    const bool stopped = !pipeline.isRunning();
+    pipeline.stop();
+    pipeline.wait();
+    REQUIRE(stopped);
+    REQUIRE_FALSE(node->isRunning());
+}

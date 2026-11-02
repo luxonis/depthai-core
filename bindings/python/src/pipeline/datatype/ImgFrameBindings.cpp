@@ -101,7 +101,9 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .value("BITSTREAM", ImgFrame::Type::BITSTREAM)
         .value("HDR", ImgFrame::Type::HDR)
         .value("RAW32", ImgFrame::Type::RAW32)
-        .value("NONE", ImgFrame::Type::NONE);
+        .value("NONE", ImgFrame::Type::NONE)
+        .value("NV16", ImgFrame::Type::NV16)
+        .value("NATIVE", ImgFrame::Type::NATIVE);
 
     imgFrameFsync.value("NONE", ImgFrame::Fsync::NONE)
         .value("INPUT", ImgFrame::Fsync::INPUT)
@@ -345,9 +347,15 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("validateTransformations", &ImgFrame::validateTransformations, DOC(dai, ImgFrame, validateTransformations))
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        // The cast function itself does a copy, so we can avoid two copies by always not copying
         .def(
-            "getFrame", [](ImgFrame& self) { return self.getFrame(false); }, DOC(dai, ImgFrame, getFrame))
+            "getFrame",
+            [](ImgFrame& self) {
+                const bool packPlanes =
+                    self.getType() == ImgFrame::Type::NV16 && self.fb.p2Offset != 0
+                    && self.fb.p2Offset != static_cast<uint64_t>(self.fb.p1Offset) + static_cast<uint64_t>(self.getStride()) * self.getHeight();
+                return self.getFrame(packPlanes);
+            },
+            DOC(dai, ImgFrame, getFrame))
         .def("setFrame", &ImgFrame::setFrame, py::arg("array"), DOC(dai, ImgFrame, setFrame))
         .def(
             "getCvFrame", [](ImgFrame& self) { return self.getCvFrame(&g_numpyAllocator); }, DOC(dai, ImgFrame, getCvFrame))

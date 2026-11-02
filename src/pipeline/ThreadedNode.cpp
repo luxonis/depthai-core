@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <exception>
 #include <memory>
 #include <optional>
 
@@ -47,7 +48,7 @@ void ThreadedNode::start() {
                 spdlog::trace(expStr);
             }
             running = false;
-        } catch(const std::runtime_error& ex) {
+        } catch(const std::exception& ex) {
             auto expStr = fmt::format("Node threw exception, stopping the node. Exception message: {}", ex.what());
             if(pimpl->logger) {
                 pimpl->logger->error(expStr);

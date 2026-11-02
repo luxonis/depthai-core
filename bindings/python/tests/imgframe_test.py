@@ -131,3 +131,18 @@ def test_setcvframe_raw32():
     assert recovered.shape == image.shape
     assert recovered.dtype == np.int32
     assert_images_close(image, recovered, tolerance=0.0, msg="RAW32")
+
+
+def test_getframe_nv16_packs_nonadjacent_padded_planes():
+    frame = dai.ImgFrame().setType(dai.ImgFrame.Type.NV16).setSize(2, 2).setStride(4)
+    frame.fb.p1Offset = 3
+    frame.fb.p2Offset = 15
+    payload = np.full(21, 99, dtype=np.uint8)
+    payload[[3, 4, 7, 8, 15, 16, 19, 20]] = [16, 235, 81, 145, 128, 128, 90, 240]
+    frame.setData(payload)
+
+    pixels = frame.getFrame()
+
+    np.testing.assert_array_equal(pixels, [[16, 235], [81, 145], [128, 128], [90, 240]])
+    pixels[0, 0] = 42
+    assert frame.getData()[3] == 16

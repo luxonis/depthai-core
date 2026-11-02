@@ -90,9 +90,9 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     int numFramesPoolRaw = 3;
     int maxSizePoolRaw = 1024 * 1024 * 10;  // 10MB
 
-    /** Isp pool */
-    int numFramesPoolIsp = 3;
-    int maxSizePoolIsp = 1024 * 1024 * 10;  // 10MB
+    /** Isp pool. AUTO selects a platform default. */
+    int numFramesPoolIsp = AUTO;
+    int maxSizePoolIsp = AUTO;
 
     /** Video pool */
     int numFramesPoolVideo = 4;  // No max size in bytes for video pool, used in mono and color cameras only, those are deprecated

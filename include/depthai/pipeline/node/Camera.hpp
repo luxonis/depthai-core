@@ -159,14 +159,15 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
     /**
      * Set number of frames in isp pool (will be automatically reduced if the maximum pool memory size is exceeded)
-     * @param num Number of frames
+     * @param num Number of frames, or CameraProperties::AUTO (default) for four on RVC2NG and three on other platforms
      * @return Shared pointer to the camera node
      */
     std::shared_ptr<Camera> setIspNumFramesPool(int num);
 
     /**
      * Set maximum size of isp pool
-     * @param size Maximum size in bytes of isp pool
+     * @param size Maximum size in bytes of isp pool, or CameraProperties::AUTO (default).
+     * AUTO allocates the requested frame count on RVC2NG and uses 10 MiB on other platforms.
      * @return Shared pointer to the camera node
      */
     std::shared_ptr<Camera> setMaxSizePoolIsp(int size);
@@ -217,13 +218,13 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
     /**
      * Get number of frames in isp pool
-     * @return Number of frames
+     * @return Resolved frame count, or CameraProperties::AUTO when no device is assigned
      */
     int getIspNumFramesPool() const;
 
     /**
      * Get maximum size of isp pool
-     * @return Maximum size in bytes of isp pool
+     * @return Resolved byte limit, or CameraProperties::AUTO for RVC2NG automatic sizing or when no device is assigned
      */
     int getMaxSizePoolIsp() const;
 
