@@ -22,7 +22,7 @@ jobs:
 
   # The precheck job determines whether a workflow should be run in full
   precheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
@@ -202,7 +202,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-24.04]
         cmake: ['3.22.x', '4.0.x']
         include:
           # The Windows 2025 image uses VS 2026, which requires CMake 4.2+.
@@ -214,7 +214,7 @@ jobs:
           - os: macos-latest
             cmake: '3.22.x'
             cache-saver: true
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             cmake: '3.22.x'
             cache-saver: true
 
@@ -241,7 +241,7 @@ jobs:
         brew install opencv@4
 
     - name: Install dependencies
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       run: |
         sudo apt-get update
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
@@ -274,7 +274,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-2025, ubuntu-latest]
+        os: [macos-latest, windows-2025, ubuntu-24.04]
         build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
@@ -288,7 +288,7 @@ jobs:
           - os: windows-2025
             build-type: Release
             cache-saver: true
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             build-type: Release
             cache-saver: true
         # TODO(Morato) - add back Win32 and shared builds to CI
@@ -318,7 +318,7 @@ jobs:
         brew install opencv@4
 
     - name: Install dependencies
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       run: |
         sudo apt-get update
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
@@ -413,7 +413,7 @@ jobs:
     name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Core CI report' || 'Core CI report (not applicable)' }}
     needs: [precheck, consistency, style, tidy, minimal-build, device-manager-build, build, integration]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Check required CI results
       env:
@@ -432,7 +432,7 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, style, integration, minimal-build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 

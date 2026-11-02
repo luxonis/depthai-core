@@ -32,6 +32,7 @@ struct SpatialImgDetection {
     uint32_t label = 0;
     std::string labelName;
     float confidence = 0.f;
+    /// Legacy outer bounds of the detection, in the units of boundingBox. All four 0 means "not set".
     float xmin = 0.f;
     float ymin = 0.f;
     float xmax = 0.f;
@@ -55,11 +56,24 @@ struct SpatialImgDetection {
 
     /**
      * Sets the bounding box and the legacy coordinates of the detection.
+     * @note For a normalized bounding box, the legacy coordinates are correct only when the angle is 0 or 180 degrees, or the frame
+     * is square. Use setBoundingBox(boundingBox, width, height) when the frame size is known.
      */
     void setBoundingBox(RotatedRect boundingBox);
 
     /**
-     * Returns bounding box if it was set, else it constructs a new one from the legacy xmin, ymin, xmax, ymax values.
+     * Sets the bounding box and the legacy coordinates of the detection.
+     * The legacy coordinates are the outer rectangle in a frame of the given size (see RotatedRect::getOuterRectInFrame()).
+     * @param boundingBox Bounding box of the detection
+     * @param width Width of the frame in pixels
+     * @param height Height of the frame in pixels
+     */
+    void setBoundingBox(RotatedRect boundingBox, unsigned int width, unsigned int height);
+
+    /**
+     * Returns the bounding box if it was set, else it constructs an axis-aligned one from the legacy xmin, ymin, xmax, ymax values.
+     * The legacy values are normalized when all of them are 1 or less, else they are in pixels.
+     * @throws std::runtime_error if the bounding box is not set and all legacy values are 0
      */
     RotatedRect getBoundingBox() const;
 
@@ -67,6 +81,13 @@ struct SpatialImgDetection {
      * Sets the bounding box and the legacy coordinates of the detection from the top-left and bottom-right points.
      */
     void setOuterBoundingBox(const float xmin, const float ymin, const float xmax, const float ymax);
+
+    /**
+     * Returns the outer bounding box as [minx, miny, maxx, maxy].
+     * Returns the legacy xmin, ymin, xmax, ymax values when they are set (not all 0), else the outer rectangle of the bounding box.
+     * @throws std::runtime_error if all legacy values are 0 and the bounding box is not set
+     */
+    std::array<float, 4> getOuterBoundingBox() const;
 
     /**
      * Sets the keypoints of the detection.

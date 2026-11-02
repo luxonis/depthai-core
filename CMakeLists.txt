@@ -201,7 +201,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d" "opencv_stitching")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -214,6 +214,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
         if("opencv_stitching" IN_LIST OpenCV_LIBS)
             set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
+            set(OPTIONAL_OPENCV_LIBRARIES "opencv_stitching")
         endif()
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
@@ -449,13 +450,19 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+list(APPEND TARGET_CORE_SOURCES
+    src/pipeline/datatype/ImgDetectionsFilterConfig.cpp
+    src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+    src/pipeline/node/ImgDetectionsFilter.cpp
+    src/properties/ImgDetectionsFilterProperties.cpp
+)
+
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
         src/beta/BetaNode.cpp
         src/beta/device/MultiDeviceCalibrationHandler.cpp
         src/beta/datatype/Classifications.cpp
         src/beta/datatype/Clusters.cpp
-        src/beta/datatype/ImgDetectionsFilterConfig.cpp
         src/beta/datatype/Keypoints.cpp
         src/beta/datatype/MultiDeviceCalibrationControl.cpp
         src/beta/datatype/MultiDeviceCalibrationResult.cpp
@@ -481,7 +488,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/FastSAMParser.cpp
         src/beta/node/HRNetParser.cpp
         src/beta/node/ImageOutputParser.cpp
-        src/beta/node/ImgDetectionsFilter.cpp
         src/beta/node/KeypointParser.cpp
         src/beta/node/LaneDetectionParser.cpp
         src/beta/node/MapOutputParser.cpp
@@ -495,7 +501,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/XFeatMonoParser.cpp
         src/beta/node/XFeatStereoParser.cpp
         src/beta/node/YuNetParser.cpp
-        src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp
         src/beta/utilities/Detection/MaskUtils.cpp
@@ -563,10 +568,14 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
-    src/pipeline/utilities/Stitching/Stitching.cpp
-    src/pipeline/utilities/Stitching/FixedPanoramaCompositor.cpp
-    src/pipeline/utilities/Stitching/PlanarStitcher.cpp
 )
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    list(APPEND TARGET_OPENCV_SOURCES
+        src/pipeline/utilities/Stitching/Stitching.cpp
+        src/pipeline/utilities/Stitching/FixedPanoramaCompositor.cpp
+        src/pipeline/utilities/Stitching/PlanarStitcher.cpp
+    )
+endif()
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 
@@ -706,7 +715,7 @@ endif()
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${OPTIONAL_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
@@ -1222,7 +1231,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_OPENCV_NAME})
 
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${OPTIONAL_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
