@@ -128,11 +128,13 @@ with dai.Pipeline(device) as pipeline:
             configQueue.setOutputSize(800, 800, dai.ImageManipConfig.ResizeMode.LETTERBOX)
             imageManipConfigQueue.send(configQueue)
 
+            # The detection is normalized to the NN input; its transformation maps it to the camera's sensor
+            detectionRect = dai.Rect(dai.Point2f(biggestDetection.xmin, biggestDetection.ymin), dai.Point2f(biggestDetection.xmax, biggestDetection.ymax), True)
             configCamera = dai.CameraControl()
-            configCamera.setAutoExposureRegion(int(sourceRect.x), int(sourceRect.y), int(sourceRect.width), int(sourceRect.height))
+            configCamera.setAutoExposureRegion(detectionRect, detections.getTransformation())
             if(time.time() - lastTimeToAutoFocus > 5):
                 lastTimeToAutoFocus = time.time()
-                configCamera.setAutoFocusRegion(int(sourceRect.x), int(sourceRect.y), int(sourceRect.width), int(sourceRect.height))
+                configCamera.setAutoFocusRegion(detectionRect, detections.getTransformation())
             cameraControlQueue.send(configCamera)
         imageManipCropOutFrame = imageManipCropOutQueue.tryGet()
         if imageManipCropOutFrame is not None:
