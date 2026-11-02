@@ -363,7 +363,11 @@ void RGBD::run() {
                     cv::Mat depthConverted;
                     if(source.depth() != CV_8U) source.convertTo(depthConverted, CV_8UC3);
                     const cv::Mat& bgr8 = depthConverted.empty() ? source : depthConverted;
-                    cv::cvtColor(bgr8, destination, cv::COLOR_BGR2RGB);
+                    if(colorFrame->getType() == ImgFrame::Type::RGB161616) {
+                        bgr8.copyTo(destination);
+                    } else {
+                        cv::cvtColor(bgr8, destination, cv::COLOR_BGR2RGB);
+                    }
                     colorFrame = std::move(converted);
                 } catch(const std::exception& e) {
                     throw std::runtime_error("Color space conversion to RGB888i failed: " + std::string(e.what()));
