@@ -2,8 +2,8 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.33.0 (2026-11-02)
+-------------------
 ## Features
 * Add a `device.getState`function, which returns the firmware state of the device in runtime
 * Add `setProcessor` function to select the processor for `Sync` and `Demux` nodes
