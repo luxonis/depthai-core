@@ -25,9 +25,7 @@ std::shared_ptr<GPUStereo> GPUStereo::build(Output& leftInput, Output& rightInpu
 
 GPUStereo& GPUStereo::setRectification(bool enable) {
     rectificationEnabled = enable;
-    if(rectification) {
-        (*rectification)->enableRectification(enable);
-    }
+    properties.rectification = enable;
     return *this;
 }
 
@@ -44,19 +42,9 @@ void GPUStereo::buildInternal() {
 
     sync->out.link(messageDemux->input);
 
-    if(rectificationEnabled) {
-        if(!rectification) rectification = std::make_unique<Subnode<Rectification>>(*this, "rectification");
-        (*rectification)->setRunOnHost(false);
-        (*rectification)->enableRectification(true);
-
-        messageDemux->outputs["left"].link((*rectification)->input1);
-        messageDemux->outputs["right"].link((*rectification)->input2);
-        (*rectification)->output1.link(leftInternal);
-        (*rectification)->output2.link(rightInternal);
-    } else {
-        messageDemux->outputs["left"].link(leftInternal);
-        messageDemux->outputs["right"].link(rightInternal);
-    }
+    // Rectification (if enabled, properties.rectification) runs inside the node on the device's EVA warp engine.
+    messageDemux->outputs["left"].link(leftInternal);
+    messageDemux->outputs["right"].link(rightInternal);
 }
 
 }  // namespace node
