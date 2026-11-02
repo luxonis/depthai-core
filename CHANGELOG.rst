@@ -2,6 +2,16 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+## Features
+* Add a `device.getState`function, which returns the firmware state of the device in runtime
+* Add `setProcessor` function to select the processor for `Sync` and `Demux` nodes
+
+## Misc
+* Expand crashdump data in firmware with more context on what caused the crash
+* Namespace installation
+
 2.31.1 (2026-01-23)
 -------------------
 * Minor bugfixes
@@ -16,7 +26,7 @@ Changelog for package depthai
 * Add support for a new revision of OAK-Thermal (R8)
 * Add support for OAK-ToF (R4)
 * Add support for a new revision of OAK-D-S2-[Pro]-Wide OV9728 variant (R8)
- 
+
 ## Bug fixes and stability
 * Fix a rare issue of IMU preventing a device reboot
 * Fix a timestamp overflow bug on the BNO08x IMU
@@ -204,7 +214,7 @@ Features
 
 2.21.0 (2023-04-03)
 -------------------
-* Improved x/y accuracy for SpatialLocationCalculator/SpatialDetectionNetwork 
+* Improved x/y accuracy for SpatialLocationCalculator/SpatialDetectionNetwork
 * Support for median and mode, default changed to median in SpatialLocationCalculator/SpatialDetectionNetwork
 * Multi stereo support, ability to run stereo between any 2 calibrated cameras
 * Support for LEFT/RIGHT alignment in stereo node
