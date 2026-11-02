@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 
 #include "depthai/utility/Memory.hpp"
 
@@ -48,7 +49,7 @@ class OffsetMemory : public Memory {
      * @return Remaining buffer size after the offset.
      */
     std::size_t getOffsetSize() const {
-        return getOffsetData().size();
+        return getSize() - getOffset();
     };
 };
 
@@ -75,7 +76,19 @@ class ConvertedOffsetMemory : public OffsetMemory {
         return memory->getData();
     }
     span<const std::uint8_t> getData() const override {
-        return memory->getData();
+        return std::as_const(*memory).getData();
+    }
+    std::size_t getSize() const override {
+        return memory->getSize();
+    }
+    span<std::uint8_t> getDataRange(std::size_t offset, std::size_t length) override {
+        return memory->getDataRange(offset, length);
+    }
+    span<const std::uint8_t> getDataRange(std::size_t offset, std::size_t length) const override {
+        return std::as_const(*memory).getDataRange(offset, length);
+    }
+    std::vector<span<const std::uint8_t>> getDataSegments() const override {
+        return std::as_const(*memory).getDataSegments();
     }
     std::size_t getMaxSize() const override {
         return memory->getMaxSize();
@@ -91,14 +104,10 @@ class ConvertedOffsetMemory : public OffsetMemory {
         dataOffset = std::min(dataOffset + offset, memory->getSize());
     }
     span<std::uint8_t> getOffsetData() override {
-        const size_t size = memory->getSize();
-        std::uint8_t* data = memory->getData().data();
-        return {data + dataOffset, data + size};
+        return memory->getDataRange(dataOffset, memory->getSize() - dataOffset);
     }
     span<const std::uint8_t> getOffsetData() const override {
-        const size_t size = memory->getSize();
-        const std::uint8_t* data = memory->getData().data();
-        return {data + dataOffset, data + size};
+        return std::as_const(*memory).getDataRange(dataOffset, memory->getSize() - dataOffset);
     }
     std::shared_ptr<OffsetMemory> offset(std::size_t offset) override {
         auto mem = std::make_shared<ConvertedOffsetMemory>(memory);

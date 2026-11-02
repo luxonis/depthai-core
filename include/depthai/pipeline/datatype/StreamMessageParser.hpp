@@ -16,7 +16,9 @@
 namespace dai {
 class StreamMessageParser {
    public:
+    /// Transfer ownership of the packet and retain its payload without copying.
     static std::shared_ptr<ADatatype> parseMessage(StreamPacketDesc packet);
+    /// Parse a borrowed packet, copying its payload unless the packet carries a file descriptor.
     static std::shared_ptr<ADatatype> parseMessage(streamPacketDesc_t* const packet);
     // static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const ADatatype>& data);
     // static std::vector<std::uint8_t> serializeMessage(const ADatatype& data);

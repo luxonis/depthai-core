@@ -6,6 +6,7 @@
 #include <cstring>
 #include <memory>
 #include <utility>
+#include <vector>
 
 // project
 #include "depthai/utility/span.hpp"
@@ -119,9 +120,16 @@ class Memory {
     virtual std::size_t getOffset() const = 0;
     virtual void setSize(std::size_t) = 0;
 
-    std::size_t getSize() const {
+    virtual std::size_t getSize() const {
         return getData().size();
     };
+
+    /** Returns a view of a logical byte range. Throws if the range is outside storage or crosses separate allocations. */
+    virtual span<std::uint8_t> getDataRange(std::size_t offset, std::size_t length);
+    /** Returns a read-only view of a logical byte range, with the same bounds as mutable access. */
+    virtual span<const std::uint8_t> getDataRange(std::size_t offset, std::size_t length) const;
+    /** Returns the payload in logical order without gathering bytes. The Memory owner must outlive all returned spans. */
+    virtual std::vector<span<const std::uint8_t>> getDataSegments() const;
 };
 
 }  // namespace dai

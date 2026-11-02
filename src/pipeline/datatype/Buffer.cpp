@@ -40,7 +40,7 @@ span<const uint8_t> Buffer::getData() const {
 }
 
 void Buffer::setData(const std::vector<std::uint8_t>& d) {
-    if(data->getMaxSize() >= d.size()) {
+    if(data->getSize() == d.size()) {
         // TODO(themarpe) - has to set offset as well
         memcpy(data->getData().data(), d.data(), d.size());
     } else {
