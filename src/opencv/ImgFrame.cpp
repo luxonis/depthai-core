@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
@@ -10,6 +11,27 @@
 // #include "spdlog/spdlog.h"
 
 namespace dai {
+namespace {
+std::pair<cv::Mat, cv::Mat> nv16Planes(ImgFrame& frame) {
+    const uint64_t width = frame.getWidth();
+    const uint64_t height = frame.getHeight();
+    const uint64_t stride = frame.getStride();
+    if(width == 0 || width % 2 != 0 || width > std::numeric_limits<int>::max() || height == 0 || height > std::numeric_limits<int>::max() / 2
+       || stride < width) {
+        throw std::invalid_argument("NV16 requires a positive even width, positive height, and stride at least width");
+    }
+    const uint64_t yOffset = frame.fb.p1Offset;
+    const uint64_t uvOffset = frame.fb.p2Offset == 0 ? yOffset + stride * height : frame.fb.p2Offset;
+    const uint64_t planeBytes = (height - 1) * stride + width;
+    auto bytes = frame.getData();
+    if(uvOffset < yOffset + planeBytes || uvOffset + planeBytes > bytes.size()) {
+        throw std::invalid_argument("NV16 plane offsets and stride exceed the image payload or overlap");
+    }
+    const cv::Size size(static_cast<int>(width), static_cast<int>(height));
+    return {cv::Mat(size, CV_8UC1, bytes.data() + yOffset, stride), cv::Mat(size, CV_8UC1, bytes.data() + uvOffset, stride)};
+}
+}  // namespace
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
@@ -27,6 +49,21 @@ ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
 }
 
 cv::Mat ImgFrame::getFrame(bool deepCopy) {
+    if(getType() == Type::NATIVE) {
+        throw std::runtime_error("Device-native image storage has no portable pixel layout; use getData() for opaque bytes");
+    }
+    if(getType() == Type::NV16) {
+        auto [y, uv] = nv16Planes(*this);
+        if(deepCopy) {
+            cv::Mat packed;
+            cv::vconcat(y, uv, packed);
+            return packed;
+        }
+        if(uv.data != y.data + y.step * y.rows) {
+            throw std::runtime_error("NV16 planes are not adjacent; use getFrame(true) or getCvFrame()");
+        }
+        return cv::Mat(y.rows * 2, y.cols, CV_8UC1, y.data, y.step);
+    }
     // Convert to cv::Mat. If deepCopy enabled, then copy pixel data, otherwise reference only
     cv::Mat mat;
     cv::Size size = {0, 0};
@@ -140,6 +177,23 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 }
 
 cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
+    if(getType() == Type::NV16) {
+        auto [y, uv] = nv16Planes(*this);
+        cv::Mat yuyv(y.rows, y.cols, CV_8UC2);
+        for(int row = 0; row < y.rows; ++row) {
+            const auto* luma = y.ptr<uint8_t>(row);
+            const auto* chroma = uv.ptr<uint8_t>(row);
+            auto* packed = yuyv.ptr<uint8_t>(row);
+            for(int col = 0; col < y.cols; ++col) {
+                packed[static_cast<size_t>(col) * 2] = luma[col];
+                packed[static_cast<size_t>(col) * 2 + 1] = chroma[col];
+            }
+        }
+        cv::Mat output;
+        if(allocator != nullptr) output.allocator = allocator;
+        cv::cvtColor(yuyv, output, cv::COLOR_YUV2BGR_YUYV);
+        return output;
+    }
     auto mergePlanarChannels = [&](int cvType, cv::Mat& output, size_t offset0, size_t offset1, size_t offset2) -> void {
         cv::Size s(getWidth(), getHeight());
         std::vector<cv::Mat> channels;
@@ -263,6 +317,9 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
 }
 
 ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
+    if(type == Type::NATIVE || type == Type::NV16) {
+        throw std::invalid_argument("setCvFrame cannot produce this image layout; supply a correctly formatted payload with setData()");
+    }
     cv::Mat output;
     setType(type);
     setSize(mat.cols, mat.rows);

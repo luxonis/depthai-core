@@ -17,6 +17,7 @@
 #endif
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/ImageManipImpl.hpp"
 
 using namespace std::chrono_literals;
 
@@ -567,3 +568,130 @@ TEST_CASE("ImgFrame OpenCV support", "[ImgFrame][OpenCV]") {
     REQUIRE_THROWS_AS(empty.getFrame(), std::runtime_error);
 }
 #endif
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+TEST_CASE("NV16 exposes both full-height planes without copying", "[ImgFrame][OpenCV][NV16]") {
+    dai::ImgFrame frame;
+    frame.setType(dai::ImgFrame::Type::NV16).setSize(4, 2).setStride(8);
+    frame.setData(std::vector<uint8_t>(32, 128));
+    frame.getData()[0] = 16;
+    frame.getData()[1] = 235;
+    frame.getData()[8] = 235;
+    frame.getData()[9] = 16;
+    std::vector<uint8_t> metadata;
+    dai::DatatypeEnum datatype;
+    frame.serialize(metadata, datatype);
+    dai::ImgFrame restored;
+    dai::utility::deserialize(metadata, restored);
+    REQUIRE(restored.getType() == dai::ImgFrame::Type::NV16);
+    REQUIRE(restored.getStride() == 8);
+    REQUIRE(restored.getHeight() == 2);
+    auto raw = frame.getFrame();
+    REQUIRE(raw.rows == 4);
+    REQUIRE(raw.cols == 4);
+    REQUIRE(raw.step == 8);
+    REQUIRE(raw.data == frame.getData().data());
+    raw.at<uint8_t>(2, 2) = 91;
+    REQUIRE(frame.getData()[18] == 91);
+    auto copy = frame.getFrame(true);
+    REQUIRE(copy.isContinuous());
+    REQUIRE(copy.at<uint8_t>(2, 2) == 91);
+    copy.at<uint8_t>(0, 0) = 99;
+    REQUIRE(frame.getData()[0] == 16);
+}
+
+TEST_CASE("NV16 default layout includes a chroma row for every luma row", "[ImgFrame][OpenCV][NV16]") {
+    dai::ImgFrame frame;
+    frame.setType(dai::ImgFrame::Type::NV16).setSize(2, 1);
+    frame.setData(std::vector<uint8_t>{16, 235, 128, 128});
+    REQUIRE(frame.getStride() == 2);
+    auto raw = frame.getFrame();
+    REQUIRE(raw.rows == 2);
+    REQUIRE(raw.cols == 2);
+    auto bgr = frame.getCvFrame();
+    REQUIRE(bgr.at<cv::Vec3b>(0, 0) == cv::Vec3b(0, 0, 0));
+    REQUIRE(bgr.at<cv::Vec3b>(0, 1) == cv::Vec3b(255, 255, 255));
+}
+
+TEST_CASE("NV16 conversion respects plane offsets and row padding", "[ImgFrame][OpenCV][NV16]") {
+    dai::ImgFrame frame;
+    frame.setType(dai::ImgFrame::Type::NV16).setSize(2, 2).setStride(4);
+    frame.fb.p1Offset = 3;
+    frame.fb.p2Offset = 15;
+    frame.setData(std::vector<uint8_t>(21, 0));
+    auto bytes = frame.getData();
+    bytes[3] = 16;
+    bytes[4] = 235;
+    bytes[7] = 81;
+    bytes[8] = 81;
+    bytes[15] = 128;
+    bytes[16] = 128;
+    bytes[19] = 90;
+    bytes[20] = 240;
+    auto bgr = frame.getCvFrame();
+    REQUIRE(bgr.rows == 2);
+    REQUIRE(bgr.cols == 2);
+    REQUIRE(bgr.type() == CV_8UC3);
+    REQUIRE(bgr.at<cv::Vec3b>(0, 0) == cv::Vec3b(0, 0, 0));
+    REQUIRE(bgr.at<cv::Vec3b>(0, 1) == cv::Vec3b(255, 255, 255));
+    REQUIRE(bgr.at<cv::Vec3b>(1, 0) == cv::Vec3b(0, 0, 254));
+    REQUIRE_THROWS_AS(frame.getFrame(), std::runtime_error);
+    auto packed = frame.getFrame(true);
+    REQUIRE(packed.rows == 4);
+    REQUIRE(packed.at<uint8_t>(2, 0) == 128);
+    REQUIRE(packed.at<uint8_t>(3, 1) == 240);
+
+    SECTION("Truncated chroma") {
+        frame.setData(std::vector<uint8_t>(20));
+        REQUIRE_THROWS_AS(frame.getCvFrame(), std::invalid_argument);
+        REQUIRE_THROWS_AS(frame.getFrame(true), std::invalid_argument);
+    }
+    SECTION("Overlapping planes") {
+        frame.fb.p2Offset = 8;
+        REQUIRE_THROWS_AS(frame.getCvFrame(), std::invalid_argument);
+    }
+    SECTION("Odd width") {
+        frame.setWidth(3);
+        REQUIRE_THROWS_AS(frame.getCvFrame(), std::invalid_argument);
+    }
+    SECTION("Undersized stride") {
+        frame.setStride(1);
+        REQUIRE_THROWS_AS(frame.getCvFrame(), std::invalid_argument);
+    }
+}
+
+TEST_CASE("Opaque native images preserve bytes but reject pixel interpretation", "[ImgFrame][OpenCV][Native]") {
+    dai::ImgFrame frame;
+    frame.setType(dai::ImgFrame::Type::NATIVE).setSize(640, 480);
+    frame.setData(std::vector<uint8_t>{0x12, 0x34, 0x56});
+    std::vector<uint8_t> metadata;
+    dai::DatatypeEnum datatype;
+    frame.serialize(metadata, datatype);
+    dai::ImgFrame restored;
+    dai::utility::deserialize(metadata, restored);
+    REQUIRE(restored.getType() == dai::ImgFrame::Type::NATIVE);
+    REQUIRE(restored.getWidth() == 640);
+    REQUIRE(restored.getHeight() == 480);
+    REQUIRE(std::vector<uint8_t>(frame.getData().begin(), frame.getData().end()) == std::vector<uint8_t>{0x12, 0x34, 0x56});
+    REQUIRE_THROWS_AS(frame.getFrame(), std::runtime_error);
+    REQUIRE_THROWS_AS(frame.getCvFrame(), std::runtime_error);
+    cv::Mat input(2, 2, CV_8UC3, cv::Scalar(0, 0, 0));
+    REQUIRE_THROWS_AS(frame.setCvFrame(input, dai::ImgFrame::Type::NATIVE), std::invalid_argument);
+    REQUIRE_THROWS_AS(frame.setCvFrame(input, dai::ImgFrame::Type::NV16), std::invalid_argument);
+    REQUIRE(frame.getWidth() == 640);
+    REQUIRE(frame.getType() == dai::ImgFrame::Type::NATIVE);
+}
+#endif
+
+TEST_CASE("CPU image transforms reject storage without a supported converter", "[ImgFrame][Storage]") {
+    dai::ImgFrame frame;
+    frame.setType(dai::ImgFrame::Type::RAW8).setSize(4, 2);
+    const auto raw = dai::impl::getSrcFrameSpecs(frame.fb);
+    REQUIRE(raw.width == 4);
+    REQUIRE(raw.height == 2);
+    REQUIRE(raw.p1Stride == 4);
+    for(const auto type : {dai::ImgFrame::Type::NV16, dai::ImgFrame::Type::NATIVE}) {
+        frame.setType(type);
+        REQUIRE_THROWS_AS(dai::impl::getSrcFrameSpecs(frame.fb), std::runtime_error);
+    }
+}

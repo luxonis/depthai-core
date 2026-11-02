@@ -739,6 +739,9 @@ inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
 template <typename ImageManipData, typename ColorChangeBackend, typename WarpBackend>
 ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
+    if(inFrameType == ImgFrame::Type::NATIVE || outType == ImgFrame::Type::NATIVE || inFrameType == ImgFrame::Type::NV16 || outType == ImgFrame::Type::NV16) {
+        throw std::invalid_argument("ImageManip does not support this image storage layout");
+    }
     const auto newCfgStr = newBase.str();
     if(outType == ImgFrame::Type::NONE) {
         if(base.colormap != Colormap::NONE)
@@ -989,6 +992,8 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Output frame type not supported");
     }
@@ -1042,6 +1047,8 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Output frame type not supported");
     }

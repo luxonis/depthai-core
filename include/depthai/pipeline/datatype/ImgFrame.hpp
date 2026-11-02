@@ -68,7 +68,17 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         GRAY8,          // 8 bit grayscale (1 plane)
         GRAYF16,        // FP16 grayscale (normalized)
         RAW32,          // 32 bits raw
-        NONE
+        NONE,
+        /** 8-bit Y plane followed by interleaved U,V samples at half horizontal resolution.
+         * Both planes have full image height and use the same byte stride. Width must be even.
+         * p1Offset locates Y; p2Offset locates UV, or defaults to p1Offset + stride * height.
+         */
+        NV16 = 34,
+        /** Opaque device-native image storage. Pixel layout and bytes per pixel are unspecified.
+         * Width, height and timestamps remain valid. Host pixel conversion is unavailable.
+         * Raw bytes alone do not preserve the device allocation needed by native consumers.
+         */
+        NATIVE = 35
     };
 
     /**
@@ -438,7 +448,9 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     /**
      * @note This API only available if OpenCV support is enabled
      *
-     * Retrieves data as cv::Mat with specified width, height and type
+     * Retrieves data as cv::Mat with specified width, height and type.
+     * NV16 returns the Y and UV planes stacked vertically. Non-adjacent planes require copy=true.
+     * NATIVE storage cannot be interpreted as pixels and throws.
      *
      * @param copy If false only a reference to data is made, otherwise a copy
      * @returns cv::Mat with corresponding to ImgFrame parameters
@@ -450,6 +462,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      *
      * Retrieves cv::Mat suitable for use in common opencv functions.
      * ImgFrame is converted to color BGR interleaved or grayscale depending on type.
+     * NATIVE storage cannot be converted and throws.
      *
      * A copy is always made
      *
@@ -461,6 +474,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * @note This API only available if OpenCV support is enabled
      *
      * Copies cv::Mat data to the ImgFrame buffer and converts to a specific type.
+     * NV16 and NATIVE destinations are unsupported and throw without changing the frame.
      *
      * @param frame Input cv::Mat BGR frame or single channel frame from which to copy the data from.
      * @param type  Specifies the target image format for the internal buffer, including color space, layout, and bit depth.
@@ -581,6 +595,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
                 return 1;
                 break;
             case Type::NV12:
+            case Type::NV16:
                 return 1;
                 break;
             case Type::NV21:
@@ -596,6 +611,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
                 return 4;
                 break;
             case Type::NONE:
+            case Type::NATIVE:
                 return 0;
                 break;
         }
@@ -635,6 +651,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
             case Type::PACK12:
             case Type::NV12:
             case Type::NV21:
+            case Type::NV16:
+            case Type::NATIVE:
             case Type::BITSTREAM:
             case Type::HDR:
             case Type::RAW32:
@@ -682,6 +700,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
             case Type::PACK12:
             case Type::NV12:
             case Type::NV21:
+            case Type::NV16:
+            case Type::NATIVE:
             case Type::BITSTREAM:
             case Type::HDR:
             case Type::RAW32:
@@ -729,6 +749,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
             case Type::PACK12:
             case Type::NV12:
             case Type::NV21:
+            case Type::NV16:
+            case Type::NATIVE:
             case Type::BITSTREAM:
             case Type::HDR:
             case Type::RAW32:

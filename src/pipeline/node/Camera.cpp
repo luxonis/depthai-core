@@ -162,6 +162,8 @@ std::shared_ptr<Camera> Camera::build(ReplayVideo& replay) {
 
 Camera::Properties& Camera::getProperties() {
     properties.initialControl = initialControl;
+    properties.numFramesPoolIsp = getIspNumFramesPool();
+    properties.maxSizePoolIsp = getMaxSizePoolIsp();
     return properties;
 }
 
@@ -426,10 +428,16 @@ int Camera::getMaxSizePoolRaw() const {
 }
 
 int Camera::getIspNumFramesPool() const {
+    if(properties.numFramesPoolIsp == CameraProperties::AUTO && device) {
+        return device->getPlatform() == Platform::RVC2NG ? 4 : 3;
+    }
     return properties.numFramesPoolIsp;
 }
 
 int Camera::getMaxSizePoolIsp() const {
+    if(properties.maxSizePoolIsp == CameraProperties::AUTO && device && device->getPlatform() != Platform::RVC2NG) {
+        return 10 * 1024 * 1024;
+    }
     return properties.maxSizePoolIsp;
 }
 
