@@ -1,6 +1,43 @@
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+
+#include "depthai/common/RotatedRect.hpp"
+
 namespace dai {
+
+namespace {
+// A rectangle in a frame as a region in pixels of the frame's source: mapped through the frame's transformation, widened
+// to whole pixels and clamped to the source.
+CameraControl::RegionParams sourceRegion(const Rect& rect, const ImgTransformation& transformation) {
+    const auto [width, height] = transformation.getSize();
+    const auto [sourceWidth, sourceHeight] = transformation.getSourceSize();
+    if(width == 0 || height == 0 || sourceWidth == 0 || sourceHeight == 0) {
+        throw std::invalid_argument("Cannot map a region through a transformation without a frame and source size");
+    }
+    const Rect inFrame = rect.denormalize(static_cast<int>(width), static_cast<int>(height));
+    const auto [minX, minY, maxX, maxY] = transformation.invTransformRect(RotatedRect(inFrame)).getOuterRect();
+    // Mapped corners land a rounding error off whole pixels; that should not widen the region by a pixel.
+    constexpr float slack = 1e-3f;
+    const auto clampTo = [](float value, size_t size) {
+        return std::clamp(value, 0.0f, static_cast<float>(std::min<size_t>(size, std::numeric_limits<uint16_t>::max())));
+    };
+    const float x0 = clampTo(std::floor(minX + slack), sourceWidth), y0 = clampTo(std::floor(minY + slack), sourceHeight);
+    const float x1 = clampTo(std::ceil(maxX - slack), sourceWidth), y1 = clampTo(std::ceil(maxY - slack), sourceHeight);
+    if(x1 <= x0 || y1 <= y0) {
+        throw std::invalid_argument("Region lies outside the source frame of its transformation");
+    }
+    CameraControl::RegionParams region{};
+    region.x = static_cast<uint16_t>(x0);
+    region.y = static_cast<uint16_t>(y0);
+    region.width = static_cast<uint16_t>(x1 - x0);
+    region.height = static_cast<uint16_t>(y1 - y0);
+    return region;
+}
+}  // namespace
 
 // Functions to set properties
 CameraControl& CameraControl::setCaptureStill(bool capture) {
@@ -77,6 +114,10 @@ CameraControl& CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t start
     afRegion.priority = 1;  // TODO
     return *this;
 }
+CameraControl& CameraControl::setAutoFocusRegion(const Rect& rect, const ImgTransformation& transformation) {
+    const auto region = sourceRegion(rect, transformation);
+    return setAutoFocusRegion(region.x, region.y, region.width, region.height);
+}
 
 CameraControl& CameraControl::setManualFocus(uint8_t lensPosition) {
     setCommand(Command::MOVE_LENS);
@@ -108,6 +149,10 @@ CameraControl& CameraControl::setAutoExposureRegion(uint16_t startX, uint16_t st
     aeRegion.height = height;
     aeRegion.priority = 1;  // TODO
     return *this;
+}
+CameraControl& CameraControl::setAutoExposureRegion(const Rect& rect, const ImgTransformation& transformation) {
+    const auto region = sourceRegion(rect, transformation);
+    return setAutoExposureRegion(region.x, region.y, region.width, region.height);
 }
 CameraControl& CameraControl::setAutoExposureCompensation(int compensation) {
     setCommand(Command::EXPOSURE_COMPENSATION);
