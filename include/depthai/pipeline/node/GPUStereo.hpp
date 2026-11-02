@@ -37,13 +37,14 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
     /**
      * @brief Enable or disable built-in stereo rectification.
      *
-     * When enabled, the node rectifies the input images internally using calibration data.
-     * When disabled, inputs are expected to be already rectified.
+     * When enabled (default), the node rectifies the input images internally (EVA warp engine) using the
+     * calibration carried by the frames. When disabled, inputs are expected to be already rectified.
      */
     GPUStereo& setRectification(bool enable);
 
     Subnode<Sync> sync{*this, "sync"};
     Subnode<MessageDemux> messageDemux{*this, "messageDemux"};
+    /// Unused: rectification runs inside the node on the device (kept for source compatibility).
     std::unique_ptr<Subnode<Rectification>> rectification;
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
