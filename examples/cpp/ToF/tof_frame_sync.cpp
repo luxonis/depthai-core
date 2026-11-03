@@ -41,9 +41,10 @@ int main(int argc, char** argv) {
 
     std::shared_ptr<dai::MessageQueue> generatorQueue;
     if(generator) {
-        auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-        // The frames are not needed, the sensor only has to run (a consumer is required)
-        generatorQueue = cam->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, fps)->createOutputQueue(1, false);
+        // The sensor runs at the ToF fps and generates FSYNC. Its frames are not needed, but v3 requires
+        // a consumer: request a native-resolution output (no ImageManip) at 1 fps (almost no bandwidth).
+        auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
+        generatorQueue = cam->requestFullResolutionOutput(std::nullopt, 1.0f)->createOutputQueue(1, false);
     }
 
     auto depthQueue = tof->depth.createOutputQueue();

@@ -27,9 +27,10 @@ with dai.Pipeline(device) as pipeline:
     tof.initialControl.setFrameSyncId(args.sync_id)
 
     if args.generator:
-        generator = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        # The frames are not needed, the sensor only has to run (a consumer is required)
-        generatorQueue = generator.requestOutput((640, 400), fps=args.fps).createOutputQueue(maxSize=1, blocking=False)
+        # The sensor runs at the ToF fps and generates FSYNC. Its frames are not needed, but v3 requires
+        # a consumer: request a native-resolution output (no ImageManip) at 1 fps (almost no bandwidth).
+        generator = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=args.fps)
+        generatorQueue = generator.requestFullResolutionOutput(fps=1).createOutputQueue(maxSize=1, blocking=False)
 
     depthQueue = tof.depth.createOutputQueue()
     pipeline.start()
