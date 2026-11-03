@@ -2,6 +2,7 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
+#include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -61,10 +62,15 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
      */
     int numFramesPoolRaw = 3;
 
+    /**
+     * Initial controls applied to the ToF sensor, e.g. CameraControl::setFrameSyncId() for FSYNC staggering
+     */
+    CameraControl initialControl;
+
     ~ToFProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(
-    ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, enableUndistortion, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
+    ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, enableUndistortion, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw, initialControl);
 
 }  // namespace dai

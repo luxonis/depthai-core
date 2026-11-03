@@ -456,6 +456,20 @@ class CameraControl : public Buffer {
     CameraControl& setFrameSyncMode(FrameSyncMode mode);
 
     /**
+     * Set the frame sync stagger slot ID, for sensors supporting an internal FSYNC delay (e.g. ToF).
+     * Equivalent to setMisc("frame-sync-id", id). Applied at sensor start (initialControl).
+     * @param id Slot ID; each step delays capture by the sensor-specific stagger (~1.13 ms on S5K33D ToF)
+     */
+    CameraControl& setFrameSyncId(int id);
+
+    /**
+     * Set an extra frame sync delay in microseconds, for sensors supporting it (e.g. ToF).
+     * Equivalent to setMisc("frame-sync-delay-us", delayUs). Applied at sensor start (initialControl).
+     * @param delayUs Extra delay per stagger step, in microseconds
+     */
+    CameraControl& setFrameSyncDelayUs(int delayUs);
+
+    /**
      * Enable STROBE output on sensor pin, optionally configuring the polarity.
      * Note: for many sensors the polarity is high-active and not configurable
      */

@@ -105,6 +105,10 @@ bool isSocketAlreadyConnected(const Pipeline& pipeline, CameraBoardSocket boardS
 }  // namespace
 
 void ToF::postBuildStage() {
+    // RVC4 opens the sensor through the internal Camera node: forward sensor controls to it
+    if(autoCamera) {
+        (*autoCamera)->initialControl = tofBase->initialControl;
+    }
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     auto& logger = pimpl->logger;
     if(device->getPlatform() == Platform::RVC2) {
@@ -160,10 +164,12 @@ ToF::ToF(const std::shared_ptr<Device>& device)
 
 ToFBase::ToFBase(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties>(std::move(props)),
-      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)),
+      initialControl(properties.initialControl) {}
 
 ToFBase::Properties& ToFBase::getProperties() {
     properties.initialConfig = *initialConfig;
+    properties.initialControl = initialControl;
     return properties;
 }
 

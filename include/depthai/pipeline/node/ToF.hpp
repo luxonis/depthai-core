@@ -3,6 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/datatype/CameraControl.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/ImageFilters.hpp>
 
@@ -43,6 +44,12 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
      * Initial config to use for feature tracking.
      */
     std::shared_ptr<ToFConfig> initialConfig = std::make_shared<ToFConfig>();
+
+    /**
+     * Initial control options to apply to the ToF sensor.
+     * Useful for sensor-level settings, e.g. CameraControl::setFrameSyncId() for multi-device FSYNC staggering.
+     */
+    CameraControl initialControl;
 
     /**
      * Input ToFConfig message with ability to modify parameters in runtime.
@@ -208,6 +215,11 @@ class ToF : public DeviceNodeGroup {
      * ToF base node
      */
     ToFBase& tofBaseNode{*tofBase};
+
+    /**
+     * Initial control options to apply to the ToF sensor (alias of tofBase initialControl)
+     */
+    CameraControl& initialControl{tofBase->initialControl};
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**

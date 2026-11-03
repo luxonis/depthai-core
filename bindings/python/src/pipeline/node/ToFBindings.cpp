@@ -35,6 +35,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readwrite("imageOrientation", &dai::ToFProperties::imageOrientation, DOC(dai, ToFProperties, imageOrientation))
         .def_readwrite("numFramesPoolRaw", &dai::ToFProperties::numFramesPoolRaw, DOC(dai, ToFProperties, numFramesPoolRaw))
         .def_readwrite("initialConfig", &ToFProperties::initialConfig, DOC(dai, ToFProperties, initialConfig))
+        .def_readwrite("initialControl", &ToFProperties::initialControl, DOC(dai, ToFProperties, initialControl))
         .def_readwrite("numFramesPool", &ToFProperties::numFramesPool, DOC(dai, ToFProperties, numFramesPool))
         .def_readwrite("numShaves", &ToFProperties::numShaves, DOC(dai, ToFProperties, numShaves))
         .def_readwrite("warpHwIds", &ToFProperties::warpHwIds, DOC(dai, ToFProperties, warpHwIds))
@@ -49,6 +50,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readonly("phase", &ToFBase::phase, DOC(dai, node, ToFBase, phase), DOC(dai, node, ToFBase, phase))
         .def_readonly("raw", &ToFBase::raw, DOC(dai, node, ToFBase, raw), DOC(dai, node, ToFBase, raw))
         .def_readonly("initialConfig", &ToFBase::initialConfig, DOC(dai, node, ToFBase, initialConfig), DOC(dai, node, ToFBase, initialConfig))
+        .def_readonly("initialControl", &ToFBase::initialControl, DOC(dai, node, ToFBase, initialControl))
         .def("build",
              py::overload_cast<CameraBoardSocket, ToFConfig::Profile, std::optional<float>>(&ToFBase::build),
              "boardSocket"_a = CameraBoardSocket::AUTO,
@@ -76,6 +78,8 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
              "fps"_a = std::nullopt)
         .def("setOutputUndistortion", &ToF::setOutputUndistortion, "enable"_a, DOC(dai, node, ToF, setOutputUndistortion))
         .def("getInitialConfig", [&](const ToF& self) { return *self.tofBaseNode.initialConfig; })
+        .def_property_readonly(
+            "initialControl", [](ToF& self) -> CameraControl& { return self.initialControl; }, py::return_value_policy::reference_internal, DOC(dai, node, ToF, initialControl))
         .def("setInitialConfig", [&](ToF& self, ToFConfig& config) { self.tofBaseNode.initialConfig = std::make_shared<ToFConfig>(config); });
     DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 

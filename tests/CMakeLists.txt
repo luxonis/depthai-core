@@ -500,6 +500,10 @@ endif()
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
 dai_set_test_labels(naming_test onhost ci)
 
+# ToF initialControl (frame sync id) test
+dai_add_test(tof_initial_control_test src/onhost_tests/tof_initial_control_test.cpp)
+dai_set_test_labels(tof_initial_control_test onhost ci)
+
 # Image transformations test
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
 if(DEPTHAI_ENABLE_PROTOBUF)

@@ -434,3 +434,15 @@ def test_camera_control_parameters():
     control.setAutoExposureRegion(5, 6, 70, 80)
     assert (control.aeRegion.x, control.aeRegion.y, control.aeRegion.width, control.aeRegion.height) == (5, 6, 70, 80)
     control.setStrobeExternal(3, 1)
+
+
+def test_tof_frame_sync_controls():
+    control = dai.CameraControl()
+    assert control.setFrameSyncId(2) is control
+    assert control.setFrameSyncDelayUs(150) is control
+    assert list(control.miscControls) == [("frame-sync-id", "2"), ("frame-sync-delay-us", "150")]
+    properties = dai.ToFProperties()
+    properties.initialControl = control
+    assert list(properties.initialControl.miscControls) == [("frame-sync-id", "2"), ("frame-sync-delay-us", "150")]
+    assert hasattr(dai.node.ToFBase, "initialControl")
+    assert hasattr(dai.node.ToF, "initialControl")

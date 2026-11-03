@@ -230,6 +230,8 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
              py::arg("numFramesDiscard"),
              DOC(dai, CameraControl, setExternalTrigger))
         .def("setFrameSyncMode", &CameraControl::setFrameSyncMode, py::arg("mode"), DOC(dai, CameraControl, setFrameSyncMode))
+        .def("setFrameSyncId", &CameraControl::setFrameSyncId, py::arg("id"), DOC(dai, CameraControl, setFrameSyncId))
+        .def("setFrameSyncDelayUs", &CameraControl::setFrameSyncDelayUs, py::arg("delayUs"), DOC(dai, CameraControl, setFrameSyncDelayUs))
         .def("setStrobeSensor", &CameraControl::setStrobeSensor, py::arg("activeLevel") = 1, DOC(dai, CameraControl, setStrobeSensor))
         .def("setStrobeExternal",
              &CameraControl::setStrobeExternal,
