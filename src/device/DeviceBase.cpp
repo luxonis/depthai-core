@@ -2048,6 +2048,14 @@ int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcCallChecked<int>("getXLinkChunkSize");
 }
 
+int DeviceBase::getEthernetLinkSpeed() {
+    return pimpl->rpcCallChecked<int>("getEthernetLinkSpeed", std::string{});
+}
+
+int DeviceBase::getEthernetLinkDuplex() {
+    return pimpl->rpcCall("getEthernetLinkDuplex").as<int>();
+}
+
 void DeviceBase::setSippBufferSize(int sizeBytes) {
     pimpl->rpcCall("setSippBufferSize", sizeBytes);
 }
