@@ -28,7 +28,7 @@ TEST_CASE("GPUStereo produces disparity on supported devices", "[GPUStereo][onde
     leftOut->link(gpu->left);
     rightOut->link(gpu->right);
     gpu->setRectification(true);
-    gpu->initialConfig->setConfidenceThreshold(25);
+    gpu->initialConfig->setConfidenceThreshold(10);
 
     auto disparityQ = gpu->disparity.createOutputQueue();
 

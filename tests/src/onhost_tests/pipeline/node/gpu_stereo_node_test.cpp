@@ -1,22 +1,24 @@
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/pipeline/node/GPUStereo.hpp>
 #include <depthai/properties/GPUStereoProperties.hpp>
-#include <depthai/properties/RectificationProperties.hpp>
 
-TEST_CASE("GPUStereo rectification toggle updates Rectification subnode properties", "[GPUStereo]") {
+TEST_CASE("GPUStereo rectification toggle updates the node properties", "[GPUStereo]") {
     auto node = dai::node::GPUStereo::create();
+    REQUIRE(node->properties.rectification == true);
 
     node->setRectification(false);
-    {
-        auto& rectProps = (*node->rectification)->properties;
-        REQUIRE(rectProps.enableRectification == false);
-    }
+    REQUIRE(node->properties.rectification == false);
 
     node->setRectification(true);
-    {
-        auto& rectProps = (*node->rectification)->properties;
-        REQUIRE(rectProps.enableRectification == true);
-    }
+    REQUIRE(node->properties.rectification == true);
+}
+
+TEST_CASE("GPUStereo compute mode defaults to GPU_CPU and is settable", "[GPUStereo]") {
+    auto node = dai::node::GPUStereo::create();
+    REQUIRE(node->initialConfig->getComputeMode() == dai::GPUStereoConfig::ComputeMode::GPU_CPU);
+
+    node->initialConfig->setComputeMode(dai::GPUStereoConfig::ComputeMode::GPU_ONLY);
+    REQUIRE(node->initialConfig->getComputeMode() == dai::GPUStereoConfig::ComputeMode::GPU_ONLY);
 }
 
 TEST_CASE("GPUStereo confidence threshold is clamped to [0, 255]", "[GPUStereo]") {

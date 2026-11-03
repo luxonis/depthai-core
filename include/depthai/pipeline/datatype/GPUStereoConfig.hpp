@@ -24,6 +24,9 @@ class GPUStereoConfig : public Buffer {
      *
      * Value in range [0, 255]. 0 disables the filter. Pixels whose confidence (as in the confidenceMap
      * output, higher = more confident) is below the threshold are invalidated in disparity and depth.
+     * Raising the threshold lowers the fill rate. The scale is specific to this node (not comparable value
+     * for value with StereoDepth / NeuralDepth); typical fill on indoor scenes: 0 -> ~98 %, 10 (default) -> ~79 %,
+     * 13 -> ~74 %, 25 -> ~55 %, 55 -> ~29 %.
      */
     std::uint8_t confidenceThreshold = 10;
 
