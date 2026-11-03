@@ -44,45 +44,45 @@ def makeLine(sourceFrame: dai.ImgFrame) -> Line:
 
 
 if __name__ == "__main__":
-    pipeline = dai.Pipeline()
-    camera = pipeline.create(dai.node.Camera).build(boardSocket=dai.CameraBoardSocket.CAM_A, sensorFps=FPS)
+    with dai.Pipeline() as pipeline:
+        camera = pipeline.create(dai.node.Camera).build(boardSocket=dai.CameraBoardSocket.CAM_A, sensorFps=FPS)
 
-    sourceOutput = camera.requestOutput(size=SOURCE_SIZE, fps=FPS, resizeMode=dai.ImgResizeMode.LETTERBOX, enableUndistortion=False)
-    alignToOutput = camera.requestOutput(size=ALIGN_TO_SIZE, fps=FPS, resizeMode=dai.ImgResizeMode.STRETCH, enableUndistortion=True)
+        sourceOutput = camera.requestOutput(size=SOURCE_SIZE, fps=FPS, resizeMode=dai.ImgResizeMode.LETTERBOX, enableUndistortion=False)
+        alignToOutput = camera.requestOutput(size=ALIGN_TO_SIZE, fps=FPS, resizeMode=dai.ImgResizeMode.STRETCH, enableUndistortion=True)
 
-    align = pipeline.create(dai.node.Align)
-    align.setRunOnHost(True) # for custom message, Align needs to run on host.
-    alignToOutput.link(align.inputAlignTo)
+        align = pipeline.create(dai.node.Align)
+        align.setRunOnHost(True) # for custom message, Align needs to run on host.
+        alignToOutput.link(align.inputAlignTo)
 
-    sourceQueue = sourceOutput.createOutputQueue()
-    alignToQueue = alignToOutput.createOutputQueue()
-    alignedLineQueue = align.outputAligned.createOutputQueue()
+        sourceQueue = sourceOutput.createOutputQueue()
+        alignToQueue = alignToOutput.createOutputQueue()
+        alignedLineQueue = align.outputAligned.createOutputQueue()
 
-    lineInputQueue = align.input.createInputQueue()
+        lineInputQueue = align.input.createInputQueue()
 
-    pipeline.start()
+        pipeline.start()
 
-    while pipeline.isRunning():
-        sourceFrameMsg: dai.ImgFrame = sourceQueue.get()
-        alignToFrameMsg: dai.ImgFrame = alignToQueue.get()
+        while pipeline.isRunning():
+            sourceFrameMsg: dai.ImgFrame = sourceQueue.get()
+            alignToFrameMsg: dai.ImgFrame = alignToQueue.get()
 
-        sourceLine = makeLine(sourceFrameMsg)
-        lineInputQueue.send(sourceLine)
-        alignedLine: Line = alignedLineQueue.get()
-        assert isinstance(alignedLine, Line)
+            sourceLine = makeLine(sourceFrameMsg)
+            lineInputQueue.send(sourceLine)
+            alignedLine: Line = alignedLineQueue.get()
+            assert isinstance(alignedLine, Line)
 
-        sourceFrame = sourceFrameMsg.getCvFrame()
-        alignToFrame = alignToFrameMsg.getCvFrame()
+            sourceFrame = sourceFrameMsg.getCvFrame()
+            alignToFrame = alignToFrameMsg.getCvFrame()
 
-        drawLine(sourceFrame, sourceLine, (0, 255, 0), "source line")
-        drawLine(alignToFrame, alignedLine, (0, 140, 255), "aligned line")
+            drawLine(sourceFrame, sourceLine, (0, 255, 0), "source line")
+            drawLine(alignToFrame, alignedLine, (0, 140, 255), "aligned line")
 
-        cv2.putText(sourceFrame, "source: LETTERBOX 640x640", (10, 28), cv2.FONT_HERSHEY_TRIPLEX, 0.6, (255, 255, 255))
-        cv2.putText(alignToFrame, "alignTo: STRETCH 1280x720", (10, 28), cv2.FONT_HERSHEY_TRIPLEX, 0.6, (255, 255, 255))
+            cv2.putText(sourceFrame, "source: LETTERBOX 640x640", (10, 28), cv2.FONT_HERSHEY_TRIPLEX, 0.6, (255, 255, 255))
+            cv2.putText(alignToFrame, "alignTo: STRETCH 1280x720", (10, 28), cv2.FONT_HERSHEY_TRIPLEX, 0.6, (255, 255, 255))
 
-        cv2.imshow("Source output", sourceFrame)
-        cv2.imshow("Aligned output", alignToFrame)
+            cv2.imshow("Source output", sourceFrame)
+            cv2.imshow("Aligned output", alignToFrame)
 
-        if cv2.waitKey(1) == ord("q"):
-            pipeline.stop()
-            break
+            if cv2.waitKey(1) == ord("q"):
+                pipeline.stop()
+                break

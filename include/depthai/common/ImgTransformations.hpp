@@ -22,7 +22,9 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    // Full camera model of the image (projection surface + distortion model, see dai::CameraModel), not only its distortion. The name is historical.
     CameraModel distortionModel = CameraModel::Perspective;
+    // Coefficients of the distortion model that `distortionModel` selects; empty or all-zero for an undistorted image
     std::vector<float> distortionCoefficients;
     Extrinsics extrinsics = {};
 
@@ -88,6 +90,8 @@ struct ImgTransformation {
     dai::Point2f transformPoint(dai::Point2f point) const;
     /**
      * Transform a rotated rect from the source frame to the current frame.
+     * @note The result is the smallest rectangle that encloses the mapped corners. Of its equal forms (angle + k * 90 degrees,
+     * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
@@ -100,6 +104,8 @@ struct ImgTransformation {
     dai::Point2f invTransformPoint(dai::Point2f point) const;
     /**
      * Transform a rotated rect from the current frame to the source frame.
+     * @note The result is the smallest rectangle that encloses the mapped corners. Of its equal forms (angle + k * 90 degrees,
+     * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
@@ -136,8 +142,9 @@ struct ImgTransformation {
      */
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
     /**
-     * Retrieve the distortion model of the source sensor
-     * @return Distortion model
+     * Retrieve the camera model of the source sensor. Despite the name it is the full dai::CameraModel: the projection surface the image is rendered on
+     * (pinhole plane, sphere or cylinder) together with the distortion model its coefficients parametrize. Panorama models carry no distortion at all.
+     * @return Camera model, see dai::CameraModel for the table of projections and distortions
      */
     CameraModel getDistortionModel() const;
     /**
@@ -269,6 +276,10 @@ struct ImgTransformation {
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
     ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
+    /**
+     * Set the camera model of the source sensor: projection surface and distortion model in one dai::CameraModel value. The name is historical, see
+     * getDistortionModel().
+     */
     ImgTransformation& setDistortionModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
 
@@ -277,7 +288,10 @@ struct ImgTransformation {
      * intrinsics to remap the point.
      * @param to Transformation to remap to
      * @param point Point to remap
-     * @note This function assumes both transformations have the same source (eg. same source camera socket). If they don't, remapping will be inaccurate.
+     * @note Uses intrinsics, distortion and relative rotation, without object depth or camera translation.
+     * Perspective, Equirectangular and Cylindrical destinations are supported. An unprojectable point has non-finite coordinates.
+     * Non-panorama destinations return NaN coordinates for rays with z <= 0.
+     * Different cameras must share an extrinsics coordinate system; near objects can be displaced by parallax.
      */
     dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point) const;
     /**
@@ -290,8 +304,11 @@ struct ImgTransformation {
     /**
      * Remap a rotated rect from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the
      * intrinsics to remap the rect.
+     * @note The result is the smallest rectangle that encloses the mapped corners. Of its equal forms (angle + k * 90 degrees,
+     * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param to Transformation to remap to
      * @param rect RotatedRect to remap
+     * @return Minimum enclosing rotated rectangle, preserving the angle and side ordering returned by the rectangle fitter.
      */
     dai::RotatedRect remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const;
     /**
@@ -324,11 +341,13 @@ struct ImgTransformation {
      * Project a rotated rectangle from the source frame defined by this transformation into the target frame defined by the to transformation. This function
      * assumes the rectangle is parallel to the image plane (i.e. the entire rectangle is at the same depth away). The function fits the smallest possible
      * rectangle on to the projected corners of the original rectangle.
+     * @note The result is the smallest rectangle that encloses the mapped corners. Of its equal forms (angle + k * 90 degrees,
+     * sides swapped for odd k), the function returns the form whose angle is nearest to the angle of rect.
      * @param to Target transformation to project to
      * @param rect Source rotated rectangle in the current frame
      * @param depth (mm) Depth of the rectangle to project
      */
-    dai::RotatedRect projectRectTo(const ImgTransformation& to, RotatedRect& rect, float depth) const;
+    dai::RotatedRect projectRectTo(const ImgTransformation& to, RotatedRect rect, float depth) const;
 
     /**
      * Project a 3D spatial point from the source coordinate system (this transformation) into a 2D point in the target frame (to transformation).

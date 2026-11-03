@@ -261,6 +261,7 @@ class TimestampCompare {
 void Sync::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     const auto inputsName = inputs.name;
 
     auto timestampSource = properties.timestampSource;
@@ -273,9 +274,17 @@ void Sync::run() {
         throw std::runtime_error("Sync node must have at least 1 input!");
     }
 
+    // Inputs that exist but were never linked (no node output or input queue feeds them) would stall the
+    // synchronization forever, so they are left out. When nothing is linked every input is kept.
+    bool anyConnected = false;
+    for(const auto& in : inputs) anyConnected = anyConnected || in.second.isConnected();
     std::vector<std::string> inputNames;
-    for(auto& in : inputs) {
-        auto inputName = in.first.second;
+    for(const auto& in : inputs) {
+        const auto& inputName = in.first.second;
+        if(anyConnected && !in.second.isConnected()) {
+            logger->warn("Input '{}' is not linked, leaving it out of the synchronization", inputName);
+            continue;
+        }
         inputNames.push_back(inputName);
     }
 
@@ -415,11 +424,7 @@ void Sync::run() {
             out.send(outputGroup);
         }
         auto tAbsoluteEnd = steady_clock::now();
-        logger->debug("Sync total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
-                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+        this->logTiming(logger, tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }
 }
 }  // namespace node

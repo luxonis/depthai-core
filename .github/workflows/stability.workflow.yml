@@ -47,7 +47,7 @@ permissions:
 jobs:
   id:
     name: Workflow ID Provider
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'workflow_dispatch'
     steps:
       - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
@@ -58,11 +58,11 @@ jobs:
     timeout-minutes: 1450 # 24h & 10minutes
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
 
     - name: Download Python wheel
       if: github.event.inputs.wheel_run_id != ''
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: audited-wheels-combined-linux-x86_64
         path: stability-wheels

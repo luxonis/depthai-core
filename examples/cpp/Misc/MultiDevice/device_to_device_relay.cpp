@@ -1,12 +1,6 @@
-// Device-to-device link in ONE dai::Pipeline.
-//
-// A Camera on device A is linked directly to an ImageManip running on device B.
-// The pipeline inserts the host relay automatically at build time (visible as one
-// info log line); no manual forwarding is needed.
 
 #include <chrono>
 #include <csignal>
-#include <cstdlib>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
@@ -40,19 +34,12 @@ int main(int argc, char** argv) {
     auto queue = manip->out.createOutputQueue();
     pipeline.start();
 
-    std::cout << "Camera on " << deviceA->getDeviceId() << " -> ImageManip on " << deviceB->getDeviceId() << std::endl;
-
-    const char* displayEnv = std::getenv("DISPLAY");
-    const bool display = displayEnv != nullptr && displayEnv[0] != '\0';
     while(running && pipeline.isRunning()) {
         bool hasTimedOut = false;
         auto frame = queue->get<dai::ImgFrame>(std::chrono::milliseconds(500), hasTimedOut);
         if(frame == nullptr) continue;
-        std::cout << "Frame processed on device B: " << frame->getWidth() << "x" << frame->getHeight() << std::endl;
-        if(display) {
-            cv::imshow("device_to_device_relay", frame->getCvFrame());
-            if(cv::waitKey(1) == 'q') break;
-        }
+        cv::imshow("device_to_device_relay", frame->getCvFrame());
+        if(cv::waitKey(1) == 'q') break;
     }
 
     pipeline.stop();

@@ -171,6 +171,28 @@ std::optional<uint32_t> NNArchive::getInputHeight(uint32_t index) const {
     return std::nullopt;
 }
 
+std::optional<ImgResizeMode> NNArchive::getInputResizeMode(uint32_t index) const {
+    const auto& inputs = archiveVersionedConfigPtr->getConfig<nn_archive::v1::Config>().model.inputs;
+    if(inputs.size() <= index) {
+        throw std::runtime_error("Input index in NNArchive is out of bounds");
+    }
+
+    const auto& resizeMode = inputs[index].preprocessing.resizeMode;
+    if(!resizeMode) {
+        return std::nullopt;
+    }
+    if(*resizeMode == "CROP") {
+        return ImgResizeMode::CROP;
+    }
+    if(*resizeMode == "STRETCH") {
+        return ImgResizeMode::STRETCH;
+    }
+    if(*resizeMode == "LETTERBOX") {
+        return ImgResizeMode::LETTERBOX;
+    }
+    throw std::runtime_error("Unsupported preprocessing resize_mode in NNArchive: " + *resizeMode);
+}
+
 std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
     switch(modelType) {
         case model::ModelType::DLC:

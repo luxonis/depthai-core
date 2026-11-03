@@ -2,14 +2,20 @@
 #pragma once
 
 // std
+#include <filesystem>
+#include <functional>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <type_traits>
+#include <vector>
 
 // project
-#include "CallbackHandler.hpp"
 #include "depthai/common/UsbSpeed.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/device/Version.hpp"
+#ifndef DEPTHAI_DEVICE_MANAGER_ONLY
+    #include "depthai/pipeline/Pipeline.hpp"
+#endif  // DEPTHAI_DEVICE_MANAGER_ONLY
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 

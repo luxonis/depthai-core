@@ -260,10 +260,13 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Devices that consume other devices' streams (B side of a relay feeding a device
     // node); losing one of these for good stops the pipeline. Derived at build().
     std::unordered_set<const Device*> fatalDevices;
+    // When set, losing any device that carries a node stops the pipeline (strict mode).
+    // Off by default: a lost device only idles its streams (permissive mode).
+    AtomicBool stopOnDeviceLoss{false};
 
     // Called from a device's monitor thread on state transitions. On FAILED, idles the
-    // device's XLink host nodes and stops the pipeline when the device was fatal or the
-    // last one alive.
+    // device's XLink host nodes and stops the pipeline when the device was fatal, the
+    // last one alive, or stopOnDeviceLoss is set.
     void onDeviceStateChanged(DeviceBase* device, DeviceState state);
 
     DeviceState getDeviceState(const std::shared_ptr<Device>& device) const;
@@ -842,6 +845,7 @@ class Pipeline {
      * Get the pipeline-level state of a device: RUNNING, DISCONNECTED, RECONNECTING
      * or FAILED. Losing a device does not stop the pipeline (its streams go idle)
      * unless it was the last device alive or a device consuming other devices' streams.
+     * See setStopOnDeviceLoss to stop on any device loss.
      */
     DeviceState getDeviceState(const std::shared_ptr<Device>& device) const {
         return impl()->getDeviceState(device);
@@ -854,6 +858,28 @@ class Pipeline {
      */
     void setDeviceStateCallback(std::function<void(std::shared_ptr<Device>, DeviceState)> callback) {
         impl()->setDeviceStateCallback(std::move(callback));
+    }
+
+    /**
+     * Stop the pipeline when any device that runs a node is lost for good (strict mode).
+     * Off by default (permissive mode): the pipeline keeps running, the lost device's
+     * streams go idle and it stops only when the last device alive or a device consuming
+     * other devices' streams is lost.
+     *
+     * A device is lost for good when its state becomes FAILED - after the reconnection
+     * attempts are exhausted. To stop as soon as a device disconnects, disable reconnection
+     * on the devices (Device::setMaxReconnectionAttempts(0)). Can be changed while the
+     * pipeline runs.
+     *
+     * @param stop True to stop the pipeline on any device loss
+     */
+    void setStopOnDeviceLoss(bool stop) {
+        impl()->stopOnDeviceLoss = stop;
+    }
+
+    /// Get whether the pipeline stops when any device that runs a node is lost for good
+    bool getStopOnDeviceLoss() const {
+        return impl()->stopOnDeviceLoss;
     }
 
     /// Set a camera IQ (Image Quality) tuning blob for all cameras of the given pipeline device

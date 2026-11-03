@@ -8,7 +8,11 @@ import find_version
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from distutils.version import LooseVersion
+try:
+    from setuptools.command.bdist_wheel import bdist_wheel
+except ImportError:  # setuptools < 70.1
+    from wheel.bdist_wheel import bdist_wheel
+from packaging.version import Version
 from pathlib import Path
 
 ### NAME
@@ -63,6 +67,7 @@ repo_root = os.path.abspath(os.path.join(here, os.pardir, os.pardir))
 source_license = os.path.join(repo_root, "LICENSE")
 source_notices_dir = os.path.join(repo_root, "notices")
 wheel_license_output_dir = os.path.join(here, "generated", "wheel_licenses")
+wheel_sbom_output_dir = os.path.join(here, "generated", "wheel_sbom")
 packaged_license = os.path.join(here, "LICENSE")
 packaged_notices_dir = os.path.join(here, "notices")
 
@@ -159,6 +164,41 @@ def _generate_wheel_license_notices(build_dir):
     subprocess.check_call(cmd)
     _stage_license_files()
 
+def _generate_wheel_sbom(build_dir):
+    if os.path.isdir(wheel_sbom_output_dir):
+        shutil.rmtree(wheel_sbom_output_dir)
+    script_path = os.path.join(repo_root, "scripts", "generate_sbom.py")
+    # Best effort: a wheel without an SBOM still works. CI requires it (scripts/verify_license_artifact.py).
+    try:
+        subprocess.check_call([
+            sys.executable,
+            script_path,
+            "build",
+            "--wheel",
+            "--repo-root", repo_root,
+            "--build-dir", build_dir,
+            "--version", __version__,
+            "--output-dir", wheel_sbom_output_dir,
+        ])
+    except (OSError, subprocess.CalledProcessError) as error:
+        print(f"warning: no SBOM for this wheel: {error}")
+        if os.path.isdir(wheel_sbom_output_dir):
+            shutil.rmtree(wheel_sbom_output_dir)
+
+class BdistWheelWithSbom(bdist_wheel):
+    # Put the SBOMs of the build into .dist-info/sboms/ (PEP 770); bdist_wheel then lists them in RECORD.
+    # write_wheelfile is the hook: bdist_wheel calls it whether it converts egg-info or reuses the
+    # dist-info that pip made with prepare_metadata_for_build_wheel (then egg2dist does not run).
+    def write_wheelfile(self, wheelfile_base, *args, **kwargs):
+        super().write_wheelfile(wheelfile_base, *args, **kwargs)
+        if not os.path.isdir(wheel_sbom_output_dir):
+            return
+        sbom_dir = os.path.join(wheelfile_base, "sboms")
+        os.makedirs(sbom_dir, exist_ok=True)
+        for name in sorted(os.listdir(wheel_sbom_output_dir)):
+            if name.endswith((".spdx.json", ".cdx.json")):
+                shutil.copy2(os.path.join(wheel_sbom_output_dir, name), sbom_dir)
+
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
         Extension.__init__(self, name, sources=[])
@@ -175,8 +215,8 @@ class CMakeBuild(build_ext):
                                ", ".join(e.name for e in self.extensions))
 
         if platform.system() == "Windows":
-            cmake_version = LooseVersion(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
-            if cmake_version < '3.2.0':
+            cmake_version = Version(re.search(r'version\s*([\d.]+)', out.decode()).group(1))
+            if cmake_version < Version('3.2.0'):
                 raise RuntimeError("CMake >= 3.2.0 is required on Windows")
 
         for ext in self.extensions:
@@ -340,11 +380,18 @@ class CMakeBuild(build_ext):
 
         # Configure and build
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
+        if os.environ.get('DEPTHAI_CONFIGURE_ONLY') == '1':
+            # CI warms the vcpkg binary cache with the exact dependency set of the wheel build; the
+            # configure step installs the dependencies, so stop here (.github/workflows/vcpkg_cache_warm.yml).
+            print('DEPTHAI_CONFIGURE_ONLY=1: dependencies installed and project configured, not building')
+            return
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp, env=env)
         _generate_wheel_license_notices(self.build_temp)
+        _generate_wheel_sbom(self.build_temp)
 
 cmdclass = {
     'build_ext': CMakeBuild,
+    'bdist_wheel': BdistWheelWithSbom,
 }
 
 setup(
@@ -371,7 +418,6 @@ setup(
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
         "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: MacOS",
         "Operating System :: Microsoft :: Windows",
         "Operating System :: Unix",

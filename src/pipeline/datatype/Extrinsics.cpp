@@ -23,7 +23,7 @@ Extrinsics::Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, 
     setTransformationMatrix(extrinsicsMatrix, lengthUnit);
 }
 
-Extrinsics::Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
+Extrinsics::Extrinsics(const std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
     : toCameraSocket(toCameraSocket) {
     setTransformationMatrix(extrinsicsMatrix, lengthUnit);
 }
@@ -185,6 +185,15 @@ Point3f Extrinsics::getTranslationInUnit(bool useSpec, LengthUnit targetUnit) co
     translationToUse.y *= scale;
     translationToUse.z *= scale;
     return translationToUse;
+}
+
+bool Extrinsics::hasValidRotationMatrix() const {
+    try {
+        matrix::validateRotationMatrix3x3(rotationMatrix);
+    } catch(const std::exception&) {
+        return false;
+    }
+    return true;
 }
 
 bool Extrinsics::validRotationMatrix() const {

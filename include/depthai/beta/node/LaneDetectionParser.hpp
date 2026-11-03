@@ -156,7 +156,7 @@ class LaneDetectionParser : public DeviceNodeCRTP<BetaNode, LaneDetectionParser,
     /**
      * Select whether the node runs on the host or device.
      */
-    void setRunOnHost(bool runOnHost);
+    void setRunOnHost(bool runOnHost) override;
 
     /**
      * Returns true when this node runs on the host.

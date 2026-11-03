@@ -22,10 +22,15 @@ void bind_auto_calibration(pybind11::module& m, void* pCallstack) {
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
+    AutoCalibrationProperties.def(py::init<>());
+
+    AutoCalibrationProperties.def_readwrite(
+        "initialConfig", &dai::AutoCalibrationProperties::initialConfig, DOC(dai, AutoCalibrationProperties, initialConfig));
 
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
     dynamicCalibrationWorker.def("build", &AutoCalibration::build, py::arg("cameraLeft"), py::arg("cameraRight"), DOC(dai, node, AutoCalibration, build))
+        .def("setRunOnHost", &AutoCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, AutoCalibration, setRunOnHost))
         .def_readonly("output", &AutoCalibration::output, DOC(dai, node, AutoCalibration, output))
         .def_property(
             "initialConfig",

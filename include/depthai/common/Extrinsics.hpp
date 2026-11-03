@@ -29,7 +29,7 @@ struct Extrinsics {
 
     Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 
-    Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
+    Extrinsics(const std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 
     std::vector<std::vector<float>> rotationMatrix;
     /**
@@ -153,6 +153,12 @@ struct Extrinsics {
      * @return true if the Extrinsics objects are equal, false otherwise
      */
     bool isEqualExtrinsics(const Extrinsics& other, float epsilon = 1e-6f) const;
+
+    /**
+     * Check whether the rotation matrix is a finite, proper 3x3 rotation matrix.
+     * @return true if the rotation matrix is valid, false otherwise
+     */
+    bool hasValidRotationMatrix() const;
 
     /**
      * Check whether these extrinsics can be expressed relative to the same target coordinate system as another Extrinsics object.

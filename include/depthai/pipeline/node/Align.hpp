@@ -63,6 +63,17 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, AlignProperties>, public 
     Align& setNumFramesPool(int numFramesPool);
 
     /**
+     * Set interpolation for both image remap stages before starting the pipeline.
+     * AUTO preserves the backend default: nearest-neighbor on device; on host,
+     * bilinear for NV12/YUV420p and nearest-neighbor for other image formats.
+     * RAW16 depth and typed segmentation masks always use nearest-neighbor.
+     * Plain ImgFrame masks must explicitly select NEAREST_NEIGHBOR.
+     * @param interpolation AUTO, NEAREST_NEIGHBOR, BILINEAR, or BICUBIC.
+     * @return This node for chaining.
+     */
+    Align& setInterpolation(Interpolation interpolation);
+
+    /**
      * Specify whether to run on host or device
      * By default, the node will run on device.
      */

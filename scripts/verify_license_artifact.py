@@ -51,12 +51,21 @@ def verify_wheel(wheel_path: Path) -> None:
             name.endswith(".dist-info/licenses/notices/dynamic_calibration-LICENSE")
             for name in names
         )
+        has_visualizer_license = any(
+            name.endswith(".dist-info/licenses/notices/depthai-visualizer-LICENSE")
+            for name in names
+        )
+        has_spdx_sbom = any(name.endswith(".dist-info/sboms/depthai.spdx.json") for name in names)
+        has_cyclonedx_sbom = any(name.endswith(".dist-info/sboms/depthai.cdx.json") for name in names)
 
         _require(has_root_license, f"Wheel is missing root LICENSE: {wheel_path}")
         _require(has_third_party_notices, f"Wheel is missing .dist-info/licenses/notices/THIRD_PARTY_NOTICES: {wheel_path}")
         _require(has_rvc2_license, f"Wheel is missing .dist-info/licenses/notices/depthai-device-RVC2-LICENSE: {wheel_path}")
         _require(has_rvc4_license, f"Wheel is missing .dist-info/licenses/notices/depthai-device-RVC4-LICENSE: {wheel_path}")
         _require(has_dynamic_calibration_license, f"Wheel is missing .dist-info/licenses/notices/dynamic_calibration-LICENSE: {wheel_path}")
+        _require(has_visualizer_license, f"Wheel is missing .dist-info/licenses/notices/depthai-visualizer-LICENSE: {wheel_path}")
+        _require(has_spdx_sbom, f"Wheel is missing .dist-info/sboms/depthai.spdx.json: {wheel_path}")
+        _require(has_cyclonedx_sbom, f"Wheel is missing .dist-info/sboms/depthai.cdx.json: {wheel_path}")
 
 
 def verify_install_tree(prefix: Path) -> None:
@@ -85,6 +94,10 @@ def verify_install_tree(prefix: Path) -> None:
     _require(
         (root / "notices" / "dynamic_calibration-LICENSE").is_file(),
         f"Install tree is missing notices/dynamic_calibration-LICENSE under: {root}",
+    )
+    _require(
+        (root / "notices" / "depthai-visualizer-LICENSE").is_file(),
+        f"Install tree is missing notices/depthai-visualizer-LICENSE under: {root}",
     )
 
 

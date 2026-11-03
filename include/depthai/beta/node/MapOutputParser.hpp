@@ -120,7 +120,7 @@ class MapOutputParser : public DeviceNodeCRTP<BetaNode, MapOutputParser, MapOutp
     /**
      * Select whether the node runs on the host or device.
      */
-    void setRunOnHost(bool runOnHost);
+    void setRunOnHost(bool runOnHost) override;
 
     /**
      * Returns true when this node runs on the host.

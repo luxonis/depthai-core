@@ -50,3 +50,7 @@ install*
 !install_requirements.py
 build*
 depthai_calib_backup.json
+
+# agents
+# graphifyy files
+graphify-out
