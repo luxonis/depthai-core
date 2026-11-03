@@ -24,7 +24,6 @@ std::shared_ptr<GPUStereo> GPUStereo::build(Output& leftInput, Output& rightInpu
 }
 
 GPUStereo& GPUStereo::setRectification(bool enable) {
-    rectificationEnabled = enable;
     properties.rectification = enable;
     return *this;
 }
