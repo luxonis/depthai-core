@@ -136,12 +136,12 @@ void AutoCalibration::logConfig() const {
     logger->info("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
     logger->info("Validation Set Size:    {}", initialConfig->validationSetSize);
     logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
-    if(const auto constraints = dynamicCalibration->getArucoConstraints()) {
+    if(const auto constraints = dynamicCalibration->getSceneConstraints()) {
         logger->info("Marker Constraints:     {} markers, {} marker distances, {} socket distances ({})",
                      constraints->referencedMarkerIds().size(),
                      constraints->markerDistances.size(),
                      constraints->socketDistances.size(),
-                     toString(constraints->dictionary));
+                     constraints->markerType == MarkerType::ARUCO ? toString(constraints->arucoDictionary) : toString(constraints->markerType));
     } else {
         logger->info("Marker Constraints:     none");
     }
@@ -330,24 +330,24 @@ void AutoCalibration::buildInternal() {
     }
 }
 
-void AutoCalibration::setArucoConstraints(const ArucoMarkerConstraints& constraints) {
-    dynamicCalibration->setArucoConstraints(constraints);
+void AutoCalibration::setSceneConstraints(const SceneMarkerConstraints& constraints) {
+    dynamicCalibration->setSceneConstraints(constraints);
 }
 
-void AutoCalibration::setArucoConstraintsFromJson(const std::string& json) {
-    dynamicCalibration->setArucoConstraintsFromJson(json);
+void AutoCalibration::setSceneConstraintsFromJson(const std::string& json) {
+    dynamicCalibration->setSceneConstraintsFromJson(json);
 }
 
-void AutoCalibration::setArucoConstraintsFromFile(const std::filesystem::path& path) {
-    dynamicCalibration->setArucoConstraintsFromFile(path);
+void AutoCalibration::setSceneConstraintsFromFile(const std::filesystem::path& path) {
+    dynamicCalibration->setSceneConstraintsFromFile(path);
 }
 
-void AutoCalibration::clearArucoConstraints() {
-    dynamicCalibration->clearArucoConstraints();
+void AutoCalibration::clearSceneConstraints() {
+    dynamicCalibration->clearSceneConstraints();
 }
 
-std::optional<ArucoMarkerConstraints> AutoCalibration::getArucoConstraints() const {
-    return dynamicCalibration->getArucoConstraints();
+std::optional<SceneMarkerConstraints> AutoCalibration::getSceneConstraints() const {
+    return dynamicCalibration->getSceneConstraints();
 }
 
 /**

@@ -15,7 +15,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 
-#include "depthai/common/ArucoMarkerConstraints.hpp"
+#include "depthai/common/SceneMarkerConstraints.hpp"
 
 namespace spdlog {
 class async_logger;
@@ -57,17 +57,17 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     void buildInternal() override;
 
     /**
-     * Give the calibration a metric reference through ArUco markers in the scene, see
-     * DynamicCalibration::setArucoConstraints(). Forwarded to the DynamicCalibration subnode; set before the
+     * Give the calibration a metric reference through fiducial markers in the scene, see
+     * DynamicCalibration::setSceneConstraints(). Forwarded to the DynamicCalibration subnode; set before the
      * pipeline starts.
      */
-    void setArucoConstraints(const ArucoMarkerConstraints& constraints);
-    /// Same as setArucoConstraints() with the JSON form described in ArucoMarkerConstraints.
-    void setArucoConstraintsFromJson(const std::string& json);
-    /// Same as setArucoConstraints() with the JSON form described in ArucoMarkerConstraints read from a file.
-    void setArucoConstraintsFromFile(const std::filesystem::path& path);
-    void clearArucoConstraints();
-    std::optional<ArucoMarkerConstraints> getArucoConstraints() const;
+    void setSceneConstraints(const SceneMarkerConstraints& constraints);
+    /// Same as setSceneConstraints() with the JSON form described in SceneMarkerConstraints.
+    void setSceneConstraintsFromJson(const std::string& json);
+    /// Same as setSceneConstraints() with the JSON form described in SceneMarkerConstraints read from a file.
+    void setSceneConstraintsFromFile(const std::filesystem::path& path);
+    void clearSceneConstraints();
+    std::optional<SceneMarkerConstraints> getSceneConstraints() const;
 
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::AutoCalibrationResult, false}}}}};
 

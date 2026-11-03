@@ -44,17 +44,30 @@ std::string toString(ArucoDictionary dictionary);
 ArucoDictionary arucoDictionaryFromString(const std::string& name);
 
 /**
- * Metric reference for dynamic calibration given through ArUco markers placed in the scene.
+ * Kinds of fiducial markers the calibration can use as scene points. Every kind yields an integer id and one
+ * reference point per marker; adding a kind means a value here, its parameters in SceneMarkerConstraints and a
+ * detector for it in the dynamic calibration library.
+ */
+enum class MarkerType : int32_t {
+    ARUCO = 0,  ///< ArUco / AprilTag markers of one dictionary; the reference point is the marker center.
+};
+std::string toString(MarkerType type);
+MarkerType markerTypeFromString(const std::string& name);
+
+/**
+ * Metric reference for dynamic calibration given through fiducial markers placed in the scene.
  *
  * Image correspondences cannot observe how long the baseline between two cameras is, only its direction and the
- * relative rotation. Known distances between marker centers, and from marker centers to camera sockets, provide
- * that missing scale. The marker size does not matter, only the centers are used; a marker needs to be seen by
- * at least two of the calibrated cameras in the same synchronized frame set to count.
+ * relative rotation. Known distances between marker reference points, and from marker reference points to camera
+ * sockets, provide that missing scale. The marker size does not matter, only the reference points are used; a
+ * marker needs to be seen by at least two of the calibrated cameras in the same synchronized frame set to count.
+ * One constraint set describes markers of one type.
  *
  * Distances are stored in meters. The JSON form accepted by fromJson() is:
  *
  *     {
- *       "dictionary": "DICT_4X4_50",            // optional, default DICT_4X4_50
+ *       "markerType": "aruco",                  // optional, default aruco
+ *       "arucoDictionary": "DICT_4X4_50",       // optional, default DICT_4X4_50 ("dictionary" is accepted too)
  *       "lengthUnit": "m",                      // optional: "m", "cm", "mm" or "in" for every distance below
  *       "markers": [37, 43],                    // optional: markers that belong to the scene (others are ignored)
  *       "markerDistances": [ {"markers": [37, 43], "distance": 0.84} ],
@@ -63,8 +76,8 @@ ArucoDictionary arucoDictionaryFromString(const std::string& name);
  *
  * Either list may be empty; at least one distance is required for the constraints to have an effect.
  */
-struct ArucoMarkerConstraints {
-    /// Distance between the centers of two markers.
+struct SceneMarkerConstraints {
+    /// Distance between the reference points of two markers.
     struct MarkerDistance {
         int32_t markerA = -1;
         int32_t markerB = -1;
@@ -72,8 +85,8 @@ struct ArucoMarkerConstraints {
         DEPTHAI_SERIALIZE(MarkerDistance, markerA, markerB, distanceMeters);
     };
 
-    /// Distance between the center of a marker and the optical center of a camera socket. The socket may be one
-    /// of the calibrated cameras or any other calibrated socket of the device.
+    /// Distance between the reference point of a marker and the optical center of a camera socket. The socket may
+    /// be one of the calibrated cameras or any other calibrated socket of the device.
     struct MarkerSocketDistance {
         int32_t marker = -1;
         CameraBoardSocket socket = CameraBoardSocket::AUTO;
@@ -81,7 +94,9 @@ struct ArucoMarkerConstraints {
         DEPTHAI_SERIALIZE(MarkerSocketDistance, marker, socket, distanceMeters);
     };
 
-    ArucoDictionary dictionary = ArucoDictionary::DICT_4X4_50;
+    MarkerType markerType = MarkerType::ARUCO;
+    /// ARUCO: the dictionary the markers were printed from. Ignored by other marker types.
+    ArucoDictionary arucoDictionary = ArucoDictionary::DICT_4X4_50;
     /// Markers that belong to the scene. Empty means every marker that a distance refers to.
     std::vector<int32_t> markerIds;
     std::vector<MarkerDistance> markerDistances;
@@ -90,9 +105,9 @@ struct ArucoMarkerConstraints {
     uint32_t maxObservationSets = 50;
 
     /// Parses the JSON form documented above. Throws std::invalid_argument on malformed input.
-    static ArucoMarkerConstraints fromJson(const nlohmann::json& json);
-    static ArucoMarkerConstraints fromJsonString(const std::string& json);
-    static ArucoMarkerConstraints fromFile(const std::filesystem::path& path);
+    static SceneMarkerConstraints fromJson(const nlohmann::json& json);
+    static SceneMarkerConstraints fromJsonString(const std::string& json);
+    static SceneMarkerConstraints fromFile(const std::filesystem::path& path);
     /// The JSON form documented above, distances in meters.
     nlohmann::json toJson() const;
 
@@ -106,15 +121,15 @@ struct ArucoMarkerConstraints {
     /// a marker outside markerIds (when markerIds is given) or the AUTO socket.
     void validate() const;
 
-    DEPTHAI_SERIALIZE(ArucoMarkerConstraints, dictionary, markerIds, markerDistances, socketDistances, maxObservationSets);
+    DEPTHAI_SERIALIZE(SceneMarkerConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, maxObservationSets);
 };
 
 /**
- * Marker centers found in one synchronized set of frames: pixel coordinates per marker id and camera socket.
+ * Marker reference points found in one synchronized set of frames: pixel coordinates per marker id and camera socket.
  */
-struct ArucoMarkerObservationSet {
+struct MarkerObservationSet {
     std::map<int32_t, std::map<CameraBoardSocket, std::array<float, 2>>> centers;
-    DEPTHAI_SERIALIZE(ArucoMarkerObservationSet, centers);
+    DEPTHAI_SERIALIZE(MarkerObservationSet, centers);
 };
 
 }  // namespace dai

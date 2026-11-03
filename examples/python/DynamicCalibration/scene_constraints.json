@@ -1,5 +1,6 @@
 {
-    "dictionary": "DICT_4X4_50",
+    "markerType": "aruco",
+    "arucoDictionary": "DICT_4X4_50",
     "lengthUnit": "m",
     "markers": [37, 43],
     "markerDistances": [

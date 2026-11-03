@@ -45,17 +45,17 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
             "rgb", [](DynamicCalibration& node) { return &node.rgb; }, py::return_value_policy::reference_internal)
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
         .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost))
-        .def("setArucoConstraints", &DynamicCalibration::setArucoConstraints, py::arg("constraints"), DOC(dai, node, DynamicCalibration, setArucoConstraints))
-        .def("setArucoConstraintsFromJson",
-             &DynamicCalibration::setArucoConstraintsFromJson,
+        .def("setSceneConstraints", &DynamicCalibration::setSceneConstraints, py::arg("constraints"), DOC(dai, node, DynamicCalibration, setSceneConstraints))
+        .def("setSceneConstraintsFromJson",
+             &DynamicCalibration::setSceneConstraintsFromJson,
              py::arg("json"),
-             DOC(dai, node, DynamicCalibration, setArucoConstraintsFromJson))
-        .def("setArucoConstraintsFromFile",
-             &DynamicCalibration::setArucoConstraintsFromFile,
+             DOC(dai, node, DynamicCalibration, setSceneConstraintsFromJson))
+        .def("setSceneConstraintsFromFile",
+             &DynamicCalibration::setSceneConstraintsFromFile,
              py::arg("path"),
-             DOC(dai, node, DynamicCalibration, setArucoConstraintsFromFile))
-        .def("clearArucoConstraints", &DynamicCalibration::clearArucoConstraints, DOC(dai, node, DynamicCalibration, clearArucoConstraints))
-        .def("getArucoConstraints", &DynamicCalibration::getArucoConstraints, DOC(dai, node, DynamicCalibration, getArucoConstraints));
+             DOC(dai, node, DynamicCalibration, setSceneConstraintsFromFile))
+        .def("clearSceneConstraints", &DynamicCalibration::clearSceneConstraints, DOC(dai, node, DynamicCalibration, clearSceneConstraints))
+        .def("getSceneConstraints", &DynamicCalibration::getSceneConstraints, DOC(dai, node, DynamicCalibration, getSceneConstraints));
 
     // Keep the Properties class attached to the node type
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;

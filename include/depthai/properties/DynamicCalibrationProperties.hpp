@@ -1,7 +1,7 @@
 #pragma once
 #include <optional>
 
-#include "depthai/common/ArucoMarkerConstraints.hpp"
+#include "depthai/common/SceneMarkerConstraints.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -14,14 +14,14 @@ struct DynamicCalibrationProperties : PropertiesSerializable<Properties, Dynamic
     bool emptyBool;
 
     /**
-     * ArUco markers in the scene with measured distances, giving the calibration its metric scale. See
-     * ArucoMarkerConstraints.
+     * Fiducial markers in the scene with measured distances, giving the calibration its metric scale. See
+     * SceneMarkerConstraints.
      */
-    std::optional<ArucoMarkerConstraints> arucoConstraints;
+    std::optional<SceneMarkerConstraints> sceneConstraints;
 
     ~DynamicCalibrationProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(DynamicCalibrationProperties, emptyBool, arucoConstraints);
+DEPTHAI_SERIALIZE_EXT(DynamicCalibrationProperties, emptyBool, sceneConstraints);
 
 }  // namespace dai

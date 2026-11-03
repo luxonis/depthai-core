@@ -46,15 +46,15 @@ void bind_auto_calibration(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, node, AutoCalibration, initialConfig))
         .def("runOnHost", &AutoCalibration::runOnHost, DOC(dai, node, AutoCalibration, runOnHost))
-        .def("setArucoConstraints", &AutoCalibration::setArucoConstraints, py::arg("constraints"), DOC(dai, node, AutoCalibration, setArucoConstraints))
-        .def("setArucoConstraintsFromJson",
-             &AutoCalibration::setArucoConstraintsFromJson,
+        .def("setSceneConstraints", &AutoCalibration::setSceneConstraints, py::arg("constraints"), DOC(dai, node, AutoCalibration, setSceneConstraints))
+        .def("setSceneConstraintsFromJson",
+             &AutoCalibration::setSceneConstraintsFromJson,
              py::arg("json"),
-             DOC(dai, node, AutoCalibration, setArucoConstraintsFromJson))
-        .def("setArucoConstraintsFromFile",
-             &AutoCalibration::setArucoConstraintsFromFile,
+             DOC(dai, node, AutoCalibration, setSceneConstraintsFromJson))
+        .def("setSceneConstraintsFromFile",
+             &AutoCalibration::setSceneConstraintsFromFile,
              py::arg("path"),
-             DOC(dai, node, AutoCalibration, setArucoConstraintsFromFile))
-        .def("clearArucoConstraints", &AutoCalibration::clearArucoConstraints, DOC(dai, node, AutoCalibration, clearArucoConstraints))
-        .def("getArucoConstraints", &AutoCalibration::getArucoConstraints, DOC(dai, node, AutoCalibration, getArucoConstraints));
+             DOC(dai, node, AutoCalibration, setSceneConstraintsFromFile))
+        .def("clearSceneConstraints", &AutoCalibration::clearSceneConstraints, DOC(dai, node, AutoCalibration, clearSceneConstraints))
+        .def("getSceneConstraints", &AutoCalibration::getSceneConstraints, DOC(dai, node, AutoCalibration, getSceneConstraints));
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ArucoMarkers.hpp>
+#include <Markers.hpp>
 #include <DynamicCalibration.hpp>
 #include <array>
 #include <depthai/pipeline/DeviceNode.hpp>
@@ -49,9 +49,11 @@ struct DclUtils {
     static dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode);
 
     static dcl::ArucoDictionary toDclArucoDictionary(ArucoDictionary dictionary);
+    /// The marker detector request for a constraint set. Throws std::invalid_argument for a marker type the library cannot detect.
+    static dcl::MarkerSpec toDclMarkerSpec(const SceneMarkerConstraints& constraints);
 
-    /// Centers of the configured markers in one image, keyed by marker id. Markers outside the configuration are dropped.
-    static std::map<int32_t, std::array<float, 2>> detectMarkerCenters(const dcl::ImageData& image, const ArucoMarkerConstraints& constraints);
+    /// Reference points of the configured markers in one image, keyed by marker id. Markers outside the configuration are dropped.
+    static std::map<int32_t, std::array<float, 2>> detectMarkerCenters(const dcl::ImageData& image, const SceneMarkerConstraints& constraints);
 
     struct WorldConstraintsSummary {
         size_t observationSets = 0;
@@ -67,8 +69,8 @@ struct DclUtils {
      * returns the DCL sensor of a socket, or nullptr for sockets the node does not know, whose constraints are
      * skipped.
      */
-    static dcl::WorldConstraints buildWorldConstraints(const ArucoMarkerConstraints& constraints,
-                                                       const std::deque<ArucoMarkerObservationSet>& observationSets,
+    static dcl::WorldConstraints buildWorldConstraints(const SceneMarkerConstraints& constraints,
+                                                       const std::deque<MarkerObservationSet>& observationSets,
                                                        const std::function<std::shared_ptr<const dcl::CameraSensorHandle>(CameraBoardSocket)>& sensorForSocket,
                                                        WorldConstraintsSummary* summary = nullptr);
 };

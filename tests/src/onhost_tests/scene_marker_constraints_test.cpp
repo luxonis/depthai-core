@@ -8,7 +8,8 @@ namespace {
 using Socket = dai::CameraBoardSocket;
 
 const char* kSceneJson = R"({
-    "dictionary": "DICT_4X4_50",
+    "markerType": "aruco",
+    "arucoDictionary": "DICT_4X4_50",
     "lengthUnit": "cm",
     "markers": [37, 43],
     "markerDistances": [{"markers": [37, 43], "distance": 84}],
@@ -24,9 +25,10 @@ std::shared_ptr<dcl::CameraCalibrationHandle> dclCalibration(double x) {
 }
 }  // namespace
 
-TEST_CASE("ArucoMarkerConstraints parses the documented JSON form", "[ArucoMarkerConstraints]") {
-    const auto constraints = dai::ArucoMarkerConstraints::fromJsonString(kSceneJson);
-    REQUIRE(constraints.dictionary == dai::ArucoDictionary::DICT_4X4_50);
+TEST_CASE("SceneMarkerConstraints parses the documented JSON form", "[SceneMarkerConstraints]") {
+    const auto constraints = dai::SceneMarkerConstraints::fromJsonString(kSceneJson);
+    REQUIRE(constraints.markerType == dai::MarkerType::ARUCO);
+    REQUIRE(constraints.arucoDictionary == dai::ArucoDictionary::DICT_4X4_50);
     REQUIRE(constraints.markerIds == std::vector<int32_t>{37, 43});
     REQUIRE(constraints.markerDistances.size() == 1);
     REQUIRE(constraints.markerDistances[0].markerA == 37);
@@ -41,54 +43,59 @@ TEST_CASE("ArucoMarkerConstraints parses the documented JSON form", "[ArucoMarke
     REQUIRE_FALSE(constraints.empty());
 
     // Round trip through the documented form and through the wire form.
-    const auto roundTrip = dai::ArucoMarkerConstraints::fromJson(constraints.toJson());
+    const auto roundTrip = dai::SceneMarkerConstraints::fromJson(constraints.toJson());
     REQUIRE(roundTrip.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
+    REQUIRE(roundTrip.markerType == dai::MarkerType::ARUCO);
+    REQUIRE(constraints.toJson().at("markerType") == "ARUCO");
     REQUIRE(roundTrip.socketDistances[0].socket == Socket::CAM_A);
     nlohmann::json wire = constraints;
-    const auto fromWire = wire.get<dai::ArucoMarkerConstraints>();
+    const auto fromWire = wire.get<dai::SceneMarkerConstraints>();
     REQUIRE(fromWire.socketDistances[0].socket == Socket::CAM_A);
     REQUIRE(fromWire.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
 
     // Alternative spellings.
-    const auto alternative = dai::ArucoMarkerConstraints::fromJsonString(
+    const auto alternative = dai::SceneMarkerConstraints::fromJsonString(
         R"({"dictionary": "4X4_100", "markerDistances": [{"markerA": 1, "markerB": 2, "distance": 0.5}], "socketDistances": [{"marker": 2, "socket": "b", "distance": 1.0}]})");
-    REQUIRE(alternative.dictionary == dai::ArucoDictionary::DICT_4X4_100);
+    REQUIRE(alternative.markerType == dai::MarkerType::ARUCO);
+    REQUIRE(alternative.arucoDictionary == dai::ArucoDictionary::DICT_4X4_100);
     REQUIRE(alternative.markerIds.empty());
     REQUIRE(alternative.referencedMarkerIds() == std::vector<int32_t>{1, 2});
     REQUIRE(alternative.socketDistances[0].socket == Socket::CAM_B);
 }
 
-TEST_CASE("ArucoMarkerConstraints rejects malformed input", "[ArucoMarkerConstraints]") {
-    using dai::ArucoMarkerConstraints;
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 1], "distance": 0.5}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": 0}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2, 3], "distance": 1}]})"), std::invalid_argument);
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString(R"({"markers": [1], "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+TEST_CASE("SceneMarkerConstraints rejects malformed input", "[SceneMarkerConstraints]") {
+    using dai::SceneMarkerConstraints;
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 1], "distance": 0.5}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": 0}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2, 3], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"markers": [1], "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "CAM_Z", "distance": 1}]})"),
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "CAM_Z", "distance": 1}]})"),
                       std::invalid_argument);
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "AUTO", "distance": 1}]})"),
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "AUTO", "distance": 1}]})"),
                       std::invalid_argument);
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString(R"({"lengthUnit": "furlong", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"lengthUnit": "furlong", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString(R"({"dictionary": "DICT_9X9", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"markerType": "cctag", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
-    REQUIRE_THROWS_AS(ArucoMarkerConstraints::fromJsonString("[1, 2]"), std::invalid_argument);
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString(R"({"dictionary": "DICT_9X9", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(SceneMarkerConstraints::fromJsonString("[1, 2]"), std::invalid_argument);
 
     dai::Pipeline pipeline(false);
     auto node = pipeline.create<dai::node::DynamicCalibration>();
-    REQUIRE_FALSE(node->getArucoConstraints().has_value());
-    REQUIRE_THROWS_AS(node->setArucoConstraints(ArucoMarkerConstraints{}), std::invalid_argument);
-    node->setArucoConstraintsFromJson(kSceneJson);
-    REQUIRE(node->getArucoConstraints().has_value());
-    REQUIRE(node->getArucoConstraints()->socketDistances[0].socket == Socket::CAM_A);
-    node->clearArucoConstraints();
-    REQUIRE_FALSE(node->getArucoConstraints().has_value());
+    REQUIRE_FALSE(node->getSceneConstraints().has_value());
+    REQUIRE_THROWS_AS(node->setSceneConstraints(SceneMarkerConstraints{}), std::invalid_argument);
+    node->setSceneConstraintsFromJson(kSceneJson);
+    REQUIRE(node->getSceneConstraints().has_value());
+    REQUIRE(node->getSceneConstraints()->socketDistances[0].socket == Socket::CAM_A);
+    node->clearSceneConstraints();
+    REQUIRE_FALSE(node->getSceneConstraints().has_value());
 }
 
-TEST_CASE("DynamicCalibration assembles world constraints from marker observations", "[ArucoMarkerConstraints]") {
+TEST_CASE("DynamicCalibration assembles world constraints from marker observations", "[SceneMarkerConstraints]") {
     using dai::node::DclUtils;
-    const auto constraints = dai::ArucoMarkerConstraints::fromJsonString(kSceneJson);
+    const auto constraints = dai::SceneMarkerConstraints::fromJsonString(kSceneJson);
 
     dcl::DynamicCalibration dcl;
     auto device = dcl.addDevice();
@@ -102,7 +109,7 @@ TEST_CASE("DynamicCalibration assembles world constraints from marker observatio
         return it == sensors.end() ? nullptr : it->second;
     };
 
-    std::deque<dai::ArucoMarkerObservationSet> sets(3);
+    std::deque<dai::MarkerObservationSet> sets(3);
     // Frame set 0: both markers in both stereo cameras -> two points, one marker distance, one socket distance.
     sets[0].centers[37] = {{Socket::CAM_B, {100.f, 200.f}}, {Socket::CAM_C, {80.f, 201.f}}};
     sets[0].centers[43] = {{Socket::CAM_B, {600.f, 210.f}}, {Socket::CAM_C, {578.f, 211.f}}};
@@ -137,18 +144,18 @@ TEST_CASE("DynamicCalibration assembles world constraints from marker observatio
     REQUIRE(withoutAuxiliary.sensorDistances.empty());
 
     // Nothing seen by two cameras: no constraints at all.
-    std::deque<dai::ArucoMarkerObservationSet> single(1);
+    std::deque<dai::MarkerObservationSet> single(1);
     single[0].centers[37] = {{Socket::CAM_B, {100.f, 200.f}}};
     REQUIRE(DclUtils::buildWorldConstraints(constraints, single, sensorForSocket).empty());
 }
 
-TEST_CASE("DynamicCalibration detects marker centers through DCL", "[ArucoMarkerConstraints]") {
+TEST_CASE("DynamicCalibration detects marker centers through DCL", "[SceneMarkerConstraints]") {
     // A white image holds no marker; a marker rendered by OpenCV is found at its center.
     dcl::ImageData blank;
     blank.width = 64;
     blank.height = 64;
     blank.format = dcl::DCL_8UC1;
     blank.data.assign(64 * 64, 255);
-    const auto constraints = dai::ArucoMarkerConstraints::fromJsonString(kSceneJson);
+    const auto constraints = dai::SceneMarkerConstraints::fromJsonString(kSceneJson);
     REQUIRE(dai::node::DclUtils::detectMarkerCenters(blank, constraints).empty());
 }

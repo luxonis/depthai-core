@@ -12,7 +12,7 @@
 #include "hedley/hedley.h"
 
 // depthai/
-#include "depthai/common/ArucoMarkerConstraints.hpp"
+#include "depthai/common/SceneMarkerConstraints.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
@@ -116,12 +116,13 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Rect> rect(m, "Rect", DOC(dai, Rect));
     py::class_<StereoPair> stereoPair(m, "StereoPair", DOC(dai, StereoPair));
     py::enum_<ArucoDictionary> arucoDictionary(m, "ArucoDictionary", DOC(dai, ArucoDictionary));
-    py::class_<ArucoMarkerConstraints> arucoMarkerConstraints(m, "ArucoMarkerConstraints", DOC(dai, ArucoMarkerConstraints));
-    py::class_<ArucoMarkerConstraints::MarkerDistance> arucoMarkerDistance(
-        arucoMarkerConstraints, "MarkerDistance", DOC(dai, ArucoMarkerConstraints, MarkerDistance));
-    py::class_<ArucoMarkerConstraints::MarkerSocketDistance> arucoMarkerSocketDistance(
-        arucoMarkerConstraints, "MarkerSocketDistance", DOC(dai, ArucoMarkerConstraints, MarkerSocketDistance));
-    py::class_<ArucoMarkerObservationSet> arucoMarkerObservationSet(m, "ArucoMarkerObservationSet", DOC(dai, ArucoMarkerObservationSet));
+    py::enum_<MarkerType> markerType(m, "MarkerType", DOC(dai, MarkerType));
+    py::class_<SceneMarkerConstraints> sceneMarkerConstraints(m, "SceneMarkerConstraints", DOC(dai, SceneMarkerConstraints));
+    py::class_<SceneMarkerConstraints::MarkerDistance> markerDistance(
+        sceneMarkerConstraints, "MarkerDistance", DOC(dai, SceneMarkerConstraints, MarkerDistance));
+    py::class_<SceneMarkerConstraints::MarkerSocketDistance> markerSocketDistance(
+        sceneMarkerConstraints, "MarkerSocketDistance", DOC(dai, SceneMarkerConstraints, MarkerSocketDistance));
+    py::class_<MarkerObservationSet> markerObservationSet(m, "MarkerObservationSet", DOC(dai, MarkerObservationSet));
     py::enum_<CameraExposureOffset> cameraExposureOffset(m, "CameraExposureOffset");
     py::class_<Color> color(m, "Color", DOC(dai, Color));
     py::enum_<Colormap> colormap(m, "Colormap", DOC(dai, Colormap));
@@ -323,6 +324,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("width", &Rect::width)
         .def_readwrite("height", &Rect::height);
 
+    markerType.value("ARUCO", MarkerType::ARUCO);
+
     arucoDictionary.value("DICT_4X4_50", ArucoDictionary::DICT_4X4_50)
         .value("DICT_4X4_100", ArucoDictionary::DICT_4X4_100)
         .value("DICT_4X4_250", ArucoDictionary::DICT_4X4_250)
@@ -345,9 +348,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("DICT_APRILTAG_36h10", ArucoDictionary::DICT_APRILTAG_36h10)
         .value("DICT_APRILTAG_36h11", ArucoDictionary::DICT_APRILTAG_36h11);
 
-    arucoMarkerDistance.def(py::init<>())
+    markerDistance.def(py::init<>())
         .def(py::init([](int32_t markerA, int32_t markerB, float distanceMeters) {
-                 ArucoMarkerConstraints::MarkerDistance distance;
+                 SceneMarkerConstraints::MarkerDistance distance;
                  distance.markerA = markerA;
                  distance.markerB = markerB;
                  distance.distanceMeters = distanceMeters;
@@ -356,12 +359,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("markerA"),
              py::arg("markerB"),
              py::arg("distanceMeters"))
-        .def_readwrite("markerA", &ArucoMarkerConstraints::MarkerDistance::markerA)
-        .def_readwrite("markerB", &ArucoMarkerConstraints::MarkerDistance::markerB)
-        .def_readwrite("distanceMeters", &ArucoMarkerConstraints::MarkerDistance::distanceMeters);
-    arucoMarkerSocketDistance.def(py::init<>())
+        .def_readwrite("markerA", &SceneMarkerConstraints::MarkerDistance::markerA)
+        .def_readwrite("markerB", &SceneMarkerConstraints::MarkerDistance::markerB)
+        .def_readwrite("distanceMeters", &SceneMarkerConstraints::MarkerDistance::distanceMeters);
+    markerSocketDistance.def(py::init<>())
         .def(py::init([](int32_t marker, CameraBoardSocket socket, float distanceMeters) {
-                 ArucoMarkerConstraints::MarkerSocketDistance distance;
+                 SceneMarkerConstraints::MarkerSocketDistance distance;
                  distance.marker = marker;
                  distance.socket = socket;
                  distance.distanceMeters = distanceMeters;
@@ -370,32 +373,33 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("marker"),
              py::arg("socket"),
              py::arg("distanceMeters"))
-        .def_readwrite("marker", &ArucoMarkerConstraints::MarkerSocketDistance::marker)
-        .def_readwrite("socket", &ArucoMarkerConstraints::MarkerSocketDistance::socket)
-        .def_readwrite("distanceMeters", &ArucoMarkerConstraints::MarkerSocketDistance::distanceMeters);
-    arucoMarkerConstraints.def(py::init<>())
-        .def_readwrite("dictionary", &ArucoMarkerConstraints::dictionary, DOC(dai, ArucoMarkerConstraints, dictionary))
-        .def_readwrite("markerIds", &ArucoMarkerConstraints::markerIds, DOC(dai, ArucoMarkerConstraints, markerIds))
-        .def_readwrite("markerDistances", &ArucoMarkerConstraints::markerDistances, DOC(dai, ArucoMarkerConstraints, markerDistances))
-        .def_readwrite("socketDistances", &ArucoMarkerConstraints::socketDistances, DOC(dai, ArucoMarkerConstraints, socketDistances))
-        .def_readwrite("maxObservationSets", &ArucoMarkerConstraints::maxObservationSets, DOC(dai, ArucoMarkerConstraints, maxObservationSets))
+        .def_readwrite("marker", &SceneMarkerConstraints::MarkerSocketDistance::marker)
+        .def_readwrite("socket", &SceneMarkerConstraints::MarkerSocketDistance::socket)
+        .def_readwrite("distanceMeters", &SceneMarkerConstraints::MarkerSocketDistance::distanceMeters);
+    sceneMarkerConstraints.def(py::init<>())
+        .def_readwrite("markerType", &SceneMarkerConstraints::markerType, DOC(dai, SceneMarkerConstraints, markerType))
+        .def_readwrite("arucoDictionary", &SceneMarkerConstraints::arucoDictionary, DOC(dai, SceneMarkerConstraints, arucoDictionary))
+        .def_readwrite("markerIds", &SceneMarkerConstraints::markerIds, DOC(dai, SceneMarkerConstraints, markerIds))
+        .def_readwrite("markerDistances", &SceneMarkerConstraints::markerDistances, DOC(dai, SceneMarkerConstraints, markerDistances))
+        .def_readwrite("socketDistances", &SceneMarkerConstraints::socketDistances, DOC(dai, SceneMarkerConstraints, socketDistances))
+        .def_readwrite("maxObservationSets", &SceneMarkerConstraints::maxObservationSets, DOC(dai, SceneMarkerConstraints, maxObservationSets))
         .def_static(
             "fromJson",
-            [](const std::string& json) { return ArucoMarkerConstraints::fromJsonString(json); },
+            [](const std::string& json) { return SceneMarkerConstraints::fromJsonString(json); },
             py::arg("json"),
-            DOC(dai, ArucoMarkerConstraints, fromJsonString))
+            DOC(dai, SceneMarkerConstraints, fromJsonString))
         .def_static(
             "fromFile",
-            [](const std::filesystem::path& path) { return ArucoMarkerConstraints::fromFile(path); },
+            [](const std::filesystem::path& path) { return SceneMarkerConstraints::fromFile(path); },
             py::arg("path"),
-            DOC(dai, ArucoMarkerConstraints, fromFile))
+            DOC(dai, SceneMarkerConstraints, fromFile))
         .def(
-            "toJson", [](const ArucoMarkerConstraints& constraints) { return constraints.toJson().dump(); }, DOC(dai, ArucoMarkerConstraints, toJson))
-        .def("empty", &ArucoMarkerConstraints::empty, DOC(dai, ArucoMarkerConstraints, empty))
-        .def("referencedMarkerIds", &ArucoMarkerConstraints::referencedMarkerIds, DOC(dai, ArucoMarkerConstraints, referencedMarkerIds))
-        .def("referencedSockets", &ArucoMarkerConstraints::referencedSockets, DOC(dai, ArucoMarkerConstraints, referencedSockets))
-        .def("validate", &ArucoMarkerConstraints::validate, DOC(dai, ArucoMarkerConstraints, validate));
-    arucoMarkerObservationSet.def(py::init<>()).def_readwrite("centers", &ArucoMarkerObservationSet::centers);
+            "toJson", [](const SceneMarkerConstraints& constraints) { return constraints.toJson().dump(); }, DOC(dai, SceneMarkerConstraints, toJson))
+        .def("empty", &SceneMarkerConstraints::empty, DOC(dai, SceneMarkerConstraints, empty))
+        .def("referencedMarkerIds", &SceneMarkerConstraints::referencedMarkerIds, DOC(dai, SceneMarkerConstraints, referencedMarkerIds))
+        .def("referencedSockets", &SceneMarkerConstraints::referencedSockets, DOC(dai, SceneMarkerConstraints, referencedSockets))
+        .def("validate", &SceneMarkerConstraints::validate, DOC(dai, SceneMarkerConstraints, validate));
+    markerObservationSet.def(py::init<>()).def_readwrite("centers", &MarkerObservationSet::centers);
 
     stereoPair.def(py::init<>())
         .def_readwrite("left", &StereoPair::left)

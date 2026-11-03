@@ -1,4 +1,4 @@
-#include "depthai/common/ArucoMarkerConstraints.hpp"
+#include "depthai/common/SceneMarkerConstraints.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -40,6 +40,13 @@ const std::vector<std::pair<ArucoDictionary, const char*>>& dictionaryNames() {
     return names;
 }
 
+const std::vector<std::pair<MarkerType, const char*>>& markerTypeNames() {
+    static const std::vector<std::pair<MarkerType, const char*>> names = {
+        {MarkerType::ARUCO, "ARUCO"},
+    };
+    return names;
+}
+
 std::string upper(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
     return text;
@@ -50,7 +57,7 @@ CameraBoardSocket socketFromJson(const nlohmann::json& value) {
         return static_cast<CameraBoardSocket>(value.get<int32_t>());
     }
     if(!value.is_string()) {
-        throw std::invalid_argument("ArucoMarkerConstraints: a socket must be a name such as \"CAM_A\"");
+        throw std::invalid_argument("SceneMarkerConstraints: a socket must be a name such as \"CAM_A\"");
     }
     auto name = upper(value.get<std::string>());
     if(name.size() == 1) {
@@ -61,7 +68,7 @@ CameraBoardSocket socketFromJson(const nlohmann::json& value) {
             return static_cast<CameraBoardSocket>(socket);
         }
     }
-    throw std::invalid_argument("ArucoMarkerConstraints: unknown socket \"" + value.get<std::string>() + "\"");
+    throw std::invalid_argument("SceneMarkerConstraints: unknown socket \"" + value.get<std::string>() + "\"");
 }
 
 float lengthUnitToMeters(const nlohmann::json& json) {
@@ -79,12 +86,12 @@ float lengthUnitToMeters(const nlohmann::json& json) {
     if(lowered == "mm" || lowered == "millimeter" || lowered == "millimeters") return 0.001f;
     if(lowered == "in" || lowered == "inch" || lowered == "inches") return 1.0f / getLengthUnitMultiplier(LengthUnit::INCH);
     if(lowered == "ft" || lowered == "foot" || lowered == "feet") return 1.0f / getLengthUnitMultiplier(LengthUnit::FOOT);
-    throw std::invalid_argument("ArucoMarkerConstraints: unknown lengthUnit \"" + unit + "\"");
+    throw std::invalid_argument("SceneMarkerConstraints: unknown lengthUnit \"" + unit + "\"");
 }
 
 float distanceFromJson(const nlohmann::json& entry, float toMeters) {
     if(!entry.contains("distance") || !entry.at("distance").is_number()) {
-        throw std::invalid_argument("ArucoMarkerConstraints: every distance entry needs a numeric \"distance\"");
+        throw std::invalid_argument("SceneMarkerConstraints: every distance entry needs a numeric \"distance\"");
     }
     return entry.at("distance").get<float>() * toMeters;
 }
@@ -107,18 +114,45 @@ ArucoDictionary arucoDictionaryFromString(const std::string& name) {
             return value;
         }
     }
-    throw std::invalid_argument("ArucoMarkerConstraints: unknown dictionary \"" + name + "\"");
+    throw std::invalid_argument("SceneMarkerConstraints: unknown dictionary \"" + name + "\"");
 }
 
-ArucoMarkerConstraints ArucoMarkerConstraints::fromJson(const nlohmann::json& json) {
-    if(!json.is_object()) {
-        throw std::invalid_argument("ArucoMarkerConstraints: expected a JSON object");
+std::string toString(MarkerType type) {
+    for(const auto& [value, name] : markerTypeNames()) {
+        if(value == type) {
+            return name;
+        }
     }
-    ArucoMarkerConstraints constraints;
-    if(json.contains("dictionary")) {
-        const auto& dictionary = json.at("dictionary");
-        constraints.dictionary =
+    return "UNKNOWN";
+}
+
+MarkerType markerTypeFromString(const std::string& name) {
+    const auto wanted = upper(name);
+    for(const auto& [value, candidate] : markerTypeNames()) {
+        if(wanted == candidate) {
+            return value;
+        }
+    }
+    throw std::invalid_argument("SceneMarkerConstraints: unknown markerType \"" + name + "\"");
+}
+
+SceneMarkerConstraints SceneMarkerConstraints::fromJson(const nlohmann::json& json) {
+    if(!json.is_object()) {
+        throw std::invalid_argument("SceneMarkerConstraints: expected a JSON object");
+    }
+    SceneMarkerConstraints constraints;
+    if(json.contains("markerType")) {
+        const auto& type = json.at("markerType");
+        constraints.markerType = type.is_string() ? markerTypeFromString(type.get<std::string>()) : static_cast<MarkerType>(type.get<int32_t>());
+    }
+    for(const char* key : {"arucoDictionary", "dictionary"}) {
+        if(!json.contains(key)) {
+            continue;
+        }
+        const auto& dictionary = json.at(key);
+        constraints.arucoDictionary =
             dictionary.is_string() ? arucoDictionaryFromString(dictionary.get<std::string>()) : static_cast<ArucoDictionary>(dictionary.get<int32_t>());
+        break;
     }
     const float toMeters = lengthUnitToMeters(json);
     if(json.contains("markers")) {
@@ -132,7 +166,7 @@ ArucoMarkerConstraints ArucoMarkerConstraints::fromJson(const nlohmann::json& js
         if(entry.contains("markers")) {
             const auto markers = entry.at("markers").get<std::vector<int32_t>>();
             if(markers.size() != 2) {
-                throw std::invalid_argument("ArucoMarkerConstraints: \"markers\" of a marker distance needs exactly two ids");
+                throw std::invalid_argument("SceneMarkerConstraints: \"markers\" of a marker distance needs exactly two ids");
             }
             distance.markerA = markers[0];
             distance.markerB = markers[1];
@@ -154,23 +188,26 @@ ArucoMarkerConstraints ArucoMarkerConstraints::fromJson(const nlohmann::json& js
     return constraints;
 }
 
-ArucoMarkerConstraints ArucoMarkerConstraints::fromJsonString(const std::string& json) {
+SceneMarkerConstraints SceneMarkerConstraints::fromJsonString(const std::string& json) {
     return fromJson(nlohmann::json::parse(json));
 }
 
-ArucoMarkerConstraints ArucoMarkerConstraints::fromFile(const std::filesystem::path& path) {
+SceneMarkerConstraints SceneMarkerConstraints::fromFile(const std::filesystem::path& path) {
     std::ifstream stream(path);
     if(!stream) {
-        throw std::invalid_argument("ArucoMarkerConstraints: cannot open " + path.string());
+        throw std::invalid_argument("SceneMarkerConstraints: cannot open " + path.string());
     }
     nlohmann::json json;
     stream >> json;
     return fromJson(json);
 }
 
-nlohmann::json ArucoMarkerConstraints::toJson() const {
+nlohmann::json SceneMarkerConstraints::toJson() const {
     nlohmann::json json;
-    json["dictionary"] = toString(dictionary);
+    json["markerType"] = toString(markerType);
+    if(markerType == MarkerType::ARUCO) {
+        json["arucoDictionary"] = toString(arucoDictionary);
+    }
     json["lengthUnit"] = "m";
     json["markers"] = markerIds;
     json["maxObservationSets"] = maxObservationSets;
@@ -187,11 +224,11 @@ nlohmann::json ArucoMarkerConstraints::toJson() const {
     return json;
 }
 
-bool ArucoMarkerConstraints::empty() const {
+bool SceneMarkerConstraints::empty() const {
     return markerDistances.empty() && socketDistances.empty();
 }
 
-std::vector<int32_t> ArucoMarkerConstraints::referencedMarkerIds() const {
+std::vector<int32_t> SceneMarkerConstraints::referencedMarkerIds() const {
     std::set<int32_t> ids(markerIds.begin(), markerIds.end());
     for(const auto& distance : markerDistances) {
         ids.insert(distance.markerA);
@@ -203,7 +240,7 @@ std::vector<int32_t> ArucoMarkerConstraints::referencedMarkerIds() const {
     return {ids.begin(), ids.end()};
 }
 
-std::vector<CameraBoardSocket> ArucoMarkerConstraints::referencedSockets() const {
+std::vector<CameraBoardSocket> SceneMarkerConstraints::referencedSockets() const {
     std::set<CameraBoardSocket> sockets;
     for(const auto& distance : socketDistances) {
         sockets.insert(distance.socket);
@@ -211,40 +248,43 @@ std::vector<CameraBoardSocket> ArucoMarkerConstraints::referencedSockets() const
     return {sockets.begin(), sockets.end()};
 }
 
-void ArucoMarkerConstraints::validate() const {
+void SceneMarkerConstraints::validate() const {
     const auto markerKnown = [&](int32_t id) { return markerIds.empty() || std::find(markerIds.begin(), markerIds.end(), id) != markerIds.end(); };
     const auto checkDistance = [](float distance, const std::string& what) {
         if(!std::isfinite(distance) || distance <= 0.0f) {
-            throw std::invalid_argument("ArucoMarkerConstraints: " + what + " must be a positive distance");
+            throw std::invalid_argument("SceneMarkerConstraints: " + what + " must be a positive distance");
         }
     };
     for(const auto& id : markerIds) {
         if(id < 0) {
-            throw std::invalid_argument("ArucoMarkerConstraints: marker ids must be non-negative");
+            throw std::invalid_argument("SceneMarkerConstraints: marker ids must be non-negative");
         }
     }
     for(const auto& distance : markerDistances) {
         const std::string what = "distance between markers " + std::to_string(distance.markerA) + " and " + std::to_string(distance.markerB);
         if(distance.markerA == distance.markerB) {
-            throw std::invalid_argument("ArucoMarkerConstraints: " + what + " refers to the same marker twice");
+            throw std::invalid_argument("SceneMarkerConstraints: " + what + " refers to the same marker twice");
         }
         if(!markerKnown(distance.markerA) || !markerKnown(distance.markerB)) {
-            throw std::invalid_argument("ArucoMarkerConstraints: " + what + " refers to a marker outside \"markers\"");
+            throw std::invalid_argument("SceneMarkerConstraints: " + what + " refers to a marker outside \"markers\"");
         }
         checkDistance(distance.distanceMeters, what);
     }
     for(const auto& distance : socketDistances) {
         const std::string what = "distance between marker " + std::to_string(distance.marker) + " and " + toString(distance.socket);
         if(distance.socket == CameraBoardSocket::AUTO) {
-            throw std::invalid_argument("ArucoMarkerConstraints: " + what + " needs a concrete socket");
+            throw std::invalid_argument("SceneMarkerConstraints: " + what + " needs a concrete socket");
         }
         if(!markerKnown(distance.marker)) {
-            throw std::invalid_argument("ArucoMarkerConstraints: " + what + " refers to a marker outside \"markers\"");
+            throw std::invalid_argument("SceneMarkerConstraints: " + what + " refers to a marker outside \"markers\"");
         }
         checkDistance(distance.distanceMeters, what);
     }
     if(maxObservationSets == 0) {
-        throw std::invalid_argument("ArucoMarkerConstraints: maxObservationSets must be at least 1");
+        throw std::invalid_argument("SceneMarkerConstraints: maxObservationSets must be at least 1");
+    }
+    if(toString(markerType) == "UNKNOWN") {
+        throw std::invalid_argument("SceneMarkerConstraints: unknown markerType " + std::to_string(static_cast<int32_t>(markerType)));
     }
 }
 

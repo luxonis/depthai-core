@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Dynamic calibration with a metric reference from ArUco markers.
+"""Dynamic calibration with a metric reference from markers in the scene.
 
 Image features fix the relative pose of the stereo pair except for its vergence, the turn about the axis
 perpendicular to the baseline and the optical axis, which sets the depth scale while barely changing the
 epipolar error. Known distances between marker centers (or from a marker center to a camera socket) fix that
 turn; camera centers and the baseline length are never changed.
-Place the markers from the JSON file in view of both cameras and run:
+Place the markers from the JSON file (ArUco by default) in view of both cameras and run:
 
-    python3 calibration_dynamic_aruco_scale.py [--constraints aruco_scene_constraints.json] [--host]
+    python3 calibration_dynamic_scene_constraints.py [--constraints scene_constraints.json] [--host]
 """
 import argparse
 import pathlib
@@ -16,7 +16,7 @@ import time
 import depthai as dai
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument("--constraints", default=str(pathlib.Path(__file__).with_name("aruco_scene_constraints.json")))
+parser.add_argument("--constraints", default=str(pathlib.Path(__file__).with_name("scene_constraints.json")))
 parser.add_argument("--host", action="store_true", help="run the DynamicCalibration node on the host")
 parser.add_argument("--apply", action="store_true", help="apply the new calibration to the device (RAM only)")
 args = parser.parse_args()
@@ -26,7 +26,7 @@ with dai.Pipeline() as pipeline:
     right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
     dynCalib = pipeline.create(dai.node.DynamicCalibration)
-    dynCalib.setArucoConstraintsFromFile(args.constraints)
+    dynCalib.setSceneConstraintsFromFile(args.constraints)
     if args.host:
         dynCalib.setRunOnHost(True)
     left.requestFullResolutionOutput().link(dynCalib.left)

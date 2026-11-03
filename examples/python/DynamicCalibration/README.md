@@ -112,13 +112,13 @@ Mean Sampson error current    = 0.38 px
 
 ---
 
-## 1c) Dynamic calibration with a metric reference from ArUco markers
+## 1c) Dynamic calibration with a metric reference from scene markers
 
-**Script:** `calibration_dynamic_aruco_scale.py` (scene description: `aruco_scene_constraints.json`)
+**Script:** `calibration_dynamic_scene_constraints.py` (scene description: `scene_constraints.json`)
 
 **What it does:**
-- Loads a JSON description of ArUco markers in the scene: measured distances between marker centers and from
-  marker centers to camera sockets (`setArucoConstraintsFromFile`, also available on `AutoCalibration`)
+- Loads a JSON description of fiducial markers in the scene (ArUco / AprilTag today, `markerType` selects the kind): measured distances between marker centers and from
+  marker centers to camera sockets (`setSceneConstraintsFromFile`, also available on `AutoCalibration`)
 - Detects the markers in every loaded image set; their centers are collected together with the image features
 - Runs the calibration: image features fix the relative pose except for the **vergence**, the turn about the
   axis perpendicular to the baseline and the optical axis, which moves image points along the epipolar lines
@@ -128,7 +128,8 @@ Mean Sampson error current    = 0.38 px
 
 ```json
 {
-    "dictionary": "DICT_4X4_50",
+    "markerType": "aruco",
+    "arucoDictionary": "DICT_4X4_50",
     "lengthUnit": "m",
     "markers": [37, 43],
     "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
@@ -267,7 +268,7 @@ python calibration_dynamic.py
 
 # Live calibration with CAM_A + CAM_B + CAM_C
 python calibration_dynamic_3_sensors.py
-python calibration_dynamic_aruco_scale.py --constraints aruco_scene_constraints.json
+python calibration_dynamic_scene_constraints.py --constraints scene_constraints.json
 
 # Legacy quality evaluation flow
 python calibration_quality_dynamic.py
