@@ -79,22 +79,40 @@ CameraBoardSocket socketFromJson(const nlohmann::json& value) {
     throw std::invalid_argument("WorldConstraints: unknown socket \"" + value.get<std::string>() + "\"");
 }
 
-float lengthUnitToMeters(const nlohmann::json& json) {
+LengthUnit lengthUnitFromJson(const nlohmann::json& json) {
     if(!json.contains("lengthUnit")) {
-        return 1.0f;
+        return LengthUnit::METER;
     }
+    static const std::vector<std::pair<const char*, LengthUnit>> names = {
+        {"M", LengthUnit::METER},
+        {"METER", LengthUnit::METER},
+        {"METERS", LengthUnit::METER},
+        {"CM", LengthUnit::CENTIMETER},
+        {"CENTIMETER", LengthUnit::CENTIMETER},
+        {"CENTIMETERS", LengthUnit::CENTIMETER},
+        {"MM", LengthUnit::MILLIMETER},
+        {"MILLIMETER", LengthUnit::MILLIMETER},
+        {"MILLIMETERS", LengthUnit::MILLIMETER},
+        {"IN", LengthUnit::INCH},
+        {"INCH", LengthUnit::INCH},
+        {"INCHES", LengthUnit::INCH},
+        {"FT", LengthUnit::FOOT},
+        {"FOOT", LengthUnit::FOOT},
+        {"FEET", LengthUnit::FOOT},
+    };
     const auto unit = json.at("lengthUnit").get<std::string>();
-    const auto lowered = [&] {
-        std::string text = unit;
-        std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        return text;
-    }();
-    if(lowered == "m" || lowered == "meter" || lowered == "meters") return 1.0f;
-    if(lowered == "cm" || lowered == "centimeter" || lowered == "centimeters") return 0.01f;
-    if(lowered == "mm" || lowered == "millimeter" || lowered == "millimeters") return 0.001f;
-    if(lowered == "in" || lowered == "inch" || lowered == "inches") return 1.0f / getLengthUnitMultiplier(LengthUnit::INCH);
-    if(lowered == "ft" || lowered == "foot" || lowered == "feet") return 1.0f / getLengthUnitMultiplier(LengthUnit::FOOT);
+    const auto wanted = upper(unit);
+    for(const auto& [name, value] : names) {
+        if(wanted == name) {
+            return value;
+        }
+    }
     throw std::invalid_argument("WorldConstraints: unknown lengthUnit \"" + unit + "\"");
+}
+
+/// Factor that turns a distance given in the document's lengthUnit into meters.
+float lengthUnitToMeters(const nlohmann::json& json) {
+    return 1.0f / getLengthUnitMultiplier(lengthUnitFromJson(json));
 }
 
 int32_t markerIdFromJson(const nlohmann::json& value) {
