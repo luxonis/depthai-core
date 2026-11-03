@@ -1,5 +1,7 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 
+#include <stdexcept>
+
 namespace dai {
 
 StereoDepthConfig::~StereoDepthConfig() = default;
@@ -122,57 +124,47 @@ dai::ProcessorType StereoDepthConfig::getFiltersComputeBackend() const {
     return filtersBackend;
 }
 
+namespace {
+struct DisparityEncoding {
+    int maximum;
+    int unitsPerPixel;
+};
+
+DisparityEncoding getDisparityEncoding(const StereoDepthConfig& config) {
+    using Filter = StereoDepthConfig::PostProcessing::Filter;
+    const auto bits = config.getSubpixel() ? config.getSubpixelFractionalBits() : 0;
+    if(config.getSubpixel() && (bits < 3 || bits > 5)) {
+        throw std::invalid_argument("RVC2 subpixel fractional bits must be 3, 4 or 5");
+    }
+    const int subpixel = 1 << bits;
+    const int searchMaximum = config.costMatching.disparityWidth == StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64 ? 63 : 95;
+    // Firmware normalizes the encoded matcher range. Companding and disparity
+    // shift affect the depth mapping, not this encoded range.
+    const int nominalMaximum = searchMaximum * (config.getExtendedDisparity() ? 2 : 1) * subpixel;
+    const auto& post = config.postProcessing;
+    const bool medianEnabled = post.median != StereoDepthConfig::MedianFilter::MEDIAN_OFF && nominalMaximum < 1024;
+    auto lastEnabled = Filter::NONE;
+    for(const auto filter : post.filteringOrder) {
+        const bool enabled = (filter == Filter::SPECKLE && post.speckleFilter.enable) || (filter == Filter::SPATIAL && post.spatialFilter.enable)
+                             || (filter == Filter::TEMPORAL && post.temporalFilter.enable)
+                             || (filter == Filter::DECIMATION && post.decimationFilter.decimationFactor > 1) || (filter == Filter::MEDIAN && medianEnabled);
+        if(enabled) lastEnabled = filter;
+    }
+    // Match the integer division in RVC2 Stereo::Init. A terminal median
+    // coalesces with the depth LUT and restores nominal disparity units.
+    const int normalization = lastEnabled != Filter::NONE && lastEnabled != Filter::MEDIAN ? (1 << 13) / nominalMaximum : 1;
+    return {nominalMaximum * normalization, subpixel * normalization};
+}
+}  // namespace
+
 float StereoDepthConfig::getMaxDisparity() const {
-    float maxDisp = 95.0;
-    if(costMatching.disparityWidth == StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64) {
-        maxDisp = 63;
-    }
-    if(costMatching.enableCompanding) maxDisp = 175;
-    maxDisp += algorithmControl.disparityShift;
-    if(algorithmControl.enableExtended) maxDisp *= 2;
-    if(algorithmControl.enableSubpixel) maxDisp *= (1 << algorithmControl.subpixelFractionalBits);
+    return static_cast<float>(getDisparityEncoding(*this).maximum);
+}
 
-    std::vector<dai::StereoDepthConfig::PostProcessing::Filter> filtersToExecute;
-    for(auto filter : postProcessing.filteringOrder) {
-        switch(filter) {
-            case StereoDepthConfig::PostProcessing::Filter::SPECKLE:
-                if(postProcessing.speckleFilter.enable) {
-                    filtersToExecute.push_back(filter);
-                }
-                break;
-            case StereoDepthConfig::PostProcessing::Filter::TEMPORAL:
-                if(postProcessing.temporalFilter.enable) {
-                    filtersToExecute.push_back(filter);
-                }
-                break;
-            case StereoDepthConfig::PostProcessing::Filter::SPATIAL:
-                if(postProcessing.spatialFilter.enable) {
-                    filtersToExecute.push_back(filter);
-                }
-                break;
-            case StereoDepthConfig::PostProcessing::Filter::DECIMATION:
-                if(postProcessing.decimationFilter.decimationFactor > 1) {
-                    filtersToExecute.push_back(filter);
-                }
-                break;
-            case StereoDepthConfig::PostProcessing::Filter::MEDIAN:
-                if(postProcessing.median != MedianFilter::MEDIAN_OFF) {
-                    filtersToExecute.push_back(filter);
-                }
-                break;
-            case StereoDepthConfig::PostProcessing::Filter::NONE:
-                break;
-            default:
-                break;
-        }
+float StereoDepthConfig::getDisparityScale() const {
+    if(costMatching.enableCompanding) {
+        throw std::invalid_argument("Companded disparity has no single pixel scale");
     }
-
-    if(filtersToExecute.size() != 0) {
-        if(filtersToExecute.back() != StereoDepthConfig::PostProcessing::Filter::MEDIAN) {
-            maxDisp = maxDisp * ((1 << 13) / maxDisp);
-        }
-    }
-
-    return maxDisp;
+    return static_cast<float>(getDisparityEncoding(*this).unitsPerPixel);
 }
 }  // namespace dai

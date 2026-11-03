@@ -813,10 +813,34 @@ class StereoDepthConfig : public Buffer {
     dai::ProcessorType getFiltersComputeBackend() const;
 
     /**
-     * Useful for normalization of the disparity map.
-     * @returns Maximum disparity value that the node can return
+     * Maximum encoded RVC2 disparity after the configured post-processing.
+     * Includes subpixel units and the firmware's integer normalization, which
+     * depends on the last enabled filter. For example, 3-bit subpixel followed
+     * by temporal filtering has maximum 7600, not the normalization ceiling 8192.
+     * The nominal maximum is (disparity width - 1) * extended multiplier *
+     * subpixel multiplier. If post-processing ends with a non-median filter,
+     * it is multiplied by floor(8192 / nominal maximum). Otherwise it is
+     * unchanged. Disabled filters are ignored, including median when the
+     * nominal maximum exceeds its supported 10-bit input range.
+     * Disparity shift changes depth conversion, not the encoded search range.
+     * @throws std::invalid_argument If enabled subpixel precision is outside 3-5 bits.
+     * @returns Maximum disparity value that the RVC2 node can return
      */
     float getMaxDisparity() const;
+
+    /**
+     * Encoded RVC2 disparity units per pixel after post-processing.
+     * Divide non-companded disparity values by this scale before converting
+     * them to depth, accounting separately for any configured disparity shift.
+     * Includes both subpixel precision and integer post-processing normalization.
+     * For example, 3-bit subpixel followed by temporal filtering uses 80 units
+     * per pixel; with median as the last enabled filter it uses 8.
+     * This describes the RVC2 backend, not RVC4 disparity encoding.
+     * @throws std::invalid_argument If companding is enabled (its nonlinear
+     * mapping has no single scale), or enabled subpixel precision is outside 3-5 bits.
+     * @returns Encoded disparity units per pixel
+     */
+    float getDisparityScale() const;
 
     /**
      * Controls the flow of stereo algorithm - left-right check, subpixel etc.

@@ -324,6 +324,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
              DOC(dai, StereoDepthConfig, setSubpixelFractionalBits))
         .def("getSubpixelFractionalBits", &StereoDepthConfig::getSubpixelFractionalBits, DOC(dai, StereoDepthConfig, getSubpixelFractionalBits))
         .def("getMaxDisparity", &StereoDepthConfig::getMaxDisparity, DOC(dai, StereoDepthConfig, getMaxDisparity))
+        .def("getDisparityScale", &StereoDepthConfig::getDisparityScale, DOC(dai, StereoDepthConfig, getDisparityScale))
         .def("setDepthUnit", &StereoDepthConfig::setDepthUnit, DOC(dai, StereoDepthConfig, setDepthUnit))
         .def("getDepthUnit", &StereoDepthConfig::getDepthUnit, DOC(dai, StereoDepthConfig, getDepthUnit))
         .def("setCustomDepthUnitMultiplier", &StereoDepthConfig::setCustomDepthUnitMultiplier, DOC(dai, StereoDepthConfig, setCustomDepthUnitMultiplier))

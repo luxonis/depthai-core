@@ -526,6 +526,10 @@ dai_set_test_labels(normalization_test onhost ci)
 dai_add_test(depth_unit_test src/onhost_tests/depth_unit_test.cpp)
 dai_set_test_labels(depth_unit_test onhost ci)
 
+# RVC2 encoded disparity range and pixel scale
+dai_add_test(stereo_depth_config_test src/onhost_tests/stereo_depth_config_test.cpp)
+dai_set_test_labels(stereo_depth_config_test onhost ci)
+
 # MessageQueue tests
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 dai_set_test_labels(message_queue_test onhost ci)
