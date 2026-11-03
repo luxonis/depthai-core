@@ -43,19 +43,19 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @param input: Camera node
      * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps: Desired frames per second
-     * @param resizeMode: Resize mode for input frames
+     * @param resizeMode: Override the archive's resize mode. If omitted, CROP resize mode is used.
      *
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input,
                                          const Model& model,
                                          std::optional<float> fps = std::nullopt,
-                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+                                         std::optional<dai::ImgResizeMode> resizeMode = std::nullopt);
     /**
      * @brief Build NeuralNetwork node. Connect Camera output to this node's input and configure the inference model.
      * @param input: Camera node
      * @param model: Neural network model description, NNArchive or HubAI model id string
-     * @param capability: Camera capabilities
+     * @param capability: Camera capabilities override
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability);

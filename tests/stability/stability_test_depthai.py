@@ -6,6 +6,8 @@ from typing import List, Dict
 import datetime
 import math
 
+LOG_INTERVAL_SECONDS = 60
+MEMORY_LEAK_WARMUP_SECONDS = 60 * 60
 MEMORY_LEAK_DETECTION_THRESHOLD = 1.05
 
 def calculate_latency_jitter(latencies: List[float]) -> float:
@@ -134,16 +136,24 @@ def stability_test(fps, timeoutHours=None):
         imu.out.link(IMUBenchmark.input)
         benchmarkReportQueues["IMU"] = IMUBenchmark.report.createOutputQueue(blocking=False)
 
-        print("Starting the stability test...")
+        print(
+            f"Starting the stability test (logging every {LOG_INTERVAL_SECONDS} seconds; "
+            f"memory leak detection after {MEMORY_LEAK_WARMUP_SECONDS} seconds of warm-up)...",
+            flush=True,
+        )
         tStart = time.time()
         p.start()
+        warmupEnd = time.monotonic() + MEMORY_LEAK_WARMUP_SECONDS
 
         # Delay so the device process finishes starting up 
         time.sleep(10)
-        initialProcessMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
-        print(f"Initial depthai-device process memory usage is: {initialProcessMemoryUsage} kB")
+        processMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
+        print(f"Initial depthai-device process memory usage is: {processMemoryUsage} kB")
+        baselineProcessMemoryUsage = None
         loopStart = time.monotonic()
+        lastLogTime = loopStart - LOG_INTERVAL_SECONDS
         while timeoutHours is None or time.monotonic() - loopStart < timeoutHours * 60 * 60:
+            logMetrics = time.monotonic() - lastLogTime >= LOG_INTERVAL_SECONDS
             for name, queue in benchmarkReportQueues.items():
                 report = queue.get(timeout=datetime.timedelta(minutes=1)) # 1 minute timeout
                 if report is None:
@@ -155,29 +165,34 @@ def stability_test(fps, timeoutHours=None):
                     queue.tryGetAll()
                     continue
 
-                avgLatencyMs = report.averageLatency * 1000.0
-                latencies = list(report.latencies)
-                if latencies:
-                    minLatencyMs = min(latencies) * 1000.0
-                    maxLatencyMs = max(latencies) * 1000.0
-                    jitterMs = calculate_latency_jitter(latencies) * 1000.0
-                    latencySummary = (
-                        f"latency(avg/min/max): {avgLatencyMs:.2f}/{minLatencyMs:.2f}/{maxLatencyMs:.2f} ms, "
-                        f"jitter(stddev): {jitterMs:.2f} ms"
-                    )
-                else:
-                    latencySummary = f"latency(avg): {avgLatencyMs:.2f} ms, jitter(stddev): N/A (no individual latencies attached)"
-                print(f"{name} FPS: {report.fps:.2f}, {latencySummary}. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+                if logMetrics:
+                    avgLatencyMs = report.averageLatency * 1000.0
+                    latencies = list(report.latencies)
+                    if latencies:
+                        minLatencyMs = min(latencies) * 1000.0
+                        maxLatencyMs = max(latencies) * 1000.0
+                        jitterMs = calculate_latency_jitter(latencies) * 1000.0
+                        latencySummary = (
+                            f"latency(avg/min/max): {avgLatencyMs:.2f}/{minLatencyMs:.2f}/{maxLatencyMs:.2f} ms, "
+                            f"jitter(stddev): {jitterMs:.2f} ms"
+                        )
+                    else:
+                        latencySummary = f"latency(avg): {avgLatencyMs:.2f} ms, jitter(stddev): N/A (no individual latencies attached)"
+                    print(f"{name} FPS: {report.fps:.2f}, {latencySummary}. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
                 if report.fps < (fps / 10):
                     raise RuntimeError(f"FPS dropped below {fps / 10} (FPS is {report.fps}) for {name} benchmark report")
                 queue.tryGetAll() # Clear the queue
 
-            # Detect memory leaks
-            processMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
-            if processMemoryUsage > MEMORY_LEAK_DETECTION_THRESHOLD * initialProcessMemoryUsage:
-                raise RuntimeError("Memory used by depthai-device process increased above the given threshold - potential memory leak detected")
-            print(f"Memory used by depthai-device process: {processMemoryUsage} kB. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
-            print(f"Running for {datetime.timedelta(seconds=time.time() - tStart)}", flush=True)
+            if logMetrics:
+                if baselineProcessMemoryUsage is None and time.monotonic() >= warmupEnd:
+                    baselineProcessMemoryUsage = processMemoryUsage
+                    print(f"Memory leak detection baseline frozen at the last warm-up sample: {baselineProcessMemoryUsage} kB")
+                processMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
+                print(f"Memory used by depthai-device process: {processMemoryUsage} kB. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+                print(f"Running for {datetime.timedelta(seconds=time.time() - tStart)}", flush=True)
+                lastLogTime = time.monotonic()
+                if baselineProcessMemoryUsage is not None and processMemoryUsage > MEMORY_LEAK_DETECTION_THRESHOLD * baselineProcessMemoryUsage:
+                    raise RuntimeError("Memory used by depthai-device process increased above the given threshold - potential memory leak detected")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

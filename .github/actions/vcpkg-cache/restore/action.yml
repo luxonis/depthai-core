@@ -1,0 +1,100 @@
+name: Restore vcpkg binary cache
+description: >
+  Restores the vcpkg binary cache ("files" provider) of a cache family and points vcpkg at it.
+  Pair with .github/actions/vcpkg-cache/save after the configure step.
+  Tag builds (refs/tags/*) are clean builds: the action sets VCPKG_BINARY_SOURCES=clear, restores
+  nothing and pins no tools, so every port is built from source and the save action saves nothing.
+
+inputs:
+  family:
+    description: >
+      Cache family. Jobs whose vcpkg packages have the same ABI hashes (same ports, features,
+      triplet, compiler and vcpkg tools) share one family. The key is vcpkg-<family>-<runner.os>-<run_id>-<attempt>,
+      so when a workflow uses several runner images of one OS (macos-14 and macos-15-intel), the family
+      name must include the image. Callers must not set VCPKG_BINARY_SOURCES themselves.
+    required: true
+  fallback-families:
+    description: Families to restore from when the own family has no entry (space separated, searched in order).
+    required: false
+    default: ""
+  pin-vcpkg-tools:
+    description: >
+      Set VCPKG_FORCE_DOWNLOADED_BINARIES=1 on Linux and macOS so vcpkg always uses its own CMake and Ninja.
+      The CMake version vcpkg finds is part of every package ABI hash, so jobs with different system CMake
+      versions would not share archives. Skipped when VCPKG_FORCE_SYSTEM_BINARIES is already set.
+    required: false
+    default: "true"
+
+outputs:
+  restored-key:
+    description: Key of the restored cache entry (empty on a miss).
+    value: ${{ steps.restore.outputs.cache-matched-key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare vcpkg binary cache directory
+      shell: bash
+      env:
+        PIN_TOOLS: ${{ inputs.pin-vcpkg-tools }}
+        FAMILY: ${{ inputs.family }}
+        FALLBACKS: ${{ inputs.fallback-families }}
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          echo "::notice::tag build ($GITHUB_REF): vcpkg binary cache disabled, every port is built from source."
+          echo "VCPKG_BINARY_SOURCES=clear" >> "$GITHUB_ENV"
+          echo "clean=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        dir="$RUNNER_TEMP/vcpkg-binary-cache"
+        marker="$RUNNER_TEMP/vcpkg-cache-marker"
+        if command -v cygpath >/dev/null 2>&1; then
+          # Git Bash on Windows: create with a POSIX path, publish native paths for vcpkg and actions/cache.
+          mkdir -p "$(cygpath -u "$dir")"
+          dir=$(cygpath -w "$dir")
+          marker=$(cygpath -w "$marker")
+        else
+          mkdir -p "$dir"
+        fi
+        if [[ -n "${VCPKG_BINARY_SOURCES:-}" ]]; then
+          echo "::warning::VCPKG_BINARY_SOURCES was already set ('$VCPKG_BINARY_SOURCES'); a job-level value takes precedence over this action and the cache may not be used."
+        fi
+        prefix="vcpkg-${FAMILY}-${RUNNER_OS}-"
+        {
+          echo "VCPKG_CACHE_DIR=$dir"
+          echo "VCPKG_CACHE_MARKER=$marker"
+          echo "VCPKG_CACHE_KEY=${prefix}${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "VCPKG_BINARY_SOURCES=clear;files,$dir,readwrite"
+        } >> "$GITHUB_ENV"
+        if [[ "$PIN_TOOLS" == "true" && "$RUNNER_OS" != "Windows" && -z "${VCPKG_FORCE_SYSTEM_BINARIES:-}" ]]; then
+          echo "VCPKG_FORCE_DOWNLOADED_BINARIES=1" >> "$GITHUB_ENV"
+        fi
+        {
+          echo "restore-keys<<RESTORE_KEYS"
+          echo "$prefix"
+          for f in $FALLBACKS; do echo "vcpkg-${f}-${RUNNER_OS}-"; done
+          echo "RESTORE_KEYS"
+        } >> "$GITHUB_OUTPUT"
+      id: prepare
+
+    - name: Restore vcpkg binary cache
+      id: restore
+      if: steps.prepare.outputs.clean != 'true'
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ env.VCPKG_CACHE_DIR }}
+        key: ${{ env.VCPKG_CACHE_KEY }}
+        restore-keys: ${{ steps.prepare.outputs.restore-keys }}
+
+    - name: Mark restored archives
+      if: steps.prepare.outputs.clean != 'true'
+      shell: bash
+      env:
+        MATCHED: ${{ steps.restore.outputs.cache-matched-key }}
+      run: |
+        # Archives newer than the marker were built by this job (see ci/prune_vcpkg_binary_cache.sh).
+        marker="$VCPKG_CACHE_MARKER"
+        if command -v cygpath >/dev/null 2>&1; then marker=$(cygpath -u "$marker"); fi
+        touch "$marker"
+        echo "VCPKG_CACHE_RESTORED_KEY=$MATCHED" >> "$GITHUB_ENV"
+        echo "vcpkg binary cache: restored '${MATCHED:-<none>}' into $VCPKG_CACHE_DIR (save key $VCPKG_CACHE_KEY)"

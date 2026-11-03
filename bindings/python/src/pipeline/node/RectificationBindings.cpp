@@ -28,7 +28,11 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    RectificationProperties.def_readwrite("outputWidth", &RectificationProperties::outputWidth, DOC(dai, RectificationProperties, outputWidth))
+    RectificationProperties.def(py::init<>());
+
+    RectificationProperties
+        .def_readwrite("enableRectification", &dai::RectificationProperties::enableRectification, DOC(dai, RectificationProperties, enableRectification))
+        .def_readwrite("outputWidth", &RectificationProperties::outputWidth, DOC(dai, RectificationProperties, outputWidth))
         .def_readwrite("outputHeight", &RectificationProperties::outputHeight, DOC(dai, RectificationProperties, outputHeight));
 
     // Nodes

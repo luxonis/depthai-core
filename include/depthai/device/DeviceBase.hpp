@@ -87,6 +87,14 @@ class DeviceBase {
         bool nonExclusiveMode = false;
         std::optional<LogLevel> outputLogLevel;
         std::optional<LogLevel> logLevel;
+
+        /**
+         * DANGEROUS: bypass the shared IR dot/flood power budget on RVC2 boards that enforce it, including certain EL2086 OAK-ToF variants.
+         * Individual emitter current and duty-cycle limits still apply. This flag does not turn on the emitters or control ToF illumination.
+         * The override lasts until firmware reboot. Requires supporting firmware; unsupported devices or firmware cause initialization to fail.
+         * @warning Full dot and flood power can cause power instability and device crashes.
+         */
+        bool dangerousIrPowerOverride = false;
     };
 
     // static API
@@ -201,6 +209,16 @@ class DeviceBase {
     static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 
     /**
+     * Performs a device health check
+     *
+     * @param devInfo DeviceInfo which specifies which device to check
+     * @param config Health-check steps to execute
+     * @param shouldStop stop function called in between runs. Return true to stop the health check
+     * @returns HealthCheckMetrics collected until the check completed or stopped. Steps that did not run are NOT_RUN
+     */
+    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop);
+
+    /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      */
@@ -312,6 +330,13 @@ class DeviceBase {
      * @return std::string String representation of Platform
      */
     std::string getPlatformAsString() const;
+
+    /**
+     * Get the transport protocol of the connected device.
+     *
+     * @return XLink protocol in use, such as X_LINK_USB_VSC or X_LINK_TCP_IP.
+     */
+    XLinkProtocol_t getProtocol() const;
 
     /**
      * Gets Bootloader version if it was booted through Bootloader
