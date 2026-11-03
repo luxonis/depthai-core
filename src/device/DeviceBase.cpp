@@ -2049,7 +2049,7 @@ int DeviceBase::getXLinkChunkSize() {
 }
 
 int DeviceBase::getEthernetLinkSpeed() {
-    return pimpl->rpcCall("getEthernetLinkSpeed").as<int>();
+    return pimpl->rpcCallChecked<int>("getEthernetLinkSpeed", std::string{});
 }
 
 int DeviceBase::getEthernetLinkDuplex() {
