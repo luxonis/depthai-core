@@ -24,5 +24,8 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("confidenceThreshold", &GPUStereoConfig::confidenceThreshold, DOC(dai, GPUStereoConfig, confidenceThreshold))
         .def("setComputeMode", &GPUStereoConfig::setComputeMode, py::arg("mode"), DOC(dai, GPUStereoConfig, setComputeMode))
         .def("getComputeMode", &GPUStereoConfig::getComputeMode, DOC(dai, GPUStereoConfig, getComputeMode))
-        .def_readwrite("computeMode", &GPUStereoConfig::computeMode, DOC(dai, GPUStereoConfig, computeMode));
+        .def_readwrite("computeMode", &GPUStereoConfig::computeMode, DOC(dai, GPUStereoConfig, computeMode))
+        .def("setTemporalFilter", &GPUStereoConfig::setTemporalFilter, py::arg("enable"), DOC(dai, GPUStereoConfig, setTemporalFilter))
+        .def("getTemporalFilter", &GPUStereoConfig::getTemporalFilter, DOC(dai, GPUStereoConfig, getTemporalFilter))
+        .def_readwrite("temporalFilter", &GPUStereoConfig::temporalFilter, DOC(dai, GPUStereoConfig, temporalFilter));
 }

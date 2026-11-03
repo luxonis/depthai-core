@@ -78,7 +78,7 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
      * Initial config to use for GPUStereo.
      *
      * Use this to configure startup parameters before the pipeline starts.
-     * Supported: `confidenceThreshold` and `computeMode`.
+     * Supported: `confidenceThreshold`, `computeMode` and `temporalFilter`.
      */
     std::shared_ptr<GPUStereoConfig> initialConfig = std::make_shared<GPUStereoConfig>();
 };
