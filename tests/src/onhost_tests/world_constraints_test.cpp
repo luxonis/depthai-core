@@ -108,6 +108,17 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
     REQUIRE_FALSE(node->getWorldConstraints().has_value());
 }
 
+TEST_CASE("Pipeline keeps world constraints for the implicit AutoCalibration node", "[WorldConstraints]") {
+    dai::Pipeline pipeline(false);
+    REQUIRE_FALSE(pipeline.getAutoCalibrationWorldConstraints().has_value());
+    REQUIRE_THROWS_AS(pipeline.setAutoCalibrationWorldConstraints(dai::WorldConstraints{}), std::invalid_argument);
+    pipeline.setAutoCalibrationWorldConstraintsFromJson(kWorldJson);
+    REQUIRE(pipeline.getAutoCalibrationWorldConstraints().has_value());
+    REQUIRE(pipeline.getAutoCalibrationWorldConstraints()->socketDistances[0].socket == Socket::CAM_A);
+    pipeline.clearAutoCalibrationWorldConstraints();
+    REQUIRE_FALSE(pipeline.getAutoCalibrationWorldConstraints().has_value());
+}
+
 TEST_CASE("DynamicCalibration assembles world constraints from marker observations", "[WorldConstraints]") {
     using dai::node::DclUtils;
     const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
