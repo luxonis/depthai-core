@@ -277,7 +277,83 @@ void runFourPixelProjectionTest(bool runOnHost) {
         }
     }
 }
+
+struct UnusableBoundsGeometry {
+    float focalLength;
+    float yawDegrees;
+    std::array<float, 3> translation;
+};
+
+// Each geometry makes the expanded rectified bounds unusable: a wide lens with a large rotation, a 90 deg rotation, or a wide lens
+// with the baseline turned 45 deg in depth (a broken stereo extrinsic in the EEPROM can turn the baseline like this).
+const std::array<UnusableBoundsGeometry, 3> unusableBoundsGeometries = {{
+    {20.0f, 40.0f, {70.0f, 0.0f, 0.0f}},
+    {64.0f, 90.0f, {70.0f, 0.0f, 0.0f}},
+    {20.0f, 0.0f, {50.0f, 0.0f, -50.0f}},
+}};
+
+void runAlignUnusableBoundsTest(bool runOnHost) {
+    const std::vector<std::vector<float>> identity = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    for(const auto& geometry : unusableBoundsGeometries) {
+        CAPTURE(geometry.focalLength, geometry.yawDegrees, geometry.translation[0], geometry.translation[2]);
+        const float f = geometry.focalLength;
+        const std::array<std::array<float, 3>, 3> k = {{{f, 0.0f, 32.0f}, {0.0f, f, 24.0f}, {0.0f, 0.0f, 1.0f}}};
+        const float angle = geometry.yawDegrees * 3.14159265f / 180.0f;
+        const std::vector<std::vector<float>> rotation = {
+            {std::cos(angle), 0.0f, std::sin(angle)}, {0.0f, 1.0f, 0.0f}, {-std::sin(angle), 0.0f, std::cos(angle)}};
+        const dai::Point3f translation(geometry.translation[0], geometry.translation[1], geometry.translation[2]);
+        const dai::Extrinsics depthExtrinsics(rotation, translation, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::Extrinsics imageExtrinsics(identity, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::ImgTransformation depthTransformation(64, 48, k, dai::CameraModel::Perspective, {}, depthExtrinsics);
+        const dai::ImgTransformation imageTransformation(64, 48, k, dai::CameraModel::Perspective, {}, imageExtrinsics);
+
+        dai::Pipeline pipeline(!runOnHost);
+        auto align = pipeline.create<dai::node::Align>();
+        align->setRunOnHost(runOnHost);
+        auto depthQueue = align->input.createInputQueue();
+        auto imageQueue = align->inputAlignTo.createInputQueue();
+        auto outputQueue = align->outputAligned.createOutputQueue();
+
+        auto depth = std::make_shared<dai::ImgFrame>();
+        depth->setType(dai::ImgFrame::Type::RAW16);
+        depth->setSize(64, 48);
+        depth->setInstanceNum(static_cast<unsigned int>(dai::CameraBoardSocket::CAM_B));
+        depth->setTransformation(depthTransformation);
+        std::vector<uint8_t> pixels(64 * 48 * 2);
+        for(size_t i = 0; i < pixels.size(); i += 2) {
+            pixels[i] = static_cast<uint8_t>(1000 & 0xff);
+            pixels[i + 1] = static_cast<uint8_t>(1000 >> 8);
+        }
+        depth->setData(std::move(pixels));
+        auto image = std::make_shared<dai::ImgFrame>();
+        image->setType(dai::ImgFrame::Type::GRAY8);
+        image->setSize(64, 48);
+        image->setInstanceNum(static_cast<unsigned int>(dai::CameraBoardSocket::CAM_A));
+        image->setTransformation(imageTransformation);
+        image->setData(std::vector<uint8_t>(64 * 48));
+
+        pipeline.start();
+        imageQueue->send(image);
+        depthQueue->send(depth);
+        // The node falls back to the input-size canvas and keeps running, instead of stopping the pipeline.
+        bool timedOut = false;
+        auto aligned = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(10), timedOut);
+        pipeline.stop();
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(aligned != nullptr);
+        REQUIRE(aligned->getWidth() == 64);
+        REQUIRE(aligned->getHeight() == 48);
+    }
+}
 }  // namespace
+
+TEST_CASE("Test Align falls back to the input canvas for unusable rectified bounds on host") {
+    runAlignUnusableBoundsTest(true);
+}
+
+TEST_CASE("Test Align falls back to the input canvas for unusable rectified bounds on device") {
+    runAlignUnusableBoundsTest(false);
+}
 
 TEST_CASE("Test Align preserves rotated depth coverage on host") {
     runRotatedCoverageTest(true);
@@ -330,13 +406,13 @@ TEST_CASE("Test alignment rejects unsafe rectified bounds") {
         const cv::Mat translation = (cv::Mat_<double>(3, 1) << 70, 0, 0);
         cv::Mat r1, r2, p1, p2, q;
         cv::stereoRectify(k, distortion, k, distortion, {64, 48}, rotation, translation, r1, r2, p1, p2, q);
-        REQUIRE_THROWS_AS(dai::detail::rectifiedBounds({64, 48}, k, distortion, r1, {64, 48}, k, r2), std::runtime_error);
+        REQUIRE(dai::detail::rectifiedBounds({64, 48}, k, distortion, r1, {64, 48}, k, r2) == cv::Rect(0, 0, 64, 48));
     }
     // Chroma padding can exceed the pixel budget even when the unpadded size fits.
-    REQUIRE_NOTHROW(dai::detail::validateRectifiedSize(4095, 4097));
-    REQUIRE_THROWS_AS(dai::detail::validateRectifiedSize(4096, 4098), std::runtime_error);
-    REQUIRE_THROWS_AS(dai::detail::validateRectifiedSize(0, 48), std::runtime_error);
-    REQUIRE_THROWS_AS(dai::detail::validateRectifiedSize(16385, 1), std::runtime_error);
+    REQUIRE(dai::detail::isRectifiedSizeSupported(4095, 4097));
+    REQUIRE_FALSE(dai::detail::isRectifiedSizeSupported(4096, 4098));
+    REQUIRE_FALSE(dai::detail::isRectifiedSizeSupported(0, 48));
+    REQUIRE_FALSE(dai::detail::isRectifiedSizeSupported(16385, 1));
 }
 
 TEST_CASE("Test alignment rejects rectified rays behind the camera") {
@@ -350,8 +426,8 @@ TEST_CASE("Test alignment rejects rectified rays behind the camera") {
             const double angle = yaw * CV_PI / 180;
             cv::Mat rotation = (cv::Mat_<double>(3, 3) << std::cos(angle), 0, std::sin(angle), 0, 1, 0, -std::sin(angle), 0, std::cos(angle));
             rotation.convertTo(rotation, type);
-            REQUIRE_THROWS_AS(dai::detail::rectifiedBounds({64, 48}, k, {}, rotation, {64, 48}, k, identity), std::runtime_error);
-            REQUIRE_THROWS_AS(dai::detail::rectifiedBounds({64, 48}, k, {}, identity, {64, 48}, k, rotation), std::runtime_error);
+            REQUIRE(dai::detail::rectifiedBounds({64, 48}, k, {}, rotation, {64, 48}, k, identity) == cv::Rect(0, 0, 64, 48));
+            REQUIRE(dai::detail::rectifiedBounds({64, 48}, k, {}, identity, {64, 48}, k, rotation) == cv::Rect(0, 0, 64, 48));
         }
     }
 }
@@ -387,5 +463,5 @@ TEST_CASE("Test alignment rejects rectified rays too close to the horizon") {
     const double angle = std::acos(5e-7);
     const cv::Mat rotation = (cv::Mat_<double>(3, 3) << std::cos(angle), 0, std::sin(angle), 0, 1, 0, -std::sin(angle), 0, std::cos(angle));
     // The tiny projection focal length keeps pixel coordinates in range despite near-zero ray depth.
-    REQUIRE_THROWS_AS(dai::detail::rectifiedBounds({64, 48}, sourceK, {}, identity, {64, 48}, targetK, rotation), std::runtime_error);
+    REQUIRE(dai::detail::rectifiedBounds({64, 48}, sourceK, {}, identity, {64, 48}, targetK, rotation) == cv::Rect(0, 0, 64, 48));
 }
