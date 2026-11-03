@@ -93,6 +93,17 @@ TEST_CASE("SceneMarkerConstraints rejects malformed input", "[SceneMarkerConstra
     REQUIRE_FALSE(node->getSceneConstraints().has_value());
 }
 
+TEST_CASE("Pipeline keeps scene constraints for the implicit AutoCalibration node", "[SceneMarkerConstraints]") {
+    dai::Pipeline pipeline(false);
+    REQUIRE_FALSE(pipeline.getAutoCalibrationSceneConstraints().has_value());
+    REQUIRE_THROWS_AS(pipeline.setAutoCalibrationSceneConstraints(dai::SceneMarkerConstraints{}), std::invalid_argument);
+    pipeline.setAutoCalibrationSceneConstraintsFromJson(kSceneJson);
+    REQUIRE(pipeline.getAutoCalibrationSceneConstraints().has_value());
+    REQUIRE(pipeline.getAutoCalibrationSceneConstraints()->socketDistances[0].socket == Socket::CAM_A);
+    pipeline.clearAutoCalibrationSceneConstraints();
+    REQUIRE_FALSE(pipeline.getAutoCalibrationSceneConstraints().has_value());
+}
+
 TEST_CASE("DynamicCalibration assembles world constraints from marker observations", "[SceneMarkerConstraints]") {
     using dai::node::DclUtils;
     const auto constraints = dai::SceneMarkerConstraints::fromJsonString(kSceneJson);

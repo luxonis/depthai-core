@@ -137,6 +137,11 @@ Mean Sampson error current    = 0.38 px
 }
 ```
 
+The same description can be handed to the implicit `AutoCalibration` node that a plain pipeline creates at
+build time, without creating any node: `pipeline.setAutoCalibrationSceneConstraintsFromFile("scene_constraints.json")`
+(also `setAutoCalibrationSceneConstraints(SceneMarkerConstraints)` / `...FromJson`), together with
+`pipeline.setAutoCalibrationMode(dai.Pipeline.AutoCalibrationMode.CONTINUOUS)` or the `DEPTHAI_AUTOCALIBRATION` variable.
+
 Either list may be left empty. A socket that is not an image input (`CAM_A` above with a `CAM_B`/`CAM_C`
 pair) is used through its current calibration. Marker size does not matter, only the centers are used, and a
 marker needs to be visible in at least two of the calibrated cameras.

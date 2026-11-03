@@ -3,6 +3,7 @@
 
 // standard
 #include <chrono>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <thread>
@@ -24,6 +25,7 @@
 
 // shared
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/SceneMarkerConstraints.hpp"
 #include "depthai/device/BoardConfig.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
@@ -140,6 +142,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair(const std::shared_ptr<Device>& device) const;
     bool hasDynamicCalibration() const;
     PipelineAutoCalibrationMode getAutoCalibrationMode() const;
+    void setAutoCalibrationSceneConstraints(const SceneMarkerConstraints& constraints);
+    void clearAutoCalibrationSceneConstraints();
+    std::optional<SceneMarkerConstraints> getAutoCalibrationSceneConstraints() const;
 
     BoardConfig getBoardConfig() const;
 
@@ -199,6 +204,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Build-time automatic calibration policy for implicit AutoCalibration node creation.
     PipelineAutoCalibrationMode autoCalibrationMode = PipelineAutoCalibrationMode::ON_START;
     bool autoCalibrationModeSetByApi = false;
+    // Scene markers handed to the implicit AutoCalibration node, see Pipeline::setAutoCalibrationSceneConstraints().
+    std::optional<SceneMarkerConstraints> autoCalibrationSceneConstraints;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
@@ -756,6 +763,29 @@ class Pipeline {
     /// Gets implicit automatic calibration policy for this pipeline.
     AutoCalibrationMode getAutoCalibrationMode() const {
         return impl()->getAutoCalibrationMode();
+    }
+
+    /**
+     * Gives the implicit AutoCalibration node (see setAutoCalibrationMode()) a metric reference through markers in
+     * the scene, see node::DynamicCalibration::setSceneConstraints(). Has no effect on nodes the user creates; set
+     * before the pipeline is built.
+     */
+    void setAutoCalibrationSceneConstraints(const SceneMarkerConstraints& constraints) {
+        impl()->setAutoCalibrationSceneConstraints(constraints);
+    }
+    /// Same as setAutoCalibrationSceneConstraints() with the JSON form described in SceneMarkerConstraints.
+    void setAutoCalibrationSceneConstraintsFromJson(const std::string& json) {
+        impl()->setAutoCalibrationSceneConstraints(SceneMarkerConstraints::fromJsonString(json));
+    }
+    /// Same as setAutoCalibrationSceneConstraints() with the JSON form read from a file.
+    void setAutoCalibrationSceneConstraintsFromFile(const std::filesystem::path& path) {
+        impl()->setAutoCalibrationSceneConstraints(SceneMarkerConstraints::fromFile(path));
+    }
+    void clearAutoCalibrationSceneConstraints() {
+        impl()->clearAutoCalibrationSceneConstraints();
+    }
+    std::optional<SceneMarkerConstraints> getAutoCalibrationSceneConstraints() const {
+        return impl()->getAutoCalibrationSceneConstraints();
     }
 
     /// Gets board configuration

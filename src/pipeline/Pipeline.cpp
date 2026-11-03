@@ -848,6 +848,24 @@ PipelineAutoCalibrationMode PipelineImpl::getAutoCalibrationMode() const {
     return autoCalibrationMode;
 }
 
+void PipelineImpl::setAutoCalibrationSceneConstraints(const SceneMarkerConstraints& constraints) {
+    DAI_CHECK_V(!isBuilt(), "Cannot change the auto calibration scene constraints once the pipeline is built.");
+    constraints.validate();
+    if(constraints.empty()) {
+        throw std::invalid_argument("Pipeline::setAutoCalibrationSceneConstraints: at least one marker or socket distance is required");
+    }
+    autoCalibrationSceneConstraints = constraints;
+}
+
+void PipelineImpl::clearAutoCalibrationSceneConstraints() {
+    DAI_CHECK_V(!isBuilt(), "Cannot change the auto calibration scene constraints once the pipeline is built.");
+    autoCalibrationSceneConstraints.reset();
+}
+
+std::optional<SceneMarkerConstraints> PipelineImpl::getAutoCalibrationSceneConstraints() const {
+    return autoCalibrationSceneConstraints;
+}
+
 BoardConfig PipelineImpl::getBoardConfig() const {
     return board;
 }
@@ -1438,6 +1456,12 @@ void PipelineImpl::build() {
             if(stereoPair.first && stereoPair.second && hasStereoPairValidCalibration(autoCalibDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this(), autoCalibDevice)->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
+                if(autoCalibrationSceneConstraints) {
+                    autoCalibrationNode->setSceneConstraints(*autoCalibrationSceneConstraints);
+                    Logging::getInstance().logger.info("AutoCalibration uses scene marker constraints ({} marker distances, {} socket distances)",
+                                                       autoCalibrationSceneConstraints->markerDistances.size(),
+                                                       autoCalibrationSceneConstraints->socketDistances.size());
+                }
 
                 // Build-time flash safety: disable flashing when runtime calibration differs from EEPROM.
                 const auto runtimeCalibration = autoCalibDevice->tryGetCalibration();
