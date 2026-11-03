@@ -157,7 +157,14 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              py::arg("align"),
              DOC(dai, node, StereoDepth, setDepthAlign))
         .def("setDepthAlign",
-             static_cast<void (StereoDepth::*)(CameraBoardSocket)>(&StereoDepth::setDepthAlign),
+             [](StereoDepth& self, CameraBoardSocket camera) {
+                 if(PyErr_WarnEx(PyExc_DeprecationWarning,
+                                 "setDepthAlign(CameraBoardSocket) is deprecated. Link the target image stream to inputAlignTo instead.",
+                                 1) < 0) {
+                     throw py::error_already_set();
+                 }
+                 self.setDepthAlign(camera);
+             },
              py::arg("camera"),
              DOC(dai, node, StereoDepth, setDepthAlign, 2))
         .def("setRectification", &StereoDepth::setRectification, py::arg("enable"), DOC(dai, node, StereoDepth, setRectification))
