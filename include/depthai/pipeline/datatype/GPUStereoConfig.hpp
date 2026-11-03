@@ -35,6 +35,13 @@ class GPUStereoConfig : public Buffer {
      */
     ComputeMode computeMode = ComputeMode::GPU_CPU;
 
+    /**
+     * Temporal filter (default on): each frame is blended with the node's previous output. Pixels that agree
+     * with it are smoothed and gain confidence (steadier, fuller depth on static scenes); pixels that disagree
+     * (motion) keep their single-frame confidence. Off: every frame is independent. Applied at startup.
+     */
+    bool temporalFilter = true;
+
     GPUStereoConfig() = default;
     virtual ~GPUStereoConfig();
 
@@ -61,9 +68,19 @@ class GPUStereoConfig : public Buffer {
      */
     ComputeMode getComputeMode() const;
 
+    /**
+     * @brief Enable or disable the temporal filter (default enabled).
+     */
+    GPUStereoConfig& setTemporalFilter(bool enable);
+
+    /**
+     * @brief Whether the temporal filter is enabled.
+     */
+    bool getTemporalFilter() const;
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(GPUStereoConfig, confidenceThreshold, computeMode);
+    DEPTHAI_SERIALIZE(GPUStereoConfig, confidenceThreshold, computeMode, temporalFilter);
 };
 
 }  // namespace dai

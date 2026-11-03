@@ -37,6 +37,14 @@ TEST_CASE("GPUStereo compute mode defaults to GPU_CPU and is settable", "[GPUSte
     REQUIRE(node->initialConfig->getComputeMode() == dai::GPUStereoConfig::ComputeMode::GPU_ONLY);
 }
 
+TEST_CASE("GPUStereo temporal filter defaults to on and is settable", "[GPUStereo]") {
+    auto node = dai::node::GPUStereo::create();
+    REQUIRE(node->initialConfig->getTemporalFilter() == true);
+
+    node->initialConfig->setTemporalFilter(false);
+    REQUIRE(node->initialConfig->getTemporalFilter() == false);
+}
+
 TEST_CASE("GPUStereo confidence threshold is clamped to [0, 255]", "[GPUStereo]") {
     auto node = dai::node::GPUStereo::create();
 
