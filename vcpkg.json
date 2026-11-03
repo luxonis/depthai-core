@@ -148,6 +148,14 @@
                 {
                     "name": "rtabmap",
                     "default-features": false
+                },
+                {
+                    "$comment": "rtabmap -> g2o/ceres -> lapack -> blas pulls in OpenBLAS. Without DYNAMIC_ARCH, OpenBLAS builds only for the CPU of the build machine, and 0.3.29 fails to compile on Emerald Rapids CI runners.",
+                    "name": "openblas",
+                    "features": [
+                        "dynamic-arch"
+                    ],
+                    "platform": "linux & x64"
                 }
             ]
         },
