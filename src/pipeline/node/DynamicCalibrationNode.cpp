@@ -1,15 +1,21 @@
 #include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
+#include "utility/ErrorMacros.hpp"
+#include "utility/Logging.hpp"
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/opencv.hpp>
 #endif
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
+#include <limits>
 #include <map>
 #include <mutex>
 #include <optional>
 #include <pipeline/ThreadedNodeImpl.hpp>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -262,6 +268,32 @@ DynamicCalibration::Properties& DynamicCalibration::getProperties() {
     return properties;
 }
 
+void DynamicCalibration::setWorldConstraints(const WorldConstraints& constraints) {
+    DAI_CHECK_V(!getParentPipeline().isBuilt(), "DynamicCalibration::setWorldConstraints: cannot change the world constraints once the pipeline is built");
+    constraints.validate();
+    if(constraints.empty()) {
+        throw std::invalid_argument("DynamicCalibration::setWorldConstraints: at least one marker or socket distance is required");
+    }
+    properties.worldConstraints = constraints;
+}
+
+void DynamicCalibration::setWorldConstraintsFromJson(const std::string& json) {
+    setWorldConstraints(WorldConstraints::fromJsonString(json));
+}
+
+void DynamicCalibration::setWorldConstraintsFromFile(const std::filesystem::path& path) {
+    setWorldConstraints(WorldConstraints::fromFile(path));
+}
+
+void DynamicCalibration::clearWorldConstraints() {
+    DAI_CHECK_V(!getParentPipeline().isBuilt(), "DynamicCalibration::clearWorldConstraints: cannot change the world constraints once the pipeline is built");
+    properties.worldConstraints.reset();
+}
+
+std::optional<WorldConstraints> DynamicCalibration::getWorldConstraints() const {
+    return properties.worldConstraints;
+}
+
 const DynamicCalibration::ConnectedSensor* DynamicCalibration::findConnectedSensor(CameraBoardSocket socket) const {
     const auto it = std::find_if(connectedSensors.begin(), connectedSensors.end(), [socket](const ConnectedSensor& sensor) { return sensor.socket == socket; });
     return it != connectedSensors.end() ? &(*it) : nullptr;
@@ -355,6 +387,145 @@ dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai:
         default:
             throw std::invalid_argument("Unknown PerformanceMode");
     }
+}
+
+dcl::ArucoDictionary DclUtils::toDclArucoDictionary(ArucoDictionary dictionary) {
+    switch(dictionary) {
+        case ArucoDictionary::DICT_4X4_50:
+            return dcl::ArucoDictionary::DICT_4X4_50;
+        case ArucoDictionary::DICT_4X4_100:
+            return dcl::ArucoDictionary::DICT_4X4_100;
+        case ArucoDictionary::DICT_4X4_250:
+            return dcl::ArucoDictionary::DICT_4X4_250;
+        case ArucoDictionary::DICT_4X4_1000:
+            return dcl::ArucoDictionary::DICT_4X4_1000;
+        case ArucoDictionary::DICT_5X5_50:
+            return dcl::ArucoDictionary::DICT_5X5_50;
+        case ArucoDictionary::DICT_5X5_100:
+            return dcl::ArucoDictionary::DICT_5X5_100;
+        case ArucoDictionary::DICT_5X5_250:
+            return dcl::ArucoDictionary::DICT_5X5_250;
+        case ArucoDictionary::DICT_5X5_1000:
+            return dcl::ArucoDictionary::DICT_5X5_1000;
+        case ArucoDictionary::DICT_6X6_50:
+            return dcl::ArucoDictionary::DICT_6X6_50;
+        case ArucoDictionary::DICT_6X6_100:
+            return dcl::ArucoDictionary::DICT_6X6_100;
+        case ArucoDictionary::DICT_6X6_250:
+            return dcl::ArucoDictionary::DICT_6X6_250;
+        case ArucoDictionary::DICT_6X6_1000:
+            return dcl::ArucoDictionary::DICT_6X6_1000;
+        case ArucoDictionary::DICT_7X7_50:
+            return dcl::ArucoDictionary::DICT_7X7_50;
+        case ArucoDictionary::DICT_7X7_100:
+            return dcl::ArucoDictionary::DICT_7X7_100;
+        case ArucoDictionary::DICT_7X7_250:
+            return dcl::ArucoDictionary::DICT_7X7_250;
+        case ArucoDictionary::DICT_7X7_1000:
+            return dcl::ArucoDictionary::DICT_7X7_1000;
+        case ArucoDictionary::DICT_ARUCO_ORIGINAL:
+            return dcl::ArucoDictionary::DICT_ARUCO_ORIGINAL;
+        case ArucoDictionary::DICT_APRILTAG_16h5:
+            return dcl::ArucoDictionary::DICT_APRILTAG_16h5;
+        case ArucoDictionary::DICT_APRILTAG_25h9:
+            return dcl::ArucoDictionary::DICT_APRILTAG_25h9;
+        case ArucoDictionary::DICT_APRILTAG_36h10:
+            return dcl::ArucoDictionary::DICT_APRILTAG_36h10;
+        case ArucoDictionary::DICT_APRILTAG_36h11:
+            return dcl::ArucoDictionary::DICT_APRILTAG_36h11;
+        default:
+            throw std::invalid_argument("Unknown ArucoDictionary");
+    }
+}
+
+dcl::MarkerSpec DclUtils::toDclMarkerSpec(const WorldConstraints& constraints) {
+    dcl::MarkerSpec spec;
+    switch(constraints.markerType) {
+        case MarkerType::ARUCO:
+            spec.type = dcl::MarkerType::ARUCO;
+            spec.arucoDictionary = toDclArucoDictionary(constraints.arucoDictionary);
+            return spec;
+    }
+    throw std::invalid_argument("DynamicCalibration: marker type " + toString(constraints.markerType) + " has no detector");
+}
+
+std::map<int32_t, std::array<float, 2>> DclUtils::detectMarkerCenters(const dcl::ImageData& image, const WorldConstraints& constraints) {
+    std::map<int32_t, std::array<float, 2>> centers;
+    auto detections = dcl::detectMarkers(image, toDclMarkerSpec(constraints));
+    if(!detections.passed()) {
+        static std::once_flag reported;
+        std::call_once(
+            reported, [&] { Logging::getInstance().logger.warn("Marker detection failed, world constraints are not applied: {}", detections.errorMessage()); });
+        return centers;
+    }
+    const auto wanted = constraints.referencedMarkerIds();
+    std::set<int32_t> ambiguous;
+    for(const auto& detection : detections.value) {
+        if(!std::binary_search(wanted.begin(), wanted.end(), detection.id) || ambiguous.count(detection.id) != 0) {
+            continue;
+        }
+        // A marker id that appears more than once in one image is ambiguous: drop it.
+        if(centers.count(detection.id) != 0) {
+            centers.erase(detection.id);
+            ambiguous.insert(detection.id);
+            continue;
+        }
+        centers[detection.id] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
+    }
+    return centers;
+}
+
+dcl::WorldConstraints DclUtils::buildWorldConstraints(const WorldConstraints& constraints,
+                                                      const std::deque<MarkerObservationSet>& observationSets,
+                                                      const std::function<std::shared_ptr<const dcl::CameraSensorHandle>(CameraBoardSocket)>& sensorForSocket,
+                                                      WorldConstraintsSummary* summary) {
+    dcl::WorldConstraints world;
+    WorldConstraintsSummary counts;
+    for(const auto& set : observationSets) {
+        std::map<int32_t, size_t> pointIndexOfMarker;
+        for(const auto& [markerId, centers] : set.centers) {
+            dcl::WorldPoint point;
+            for(const auto& [socket, center] : centers) {
+                auto sensor = sensorForSocket(socket);
+                if(!sensor) {
+                    continue;
+                }
+                point.observations.push_back({sensor, {static_cast<double>(center[0]), static_cast<double>(center[1])}});
+            }
+            if(point.observations.size() < 2) {
+                continue;
+            }
+            pointIndexOfMarker[markerId] = world.points.size();
+            world.points.push_back(std::move(point));
+        }
+        if(pointIndexOfMarker.empty()) {
+            continue;
+        }
+        ++counts.observationSets;
+        for(const auto& distance : constraints.markerDistances) {
+            const auto itA = pointIndexOfMarker.find(distance.markerA);
+            const auto itB = pointIndexOfMarker.find(distance.markerB);
+            if(itA == pointIndexOfMarker.end() || itB == pointIndexOfMarker.end()) {
+                continue;
+            }
+            world.pointDistances.push_back({itA->second, itB->second, static_cast<double>(distance.distanceMeters)});
+        }
+        for(const auto& distance : constraints.socketDistances) {
+            const auto it = pointIndexOfMarker.find(distance.marker);
+            auto sensor = sensorForSocket(distance.socket);
+            if(it == pointIndexOfMarker.end() || !sensor) {
+                continue;
+            }
+            world.sensorDistances.push_back({it->second, sensor, static_cast<double>(distance.distanceMeters)});
+        }
+    }
+    counts.points = world.points.size();
+    counts.pointDistances = world.pointDistances.size();
+    counts.sensorDistances = world.sensorDistances.size();
+    if(summary) {
+        *summary = counts;
+    }
+    return world;
 }
 
 #define DCL_PERSPECTIVE_DISTORTION_SIZE (14)
@@ -463,10 +634,12 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
     }
     calibrationHandler = handler;
 
-    for(const auto& sensor : connectedSensors) {
-        auto calibration =
-            DclUtils::convertDaiCalibrationToDcl(handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel);
-        pimplDCL->dynCalibImpl.setCalibration(sensor.sensorDcl, calibration);
+    for(const auto* sensors : {&connectedSensors, &auxiliarySensors}) {
+        for(const auto& sensor : *sensors) {
+            auto calibration =
+                DclUtils::convertDaiCalibrationToDcl(handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel);
+            pimplDCL->dynCalibImpl.setCalibration(sensor.sensorDcl, calibration);
+        }
     }
 
     auto& telemetryState = *pimplDCL->telemetryAggregateState;
@@ -566,7 +739,33 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                       productName,
                       boardName);
     }
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges, *pimplDCL->perpendicularOpticalAxis);
+    // Marker distances give the baseline lengths a metric reference that the image features cannot provide.
+    dcl::WorldConstraints worldConstraints;
+    if(properties.worldConstraints && !markerObservations.empty()) {
+        const auto sensorForSocket = [this](CameraBoardSocket socket) -> std::shared_ptr<const dcl::CameraSensorHandle> {
+            if(const auto* sensor = findConnectedSensor(socket)) {
+                return sensor->sensorDcl;
+            }
+            for(const auto& sensor : auxiliarySensors) {
+                if(sensor.socket == socket) {
+                    return sensor.sensorDcl;
+                }
+            }
+            return nullptr;
+        };
+        DclUtils::WorldConstraintsSummary summary;
+        worldConstraints = DclUtils::buildWorldConstraints(*properties.worldConstraints, markerObservations, sensorForSocket, &summary);
+        logger->info("Marker constraints: {} frame sets, {} scene points, {} marker distances, {} socket distances",
+                     summary.observationSets,
+                     summary.points,
+                     summary.pointDistances,
+                     summary.sensorDistances);
+    } else if(properties.worldConstraints) {
+        logger->debug("Marker constraints configured but no marker was seen by two cameras yet, calibrating without a metric reference");
+    }
+
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(
+        syncedSensors, pm, keepCameraCenters, keptBaselineEdges, *pimplDCL->perpendicularOpticalAxis, worldConstraints);
     if(!dclResult.passed()) {
         if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
             logger->info("Calibration failed: {}", dclResult.errorMessage());
@@ -585,6 +784,33 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     std::map<CameraBoardSocket, std::vector<std::vector<float>>> calibratedPoses;
     for(size_t idx = 0; idx < connectedSensors.size(); ++idx) {
         calibratedPoses.emplace(connectedSensors[idx].socket, DclUtils::calibrationHandleToTransform(dclResult.value.calibrations[idx]));
+    }
+    if(!worldConstraints.empty()) {
+        // The metric reference turns cameras in place: report that the baselines stayed and how much the pairs turned.
+        const auto cameraCenter = [](std::vector<std::vector<float>> baseToCamera) {
+            matrix::invertSe3Matrix4x4InPlace(baseToCamera);
+            return matrix::extractTranslationVector(baseToCamera);
+        };
+        for(const auto& [sensorPair, rotationChange] : dclResult.value.pairwiseRotationDifference) {
+            const auto sensorA =
+                std::find_if(connectedSensors.begin(), connectedSensors.end(), [&](const ConnectedSensor& s) { return s.sensorDcl == sensorPair.first; });
+            const auto sensorB =
+                std::find_if(connectedSensors.begin(), connectedSensors.end(), [&](const ConnectedSensor& s) { return s.sensorDcl == sensorPair.second; });
+            if(sensorA == connectedSensors.end() || sensorB == connectedSensors.end() || rotationChange.size() < 3) {
+                continue;
+            }
+            const auto centerA = cameraCenter(calibratedPoses.at(sensorA->socket));
+            const auto centerB = cameraCenter(calibratedPoses.at(sensorB->socket));
+            const float baseline = std::sqrt((centerA[0] - centerB[0]) * (centerA[0] - centerB[0]) + (centerA[1] - centerB[1]) * (centerA[1] - centerB[1])
+                                             + (centerA[2] - centerB[2]) * (centerA[2] - centerB[2]));
+            logger->info("Marker constraints: {}-{} relative rotation changed by ({:.4f}, {:.4f}, {:.4f}) deg, baseline kept at {:.4f} m",
+                         toString(sensorA->socket),
+                         toString(sensorB->socket),
+                         rotationChange[0],
+                         rotationChange[1],
+                         rotationChange[2],
+                         baseline);
+        }
     }
 
     // Factory data is only needed to place cameras that DCL did not observe.
@@ -702,6 +928,28 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 
         cv::Mat cvFrame = frame->getCvFrame();
         images.emplace_back(sensor.sensorDcl, DclUtils::cvMatToImageData(cvFrame));
+    }
+
+    if(properties.worldConstraints) {
+        MarkerObservationSet observations;
+        for(size_t idx = 0; idx < images.size(); ++idx) {
+            for(const auto& [markerId, center] : DclUtils::detectMarkerCenters(images[idx].second, *properties.worldConstraints)) {
+                observations.centers[markerId][connectedSensors[idx].socket] = center;
+            }
+        }
+        size_t usableMarkers = 0;
+        for(const auto& [markerId, centers] : observations.centers) {
+            if(centers.size() >= 2) {
+                ++usableMarkers;
+            }
+        }
+        logger->trace("Markers seen by at least two cameras in this image set: {}", usableMarkers);
+        if(usableMarkers > 0) {
+            markerObservations.push_back(std::move(observations));
+            while(markerObservations.size() > properties.worldConstraints->maxObservationSets) {
+                markerObservations.pop_front();
+            }
+        }
     }
 
     auto loadResult = pimplDCL->dynCalibImpl.loadImages(images, timestamp);
@@ -859,6 +1107,55 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
     logger->trace("Added {} sensors to dynCalibImpl", connectedSensors.size());
 
+    auxiliarySensors.clear();
+    markerObservations.clear();
+    if(properties.worldConstraints) {
+        const auto auxiliaryResult = initializeAuxiliarySensors(eepromData);
+        if(auxiliaryResult != DynamicCalibration::ErrorCode::OK) {
+            return auxiliaryResult;
+        }
+    }
+
+    return DynamicCalibration::ErrorCode::OK;
+}
+
+DynamicCalibration::ErrorCode DynamicCalibration::initializeAuxiliarySensors(const EepromData& eepromData) {
+    const auto& constraints = *properties.worldConstraints;
+    try {
+        constraints.validate();
+    } catch(const std::exception& ex) {
+        logger->error("Invalid marker constraints: {}", ex.what());
+        return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+    }
+    for(const auto socket : constraints.referencedSockets()) {
+        if(findConnectedSensor(socket) != nullptr) {
+            continue;
+        }
+        const auto cameraIt = eepromData.cameraData.find(socket);
+        if(cameraIt == eepromData.cameraData.end() || std::find(socketsInHandler.begin(), socketsInHandler.end(), socket) == socketsInHandler.end()) {
+            logger->error("Marker constraints refer to socket {} which has no calibration on this device", toString(socket));
+            return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+        }
+        const auto& info = cameraIt->second;
+        ConnectedSensor sensor{socket,
+                               info.intrinsicMatrix,
+                               info.distortionCoeff,
+                               info.cameraType,
+                               std::make_pair(static_cast<int>(info.width), static_cast<int>(info.height)),
+                               nullptr};
+        dcl::resolution_t resolutionDcl{static_cast<unsigned>(std::max(1, sensor.resolution.first)),
+                                        static_cast<unsigned>(std::max(1, sensor.resolution.second))};
+        auto calibration = DclUtils::convertDaiCalibrationToDcl(
+            calibrationHandler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel);
+        sensor.sensorDcl = pimplDCL->dynCalibImpl.addSensor(pimplDCL->device, calibration, resolutionDcl);
+        auxiliarySensors.push_back(std::move(sensor));
+        logger->debug("Marker constraints: socket {} is not an image input, using its current pose", toString(socket));
+    }
+    logger->info("Marker constraints active: {} markers, {} marker distances, {} socket distances, {} auxiliary sockets",
+                 constraints.referencedMarkerIds().size(),
+                 constraints.markerDistances.size(),
+                 constraints.socketDistances.size(),
+                 auxiliarySensors.size());
     return DynamicCalibration::ErrorCode::OK;
 }
 
@@ -962,6 +1259,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
                 pimplDCL->dynCalibImpl.removeAllData(connectedSensors[i].sensorDcl, connectedSensors[j].sensorDcl);
             }
         }
+        markerObservations.clear();
         return ErrorCode::OK;
     }
     // Set performance mode

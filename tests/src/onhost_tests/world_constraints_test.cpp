@@ -1,0 +1,230 @@
+#include <array>
+#include <catch2/catch_all.hpp>
+#include <depthai/depthai.hpp>
+#include <memory>
+
+#include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
+
+namespace {
+using Socket = dai::CameraBoardSocket;
+
+const char* kWorldJson = R"({
+    "markerType": "aruco",
+    "arucoDictionary": "DICT_4X4_50",
+    "lengthUnit": "cm",
+    "markers": [37, 43],
+    "markerDistances": [{"markers": [37, 43], "distance": 84}],
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 168}]
+})";
+
+std::shared_ptr<dcl::CameraCalibrationHandle> dclCalibration(double x) {
+    const dcl::scalar_t rotation[3] = {0.0, 0.0, 0.0};
+    const dcl::scalar_t translation[3] = {x, 0.0, 0.0};
+    const dcl::scalar_t cameraMatrix[9] = {500.0, 0.0, 320.0, 0.0, 500.0, 240.0, 0.0, 0.0, 1.0};
+    dcl::scalar_t distortion[14] = {0.0};
+    return std::make_shared<dcl::CameraCalibrationHandle>(rotation, translation, cameraMatrix, dcl::PerspectiveDistortion::fromArray(distortion));
+}
+}  // namespace
+
+TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints]") {
+    const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
+    REQUIRE(constraints.markerType == dai::MarkerType::ARUCO);
+    REQUIRE(constraints.arucoDictionary == dai::ArucoDictionary::DICT_4X4_50);
+    REQUIRE(constraints.markerIds == std::vector<int32_t>{37, 43});
+    REQUIRE(constraints.markerDistances.size() == 1);
+    REQUIRE(constraints.markerDistances[0].markerA == 37);
+    REQUIRE(constraints.markerDistances[0].markerB == 43);
+    REQUIRE(constraints.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
+    REQUIRE(constraints.socketDistances.size() == 1);
+    REQUIRE(constraints.socketDistances[0].marker == 37);
+    REQUIRE(constraints.socketDistances[0].socket == Socket::CAM_A);
+    REQUIRE(constraints.socketDistances[0].distanceMeters == Catch::Approx(1.68f));
+    REQUIRE(constraints.referencedMarkerIds() == std::vector<int32_t>{37, 43});
+    REQUIRE(constraints.referencedSockets() == std::vector<Socket>{Socket::CAM_A});
+    REQUIRE_FALSE(constraints.empty());
+
+    // Round trip through the documented form and through the wire form.
+    const auto roundTrip = dai::WorldConstraints::fromJson(constraints.toJson());
+    REQUIRE(roundTrip.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
+    REQUIRE(roundTrip.markerType == dai::MarkerType::ARUCO);
+    REQUIRE(constraints.toJson().at("markerType") == "ARUCO");
+    REQUIRE(roundTrip.socketDistances[0].socket == Socket::CAM_A);
+    nlohmann::json wire = constraints;
+    const auto fromWire = wire.get<dai::WorldConstraints>();
+    REQUIRE(fromWire.socketDistances[0].socket == Socket::CAM_A);
+    REQUIRE(fromWire.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
+
+    // Alternative spellings.
+    const auto alternative = dai::WorldConstraints::fromJsonString(
+        R"({"dictionary": "4X4_100", "markerDistances": [{"markerA": 1, "markerB": 2, "distance": 0.5}], "socketDistances": [{"marker": 2, "socket": "b", "distance": 1.0}]})");
+    REQUIRE(alternative.markerType == dai::MarkerType::ARUCO);
+    REQUIRE(alternative.arucoDictionary == dai::ArucoDictionary::DICT_4X4_100);
+    REQUIRE(alternative.markerIds.empty());
+    REQUIRE(alternative.referencedMarkerIds() == std::vector<int32_t>{1, 2});
+    REQUIRE(alternative.socketDistances[0].socket == Socket::CAM_B);
+}
+
+TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
+    using dai::WorldConstraints;
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 1], "distance": 0.5}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": 0}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2, 3], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markers": [1], "markerDistances": [{"markers": [1, 2], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "CAM_Z", "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": "AUTO", "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"lengthUnit": "furlong", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "cctag", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary": "DICT_9X9", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString("[1, 2]"), std::invalid_argument);
+    // Closed validation holes: socket out of range, negative or fractional marker ids, malformed JSON and missing keys
+    // all surface as std::invalid_argument, never as a nlohmann exception.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": 99, "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [-3, 2], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markers": [1.5], "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markerA": 1, "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": "far"}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString("{not json"), std::invalid_argument);
+    {
+        WorldConstraints negative;
+        negative.socketDistances.push_back({-1, Socket::CAM_A, 1.0f});
+        REQUIRE_THROWS_AS(negative.validate(), std::invalid_argument);
+        WorldConstraints unknownSocket;
+        unknownSocket.socketDistances.push_back({1, static_cast<Socket>(99), 1.0f});
+        REQUIRE_THROWS_AS(unknownSocket.validate(), std::invalid_argument);
+    }
+
+    dai::Pipeline pipeline(false);
+    auto node = pipeline.create<dai::node::DynamicCalibration>();
+    REQUIRE_FALSE(node->getWorldConstraints().has_value());
+    REQUIRE_THROWS_AS(node->setWorldConstraints(WorldConstraints{}), std::invalid_argument);
+    node->setWorldConstraintsFromJson(kWorldJson);
+    REQUIRE(node->getWorldConstraints().has_value());
+    REQUIRE(node->getWorldConstraints()->socketDistances[0].socket == Socket::CAM_A);
+    node->clearWorldConstraints();
+    REQUIRE_FALSE(node->getWorldConstraints().has_value());
+}
+
+TEST_CASE("DynamicCalibration assembles world constraints from marker observations", "[WorldConstraints]") {
+    using dai::node::DclUtils;
+    const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
+
+    dcl::DynamicCalibration dcl;
+    auto device = dcl.addDevice();
+    const dcl::resolution_t resolution{1280, 800};
+    std::map<Socket, std::shared_ptr<const dcl::CameraSensorHandle>> sensors;
+    sensors[Socket::CAM_B] = dcl.addSensor(device, dclCalibration(0.0), resolution, 1);
+    sensors[Socket::CAM_C] = dcl.addSensor(device, dclCalibration(-0.075), resolution, 2);
+    sensors[Socket::CAM_A] = dcl.addSensor(device, dclCalibration(0.0375), resolution, 0);
+    const auto sensorForSocket = [&](Socket socket) -> std::shared_ptr<const dcl::CameraSensorHandle> {
+        const auto it = sensors.find(socket);
+        return it == sensors.end() ? nullptr : it->second;
+    };
+
+    std::deque<dai::MarkerObservationSet> sets(3);
+    // Frame set 0: both markers in both stereo cameras -> two points, one marker distance, one socket distance.
+    sets[0].centers[37] = {{Socket::CAM_B, {100.f, 200.f}}, {Socket::CAM_C, {80.f, 201.f}}};
+    sets[0].centers[43] = {{Socket::CAM_B, {600.f, 210.f}}, {Socket::CAM_C, {578.f, 211.f}}};
+    // Frame set 1: marker 43 seen by one camera only -> only marker 37 counts, no marker distance.
+    sets[1].centers[37] = {{Socket::CAM_B, {101.f, 200.f}}, {Socket::CAM_C, {81.f, 201.f}}};
+    sets[1].centers[43] = {{Socket::CAM_B, {600.f, 210.f}}};
+    // Frame set 2: marker 43 only -> a point but no distance at all.
+    sets[2].centers[43] = {{Socket::CAM_B, {600.f, 210.f}}, {Socket::CAM_C, {578.f, 211.f}}};
+
+    DclUtils::WorldConstraintsSummary summary;
+    const auto world = DclUtils::buildWorldConstraints(constraints, sets, sensorForSocket, &summary);
+    REQUIRE(world.points.size() == 4);
+    REQUIRE(world.pointDistances.size() == 1);
+    REQUIRE(world.sensorDistances.size() == 2);
+    REQUIRE(summary.observationSets == 3);
+    REQUIRE(summary.points == 4);
+    REQUIRE(world.pointDistances[0].pointIndexA == 0);
+    REQUIRE(world.pointDistances[0].pointIndexB == 1);
+    REQUIRE(world.pointDistances[0].distanceMeters == Catch::Approx(0.84));
+    REQUIRE(world.sensorDistances[0].pointIndex == 0);
+    REQUIRE(world.sensorDistances[0].sensor == sensors[Socket::CAM_A]);
+    REQUIRE(world.sensorDistances[0].distanceMeters == Catch::Approx(1.68));
+    REQUIRE(world.sensorDistances[1].pointIndex == 2);
+    REQUIRE(world.points[0].observations.size() == 2);
+    REQUIRE(world.points[0].observations[0].pixel[0] == Catch::Approx(100.0));
+    REQUIRE_FALSE(world.empty());
+
+    // Without the auxiliary socket the socket distances are skipped, the marker distance stays.
+    sensors.erase(Socket::CAM_A);
+    const auto withoutAuxiliary = DclUtils::buildWorldConstraints(constraints, sets, sensorForSocket);
+    REQUIRE(withoutAuxiliary.pointDistances.size() == 1);
+    REQUIRE(withoutAuxiliary.sensorDistances.empty());
+
+    // A socket distance to a camera that is itself an image input resolves to that connected sensor.
+    auto toImageInput = constraints;
+    toImageInput.socketDistances = {{37, Socket::CAM_C, 1.2f}};
+    const auto withImageInput = DclUtils::buildWorldConstraints(toImageInput, sets, sensorForSocket);
+    REQUIRE(withImageInput.sensorDistances.size() == 2);
+    REQUIRE(withImageInput.sensorDistances[0].sensor == sensors[Socket::CAM_C]);
+    REQUIRE(withImageInput.sensorDistances[0].distanceMeters == Catch::Approx(1.2));
+
+    // Nothing seen by two cameras: no constraints at all.
+    std::deque<dai::MarkerObservationSet> single(1);
+    single[0].centers[37] = {{Socket::CAM_B, {100.f, 200.f}}};
+    REQUIRE(DclUtils::buildWorldConstraints(constraints, single, sensorForSocket).empty());
+}
+
+namespace {
+// DICT_4X4_50 marker 37 with its one-cell black border, one character per cell ('1' = white).
+constexpr std::array<const char*, 6> kMarker37 = {"000000", "000000", "001000", "011110", "011110", "000000"};
+
+dcl::ImageData whiteImage(int width, int height) {
+    dcl::ImageData image;
+    image.width = width;
+    image.height = height;
+    image.format = dcl::DCL_8UC1;
+    image.data.assign(static_cast<size_t>(width) * height, 255);
+    return image;
+}
+
+/// Draws kMarker37 with `cell` pixels per cell, top-left corner at (x, y).
+void drawMarker37(dcl::ImageData& image, int x, int y, int cell) {
+    for(int row = 0; row < 6; ++row) {
+        for(int col = 0; col < 6; ++col) {
+            const uint8_t value = kMarker37[row][col] == '1' ? 255 : 0;
+            for(int dy = 0; dy < cell; ++dy) {
+                for(int dx = 0; dx < cell; ++dx) {
+                    image.data[static_cast<size_t>(y + row * cell + dy) * image.width + (x + col * cell + dx)] = value;
+                }
+            }
+        }
+    }
+}
+}  // namespace
+
+TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstraints]") {
+    using dai::node::DclUtils;
+    const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
+
+    // A white image holds no marker.
+    REQUIRE(DclUtils::detectMarkerCenters(whiteImage(64, 64), constraints).empty());
+
+    // Marker 37 drawn at 16 px per cell with its top-left corner at (40, 40): the center is the middle of the 96 px
+    // square, i.e. 40 + 48 - 0.5 in pixel-center coordinates.
+    auto image = whiteImage(320, 240);
+    drawMarker37(image, 40, 40, 16);
+    const auto centers = DclUtils::detectMarkerCenters(image, constraints);
+    REQUIRE(centers.size() == 1);
+    REQUIRE(centers.count(37) == 1);
+    REQUIRE(centers.at(37)[0] == Catch::Approx(87.5).margin(0.75));
+    REQUIRE(centers.at(37)[1] == Catch::Approx(87.5).margin(0.75));
+
+    // A marker id that is not part of the constraints is dropped.
+    auto others = constraints;
+    others.markerIds = {43};
+    others.markerDistances.clear();
+    others.socketDistances = {{43, Socket::CAM_A, 1.0f}};
+    REQUIRE(DclUtils::detectMarkerCenters(image, others).empty());
+
+    // The same id twice in one image is ambiguous: neither copy is used.
+    drawMarker37(image, 200, 120, 16);
+    REQUIRE(DclUtils::detectMarkerCenters(image, constraints).empty());
+}

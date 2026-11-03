@@ -10,8 +10,12 @@
 #include <depthai/pipeline/node/DynamicCalibrationNode.hpp>
 #include <depthai/pipeline/node/Gate.hpp>
 #include <depthai/properties/AutoCalibrationProperties.hpp>
+#include <filesystem>
 #include <map>
 #include <nlohmann/json.hpp>
+#include <optional>
+
+#include "depthai/common/WorldConstraints.hpp"
 
 namespace spdlog {
 class async_logger;
@@ -51,6 +55,19 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     bool runOnHost() const override;
 
     void buildInternal() override;
+
+    /**
+     * Give the calibration a metric reference through fiducial markers in the scene, see
+     * DynamicCalibration::setWorldConstraints(). Forwarded to the DynamicCalibration subnode; set before the
+     * pipeline starts.
+     */
+    void setWorldConstraints(const WorldConstraints& constraints);
+    /// Same as setWorldConstraints() with the JSON form described in WorldConstraints.
+    void setWorldConstraintsFromJson(const std::string& json);
+    /// Same as setWorldConstraints() with the JSON form described in WorldConstraints read from a file.
+    void setWorldConstraintsFromFile(const std::filesystem::path& path);
+    void clearWorldConstraints();
+    std::optional<WorldConstraints> getWorldConstraints() const;
 
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::AutoCalibrationResult, false}}}}};
 

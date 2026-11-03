@@ -1,11 +1,14 @@
 #pragma once
 
 #include <DynamicCalibration.hpp>
+#include <Markers.hpp>
 #include <array>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
+#include <deque>
+#include <functional>
 
 namespace dai {
 namespace node {
@@ -44,6 +47,32 @@ struct DclUtils {
     static dcl::ImageData cvMatToImageData(const cv::Mat& mat);
 #endif
     static dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode);
+
+    static dcl::ArucoDictionary toDclArucoDictionary(ArucoDictionary dictionary);
+    /// The marker detector request for a constraint set. Throws std::invalid_argument for a marker type the library cannot detect.
+    static dcl::MarkerSpec toDclMarkerSpec(const WorldConstraints& constraints);
+
+    /// Reference points of the configured markers in one image, keyed by marker id. Markers outside the configuration are dropped.
+    static std::map<int32_t, std::array<float, 2>> detectMarkerCenters(const dcl::ImageData& image, const WorldConstraints& constraints);
+
+    struct WorldConstraintsSummary {
+        size_t observationSets = 0;
+        size_t points = 0;
+        size_t pointDistances = 0;
+        size_t sensorDistances = 0;
+    };
+
+    /**
+     * Turns the collected marker centers into DCL world constraints. Every frame set contributes one scene
+     * point per marker that at least two sensors saw, the configured marker distances between the points of
+     * the same frame set, and the configured socket distances for points of that frame set. sensorForSocket
+     * returns the DCL sensor of a socket, or nullptr for sockets the node does not know, whose constraints are
+     * skipped.
+     */
+    static dcl::WorldConstraints buildWorldConstraints(const WorldConstraints& constraints,
+                                                       const std::deque<MarkerObservationSet>& observationSets,
+                                                       const std::function<std::shared_ptr<const dcl::CameraSensorHandle>(CameraBoardSocket)>& sensorForSocket,
+                                                       WorldConstraintsSummary* summary = nullptr);
 };
 
 }  // namespace node

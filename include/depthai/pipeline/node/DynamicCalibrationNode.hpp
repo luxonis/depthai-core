@@ -4,8 +4,12 @@
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
+#include <deque>
+#include <filesystem>
+#include <map>
 #include <optional>
 
+#include "depthai/common/WorldConstraints.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
 
@@ -138,6 +142,24 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void postBuildStage() override;
 
+    /**
+     * Give the calibration a metric reference through fiducial markers in the scene. Image correspondences fix
+     * the relative rotation and the direction of the baseline between the cameras but not the length of the
+     * baseline; measured distances between marker centers, and from marker centers to camera sockets, fix that
+     * length. Markers are detected in every image set the node loads, their centers are collected (up to
+     * WorldConstraints::maxObservationSets frame sets, cleared by the ResetData command) and handed to
+     * the calibration together with the image features. A distance to a socket that is not one of the image
+     * inputs uses that socket's current calibration. Set before the pipeline starts.
+     */
+    void setWorldConstraints(const WorldConstraints& constraints);
+    /// Same as setWorldConstraints() with the JSON form described in WorldConstraints.
+    void setWorldConstraintsFromJson(const std::string& json);
+    /// Same as setWorldConstraints() with the JSON form described in WorldConstraints read from a file.
+    void setWorldConstraintsFromFile(const std::filesystem::path& path);
+    /// Remove the marker constraints again. Takes effect before the pipeline starts.
+    void clearWorldConstraints();
+    std::optional<WorldConstraints> getWorldConstraints() const;
+
    protected:
     Properties& getProperties() override;
 
@@ -153,6 +175,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     std::vector<ConnectedSensor> connectedSensors;
     std::vector<CameraBoardSocket> socketsInHandler;
+    /// Sockets a marker distance refers to that are not image inputs: registered with DCL for their pose only.
+    std::vector<ConnectedSensor> auxiliarySensors;
+    /// Marker centers of the loaded image sets, newest last.
+    std::deque<MarkerObservationSet> markerObservations;
     std::optional<CameraBoardSocket> leftQueueSocket;
     std::optional<CameraBoardSocket> rightQueueSocket;
 
@@ -191,6 +217,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void computeMetrics(const CalibrationHandler& handler);
     const ConnectedSensor* findConnectedSensor(CameraBoardSocket socket) const;
+    /// Registers the sockets that marker distances refer to but that deliver no images.
+    ErrorCode initializeAuxiliarySensors(const EepromData& eepromData);
     /**
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for calibration
      * @return dcl::CameraCalibrationHanlder

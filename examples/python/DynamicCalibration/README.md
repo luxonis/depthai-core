@@ -134,6 +134,37 @@ Mean Sampson error current    = 0.38 px
 
 ---
 
+## 1c) Dynamic calibration with world constraints: a metric reference from markers in the scene
+
+**Script:** `calibration_dynamic_world_constraints.py` (constraints file: `world_constraints.json`)
+
+**What it does:**
+- Loads a JSON description of fiducial markers in the scene (ArUco / AprilTag today, `markerType` selects the kind): measured distances between marker centers and from
+  marker centers to camera sockets (`setWorldConstraintsFromFile`, also available on `AutoCalibration`)
+- Detects the markers in every loaded image set; their centers are collected together with the image features
+- Runs the calibration: image features fix the relative pose except for the **vergence**, the turn about the
+  axis perpendicular to the baseline and the optical axis, which moves image points along the epipolar lines
+  and so sets the depth scale almost unseen; the marker distances fix that turn. Camera centers and the
+  baseline length are never changed.
+- Prints the relative rotation change reported by the node
+
+```json
+{
+    "markerType": "aruco",
+    "arucoDictionary": "DICT_4X4_50",
+    "lengthUnit": "m",
+    "markers": [37, 43],
+    "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}]
+}
+```
+
+Either list may be left empty. A socket that is not an image input (`CAM_A` above with a `CAM_B`/`CAM_C`
+pair) is used through its current calibration. Marker size does not matter, only the centers are used, and a
+marker needs to be visible in at least two of the calibrated cameras.
+
+---
+
 ## 2) Calibration **quality check** (legacy)
 
 **Script:** `calibration_quality_dynamic.py`
@@ -237,6 +268,9 @@ python calibration_dynamic.py
 
 # Live calibration with CAM_A + CAM_B + CAM_C
 python calibration_dynamic_3_sensors.py
+
+# Live calibration with a metric reference from markers in the scene
+python calibration_dynamic_world_constraints.py --constraints world_constraints.json
 
 # Legacy quality evaluation flow
 python calibration_quality_dynamic.py
