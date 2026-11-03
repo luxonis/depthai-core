@@ -402,7 +402,7 @@ void Align::extractCalibrationData(const dai::ImgTransformation& inputTransforma
 
     const auto [outputWidth, outputHeight] = alignOutputSize();
     const auto bounds =
-        detail::rectifiedBounds({inputWidth, inputHeight}, cv_M1, cv_d1, cv_R1, {outputWidth, outputHeight}, cv_M2, cv_R_back.t(), logger.get());
+        detail::rectifiedBounds({inputWidth, inputHeight}, cv_M1, cv_d1, cv_R1, {outputWidth, outputHeight}, cv_M2, cv_R_back.t());
     auto cv_meshSize = bounds.size();
     if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {
         cv_meshSize.width += cv_meshSize.width % 2;
