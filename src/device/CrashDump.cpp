@@ -227,7 +227,9 @@ void CrashDumpRVC2::toTar(const fs::path& tarPath) const {
     writeToFile(extraPath, extra.dump(JSON_INDENT));
 
     // This takes advantage of the fact the crashreports has DEPTHAI_SERIALIZE macro defined
-    writeToFile(rvc2dataPath, nlohmann::json(crashReports).dump(JSON_INDENT));
+    // The crash report strings (prints, thread names, ...) are raw device data and are not always valid UTF-8.
+    // Replace invalid bytes (U+FFFD) instead of throwing, so the crash dump is not lost.
+    writeToFile(rvc2dataPath, nlohmann::json(crashReports).dump(JSON_INDENT, ' ', false, nlohmann::json::error_handler_t::replace));
 
     // Combine everything into a tar file
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, rvc2dataPath};

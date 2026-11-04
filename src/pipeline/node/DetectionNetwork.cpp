@@ -57,10 +57,11 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
                                                           const Model& model,
                                                           std::optional<float> fps,
                                                           std::optional<dai::ImgResizeMode> resizeMode) {
-    ImgFrameCapability cap;
-    if(fps.has_value()) cap.fps.value = *fps;
-    if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
-    return build(camera, model, cap);
+    neuralNetwork->build(camera, model, fps, resizeMode);
+    auto nnArchive = neuralNetwork->getNNArchive();
+    DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
+    detectionParser->setNNArchive(*nnArchive);
+    return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
 std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, const Model& model, const ImgFrameCapability& capability) {
@@ -138,6 +139,15 @@ void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useC
     }
     auto path = getModelFromZoo(description, useCached);
     setModelPath(path);
+}
+
+void DetectionNetwork::setFromModelZoo(NNModelDescription description, int numShaves, bool useCached) {
+    if(description.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
+        description.platform = getDevice()->getPlatformAsString();
+    }
+    const auto path = getModelFromZoo(description, useCached);
+    setNNArchive(NNArchive(path), numShaves);
 }
 
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {

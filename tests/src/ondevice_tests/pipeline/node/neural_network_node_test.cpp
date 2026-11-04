@@ -334,3 +334,43 @@ TEST_CASE("Multi threaded test") {
         REQUIRE(report != nullptr);
     }
 }
+// Decision matrix
+// | Build                                 | Caller value               | Result in ImgFrameCapability |
+// |---------------------------------------|----------------------------|------------------------------|
+// | build(camera, model, fps, resizeMode) | resizeMode not set         | CROP                         |
+// | build(camera, model, fps, resizeMode) | resizeMode X               | X                            |
+// | build(camera, model, capability)      | not changed (default CROP) | CROP                         |
+// | build(camera, model, capability)      | capability.resizeMode X    | X                            |
+TEST_CASE("NeuralNetwork camera build resize mode with a hub archive that does not set resize_mode") {
+    dai::Pipeline p;
+    const auto device = p.getDefaultDevice();
+    REQUIRE(device != nullptr);
+
+    const dai::NNModelDescription description{"luxonis/yolov8-nano-pose-estimation:coco-512x288", device->getPlatformAsString()};
+    const dai::NNArchive archive{dai::getModelFromZoo(description)};
+    REQUIRE_FALSE(archive.getInputResizeMode().has_value());
+
+    auto camera = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+
+    // Runs one build and returns the capability that this build requested from the camera
+    const auto requestOf = [&camera](const auto& build) {
+        const auto requestCount = camera->properties.outputRequests.size();
+        build();
+        REQUIRE(camera->properties.outputRequests.size() == requestCount + 1);
+        return camera->properties.outputRequests.back();
+    };
+
+    const auto fpsDefault = requestOf([&] { p.create<dai::node::NeuralNetwork>()->build(camera, archive); });
+    REQUIRE(fpsDefault.resizeMode == dai::ImgResizeMode::CROP);
+
+    const auto fpsLetterbox = requestOf([&] { p.create<dai::node::NeuralNetwork>()->build(camera, archive, std::nullopt, dai::ImgResizeMode::LETTERBOX); });
+    REQUIRE(fpsLetterbox.resizeMode == dai::ImgResizeMode::LETTERBOX);
+
+    const auto capabilityDefault = requestOf([&] { p.create<dai::node::NeuralNetwork>()->build(camera, archive, dai::ImgFrameCapability()); });
+    REQUIRE(capabilityDefault.resizeMode == dai::ImgResizeMode::CROP);
+
+    dai::ImgFrameCapability stretchCapability;
+    stretchCapability.resizeMode = dai::ImgResizeMode::STRETCH;
+    const auto capabilityStretch = requestOf([&] { p.create<dai::node::NeuralNetwork>()->build(camera, archive, stretchCapability); });
+    REQUIRE(capabilityStretch.resizeMode == dai::ImgResizeMode::STRETCH);
+}

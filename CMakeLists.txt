@@ -81,7 +81,7 @@ endif()
 # Create depthai project
 set(DEPTHAI_PROJECT_NAME "depthai") # Should be depthai_v3 for ROS jazzy or older
 
-project(${DEPTHAI_PROJECT_NAME} VERSION "3.11.0" LANGUAGES CXX C)
+project(${DEPTHAI_PROJECT_NAME} VERSION "3.12.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -208,10 +208,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
-    if(DEPTHAI_BUILD_BETA)
-        list(APPEND REQUIRED_OPENCV_LIBRARIES "opencv_features2d" "opencv_stitching")
-    endif()
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -222,8 +219,9 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
-        if(DEPTHAI_BUILD_BETA AND "opencv_stitching" IN_LIST OpenCV_LIBS)
+        if("opencv_stitching" IN_LIST OpenCV_LIBS)
             set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
+            set(OPTIONAL_OPENCV_LIBRARIES "opencv_stitching")
         endif()
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
@@ -359,6 +357,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/Align.cpp
     src/pipeline/node/ImageAlign.cpp
+    src/pipeline/node/Stitching.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/SegmentationParser.cpp
@@ -458,13 +457,19 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+list(APPEND TARGET_CORE_SOURCES
+    src/pipeline/datatype/ImgDetectionsFilterConfig.cpp
+    src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+    src/pipeline/node/ImgDetectionsFilter.cpp
+    src/properties/ImgDetectionsFilterProperties.cpp
+)
+
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
         src/beta/BetaNode.cpp
         src/beta/device/MultiDeviceCalibrationHandler.cpp
         src/beta/datatype/Classifications.cpp
         src/beta/datatype/Clusters.cpp
-        src/beta/datatype/ImgDetectionsFilterConfig.cpp
         src/beta/datatype/Keypoints.cpp
         src/beta/datatype/MultiDeviceCalibrationControl.cpp
         src/beta/datatype/MultiDeviceCalibrationResult.cpp
@@ -490,7 +495,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/FastSAMParser.cpp
         src/beta/node/HRNetParser.cpp
         src/beta/node/ImageOutputParser.cpp
-        src/beta/node/ImgDetectionsFilter.cpp
         src/beta/node/KeypointParser.cpp
         src/beta/node/LaneDetectionParser.cpp
         src/beta/node/MapOutputParser.cpp
@@ -501,11 +505,9 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/RFDETRParser.cpp
         src/beta/node/SCRFDParser.cpp
         src/beta/node/SuperAnimalParser.cpp
-        src/beta/node/Stitching.cpp
         src/beta/node/XFeatMonoParser.cpp
         src/beta/node/XFeatStereoParser.cpp
         src/beta/node/YuNetParser.cpp
-        src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp
         src/beta/utilities/Detection/MaskUtils.cpp
@@ -519,6 +521,12 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/utilities/SCRFD/SCRFDUtils.cpp
         src/beta/utilities/XFeat/XFeatUtils.cpp
         src/beta/utilities/YuNet/YuNetUtils.cpp
+    )
+endif()
+
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/StartupNotifications.cpp
     )
 endif()
 
@@ -568,12 +576,11 @@ set(TARGET_OPENCV_SOURCES
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
-
-if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_SUPPORT)
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
     list(APPEND TARGET_OPENCV_SOURCES
-        src/beta/utilities/Stitching/Stitching.cpp
-        src/beta/utilities/Stitching/FixedPanoramaCompositor.cpp
-        src/beta/utilities/Stitching/PlanarStitcher.cpp
+        src/pipeline/utilities/Stitching/Stitching.cpp
+        src/pipeline/utilities/Stitching/FixedPanoramaCompositor.cpp
+        src/pipeline/utilities/Stitching/PlanarStitcher.cpp
     )
 endif()
 
@@ -629,7 +636,7 @@ target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 if(DEPTHAI_BUILD_BETA)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BETA)
 endif()
-if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAVE_OPENCV_STITCHING)
 endif()
 # Specifies name of generated IMPORTED target (set to alias)
@@ -715,7 +722,7 @@ endif()
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${OPTIONAL_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
@@ -1238,12 +1245,12 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_OPENCV_NAME})
 
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${OPTIONAL_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
-    if(DEPTHAI_BUILD_BETA AND DEPTHAI_HAVE_OPENCV_STITCHING)
+    if(DEPTHAI_HAVE_OPENCV_STITCHING)
         target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_STITCHING)
     endif()
     # Add public dependency to depthai::core library

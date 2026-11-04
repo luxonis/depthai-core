@@ -15,6 +15,7 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
     py::class_<ThermalConfig::ThermalAmbientParams> thermalAmbientParams(m, "ThermalAmbientParams", DOC(dai, ThermalConfig, ThermalAmbientParams));
 
     py::enum_<ThermalConfig::ThermalGainMode> thermalGainMode(m, "ThermalGainMode", DOC(dai, ThermalConfig, ThermalGainMode));
+    py::enum_<ThermalConfig::ThermalImageOrientation> thermalOrientation(m, "ThermalImageOrientation", DOC(dai, ThermalConfig, ThermalImageOrientation));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -77,6 +78,11 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
 
     thermalGainMode.value("LOW", ThermalConfig::ThermalGainMode::LOW, DOC(dai, ThermalConfig, ThermalGainMode, LOW))
         .value("HIGH", ThermalConfig::ThermalGainMode::HIGH, DOC(dai, ThermalConfig, ThermalGainMode, HIGH));
+
+    thermalOrientation.value("Normal", ThermalConfig::Normal)
+        .value("Mirror", ThermalConfig::Mirror)
+        .value("Flip", ThermalConfig::Flip)
+        .value("MirrorFlip", ThermalConfig::MirrorFlip);
 
     // ThermalConfig bindings
     thermalConfig.def(py::init<>())

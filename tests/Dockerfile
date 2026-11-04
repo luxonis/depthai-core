@@ -14,6 +14,11 @@ ARG PULL_REQUEST="false"
 ENV VCPKG_DOWNLOADS=/opt/vcpkg-downloads
 ENV VCPKG_DEFAULT_BINARY_CACHE=/opt/vcpkg-bincache
 ENV VCPKG_BINARY_SOURCES="clear;files,/opt/vcpkg-bincache,readwrite"
+# Compiler cache on a BuildKit cache mount; the clone layer changes on every commit, so without it
+# every image build compiles the whole tree again (scripts/hil/build_and_push.sh keeps the mounts).
+ENV CCACHE_DIR=/opt/ccache
+ENV CCACHE_MAXSIZE=10G
+ENV CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime
 
 # Update and install all required packages in one go
 RUN apt-get update && \
@@ -68,7 +73,8 @@ RUN apt-get update && \
         libxkbcommon-x11-0 \
         libudev-dev \
         g++ \
-        ninja-build && \
+        ninja-build \
+        ccache && \
     rm -rf /var/lib/apt/lists/*
 
 RUN locale-gen en_US.UTF-8
@@ -80,24 +86,19 @@ ARG BRANCH=develop
 ARG REPO_URL=https://github.com/luxonis/depthai-core.git
 ARG GIT_COMMIT=unspecified  # commit SHA busts cache
 
-RUN echo "Cloning depthai-core at commit ${GIT_COMMIT}"
+RUN echo "Cloning depthai-core at commit ${GIT_COMMIT} (${BRANCH})"
 
-RUN if [ "$PULL_REQUEST" = "false" ]; then \
-        git clone --recursive -b ${BRANCH} ${REPO_URL} . ; \
-    else \
-        git clone ${REPO_URL} . &&\
-        git fetch --depth 1 origin ${BRANCH}:pr-merge && \
-        git switch pr-merge && \
-        git submodule update --init --recursive; \
-    fi
+RUN git init -q . && \
+    git remote add origin ${REPO_URL} && \
+    git fetch --depth 1 origin ${GIT_COMMIT} && \
+    git checkout -q FETCH_HEAD && \
+    git submodule update --init --recursive --depth 1
 
 # Create venv and install Python dependencies
-RUN python3 -m venv venv && \
-    . venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install numpy pytest pytest-html && \
-    pip install adbutils==2.12.0 && \
-    pip install influxdb-client==1.50.0
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3 -m venv venv && \
+    venv/bin/pip install --upgrade pip && \
+    venv/bin/pip install numpy pytest pytest-html adbutils==2.12.0 influxdb-client==1.50.0
 
 ENV PATH="/workspace/venv/bin:$PATH"
 
@@ -108,6 +109,7 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
 
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
+    --mount=type=cache,target=/opt/ccache \
     if [ "$FLAVOR" != "vanilla" ] && [ "$FLAVOR" != "tsan" ]; then \
         export CMAKE_TOOLCHAIN_FILE=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
         echo "Using toolchain: $CMAKE_TOOLCHAIN_FILE"; \
@@ -121,6 +123,10 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     fi && \
     cmake -S . -B build \
         -D CMAKE_BUILD_TYPE=Release \
+        -D CMAKE_C_COMPILER_LAUNCHER=ccache \
+        -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+        -D BUILD_SHARED_LIBS=ON \
+        -D VCPKG_INSTALL_OPTIONS="--clean-buildtrees-after-build;--clean-packages-after-build" \
         -D DEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
         -D VCPKG_OVERLAY_TRIPLETS="/workspace/cmake/triplets/release" \
         -D DEPTHAI_BUILD_TESTS=ON \
@@ -133,4 +139,9 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
 
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
-    cmake --build build --parallel $PARALLEL_JOBS --config Release
+    --mount=type=cache,target=/opt/ccache \
+    --mount=type=cache,target=/root/.cache/pip \
+    ccache --zero-stats && \
+    cmake --build build --parallel $PARALLEL_JOBS --config Release && \
+    ccache --show-stats && \
+    find build -name '*.o' -delete
