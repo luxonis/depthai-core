@@ -799,9 +799,16 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    if(eepromData.housingExtrinsics.toCameraSocket != CameraBoardSocket::AUTO) {
+    // The housing transform needs calibration data of the camera that the housing extrinsics point to
+    const auto housingCamera = eepromData.housingExtrinsics.toCameraSocket;
+    if(housingCamera != CameraBoardSocket::AUTO && eepromData.cameraData.count(housingCamera) != 0) {
         daiSocketBase = HousingCoordinateSystem::AUTO;
     } else {
+        if(housingCamera != CameraBoardSocket::AUTO) {
+            logger->warn("Housing extrinsics point to camera {}, which has no calibration data. Using camera {} as the calibration base.",
+                         toString(housingCamera),
+                         toString(socketsInHandler.back()));
+        }
         daiSocketBase = socketsInHandler.back();
     }
 
