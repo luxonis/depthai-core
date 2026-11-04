@@ -14,7 +14,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
     using DCC = dai::DynamicCalibrationControl;
 
     // Owning message FIRST
-    auto cls = py::class_<DCC, Buffer, py::smart_holder>(m, "DynamicCalibrationControl");
+    auto cls = py::class_<DCC, Py<DCC>, Buffer, py::smart_holder>(m, "DynamicCalibrationControl");
     auto cmds = py::class_<DCC::Commands>(cls, "Commands");
 
     py::enum_<DCC::PerformanceMode>(cls, "PerformanceMode")

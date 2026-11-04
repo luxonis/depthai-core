@@ -37,6 +37,8 @@ set(PYBIND11_TEST_FILES
     "stitching_test.py"
     "img_detections_filter_test.py"
     "neural_network_model_test.cpp"
+    "node_holder_test.cpp"
+    "message_holder_test.cpp"
 )
 
 if(DEPTHAI_PYTHON_GIL_FREE)
@@ -88,5 +90,18 @@ add_custom_target(
     USES_TERMINAL
 )
 
-# Link to depthai
-target_link_libraries(${TARGET_TEST_MODULE} PRIVATE pybind11::pybind11 depthai::core)
+# On macOS, resolve SDK symbols from the depthai Python extension. Statically
+# linking the SDK here copies its Objective-C classes into a second image and
+# causes duplicate-class registration when both Python modules are imported.
+if(APPLE)
+    target_link_libraries(${TARGET_TEST_MODULE} PRIVATE pybind11::pybind11)
+    target_include_directories(${TARGET_TEST_MODULE} PRIVATE
+        "$<TARGET_PROPERTY:${TARGET_NAME},INCLUDE_DIRECTORIES>")
+    target_compile_definitions(${TARGET_TEST_MODULE} PRIVATE
+        "$<TARGET_PROPERTY:${TARGET_NAME},COMPILE_DEFINITIONS>")
+    # pybind11_add_module supplies -undefined dynamic_lookup on macOS.
+    # Import depthai before this module so its exported SDK symbols are loaded.
+    add_dependencies(${TARGET_TEST_MODULE} ${TARGET_NAME})
+else()
+    target_link_libraries(${TARGET_TEST_MODULE} PRIVATE pybind11::pybind11 depthai::core)
+endif()
