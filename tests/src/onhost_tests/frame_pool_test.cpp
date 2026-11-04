@@ -36,15 +36,15 @@ TEST_CASE("Frame pool properties default to automatic and roundtrip", "[frame-po
 }
 
 TEST_CASE("Automatic frame pools use FPS and required padded frame size", "[frame-pool]") {
-    const auto fps = GENERATE(0.0, -1.0, 30.0, 60.0, 120.0, 1000.0);
-    const auto expected = fps <= 30 ? 4u : fps == 60 ? 6u : fps == 120 ? 12u : 30u;
+    const auto fps = GENERATE(0.0, -1.0, 10.0, 20.0, 30.0, 60.0, 120.0, 1000.0);
+    const auto expected = fps > 0 && fps <= 20 ? 2u : fps <= 30 ? 3u : fps == 60 ? 6u : fps == 120 ? 12u : 30u;
     const auto resolved = resolveFramePool({}, 4096, fps);
     REQUIRE(resolved.outputFrameSize == 4096);
     REQUIRE(resolved.numFramesPool == expected);
     REQUIRE(resolved.maxPoolSize == 4096 * expected);
-    REQUIRE(resolveFramePool({}, 4096, std::numeric_limits<double>::infinity()).numFramesPool == 4);
-    REQUIRE(resolveFramePool({}, 4096, std::numeric_limits<double>::quiet_NaN()).numFramesPool == 4);
-    REQUIRE(resolveFramePool({}, 32 * 1024 * 1024, 120).numFramesPool == 2);
+    REQUIRE(resolveFramePool({}, 4096, std::numeric_limits<double>::infinity()).numFramesPool == 3);
+    REQUIRE(resolveFramePool({}, 4096, std::numeric_limits<double>::quiet_NaN()).numFramesPool == 3);
+    REQUIRE(resolveFramePool({}, 32 * 1024 * 1024, 120).numFramesPool == 6);
 }
 
 TEST_CASE("All combinations of automatic and explicit frame pool fields resolve consistently", "[frame-pool]") {
@@ -64,7 +64,10 @@ TEST_CASE("All combinations of automatic and explicit frame pool fields resolve 
 
 TEST_CASE("Hard pool budgets reduce automatic counts and reject impossible requests", "[frame-pool]") {
     REQUIRE(resolveFramePool({0, 0, 3072}, 1024, 120).numFramesPool == 3);
-    REQUIRE(resolveFramePool({0, 0, 1024}, 1024).numFramesPool == 1);
+    REQUIRE(resolveFramePool({0, 0, 2048}, 1024).numFramesPool == 2);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 0, 1024}, 1024), std::invalid_argument);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 1, 0}, 1024), std::invalid_argument);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 1, 0}, 1024, 30, 1), std::invalid_argument);
     REQUIRE_THROWS_AS(resolveFramePool({0, 0, 1023}, 1024), std::invalid_argument);
     REQUIRE_THROWS_AS(resolveFramePool({0, 4, 4095}, 1024), std::invalid_argument);
     REQUIRE_THROWS_AS(resolveFramePool({1023, 0, 0}, 1024), std::invalid_argument);
@@ -97,9 +100,70 @@ TEST_CASE("Node pool setters update the shared configuration", "[frame-pool]") {
         node->setNumFramesPool(0);
         REQUIRE(node->properties.pool.numFramesPool == 0);
         REQUIRE_THROWS_AS(node->setNumFramesPool(-1), std::invalid_argument);
+        REQUIRE_THROWS_AS(node->setNumFramesPool(1), std::invalid_argument);
+        REQUIRE_THROWS_AS(node->setPoolProperties({8192, 1, 8192}), std::invalid_argument);
+        REQUIRE(node->properties.pool.numFramesPool == 0);
+        node->setNumFramesPool(2);
+        REQUIRE(node->properties.pool.numFramesPool == 2);
     };
     check(std::make_shared<dai::node::ImageManip>());
     check(std::make_shared<dai::node::StereoDepth>());
     check(std::make_shared<dai::node::ImageAlign>());
     check(std::make_shared<dai::node::Align>());
+}
+
+TEST_CASE("Automatic frame pools fit at least two maximum-resolution buffers", "[frame-pool]") {
+    // 8K UHD RGB, full IMX586 RGB, and FP16 RGB with backend padding.
+    const auto size = GENERATE(uint64_t(7680) * 4320 * 3, uint64_t(8000) * 6000 * 3, uint64_t(8000) * 6000 * 6 + 4096);
+    const auto resolved = resolveFramePool({}, size, 30);
+    REQUIRE(resolved.numFramesPool >= 2);
+    REQUIRE(resolved.maxPoolSize >= size * 2);
+    const auto highFps = resolveFramePool({}, size, 120);
+    REQUIRE(highFps.numFramesPool >= 2);
+    REQUIRE(highFps.maxPoolSize >= size * 2);
+    REQUIRE(resolveFramePool({0, 0, size * 2}, size, 120).numFramesPool == 2);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 0, size * 2 - 1}, size, 120), std::invalid_argument);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 1, 0}, size), std::invalid_argument);
+    REQUIRE_THROWS_AS(resolveFramePool({std::numeric_limits<uint64_t>::max() / 2 + 1, 0, 0}, 1), std::overflow_error);
+}
+
+namespace {
+template <typename T> struct PoolPropertiesProbe : T {
+    using T::getProperties;
+};
+}  // namespace
+
+TEST_CASE("Direct edits to pool counts are validated before serialization", "[frame-pool]") {
+    const auto check = [](auto node) {
+        node->properties.pool.numFramesPool = 1;
+        REQUIRE_THROWS_AS(node->getProperties(), std::invalid_argument);
+        node->properties.pool.numFramesPool = 2;
+        REQUIRE_NOTHROW(node->getProperties());
+    };
+    check(std::make_shared<PoolPropertiesProbe<dai::node::ImageManip>>());
+    check(std::make_shared<PoolPropertiesProbe<dai::node::StereoDepth>>());
+    check(std::make_shared<PoolPropertiesProbe<dai::node::ImageAlign>>());
+    check(std::make_shared<PoolPropertiesProbe<dai::node::Align>>());
+}
+
+TEST_CASE("Automatic budgets expand only to the algorithm minimum", "[frame-pool]") {
+    constexpr uint64_t MiB = 1024 * 1024;
+    const auto large = resolveFramePool({}, 200 * MiB, 120);
+    REQUIRE(large.numFramesPool == 2);
+    REQUIRE(large.maxPoolSize == 400 * MiB);
+    const auto algorithm = resolveFramePool({}, 200 * MiB, 120, 4);
+    REQUIRE(algorithm.numFramesPool == 4);
+    REQUIRE(algorithm.maxPoolSize == 800 * MiB);
+    const auto lowFpsAlgorithm = resolveFramePool({}, 4096, 10, 4);
+    REQUIRE(lowFpsAlgorithm.numFramesPool == 4);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 0, 600 * MiB}, 200 * MiB, 120, 4), std::invalid_argument);
+}
+
+TEST_CASE("Full-resolution RVC4 RGB output resolves to exactly two automatic frames", "[frame-pool]") {
+    const auto size = GENERATE(uint64_t(7680) * 4320 * 3, uint64_t(8000) * 6000 * 3);
+    const auto padding = GENERATE(uint64_t(0), uint64_t(4096));
+    const auto fps = GENERATE(30.0, 60.0, 120.0);
+    const auto resolved = resolveFramePool({}, size + padding, fps);
+    REQUIRE(resolved.numFramesPool == 2);
+    REQUIRE(resolved.maxPoolSize == (size + padding) * 2);
 }

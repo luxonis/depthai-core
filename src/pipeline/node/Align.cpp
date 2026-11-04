@@ -1,3 +1,4 @@
+#include "depthai/utility/FramePool.hpp"
 #include "depthai/pipeline/node/Align.hpp"
 
 #include <algorithm>
@@ -34,16 +35,18 @@ namespace dai {
 namespace node {
 
 AlignProperties& Align::getProperties() {
+    dai::utility::validateFramePoolCount(properties.pool.numFramesPool);
     properties.initialConfig = *initialConfig;
     return properties;
 }
 
 void Align::setPoolProperties(const FramePoolProperties& pool) {
+    dai::utility::validateFramePoolCount(pool.numFramesPool);
     properties.pool = pool;
 }
 
 Align& Align::setNumFramesPool(int numFramesPool) {
-    if(numFramesPool < 0) throw std::invalid_argument("numFramesPool must be nonnegative (0 means automatic)");
+    if(numFramesPool < 0 || numFramesPool == 1) throw std::invalid_argument("numFramesPool must be 0 (automatic) or at least 2");
     properties.pool.numFramesPool = numFramesPool;
     return *this;
 }

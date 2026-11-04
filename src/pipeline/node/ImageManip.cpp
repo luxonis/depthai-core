@@ -1,3 +1,4 @@
+#include "depthai/utility/FramePool.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
 
 #include <stdexcept>
@@ -82,11 +83,12 @@ void ImageManip::run() {
 }
 
 void ImageManip::setPoolProperties(const FramePoolProperties& pool) {
+    dai::utility::validateFramePoolCount(pool.numFramesPool);
     properties.pool = pool;
 }
 
 void ImageManip::setNumFramesPool(int numFramesPool) {
-    if(numFramesPool < 0) throw std::invalid_argument("numFramesPool must be nonnegative (0 means automatic)");
+    if(numFramesPool < 0 || numFramesPool == 1) throw std::invalid_argument("numFramesPool must be 0 (automatic) or at least 2");
     properties.pool.numFramesPool = numFramesPool;
 }
 
@@ -100,6 +102,7 @@ void ImageManip::setMaxPoolSize(unsigned int maxPoolSize) {
 }
 
 ImageManip::Properties& ImageManip::getProperties() {
+    dai::utility::validateFramePoolCount(properties.pool.numFramesPool);
     properties.initialConfig = *initialConfig;
     return properties;
 }
