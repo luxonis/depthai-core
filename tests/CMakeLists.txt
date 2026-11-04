@@ -1039,6 +1039,12 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     endif()
 endif()
 
+dai_add_test(replay_node_test src/onhost_tests/replay_node_test.cpp)
+dai_set_test_labels(replay_node_test onhost ci)
+target_include_directories(replay_node_test PRIVATE ${PROJECT_SOURCE_DIR}/src)
+dai_add_test(replay_node_device_test src/ondevice_tests/replay_node_device_test.cpp)
+dai_set_test_labels(replay_node_device_test ondevice rvc4)
+
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)

@@ -2815,6 +2815,12 @@ void requireRecordingStore(const DeviceBase& device) {
     }
 }
 
+void requireReplayCache(const DeviceBase& device) {
+    if(device.getDeviceInfo().platform != X_LINK_RVC4) {
+        throw std::runtime_error("Replay cache is not supported");
+    }
+}
+
 bool rejectedStorePath(const std::string& relative) {
     const std::filesystem::path path(relative);
     if(path.is_absolute()) return true;
@@ -2915,6 +2921,71 @@ void DeviceBase::deleteRecording(const std::string& name) {
 void DeviceBase::prepareRecordingDownload() {
     requireRecordingStore(*this);
     pimpl->rpcCallCheckedVoid("recordStorePrepareDownload");
+}
+
+ReplayCacheInfo DeviceBase::getReplayCacheInfo() {
+    requireReplayCache(*this);
+    using Row = std::tuple<std::string, std::int32_t, std::string, std::uint64_t, std::int64_t, bool>;
+    const auto reply = pimpl->rpcCallChecked<std::tuple<std::uint64_t, std::uint64_t, std::vector<Row>>>("replayCacheInfo");
+    ReplayCacheInfo info;
+    info.limitBytes = std::get<0>(reply);
+    info.usedBytes = std::get<1>(reply);
+    for(const auto& row : std::get<2>(reply)) {
+        ReplayCacheEntry entry;
+        entry.key = std::get<0>(row);
+        entry.kind = static_cast<ReplayCacheKind>(std::get<1>(row));
+        entry.sourceHash = std::get<2>(row);
+        entry.sizeBytes = std::get<3>(row);
+        entry.lastUseMs = std::get<4>(row);
+        entry.inUse = std::get<5>(row);
+        info.entries.push_back(std::move(entry));
+    }
+    return info;
+}
+
+void DeviceBase::setReplayCacheLimit(std::uint64_t bytes) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheSetLimit", bytes);
+}
+
+void DeviceBase::clearReplayCache() {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheClear");
+}
+
+std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCacheQuery(const std::string& hash) {
+    requireReplayCache(*this);
+    return pimpl->rpcCallChecked<std::tuple<bool, std::string, std::uint64_t>>("replayCacheQuery", hash);
+}
+
+void DeviceBase::replayCacheBegin(const std::string& hash, std::uint64_t totalBytes) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheBegin", hash, totalBytes);
+}
+
+void DeviceBase::replayCacheWrite(const std::string& hash, std::uint64_t offset, const std::vector<std::uint8_t>& bytes) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheWrite", hash, offset, bytes);
+}
+
+void DeviceBase::replayCacheCommit(const std::string& hash) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheCommit", hash);
+}
+
+void DeviceBase::replayCacheAbort(const std::string& hash) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheAbort", hash);
+}
+
+void DeviceBase::replayCacheRelease(const std::vector<std::string>& keys) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheRelease", keys);
+}
+
+std::tuple<int, int, double> DeviceBase::replayCacheSourceSize(const std::string& absolutePath) {
+    requireReplayCache(*this);
+    return pimpl->rpcCallChecked<std::tuple<int, int, double>>("replayCacheSourceSize", absolutePath);
 }
 
 }  // namespace dai

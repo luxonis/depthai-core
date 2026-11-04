@@ -63,7 +63,7 @@ On RVC2, holistic record still uses one host file per stream, sets that stream's
 
 On RVC4, one device `RecordVideo` is created per camera. The cameras share `holistic_<device id>_<local time>`. The stream name is `Camera` plus the board socket, for example `CameraCAM_A`. `VIDEO` with encoding enabled records the encoded stream on the device. `RAW_FRAMES` records the camera frames and does not add a `VideoEncoder`. `VIDEO` with encoding disabled cannot write an AVI on the device, so the host nodes are used and the pipeline warns `Record holistic: video encoding off, host nodes used`.
 
-At stop the host downloads the shared recording, writes `record_config.json` and `camera_info.json`, and packs `recording_<local time>.tar.gz`. Video entries stay at the archive root (`CameraCAM_A.mp4` and `.mcap`). Raw frames stay in one directory per camera (`CameraCAM_A/CameraCAM_A_00000000.dai`). IMU data stays in `IMU.mcap` on the host. Hidden marker files are not packed. Older `.tar` recordings remain readable. Replay does not yet play `.dai` files.
+At stop the host downloads the shared recording, writes `record_config.json` and `camera_info.json`, and packs `recording_<local time>.tar.gz`. Video entries stay at the archive root (`CameraCAM_A.mp4` and `.mcap`). Raw frames stay in one directory per camera (`CameraCAM_A/CameraCAM_A_00000000.dai`). IMU data stays in `IMU.mcap` on the host. Hidden marker files are not packed. Older `.tar` recordings remain readable. `ReplayVideo` plays `.dai` files. See `docs/ReplayVideo.md`.
 
 Holistic nodes do not wait for a trigger and do not keep a pre-trigger buffer. Sync and `MessageDemux` stay on the device on RVC4. The demux stays on the host for RVC2 and for the host fallback above.
 

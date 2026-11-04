@@ -570,8 +570,49 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/Replay.cpp
     src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
+    src/opencv/ReplayCache.cpp
+    src/opencv/ReplayDecode.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
+
+# Link the same ffmpeg that OpenCV videoio uses. A newer pkg-config ffmpeg
+# duplicates avcodec symbols, so only an explicit ffmpeg@7 (or DEPTHAI_FFMPEG_ROOT) prefix is accepted.
+set(DEPTHAI_LIBAV_LIBS "")
+set(DEPTHAI_LIBAV_INCLUDE "")
+set(DEPTHAI_HAVE_LIBAV OFF)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    set(_depthai_ffmpeg_roots "/opt/homebrew/opt/ffmpeg@7" "/usr/local/opt/ffmpeg@7")
+    if(DEFINED ENV{DEPTHAI_FFMPEG_ROOT} AND NOT "$ENV{DEPTHAI_FFMPEG_ROOT}" STREQUAL "")
+        list(INSERT _depthai_ffmpeg_roots 0 "$ENV{DEPTHAI_FFMPEG_ROOT}")
+    endif()
+    foreach(_root IN LISTS _depthai_ffmpeg_roots)
+        if(EXISTS "${_root}/include/libavcodec/avcodec.h")
+            set(_found_libs "")
+            foreach(_lib avcodec avformat avutil)
+                if(EXISTS "${_root}/lib/lib${_lib}.dylib")
+                    list(APPEND _found_libs "${_root}/lib/lib${_lib}.dylib")
+                elseif(EXISTS "${_root}/lib/lib${_lib}.so")
+                    list(APPEND _found_libs "${_root}/lib/lib${_lib}.so")
+                endif()
+            endforeach()
+            list(LENGTH _found_libs _nlibs)
+            if(_nlibs EQUAL 3)
+                set(DEPTHAI_LIBAV_INCLUDE "${_root}/include")
+                set(DEPTHAI_LIBAV_LIBS "${_found_libs}")
+                set(DEPTHAI_HAVE_LIBAV ON)
+            endif()
+            break()
+        endif()
+    endforeach()
+endif()
+
+function(depthai_link_libav target_name)
+    if(DEPTHAI_HAVE_LIBAV)
+        target_include_directories(${target_name} PRIVATE "${DEPTHAI_LIBAV_INCLUDE}")
+        target_link_libraries(${target_name} PRIVATE ${DEPTHAI_LIBAV_LIBS})
+        target_compile_definitions(${target_name} PRIVATE DEPTHAI_HAVE_LIBAV)
+    endif()
+endfunction()
 if(DEPTHAI_HAVE_OPENCV_STITCHING)
     list(APPEND TARGET_OPENCV_SOURCES
         src/pipeline/utilities/Stitching/Stitching.cpp
@@ -723,6 +764,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    depthai_link_libav(${TARGET_CORE_NAME})
 
 endif()
 if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -1239,6 +1281,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    depthai_link_libav(${TARGET_OPENCV_NAME})
     if(DEPTHAI_HAVE_OPENCV_STITCHING)
         target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_STITCHING)
     endif()

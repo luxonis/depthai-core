@@ -27,6 +27,7 @@
 #include "utility/RecordReplayImpl.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "depthai/pipeline/node/host/Record.hpp"
+    #include "depthai/pipeline/node/host/Replay.hpp"
 #endif
 #include "utility/Serialization.hpp"
 #include "utility/Telemetry.hpp"
@@ -1495,8 +1496,16 @@ void PipelineImpl::build() {
     // end of ---Add AutoCalibration block---
 
     // Run first build stage for all nodes
-    for(const auto& node : getAllNodes()) {
-        node->buildStage1();
+    try {
+        for(const auto& node : getAllNodes()) {
+            node->buildStage1();
+        }
+    } catch(...) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        Pipeline replayPipeline(shared_from_this());
+        node::releaseEveryReplayPrepare(replayPipeline);
+#endif
+        throw;
     }
 
     // Go through the build stages sequentially
@@ -2147,6 +2156,25 @@ void PipelineImpl::waitForRecordNodes() {
 #endif
 }
 
+void PipelineImpl::waitForReplayNodes() {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    for(const auto& node : getAllNodes()) {
+        const bool replay =
+            std::dynamic_pointer_cast<node::ReplayVideo>(node) != nullptr || std::dynamic_pointer_cast<node::ReplayMetadataOnly>(node) != nullptr;
+        if(!replay) continue;
+        if(node->runOnHost()) {
+            if(auto threaded = std::dynamic_pointer_cast<ThreadedNode>(node)) {
+                if(threaded->thread.get_id() != std::this_thread::get_id()) node->wait();
+            } else {
+                node->wait();
+            }
+        }
+        if(auto video = std::dynamic_pointer_cast<node::ReplayVideo>(node)) video->releaseAfterStop();
+        if(auto metadata = std::dynamic_pointer_cast<node::ReplayMetadataOnly>(node)) metadata->releaseAfterStop();
+    }
+#endif
+}
+
 void PipelineImpl::transferRecordings() {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     struct Group {
@@ -2332,6 +2360,8 @@ void PipelineImpl::stop() {
     // Record threads close files and publish the final status before output queues close.
     waitForRecordNodes();
     transferRecordings();
+    // Replay threads release cache holds after they leave run().
+    waitForReplayNodes();
 
     // Close all the output queues
     for(auto& queue : outputQueues) {

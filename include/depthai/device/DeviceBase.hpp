@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "depthai/utility/RecordingStore.hpp"
+#include "depthai/utility/ReplayCache.hpp"
 
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -599,6 +600,67 @@ class DeviceBase {
      * @throws std::runtime_error when the device is not RVC4 or the device call fails.
      */
     void prepareRecordingDownload();
+
+    /**
+     * Reads the RVC4 replay cache. Firmware implements the call. A missing method throws.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    ReplayCacheInfo getReplayCacheInfo();
+
+    /**
+     * Sets the RVC4 replay-cache limit in bytes. The new limit removes nothing by itself.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void setReplayCacheLimit(std::uint64_t bytes);
+
+    /**
+     * Removes RVC4 replay-cache entries that are not in use.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void clearReplayCache();
+
+    /**
+     * Looks up one source hash in the RVC4 replay cache.
+     * @return present, device path, and size in bytes.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    std::tuple<bool, std::string, std::uint64_t> replayCacheQuery(const std::string& hash);
+
+    /**
+     * Starts an upload of `totalBytes` for `hash`. An interrupted upload leaves no entry.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheBegin(const std::string& hash, std::uint64_t totalBytes);
+
+    /**
+     * Writes one chunk of an upload. The chunk size used by the host is 1 MiB.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheWrite(const std::string& hash, std::uint64_t offset, const std::vector<std::uint8_t>& bytes);
+
+    /**
+     * Finishes an upload after the hash matches.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheCommit(const std::string& hash);
+
+    /**
+     * Drops an unfinished upload so it does not become a cache entry.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheAbort(const std::string& hash);
+
+    /**
+     * Drops cache holds for the given keys. Entries created by this start that are unused and not persistent are removed.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheRelease(const std::vector<std::string>& keys);
+
+    /**
+     * Reads the width, height, and fps of a source that is already on the device.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    std::tuple<int, int, double> replayCacheSourceSize(const std::string& absolutePath);
 
     /**
      * Retrieves current device state in a crash dump format.

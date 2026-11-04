@@ -77,6 +77,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool holisticRecordPacked = false;
     /// Join host RecordVideo and RecordMetadataOnly threads before output queues close.
     void waitForRecordNodes();
+    /// Join host replay threads, then drop cache holds created by this start.
+    void waitForReplayNodes();
     /// Copy device recordings to the host while the device is still connected.
     void transferRecordings();
     std::string defaultDeviceId;

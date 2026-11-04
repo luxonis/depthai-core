@@ -6,6 +6,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Clock.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
+#include "depthai/utility/ReplayCache.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 // pybind11_json
@@ -24,6 +25,7 @@
 // STL Bind
 #include <pybind11/numpy.h>
 #include <pybind11/pytypes.h>
+#include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>);
@@ -145,6 +147,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<HealthCheckIssueStage> healthCheckIssueStage(m, "HealthCheckIssueStage", DOC(dai, HealthCheckIssueStage));
     py::enum_<UsbGeneration> usbGeneration(m, "UsbGeneration", DOC(dai, UsbGeneration));
     py::enum_<HealthCheckResult> healthCheckResult(m, "HealthCheckResult", DOC(dai, HealthCheckResult));
+    py::enum_<ReplaySourceLocation> replaySourceLocation(m, "ReplaySourceLocation", DOC(dai, ReplaySourceLocation));
+    py::enum_<ReplayDecodeMode> replayDecodeMode(m, "ReplayDecodeMode", DOC(dai, ReplayDecodeMode));
+    py::enum_<ReplayCacheKind> replayCacheKind(m, "ReplayCacheKind", DOC(dai, ReplayCacheKind));
+    py::class_<ReplayCacheEntry> replayCacheEntry(m, "ReplayCacheEntry", DOC(dai, ReplayCacheEntry));
+    py::class_<ReplayCacheInfo> replayCacheInfo(m, "ReplayCacheInfo", DOC(dai, ReplayCacheInfo));
     py::class_<BoardConfig> boardConfig(m, "BoardConfig", DOC(dai, BoardConfig));
     py::class_<BoardConfig::Camera> boardCamera(boardConfig, "Camera", DOC(dai, BoardConfig, Camera));
     py::class_<BoardConfig::IMU> boardImu(boardConfig, "IMU", DOC(dai, BoardConfig, IMU));
@@ -182,6 +189,20 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
+    replaySourceLocation.value("HOST", ReplaySourceLocation::HOST).value("DEVICE", ReplaySourceLocation::DEVICE);
+    replayDecodeMode.value("STREAM", ReplayDecodeMode::STREAM).value("PRE_DECODE", ReplayDecodeMode::PRE_DECODE);
+    replayCacheKind.value("SOURCE", ReplayCacheKind::SOURCE).value("DECODED", ReplayCacheKind::DECODED);
+    replayCacheEntry.def(py::init<>())
+        .def_readwrite("key", &ReplayCacheEntry::key)
+        .def_readwrite("kind", &ReplayCacheEntry::kind)
+        .def_readwrite("sourceHash", &ReplayCacheEntry::sourceHash)
+        .def_readwrite("sizeBytes", &ReplayCacheEntry::sizeBytes)
+        .def_readwrite("lastUseMs", &ReplayCacheEntry::lastUseMs)
+        .def_readwrite("inUse", &ReplayCacheEntry::inUse);
+    replayCacheInfo.def(py::init<>())
+        .def_readwrite("limitBytes", &ReplayCacheInfo::limitBytes)
+        .def_readwrite("usedBytes", &ReplayCacheInfo::usedBytes)
+        .def_readwrite("entries", &ReplayCacheInfo::entries);
     recordingInfo.def(py::init<>())
         .def_readwrite("name", &RecordingInfo::name, DOC(dai, RecordingInfo, name))
         .def_readwrite("sizeBytes", &RecordingInfo::sizeBytes, DOC(dai, RecordingInfo, sizeBytes))
@@ -1356,7 +1377,52 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, getSupportedDeviceModels))
         .def("getProtocol", &DeviceBase::getProtocol, DOC(dai, DeviceBase, getProtocol))
         .def("getPlatform", &DeviceBase::getPlatform, DOC(dai, DeviceBase, getPlatform))
-        .def("getPlatformAsString", &DeviceBase::getPlatformAsString, DOC(dai, DeviceBase, getPlatformAsString));
+        .def("getPlatformAsString", &DeviceBase::getPlatformAsString, DOC(dai, DeviceBase, getPlatformAsString))
+        .def("getReplayCacheInfo", &DeviceBase::getReplayCacheInfo, py::call_guard<py::gil_scoped_release>(), DOC(dai, DeviceBase, getReplayCacheInfo))
+        .def("setReplayCacheLimit",
+             &DeviceBase::setReplayCacheLimit,
+             py::arg("bytes"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, setReplayCacheLimit))
+        .def("clearReplayCache", &DeviceBase::clearReplayCache, py::call_guard<py::gil_scoped_release>(), DOC(dai, DeviceBase, clearReplayCache))
+        .def("replayCacheQuery",
+             &DeviceBase::replayCacheQuery,
+             py::arg("hash"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheQuery))
+        .def("replayCacheBegin",
+             &DeviceBase::replayCacheBegin,
+             py::arg("hash"),
+             py::arg("totalBytes"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheBegin))
+        .def("replayCacheWrite",
+             &DeviceBase::replayCacheWrite,
+             py::arg("hash"),
+             py::arg("offset"),
+             py::arg("bytes"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheWrite))
+        .def("replayCacheCommit",
+             &DeviceBase::replayCacheCommit,
+             py::arg("hash"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheCommit))
+        .def("replayCacheAbort",
+             &DeviceBase::replayCacheAbort,
+             py::arg("hash"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheAbort))
+        .def("replayCacheRelease",
+             &DeviceBase::replayCacheRelease,
+             py::arg("keys"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheRelease))
+        .def("replayCacheSourceSize",
+             &DeviceBase::replayCacheSourceSize,
+             py::arg("absolutePath"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheSourceSize));
 
     // Bind constructors
     bindConstructors<Device>(device);
