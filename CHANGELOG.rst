@@ -2,7 +2,7 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-3.12.0 (2026-11-04)
+Forthcoming
 -------------------
 ## Features
 
