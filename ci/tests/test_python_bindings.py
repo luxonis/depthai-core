@@ -61,6 +61,24 @@ class SourceParsingTests(unittest.TestCase):
         self.assertFalse(errors)
         self.assertEqual(set(api), {"dai::A", "dai::B", "dai::f()"})
 
+    def test_nested_implementation_types_and_serialization_macros_are_not_api(self):
+        source = """
+        namespace dai {
+        class Node {
+        public:
+            class Impl { public: void compute(); int cache = 0; };
+            struct Internal { int value; };
+            enum class Impl2 { A };
+            DEPTHAI_SERIALIZE(Node, Buffer::sequenceNum, a, b);
+            DEPTHAI_SERIALIZE_OPTIONAL(Node, c);
+            int a = 0, b = 0;
+        };
+        }
+        """
+        api, errors = checker.public_api(source, "node.hpp")
+        self.assertFalse(errors)
+        self.assertEqual(set(api), {"dai::Node", "dai::Node::Impl2", "dai::Node::Impl2::A", "dai::Node::a", "dai::Node::b"})
+
     def test_preprocessor_branches_and_comments(self):
         source = """
         #define DECLARE(X) \\

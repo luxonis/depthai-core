@@ -209,14 +209,13 @@ void ImageAlign::run() {
         // dai::CameraModel cameraModel = dai::CameraModel::Perspective;  // todo
 
         auto cv_targetCamMatrix = cv_M1.clone();
-        const auto bounds = detail::rectifiedBounds(imageSize, cv_M1, cv_d1, cv_R1, {alignWidth, alignHeight}, cv_M2, cv_R2);
+        const auto bounds = detail::rectifiedBounds(imageSize, cv_M1, cv_d1, cv_R1, {alignWidth, alignHeight}, cv_M2, cv_R2, logger.get());
         auto rectifiedSize = bounds.size();
         // Chroma planes require even intermediate dimensions for NV12 and YUV420p.
         if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {
             rectifiedSize.width += rectifiedSize.width % 2;
             rectifiedSize.height += rectifiedSize.height % 2;
         }
-        detail::validateRectifiedSize(rectifiedSize.width, rectifiedSize.height);
         cv_targetCamMatrix.at<float>(0, 2) -= bounds.x;
         cv_targetCamMatrix.at<float>(1, 2) -= bounds.y;
         auto cv_meshSize = rectifiedSize;

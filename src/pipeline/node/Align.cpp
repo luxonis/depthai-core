@@ -461,7 +461,9 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
     return alignedImg;
 }
 
-ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform) {
+ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform,
+                                              const ImgTransformation& alignToTransform,
+                                              spdlog::async_logger& logger) {
     ImgFrameRunState state;
     try {
         state.inputIntrinsics = inputTransform.getIntrinsicMatrix();
@@ -540,12 +542,11 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
 
         state.inputSize = {inputWidth, inputHeight};
         const auto bounds = detail::rectifiedBounds(
-            state.inputSize, inputIntrinsicsMat, inputDistortion, rectificationR1, {alignWidth, alignHeight}, alignIntrinsicsMat, backRotation.t());
+            state.inputSize, inputIntrinsicsMat, inputDistortion, rectificationR1, {alignWidth, alignHeight}, alignIntrinsicsMat, backRotation.t(), &logger);
         auto meshSize = bounds.size();
         // The same maps can be reused when the input format changes to a chroma-subsampled format.
         meshSize.width += meshSize.width % 2;
         meshSize.height += meshSize.height % 2;
-        detail::validateRectifiedSize(meshSize.width, meshSize.height);
         auto targetCamMatrix = inputIntrinsicsMat.clone();
         targetCamMatrix.at<float>(0, 2) -= bounds.x;
         targetCamMatrix.at<float>(1, 2) -= bounds.y;
@@ -726,7 +727,7 @@ void Align::run() {
                 if(runStateValid) {
                     logger->info("Input or alignTo transformation changed, updating rectification maps.");
                 }
-                runState = prepareRectificationMatrices(newInputTransform, newAlignToTransform);
+                runState = prepareRectificationMatrices(newInputTransform, newAlignToTransform, *logger);
                 runStateValid = true;
                 warnedAboutDistortion = false;
             }

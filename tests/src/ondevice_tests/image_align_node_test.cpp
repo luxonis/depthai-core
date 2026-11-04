@@ -372,23 +372,48 @@ TEST_CASE("Test ImageAlign rounds signed depth shifts on device") {
     runImageAlignSignedShiftTest(false);
 }
 
-TEST_CASE("Test ImageAlign rejects excessive rectified bounds on host") {
-    for(const auto& geometry : {std::pair<float, float>{20.0f, 40.0f}, {64.0f, 90.0f}}) {
-        const auto [focalLength, yawDegrees] = geometry;
-        CAPTURE(focalLength, yawDegrees);
-        const std::array<std::array<float, 3>, 3> k = {{{focalLength, 0.0f, 32.0f}, {0.0f, focalLength, 24.0f}, {0.0f, 0.0f, 1.0f}}};
-        const float angle = yawDegrees * 3.14159265f / 180.0f;
+struct UnusableBoundsGeometry {
+    float focalLength;
+    float yawDegrees;
+    std::array<float, 3> translation;
+};
+
+// Each geometry makes the expanded rectified bounds unusable: a wide lens with a large rotation, a 90 deg rotation, or a wide lens
+// with the baseline turned 45 deg in depth (a broken stereo extrinsic in the EEPROM can turn the baseline like this).
+const std::array<UnusableBoundsGeometry, 3> unusableBoundsGeometries = {{
+    {20.0f, 40.0f, {70.0f, 0.0f, 0.0f}},
+    {64.0f, 90.0f, {70.0f, 0.0f, 0.0f}},
+    {20.0f, 0.0f, {50.0f, 0.0f, -50.0f}},
+}};
+
+void runImageAlignUnusableBoundsTest(bool runOnHost) {
+    for(const auto& geometry : unusableBoundsGeometries) {
+        CAPTURE(geometry.focalLength, geometry.yawDegrees, geometry.translation[0], geometry.translation[2]);
+        const float f = geometry.focalLength;
+        const std::array<std::array<float, 3>, 3> k = {{{f, 0.0f, 32.0f}, {0.0f, f, 24.0f}, {0.0f, 0.0f, 1.0f}}};
+        const float angle = geometry.yawDegrees * 3.14159265f / 180.0f;
         const std::vector<std::vector<float>> rotation = {
             {std::cos(angle), 0.0f, std::sin(angle)}, {0.0f, 1.0f, 0.0f}, {-std::sin(angle), 0.0f, std::cos(angle)}};
         const std::vector<std::vector<float>> identity = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
-        const dai::Extrinsics depthExtrinsics(rotation, {70.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
+        const dai::Point3f translation(geometry.translation[0], geometry.translation[1], geometry.translation[2]);
+        const dai::Extrinsics depthExtrinsics(rotation, translation, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
         const dai::Extrinsics imageExtrinsics(identity, {0.0f, 0.0f, 0.0f}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
         const dai::ImgTransformation depthTransformation(64, 48, k, dai::CameraModel::Perspective, {}, depthExtrinsics);
         const dai::ImgTransformation imageTransformation(64, 48, k, dai::CameraModel::Perspective, {}, imageExtrinsics);
 
-        // Invalid geometry stops the node and closes its output queue, rather than allocating the maps.
-        REQUIRE_THROWS_AS(alignSyntheticDepth(true, depthTransformation, imageTransformation), dai::MessageQueue::QueueException);
+        // The node falls back to the input-size canvas and keeps running, instead of stopping the pipeline.
+        const auto aligned = alignSyntheticDepth(runOnHost, depthTransformation, imageTransformation);
+        REQUIRE(aligned->getWidth() == 64);
+        REQUIRE(aligned->getHeight() == 48);
     }
+}
+
+TEST_CASE("Test ImageAlign falls back to the input canvas for unusable rectified bounds on host") {
+    runImageAlignUnusableBoundsTest(true);
+}
+
+TEST_CASE("Test ImageAlign falls back to the input canvas for unusable rectified bounds on device") {
+    runImageAlignUnusableBoundsTest(false);
 }
 
 // Feeds synthetic frames with hand-made ImgTransformations through ImageAlign and checks that a transformation change on
