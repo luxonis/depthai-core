@@ -35,15 +35,17 @@ JPEG and MJPEG use full range. Other conversions use BT.601 limited range. PNG c
 
 ## Rate, loop, and timestamps
 
-`setFps` sets the send rate. `0` is the same as not set. With a positive fps, including `1000`, the node waits `1/fps` between sends. `fps = 1000` is one frame per millisecond. It does not drop frames when the consumer is slow. The next send waits until the previous one has finished.
+`setFps` sets the send rate. `0` is the same as not set. Negative or non-finite values fail at start. A positive fps sets an interval of `1/fps`, including a 1 ms interval for `1000`. Each send starts no earlier than the previous send's actual start plus that interval, and no earlier than the previous send's completion. Decoding happens before the wait. A late decode or blocked consumer moves subsequent sends forward; the node does not skip frames or catch up to an old deadline. Host and device replay use the same timing policy.
 
-Without fps, the node uses the recorded device-timestamp gaps. A gap that is not positive becomes 1/30 s. With no timestamps at all, the rate is 30 fps.
+Without fps, the node uses the original recorded device-timestamp gaps, including timestamps stored in `.dai` frames. A gap that is not positive becomes 1/30 s. The gap between passes is one nominal interval. With no timestamps at all, the rate is 30 fps, independent of the video's container frame rate.
 
 On the first pass the recorded sequence numbers and timestamps are kept. Later passes continue the sequence and shift the timestamps by the span of the recording plus one nominal interval. The nominal interval is `1/fps` when fps is set and is not exactly 1000. When fps is unset or exactly 1000, it is the mean of the recorded device timestamps, or 1/30 s for a single frame.
 
-`ts`, `tsDevice`, and `tsSystem` move by the same amount. A stream with no metadata uses the scheduled send time for `ts` and `tsDevice`, leaves `tsSystem` unset, and numbers sequences from 0.
+`ts`, `tsDevice`, and `tsSystem` move by the same amount. A stream with no metadata uses the actual send start time for `ts` and `tsDevice`, leaves `tsSystem` unset, and numbers sequences from 0.
 
 `setLoop(true)` is the default. The node returns to the first frame after the last one. `setStopPipelineAtEnd` has no effect while looping. With loop off, the node logs `Replay finished` and, by default, stops the pipeline. `setStopPipelineAtEnd(false)` ends the node thread and leaves the pipeline running.
+
+Automatic pipeline stop can discard frames still queued for consumers. To drain every frame, use `setStopPipelineAtEnd(false)` and stop the pipeline after the consumer has received the expected count.
 
 ## Cache
 

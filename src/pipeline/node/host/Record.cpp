@@ -806,6 +806,17 @@ void RecordVideo::buildStage1() {
         std::ofstream marker(recordingDir / (".dai_closed_" + resolved.streamName), std::ios::trunc);
         if(marker) marker << "open";
     } else if(!onHost) {
+        if(!deviceStatusQueue) {
+            deviceStatusQueue = status.createOutputQueue(1, false);
+            const std::weak_ptr<RecordVideo> weakSelf = std::static_pointer_cast<RecordVideo>(shared_from_this());
+            deviceStatusQueue->addCallback([weakSelf](std::shared_ptr<ADatatype> data) {
+                const auto message = std::dynamic_pointer_cast<RecordStatus>(data);
+                if(auto self = weakSelf.lock(); self && message) {
+                    std::lock_guard<std::mutex> lock(self->statusMutex);
+                    if(!self->lastStatus || message->getSequenceNum() > self->lastStatus->getSequenceNum()) self->lastStatus = *message;
+                }
+            });
+        }
         try {
             const auto recordings = getDevice()->listRecordings();
             for(const auto& recording : recordings) {

@@ -47,7 +47,9 @@ On RVC4 the recording is created in `/data/depthai/recordings/<name>`. `Device::
 
 `setTransferToHost(true)` is the default. When the pipeline stops, the host downloads `<output directory>/<name>/` and then deletes the device copy unless `setKeepOnDevice(true)`. A download logs progress every 10 percent. A failed download is logged, left on the device, and does not throw out of `Pipeline::stop`. Nothing is downloaded after the device disconnects. Calling `setTransferToHost` or `setKeepOnDevice` on a node that runs on the host logs that the call was ignored.
 
-`prepareRecordingDownload` asks the device to close record nodes before a download. Firmware has to implement the store calls. This repository does not contain that firmware.
+`prepareRecordingDownload` stops and joins the device recording nodes before a download. Pipeline stop does this while status transport is still running, including when transfer is disabled, and retains the final status for `getStatus()`. The RVC4 firmware in `depthai-device-kb` implements these calls and uses the matching SDK headers. Its `DEPTHAI_DEVICE_KB_CORE_PATH` must point to that SDK checkout.
+
+The store records creation time and completion in persistent bookkeeping. A recording is complete after every writer has closed its files; an interrupted process leaves it incomplete. Download and delete reject recordings held by a writer or replay reader. Downloads contain payload files, excluding store bookkeeping and unfinished frame files. Device pre-trigger history owns copies of idle frames so it can release camera pool buffers immediately. Encoded MP4 recording uses the shared MP4 backend without requiring OpenCV.
 
 ## Legacy files
 

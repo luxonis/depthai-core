@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utility/ReplayArchive.hpp"
+
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -78,14 +80,6 @@ struct ListedSource {
     std::string profile;
     std::uint64_t bytes = 0;
 };
-
-struct ArchiveListing {
-    std::uint64_t entryBytes = 0;
-    std::filesystem::path extractedRoot;
-};
-
-/// Rejects absolute paths, ".." components, and symlink targets that leave the archive.
-ArchiveListing extractReplayArchive(const std::filesystem::path& archive, const std::filesystem::path& destination);
 
 ListedSource inspectReplaySource(const std::filesystem::path& path);
 /// Selects `<entry>` inside a holistic directory: a frame directory, a video, or an mcap.

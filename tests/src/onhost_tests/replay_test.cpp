@@ -205,3 +205,15 @@ TEST_CASE("ReplayVideo no metadata") {
         p.stop();
     }
 }
+
+#if defined(__linux__) && defined(DEPTHAI_ENABLE_PROTOBUF)
+TEST_CASE("ByteRecorder reports a full metadata sink") {
+    dai::utility::ByteRecorder recorder;
+    // A failure may occur when the header is written or when the final chunk is flushed.
+    REQUIRE_THROWS([&] {
+        recorder.init<dai::proto::rgbd_data::RGBDData>("/dev/full", dai::RecordConfig::CompressionLevel::NONE, "frames");
+        recorder.write(std::vector<std::uint8_t>{1, 2, 3});
+        recorder.close();
+    }());
+}
+#endif

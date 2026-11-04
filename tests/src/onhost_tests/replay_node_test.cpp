@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <optional>
 #include <opencv2/imgcodecs.hpp>
 #include <thread>
 #include <vector>
@@ -16,6 +17,7 @@
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "opencv/ReplayInternal.hpp"
+#include "../ReplayImageArchiveFixture.hpp"
 
 #ifdef _WIN32
     #include <process.h>
@@ -555,7 +557,7 @@ TEST_CASE("S8 eviction") {
     REQUIRE(has(hashC));
 }
 
-TEST_CASE("S9 unpaced replay does not drop") {
+TEST_CASE("S9 unpaced replay does not drop", "[pacing]") {
     resetCache();
     std::vector<Spec> frames;
     for(int index = 0; index < 20; index++) frames.push_back(Spec{index, index, index * 10, 40});
@@ -582,7 +584,7 @@ TEST_CASE("S9 unpaced replay does not drop") {
     pipeline.stop();
 }
 
-TEST_CASE("S10 paced replay slips and does not drop") {
+TEST_CASE("S10 paced replay slips and does not drop", "[pacing]") {
     resetCache();
     std::vector<Spec> frames;
     for(int index = 0; index < 10; index++) frames.push_back(Spec{index, index, index * 10, 40});
@@ -720,4 +722,136 @@ TEST_CASE("ReplayVideo odd source size and unknown extension") {
     auto unknownReplay = unknown.create<dai::node::ReplayVideo>();
     unknownReplay->setReplayVideoFile(text);
     REQUIRE_THROWS_WITH(unknown.start(), ContainsSubstring("unknown extension"));
+}
+
+TEST_CASE("Replay JPEG and PNG archives decode every image in numeric order", "[archive]") {
+    resetCache();
+    const auto imageExtension = GENERATE(".jpg", ".png");
+    const auto archiveExtension = GENERATE(".tar", ".tar.gz", ".tgz", ".tar.xz");
+    const auto mode = GENERATE(dai::ReplayDecodeMode::STREAM, dai::ReplayDecodeMode::PRE_DECODE);
+    replaytest::ImageArchive source(imageExtension, archiveExtension, true);
+    dai::Pipeline pipeline(false);
+    auto replay = pipeline.create<dai::node::ReplayVideo>();
+    replay->setSource(source.archive).setRunOnHost(true).setLoop(true).setStopPipelineAtEnd(false).setFps(1000.f).setDecodeMode(mode);
+    auto queue = replay->out.createOutputQueue(8, true);
+    pipeline.start();
+    std::vector<int> luma;
+    for(int index = 0; index < 6; ++index) {
+        bool timeout = false;
+        const auto frame = queue->get<dai::ImgFrame>(3s, timeout);
+        REQUIRE_FALSE(timeout);
+        REQUIRE(frame);
+        REQUIRE(frame->getWidth() == 18);
+        REQUIRE(frame->getHeight() == 10);
+        REQUIRE(frame->getType() == dai::ImgFrame::Type::YUV420p);
+        REQUIRE(frame->getSequenceNum() == index);
+        REQUIRE(frame->getData().size() >= 18 * 10 * 3 / 2);
+        luma.push_back(frame->getData()[0]);
+    }
+    pipeline.stop();
+    REQUIRE(luma[1] > luma[0] + 20);
+    REQUIRE(luma[2] > luma[1] + 20);
+    REQUIRE(luma[3] == luma[0]);
+    REQUIRE(luma[4] == luma[1]);
+    REQUIRE(luma[5] == luma[2]);
+}
+
+TEST_CASE("Replay archives resize odd and one-pixel source images", "[archive]") {
+    resetCache();
+    const auto dimensions = GENERATE(std::make_pair(17, 9), std::make_pair(1, 1));
+    const auto mode = GENERATE(dai::ReplayDecodeMode::STREAM, dai::ReplayDecodeMode::PRE_DECODE);
+    replaytest::ImageArchive source(".png", ".tar.gz", true, dimensions.first, dimensions.second);
+    dai::Pipeline pipeline(false);
+    auto replay = pipeline.create<dai::node::ReplayVideo>();
+    replay->setSource(source.archive).setRunOnHost(true).setLoop(false).setStopPipelineAtEnd(false).setDecodeMode(mode);
+    replay->setSize(16, 8);
+    auto queue = replay->out.createOutputQueue(8, true);
+    pipeline.start();
+    for(int index = 0; index < 3; ++index) {
+        bool timeout = false;
+        const auto frame = queue->get<dai::ImgFrame>(3s, timeout);
+        REQUIRE_FALSE(timeout);
+        REQUIRE(frame);
+        REQUIRE(frame->getWidth() == 16);
+        REQUIRE(frame->getHeight() == 8);
+        REQUIRE(frame->getData().size() >= 16 * 8 * 3 / 2);
+    }
+    pipeline.stop();
+}
+
+TEST_CASE("Replay image resize retains chroma from a one-pixel source", "[archive]") {
+    dai::replay::DecodedPixels source;
+    source.width = 1;
+    source.height = 1;
+    source.type = dai::ImgFrame::Type::BGR888i;
+    source.data = {0, 0, 255};
+    const auto pixels = dai::replay::convertPixels(source, dai::ImgFrame::Type::YUV420p, 16, 8);
+    REQUIRE(pixels.data.size() == 16 * 8 * 3 / 2);
+    REQUIRE(pixels.data[0] == 82);
+    REQUIRE(pixels.data[16 * 8] == 90);
+    REQUIRE(pixels.data[16 * 8 * 5 / 4] == 240);
+}
+
+TEST_CASE("PC-2 recorded frame gaps determine wall-clock playback", "[pacing]") {
+    resetCache();
+    const auto mode = GENERATE(dai::ReplayDecodeMode::STREAM, dai::ReplayDecodeMode::PRE_DECODE);
+    const auto explicitlyUnset = GENERATE(false, true);
+    const auto source = writeStream("recorded-pacing", 64, 48, {{0, 10, 1000, 20}, {1, 11, 1080, 30}, {2, 12, 1080, 40}, {3, 13, 1300, 50}});
+    dai::Pipeline pipeline(false);
+    auto replay = pipeline.create<dai::node::ReplayVideo>();
+    replay->setSource(source).setRunOnHost(true).setDecodeMode(mode).setLoop(true).setStopPipelineAtEnd(false);
+    if(explicitlyUnset) replay->setFps(0.f);
+    auto queue = replay->out.createOutputQueue(1, true);
+    pipeline.start();
+    std::chrono::steady_clock::time_point start;
+    const std::vector<long long> expected{0, 80, 113, 333, 433, 513};
+    const std::vector<long long> stamps{1000, 1080, 1080, 1300, 1400, 1480};
+    for(int index = 0; index < 6; ++index) {
+        bool timeout = false;
+        const auto frame = queue->get<dai::ImgFrame>(2s, timeout);
+        REQUIRE_FALSE(timeout);
+        REQUIRE(frame);
+        const auto received = std::chrono::steady_clock::now();
+        if(index == 0) start = received;
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(received - start).count();
+        REQUIRE(std::llabs(elapsed - expected[index]) <= 25);
+        REQUIRE(frame->getSequenceNum() == 10 + index);
+        const auto stamp = std::chrono::duration_cast<std::chrono::milliseconds>(frame->getTimestampDevice().time_since_epoch()).count();
+        REQUIRE(stamp == stamps[index]);
+    }
+    pipeline.stop();
+}
+
+TEST_CASE("PC-3 frames without metadata use actual send timestamps at 30 fps", "[pacing]") {
+    resetCache();
+    replaytest::ImageArchive source(".png", ".tar", true);
+    dai::Pipeline pipeline(false);
+    auto replay = pipeline.create<dai::node::ReplayVideo>();
+    replay->setSource(source.archive).setRunOnHost(true).setLoop(false).setStopPipelineAtEnd(false);
+    auto queue = replay->out.createOutputQueue(1, true);
+    pipeline.start();
+    std::optional<std::chrono::steady_clock::time_point> previous;
+    for(int index = 0; index < 3; ++index) {
+        bool timeout = false;
+        const auto frame = queue->get<dai::ImgFrame>(2s, timeout);
+        REQUIRE_FALSE(timeout);
+        REQUIRE(frame);
+        const auto received = std::chrono::steady_clock::now();
+        const auto sent = frame->getTimestampDevice();
+        REQUIRE(sent <= received);
+        REQUIRE(received - sent < 25ms);
+        if(previous) {
+            REQUIRE(sent - *previous >= std::chrono::nanoseconds(33333333));
+            REQUIRE(sent - *previous < 60ms);
+        }
+        previous = sent;
+    }
+    pipeline.stop();
+}
+
+TEST_CASE("Replay rejects a negative fps at start", "[pacing]") {
+    dai::Pipeline pipeline(false);
+    auto replay = pipeline.create<dai::node::ReplayVideo>();
+    replay->setFps(-1.f);
+    REQUIRE_THROWS_WITH(pipeline.start(), ContainsSubstring("fps must be 0 or more"));
 }

@@ -1414,6 +1414,8 @@ class DeviceBase {
     void init(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
 
    private:
+    // Stop device writers and return their final serialized status snapshots.
+    std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>> prepareRecordingDownloadWithStatus();
     // private functions
     void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();

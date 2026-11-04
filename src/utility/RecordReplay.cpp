@@ -76,20 +76,37 @@ void ByteRecorder::setWriter(const std::string& filePath, RecordConfig::Compress
             options.compressionLevel = mcap::CompressionLevel::Slowest;
             break;
     }
-    const auto res = writer.open(filePath, options);
-    if(!res.ok()) {
-        throw std::runtime_error("Failed to open file for writing: " + res.message);
+    output.exceptions(std::ios::failbit | std::ios::badbit);
+    output.open(filePath, std::ios::binary | std::ios::trunc);
+    try {
+        writer.open(output, options);
+        initialized = true;
+    } catch(...) {
+        writer.terminate();
+        throw;
     }
 }
 
 ByteRecorder::~ByteRecorder() {
-    close();
+    try {
+        close();
+    } catch(const std::exception&) {
+        // Recording nodes report errors from explicit close; destructors only clean up.
+    }
 }
 
 void ByteRecorder::close() {
     if(initialized) {
-        writer.close();
         initialized = false;
+        try {
+            writer.close();
+            output.close();
+        } catch(...) {
+            writer.terminate();
+            output.exceptions(std::ios::goodbit);
+            output.close();
+            throw;
+        }
     }
 }
 

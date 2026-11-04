@@ -33,6 +33,7 @@ struct RecordHostState;
  */
 class RecordVideo : public DeviceNodeCRTP<DeviceNode, RecordVideo, RecordVideoProperties>, public HostRunnable {
     friend struct RecordHostState;
+    friend class ::dai::PipelineImpl;
 
    public:
     using CompressionLevel = dai::RecordConfig::CompressionLevel;
@@ -146,6 +147,7 @@ class RecordVideo : public DeviceNodeCRTP<DeviceNode, RecordVideo, RecordVideoPr
     ResolvedConfig resolved;
     mutable std::mutex statusMutex;
     std::optional<RecordStatus> lastStatus;
+    std::shared_ptr<MessageQueue> deviceStatusQueue;
     bool rawProducer = false;
 
     bool deviceIsRvc4() const;

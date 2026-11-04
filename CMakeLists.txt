@@ -439,6 +439,8 @@ set(TARGET_CORE_SOURCES
     src/utility/PipelineImplHelper.cpp
     src/utility/RecordReplay.cpp
     src/utility/RecordingStore.cpp
+    src/utility/ReplayArchive.cpp
+    src/utility/EncodedVideoRecorder.cpp
     src/utility/McapImpl.cpp
     src/utility/Compression.cpp
     src/utility/Telemetry.cpp
@@ -630,6 +632,13 @@ set(TARGET_RTABMAP_SOURCES
     src/rtabmap/RTABMapVIO.cpp
     src/rtabmap/RTABMapSLAM.cpp
 )
+
+if(NOT DEPTHAI_HAVE_OPENCV_SUPPORT)
+    list(APPEND TARGET_CORE_SOURCES
+        src/pipeline/node/host/Record.cpp
+        src/utility/VideoRecorder.cpp
+    )
+endif()
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     list(APPEND TARGET_CORE_SOURCES

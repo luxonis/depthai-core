@@ -796,4 +796,11 @@ TEST_CASE("ProtoSerializable save/load roundtrip for RGBDData", "[ProtoSerializa
     REQUIRE(reused.getDepthFrame().has_value());
     requireEncodedFrame(*std::get<std::shared_ptr<dai::EncodedFrame>>(reused.getDepthFrame().value()), *depthFrame);
 }
+#if defined(__linux__)
+TEST_CASE("ProtoSerializable reports a failed buffered file write", "[ProtoSerializable][Storage]") {
+    auto image = makeImgFrame(1);
+    // /dev/full accepts open but fails on write/flush, including small buffered payloads.
+    REQUIRE_THROWS(image.save("/dev/full"));
+}
+#endif
 #endif

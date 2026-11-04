@@ -1,6 +1,3 @@
-#include <archive.h>
-#include <archive_entry.h>
-
 #include <algorithm>
 #include <cstring>
 #include <fstream>
@@ -55,21 +52,6 @@ bool isArchiveName(const std::filesystem::path& path) {
 bool isVideoName(const std::filesystem::path& path) {
     const auto ext = lowerExt(path);
     return ext == ".mp4" || ext == ".avi";
-}
-
-std::string stripDotSlash(std::string name) {
-    while(name.rfind("./", 0) == 0) name.erase(0, 2);
-    return name;
-}
-
-bool escapesArchive(const std::string& name) {
-    if(name.empty()) return true;
-    const std::filesystem::path path(name);
-    if(path.is_absolute()) return true;
-    for(const auto& part : path) {
-        if(part == "..") return true;
-    }
-    return false;
 }
 
 std::uint64_t fileSizeOf(const std::filesystem::path& path) {
@@ -535,9 +517,11 @@ void packYuv(DecodedPixels& pixels, const cv::Mat& y, const cv::Mat& u, const cv
 
 void bgrToPlanes(const cv::Mat& bgr, bool fullRange, cv::Mat& y, cv::Mat& u, cv::Mat& v) {
     y.create(bgr.rows, bgr.cols, CV_8UC1);
-    u.create(bgr.rows / 2, bgr.cols / 2, CV_8UC1);
-    v.create(bgr.rows / 2, bgr.cols / 2, CV_8UC1);
-    std::vector<int> uAcc(static_cast<std::size_t>((bgr.rows / 2) * (bgr.cols / 2)), 0);
+    const int chromaRows = bgr.rows / 2 + bgr.rows % 2;
+    const int chromaCols = bgr.cols / 2 + bgr.cols % 2;
+    u.create(chromaRows, chromaCols, CV_8UC1);
+    v.create(chromaRows, chromaCols, CV_8UC1);
+    std::vector<int> uAcc(static_cast<std::size_t>(chromaRows) * chromaCols, 0);
     std::vector<int> vAcc = uAcc;
     for(int row = 0; row < bgr.rows; row++) {
         for(int col = 0; col < bgr.cols; col++) {
@@ -556,9 +540,9 @@ void bgrToPlanes(const cv::Mat& bgr, bool fullRange, cv::Mat& y, cv::Mat& u, cv:
             vAcc[index] += vv;
         }
     }
-    const int count = 4;
     for(int row = 0; row < u.rows; row++) {
         for(int col = 0; col < u.cols; col++) {
+            const int count = std::min(2, bgr.rows - row * 2) * std::min(2, bgr.cols - col * 2);
             const auto index = static_cast<std::size_t>(row * u.cols + col);
             u.at<std::uint8_t>(row, col) = static_cast<std::uint8_t>((uAcc[index] + count / 2) / count);
             v.at<std::uint8_t>(row, col) = static_cast<std::uint8_t>((vAcc[index] + count / 2) / count);
@@ -576,67 +560,6 @@ bool isReplayOutType(ImgFrame::Type type) {
 std::string frameTypeName(ImgFrame::Type type) {
     const auto name = magic_enum::enum_name(type);
     return name.empty() ? std::string("unsupported") : std::string(name);
-}
-
-ArchiveListing extractReplayArchive(const std::filesystem::path& archive, const std::filesystem::path& destination) {
-    struct archive* reader = archive_read_new();
-    if(reader == nullptr) fail("ReplayVideo archive cannot be opened: " + archive.string());
-    archive_read_support_filter_all(reader);
-    archive_read_support_format_all(reader);
-    if(archive_read_open_filename(reader, archive.string().c_str(), 10240) != ARCHIVE_OK) {
-        archive_read_free(reader);
-        fail("ReplayVideo archive cannot be opened: " + archive.string());
-    }
-    ArchiveListing listing;
-    struct archive_entry* entry = nullptr;
-    while(archive_read_next_header(reader, &entry) == ARCHIVE_OK) {
-        const char* rawName = archive_entry_pathname(entry);
-        if(rawName == nullptr) continue;
-        const auto name = stripDotSlash(rawName);
-        if(escapesArchive(rawName) || escapesArchive(name)) {
-            archive_read_free(reader);
-            fail("ReplayVideo archive entry escapes: " + std::string(rawName));
-        }
-        const auto type = archive_entry_filetype(entry);
-        if(type == AE_IFLNK) {
-            const char* target = archive_entry_symlink(entry);
-            if(target == nullptr || escapesArchive(target)) {
-                archive_read_free(reader);
-                fail("ReplayVideo archive entry escapes: " + name);
-            }
-            archive_read_data_skip(reader);
-            continue;
-        }
-        const auto output = destination / name;
-        if(type == AE_IFDIR) {
-            std::filesystem::create_directories(output);
-            archive_read_data_skip(reader);
-            continue;
-        }
-        if(type != AE_IFREG) {
-            archive_read_data_skip(reader);
-            continue;
-        }
-        std::filesystem::create_directories(output.parent_path());
-        std::ofstream out(output, std::ios::binary);
-        if(!out) {
-            archive_read_free(reader);
-            fail("ReplayVideo archive entry cannot be extracted: " + name);
-        }
-        char buffer[8192];
-        la_ssize_t bytes = 0;
-        while((bytes = archive_read_data(reader, buffer, sizeof(buffer))) > 0) {
-            out.write(buffer, bytes);
-            listing.entryBytes += static_cast<std::uint64_t>(bytes);
-        }
-        if(bytes < 0) {
-            archive_read_free(reader);
-            fail("ReplayVideo archive entry cannot be extracted: " + name);
-        }
-    }
-    archive_read_free(reader);
-    listing.extractedRoot = destination;
-    return listing;
 }
 
 ListedSource inspectReplaySource(const std::filesystem::path& path) {
@@ -708,14 +631,14 @@ void FrameReader::open(const ListedSource& source) {
     ListedSource kept = source;
     state = std::make_unique<State>();
     state->source = std::move(kept);
-    if(source.kind == ListedSource::Kind::Video) {
+    if(state->source.kind == ListedSource::Kind::Video) {
 #ifdef DEPTHAI_HAVE_LIBAV
         state->libav = std::make_unique<LibavVideo>();
-        openLibav(*state->libav, source.path);
+        openLibav(*state->libav, state->source.path);
 #else
         state->opencv = true;
-        state->capture.open(source.path.string(), cv::CAP_FFMPEG);
-        if(!state->capture.isOpened()) fail("ReplayVideo missing decoder support for " + source.path.string());
+        state->capture.open(state->source.path.string(), cv::CAP_FFMPEG);
+        if(!state->capture.isOpened()) fail("ReplayVideo missing decoder support for " + state->source.path.string());
 #endif
     }
 }
@@ -803,7 +726,7 @@ DecodedPixels convertPixels(const DecodedPixels& pixels, ImgFrame::Type outType,
     const int cSize = ySize / 4;
     if(pixels.type == ImgFrame::Type::GRAY8) {
         y = cv::Mat(height, width, CV_8UC1, const_cast<std::uint8_t*>(pixels.data.data())).clone();
-        u = cv::Mat(height / 2, width / 2, CV_8UC1, cv::Scalar(128));
+        u = cv::Mat(height / 2 + height % 2, width / 2 + width % 2, CV_8UC1, cv::Scalar(128));
         v = u.clone();
     } else if(pixels.type == ImgFrame::Type::BGR888i || pixels.type == ImgFrame::Type::RGB888i) {
         bgr = cv::Mat(height, width, CV_8UC3, const_cast<std::uint8_t*>(pixels.data.data())).clone();

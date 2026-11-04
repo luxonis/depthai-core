@@ -2226,8 +2226,9 @@ void PipelineImpl::transferRecordings() {
 
     std::unordered_set<Device*> prepared;
     std::unordered_set<Device*> prepareFailed;
+    std::unordered_map<Device*, std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>>> finalStatuses;
     for(auto& group : groups) {
-        if(!group.transfer || group.name.empty()) continue;
+        if(group.name.empty()) continue;
         DeviceState state = DeviceState::RUNNING;
         try {
             state = group.device->getDeviceState();
@@ -2241,7 +2242,7 @@ void PipelineImpl::transferRecordings() {
         }
         if(prepared.insert(group.device.get()).second) {
             try {
-                group.device->prepareRecordingDownload();
+                finalStatuses[group.device.get()] = group.device->prepareRecordingDownloadWithStatus();
             } catch(const std::exception& ex) {
                 prepareFailed.insert(group.device.get());
                 Logging::getInstance().logger.error("Record download of {} failed: {}", group.name, ex.what());
@@ -2253,6 +2254,17 @@ void PipelineImpl::transferRecordings() {
             markHolistic(group.name);
             continue;
         }
+        for(const auto& snapshot : finalStatuses[group.device.get()]) {
+            if(std::get<1>(snapshot).empty()) continue;
+            for(const auto& record : group.nodes) {
+                if(record->id != std::get<0>(snapshot)) continue;
+                RecordStatus finalStatus;
+                utility::deserialize(std::get<1>(snapshot), finalStatus);
+                std::lock_guard<std::mutex> lock(record->statusMutex);
+                if(!record->lastStatus || finalStatus.getSequenceNum() > record->lastStatus->getSequenceNum()) record->lastStatus = std::move(finalStatus);
+            }
+        }
+        if(!group.transfer) continue;
         try {
             if(group.anyLegacy && !group.anyNew) {
                 const auto tempRoot = fs::temp_directory_path() / ("dai-record-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
@@ -2312,7 +2324,6 @@ void PipelineImpl::transferRecordings() {
         }
     }
 #endif
-    utility::PipelineImplHelper::packHolisticRecording(this);
 }
 
 void PipelineImpl::stop() {
@@ -2324,10 +2335,6 @@ void PipelineImpl::stop() {
     // not re-trigger a stop or user callbacks. 'running' itself stays set until the teardown
     // is complete, so isRunning()/run() only return once the devices are closed.
     stopping = true;
-
-    // Wake any XLink host node parked waiting for a reconnect - stopping joins the
-    // node threads and a parked node would never exit on its own
-    disconnectXLinkHosts();
 
     if(telemetryPipelineStartedAt.has_value()) {
         const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - *telemetryPipelineStartedAt).count();
@@ -2350,6 +2357,13 @@ void PipelineImpl::stop() {
         telemetryPipelineStartedAt.reset();
     }
 
+    // Device writers must close while host status receivers are still running.
+    // This also releases recordings configured to remain on the device.
+    transferRecordings();
+
+    // Wake transports parked waiting for reconnection before joining them.
+    disconnectXLinkHosts();
+
     // Stops the pipeline execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
@@ -2359,7 +2373,7 @@ void PipelineImpl::stop() {
 
     // Record threads close files and publish the final status before output queues close.
     waitForRecordNodes();
-    transferRecordings();
+    utility::PipelineImplHelper::packHolisticRecording(this);
     // Replay threads release cache holds after they leave run().
     waitForReplayNodes();
 

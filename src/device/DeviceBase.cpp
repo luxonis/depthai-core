@@ -2851,9 +2851,7 @@ std::vector<RecordingInfo> DeviceBase::listRecordings() {
 void DeviceBase::downloadRecording(const std::string& name, const std::filesystem::path& hostDir) {
     validateRecordingName(name);
     requireRecordingStore(*this);
-    if(!std::filesystem::exists(hostDir)) {
-        throw std::runtime_error("Record download destination is missing: " + hostDir.string());
-    }
+    std::filesystem::create_directories(hostDir);
     const auto destination = hostDir / name;
     if(std::filesystem::exists(destination)) {
         throw std::runtime_error("Record download destination already exists: " + destination.string());
@@ -2889,8 +2887,8 @@ void DeviceBase::downloadRecording(const std::string& name, const std::filesyste
             while(offset < size) {
                 const auto length = std::min(chunkBytes, size - offset);
                 auto bytes = pimpl->rpcCallChecked<std::vector<std::uint8_t>>("recordStoreReadChunk", name, relative, offset, length);
-                if(bytes.empty()) {
-                    throw std::runtime_error("Record download returned an empty chunk");
+                if(bytes.empty() || bytes.size() > length) {
+                    throw std::runtime_error("Record download returned an invalid chunk");
                 }
                 // ofstream::write takes char*. The chunk is raw file bytes.
                 output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
@@ -2901,6 +2899,8 @@ void DeviceBase::downloadRecording(const std::string& name, const std::filesyste
                 done += static_cast<std::uint64_t>(bytes.size());
                 noteProgress();
             }
+            output.close();
+            if(!output) throw std::runtime_error("Record download close failed");
         }
         if(total > 0 && lastBucket < 100) {
             Logging::getInstance().logger.info("Record download {}/{} bytes", total, total);
@@ -2919,8 +2919,12 @@ void DeviceBase::deleteRecording(const std::string& name) {
 }
 
 void DeviceBase::prepareRecordingDownload() {
+    prepareRecordingDownloadWithStatus();
+}
+
+std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>> DeviceBase::prepareRecordingDownloadWithStatus() {
     requireRecordingStore(*this);
-    pimpl->rpcCallCheckedVoid("recordStorePrepareDownload");
+    return pimpl->rpcCallChecked<std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>>>("recordStorePrepareDownload");
 }
 
 ReplayCacheInfo DeviceBase::getReplayCacheInfo() {

@@ -35,6 +35,7 @@
 #include "utility/Environment.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
+#include "utility/ReplayPacing.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <google/protobuf/message.h>
@@ -105,10 +106,6 @@ std::uint64_t outputBytes(ImgFrame::Type type, int width, int height) {
     return pixels;
 }
 
-Steady::duration oneOver(double fps) {
-    return std::chrono::duration_cast<Steady::duration>(std::chrono::duration<double>(1.0 / fps));
-}
-
 bool fpsIsSentinel(bool fpsSet, float fps) {
     // 1000 paces at 1 ms, but pass-boundary timestamps keep the recorded mean. Only exactly 1000 is that sentinel.
     return !fpsSet || !(fps > 0.f) || std::abs(fps - 1000.f) < 0.1f;
@@ -134,35 +131,6 @@ std::uint64_t archiveContentBytes(const std::filesystem::path& archive) {
     }
     archive_read_free(reader);
     return sum;
-}
-
-bool directoryHasSource(const std::filesystem::path& directory) {
-    std::error_code error;
-    if(!std::filesystem::is_directory(directory, error)) return false;
-    for(const auto& entry : std::filesystem::directory_iterator(directory, error)) {
-        if(error) return false;
-        const auto name = entry.path().filename().string();
-        if(name.empty() || name.front() == '.') continue;
-        auto ext = entry.path().extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
-        if(ext == ".mp4" || ext == ".avi" || ext == ".mcap" || ext == ".dai" || ext == ".jpg" || ext == ".jpeg" || ext == ".png") return true;
-    }
-    return false;
-}
-
-std::filesystem::path pickUnpackedRoot(const std::filesystem::path& extracted) {
-    if(directoryHasSource(extracted) || std::filesystem::is_regular_file(extracted)) return extracted;
-    int directories = 0;
-    std::filesystem::path only;
-    for(const auto& entry : std::filesystem::directory_iterator(extracted)) {
-        const auto name = entry.path().filename().string();
-        if(name.empty() || name.front() == '.') continue;
-        if(!entry.is_directory()) continue;
-        directories++;
-        only = entry.path();
-    }
-    if(directories == 1) return only;
-    throw std::runtime_error("ReplayVideo archive has no source: " + extracted.string());
 }
 
 struct FileSnap {
@@ -616,15 +584,16 @@ void applyEnv(bool& persistent, bool persistentSet, std::int32_t& decodeMode, bo
 
 void checkFps(float fps, bool fpsSet, const char* nodeName) {
     if(fpsSet && !std::isfinite(fps)) throw std::runtime_error(std::string(nodeName) + " fps is not a finite number");
+    if(fpsSet && fps < 0.f) throw std::runtime_error(std::string(nodeName) + " fps must be 0 or more");
 }
 
 Steady::duration nominalOf(bool fpsSet, float fps, SteadyTime first, SteadyTime last, int count) {
-    if(!fpsIsSentinel(fpsSet, fps)) return oneOver(fps);
+    if(!fpsIsSentinel(fpsSet, fps)) return replay::playbackPeriod(fps);
     if(count >= 2) {
         const auto mean = (last - first) / (count - 1);
         if(mean.count() > 0) return mean;
     }
-    return oneOver(30.0);
+    return replay::playbackPeriod(30.0);
 }
 
 void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& runtime, const RecordedTiming& recorded, int pass) {
@@ -650,28 +619,6 @@ void applyRecorded(const std::shared_ptr<Buffer>& buffer, const ReplayRuntime& r
     }
     offsetRGBDChildFrameMetadata(
         buffer, buffer->getSequenceNum() - originalSequence, buffer->getTimestamp() - originalTimestamp, buffer->getTimestampDevice() - originalDevice);
-}
-
-bool sleepSchedule(bool& started, SteadyTime& scheduled, SteadyTime& completed, Steady::duration interval, const std::function<bool()>& alive) {
-    if(!alive()) return false;
-    if(!started) {
-        scheduled = Steady::now();
-        started = true;
-        return true;
-    }
-    auto target = scheduled + interval;
-    if(completed > target) target = completed;
-    while(alive()) {
-        const auto now = Steady::now();
-        if(now >= target) break;
-        const auto left = target - now;
-        const auto slice = left < std::chrono::milliseconds(50) ? left : Steady::duration(std::chrono::milliseconds(50));
-        if(slice.count() <= 0) break;
-        std::this_thread::sleep_for(slice);
-    }
-    if(!alive()) return false;
-    scheduled = target;
-    return true;
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
@@ -1122,7 +1069,7 @@ void ReplayVideo::buildStage1() {
                 throw;
             }
             runtime->cacheKeys.push_back(hash);
-            local = properties.archiveEntrySet ? replay::resolveArchiveEntry(slot.path, properties.archiveEntry, false) : pickUnpackedRoot(slot.path);
+            local = properties.archiveEntrySet ? replay::resolveArchiveEntry(slot.path, properties.archiveEntry, false) : replay::selectReplayArchiveSource(slot.path);
         } else if(onHost && std::filesystem::is_directory(sourcePath)) {
             hash = replay::sha256OfDirectory(sourcePath);
             replay::CacheSlotRequest request;
@@ -1357,14 +1304,10 @@ void ReplayVideo::run() {
     if(!runtime->onHost) throw std::runtime_error("ReplayVideo device execution is running on the device");
     if(!runtime->metadataWarning.empty() && logger) logger->warn("{}", runtime->metadataWarning);
     if(!runtime->usePredecoded) runtime->reader.open(runtime->listed);
-    bool started = false;
-    SteadyTime scheduled{};
-    SteadyTime completed{};
+    replay::PlaybackPacer pacing(runtime->fpsSet ? runtime->fps : 0.f);
+    std::optional<SteadyTime> previousDevice;
     bool naturalEnd = false;
     int sent = 0;
-    const bool paceByFps = runtime->fpsSet;
-    const auto fpsInterval = paceByFps ? oneOver(runtime->fps) : Steady::duration::zero();
-    const auto fallback = oneOver(30.0);
     while(mainLoop()) {
         const int index = runtime->count == 0 ? 0 : sent % runtime->count;
         const int pass = runtime->count == 0 ? 0 : sent / runtime->count;
@@ -1374,20 +1317,6 @@ void ReplayVideo::run() {
                 break;
             }
         }
-        Steady::duration interval = Steady::duration::zero();
-        if(sent > 0) {
-            if(paceByFps)
-                interval = fpsInterval;
-            else if(runtime->recorded && index == 0)
-                interval = runtime->nominal;
-            else if(runtime->recorded && index > 0 && index < static_cast<int>(runtime->metadata.size())) {
-                interval = runtime->metadata[static_cast<std::size_t>(index)]->getTimestampDevice()
-                           - runtime->metadata[static_cast<std::size_t>(index - 1)]->getTimestampDevice();
-                if(interval.count() <= 0) interval = fallback;
-            } else
-                interval = fallback;
-        }
-        if(!sleepSchedule(started, scheduled, completed, interval, [this]() { return mainLoop(); })) break;
         checkSnaps(runtime->snaps);
         std::shared_ptr<ImgFrame> frame;
         RecordedTiming timing;
@@ -1411,18 +1340,28 @@ void ReplayVideo::run() {
             applyRecorded(frame, *runtime, timing, pass);
         else {
             frame->setSequenceNum(sent);
-            frame->setTimestamp(scheduled);
-            frame->setTimestampDevice(scheduled);
             frame->setTimestampSystem(std::nullopt);
             frame->sourceFb = frame->fb;
             if(frame->transformation.getSize().first == 0)
                 frame->transformation = ImgTransformation(static_cast<size_t>(runtime->outW), static_cast<size_t>(runtime->outH));
         }
+        std::optional<replay::PlaybackClock::duration> recordedInterval;
+        if(runtime->recorded && timing.present) {
+            if(index == 0 && sent > 0) recordedInterval = runtime->nominal;
+            else if(previousDevice) recordedInterval = timing.timestampDevice - *previousDevice;
+            previousDevice = timing.timestampDevice;
+        }
+        const auto sendTime = pacing.waitToSend(recordedInterval, [this] { return mainLoop(); });
+        if(!sendTime) break;
+        if(!runtime->recorded || !timing.present) {
+            frame->setTimestamp(*sendTime);
+            frame->setTimestampDevice(*sendTime);
+        }
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(frame);
         }
-        completed = Steady::now();
+        pacing.sent();
         sent++;
         if(!runtime->loop && sent >= runtime->count) {
             naturalEnd = true;
@@ -1622,7 +1561,7 @@ void ReplayMetadataOnly::buildStage1() {
                     throw;
                 }
                 runtime->cacheKeys.push_back(hash);
-                local = properties.archiveEntrySet ? replay::resolveArchiveEntry(slot.path, properties.archiveEntry, true) : pickUnpackedRoot(slot.path);
+                local = properties.archiveEntrySet ? replay::resolveArchiveEntry(slot.path, properties.archiveEntry, true) : replay::selectReplayArchiveSource(slot.path);
             } else {
                 const auto hash = replay::sha256OfFile(sourcePath);
                 replay::CacheSlotRequest request;
@@ -1683,14 +1622,9 @@ void ReplayMetadataOnly::run() {
     utility::BytePlayer player;
     const auto schema = player.init(runtime->mcapPath.string());
     const auto datatype = utility::schemaNameToDatatype(schema);
-    bool started = false;
-    SteadyTime scheduled{};
-    SteadyTime completed{};
+    replay::PlaybackPacer pacing(runtime->fpsSet ? runtime->fps : 0.f);
     bool naturalEnd = false;
     int sent = 0;
-    const bool paceByFps = runtime->fpsSet;
-    const auto fpsInterval = paceByFps ? oneOver(runtime->fps) : Steady::duration::zero();
-    const auto fallback = oneOver(30.0);
     SteadyTime previousDevice{};
     bool havePrevious = false;
     while(mainLoop()) {
@@ -1703,7 +1637,6 @@ void ReplayMetadataOnly::run() {
             player.restart();
             havePrevious = false;
         }
-        Steady::duration interval = Steady::duration::zero();
         auto proto = getProtoMessage(player, datatype);
         if(proto == nullptr) {
             if(!runtime->loop) {
@@ -1721,27 +1654,22 @@ void ReplayMetadataOnly::run() {
         timing.timestamp = buffer->getTimestamp();
         timing.timestampDevice = buffer->getTimestampDevice();
         timing.timestampSystem = buffer->getTimestampSystem();
+        std::optional<replay::PlaybackClock::duration> recordedInterval;
         if(sent > 0) {
-            if(paceByFps)
-                interval = fpsInterval;
-            else if(index == 0)
-                interval = runtime->nominal;
-            else if(havePrevious) {
-                interval = timing.timestampDevice - previousDevice;
-                if(interval.count() <= 0) interval = fallback;
-            }
+            if(index == 0) recordedInterval = runtime->nominal;
+            else if(havePrevious) recordedInterval = timing.timestampDevice - previousDevice;
         }
-        if(!sleepSchedule(started, scheduled, completed, interval, [this]() { return mainLoop(); })) break;
         checkSnaps(runtime->snaps);
         const int pass = runtime->count == 0 ? 0 : sent / runtime->count;
         applyRecorded(buffer, *runtime, timing, pass);
         previousDevice = timing.timestampDevice;
         havePrevious = true;
+        if(!pacing.waitToSend(recordedInterval, [this] { return mainLoop(); })) break;
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(buffer);
         }
-        completed = Steady::now();
+        pacing.sent();
         sent++;
         if(!runtime->loop && sent >= runtime->count) {
             naturalEnd = true;
