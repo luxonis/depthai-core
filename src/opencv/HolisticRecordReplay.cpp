@@ -509,6 +509,10 @@ std::filesystem::path materialize(const std::filesystem::path& replayPath,
 
 double nominalFromDai(const std::vector<std::filesystem::path>& frames) {
     if(frames.size() < 2) return 1.0 / 30.0;
+#ifndef DEPTHAI_ENABLE_PROTOBUF
+    (void)frames;
+    throw std::runtime_error("ReplayVideo node requires protobuf support");
+#else
     ImgFrame first;
     ImgFrame last;
     first.load(frames.front());
@@ -516,6 +520,7 @@ double nominalFromDai(const std::vector<std::filesystem::path>& frames) {
     const auto delta = last.getTimestampDevice() - first.getTimestampDevice();
     const auto seconds = std::chrono::duration<double>(delta).count() / static_cast<double>(frames.size() - 1);
     return seconds > 0.0 ? seconds : 1.0 / 30.0;
+#endif
 }
 
 std::filesystem::path packDirectory(const std::filesystem::path& directory) {
@@ -612,10 +617,14 @@ bool setupHolisticReplayDevice(Pipeline& pipeline, const std::filesystem::path& 
             std::vector<std::filesystem::path> local;
             local.push_back(materialize(replayPath, index, frames.front().second, probeDir));
             if(frames.size() > 1) local.push_back(materialize(replayPath, index, frames.back().second, probeDir));
+#ifndef DEPTHAI_ENABLE_PROTOBUF
+            throw std::runtime_error("ReplayVideo node requires protobuf support");
+#else
             ImgFrame first;
             first.load(local.front());
             probe.width = static_cast<int>(first.getWidth());
             probe.height = static_cast<int>(first.getHeight());
+#endif
             const auto configured = configuredStreamFps(recordConfig, name);
             probe.fps = configured.has_value() ? configured.value() : std::round(1.0 / nominalFromDai(local));
         } else {
