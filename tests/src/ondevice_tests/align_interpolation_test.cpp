@@ -25,17 +25,18 @@ std::vector<Geometry> geometries() {
     auto upscaled = plain;
     upscaled.addScale(2, 2);
     std::vector<float> distortion(14, 0.0f);
-    distortion[0] = -2;
+    distortion[0] = 2;
     const dai::ImgTransformation distorted(8, 8, intrinsics, dai::CameraModel::Perspective, distortion, extrinsics);
     return {
         // Second remap: the 2x upscale samples source x=1.5 for output x=3. Cubic
         // uses four samples, linear uses two, and nearest selects source x=2.
         // The first remap is an identity.
         {plain, upscaled, 3, 8, 119, 120, 180},
-        // First remap: undistorting with k1 = -2 samples output x=2 (normalized
-        // -0.25, r^2 = 1/16) at source x = 4 + 8 * -0.25 * (1 - 2 / 16) = 2.25.
+        // First remap: undistorting with k1 = 2 samples output x=6 (normalized
+        // 0.25, r^2 = 1/16) at source x = 4 + 8 * 0.25 * (1 + 2 / 16) = 6.25.
+        // Positive radial distortion stays invertible across the image border.
         // The second remap is an identity.
-        {distorted, plain, 2, 4, 207, 190, 180},
+        {distorted, plain, 6, 4, 164, 150, 190},
     };
 }
 
