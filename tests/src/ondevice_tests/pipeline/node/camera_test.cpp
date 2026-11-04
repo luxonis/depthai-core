@@ -281,6 +281,10 @@ TEST_CASE("Camera: Test isp output - Correct resolution") {
             REQUIRE(output->getWidth() <= outputIsp->getWidth());
             REQUIRE(output->getHeight() <= outputIsp->getHeight());
         }
+
+        p.stop();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        p.wait();
     }
 }
 

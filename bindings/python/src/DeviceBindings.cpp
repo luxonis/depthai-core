@@ -136,7 +136,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     // Type definitions
     py::class_<DeviceBase, std::shared_ptr<DeviceBase>> deviceBase(m, "DeviceBase", DOC(dai, DeviceBase));
     py::class_<Device, DeviceBase, std::shared_ptr<Device>> device(m, "Device", DOC(dai, Device));
-    py::class_<Device::Config> deviceConfig(device, "Config", DOC(dai, DeviceBase, Config));
+    py::class_<DeviceBase::Config> deviceConfig(device, "Config", DOC(dai, DeviceBase, Config));
     py::class_<HealthCheckConfig> healthCheckConfig(m, "HealthCheckConfig", DOC(dai, HealthCheckConfig));
     py::class_<HealthCheckIssue> healthCheckIssue(m, "HealthCheckIssue", DOC(dai, HealthCheckIssue));
     py::class_<HealthCheckMetrics> healthCheckMetrics(m, "HealthCheckMetrics", DOC(dai, HealthCheckMetrics));
@@ -358,14 +358,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("logDevicePrints", &BoardConfig::logDevicePrints, DOC(dai, BoardConfig, logDevicePrints))
         .def_readwrite("uvc", &BoardConfig::uvc, DOC(dai, BoardConfig, uvc));
 
-    // Bind Device::Config
+    // Bind DeviceBase::Config (inherited by Device)
     deviceConfig.def(py::init<>())
-        .def_readwrite("version", &Device::Config::version)
-        .def_readwrite("board", &Device::Config::board)
-        .def_readwrite("nonExclusiveMode", &Device::Config::nonExclusiveMode)
-        .def_readwrite("outputLogLevel", &Device::Config::outputLogLevel)
-        .def_readwrite("logLevel", &Device::Config::logLevel)
-        .def_readwrite("dangerousIrPowerOverride", &Device::Config::dangerousIrPowerOverride, DOC(dai, DeviceBase, Config, dangerousIrPowerOverride));
+        .def_readwrite("version", &DeviceBase::Config::version)
+        .def_readwrite("board", &DeviceBase::Config::board)
+        .def_readwrite("nonExclusiveMode", &DeviceBase::Config::nonExclusiveMode)
+        .def_readwrite("outputLogLevel", &DeviceBase::Config::outputLogLevel)
+        .def_readwrite("logLevel", &DeviceBase::Config::logLevel)
+        .def_readwrite("dangerousIrPowerOverride", &DeviceBase::Config::dangerousIrPowerOverride, DOC(dai, DeviceBase, Config, dangerousIrPowerOverride));
 
     // Bind UsbGeneration
     usbGeneration.value("UNKNOWN", UsbGeneration::UNKNOWN, DOC(dai, UsbGeneration, UNKNOWN))
