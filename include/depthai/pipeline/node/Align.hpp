@@ -57,6 +57,11 @@ class Align : public DeviceNodeCRTP<DeviceNode, Align, AlignProperties>, public 
      */
     Output passthroughInput{*this, {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
 
+    /** Set the frame pool configuration. Zero selects automatic for each field.
+     * Applies independently to each pool, including intermediate pools.
+     */
+    void setPoolProperties(const FramePoolProperties& pool);
+
     /**
      * Specify number of frames in the pool
      */

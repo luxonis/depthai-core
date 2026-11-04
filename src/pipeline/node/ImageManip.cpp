@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/ImageManip.hpp"
 
+#include <stdexcept>
+
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
@@ -79,16 +81,22 @@ void ImageManip::run() {
         });
 }
 
+void ImageManip::setPoolProperties(const FramePoolProperties& pool) {
+    properties.pool = pool;
+}
+
 void ImageManip::setNumFramesPool(int numFramesPool) {
-    properties.numFramesPool = numFramesPool;
+    if(numFramesPool < 0) throw std::invalid_argument("numFramesPool must be nonnegative (0 means automatic)");
+    properties.pool.numFramesPool = numFramesPool;
 }
 
 void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
-    properties.outputFrameSize = maxFrameSize;
+    if(maxFrameSize < 0) throw std::invalid_argument("outputFrameSize must be nonnegative (0 means automatic)");
+    properties.pool.outputFrameSize = maxFrameSize;
 }
 
 void ImageManip::setMaxPoolSize(unsigned int maxPoolSize) {
-    properties.maxPoolSize = maxPoolSize;
+    properties.pool.maxPoolSize = maxPoolSize;
 }
 
 ImageManip::Properties& ImageManip::getProperties() {

@@ -53,9 +53,14 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
+    /** Set the frame pool configuration. Zero selects automatic for each field.
+     * Applies independently to each pool, including intermediate pools.
+     */
+    void setPoolProperties(const FramePoolProperties& pool);
+
     /**
      * Specify number of frames in pool.
-     * @param numFramesPool How many frames should the pool have
+     * @param numFramesPool How many frames should the pool have; 0 selects automatic
      */
     void setNumFramesPool(int numFramesPool);
 

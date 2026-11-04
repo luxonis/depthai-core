@@ -4,6 +4,7 @@
 #include <fmt/std.h>     // std::filesystem::path formatting
 
 #include <fstream>
+#include <stdexcept>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -145,8 +146,13 @@ void StereoDepth::setRuntimeModeSwitch(bool enable) {
     properties.enableRuntimeStereoModeSwitch = enable;
 }
 
+void StereoDepth::setPoolProperties(const FramePoolProperties& pool) {
+    properties.pool = pool;
+}
+
 void StereoDepth::setNumFramesPool(int numFramesPool) {
-    properties.numFramesPool = numFramesPool;
+    if(numFramesPool < 0) throw std::invalid_argument("numFramesPool must be nonnegative (0 means automatic)");
+    properties.pool.numFramesPool = numFramesPool;
 }
 
 void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemorySlices) {

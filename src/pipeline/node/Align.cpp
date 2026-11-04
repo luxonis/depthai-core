@@ -38,8 +38,13 @@ AlignProperties& Align::getProperties() {
     return properties;
 }
 
+void Align::setPoolProperties(const FramePoolProperties& pool) {
+    properties.pool = pool;
+}
+
 Align& Align::setNumFramesPool(int numFramesPool) {
-    properties.numFramesPool = numFramesPool;
+    if(numFramesPool < 0) throw std::invalid_argument("numFramesPool must be nonnegative (0 means automatic)");
+    properties.pool.numFramesPool = numFramesPool;
     return *this;
 }
 

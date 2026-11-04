@@ -4,6 +4,7 @@
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
+#include "depthai/properties/FramePoolProperties.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -99,8 +100,8 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     bool enableRuntimeStereoModeSwitch = false;
 
-    /// Num frames in output pool
-    int numFramesPool = 3;
+    /// Frame pool configuration; all fields default to automatic.
+    FramePoolProperties pool;
 
     /**
      * Number of shaves reserved for stereo depth post processing.
@@ -210,7 +211,7 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       outKeepAspectRatio,
                       mesh,
                       enableRuntimeStereoModeSwitch,
-                      numFramesPool,
+                      pool,
                       numPostProcessingShaves,
                       numPostProcessingMemorySlices,
                       focalLengthFromCalibration,

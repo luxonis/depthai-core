@@ -92,6 +92,11 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      */
     ImageAlign& setNumShaves(int numShaves);
 
+    /** Set the frame pool configuration. Zero selects automatic for each field.
+     * Applies independently to each pool, including intermediate pools.
+     */
+    void setPoolProperties(const FramePoolProperties& pool);
+
     /**
      * Specify number of frames in the pool
      */

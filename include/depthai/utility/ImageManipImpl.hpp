@@ -126,7 +126,7 @@ void loop(N& node,
             node.out.send(inImage);
             auto tAbsoluteEnd = steady_clock::now();
             logTiming(tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
-        } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
+        } else if(node.properties.pool.outputFrameSize == 0 || outputSize <= node.properties.pool.outputFrameSize) {
             auto outImage = getFrame(outputSize);
 
             bool success = true;
@@ -151,7 +151,7 @@ void loop(N& node,
                 "Output image is bigger ({}B) than maximum frame size specified in properties ({}B) - skipping frame.\nPlease use the setMaxOutputFrameSize "
                 "API to explicitly config the [maximum] output size.",
                 outputSize,
-                node.properties.outputFrameSize);
+                node.properties.pool.outputFrameSize);
         }
     }
 }

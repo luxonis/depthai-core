@@ -1137,3 +1137,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     dai_add_test(poe_link_reset_test src/ondevice_tests/poe_link_reset_test.cpp)
     dai_set_test_labels(poe_link_reset_test ondevice rvc2 poe rvc4 ci noreplayci nousb)
 endif()
+
+# Frame pool configuration and automatic sizing (no device required).
+dai_add_test(frame_pool_test src/onhost_tests/frame_pool_test.cpp)
+dai_set_test_labels(frame_pool_test onhost ci)

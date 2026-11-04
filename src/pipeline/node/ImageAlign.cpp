@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <sstream>
+#include <stdexcept>
 #include <unordered_set>
 
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -44,8 +45,13 @@ ImageAlign& ImageAlign::setNumShaves(int numShaves) {
     return *this;
 }
 
+void ImageAlign::setPoolProperties(const FramePoolProperties& pool) {
+    properties.pool = pool;
+}
+
 ImageAlign& ImageAlign::setNumFramesPool(int numFramesPool) {
-    properties.numFramesPool = numFramesPool;
+    if(numFramesPool < 0) throw std::invalid_argument("numFramesPool must be nonnegative (0 means automatic)");
+    properties.pool.numFramesPool = numFramesPool;
     return *this;
 }
 
