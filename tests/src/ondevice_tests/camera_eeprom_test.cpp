@@ -1,9 +1,14 @@
 // RVC4 camera EEPROM access:
-// - the camera module (CCM) EEPROM through readCcmEepromRaw() / writeCcmEepromRaw(), including cameras sharing one I2C bus
-//   (CAM_B and CAM_C on OAK4-D), where the firmware allows access only while the camera is the only active one on its bus
-// - the camera board (CBA) EEPROM through the CBA calibration API, read only (see its test case)
-// The test controls which cameras stream. Every write is restored, and EEPROM contents never reach the log: only
-// fingerprints, offsets and counts do.
+// - the camera module (CCM) EEPROM through readCcmEepromRaw() / writeCcmEepromRaw(). It is accessed while its camera
+//   streams, since the module may be unpowered otherwise. On an I2C bus shared by several camera sockets the firmware
+//   allows access only while the requested camera is the only active one on the bus. The test learns which sockets
+//   share a bus from the firmware's refusals, so it covers shared buses on any sockets and with any number of them.
+//   A camera without a CCM EEPROM answers like an unpowered module, so cases that need an answer from the EEPROM skip
+//   such cameras. The shared-bus refusal cases run without EEPROMs, since the firmware refuses before any I2C traffic
+// - the camera board (CBA) EEPROM through the CBA calibration API, read only and with no camera streaming (see its test
+//   case)
+// The test controls which cameras stream, and never more than two at once. Every write is restored, and EEPROM contents
+// never reach the log: only fingerprints, offsets and counts do.
 #include <algorithm>
 #include <atomic>
 #include <catch2/catch_all.hpp>
@@ -16,6 +21,7 @@
 #include <mutex>
 #include <optional>
 #include <random>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -28,10 +34,6 @@ using Clock = std::chrono::steady_clock;
 using dai::CameraBoardSocket;
 
 namespace {
-
-constexpr auto CAM_A = CameraBoardSocket::CAM_A;
-constexpr auto CAM_B = CameraBoardSocket::CAM_B;
-constexpr auto CAM_C = CameraBoardSocket::CAM_C;
 
 // The CCM EEPROM size the firmware exposes, and the window the write cases overwrite and restore
 constexpr int CCM_EEPROM_SIZE = 8192;
@@ -166,6 +168,65 @@ std::string summarize(const std::vector<Outcome>& outcomes) {
            + " other errors" + (otherError.empty() ? "" : " (" + otherError + ")");
 }
 
+std::set<std::string> names(const std::vector<CameraBoardSocket>& sockets) {
+    std::set<std::string> result;
+    for(const auto socket : sockets) result.insert(name(socket));
+    return result;
+}
+
+std::string join(const std::set<std::string>& names) {
+    std::string text;
+    for(const auto& item : names) text += (text.empty() ? "" : ", ") + item;
+    return text;
+}
+
+// The firmware lists sockets as "CAM_B, CAM_C", and a port without a socket as "CSI<n>"
+std::set<std::string> splitNames(const std::string& text) {
+    std::set<std::string> result;
+    size_t start = 0;
+    while(true) {
+        const auto end = text.find(", ", start);
+        result.insert(text.substr(start, end == std::string::npos ? std::string::npos : end - start));
+        if(end == std::string::npos) return result;
+        start = end + 2;
+    }
+}
+
+// The text between two markers
+std::optional<std::string> between(const std::string& text, const std::string& before, const std::string& after) {
+    const auto start = text.find(before);
+    if(start == std::string::npos) return std::nullopt;
+    const auto from = start + before.size();
+    const auto end = text.find(after, from);
+    if(end == std::string::npos) return std::nullopt;
+    return text.substr(from, end - from);
+}
+
+// A shared-bus refusal, worded by the firmware as "CCM EEPROM of <socket> is not accessible: I2C bus <n> is shared by
+// <sockets>, so it must be the only active camera on it (active: <sockets> | none)"
+struct Refusal {
+    int bus = -1;
+    std::set<std::string> sockets;
+    std::set<std::string> active;
+};
+
+std::optional<Refusal> parseRefusal(const Outcome& outcome) {
+    if(!refused(outcome)) return std::nullopt;
+    const auto bus = between(outcome.error, "I2C bus ", " is shared by ");
+    const auto sockets = between(outcome.error, " is shared by ", ", so it ");
+    const auto active = between(outcome.error, "(active: ", ")");
+    if(!bus || !sockets || !active) return std::nullopt;
+    Refusal refusal;
+    try {
+        refusal.bus = std::stoi(*bus);
+    } catch(const std::exception&) {
+        return std::nullopt;
+    }
+    refusal.sockets = splitNames(*sockets);
+    if(*active != "none") refusal.active = splitNames(*active);
+    return refusal;
+}
+
 Outcome readCcm(dai::Device& device, CameraBoardSocket socket, int size) {
     try {
         return {true, "", device.readCcmEepromRaw(socket, size, 0)};
@@ -264,6 +325,112 @@ class Session {
     std::thread counter;
 };
 
+// The I2C buses of the connected cameras, as the firmware reports them. With no camera active, a CCM EEPROM access on a
+// shared bus is refused with an error naming the bus and every socket on it, while a camera alone on its bus isn't
+// refused. Learned once, with no pipeline, so it doesn't depend on which cases ran before
+struct BusLayout {
+    dai::Platform platform{};
+    std::vector<CameraBoardSocket> connected;
+    std::map<int, std::set<std::string>> named;            // shared bus -> every socket the firmware names on it
+    std::map<int, std::vector<CameraBoardSocket>> shared;  // shared bus -> its connected cameras
+    std::map<CameraBoardSocket, int> busOf;                // connected camera on a shared bus -> that bus
+    std::vector<std::string> problems;
+
+    bool sameBus(CameraBoardSocket a, CameraBoardSocket b) const {
+        const auto busA = busOf.find(a);
+        const auto busB = busOf.find(b);
+        return busA != busOf.end() && busB != busOf.end() && busA->second == busB->second;
+    }
+};
+
+// Adds one camera's answer to a read with no camera active
+void addToLayout(BusLayout& layout, CameraBoardSocket socket, const Outcome& outcome) {
+    if(!refused(outcome)) {
+        // Alone on its bus, so the read goes out. Without streaming the module may be unpowered
+        if(!outcome.ok && !notPowered(outcome)) layout.problems.push_back(name(socket) + " read with no camera active failed: " + outcome.error);
+        return;
+    }
+    const auto refusal = parseRefusal(outcome);
+    if(!refusal) {
+        layout.problems.push_back(name(socket) + " was refused without naming its bus, the sockets on it and the active cameras: " + outcome.error);
+        return;
+    }
+    if(!refusal->active.empty()) layout.problems.push_back(name(socket) + " was refused for active cameras although none is active: " + outcome.error);
+    if(refusal->sockets.count(name(socket)) == 0) layout.problems.push_back(name(socket) + " was refused for a bus it isn't named on: " + outcome.error);
+    const auto named = layout.named.emplace(refusal->bus, refusal->sockets);
+    if(!named.second && named.first->second != refusal->sockets) {
+        layout.problems.push_back("I2C bus " + std::to_string(refusal->bus) + " is named with different sockets: " + join(named.first->second) + " and "
+                                  + join(refusal->sockets));
+    }
+    layout.busOf[socket] = refusal->bus;
+    layout.shared[refusal->bus].push_back(socket);
+}
+
+const BusLayout& busLayout() {
+    static const BusLayout layout = [] {
+        BusLayout result;
+        // No pipeline, so the device has created no camera: none is active
+        dai::Device device;
+        result.platform = device.getPlatform();
+        if(result.platform != dai::Platform::RVC4) return result;
+        for(const auto& features : device.getConnectedCameraFeatures()) result.connected.push_back(features.socket);
+        for(const auto socket : result.connected) addToLayout(result, socket, readCcm(device, socket, 1));
+        for(const auto& [bus, sockets] : result.named) {
+            for(const auto socket : result.connected) {
+                if(sockets.count(name(socket)) != 0 && result.busOf.count(socket) == 0) {
+                    result.problems.push_back(name(socket) + " is named on shared I2C bus " + std::to_string(bus) + " but wasn't refused");
+                }
+            }
+            report("CCM EEPROM I2C bus " + std::to_string(bus) + ": shared by " + join(sockets) + ", connected " + join(names(result.shared[bus])));
+        }
+        for(const auto socket : result.connected) {
+            if(result.busOf.count(socket) == 0) report("CCM EEPROM " + name(socket) + ": alone on its I2C bus");
+        }
+        for(const auto& problem : result.problems) report("CCM EEPROM bus layout problem: " + problem);
+        return result;
+    }();
+    return layout;
+}
+
+// An access on a shared bus must be refused, naming that bus, its sockets and exactly the active cameras
+bool refusedWith(const BusLayout& layout, const Outcome& outcome, int bus, const std::vector<CameraBoardSocket>& active) {
+    const auto refusal = parseRefusal(outcome);
+    return refusal && refusal->bus == bus && refusal->sockets == layout.named.at(bus) && refusal->active == names(active);
+}
+
+// Two connected cameras on one shared bus
+struct SharedPair {
+    int bus;
+    CameraBoardSocket a;
+    CameraBoardSocket b;
+};
+
+std::vector<SharedPair> sharedPairs(const BusLayout& layout) {
+    std::vector<SharedPair> pairs;
+    for(const auto& [bus, sockets] : layout.shared) {
+        for(size_t i = 0; i < sockets.size(); ++i) {
+            for(size_t j = i + 1; j < sockets.size(); ++j) pairs.push_back({bus, sockets[i], sockets[j]});
+        }
+    }
+    return pairs;
+}
+
+// Cases that pick cameras by their bus need a layout without problems
+const BusLayout& requireLayout() {
+    const auto& layout = busLayout();
+    if(layout.platform != dai::Platform::RVC4) SKIP("CCM EEPROM access is tested on RVC4 only");
+    INFO(join(layout.problems));
+    REQUIRE(layout.problems.empty());
+    return layout;
+}
+
+// Skips when no two connected cameras share a bus
+const BusLayout& requireSharedBus() {
+    const auto& layout = requireLayout();
+    if(sharedPairs(layout).empty()) SKIP("No two connected cameras share an I2C bus");
+    return layout;
+}
+
 // The CCM EEPROM of every connected camera, read in full while that camera streams alone, before any case writes.
 // Distinct modules must read distinct contents: identical readouts mean two sockets reach the same EEPROM, or a
 // module that should be off answers on a shared bus as well
@@ -341,23 +508,33 @@ const CcmInventory& ccmInventory() {
     return inventory;
 }
 
-void requireConnected(const std::vector<CameraBoardSocket>& sockets) {
-    const auto& inventory = ccmInventory();
-    if(inventory.platform != dai::Platform::RVC4) SKIP("CCM EEPROM access is tested on RVC4 only");
+// The given cameras that have a CCM EEPROM. Without one a camera answers like an unpowered module, so a case couldn't
+// tell a missing EEPROM from broken access: the others are logged and not tested
+std::vector<CameraBoardSocket> withCcmEeprom(const CcmInventory& inventory, const std::vector<CameraBoardSocket>& sockets) {
+    std::vector<CameraBoardSocket> result;
     for(const auto socket : sockets) {
-        if(std::find(inventory.connected.begin(), inventory.connected.end(), socket) == inventory.connected.end()) SKIP(name(socket) << " is not connected");
+        if(inventory.eeproms.count(socket) != 0) {
+            result.push_back(socket);
+        } else {
+            report(name(socket) + ": no CCM EEPROM, not tested");
+        }
     }
+    return result;
+}
+
+std::string ccmEepromList(const CcmInventory& inventory) {
+    std::set<std::string> sockets;
+    for(const auto& entry : inventory.eeproms) sockets.insert(name(entry.first));
+    return sockets.empty() ? "none" : join(sockets);
 }
 
 // Writing needs readouts the inventory could trust: otherwise a restore could put one EEPROM's contents into another
-void requireCcmEeproms(const std::vector<CameraBoardSocket>& sockets) {
-    requireConnected(sockets);
+const CcmInventory& requireTrustedInventory() {
     const auto& inventory = ccmInventory();
+    if(inventory.platform != dai::Platform::RVC4) SKIP("CCM EEPROM access is tested on RVC4 only");
     INFO(join(inventory.problems));
     REQUIRE(inventory.problems.empty());
-    for(const auto socket : sockets) {
-        if(inventory.eeproms.count(socket) == 0) SKIP("No CCM EEPROM detected on " << name(socket));
-    }
+    return inventory;
 }
 
 std::vector<uint8_t> inventoryWindow(CameraBoardSocket socket) {
@@ -543,160 +720,229 @@ size_t checkRoundTrips(const std::vector<RoundTrip>& trips) {
     return written;
 }
 
-// Cases 1-3: the cameras stream, and each one's CCM EEPROM goes through a write round trip
-void writeWhileStreaming(const std::vector<CameraBoardSocket>& sockets, std::chrono::seconds settle) {
-    requireCcmEeproms(sockets);
+// The cameras stream, and each one's CCM EEPROM goes through a write round trip. Returns how many EEPROMs accepted the write
+size_t writeWhileStreaming(const std::vector<CameraBoardSocket>& sockets, std::chrono::seconds settle) {
     PendingRestores pending;
     std::vector<RoundTrip> trips;
+    bool cameUp = false;
     bool streamedThrough = false;
     {
         Session session(sockets);
         session.start();
-        REQUIRE(session.firstFrames());
-        std::this_thread::sleep_for(settle);
-        trips = roundTrip(session, sockets, pending, true);
-        streamedThrough = session.streaming();
+        cameUp = session.firstFrames();
+        if(cameUp) {
+            std::this_thread::sleep_for(settle);
+            trips = roundTrip(session, sockets, pending, true);
+            streamedThrough = session.streaming();
+        }
     }
     const auto failedRestores = pending.restore();
     REQUIRE(failedRestores.empty());
+    REQUIRE(cameUp);
     CHECK(streamedThrough);
-    if(checkRoundTrips(trips) == 0) SKIP("No CCM EEPROM in this case accepts writes");
+    return checkRoundTrips(trips);
 }
 
-// Whether CAM_B and CAM_C share an I2C bus, as the firmware's answers in case 4 showed
-std::optional<bool> camBCamCShareBus;
-
-// On a shared bus, a CCM EEPROM read with no camera active is refused with a message naming the sockets on the bus
-bool firmwareReportsSharedBus(dai::Device& device, CameraBoardSocket socket, CameraBoardSocket other) {
-    const auto outcome = readCcm(device, socket, 1);
-    return refused(outcome) && contains(outcome.error, name(other));
+// Two cameras with a CCM EEPROM on different I2C buses
+std::optional<std::pair<CameraBoardSocket, CameraBoardSocket>> pairOnDifferentBuses(const BusLayout& layout, const CcmInventory& inventory) {
+    for(auto a = inventory.eeproms.begin(); a != inventory.eeproms.end(); ++a) {
+        for(auto b = std::next(a); b != inventory.eeproms.end(); ++b) {
+            if(!layout.sameBus(a->first, b->first)) return std::make_pair(a->first, b->first);
+        }
+    }
+    return std::nullopt;
 }
 
 }  // namespace
+
+TEST_CASE("CCM EEPROM I2C bus layout", "[ccm]") {
+    // Before any camera is active, every camera on a shared bus is refused with "(active: none)"
+    const auto& layout = busLayout();
+    if(layout.platform != dai::Platform::RVC4) SKIP("CCM EEPROM access is tested on RVC4 only");
+    INFO(join(layout.problems));
+    CHECK(layout.problems.empty());
+    if(layout.shared.empty()) report("No connected camera shares its I2C bus");
+}
 
 TEST_CASE("CCM EEPROM readouts are unique", "[ccm]") {
     const auto& inventory = ccmInventory();
     if(inventory.platform != dai::Platform::RVC4) SKIP("CCM EEPROM access is tested on RVC4 only");
     INFO(join(inventory.problems));
     CHECK(inventory.problems.empty());
-    if(inventory.eeproms.empty()) WARN("No CCM EEPROM detected on any connected camera");
+    if(inventory.eeproms.empty()) SKIP("No CCM EEPROM detected on any connected camera, so there are no readouts to compare");
 }
 
-TEST_CASE("1: CCM EEPROM write round trip with CAM_A and CAM_B streaming", "[ccm]") {
-    writeWhileStreaming({CAM_A, CAM_B}, 2s);
+TEST_CASE("1: CCM EEPROM write round trip with two cameras on different I2C buses streaming", "[ccm]") {
+    // Each camera is the only active one on its bus, so neither is refused
+    const auto& layout = requireLayout();
+    const auto& inventory = requireTrustedInventory();
+    const auto pair = pairOnDifferentBuses(layout, inventory);
+    if(!pair) SKIP("No two cameras with a CCM EEPROM are on different I2C buses (CCM EEPROMs: " << ccmEepromList(inventory) << ")");
+    if(writeWhileStreaming({pair->first, pair->second}, 2s) == 0) SKIP("No CCM EEPROM in this case accepts writes");
 }
 
-TEST_CASE("2: CCM EEPROM write round trip with CAM_B streaming alone", "[ccm]") {
-    writeWhileStreaming({CAM_B}, 2s);
-}
-
-TEST_CASE("3: CCM EEPROM write round trip with CAM_C streaming alone", "[ccm]") {
-    writeWhileStreaming({CAM_C}, 2s);
-}
-
-TEST_CASE("4: CCM EEPROM reads with CAM_B and CAM_C streaming", "[ccm]") {
-    requireConnected({CAM_B, CAM_C});
-    const auto& inventory = ccmInventory();
-    std::map<CameraBoardSocket, std::vector<Outcome>> reads;
-    bool streamedThrough = false;
-    {
-        Session session({CAM_B, CAM_C});
-        session.start();
-        REQUIRE(session.firstFrames());
-        std::this_thread::sleep_for(1s);
-        const auto end = Clock::now() + 1s;
-        do {
-            for(const auto socket : {CAM_B, CAM_C}) reads[socket].push_back(readCcm(session.dev(), socket, WRITE_WINDOW));
-        } while(Clock::now() < end);
-        streamedThrough = session.streaming();
+TEST_CASE("2: CCM EEPROM write round trip with each camera streaming alone", "[ccm]") {
+    // On a shared bus too: the camera is then the only active one on it
+    const auto& inventory = requireTrustedInventory();
+    const auto tested = withCcmEeprom(inventory, inventory.connected);
+    if(tested.empty()) SKIP("No CCM EEPROM detected on any connected camera");
+    size_t written = 0;
+    for(const auto socket : tested) {
+        INFO(name(socket) << " streams alone");
+        written += writeWhileStreaming({socket}, 2s);
     }
-    // On a shared bus every read is refused. On separate buses every read succeeds, or fails like a module without an EEPROM
-    const auto all = [&](CameraBoardSocket socket, bool (*predicate)(const Outcome&)) {
-        return std::all_of(reads[socket].begin(), reads[socket].end(), predicate);
-    };
-    const auto readable = [&](CameraBoardSocket socket) {
-        return inventory.eeproms.count(socket) != 0 ? all(socket, [](const Outcome& outcome) { return outcome.ok; }) : all(socket, notPowered);
-    };
-    const bool shared = all(CAM_B, refused) && all(CAM_C, refused);
-    const bool separate = readable(CAM_B) && readable(CAM_C);
-    INFO("CAM_B reads: " << summarize(reads[CAM_B]));
-    INFO("CAM_C reads: " << summarize(reads[CAM_C]));
-    CHECK((shared || separate));
-    if(shared || separate) camBCamCShareBus = shared;
-    report(std::string(shared     ? "CAM_B and CAM_C share an I2C bus"
-                       : separate ? "CAM_B and CAM_C are on separate I2C buses"
-                                  : "CAM_B and CAM_C answered inconsistently")
-           + ". CAM_B reads: " + summarize(reads[CAM_B]) + ". CAM_C reads: " + summarize(reads[CAM_C]));
-    CHECK(streamedThrough);
+    if(written == 0) SKIP("No CCM EEPROM accepts writes");
 }
 
-TEST_CASE("5: CCM EEPROM writes with CAM_B and CAM_C streaming", "[ccm]") {
-    requireCcmEeproms({CAM_B, CAM_C});
-    PendingRestores pending;
-    Outcome probeB;
-    Outcome probeC;
-    std::vector<Outcome> writes;
-    bool streamedThrough = false;
-    {
-        Session session({CAM_B, CAM_C});
-        session.start();
-        REQUIRE(session.firstFrames());
-        std::this_thread::sleep_for(1s);
-        // Writes go out only after reads in this session were refused: the same firmware check guards both
-        probeB = readCcm(session.dev(), CAM_B, WRITE_WINDOW);
-        probeC = readCcm(session.dev(), CAM_C, WRITE_WINDOW);
-        if(refused(probeB) && refused(probeC)) {
-            // The backups come from the inventory, read while each camera streamed alone
-            std::map<CameraBoardSocket, std::vector<uint8_t>> payloads;
-            std::vector<std::vector<uint8_t>> taken;
-            for(const auto socket : {CAM_B, CAM_C}) {
-                const auto backup = inventoryWindow(socket);
-                payloads[socket] = makePayload(backup, taken);
-                taken.push_back(payloads[socket]);
-                pending.add(socket, backup);
+TEST_CASE("3: CCM EEPROM reads of idle cameras on a shared I2C bus while another camera on it streams", "[ccm]") {
+    // With one camera powered, 0x50 on the bus is that camera's EEPROM, so reading another socket's must be refused
+    const auto& layout = requireSharedBus();
+    for(const auto& [bus, sockets] : layout.shared) {
+        if(sockets.size() < 2) continue;
+        for(const auto active : sockets) {
+            std::map<CameraBoardSocket, Outcome> reads;
+            bool cameUp = false;
+            bool streamedThrough = false;
+            {
+                Session session({active});
+                session.start();
+                cameUp = session.firstFrames();
+                if(cameUp) {
+                    std::this_thread::sleep_for(1s);
+                    for(const auto idle : sockets) {
+                        if(idle != active) reads[idle] = readCcm(session.dev(), idle, WRITE_WINDOW);
+                    }
+                    streamedThrough = session.streaming();
+                }
             }
-            const auto end = Clock::now() + 1s;
-            do {
-                for(const auto socket : {CAM_B, CAM_C}) writes.push_back(writeCcm(session.dev(), socket, payloads[socket]));
-            } while(Clock::now() < end);
-            streamedThrough = session.streaming();
+            INFO("I2C bus " << bus << ": " << name(active) << " streams alone");
+            REQUIRE(cameUp);
+            for(const auto& [idle, read] : reads) {
+                report("I2C bus " + std::to_string(bus) + ", " + name(active) + " streaming: " + name(idle) + " read " + describe(read));
+                INFO(name(idle) << " read: " << describe(read));
+                CHECK(refusedWith(layout, read, bus, {active}));
+            }
+            CHECK(streamedThrough);
         }
     }
-    if(!refused(probeB) || !refused(probeC)) {
-        INFO("CAM_B read: " << describe(probeB) << "; CAM_C read: " << describe(probeC));
-        REQUIRE((!refused(probeB) && !refused(probeC)));
-        SKIP("CAM_B and CAM_C are on separate I2C buses, so no write is refused. Case 1 covers writes on separate buses");
+}
+
+TEST_CASE("4: CCM EEPROM reads with two cameras on a shared I2C bus streaming", "[ccm]") {
+    const auto& layout = requireSharedBus();
+    for(const auto& pair : sharedPairs(layout)) {
+        const std::vector<CameraBoardSocket> sockets{pair.a, pair.b};
+        std::map<CameraBoardSocket, std::vector<Outcome>> reads;
+        bool cameUp = false;
+        bool streamedThrough = false;
+        {
+            Session session(sockets);
+            session.start();
+            cameUp = session.firstFrames();
+            if(cameUp) {
+                std::this_thread::sleep_for(1s);
+                const auto end = Clock::now() + 1s;
+                do {
+                    for(const auto socket : sockets) reads[socket].push_back(readCcm(session.dev(), socket, WRITE_WINDOW));
+                } while(Clock::now() < end);
+                streamedThrough = session.streaming();
+            }
+        }
+        INFO("I2C bus " << pair.bus << ": " << name(pair.a) << " and " << name(pair.b) << " stream");
+        REQUIRE(cameUp);
+        for(const auto socket : sockets) {
+            const auto& outcomes = reads[socket];
+            const bool allRefused =
+                std::all_of(outcomes.begin(), outcomes.end(), [&](const Outcome& outcome) { return refusedWith(layout, outcome, pair.bus, sockets); });
+            report("I2C bus " + std::to_string(pair.bus) + ", " + name(pair.a) + " and " + name(pair.b) + " streaming: " + name(socket)
+                   + " reads: " + summarize(outcomes));
+            INFO(name(socket) << " reads: " << summarize(outcomes));
+            CHECK(allRefused);
+        }
+        CHECK(streamedThrough);
     }
-    // A refused write sends nothing to the EEPROM, so only writes that went through need restoring
-    const bool allRefused = std::all_of(writes.begin(), writes.end(), refused);
-    if(allRefused) pending.discard();
-    const auto failedRestores = pending.restore();
-    REQUIRE(failedRestores.empty());
-    report("CAM_B and CAM_C writes: " + summarize(writes));
-    INFO("Writes: " << summarize(writes));
-    CHECK(allRefused);
-    CHECK(streamedThrough);
+}
+
+TEST_CASE("5: CCM EEPROM writes with two cameras on a shared I2C bus streaming", "[ccm]") {
+    // The refusal comes before any I2C traffic, so the cameras need no EEPROM
+    const auto& layout = requireSharedBus();
+    const auto& inventory = requireTrustedInventory();
+    for(const auto& pair : sharedPairs(layout)) {
+        const std::vector<CameraBoardSocket> sockets{pair.a, pair.b};
+        PendingRestores pending;
+        std::map<CameraBoardSocket, Outcome> probes;
+        std::vector<Outcome> writes;
+        bool cameUp = false;
+        bool streamedThrough = false;
+        {
+            Session session(sockets);
+            session.start();
+            cameUp = session.firstFrames();
+            if(cameUp) {
+                std::this_thread::sleep_for(1s);
+                // Writes go out only after reads in this session were refused: the same firmware check guards both
+                for(const auto socket : sockets) probes[socket] = readCcm(session.dev(), socket, WRITE_WINDOW);
+                if(refusedWith(layout, probes[pair.a], pair.bus, sockets) && refusedWith(layout, probes[pair.b], pair.bus, sockets)) {
+                    // A write that went through would reach the EEPROMs of both powered modules, so both get backups. They
+                    // come from the inventory, read while each camera streamed alone. A module without an EEPROM has none
+                    std::map<CameraBoardSocket, std::vector<uint8_t>> payloads;
+                    std::vector<std::vector<uint8_t>> taken;
+                    for(const auto socket : sockets) {
+                        const bool hasEeprom = inventory.eeproms.count(socket) != 0;
+                        const auto backup = hasEeprom ? inventoryWindow(socket) : std::vector<uint8_t>(WRITE_WINDOW, 0xFF);
+                        payloads[socket] = makePayload(backup, taken);
+                        taken.push_back(payloads[socket]);
+                        if(hasEeprom) pending.add(socket, backup);
+                    }
+                    const auto end = Clock::now() + 1s;
+                    do {
+                        for(const auto socket : sockets) writes.push_back(writeCcm(session.dev(), socket, payloads[socket]));
+                    } while(Clock::now() < end);
+                }
+                streamedThrough = session.streaming();
+            }
+        }
+        // A refused write sends nothing to the EEPROM, so only writes that went through need restoring
+        const bool allRefused =
+            !writes.empty() && std::all_of(writes.begin(), writes.end(), [&](const Outcome& write) { return refusedWith(layout, write, pair.bus, sockets); });
+        if(allRefused) pending.discard();
+        const auto failedRestores = pending.restore();
+        REQUIRE(failedRestores.empty());
+        INFO("I2C bus " << pair.bus << ": " << name(pair.a) << " and " << name(pair.b) << " stream");
+        REQUIRE(cameUp);
+        for(const auto socket : sockets) {
+            INFO(name(socket) << " read: " << describe(probes[socket]));
+            CHECK(refusedWith(layout, probes[socket], pair.bus, sockets));
+        }
+        report("I2C bus " + std::to_string(pair.bus) + ", " + name(pair.a) + " and " + name(pair.b) + " streaming: writes " + summarize(writes));
+        INFO("Writes: " << summarize(writes));
+        CHECK(allRefused);
+        CHECK(streamedThrough);
+    }
 }
 
 TEST_CASE("6: CCM EEPROM read right after the stream starts", "[ccm]") {
-    requireConnected({CAM_A});
     const auto& inventory = ccmInventory();
+    if(inventory.platform != dai::Platform::RVC4) SKIP("CCM EEPROM access is tested on RVC4 only");
+    if(inventory.eeproms.empty()) SKIP("No CCM EEPROM detected on any connected camera");
+    // The first camera with a CCM EEPROM
+    const auto socket = inventory.eeproms.begin()->first;
     Outcome early;
     bool cameUp = false;
     bool streamedThrough = false;
     {
-        Session session({CAM_A});
+        Session session({socket});
         session.start();
         // No wait: the read races the sensor's power-up and probe
-        early = readCcm(session.dev(), CAM_A, WRITE_WINDOW);
+        early = readCcm(session.dev(), socket, WRITE_WINDOW);
         cameUp = session.firstFrames();
         streamedThrough = cameUp && session.streaming();
     }
-    report("CAM_A read right after the start: " + describe(early) + (cameUp ? ", the stream came up" : ", the stream did NOT come up"));
-    INFO("CAM_A read: " << describe(early));
+    report(name(socket) + " read right after the start: " + describe(early) + (cameUp ? ", the stream came up" : ", the stream did NOT come up"));
+    INFO(name(socket) << " read: " << describe(early));
+    // The module may still be powering up
     CHECK((early.ok || notPowered(early)));
-    if(early.ok && inventory.eeproms.count(CAM_A) != 0) {
-        const bool matchesInventory = early.data == inventoryWindow(CAM_A);
+    if(early.ok) {
+        const bool matchesInventory = early.data == inventoryWindow(socket);
         CHECK(matchesInventory);
     }
     REQUIRE(cameUp);
@@ -704,56 +950,58 @@ TEST_CASE("6: CCM EEPROM read right after the stream starts", "[ccm]") {
 }
 
 TEST_CASE("7: CCM EEPROM access before the pipeline starts", "[ccm]") {
-    requireConnected({CAM_A});
+    // Cameras on a shared bus are refused before the start: the bus layout case checks that
+    const auto& layout = requireLayout();
     const auto& inventory = ccmInventory();
-    const bool hasCamB = std::find(inventory.connected.begin(), inventory.connected.end(), CAM_B) != inventory.connected.end();
+    std::vector<CameraBoardSocket> alone;
+    for(const auto socket : layout.connected) {
+        if(layout.busOf.count(socket) == 0) alone.push_back(socket);
+    }
+    if(alone.empty()) SKIP("Every connected camera shares its I2C bus, so the bus layout case covers access before the start");
+    const auto tested = withCcmEeprom(inventory, alone);
+    if(tested.empty()) SKIP("No camera alone on its I2C bus has a CCM EEPROM (alone: " << join(names(alone)) << ")");
     PendingRestores pending;
-    Outcome readA;
-    Outcome readB;
-    Outcome writeA;
+    std::map<CameraBoardSocket, Outcome> reads;
+    std::map<CameraBoardSocket, Outcome> writes;
     std::vector<RoundTrip> trips;
     {
         // The pipeline is built but not started, so the device has created no camera: none is active
-        Session session({CAM_A});
-        readA = readCcm(session.dev(), CAM_A, WRITE_WINDOW);
-        if(hasCamB) readB = readCcm(session.dev(), CAM_B, WRITE_WINDOW);
-        if(readA.ok) {
-            // The module is powered without streaming (as on OAK4-FFC), so writing works too
-            trips = roundTrip(session, {CAM_A}, pending, false);
-        } else if(inventory.eeproms.count(CAM_A) != 0) {
-            // The write must fail like the read. The backup is the inventory readout, in case it doesn't
-            const auto backup = inventoryWindow(CAM_A);
-            pending.add(CAM_A, backup);
-            writeA = writeCcm(session.dev(), CAM_A, makePayload(backup, {}));
+        Session session(tested);
+        std::vector<CameraBoardSocket> readable;
+        for(const auto socket : tested) {
+            reads[socket] = readCcm(session.dev(), socket, WRITE_WINDOW);
+            if(reads[socket].ok) {
+                readable.push_back(socket);
+            } else {
+                // The write must fail like the read. The backup is the inventory readout, in case it doesn't
+                const auto backup = inventoryWindow(socket);
+                pending.add(socket, backup);
+                writes[socket] = writeCcm(session.dev(), socket, makePayload(backup, {}));
+            }
         }
+        // A module powered without streaming (as on OAK4-FFC) can be written too
+        trips = roundTrip(session, readable, pending, false);
     }
     const auto failedRestores = pending.restore();
     REQUIRE(failedRestores.empty());
-    report("Before the start: CAM_A read " + describe(readA) + (hasCamB ? ", CAM_B read " + describe(readB) : ""));
-    INFO("CAM_A read: " << describe(readA));
-    CHECK((readA.ok || notPowered(readA)));
-    if(readA.ok) {
-        checkRoundTrips(trips);
-    } else if(inventory.eeproms.count(CAM_A) != 0) {
-        INFO("CAM_A write: " << describe(writeA));
-        CHECK(notPowered(writeA));
+    for(const auto& [socket, read] : reads) {
+        report("Before the start: " + name(socket) + " read " + describe(read));
+        INFO(name(socket) << " read: " << describe(read));
+        CHECK((read.ok || notPowered(read)));
     }
-    if(hasCamB) {
-        INFO("CAM_B read: " << describe(readB));
-        if(!camBCamCShareBus.has_value()) {
-            CHECK((refused(readB) || readB.ok || notPowered(readB)));
-        } else if(*camBCamCShareBus) {
-            CHECK((refused(readB) && contains(readB.error, "(active: none)")));
-        } else {
-            CHECK((readB.ok || notPowered(readB)));
-        }
+    for(const auto& [socket, write] : writes) {
+        INFO(name(socket) << " write: " << describe(write));
+        CHECK(notPowered(write));
     }
+    checkRoundTrips(trips);
 }
 
 // The CBA EEPROM holds the camera board's calibration, so the test only reads it: the API can't put it back exactly
 // after a write. A read returns the calibration with IMU extrinsics patched in, flashing drops the miscellaneous data,
 // and there is no raw CBA read to verify a restore with
 TEST_CASE("CBA EEPROM reads with no camera streaming", "[cba]") {
+    // Before the device below connects: the layout uses its own connection
+    const auto& layout = busLayout();
     // No pipeline: no sensor is active or using a camera I2C bus
     dai::Device device;
     if(device.getPlatform() != dai::Platform::RVC4) SKIP("CBA EEPROM access is tested on RVC4 only");
@@ -785,7 +1033,7 @@ TEST_CASE("CBA EEPROM reads with no camera streaming", "[cba]") {
     // Sockets on one I2C bus share its CBA EEPROM. Otherwise identical readouts mean two sockets reach the same EEPROM
     for(auto a = calibrations.begin(); a != calibrations.end(); ++a) {
         for(auto b = std::next(a); b != calibrations.end(); ++b) {
-            if(a->second == b->second && !firmwareReportsSharedBus(device, a->first, b->first)) {
+            if(a->second == b->second && !layout.sameBus(a->first, b->first)) {
                 problems.push_back(name(a->first) + " and " + name(b->first) + " read identical calibrations but aren't on a shared I2C bus");
             }
         }
