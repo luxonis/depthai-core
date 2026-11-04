@@ -5,6 +5,8 @@
 //   share a bus from the firmware's refusals, so it covers shared buses on any sockets and with any number of them.
 //   A camera without a CCM EEPROM answers like an unpowered module, so cases that need an answer from the EEPROM skip
 //   such cameras. The shared-bus refusal cases run without EEPROMs, since the firmware refuses before any I2C traffic
+// A camera may have a CCM EEPROM, a CBA EEPROM or both. The cases for one type skip when no camera has it, and a
+// separate case fails for a camera with neither
 // - the camera board (CBA) EEPROM through the CBA calibration API, read only and with no camera streaming (see its test
 //   case)
 // The test controls which cameras stream, and never more than two at once. Every write is restored, and EEPROM contents
@@ -327,13 +329,15 @@ class Session {
 
 // The I2C buses of the connected cameras, as the firmware reports them. With no camera active, a CCM EEPROM access on a
 // shared bus is refused with an error naming the bus and every socket on it, while a camera alone on its bus isn't
-// refused. Learned once, with no pipeline, so it doesn't depend on which cases ran before
+// refused. Learned once, with no pipeline, so it doesn't depend on which cases ran before. The CBA EEPROMs are
+// probed with no camera active too, so the same connection notes which cameras have one
 struct BusLayout {
     dai::Platform platform{};
     std::vector<CameraBoardSocket> connected;
     std::map<int, std::set<std::string>> named;            // shared bus -> every socket the firmware names on it
     std::map<int, std::vector<CameraBoardSocket>> shared;  // shared bus -> its connected cameras
     std::map<CameraBoardSocket, int> busOf;                // connected camera on a shared bus -> that bus
+    std::set<CameraBoardSocket> cbaEeproms;                // connected cameras with a CBA EEPROM
     std::vector<std::string> problems;
 
     bool sameBus(CameraBoardSocket a, CameraBoardSocket b) const {
@@ -366,6 +370,15 @@ void addToLayout(BusLayout& layout, CameraBoardSocket socket, const Outcome& out
     layout.shared[refusal->bus].push_back(socket);
 }
 
+// The given cameras with a CBA EEPROM, as the firmware detected it at startup
+std::set<CameraBoardSocket> withCbaEeprom(dai::Device& device, const std::vector<CameraBoardSocket>& sockets) {
+    std::set<CameraBoardSocket> result;
+    for(const auto socket : sockets) {
+        if(device.isCBAEepromAvailable(socket)) result.insert(socket);
+    }
+    return result;
+}
+
 const BusLayout& busLayout() {
     static const BusLayout layout = [] {
         BusLayout result;
@@ -375,6 +388,7 @@ const BusLayout& busLayout() {
         if(result.platform != dai::Platform::RVC4) return result;
         for(const auto& features : device.getConnectedCameraFeatures()) result.connected.push_back(features.socket);
         for(const auto socket : result.connected) addToLayout(result, socket, readCcm(device, socket, 1));
+        result.cbaEeproms = withCbaEeprom(device, result.connected);
         for(const auto& [bus, sockets] : result.named) {
             for(const auto socket : result.connected) {
                 if(sockets.count(name(socket)) != 0 && result.busOf.count(socket) == 0) {
@@ -770,6 +784,20 @@ TEST_CASE("CCM EEPROM readouts are unique", "[ccm]") {
     INFO(join(inventory.problems));
     CHECK(inventory.problems.empty());
     if(inventory.eeproms.empty()) SKIP("No CCM EEPROM detected on any connected camera, so there are no readouts to compare");
+}
+
+TEST_CASE("Every connected camera has a CCM or CBA EEPROM", "[ccm][cba]") {
+    const auto& layout = requireLayout();
+    const auto& inventory = ccmInventory();
+    std::vector<std::string> without;
+    for(const auto socket : layout.connected) {
+        const bool ccm = inventory.eeproms.count(socket) != 0;
+        const bool cba = layout.cbaEeproms.count(socket) != 0;
+        report("EEPROMs of " + name(socket) + ": " + (ccm && cba ? "CCM and CBA" : ccm ? "CCM" : cba ? "CBA" : "none"));
+        if(!ccm && !cba) without.push_back(name(socket));
+    }
+    INFO("Cameras without a CCM or CBA EEPROM: " << join(without));
+    CHECK(without.empty());
 }
 
 TEST_CASE("1: CCM EEPROM write round trip with two cameras on different I2C buses streaming", "[ccm]") {
