@@ -1014,6 +1014,9 @@ dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do no
 if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     dai_add_test(object_tracker_host_test src/onhost_tests/pipeline/node/object_tracker_test.cpp)
     dai_set_test_labels(object_tracker_host_test onhost ci)
+
+    dai_add_test(record_video_host_test src/onhost_tests/pipeline/node/record_video_test.cpp)
+    dai_set_test_labels(record_video_host_test onhost ci)
 endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)

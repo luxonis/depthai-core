@@ -23,6 +23,7 @@
 #include "depthai/properties/NeuralNetworkProperties.hpp"
 #include "depthai/properties/ObjectTrackerProperties.hpp"
 #include "depthai/properties/PointCloudProperties.hpp"
+#include "depthai/properties/RecordVideoProperties.hpp"
 #include "depthai/properties/RectificationProperties.hpp"
 #include "depthai/properties/SPIInProperties.hpp"
 #include "depthai/properties/SPIOutProperties.hpp"
@@ -70,6 +71,7 @@ ColorCameraProperties::~ColorCameraProperties() = default;
 DetectionParserProperties::~DetectionParserProperties() = default;
 EdgeDetectorProperties::~EdgeDetectorProperties() = default;
 GateProperties::~GateProperties() = default;
+RecordVideoProperties::~RecordVideoProperties() = default;
 RectificationProperties::~RectificationProperties() = default;
 NeuralDepthProperties::~NeuralDepthProperties() = default;
 GPUStereoProperties::~GPUStereoProperties() = default;

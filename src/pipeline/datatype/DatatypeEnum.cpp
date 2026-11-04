@@ -86,6 +86,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::XFeatMonoParserConfig,
          DatatypeEnum::XFeatStereoParserConfig,
          DatatypeEnum::Odometry,
+         DatatypeEnum::RecordControl,
+         DatatypeEnum::RecordStatus,
      }},
     {DatatypeEnum::Buffer,
      {
@@ -165,6 +167,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::XFeatMonoParserConfig,
          DatatypeEnum::XFeatStereoParserConfig,
          DatatypeEnum::Odometry,
+         DatatypeEnum::RecordControl,
+         DatatypeEnum::RecordStatus,
      }},
     {DatatypeEnum::Transformable,
      {
@@ -256,6 +260,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::MapOutputParserConfig, {}},
     {DatatypeEnum::XFeatMonoParserConfig, {}},
     {DatatypeEnum::XFeatStereoParserConfig, {}},
+    {DatatypeEnum::RecordControl, {}},
+    {DatatypeEnum::RecordStatus, {}},
 };
 
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {

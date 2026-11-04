@@ -22,6 +22,7 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/RecordReplay.hpp"
+#include "depthai/utility/RecordingStore.hpp"
 #include "pipeline/Node.hpp"
 #include "utility/CompilerWarnings.hpp"
 
@@ -140,7 +141,6 @@ bool setupHolisticRecord(Pipeline pipeline,
             }
             sync = pipeline.create<dai::node::Sync>();
             demux = pipeline.create<dai::node::MessageDemux>();
-            demux->setRunOnHost(true);
             sync->out.link(demux->input);
             if(maxRequestedFps > 0.0f) {
                 sync->setSyncThreshold(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.9 / (double)maxRequestedFps)));
@@ -161,6 +161,20 @@ bool setupHolisticRecord(Pipeline pipeline,
             }
         }
 
+        // RVC4 cannot write an AVI on the device. Keep the host nodes and say so.
+        const bool hostVideoFallback = !legacy && recordConfig.format == RecordFormat::VIDEO && !recordConfig.videoEncoding.enabled;
+        if(hostVideoFallback) {
+            spdlog::warn("Record holistic: video encoding off, host nodes used");
+        }
+        const bool useLegacyLayout = legacy || hostVideoFallback;
+        const std::string sharedRecordingName = "holistic_" + deviceId + "_" + makeRecordingTimestamp();
+        if(!useLegacyLayout) {
+            outFilenames["holistic_recording"] = platform::joinPaths(recordPath, sharedRecordingName);
+        }
+        if(demux != nullptr) {
+            demux->setRunOnHost(useLegacyLayout);
+        }
+
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
@@ -170,32 +184,55 @@ bool setupHolisticRecord(Pipeline pipeline,
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = (nodeParams.video ? "v_" : "b_") + nodeParams.name;
             std::filesystem::path filePath = platform::joinPaths(recordPath, deviceId + "_" + nodeName);
-            outFilenames[nodeName] = filePath;
             DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
-            if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
-               || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
+            const bool cameraSource = std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
+                                      || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr;
+            if(cameraSource) {
+                if(useLegacyLayout) outFilenames[nodeName] = filePath;
                 Node::Output* output = nullptr;
                 size_t camWidth = 1920;
                 size_t camHeight = 1080;
-                if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                    output = setupHolisticRecordCamera(
-                        std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, syncCameraOutputs ? maxRequestedFps : 0.0f, camWidth, camHeight);
+                float streamFps = 30.f;
+                if(auto cameraNode = std::dynamic_pointer_cast<node::Camera>(node)) {
+                    const float requested = syncCameraOutputs ? maxRequestedFps : 0.0f;
+                    output = setupHolisticRecordCamera(cameraNode, pipeline, legacy, requested, camWidth, camHeight);
+                    streamFps = requested > 0.0f ? requested : cameraNode->getMaxRequestedFps();
                 } else {
                     output = &nodeS->getRecordOutput();
+                    if(auto colorCameraNode = std::dynamic_pointer_cast<node::ColorCamera>(node)) {
+                        streamFps = colorCameraNode->getFps();
+                    } else if(auto monoCameraNode = std::dynamic_pointer_cast<node::MonoCamera>(node)) {
+                        streamFps = monoCameraNode->getFps();
+                    }
                 }
+                if(!(streamFps > 0.0f)) streamFps = 30.f;
+                recordConfig.streams[nodeParams.name] = RecordConfig::StreamConfig{streamFps};
+
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
-                recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
-                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
+                recordNode->setStreamFps(streamFps);
                 recordNode->setCompressionLevel(recordConfig.compressionLevel);
+                recordNode->setPreTriggerFrames(0);
+                recordNode->input.setBlocking(true);
+                if(!useLegacyLayout) recordNode->setKeepOnDevice(recordConfig.keepOnDevice);
                 Node::Output* recordOutput = output;
-                if(recordConfig.videoEncoding.enabled) {
+                const bool encode = recordConfig.videoEncoding.enabled && (useLegacyLayout || recordConfig.format == RecordFormat::VIDEO);
+                if(useLegacyLayout) {
+                    recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
+                    recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(encode ? ".mp4" : ".avi"));
+                } else {
+                    recordNode->setFormat(recordConfig.format);
+                    recordNode->setRecordingName(sharedRecordingName);
+                    recordNode->setStreamName(nodeParams.name);
+                    recordNode->setOutputDirectory(recordPath);
+                }
+                if(encode) {
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();
                     videnc->setProfile(recordConfig.videoEncoding.profile);
                     videnc->setLossless(recordConfig.videoEncoding.lossless);
                     videnc->setBitrate(recordConfig.videoEncoding.bitrate);
                     videnc->setQuality(recordConfig.videoEncoding.quality);
                     if((std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) && legacy) {
-                        int maxOutputFrameSize = camWidth * camHeight * 3;
+                        int maxOutputFrameSize = static_cast<int>(camWidth * camHeight * 3);
                         if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
                             auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
@@ -218,6 +255,7 @@ bool setupHolisticRecord(Pipeline pipeline,
                     recordOutput->link(recordNode->input);
                 }
             } else {
+                outFilenames[nodeName] = filePath;
                 auto recordNode = pipeline.create<dai::node::RecordMetadataOnly>();
                 recordNode->setRecordFile(std::filesystem::path(filePath).concat(".mcap"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);

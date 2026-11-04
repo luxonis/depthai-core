@@ -135,6 +135,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Type definitions
     py::class_<DeviceBase, std::shared_ptr<DeviceBase>> deviceBase(m, "DeviceBase", DOC(dai, DeviceBase));
+    py::class_<RecordingInfo> recordingInfo(m, "RecordingInfo", DOC(dai, RecordingInfo));
     py::class_<Device, DeviceBase, std::shared_ptr<Device>> device(m, "Device", DOC(dai, Device));
     py::class_<Device::Config> deviceConfig(device, "Config", DOC(dai, DeviceBase, Config));
     py::class_<HealthCheckConfig> healthCheckConfig(m, "HealthCheckConfig", DOC(dai, HealthCheckConfig));
@@ -181,6 +182,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
+    recordingInfo.def(py::init<>())
+        .def_readwrite("name", &RecordingInfo::name, DOC(dai, RecordingInfo, name))
+        .def_readwrite("sizeBytes", &RecordingInfo::sizeBytes, DOC(dai, RecordingInfo, sizeBytes))
+        .def_readwrite("createdMs", &RecordingInfo::createdMs, DOC(dai, RecordingInfo, createdMs))
+        .def_readwrite("complete", &RecordingInfo::complete, DOC(dai, RecordingInfo, complete));
     deviceBase
         .def("isCalibrationAvailable",
              &dai::DeviceBase::isCalibrationAvailable,
@@ -976,6 +982,37 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getIrDrivers();
             },
             DOC(dai, DeviceBase, getIrDrivers))
+        .def(
+            "listRecordings",
+            [](DeviceBase& device) {
+                py::gil_scoped_release release;
+                return device.listRecordings();
+            },
+            DOC(dai, DeviceBase, listRecordings))
+        .def(
+            "downloadRecording",
+            [](DeviceBase& device, const std::string& name, const std::filesystem::path& hostDir) {
+                py::gil_scoped_release release;
+                device.downloadRecording(name, hostDir);
+            },
+            py::arg("name"),
+            py::arg("hostDir"),
+            DOC(dai, DeviceBase, downloadRecording))
+        .def(
+            "deleteRecording",
+            [](DeviceBase& device, const std::string& name) {
+                py::gil_scoped_release release;
+                device.deleteRecording(name);
+            },
+            py::arg("name"),
+            DOC(dai, DeviceBase, deleteRecording))
+        .def(
+            "prepareRecordingDownload",
+            [](DeviceBase& device) {
+                py::gil_scoped_release release;
+                device.prepareRecordingDownload();
+            },
+            DOC(dai, DeviceBase, prepareRecordingDownload))
         .def(
             "isEepromAvailable",
             [](DeviceBase& d) {

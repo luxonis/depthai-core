@@ -120,9 +120,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
     py::class_<DeviceProperties> deviceProperties(m, "DeviceProperties", DOC(dai, DeviceProperties));
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
+    py::enum_<RecordFormat> recordFormat(m, "RecordFormat", DOC(dai, RecordFormat));
     py::enum_<RecordConfig::RecordReplayState> recordState(recordConfig, "RecordReplayState", DOC(dai, RecordConfig, RecordReplayState));
     py::enum_<RecordConfig::CompressionLevel> recordCompression(recordConfig, "CompressionLevel", DOC(dai, RecordConfig, CompressionLevel));
     py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
+    py::class_<RecordConfig::StreamConfig> recordStreamConfig(recordConfig, "StreamConfig", DOC(dai, RecordConfig, StreamConfig));
     py::class_<PipelineStateApi> pipelineStateApi(m, "PipelineStateApi", DOC(dai, PipelineStateApi));
     py::enum_<DeviceState>(m, "DeviceState", DOC(dai, DeviceState))
         .value("RUNNING", DeviceState::RUNNING)
@@ -188,12 +190,18 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("SLOW", RecordConfig::CompressionLevel::SLOW)
         .value("SLOWEST", RecordConfig::CompressionLevel::SLOWEST);
 
+    recordFormat.value("VIDEO", RecordFormat::VIDEO).value("RAW_FRAMES", RecordFormat::RAW_FRAMES);
+    recordStreamConfig.def(py::init<>()).def_readwrite("fps", &RecordConfig::StreamConfig::fps, DOC(dai, RecordConfig, StreamConfig, fps));
+
     recordConfig.def(py::init<>())
         .def_readwrite("state", &RecordConfig::state, DOC(dai, RecordConfig, state))
         .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
         .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel))
-        .def_readwrite("syncCameraOutputs", &RecordConfig::syncCameraOutputs, DOC(dai, RecordConfig, syncCameraOutputs));
+        .def_readwrite("syncCameraOutputs", &RecordConfig::syncCameraOutputs, DOC(dai, RecordConfig, syncCameraOutputs))
+        .def_readwrite("format", &RecordConfig::format, DOC(dai, RecordConfig, format))
+        .def_readwrite("keepOnDevice", &RecordConfig::keepOnDevice, DOC(dai, RecordConfig, keepOnDevice))
+        .def_readwrite("streams", &RecordConfig::streams, DOC(dai, RecordConfig, streams));
 
     pipelineStateApi.def("nodes", static_cast<NodesStateApi (PipelineStateApi::*)()>(&PipelineStateApi::nodes), DOC(dai, PipelineStateApi, nodes))
         .def("stateAsync",

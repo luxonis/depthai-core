@@ -429,6 +429,8 @@ set(TARGET_CORE_SOURCES
     src/capabilities/Capabilities.cpp
     src/pipeline/datatype/VppConfig.cpp
     src/pipeline/datatype/GateControl.cpp
+    src/pipeline/datatype/RecordControl.cpp
+    src/pipeline/datatype/RecordStatus.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/ObjectTrackerImpl.cpp
@@ -436,6 +438,7 @@ set(TARGET_CORE_SOURCES
     src/utility/PipelineEventDispatcher.cpp
     src/utility/PipelineImplHelper.cpp
     src/utility/RecordReplay.cpp
+    src/utility/RecordingStore.cpp
     src/utility/McapImpl.cpp
     src/utility/Compression.cpp
     src/utility/Telemetry.cpp

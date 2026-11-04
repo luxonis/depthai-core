@@ -188,6 +188,9 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
             }
 
             if(!MP4WriteSample(mp4Writer, mp4Track, sampleData.data(), sampleData.size(), MP4V2_TIMESCALE / fps, 0, isSyncSample)) {
+                if(errno == ENOSPC) {
+                    throw std::runtime_error("ENOSPC writing MP4 file");
+                }
                 spdlog::warn("Failed to write sample to MP4 file");
             }
             break;
@@ -199,6 +202,9 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
                 MP4SetVideoProfileLevel(mp4Writer, 0x7F);
             }
             if(!MP4WriteSample(mp4Writer, mp4Track, data.data(), data.size(), MP4V2_TIMESCALE / fps)) {
+                if(errno == ENOSPC) {
+                    throw std::runtime_error("ENOSPC writing MP4 file");
+                }
                 spdlog::warn("Failed to write sample to MP4 file");
             }
             break;

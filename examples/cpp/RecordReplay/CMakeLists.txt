@@ -32,4 +32,8 @@ dai_add_example(record_encoded record_encoded.cpp OFF OFF)
 
 dai_add_example(record_raw record_raw.cpp OFF OFF)
 
+dai_add_example(record_raw_frames record_raw_frames.cpp OFF OFF)
+
+dai_add_example(record_event record_event.cpp OFF OFF)
+
 dai_add_example(record_imu record_imu.cpp OFF OFF)

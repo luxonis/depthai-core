@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <map>
+#include <stdexcept>
 
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "nlohmann/json.hpp"
@@ -17,12 +19,24 @@
 namespace dai {
 
 /**
+ * RecordVideo container. VIDEO writes a video file and metadata. RAW_FRAMES writes one .dai file per frame.
+ */
+enum class RecordFormat : std::int32_t { VIDEO = 0, RAW_FRAMES = 1 };
+
+/**
  * Configuration for recording and replaying messages
  */
 struct RecordConfig {
     using Profile = dai::VideoEncoderProperties::Profile;
     enum class RecordReplayState { RECORD, REPLAY, NONE };
     enum class CompressionLevel : uint8_t { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
+
+    /**
+     * Fps of one holistic stream, stored in record_config.json under streams.
+     */
+    struct StreamConfig {
+        float fps = 30.f;
+    };
 
     struct VideoEncoding {
         bool enabled = true;
@@ -38,6 +52,12 @@ struct RecordConfig {
     VideoEncoding videoEncoding;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
     bool syncCameraOutputs = true;
+    /** VIDEO keeps the encoder path. RAW_FRAMES records the camera frames directly. */
+    RecordFormat format = RecordFormat::VIDEO;
+    /** Keep the device copy after a holistic or record-node transfer. */
+    bool keepOnDevice = false;
+    /** Per-stream fps written for holistic replay. Optional when a JSON config is read. */
+    std::map<std::string, StreamConfig> streams;
 };
 
 struct NodeRecordParams {
@@ -77,6 +97,13 @@ struct adl_serializer<dai::RecordConfig> {
                            {"lossless", p.videoEncoding.lossless},
                            {"quality", p.videoEncoding.quality}};
         j = json{{"outputDir", p.outputDir}, {"videoEncoding", vidEnc}, {"compressionLevel", p.compressionLevel}, {"syncCameraOutputs", p.syncCameraOutputs}};
+        j["format"] = p.format == dai::RecordFormat::RAW_FRAMES ? "RAW_FRAMES" : "VIDEO";
+        j["keepOnDevice"] = p.keepOnDevice;
+        json streams = json::object();
+        for(const auto& stream : p.streams) {
+            streams[stream.first] = json{{"fps", stream.second.fps}};
+        }
+        j["streams"] = streams;
     }
 
     static void from_json(const json& j, dai::RecordConfig& p) {  // NOLINT this is a specialization, naming conventions don't apply
@@ -109,6 +136,28 @@ struct adl_serializer<dai::RecordConfig> {
         }
 
         j.at("outputDir").get_to(p.outputDir);
+        if(j.contains("format")) {
+            std::string format;
+            j.at("format").get_to(format);
+            if(format == "VIDEO") {
+                p.format = dai::RecordFormat::VIDEO;
+            } else if(format == "RAW_FRAMES") {
+                p.format = dai::RecordFormat::RAW_FRAMES;
+            } else {
+                throw std::invalid_argument("Unknown record format: " + format);
+            }
+        }
+        if(j.contains("keepOnDevice")) {
+            j.at("keepOnDevice").get_to(p.keepOnDevice);
+        }
+        if(j.contains("streams")) {
+            p.streams.clear();
+            for(const auto& stream : j.at("streams").items()) {
+                dai::RecordConfig::StreamConfig streamConfig;
+                stream.value().at("fps").get_to(streamConfig.fps);
+                p.streams.emplace(stream.key(), streamConfig);
+            }
+        }
     }
 };
 }  // namespace nlohmann

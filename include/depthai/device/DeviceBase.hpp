@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -15,6 +16,8 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+
+#include "depthai/utility/RecordingStore.hpp"
 
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -566,6 +569,36 @@ class DeviceBase {
      * For OAK-D-Pro it should be `[{"LM3644", 2, 0x63}]`
      */
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
+
+    /**
+     * Lists recordings in the RVC4 device store.
+     * Names, sizes, creation time in milliseconds since the epoch, and whether every node closed its files.
+     * @throws std::runtime_error when the device is not RVC4.
+     */
+    std::vector<RecordingInfo> listRecordings();
+
+    /**
+     * Copies one device recording into `<hostDir>/<name>/`.
+     * `hostDir` must already exist. The destination directory must not.
+     * A partial copy deletes the destination directory that this call created.
+     * @throws std::invalid_argument when the name fails the record name rules.
+     * @throws std::runtime_error when the device is not RVC4, the recording is missing or in use, or the copy fails.
+     */
+    void downloadRecording(const std::string& name, const std::filesystem::path& hostDir);
+
+    /**
+     * Deletes one recording from the RVC4 device store.
+     * @throws std::invalid_argument when the name fails the record name rules.
+     * @throws std::runtime_error when the device is not RVC4, or the recording is missing or in use.
+     */
+    void deleteRecording(const std::string& name);
+
+    /**
+     * Asks the device to close record nodes and mark recordings as not in use before a download.
+     * Pipeline stop calls this once per device. A missing firmware method throws, and stop logs that error.
+     * @throws std::runtime_error when the device is not RVC4 or the device call fails.
+     */
+    void prepareRecordingDownload();
 
     /**
      * Retrieves current device state in a crash dump format.

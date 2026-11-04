@@ -10,6 +10,8 @@
 #include <chrono>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -2803,6 +2805,116 @@ std::string DeviceBase::getPlatformAsString() const {
 
 XLinkProtocol_t DeviceBase::getProtocol() const {
     return getDeviceInfo().protocol;
+}
+
+namespace {
+
+void requireRecordingStore(const DeviceBase& device) {
+    if(device.getDeviceInfo().platform != X_LINK_RVC4) {
+        throw std::runtime_error("Recording store is not supported");
+    }
+}
+
+bool rejectedStorePath(const std::string& relative) {
+    const std::filesystem::path path(relative);
+    if(path.is_absolute()) return true;
+    for(const auto& part : path) {
+        if(part == "..") return true;
+    }
+    return false;
+}
+
+}  // namespace
+
+std::vector<RecordingInfo> DeviceBase::listRecordings() {
+    requireRecordingStore(*this);
+    const auto rows = pimpl->rpcCallChecked<std::vector<std::tuple<std::string, std::uint64_t, std::int64_t, bool>>>("recordStoreList");
+    std::vector<RecordingInfo> recordings;
+    recordings.reserve(rows.size());
+    for(const auto& row : rows) {
+        RecordingInfo info;
+        info.name = std::get<0>(row);
+        info.sizeBytes = std::get<1>(row);
+        info.createdMs = std::get<2>(row);
+        info.complete = std::get<3>(row);
+        recordings.push_back(std::move(info));
+    }
+    return recordings;
+}
+
+void DeviceBase::downloadRecording(const std::string& name, const std::filesystem::path& hostDir) {
+    validateRecordingName(name);
+    requireRecordingStore(*this);
+    if(!std::filesystem::exists(hostDir)) {
+        throw std::runtime_error("Record download destination is missing: " + hostDir.string());
+    }
+    const auto destination = hostDir / name;
+    if(std::filesystem::exists(destination)) {
+        throw std::runtime_error("Record download destination already exists: " + destination.string());
+    }
+    std::filesystem::create_directories(destination);
+    try {
+        const auto files = pimpl->rpcCallChecked<std::vector<std::tuple<std::string, std::uint64_t>>>("recordStoreListFiles", name);
+        std::uint64_t total = 0;
+        for(const auto& file : files) total += std::get<1>(file);
+        std::uint64_t done = 0;
+        int lastBucket = 0;
+        constexpr std::uint64_t chunkBytes = 1024ull * 1024ull;
+        auto noteProgress = [&]() {
+            if(total == 0) return;
+            const int bucket = static_cast<int>((done * 100) / total) / 10 * 10;
+            if(bucket < lastBucket + 10) return;
+            lastBucket = bucket;
+            Logging::getInstance().logger.info("Record download {}/{} bytes", done, total);
+        };
+        for(const auto& file : files) {
+            const auto& relative = std::get<0>(file);
+            const auto size = std::get<1>(file);
+            if(rejectedStorePath(relative)) {
+                throw std::runtime_error("Record download rejected path: " + relative);
+            }
+            const auto outputPath = destination / relative;
+            std::filesystem::create_directories(outputPath.parent_path());
+            std::ofstream output(outputPath, std::ios::binary);
+            if(!output) {
+                throw std::runtime_error("Record download could not create " + outputPath.string());
+            }
+            std::uint64_t offset = 0;
+            while(offset < size) {
+                const auto length = std::min(chunkBytes, size - offset);
+                auto bytes = pimpl->rpcCallChecked<std::vector<std::uint8_t>>("recordStoreReadChunk", name, relative, offset, length);
+                if(bytes.empty()) {
+                    throw std::runtime_error("Record download returned an empty chunk");
+                }
+                // ofstream::write takes char*. The chunk is raw file bytes.
+                output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+                if(!output) {
+                    throw std::runtime_error("Record download write failed");
+                }
+                offset += static_cast<std::uint64_t>(bytes.size());
+                done += static_cast<std::uint64_t>(bytes.size());
+                noteProgress();
+            }
+        }
+        if(total > 0 && lastBucket < 100) {
+            Logging::getInstance().logger.info("Record download {}/{} bytes", total, total);
+        }
+    } catch(...) {
+        std::error_code error;
+        std::filesystem::remove_all(destination, error);
+        throw;
+    }
+}
+
+void DeviceBase::deleteRecording(const std::string& name) {
+    validateRecordingName(name);
+    requireRecordingStore(*this);
+    pimpl->rpcCallCheckedVoid("recordStoreDelete", name);
+}
+
+void DeviceBase::prepareRecordingDownload() {
+    requireRecordingStore(*this);
+    pimpl->rpcCallCheckedVoid("recordStorePrepareDownload");
 }
 
 }  // namespace dai

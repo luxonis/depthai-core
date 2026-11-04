@@ -91,6 +91,8 @@ def test_object_tracker_config_is_registered_and_mutable():
     (dai.ImgFrame, dai.DatatypeEnum.ImgFrame),
     (dai.EncodedFrame, dai.DatatypeEnum.EncodedFrame),
     (dai.GateControl, dai.DatatypeEnum.GateControl),
+    (dai.RecordControl, dai.DatatypeEnum.RecordControl),
+    (dai.RecordStatus, dai.DatatypeEnum.RecordStatus),
 ])
 def test_virtual_datatype_dispatch(factory, datatype):
     assert factory().getDatatype() == datatype

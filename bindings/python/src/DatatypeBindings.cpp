@@ -56,6 +56,8 @@ void bind_auto_calibration_result(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_vppconfig(pybind11::module& m, void* pCallstack);
 void bind_gate_control(pybind11::module& m, void* pCallstack);
+void bind_record_control(pybind11::module& m, void* pCallstack);
+void bind_record_status(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BETA
 void bind_beta_classifications(pybind11::module& m, void* pCallstack);
 void bind_beta_classificationsequenceparserconfig(pybind11::module& m, void* pCallstack);
@@ -132,6 +134,8 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_mapdata);
     callstack.push_front(bind_vppconfig);
     callstack.push_front(bind_gate_control);
+    callstack.push_front(bind_record_control);
+    callstack.push_front(bind_record_status);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     callstack.push_front(bind_dynamic_calibration_results);
     callstack.push_front(bind_dynamic_calibration_control);
@@ -185,6 +189,8 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     datatypeEnum.value("CalibrationMetrics", dai::DatatypeEnum::CalibrationMetrics)
         .value("GateControl", dai::DatatypeEnum::GateControl)
+        .value("RecordControl", dai::DatatypeEnum::RecordControl)
+        .value("RecordStatus", dai::DatatypeEnum::RecordStatus)
         .value("NeuralDepthConfig", dai::DatatypeEnum::NeuralDepthConfig)
         .value("ObjectTrackerConfig", dai::DatatypeEnum::ObjectTrackerConfig)
         .value("PacketizedData", dai::DatatypeEnum::PacketizedData)

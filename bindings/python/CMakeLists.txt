@@ -152,6 +152,8 @@ set(SOURCE_LIST
     src/pipeline/datatype/EdgeDetectorConfigBindings.cpp
     src/pipeline/datatype/FeatureTrackerConfigBindings.cpp
     src/pipeline/datatype/GateControlBindings.cpp
+    src/pipeline/datatype/RecordControlBindings.cpp
+    src/pipeline/datatype/RecordStatusBindings.cpp
     src/pipeline/datatype/ThermalConfigBindings.cpp
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp

@@ -71,6 +71,14 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool enableHolisticRecordReplay = false;
     std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
+    /// A device recording download failed. Holistic packing must not build a partial archive.
+    bool recordTransferFailed = false;
+    /// finishHolisticRecordAndReplay skips packing when stop() already packed the archive.
+    bool holisticRecordPacked = false;
+    /// Join host RecordVideo and RecordMetadataOnly threads before output queues close.
+    void waitForRecordNodes();
+    /// Copy device recordings to the host while the device is still connected.
+    void transferRecordings();
     std::string defaultDeviceId;
     std::unordered_map<Node::Id, std::shared_ptr<Device>> bridgeHostDevices;
     // Is the pipeline building on host? Some steps should be skipped when building on device
