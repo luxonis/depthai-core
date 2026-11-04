@@ -1158,6 +1158,17 @@ void ReplayVideo::buildStage1() {
             properties.sourceHash = hash;
             properties.resolvedOnHost = false;
             runtime->cacheKeys.push_back(hash);
+            // The device opens resolvedMetadataPath. The host path in metadataPath is not
+            // on the device, so the sidecar has to be uploaded before the early return.
+            if(properties.metadataPathSet) {
+                const std::filesystem::path metadataPath(properties.metadataPath);
+                if(!std::filesystem::exists(metadataPath)) {
+                    throw std::runtime_error("ReplayVideo metadata file is missing: " + metadataPath.string());
+                }
+                const auto metadataHash = replay::sha256OfFile(metadataPath);
+                properties.resolvedMetadataPath = uploadFile(*getDevice(), logger, metadataPath, metadataHash);
+                runtime->cacheKeys.push_back(metadataHash);
+            }
         }
 
         if(!onHost) {

@@ -6,7 +6,7 @@
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <google/protobuf/descriptor.h>
 #endif
-#include "utility/span.hpp"
+#include "depthai/utility/span.hpp"
 namespace dai {
 namespace utility {
 
