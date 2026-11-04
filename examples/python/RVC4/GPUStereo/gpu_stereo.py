@@ -3,6 +3,10 @@ import cv2
 import depthai as dai
 import numpy as np
 
+# Fixed metric range: colors never depend on the current frame's extrema.
+MIN_DEPTH_MM = 300
+MAX_DEPTH_MM = 5000
+
 device = dai.Device()
 if not device.isGpuStereoSupported():
     print("Exiting GPUStereo example: GPUStereo is not supported on this device.")
@@ -21,16 +25,15 @@ with dai.Pipeline(device) as pipeline:
     # GPU_CPU (default) balances GPU and CPU; GPU_ONLY keeps the CPU almost free (GPU fully busy).
     gpu.initialConfig.setComputeMode(dai.GPUStereoConfig.ComputeMode.GPU_CPU)
 
-    dispQ = gpu.disparity.createOutputQueue()
+    depthQ = gpu.depth.createOutputQueue()
 
     with pipeline:
         pipeline.start()
         while pipeline.isRunning():
-            frame = dispQ.get()
-            d = frame.getFrame().astype(np.float32)
-            d = cv2.normalize(d, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-            color = cv2.applyColorMap(d, cv2.COLORMAP_JET)
-            color[frame.getFrame() == 0] = 0   # invalid pixels in black
-            cv2.imshow("GPUStereo Disparity", color)
+            depth = depthQ.get().getFrame()
+            normalized = np.clip((depth.astype(np.float32) - MIN_DEPTH_MM) / (MAX_DEPTH_MM - MIN_DEPTH_MM), 0, 1)
+            color = cv2.applyColorMap(((1 - normalized) * 255).astype(np.uint8), cv2.COLORMAP_JET)
+            color[depth == 0] = 0  # invalid pixels in black; near = red, far = blue
+            cv2.imshow("GPUStereo Depth | fixed 0.3-5 m", color)
             if cv2.waitKey(1) == ord("q"):
                 break
