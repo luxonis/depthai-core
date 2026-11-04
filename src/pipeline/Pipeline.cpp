@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "common/ExternalFrameSyncRoles.hpp"
+#include "depthai/beta/device/LocalCalibrationOrigin.hpp"
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "device/Platform.hpp"
@@ -374,27 +375,15 @@ void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<M
     if(handler.has_value()) {
         for(size_t i = 0; i < devices.size(); ++i) {
             const auto& deviceId = deviceIds[i];
-            const auto localSocket = handler->getDeviceSocket(deviceId);
-            if(!localSocket.has_value()) {
+            if(!handler->getDeviceSocket(deviceId).has_value()) {
                 continue;
             }
-            if(!isCalibrationDataAvailable(devices[i])) {
-                throw std::runtime_error(fmt::format("Multi-device calibration requires local calibration data for device '{}'.", deviceId));
+            std::optional<EepromData> calibration;
+            if(isCalibrationDataAvailable(devices[i])) {
+                calibration = getCalibrationData(devices[i]).getEepromData();
             }
-            const auto calibration = getCalibrationData(devices[i]);
-            if(!calibration.hasCameraCalibration(*localSocket)) {
-                throw std::runtime_error(
-                    fmt::format("Multi-device calibration requires local calibration socket {} on device '{}'.", toString(*localSocket), deviceId));
-            }
-            CameraBoardSocket discoveredOrigin = CameraBoardSocket::AUTO;
-            calibration.getExtrinsicsToOrigin(*localSocket, false, discoveredOrigin);
-            if(discoveredOrigin != *localSocket) {
-                throw std::runtime_error(
-                    fmt::format("Multi-device calibration local origin mismatch for device '{}': graph expects socket {}, local calibration resolves to {}.",
-                                deviceId,
-                                toString(*localSocket),
-                                toString(discoveredOrigin)));
-            }
+            // The origin rule follows the device platform so this check matches the firmware's own.
+            handler->validateLocalOrigin(deviceId, beta::describeLocalCalibration(calibration, devices[i]->getPlatform()));
         }
     }
 

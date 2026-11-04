@@ -84,9 +84,6 @@ cv::Rect toCvRect(const Rect& r) {
 Rect fromCvRect(cv::Rect r) {
     return Rect(r.x, r.y, r.width, r.height);
 }
-Rect detToRect(const ImgDetection& det) {
-    return Rect(Point2f(det.xmin, det.ymin), Point2f(det.xmax, det.ymax));
-}
 #endif
 
 template <typename T>
@@ -159,7 +156,7 @@ void ObjectTracker::run() {
         // Either update or track, not both
         if(gotDetections) {
             // TODO: sync messages (currently OK since only imageless tracker is supported)
-            std::vector<ImgDetection> detections;
+            std::vector<impl::TrackerDetection> detections;
             std::vector<Point3f> spatialData;
             detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
             spatialData.reserve(detections.size());
@@ -174,25 +171,27 @@ void ObjectTracker::run() {
             for(size_t i = 0; i < (inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size()); ++i) {
                 const auto& detection = inputImgDetections ? inputImgDetections->detections[i] : inputSpatialImgDetections->detections[i].getImgDetection();
                 if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
-                    // Denormalize and remap to inputTrackerImg
+                    // Denormalize and remap the outer bounds to inputTrackerImg
                     uint32_t width = detectionsTransformation.getSize().first;
                     uint32_t height = detectionsTransformation.getSize().second;
 
-                    RotatedRect detRRect(detToRect(detection));
-                    if(detRRect.size.width <= 1.5f && detRRect.size.height <= 1.5f) detRRect = detRRect.denormalize(width, height, true);
+                    const auto outer = detection.getOuterBoundingBox();
+                    const bool normalized = detection.getBoundingBox().isNormalized();
+                    RotatedRect detRRect{Rect{Point2f{outer[0], outer[1], normalized}, Point2f{outer[2], outer[3], normalized}, normalized}};
+                    if(normalized) detRRect = detRRect.denormalize(width, height);
 
                     auto remapped = detectionsTransformation.remapRectTo(inputTrackerImg->transformation, detRRect);
 
                     const auto [minx, miny, maxx, maxy] = remapped.getOuterRect();
 
-                    ImgDetection det(detection);
-                    det.xmin = std::max(0.f, minx);
-                    det.ymin = std::max(0.f, miny);
-                    det.xmax = std::min((float)inputTrackerImg->getWidth(), maxx);
-                    det.ymax = std::min((float)inputTrackerImg->getHeight(), maxy);
+                    Rect roi;
+                    roi.x = std::max(0.f, minx);
+                    roi.y = std::max(0.f, miny);
+                    roi.width = std::min(static_cast<float>(inputTrackerImg->getWidth()), maxx) - roi.x;
+                    roi.height = std::min(static_cast<float>(inputTrackerImg->getHeight()), maxy) - roi.y;
 
-                    if(det.xmin < det.xmax && det.ymin < det.ymax) {
-                        detections.push_back(det);
+                    if(roi.width > 0.f && roi.height > 0.f) {
+                        detections.push_back({detection, roi});
                         if(inputSpatialImgDetections) {
                             spatialData.push_back(inputSpatialImgDetections->detections[i].spatialCoordinates);
                         } else {

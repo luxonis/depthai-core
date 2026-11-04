@@ -38,7 +38,11 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
     videoEncoderPropertiesProfileRateControlMode.value("CBR", VideoEncoderProperties::RateControlMode::CBR)
         .value("VBR", VideoEncoderProperties::RateControlMode::VBR);
 
-    videoEncoderProperties.def_readwrite("bitrate", &VideoEncoderProperties::bitrate)
+    videoEncoderProperties.def(py::init<>());
+
+    videoEncoderProperties.def_readwrite("frameRate", &dai::VideoEncoderProperties::frameRate, DOC(dai, VideoEncoderProperties, frameRate))
+        .def_readwrite("lossless", &dai::VideoEncoderProperties::lossless, DOC(dai, VideoEncoderProperties, lossless))
+        .def_readwrite("bitrate", &VideoEncoderProperties::bitrate)
         .def_readwrite("keyframeFrequency", &VideoEncoderProperties::keyframeFrequency)
         .def_readwrite("maxBitrate", &VideoEncoderProperties::maxBitrate)
         .def_readwrite("numBFrames", &VideoEncoderProperties::numBFrames)
@@ -65,6 +69,14 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
     self OP setKeyframeFrequency(keyframeFrequency); \
     self OP setLossless(lossless);                   \
     self OP setQuality(quality);
+        .def(py::init([](VIDEO_ENCODER_BUILD_ARGS, VIDEO_ENCODER_ARGS) {
+                 auto self = getImplicitPipeline()->create<VideoEncoder>();
+                 self->build(input);
+                 VIDEO_ENCODER_CODE(->)
+                 return self;
+             }),
+             VIDEO_ENCODER_BUILD_PYARGS,
+             VIDEO_ENCODER_PYARGS)
         .def(
             "build",
             [](VideoEncoder& self, VIDEO_ENCODER_BUILD_ARGS, VIDEO_ENCODER_ARGS) {
@@ -74,14 +86,6 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
             },
             VIDEO_ENCODER_BUILD_PYARGS,
             VIDEO_ENCODER_PYARGS)
-        .def(py::init([](VIDEO_ENCODER_BUILD_ARGS, VIDEO_ENCODER_ARGS) {
-                 auto self = getImplicitPipeline()->create<VideoEncoder>();
-                 self->build(input);
-                 VIDEO_ENCODER_CODE(->)
-                 return self;
-             }),
-             VIDEO_ENCODER_BUILD_PYARGS,
-             VIDEO_ENCODER_PYARGS)
         .def_readonly("input", &VideoEncoder::input, DOC(dai, node, VideoEncoder, input), DOC(dai, node, VideoEncoder, input))
         .def_readonly("bitstream", &VideoEncoder::bitstream, DOC(dai, node, VideoEncoder, bitstream), DOC(dai, node, VideoEncoder, bitstream))
         .def_readonly("out", &VideoEncoder::out, DOC(dai, node, VideoEncoder, out), DOC(dai, node, VideoEncoder, out))

@@ -1,5 +1,8 @@
+#include <array>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <cmath>
 #include <utility>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -9,6 +12,292 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/properties/ImageManipProperties.hpp"
+
+namespace {
+
+std::vector<cv::Mat> fractionalCropPlanes(dai::ImgFrame& frame) {
+    if(frame.getType() != dai::ImgFrame::Type::NV12) return {frame.getFrame()};
+
+    auto* data = frame.getData().data();
+    return {cv::Mat(frame.getHeight(), frame.getWidth(), CV_8UC1, data, frame.getStride()),
+            cv::Mat(frame.getHeight() / 2, frame.getWidth() / 2, CV_8UC2, data + frame.getPlaneStride(0), frame.getStride())};
+}
+
+cv::Mat createCropTestImage(int width, int height) {
+    cv::Mat image(height, width, CV_8UC3);
+    cv::RNG rng(7061);
+    rng.fill(image, cv::RNG::UNIFORM, 0, 256);
+    // Smooth texture limits sensitivity to subpixel interpolation differences,
+    // while asymmetric shapes make rotation, translation and scale errors visible.
+    cv::GaussianBlur(image, image, cv::Size(7, 7), 1.5);
+    cv::rectangle(image, cv::Rect(35, 45, 125, 80), cv::Scalar(30, 220, 70), cv::FILLED);
+    cv::rectangle(image, cv::Rect(280, 180, 95, 55), cv::Scalar(230, 60, 180), 5);
+    cv::circle(image, cv::Point(330, 90), 38, cv::Scalar(180, 240, 20), cv::FILLED);
+    cv::line(image, cv::Point(60, 270), cv::Point(420, 130), cv::Scalar(250, 30, 120), 5);
+    return image;
+}
+
+struct ManipCropCase {
+    cv::RotatedRect rectangle;
+    bool axisAligned;
+};
+
+std::vector<ManipCropCase> createManipCropCases() {
+    const std::array<cv::Size2f, 4> sizes = {{{64, 64}, {80, 128}, {192, 112}, {128.5f, 80.25f}}};
+    const std::array<cv::Point2f, 3> centers = {{{256, 160}, {140.25f, 115.75f}, {365.5f, 205.25f}}};
+    std::vector<ManipCropCase> cases;
+    cases.reserve(sizes.size() * centers.size() * 26);
+    for(const auto& size : sizes) {
+        for(const auto& center : centers) {
+            // All corners stay in bounds even at 45 degrees; source-border
+            // extrapolation is independent of crop geometry and interpolation.
+            for(int angle = -180; angle <= 180; angle += 15) {
+                cases.push_back({cv::RotatedRect(center, size, static_cast<float>(angle)), false});
+            }
+            // Exercise addCrop as well as the zero-angle rotated-rectangle API.
+            cases.push_back({cv::RotatedRect(center, size, 0), true});
+        }
+    }
+    return cases;
+}
+
+cv::Mat referenceManipCrop(const cv::Mat& image, const cv::RotatedRect& rectangle, dai::Platform platform) {
+    auto transform = cv::getRotationMatrix2D(rectangle.center, rectangle.angle, 1.0);
+    transform.at<double>(0, 2) += rectangle.size.width / 2.0 - rectangle.center.x;
+    transform.at<double>(1, 2) += rectangle.size.height / 2.0 - rectangle.center.y;
+    if(platform == dai::Platform::RVC2) {
+        // RVC2 samples its warp mesh endpoints at the first and last output
+        // pixels, whereas OpenCV uses an extent ending one pixel past the last.
+        transform.row(0) *= (static_cast<int>(rectangle.size.width) - 1.0) / static_cast<int>(rectangle.size.width);
+        transform.row(1) *= (static_cast<int>(rectangle.size.height) - 1.0) / static_cast<int>(rectangle.size.height);
+    }
+    cv::Mat expected;
+    // Crops retain unit scale and truncate fractional raster dimensions.
+    cv::warpAffine(image, expected, transform, cv::Size(static_cast<int>(rectangle.size.width), static_cast<int>(rectangle.size.height)), cv::INTER_LINEAR);
+    return expected;
+}
+
+void checkManipCrop(const cv::Mat& actual, const cv::Mat& expected) {
+    REQUIRE(actual.size() == expected.size());
+    REQUIRE(actual.type() == expected.type());
+    cv::Mat difference;
+    cv::absdiff(actual, expected, difference);
+    const auto channels = difference.reshape(1);
+    const double meanError = cv::mean(channels)[0];
+    const double outlierFraction = static_cast<double>(cv::countNonZero(channels > 16)) / channels.total();
+    CAPTURE(meanError, outlierFraction);
+    // Compare corresponding pixels, allowing rounding and interpolation-table
+    // approximations. A few high-contrast edge pixels may differ more, but a
+    // displaced or incorrectly rotated crop still produces substantial errors.
+    CHECK(meanError <= 2.0);
+    CHECK(outlierFraction <= 0.01);
+}
+
+}  // namespace
+
+TEST_CASE("ImageManip crops match OpenCV across rotations sizes and offsets", "[imagemanip][crop][opencv]") {
+    const bool normalizedCoords = GENERATE(false, true);
+    const auto type = GENERATE(dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::BGR888i);
+    CAPTURE(normalizedCoords, type);
+    constexpr int inputWidth = 512, inputHeight = 320;
+    auto image = createCropTestImage(inputWidth, inputHeight);
+    if(type == dai::ImgFrame::Type::GRAY8) cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+
+    dai::Pipeline pipeline;
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->setMaxOutputFrameSize(inputWidth * inputHeight * 3);
+    manip->inputConfig.setWaitForMessage(true);
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+    pipeline.start();
+
+    int sequence = 0;
+    for(const auto& crop : createManipCropCases()) {
+        const auto& rect = crop.rectangle;
+        CAPTURE(crop.axisAligned, rect.center.x, rect.center.y, rect.size.width, rect.size.height, rect.angle);
+        const float xScale = normalizedCoords ? 1.f / inputWidth : 1.f;
+        const float yScale = normalizedCoords ? 1.f / inputHeight : 1.f;
+        auto config = std::make_shared<dai::ImageManipConfig>();
+        if(crop.axisAligned) {
+            config->addCrop(dai::Rect((rect.center.x - rect.size.width / 2) * xScale,
+                                      (rect.center.y - rect.size.height / 2) * yScale,
+                                      rect.size.width * xScale,
+                                      rect.size.height * yScale,
+                                      normalizedCoords),
+                            normalizedCoords);
+        } else {
+            config->addCropRotatedRect(dai::RotatedRect(dai::Point2f(rect.center.x * xScale, rect.center.y * yScale, normalizedCoords),
+                                                        dai::Size2f(rect.size.width * xScale, rect.size.height * yScale, normalizedCoords),
+                                                        rect.angle),
+                                       normalizedCoords);
+        }
+        config->setFrameType(type);
+        auto input = std::make_shared<dai::ImgFrame>();
+        input->setCvFrame(image, type);
+        input->setSequenceNum(sequence);
+        configQueue->send(config);
+        inputQueue->send(input);
+        bool timedOut = false;
+        auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(output != nullptr);
+        REQUIRE(output->getType() == type);
+        REQUIRE(output->getSequenceNum() == sequence++);
+        checkManipCrop(output->getCvFrame(), referenceManipCrop(image, rect, pipeline.getDefaultDevice()->getPlatform()));
+    }
+}
+
+TEST_CASE("ImageManip rotated crops retain boundary pixels", "[imagemanip][crop-boundary][rvc4]") {
+    const bool normalizedCoords = GENERATE(false, true);
+    const auto type = GENERATE(dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::NV12);
+    CAPTURE(normalizedCoords, type);
+    constexpr int inputWidth = 512, inputHeight = 320;
+    const std::array<cv::RotatedRect, 5> rectangles = {{{{256, 160}, {64, 64}, 0},
+                                                        {{256.25f, 160.75f}, {64.5f, 48.5f}, 0},
+                                                        {{32, 32}, {64, 64}, 0},
+                                                        {{480, 288}, {64, 64}, 0},
+                                                        {{479.75f, 295.75f}, {64.5f, 48.5f}, 0}}};
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 warp source-boundary regression");
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->setBackend(dai::ImageManipProperties::Backend::CPU);
+    manip->setMaxOutputFrameSize(inputWidth * inputHeight * 3);
+    manip->inputConfig.setWaitForMessage(true);
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+    auto input = std::make_shared<dai::ImgFrame>();
+    input->setCvFrame(createCropTestImage(inputWidth, inputHeight), type);
+    const auto sourcePlanes = fractionalCropPlanes(*input);
+    pipeline.start();
+
+    for(auto rectangle : rectangles) {
+        for(const float angle : {-180.f, -90.f, 0.f, 15.f, 90.f, 180.f}) {
+            rectangle.angle = angle;
+            CAPTURE(rectangle.center.x, rectangle.center.y, rectangle.size.width, rectangle.size.height, angle);
+            auto config = std::make_shared<dai::ImageManipConfig>();
+            auto crop = dai::RotatedRect(dai::Point2f(rectangle.center.x, rectangle.center.y), dai::Size2f(rectangle.size.width, rectangle.size.height), angle);
+            if(normalizedCoords) crop = crop.normalize(inputWidth, inputHeight);
+            config->addCropRotatedRect(crop, normalizedCoords);
+            config->setFrameType(type);
+            configQueue->send(config);
+            inputQueue->send(input);
+            bool timedOut = false;
+            auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+            REQUIRE_FALSE(timedOut);
+            REQUIRE(output != nullptr);
+            REQUIRE(output->getWidth() == static_cast<int>(rectangle.size.width));
+            REQUIRE(output->getHeight() == static_cast<int>(rectangle.size.height));
+            REQUIRE(output->getType() == type);
+            const auto outputPlanes = fractionalCropPlanes(*output);
+            REQUIRE(outputPlanes.size() == sourcePlanes.size());
+            for(std::size_t plane = 0; plane < sourcePlanes.size(); ++plane) {
+                CAPTURE(plane);
+                const float subsampling = plane == 0 ? 1.f : 2.f;
+                auto transform = cv::getRotationMatrix2D(rectangle.center, angle, 1.0);
+                transform.at<double>(0, 2) = (transform.at<double>(0, 2) + rectangle.size.width / 2.0 - rectangle.center.x) / subsampling;
+                transform.at<double>(1, 2) = (transform.at<double>(1, 2) + rectangle.size.height / 2.0 - rectangle.center.y) / subsampling;
+                cv::Mat expected;
+                const auto background = type == dai::ImgFrame::Type::NV12 ? (plane == 0 ? cv::Scalar(16) : cv::Scalar(128, 128)) : cv::Scalar();
+                cv::warpAffine(sourcePlanes[plane], expected, transform, outputPlanes[plane].size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, background);
+                // Include every border pixel and both NV12 planes. Real image
+                // boundaries still use black padding, exactly as in OpenCV.
+                CHECK(cv::norm(outputPlanes[plane], expected, cv::NORM_INF) <= 4.0);
+            }
+        }
+    }
+}
+
+TEST_CASE("ImageManip fractional crops at unit scale preserve pixels", "[imagemanip][fractional-crop][rvc4]") {
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 crop fast-path regression");
+
+    constexpr int inputWidth = 512, inputHeight = 288;
+    constexpr int outputWidth = 128, outputHeight = 256;
+    using ResizeMode = dai::ImageManipConfig::ResizeMode;
+    struct CropCase {
+        float x, y, width, height;
+        ResizeMode mode;
+    };
+    // Keep scale 1 to exercise crop classification. NONE allows both dimensions
+    // to be fractional while centering the crop in the fixed-size output.
+    const std::array<CropCase, 12> cases = {{{74.f, 26.f, 128.f, 256.f, ResizeMode::STRETCH},
+                                             {73.9375f, 26.75f, 128.f, 256.f, ResizeMode::STRETCH},
+                                             {73.9375f, 26.75f, 128.f, 256.f, ResizeMode::CENTER_CROP},
+                                             {74.f, 27.f, 128.f, 257.f, ResizeMode::CENTER_CROP},
+                                             {74.f, 26.f, 128.f, 258.f, ResizeMode::CENTER_CROP},
+                                             {75.f, 27.f, 128.f, 256.f, ResizeMode::STRETCH},
+                                             {74.f, 26.f, 129.5f, 256.f, ResizeMode::CENTER_CROP},
+                                             {73.9375f, 26.75f, 129.5f, 256.f, ResizeMode::CENTER_CROP},
+                                             {74.f, 26.f, 128.f, 257.5f, ResizeMode::CENTER_CROP},
+                                             {73.9375f, 26.75f, 128.f, 257.5f, ResizeMode::CENTER_CROP},
+                                             {74.f, 26.f, 129.5f, 257.5f, ResizeMode::NONE},
+                                             {73.9375f, 26.75f, 129.5f, 257.5f, ResizeMode::NONE}}};
+    const std::array<dai::ImgFrame::Type, 3> types = {dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::NV12};
+
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->setBackend(dai::ImageManipProperties::Backend::CPU);
+    manip->setMaxOutputFrameSize(outputWidth * outputHeight * 3);
+    manip->inputConfig.setWaitForMessage(true);
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+    pipeline.start();
+
+    cv::RNG rng(7061);
+    int sequence = 0;
+    for(int iteration = 0; iteration < 3; ++iteration) {
+        for(const auto type : types) {
+            cv::Mat image(inputHeight, inputWidth, type == dai::ImgFrame::Type::GRAY8 ? CV_8UC1 : CV_8UC3);
+            rng.fill(image, cv::RNG::UNIFORM, 0, 256);
+            for(const auto& crop : cases) {
+                CAPTURE(iteration, type, crop.x, crop.y, crop.width, crop.height, crop.mode);
+                auto input = std::make_shared<dai::ImgFrame>();
+                input->setCvFrame(image, type);
+                input->setSequenceNum(sequence);
+                auto config = std::make_shared<dai::ImageManipConfig>();
+                config->addCropRotatedRect(
+                    dai::RotatedRect(dai::Point2f(crop.x + crop.width / 2.f, crop.y + crop.height / 2.f), dai::Size2f(crop.width, crop.height), 0), false);
+                config->setOutputSize(outputWidth, outputHeight, crop.mode);
+                config->setFrameType(type);
+                configQueue->send(config);
+                inputQueue->send(input);
+
+                bool timedOut = false;
+                auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+                REQUIRE_FALSE(timedOut);
+                REQUIRE(output != nullptr);
+                REQUIRE(output->getWidth() == outputWidth);
+                REQUIRE(output->getHeight() == outputHeight);
+                REQUIRE(output->getType() == type);
+                REQUIRE(output->getSequenceNum() == sequence++);
+
+                const auto sourcePlanes = fractionalCropPlanes(*input);
+                const auto outputPlanes = fractionalCropPlanes(*output);
+                REQUIRE(sourcePlanes.size() == outputPlanes.size());
+                for(std::size_t plane = 0; plane < sourcePlanes.size(); ++plane) {
+                    CAPTURE(plane);
+                    const float ssF = plane == 0 ? 1.f : 2.f;
+                    // Crop dimensions become integer raster sizes before
+                    // centering. All cases retain scale 1 and split any excess
+                    // width and height equally on either side of the output.
+                    const cv::Matx23f transform(1,
+                                                0,
+                                                -(crop.x + (std::floor(crop.width) - outputWidth) / 2.f) / ssF,
+                                                0,
+                                                1,
+                                                -(crop.y + (std::floor(crop.height) - outputHeight) / 2.f) / ssF);
+                    cv::Mat expected;
+                    cv::warpAffine(sourcePlanes[plane], expected, transform, outputPlanes[plane].size(), cv::INTER_LINEAR);
+                    // Check every pixel: an oversized row copy corrupts pixels
+                    // even when an adjacent allocation conceals the overrun.
+                    REQUIRE(cv::norm(outputPlanes[plane], expected, cv::NORM_INF) <= 1.0);
+                }
+            }
+        }
+    }
+}
 
 void testManipBasic(bool runSyncOnHost) {
     // Create pipeline

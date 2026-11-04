@@ -2,6 +2,103 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.12.0 (2026-11-04)
+-------------------
+## Features
+
+* **Multi-stream PointCloud**
+  * `PointCloud` now merges any number of depth streams (each with optional aligned color) into one `PointCloudData`. Add streams with `getDepthInput(name)` and `getColorInput(name)`
+  * `setTargetCoordinateSystem(deviceId, ...)` puts the point cloud in the coordinate system of a camera or the housing of any device in the pipeline
+  * [RVC4] `useGPU()` moves the deprojection to the GPU to reduce the CPU load. The CPU stays the default, because it is faster
+  * A [Python example](https://github.com/luxonis/depthai-core/blob/main/examples/python/PointCloud/multi_device_point_cloud.py) and a [C++ example](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/PointCloud/MultiDevicePointCloud.cpp) are available
+* [**Beta promotion**] **Stitching node**
+  * Now available as `dai.node.Stitching`, also in builds without beta features
+  * Calibrated panorama stitching is now the default and needs undistorted inputs. Use `setUseInputCalibration(false)` for feature-based stitching
+  * `dai.beta.node.Stitching` is deprecated and will be removed in a future release
+  * Multi-device panorama examples are available in [Python](https://github.com/luxonis/depthai-core/blob/main/examples/python/MultiDevice/multi_device_stitching_panorama.py) and [C++](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/Misc/MultiDevice/multi_device_stitching_panorama.cpp)
+* [**Beta promotion**] **ImgDetectionsFilter node**
+  * Now available as `dai.node.ImgDetectionsFilter`. Filters detections by label, confidence, size, region of interest and count, also at runtime through `inputConfig`
+  * Merges detections from multiple cameras into one reference image (for example a stitched panorama) and removes duplicates with `NMS` or `AVERAGE`
+  * Runs on RVC4 with one input. With multiple inputs, and on RVC2, it runs on the host
+  * The interface changed (`inputs[name]` and `out` replace `input` and `output`). `dai.beta.node.ImgDetectionsFilter` is deprecated and will be removed in a future release
+  * A [single-camera example](https://github.com/luxonis/depthai-core/blob/main/examples/python/NeuralNetwork/img_detections_filter.py) and a multi-device panorama example in [Python](https://github.com/luxonis/depthai-core/blob/main/examples/python/MultiDevice/multi_device_detections_panorama.py) and [C++](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/MultiDevice/multi_device_detections_panorama.cpp) are available
+* **Resize mode from NN archives**
+  * `NeuralNetwork`, `DetectionNetwork` and `SpatialDetectionNetwork` built from a camera now use the `resize_mode` (`CROP`, `STRETCH` or `LETTERBOX`) declared in the NN archive. Archives without it use `CROP`, as before
+  * Override it with the `resizeMode` argument of `build`
+* [RVC2] Multi-device calibration (`pipeline.setMultiDeviceCalibration`) is now supported on RVC2 devices
+* `Align.setInterpolation(...)` selects the interpolation (`BICUBIC`, `BILINEAR` or `NEAREST_NEIGHBOR`). `AUTO` keeps the previous behavior
+* New `dai.node.Depth.getSupportedAlgorithms(device)` and `getDefaultAlgorithm(device)` return the depth algorithms that a device supports and the one that `AUTO` selects
+* New `Device.getProtocol()` returns the connection protocol (USB or TCP/IP)
+* [RVC4] `setAutoFocusTrigger()` now runs one focus scan and then holds the focus. The AF mode is reset for each session
+
+* [RVC2] New `Device.Config.dangerousIrPowerOverride` option removes the combined dot and flood power limit on boards that have one. Full power on both emitters can crash the device
+
+## Bug fixes
+
+* **Alignment**
+  * ImageAlign and Align now keep the depth near the image edges for rotated and distorted cameras
+  * [RVC4] Align now uses correct offsets for rotated cameras and keeps the configured output size
+  * ImageAlign no longer crashes when the `inputAlignTo` frame has no distortion coefficients
+  * `ImgDetections.transformTo()` no longer distorts boxes at some rotations when mapping to a non-square image
+  * [RVC2] StereoDepth depth alignment is now correct after decimation (for example on OAK-D-SR)
+* **[*RVC4*] Stability**
+  * Resolved a firmware crash when a device is opened right after the previous session closes (USB, OS >= 1.41.0)
+  * Resolved crashes on USB session close, at StereoDepth stop, at VideoEncoder stop with MJPEG decoder input, and in the logger at shutdown
+  * Resolved crashes in ImageManip crops with fractional dimensions and in FeatureTracker with an invalid input
+  * Fix for GPU memory corruption
+  * ImageManip no longer adds a black border around a cropped rotated rectangle
+  * crash dump retrieval retries when the dump is not ready yet
+* **[*RVC2*] Stability**
+  * On OAK-D Pro PoE, the dot projector and the flood light now share one intensity budget of 1.0 (for example 50% dot + 50% flood). Before, both emitters at full intensity could draw too much power and crash the device
+  * Resolved a rare firmware crash in the PoE network stack under heavy TCP traffic
+  * Resolved warp timeouts and all-zero output frames caused by the hardware filter interrupt handling
+  * Camera-module EEPROM access no longer resets the other sensor on a shared I2C bus (for example OAK-FFC-3P)
+  * RVC2 crash dumps are now saved when device strings are not valid UTF-8
+* **[*RVC4 OS >= 1.47.0*] depthai-gate v0.0.30**
+  * Resolved issue where firmware would crash because gate would accept new session before the old process had exited
+  * USB transfers now have a time limit, and the gate recovers after a failed transfer, so the USB connection no longer stalls
+  * A session that starts late is no longer reported as a crash when the device closes
+  * When the firmware cannot start, the host now gets an error instead of no response
+  * Old crash dumps are deleted when a new session starts
+* ObjectTracker `srcImgDetection` now keeps the original normalized coordinates
+* NeuralAssistedStereo with `rectifyImages=false` no longer rectifies the frames
+* `pipeline.start()` now throws an exception instead of aborting the process when the device link drops during the asset transfer
+* [PoE/TCP] The host now closes the socket after a connection reset, so many reconnects no longer cause "Too many open files"
+* Resolved possible memory corruption in XLink after a read timeout
+* A USB boot with an incomplete firmware upload now fails at once instead of waiting for the boot timeout
+* `Device.performHealthCheck()` now stops on Ctrl+C and accepts a `shouldStop` callback
+* Holistic record requires the video encoding settings only when video encoding is enabled
+
+## Performance
+
+* [RVC4 OS >= 1.46.0] NeuralDepth uses  new optimized LENS models. Model FPS with the balanced performance profile:
+  * N 384x240: 120.42 → 251.17 FPS (**+109%**)
+  * S 480x300: 73.91 → 153.78 FPS (**+108%**)
+  * M 576x360: 48.21 → 120.73 FPS (**+150%**)
+  * L 768x480: 26.72 → 68.31 FPS (**+156%**)
+  * XL 864x540: 22.00 → 52.06 FPS (**+137%**)
+  * 2XL 960x600: 17.21 → 42.97 FPS (**+150%**)
+  * 3XL 1056x660: 14.90 → 33.99 FPS (**+128%**)
+  * 4XL 1248x780: 9.85 → 23.56 FPS (**+139%**)
+* XLink now reads up to 8 MiB messages per transfer resulting in up to 12% higher USB throughput for large messages on RVC4
+* [RVC4] Undistorted Camera outputs now use the GPU and are 3 to 4 times faster. Plain resizes are up to 4.8 times faster for large frames
+
+## Misc
+
+* [RVC4] The OS power profile is logged on connection, and a warning is shown when the power profile limits the IR intensity
+* **Startup notifications**
+  * After a device connects, DepthAI shows notices that apply to your DepthAI version, platform or device, for example a new release or a bootloader update
+  * Set `DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS=1` to turn them off
+* [RVC4] Added support for `readCcmEepromRaw()` and `writeCcmEepromRaw()`
+* NN archive loading and model zoo downloads in Python release the GIL, so other threads no longer stall while a large model loads
+
+* Added missing Python bindings and fixed incorrect ones
+* Added Python 3.15 wheels
+
+## [**RVC4**] Luxonis OS compatibility
+
+Integration tested with Luxonis OS 1.35.0, 1.41.0, 1.45.0 and 1.46.0
+
 3.11.0 (2026-10-12)
 -------------------
 ## Features

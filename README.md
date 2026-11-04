@@ -23,6 +23,10 @@ cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
 
+## Detection filtering and calibrated panoramas
+
+Use `dai::node::ImgDetectionsFilter` / `dai.node.ImgDetectionsFilter` to filter detections or combine synchronized camera detections on a calibrated panorama. See the [node guide and multi-device examples](docs/ImgDetectionsFilter.md).
+
 ## Beta features
 The `beta` namespace is a staging area for experimental DepthAI features. It
 allows new features to be developed and iterated on quickly before they are
@@ -33,13 +37,13 @@ Beta features are well-developed, but minor API and behavioral changes may occur
 In C++, beta nodes are available under `dai::beta::node`:
 
 ```cpp
-auto node = pipeline.create<dai::beta::node::ImgDetectionsFilter>();
+auto node = pipeline.create<dai::beta::node::ClassificationParser>();
 ```
 
 In Python, they are available under `dai.beta.node`:
 
 ```python
-node = pipeline.create(dai.beta.node.ImgDetectionsFilter)
+node = pipeline.create(dai.beta.node.ClassificationParser)
 ```
 
 On-device execution of Beta nodes is supported only on RVC4. If running Beta nodes on RVC2, DepthAI
@@ -309,6 +313,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_TELEMETRY_URL                | Overrides the telemetry capture URL.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | DEPTHAI_TELEMETRY_API_KEY            | Overrides the telemetry API key.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS| Startup notifications are enabled by default when CURL support is available. Set to `1` or `true` to disable fetching and displaying them. |
+| DEPTHAI_STARTUP_NOTIFICATIONS_URL    | Overrides the startup notification JSON URL. Defaults to `https://depthai-releases.luxonis.com/startup_notifications.json`. Requires CURL support. |
 | DEPTHAI_HUB_EVENTS_BASE_URL          | URL for events of the Luxonis Hub                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | DEPTHAI_HUB_API_KEY                  | API key for the Luxonis Hub                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | DEPTHAI_ZOO_INTERNET_CHECK           | (Default) 1 - perform internet check, if available, download the newest model version 0 - skip internet check and use cached model                                                                                                                                                                                                                                                                                                                                                                |
