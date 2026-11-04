@@ -323,7 +323,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("width", &Rect::width)
         .def_readwrite("height", &Rect::height);
 
-    markerType.value("ARUCO", MarkerType::ARUCO);
+    markerType.value("ARUCO", MarkerType::ARUCO).value("LUXONIS", MarkerType::LUXONIS);
 
     arucoDictionary.value("DICT_4X4_50", ArucoDictionary::DICT_4X4_50)
         .value("DICT_4X4_100", ArucoDictionary::DICT_4X4_100)

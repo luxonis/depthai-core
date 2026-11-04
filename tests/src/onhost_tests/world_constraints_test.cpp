@@ -1,9 +1,13 @@
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <depthai/depthai.hpp>
+#include <map>
 #include <memory>
 
 #include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
+
+// After the depthai headers: the DCL headers define macros that collide with depthai enumerators.
+#include <LuxonisMarker.hpp>
 
 namespace {
 using Socket = dai::CameraBoardSocket;
@@ -76,6 +80,13 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
                       std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "cctag", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
+    // Luxonis Markers are a known type: parsed by name (any case) or number, round-tripped without a dictionary.
+    const auto luxonis = WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markerDistances": [{"markers": [0, 3], "distance": 0.5}]})");
+    REQUIRE(luxonis.markerType == dai::MarkerType::LUXONIS);
+    REQUIRE(luxonis.toJson().at("markerType") == "LUXONIS");
+    REQUIRE_FALSE(luxonis.toJson().contains("arucoDictionary"));
+    REQUIRE(WorldConstraints::fromJson(luxonis.toJson()).markerType == dai::MarkerType::LUXONIS);
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerType": 1})").markerType == dai::MarkerType::LUXONIS);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"dictionary": "DICT_9X9", "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString("[1, 2]"), std::invalid_argument);
@@ -238,4 +249,40 @@ TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstr
     // The same id twice in one image is ambiguous: neither copy is used.
     drawMarker37(image, 200, 120, 16);
     REQUIRE(DclUtils::detectMarkerCenters(image, constraints).empty());
+}
+
+TEST_CASE("DynamicCalibration detects Luxonis Marker centers through DCL", "[WorldConstraints]") {
+    using dai::node::DclUtils;
+    auto constraints = dai::WorldConstraints::fromJsonString(
+        R"({"markerType": "luxonis", "markerDistances": [{"markers": [0, 4], "distance": 0.6}], "socketDistances": [{"marker": 2, "socket": "CAM_A", "distance": 1.5}]})");
+
+    // Three Luxonis Markers (ids 0, 2, 4; outer radius 40 px, 128 px tiles) pasted on a 640x480 grey canvas; the
+    // raster centre is the middle of the square tile, i.e. x0 + n / 2 - 0.5 in pixel-center coordinates.
+    auto image = whiteImage(640, 480);
+    std::fill(image.data.begin(), image.data.end(), static_cast<uint8_t>(190));
+    const std::array<std::pair<int, std::pair<int, int>>, 3> placements = {{{0, {30, 40}}, {2, {250, 60}}, {4, {400, 250}}}};
+    std::map<int, std::array<float, 2>> truth;
+    for(const auto& [id, origin] : placements) {
+        const auto tile = dcl::drawLuxonisMarker(id, 40.0);
+        for(unsigned y = 0; y < tile.height; ++y) {
+            for(unsigned x = 0; x < tile.width; ++x) {
+                image.data[(origin.second + y) * image.width + origin.first + x] = tile.data[y * tile.width + x];
+            }
+        }
+        truth[id] = {origin.first + tile.width / 2.0f - 0.5f, origin.second + tile.height / 2.0f - 0.5f};
+    }
+    const auto centers = DclUtils::detectMarkerCenters(image, constraints);
+    REQUIRE(centers.size() == 3);
+    for(const auto& [id, uv] : truth) {
+        REQUIRE(centers.count(id) == 1);
+        REQUIRE(centers.at(id)[0] == Catch::Approx(uv[0]).margin(0.3));
+        REQUIRE(centers.at(id)[1] == Catch::Approx(uv[1]).margin(0.3));
+    }
+    // Ids outside the constraints are dropped, and an ArUco spec sees no Luxonis Marker.
+    constraints.markerIds = {0};
+    constraints.socketDistances.clear();
+    constraints.markerDistances = {{0, 4, 0.6f}};
+    REQUIRE(DclUtils::detectMarkerCenters(image, constraints).size() == 2);
+    auto aruco = dai::WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [0, 4], "distance": 0.6}]})");
+    REQUIRE(DclUtils::detectMarkerCenters(image, aruco).empty());
 }

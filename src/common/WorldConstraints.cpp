@@ -43,6 +43,7 @@ const std::vector<std::pair<ArucoDictionary, const char*>>& dictionaryNames() {
 const std::vector<std::pair<MarkerType, const char*>>& markerTypeNames() {
     static const std::vector<std::pair<MarkerType, const char*>> names = {
         {MarkerType::ARUCO, "ARUCO"},
+        {MarkerType::LUXONIS, "LUXONIS"},
     };
     return names;
 }

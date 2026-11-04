@@ -445,6 +445,9 @@ dcl::MarkerSpec DclUtils::toDclMarkerSpec(const WorldConstraints& constraints) {
             spec.type = dcl::MarkerType::ARUCO;
             spec.arucoDictionary = toDclArucoDictionary(constraints.arucoDictionary);
             return spec;
+        case MarkerType::LUXONIS:
+            spec.type = dcl::MarkerType::LUXONIS;
+            return spec;
     }
     throw std::invalid_argument("DynamicCalibration: marker type " + toString(constraints.markerType) + " has no detector");
 }

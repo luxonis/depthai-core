@@ -49,7 +49,9 @@ ArucoDictionary arucoDictionaryFromString(const std::string& name);
  * detector for it in the dynamic calibration library.
  */
 enum class MarkerType : int32_t {
-    ARUCO = 0,  ///< ArUco / AprilTag markers of one dictionary; the reference point is the marker center.
+    ARUCO = 0,    ///< ArUco / AprilTag markers of one dictionary; the reference point is the marker center.
+    LUXONIS = 1,  ///< Luxonis Markers: the Luxonis lens logo as a concentric-ring fiducial (CCTag-like, ids 0-5 coded in
+                  ///< the iris radii, the stub gives the orientation); the reference point is the center of the rings.
 };
 std::string toString(MarkerType type);
 MarkerType markerTypeFromString(const std::string& name);
@@ -66,8 +68,8 @@ MarkerType markerTypeFromString(const std::string& name);
  * Distances are stored in meters. The JSON form accepted by fromJson() is:
  *
  *     {
- *       "markerType": "aruco",                  // optional, default aruco
- *       "arucoDictionary": "DICT_4X4_50",       // optional, default DICT_4X4_50 ("dictionary" is accepted too)
+ *       "markerType": "aruco",                  // optional, default aruco; "luxonis" for Luxonis Markers
+ *       "arucoDictionary": "DICT_4X4_50",       // optional, default DICT_4X4_50 ("dictionary" is accepted too); ARUCO only
  *       "lengthUnit": "m",                      // optional: "m", "cm", "mm" or "in" for every distance below
  *       "markers": [37, 43],                    // optional: markers that belong to the scene (others are ignored)
  *       "markerDistances": [ {"markers": [37, 43], "distance": 0.84} ],

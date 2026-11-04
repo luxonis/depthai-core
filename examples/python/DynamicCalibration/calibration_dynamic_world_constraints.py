@@ -5,7 +5,8 @@ Image features fix the relative pose of the stereo pair except for its vergence,
 perpendicular to the baseline and the optical axis, which sets the depth scale while barely changing the
 epipolar error. Known distances between marker centers (or from a marker center to a camera socket) fix that
 turn; camera centers and the baseline length are never changed.
-Place the markers from the JSON file (ArUco by default) in view of both cameras and run:
+Place the markers from the JSON file (ArUco by default; world_constraints_luxonis.json uses Luxonis Markers, the
+Luxonis lens logo printed as a concentric-ring fiducial with ids 0-5) in view of both cameras and run:
 
     python3 calibration_dynamic_world_constraints.py [--constraints world_constraints.json] [--host]
 """
