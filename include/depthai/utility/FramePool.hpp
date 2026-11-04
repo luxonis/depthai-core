@@ -17,7 +17,6 @@ inline void validateFramePoolCount(std::uint32_t count) {
     if(count == 1) throw std::invalid_argument("Frame pool numFramesPool must be 0 (automatic) or at least 2");
 }
 
-
 /** Resolve one pool without modifying the requested configuration.
  * Automatic count targets 100 ms of buffering (2..30 frames), limited to a soft
  * platform budget (192 MiB by default), expanded to fit at least two buffers.
