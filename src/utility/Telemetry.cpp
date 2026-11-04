@@ -565,6 +565,11 @@ TelemetrySharedState::TelemetrySharedState() {
         logger::debug("Telemetry curl global init failed: {}", curl_easy_strerror(curlInitResult));
     }
 
+    // cpr guards curl_easy_init() with a function-local static mutex. Create it here, so that it is destroyed
+    // after this state: the flush in the destructor uses cpr during exit. On macOS a destroyed mutex cannot be
+    // locked, and the flush lost all queued events.
+    { cpr::CurlHolder createInitMutex; }
+
     worker = std::thread([this]() { workerLoop(); });
 #else
     logger::debug("Telemetry disabled: depthai-core was built without CURL support");
