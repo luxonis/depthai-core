@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 
 #include "depthai/depthai.hpp"
@@ -15,6 +16,13 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::Proce
     auto disparityQueue = stereo->disparity.createOutputQueue();
     auto depthQueue = stereo->depth.createOutputQueue();
 
+    const bool rvc2ng = p.getDefaultDevice()->getPlatform() == dai::Platform::RVC2NG;
+    if(rvc2ng && backend == dai::ProcessorType::DSP) {
+        // RVC2NG has no DSP filter executor. The device must reject the request rather than fall back to the CPU.
+        REQUIRE_THROWS_WITH(p.start(), Catch::Matchers::ContainsSubstring("DSP"));
+        return;
+    }
+
     p.start();
 
     // Retrieve N messages
@@ -24,6 +32,25 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::Proce
         REQUIRE(disparity != nullptr);
         auto depth = depthQueue->get<dai::ImgFrame>();
         REQUIRE(depth != nullptr);
+        if(rvc2ng) {
+            // RAW8 carries the disparity only while its largest encoded value fits in eight bits.
+            const auto& config = *stereo->initialConfig;
+            const float maxDisparity = config.getMaxDisparity();
+            const bool wide = maxDisparity > 255.0f;
+            REQUIRE(disparity->getType() == (wide ? dai::ImgFrame::Type::RAW16 : dai::ImgFrame::Type::RAW8));
+            REQUIRE(depth->getType() == dai::ImgFrame::Type::RAW16);
+            REQUIRE(depth->getWidth() == disparity->getWidth());
+            REQUIRE(depth->getHeight() == disparity->getHeight());
+            const auto data = disparity->getData();
+            const size_t bytesPerPixel = wide ? 2 : 1;
+            REQUIRE(data.size() >= size_t(disparity->getWidth()) * disparity->getHeight() * bytesPerPixel);
+            float largest = 0;
+            for(size_t pixel = 0; pixel < size_t(disparity->getWidth()) * disparity->getHeight(); ++pixel) {
+                const float value = wide ? float(data[pixel * 2] | (data[pixel * 2 + 1] << 8)) : float(data[pixel]);
+                largest = std::max(largest, value);
+            }
+            REQUIRE(largest <= maxDisparity);
+        }
     }
 }
 

@@ -11,9 +11,9 @@
  * misplaced foreground and centroids on actual device output. Cases cover
  * decimation 1/2/4, both stereo cameras, implicit/explicit output sizes, targets
  * at decimated/original resolution and a (+32, +16) target-pixel shift.
- * RVC2 uses StereoDepth inputAlignTo; RVC4 uses ImageAlign. A separate case
- * checks native rectified alignment on both platforms. Run with the Catch2
- * filter [stereo-alignment] and a connected RVC2 or RVC4 device.
+ * RVC2 and RVC2NG use StereoDepth inputAlignTo; RVC4 uses ImageAlign. A separate
+ * case checks native rectified alignment on every platform. Run with the Catch2
+ * filter [stereo-alignment] and a connected RVC2, RVC2NG or RVC4 device.
  */
 #include <array>
 #include <catch2/catch_all.hpp>
@@ -174,14 +174,15 @@ void checkSquarePixels(const dai::ImgFrame& depth, bool right, float scale, int 
 }
 
 /** Disable smoothing so pixel geometry is measured independently of post-processing. */
-void configureStereo(dai::node::StereoDepth& stereo, int decimation) {
+void configureStereo(dai::node::StereoDepth& stereo, int decimation, dai::Platform platform) {
     stereo.setInputResolution(WIDTH, HEIGHT);
     stereo.useHomographyRectification(true);
     stereo.setLeftRightCheck(true);
     stereo.setSubpixel(false);
     stereo.setExtendedDisparity(false);
     stereo.setDisparityToDepthUseSpecTranslation(false);
-    stereo.initialConfig->setConfidenceThreshold(245);
+    // RVC2NG exposes no matching confidence metric and rejects a changed threshold.
+    if(platform != dai::Platform::RVC2NG) stereo.initialConfig->setConfidenceThreshold(245);
     auto& post = stereo.initialConfig->postProcessing;
     post.median = dai::StereoDepthConfig::MedianFilter::MEDIAN_OFF;
     post.holeFilling.enable = false;
@@ -198,7 +199,7 @@ void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, 
     CAPTURE(decimation, right, explicitSize, fullSize, shifted, nativeOnly);
     dai::Pipeline pipeline;
     const auto platform = pipeline.getDefaultDevice()->getPlatform();
-    REQUIRE((platform == dai::Platform::RVC2 || platform == dai::Platform::RVC4));
+    REQUIRE((platform == dai::Platform::RVC2 || platform == dai::Platform::RVC4 || platform == dai::Platform::RVC2NG));
     const bool rvc4 = platform == dai::Platform::RVC4;
     CAPTURE(platform);
     // Pipeline-local calibration only: never flash or modify the device's EEPROM.
@@ -210,7 +211,7 @@ void runAlignment(int decimation, bool right, bool explicitSize, bool fullSize, 
     const auto socket = right ? dai::CameraBoardSocket::CAM_C : dai::CameraBoardSocket::CAM_B;
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    configureStereo(*stereo, decimation);
+    configureStereo(*stereo, decimation, platform);
     if(explicitSize && !rvc4) stereo->setOutputSize(width, height);
     auto leftQueue = stereo->left.createInputQueue();
     auto rightQueue = stereo->right.createInputQueue();
