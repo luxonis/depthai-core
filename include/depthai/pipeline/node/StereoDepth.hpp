@@ -299,7 +299,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
 
     /**
      * Specify number of frames in pool.
-     * @param numFramesPool How many frames should the pool have; 0 selects automatic
+     * @param numFramesPool Number of frames: 0 selects automatic, otherwise at least 2
      */
     void setNumFramesPool(int numFramesPool);
 

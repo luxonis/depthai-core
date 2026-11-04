@@ -1,3 +1,4 @@
+#include "depthai/utility/FramePool.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
 #include <fmt/format.h>  // fmt::format
@@ -43,6 +44,7 @@ StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
+    dai::utility::validateFramePoolCount(properties.pool.numFramesPool);
     properties.initialConfig = *initialConfig;
     return properties;
 }
@@ -147,11 +149,12 @@ void StereoDepth::setRuntimeModeSwitch(bool enable) {
 }
 
 void StereoDepth::setPoolProperties(const FramePoolProperties& pool) {
+    dai::utility::validateFramePoolCount(pool.numFramesPool);
     properties.pool = pool;
 }
 
 void StereoDepth::setNumFramesPool(int numFramesPool) {
-    if(numFramesPool < 0) throw std::invalid_argument("numFramesPool must be nonnegative (0 means automatic)");
+    if(numFramesPool < 0 || numFramesPool == 1) throw std::invalid_argument("numFramesPool must be 0 (automatic) or at least 2");
     properties.pool.numFramesPool = numFramesPool;
 }
 

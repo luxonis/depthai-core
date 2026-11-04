@@ -14,9 +14,9 @@ namespace dai {
 struct FramePoolProperties {
     /// Capacity of one frame in bytes. Automatic uses the required buffer size, including backend padding.
     std::uint64_t outputFrameSize = 0;
-    /// Number of frames. Automatic targets 100 ms at the expected FPS (4..30 frames), reduced for large frames by a soft 64 MiB budget.
+    /// Number of frames: 0 selects automatic, otherwise at least 2. Automatic targets 100 ms (2..30 frames) within a platform budget.
     std::uint32_t numFramesPool = 0;
-    /// Maximum bytes per pool. Automatic uses the resolved frame size times the resolved count.
+    /// Maximum bytes per pool. Automatic budgets expand to fit two buffers; an explicit limit must fit at least two.
     std::uint64_t maxPoolSize = 0;
 
     DEPTHAI_SERIALIZE(FramePoolProperties, outputFrameSize, numFramesPool, maxPoolSize);
