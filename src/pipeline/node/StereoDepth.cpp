@@ -199,11 +199,42 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setRvc4ProfilePreset(mode);
             break;
         case Platform::RVC2NG:
+            setRvc2ngProfilePreset(mode);
+            break;
         case Platform::RVC3:
         default:
             DAI_CHECK_V(false, "Unsupported platform: {}", device->getPlatformAsString());
             break;
     }
+}
+
+void StereoDepth::buildInternal() {
+    auto device = getDevice();
+    if(device && device->getPlatform() == Platform::RVC2NG) disableRvc2ngUnsupportedDefaults();
+}
+
+void StereoDepth::disableRvc2ngUnsupportedDefaults() {
+    // RVC2NG stereo has no confidence output, so the confidence-driven filters enabled by default cannot run.
+    // Enabling them explicitly is still rejected by the device.
+    initialConfig->postProcessing.holeFilling.enable = false;
+    initialConfig->postProcessing.adaptiveMedianFilter.enable = false;
+}
+
+void StereoDepth::setRvc2ngProfilePreset(PresetMode mode) {
+    // Start from the RVC2 tuning, which shares the CPU post-processing filters and disparity output format,
+    // then restore the settings this platform cannot honor: confidence metrics and thresholds, adaptive penalties
+    // and SHAVE resources. The device rejects any of these when changed, so a preset must not set them.
+    setRvc2ProfilePreset(mode);
+    const StereoDepthConfig defaults;
+    initialConfig->costMatching.confidenceThreshold = defaults.costMatching.confidenceThreshold;
+    initialConfig->confidenceMetrics = defaults.confidenceMetrics;
+    initialConfig->costAggregation.p1Config = defaults.costAggregation.p1Config;
+    initialConfig->costAggregation.p2Config = defaults.costAggregation.p2Config;
+    initialConfig->postProcessing.holeFilling = defaults.postProcessing.holeFilling;
+    initialConfig->postProcessing.adaptiveMedianFilter = defaults.postProcessing.adaptiveMedianFilter;
+    disableRvc2ngUnsupportedDefaults();
+    properties.numPostProcessingShaves = Properties::AUTO;
+    properties.numPostProcessingMemorySlices = Properties::AUTO;
 }
 
 void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {

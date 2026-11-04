@@ -507,7 +507,7 @@ void RGBD::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
             stereo->depth.link(align->input);
             colorCamOutput->link(align->inputAlignTo);
             align->outputAligned.link(inDepth);
-        } else if(platform == Platform::RVC2) {
+        } else if(platform == Platform::RVC2 || platform == Platform::RVC2NG) {
             colorCamOutput->link(inColor);
             colorCamOutput->link(stereo->inputAlignTo);
             stereo->depth.link(inDepth);

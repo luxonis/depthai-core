@@ -211,11 +211,11 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>&
                 neuralNetwork->passthrough.link(align->inputAlignTo);
                 align->outputAligned.link(spatialLocationCalculator->inputDepth);
             } break;
-            case Platform::RVC2: {
+            case Platform::RVC2:
+            case Platform::RVC2NG: {
                 neuralNetwork->passthrough.link(stereo->inputAlignTo);
                 stereo->depth.link(spatialLocationCalculator->inputDepth);
             } break;
-            case Platform::RVC2NG:
             case Platform::RVC3:
             default:
                 throw std::runtime_error("Unsupported platform");
