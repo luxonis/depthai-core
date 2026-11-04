@@ -80,6 +80,17 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
      */
     bool runOnHost() const override;
 
+    /**
+     * Thread policy of the dynamic calibration library, see DynamicCalibration::setThreadPolicy(). Forwarded to
+     * the DynamicCalibration subnode.
+     */
+    void setThreadPolicy(const DynamicCalibrationThreadPolicy& policy);
+
+    /**
+     * Thread policy set with setThreadPolicy(); all fields are empty unless set.
+     */
+    DynamicCalibrationThreadPolicy getThreadPolicy() const;
+
     void buildInternal() override;
 
     void buildStage1() override;
