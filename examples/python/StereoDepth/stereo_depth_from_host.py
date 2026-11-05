@@ -347,6 +347,9 @@ class StereoConfigHandlerRVC2:
             tr.set(value)
 
     def handleKeypress(key, stereoDepthConfigInQueue):
+        if rvc2ng and key in (ord("c"), ord("d"), ord("f"), ord("v")):
+            print("Census, disparity width and companding controls are not available on RVC2NG")
+            key = -1
         if key == ord("m"):
             StereoConfigHandlerRVC2.newConfig = True
             medianSettings = [dai.MedianFilter.MEDIAN_OFF, dai.MedianFilter.KERNEL_3x3, dai.MedianFilter.KERNEL_5x5, dai.MedianFilter.KERNEL_7x7]
@@ -405,6 +408,9 @@ class StereoConfigHandlerRVC2:
             nextAlignment = alignmentSettings[(alignmentSettings.index(currentAlignment)+1) % len(alignmentSettings)]
             print(f"Changing alignment mode to {nextAlignment.name} from {currentAlignment.name}")
             StereoConfigHandlerRVC2.config.algorithmControl.depthAlign = nextAlignment
+            if rvc2ng and nextAlignment != dai.StereoDepthConfig.AlgorithmControl.DepthAlign.CENTER:
+                # RVC2NG accepts the center shift factor only in CENTER mode.
+                StereoConfigHandlerRVC2.config.algorithmControl.centerAlignmentShiftFactor = None
         elif key == ord("c"):
             StereoConfigHandlerRVC2.newConfig = True
             censusSettings = [dai.StereoDepthConfig.CensusTransform.KernelSize.AUTO, dai.StereoDepthConfig.CensusTransform.KernelSize.KERNEL_5x5, dai.StereoDepthConfig.CensusTransform.KernelSize.KERNEL_7x7, dai.StereoDepthConfig.CensusTransform.KernelSize.KERNEL_7x9]
@@ -468,6 +474,8 @@ class StereoConfigHandlerRVC2:
     def sendConfig(stereoDepthConfigInQueue):
         if StereoConfigHandlerRVC2.newConfig:
             StereoConfigHandlerRVC2.newConfig = False
+            if rvc2ng:
+                StereoConfigHandlerRVC2.limitToRvc2ng(StereoConfigHandlerRVC2.config)
             # configMessage = dai.StereoDepthConfig()
             configMessage = StereoConfigHandlerRVC2.config
             stereoDepthConfigInQueue.send(configMessage)
@@ -475,21 +483,41 @@ class StereoConfigHandlerRVC2:
     def updateDefaultConfig(config):
         StereoConfigHandlerRVC2.config = config
 
+    def limitToRvc2ng(config):
+        # RVC2NG rejects these combinations and keeps its previous config, so adjust them before sending.
+        control = config.algorithmControl
+        if control.enableExtended and control.disparityShift:
+            print("RVC2NG does not combine extended disparity with a disparity shift; using shift 0")
+            control.disparityShift = 0
+        penalties = config.costAggregation
+        # 250 and 500 are the default penalties, which RVC2NG maps to its own defaults.
+        if (penalties.horizontalPenaltyCostP1, penalties.horizontalPenaltyCostP2) != (250, 500):
+            p1 = min(penalties.horizontalPenaltyCostP1, 254)
+            p2 = min(max(penalties.horizontalPenaltyCostP2, p1 + 1), 255)
+            if (p1, p2) != (penalties.horizontalPenaltyCostP1, penalties.horizontalPenaltyCostP2):
+                print(f"RVC2NG needs P1 < P2 <= 255; using P1={p1}, P2={p2}")
+            penalties.horizontalPenaltyCostP1 = penalties.verticalPenaltyCostP1 = p1
+            penalties.horizontalPenaltyCostP2 = penalties.verticalPenaltyCostP2 = p2
+
     def registerWindow(stream):
         cv2.namedWindow(stream, cv2.WINDOW_NORMAL)
 
-        StereoConfigHandlerRVC2.trConfidence.append(StereoConfigHandlerRVC2.Trackbar("Disparity confidence", stream, 0, 255, StereoConfigHandlerRVC2.config.costMatching.confidenceThreshold, StereoConfigHandlerRVC2.trackbarConfidence))
+        if not rvc2ng:
+            StereoConfigHandlerRVC2.trConfidence.append(StereoConfigHandlerRVC2.Trackbar("Disparity confidence", stream, 0, 255, StereoConfigHandlerRVC2.config.costMatching.confidenceThreshold, StereoConfigHandlerRVC2.trackbarConfidence))
         StereoConfigHandlerRVC2.trSigma.append(StereoConfigHandlerRVC2.Trackbar("Bilateral sigma", stream, 0, 100, StereoConfigHandlerRVC2.config.postProcessing.bilateralSigmaValue, StereoConfigHandlerRVC2.trackbarSigma))
         StereoConfigHandlerRVC2.trLrCheck.append(StereoConfigHandlerRVC2.Trackbar("LR-check threshold", stream, 0, 16, StereoConfigHandlerRVC2.config.algorithmControl.leftRightCheckThreshold, StereoConfigHandlerRVC2.trackbarLrCheckThreshold))
         StereoConfigHandlerRVC2.trFractionalBits.append(StereoConfigHandlerRVC2.Trackbar("Subpixel fractional bits", stream, 3, 5, StereoConfigHandlerRVC2.config.algorithmControl.subpixelFractionalBits, StereoConfigHandlerRVC2.trackbarFractionalBits))
         StereoConfigHandlerRVC2.trDisparityShift.append(StereoConfigHandlerRVC2.Trackbar("Disparity shift", stream, 0, 100, StereoConfigHandlerRVC2.config.algorithmControl.disparityShift, StereoConfigHandlerRVC2.trackbarDisparityShift))
         StereoConfigHandlerRVC2.trCenterAlignmentShift.append(StereoConfigHandlerRVC2.Trackbar("Center alignment shift factor", stream, 0, 100, StereoConfigHandlerRVC2.config.algorithmControl.centerAlignmentShiftFactor, StereoConfigHandlerRVC2.trackbarCenterAlignmentShift))
         StereoConfigHandlerRVC2.trInvalidateEdgePixels.append(StereoConfigHandlerRVC2.Trackbar("Invalidate edge pixels", stream, 0, 100, StereoConfigHandlerRVC2.config.algorithmControl.numInvalidateEdgePixels, StereoConfigHandlerRVC2.trackbarInvalidateEdgePixels))
-        StereoConfigHandlerRVC2.trLineqAlpha.append(StereoConfigHandlerRVC2.Trackbar("Linear equation alpha", stream, 0, 15, StereoConfigHandlerRVC2.config.costMatching.linearEquationParameters.alpha, StereoConfigHandlerRVC2.trackbarLineqAlpha))
-        StereoConfigHandlerRVC2.trLineqBeta.append(StereoConfigHandlerRVC2.Trackbar("Linear equation beta", stream, 0, 15, StereoConfigHandlerRVC2.config.costMatching.linearEquationParameters.beta, StereoConfigHandlerRVC2.trackbarLineqBeta))
-        StereoConfigHandlerRVC2.trLineqThreshold.append(StereoConfigHandlerRVC2.Trackbar("Linear equation threshold", stream, 0, 255, StereoConfigHandlerRVC2.config.costMatching.linearEquationParameters.threshold, StereoConfigHandlerRVC2.trackbarLineqThreshold))
-        StereoConfigHandlerRVC2.trCostAggregationP1.append(StereoConfigHandlerRVC2.Trackbar("Cost aggregation P1", stream, 0, 500, StereoConfigHandlerRVC2.config.costAggregation.horizontalPenaltyCostP1, StereoConfigHandlerRVC2.trackbarCostAggregationP1))
-        StereoConfigHandlerRVC2.trCostAggregationP2.append(StereoConfigHandlerRVC2.Trackbar("Cost aggregation P2", stream, 0, 500, StereoConfigHandlerRVC2.config.costAggregation.horizontalPenaltyCostP2, StereoConfigHandlerRVC2.trackbarCostAggregationP2))
+        if not rvc2ng:
+            StereoConfigHandlerRVC2.trLineqAlpha.append(StereoConfigHandlerRVC2.Trackbar("Linear equation alpha", stream, 0, 15, StereoConfigHandlerRVC2.config.costMatching.linearEquationParameters.alpha, StereoConfigHandlerRVC2.trackbarLineqAlpha))
+            StereoConfigHandlerRVC2.trLineqBeta.append(StereoConfigHandlerRVC2.Trackbar("Linear equation beta", stream, 0, 15, StereoConfigHandlerRVC2.config.costMatching.linearEquationParameters.beta, StereoConfigHandlerRVC2.trackbarLineqBeta))
+            StereoConfigHandlerRVC2.trLineqThreshold.append(StereoConfigHandlerRVC2.Trackbar("Linear equation threshold", stream, 0, 255, StereoConfigHandlerRVC2.config.costMatching.linearEquationParameters.threshold, StereoConfigHandlerRVC2.trackbarLineqThreshold))
+        # RVC2NG accepts penalties with P1 < P2 <= 255.
+        maxPenalty = 255 if rvc2ng else 500
+        StereoConfigHandlerRVC2.trCostAggregationP1.append(StereoConfigHandlerRVC2.Trackbar("Cost aggregation P1", stream, 0, maxPenalty, StereoConfigHandlerRVC2.config.costAggregation.horizontalPenaltyCostP1, StereoConfigHandlerRVC2.trackbarCostAggregationP1))
+        StereoConfigHandlerRVC2.trCostAggregationP2.append(StereoConfigHandlerRVC2.Trackbar("Cost aggregation P2", stream, 0, maxPenalty, StereoConfigHandlerRVC2.config.costAggregation.horizontalPenaltyCostP2, StereoConfigHandlerRVC2.trackbarCostAggregationP2))
         StereoConfigHandlerRVC2.trTemporalAlpha.append(StereoConfigHandlerRVC2.Trackbar("Temporal filter alpha", stream, 0, 100, int(StereoConfigHandlerRVC2.config.postProcessing.temporalFilter.alpha*100), StereoConfigHandlerRVC2.trackbarTemporalFilterAlpha))
         StereoConfigHandlerRVC2.trTemporalDelta.append(StereoConfigHandlerRVC2.Trackbar("Temporal filter delta", stream, 0, 100, StereoConfigHandlerRVC2.config.postProcessing.temporalFilter.delta, StereoConfigHandlerRVC2.trackbarTemporalFilterDelta))
         StereoConfigHandlerRVC2.trSpatialAlpha.append(StereoConfigHandlerRVC2.Trackbar("Spatial filter alpha", stream, 0, 100, int(StereoConfigHandlerRVC2.config.postProcessing.spatialFilter.alpha*100), StereoConfigHandlerRVC2.trackbarSpatialFilterAlpha))
@@ -1075,6 +1103,9 @@ if args.dumpdisparitycostvalues:
     xoutDebugCostDump = stereo.debugDispCostDump.createOutputQueue()
     xoutDebugCostDump.setName("debugCostDump")
 
+platform = pipeline.getDefaultDevice().getPlatform()
+rvc2ng = platform == dai.Platform.RVC2NG
+
 # Properties
 stereo.initialConfig.setMedianFilter(dai.MedianFilter.MEDIAN_OFF)  # KERNEL_7x7 default
 stereo.setLeftRightCheck(lrcheck)
@@ -1082,9 +1113,10 @@ stereo.setExtendedDisparity(extended)
 stereo.setSubpixel(subpixel)
 stereo.initialConfig.setSubpixelFractionalBits(4)
 
-stereo.initialConfig.costMatching.disparityWidth = dai.StereoDepthConfig.CostMatching.DisparityWidth.DISPARITY_64
-
-stereo.initialConfig.setConfidenceThreshold(127)
+if not rvc2ng:
+    # RVC2NG searches a fixed disparity range and exposes no matching confidence.
+    stereo.initialConfig.costMatching.disparityWidth = dai.StereoDepthConfig.CostMatching.DisparityWidth.DISPARITY_64
+    stereo.initialConfig.setConfidenceThreshold(127)
 stereo.initialConfig.setLeftRightCheckThreshold(4)
 
 # Switching depthAlign mode at runtime is not supported while aligning to a specific camera is enabled
@@ -1095,8 +1127,6 @@ stereo.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED
 stereo.setRuntimeModeSwitch(True)
 
 currentConfig = stereo.initialConfig
-
-platform = pipeline.getDefaultDevice().getPlatform()
 
 if platform == dai.Platform.RVC2:
     StereoConfigHandler = StereoConfigHandlerRVC2
@@ -1332,7 +1362,7 @@ if evaluation_mode:
     # Get the current timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     # Create the filename with the timestamp
-    filename = f"stereo_middleburry_{'RVC2' if platform == dai.Platform.RVC2 else 'RVC4'}_{timestamp}.csv"
+    filename = f"stereo_middleburry_{platform.name}_{timestamp}.csv"
     # Write the dictionary to a CSV file (append mode)
     file_exists = False
 
@@ -1403,10 +1433,12 @@ with pipeline:
         gt_disparity = None
         if evaluation_mode:
             # Load GT disparity
-            if currentConfig.algorithmControl.depthAlign == dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT:
-                gt_disparity = read_pfm(os.path.join(dataset.get(), f"disp0.pfm"))[0]
-            else:
-                gt_disparity = read_pfm(os.path.join(dataset.get(), f"disp1.pfm"))[0]
+            left = currentConfig.algorithmControl.depthAlign == dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT
+            gt_path = os.path.join(dataset.get(), "disp0.pfm" if left else "disp1.pfm")
+            if left and not os.path.exists(gt_path):
+                gt_path = os.path.join(dataset.get(), "disp0GT.pfm")
+            if os.path.exists(gt_path):
+                gt_disparity = read_pfm(gt_path)[0]
 
         # Handle output streams
         currentConfig = inCfg.get()
@@ -1442,6 +1474,7 @@ with pipeline:
         prevQueues = queues.copy()
 
         disparity = None
+        err_vals = None
         for q in queues:
             if q.getName() in ["left", "right"]: continue
             data = q.get()
@@ -1480,7 +1513,7 @@ with pipeline:
             dataset.prev()
             saveToCsvFile = True
 
-        if saveToCsvFile:
+        if saveToCsvFile and err_vals is not None:
             with open(filename, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 # Write the header only if the file doesn't exist
