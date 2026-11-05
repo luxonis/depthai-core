@@ -651,7 +651,7 @@ endif()
 
 # Camera stream restart test
 dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
-dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)  # Replay ignores camera stop/start controls
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
@@ -663,7 +663,7 @@ target_include_directories(telemetry_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/incl
 target_link_libraries(telemetry_test PRIVATE httplib::httplib)
 target_compile_definitions(telemetry_test PRIVATE DEPTHAI_TELEMETRY_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_test_child>")
 add_dependencies(telemetry_test telemetry_test_child)
-dai_set_test_labels(telemetry_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(telemetry_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)  # A replayed camera starts no sensor, so no sensor-mode event
 
 # Telemetry redirect test across multiple devices
 dai_add_test(telemetry_multi_device_test src/ondevice_tests/telemetry_multi_device_test.cpp)
@@ -819,7 +819,7 @@ if(DEPTHAI_BUILD_BETA)
 
     # One RVC2 device with a RAM-only calibration whose chain root is not the lowest socket.
     dai_add_test(multi_device_calibration_origin_test src/ondevice_tests/multi_device_calibration_origin_test.cpp)
-    dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci)
+    dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci noreplayci)  # Replayed frames keep their recorded extrinsics
 
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
@@ -914,7 +914,7 @@ endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
     target_compile_definitions(img_transformation_test PRIVATE TRANSFORMATION_TEST_DATA="${img_transformations_test_data}")
-    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
+    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci noreplayci)  # Replayed frames have no extrinsics device ID
 endif()
 
 
@@ -1015,7 +1015,7 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci noreplayci)
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
-dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
+dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci noreplayci) # Many RVC2 devices do not have an IMU which supports the whole test suite; replayed IMU data skips the runtime calibration
 
 # ObjectTracker tests
 if(DEPTHAI_HAVE_OPENCV_SUPPORT)
