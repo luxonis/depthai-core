@@ -33,9 +33,12 @@ struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
      */
     TimestampSource timestampSource = TimestampSource::DEFAULT;
 
+    /** Compare individual IMU reports and image exposure-middle timestamps instead of message headers. */
+    bool syncOnIndividualReports = false;
+
     ~SyncProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts, processor, timestampSource);
+DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts, processor, timestampSource, syncOnIndividualReports);
 
 }  // namespace dai
