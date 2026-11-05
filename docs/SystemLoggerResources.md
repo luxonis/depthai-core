@@ -40,8 +40,16 @@ An idle OAK4 running OS 1.47.0 passed 270 SystemLogger assertions with the paire
 
 A 100-sample device collector probe averaged 2.00 ms per read (maximum 3.01 ms). This is collector wall time, not whole-pipeline overhead. Twenty messages at a requested 1 Hz averaged 1.022 s between deliveries; twenty at requested 10 Hz averaged 0.120 s (about 8.35 Hz). Existing SystemLogger scheduling sleeps before collecting measurements, so its configured rate is not an exact delivery-rate guarantee.
 
-At 1 Hz, mean processor power was 1.105 W versus 1.119 W in adjacent raw samples; PoE was 1.505 W versus 1.529 W. These are independently timed readings, not atomic equality checks. GPU/HVX/HMX/Q6 all reported zero in this idle run. The absent system rail remained unavailable; the ToF rail was a valid zero. Nonzero accelerator activity, other boards, RVC2 hardware and other desktop platforms remain unvalidated.
+At 1 Hz, mean processor power was 1.105 W versus 1.119 W in adjacent raw samples; PoE was 1.505 W versus 1.529 W. These are independently timed readings, not atomic equality checks. GPU/HVX/HMX/Q6 all reported zero in this idle run. The absent system rail remained unavailable; the ToF rail was a valid zero. Active DSP workloads, other boards, RVC2 hardware and other desktop platforms remain unvalidated; the GPU workload results below extend the initial idle-only check.
 
 The broader existing serialization regression has an unrelated RVC4 failure: its Roundtrip case calls unsupported StereoDepth.setOutputSize. The new message-specific tests pass. Firmware artifact publication is required before the pinned SDK can build without a local firmware override.
 
 Final paired-build validation: SDK library, Python module, C++ example and firmware package/license generation completed. The Python binding regression module passed all 16 tests (run with `--noconftest` because the repository's unrelated legacy test-support module is unavailable). Both mirrored examples emitted the new metrics on hardware. The bounded Python runner passed at requested 1 Hz and 10 Hz. All test processes disabled telemetry and automatic calibration.
+
+## GPU workload validation
+
+A compute-only OpenCL workload was run on an Adreno 740 after the initially idle camera was checked for other users. It selected CL_DEVICE_TYPE_GPU, profiled command execution and validated output readback. No camera configuration or shared counters were changed.
+
+The sustained phase completed 191 kernels, with 19.859 seconds of profiled GPU execution over 20.083 seconds. After a fixed three-second settling exclusion, SystemLogger averaged 98.36% (33 samples) and direct vendor reads averaged 98.37% (168 samples). All 33 nearest sample pairs matched exactly. Idle-before and recovery phases returned zero; across all four stable phases, all 96 nearest pairs matched (maximum receipt-time separation 49.75 ms). Independent reads are not atomic, and this does not calibrate physical occupancy.
+
+The intermittent phase completed 45 kernels with 4.679 seconds of profiled execution over 20.329 seconds (about 23% of wall time). Yet the stable vendor sample means were only 2.97% from SystemLogger and 4.01% from direct reads, with many zeros between bursts. This is an inherited vendor-counter limitation: do not interpret the field as a duty-cycle average over the logger interval. A zero vendor reading does not prove that no GPU work occurred during that interval.
