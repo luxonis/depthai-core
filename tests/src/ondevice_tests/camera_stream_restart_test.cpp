@@ -8,7 +8,7 @@
 
 #include "depthai/depthai.hpp"
 
-TEST_CASE("Test reconnecting to the pipeline multiple times") {
+TEST_CASE("Test reconnecting to the pipeline multiple times", "[camera-hil]") {
     constexpr auto TIMES_TO_RUN = 10;
     for(int i = 0; i < TIMES_TO_RUN; i++) {
         dai::Pipeline p;

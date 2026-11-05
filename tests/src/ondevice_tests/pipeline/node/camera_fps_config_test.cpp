@@ -15,7 +15,7 @@
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
-TEST_CASE("Camera sensor configs configurations") {
+TEST_CASE("Camera sensor configs configurations", "[camera-hil]") {
     // Test that cameras can stream at all advertised configs
     using std::chrono::steady_clock;
     constexpr auto RESET_REMOTE_TIMEOUT_MS = std::chrono::milliseconds(2000);
@@ -26,22 +26,28 @@ TEST_CASE("Camera sensor configs configurations") {
     constexpr float MAXIMUM_FPS_RVC2 = 120.0f;
 
     dai::DeviceInfo connectedDeviceInfo;
-    std::vector<dai::CameraFeatures> connectedCameraFeautres;
+    std::vector<dai::CameraFeatures> connectedCameras;
     {
         auto device = dai::Device();
-        connectedCameraFeautres = device.getConnectedCameraFeatures();
+        connectedCameras = device.getConnectedCameraFeatures();
         connectedDeviceInfo.deviceId = device.getDeviceId();
         connectedDeviceInfo.platform = device.getDeviceInfo().platform;
     }
 
-    for(const auto& cameraFeatures : connectedCameraFeautres) {
+    REQUIRE_FALSE(connectedCameras.empty());
+    for(const auto& cameraFeatures : connectedCameras) {
+        CAPTURE(cameraFeatures.socket);
+        REQUIRE_FALSE(cameraFeatures.configs.empty());
         for(const auto& config : cameraFeatures.configs) {
+            CAPTURE(config.width, config.height);
+            REQUIRE(config.width > 0);
+            REQUIRE(config.height > 0);
             auto minimumFps = connectedDeviceInfo.platform == X_LINK_RVC4 ? std::max(MINIMUM_FPS_RVC4, config.minFps) : config.minFps;
             auto maximumFps = connectedDeviceInfo.platform == X_LINK_MYRIAD_X ? std::min(MAXIMUM_FPS_RVC2, config.maxFps) : config.maxFps;
+            REQUIRE(minimumFps > 0.0f);
+            REQUIRE(maximumFps >= minimumFps);
             for(const auto& fpsVariant : {maximumFps, minimumFps}) {
-                std::cout << "Testing camera " << cameraFeatures.socket << " with resolution " << config.width << "x" << config.height << " at fps "
-                          << fpsVariant << " on device " << connectedDeviceInfo.getDeviceId() << "\n"
-                          << std::flush;
+                CAPTURE(fpsVariant);
 
                 auto disappearStart = steady_clock::now();
                 while(steady_clock::now() - disappearStart < RESET_REMOTE_TIMEOUT_MS) {
@@ -61,7 +67,9 @@ TEST_CASE("Camera sensor configs configurations") {
                 auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
                 benchmarkIn->sendReportEveryNMessages(static_cast<uint32_t>(std::round(fpsVariant)));
                 auto camera = pipeline.create<dai::node::Camera>()->build(cameraFeatures.socket, std::pair(config.width, config.height), fpsVariant);
-                camera->requestOutput(std::pair(config.width, config.height))->link(benchmarkIn->input);
+                auto* output = camera->requestOutput(std::pair(config.width, config.height));
+                REQUIRE(output != nullptr);
+                output->link(benchmarkIn->input);
                 auto benchmarkQueue = benchmarkIn->report.createOutputQueue();
                 pipeline.start();
                 benchmarkQueue->get<dai::BenchmarkReport>();  // Warmup
