@@ -8,6 +8,10 @@
 // shared
 #include <depthai/properties/RectificationProperties.hpp>
 
+namespace cv {
+class Mat;
+}
+
 namespace dai {
 namespace node {
 
@@ -15,6 +19,7 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
    public:
     constexpr static const char* NAME = "Rectification";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    using Backend = RectificationProperties::Backend;
 
     /**
      * Input images to be rectified
@@ -41,6 +46,14 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     void setRunOnHost(bool runOnHost);
 
     /**
+     * Select the remapping backend. By default, AUTO prefers GPU on device and
+     * falls back to CPU when unavailable. GPU uses CPU-compatible dense OpenCL
+     * remapping on RVC4 and throws if unavailable. HW prefers EVA with CPU fallback
+     * for unsupported layouts. Host execution supports CPU/AUTO only.
+     */
+    Rectification& setBackend(Backend backend);
+
+    /**
      * Set output size
      */
     Rectification& setOutputSize(uint32_t width, uint32_t height);
@@ -65,6 +78,18 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     bool runOnHost() const override;
 
     void run() override;
+
+   protected:
+    struct RemapFrame {
+        std::shared_ptr<ImgFrame> input;
+        std::shared_ptr<ImgFrame> output;
+        const cv::Mat& mapX;
+        const cv::Mat& mapY;
+    };
+
+    // Both outputs must be complete when this method returns.
+    virtual void remapPair(const RemapFrame& left, const RemapFrame& right, bool mapsChanged);
+    void remapFrame(const RemapFrame& frame);
 
    private:
     bool runOnHostVar = false;

@@ -1,7 +1,23 @@
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/pipeline/node/GPUStereo.hpp>
+#include <depthai/pipeline/node/Rectification.hpp>
 #include <depthai/properties/GPUStereoProperties.hpp>
 #include <depthai/properties/RectificationProperties.hpp>
+
+TEST_CASE("Rectification backend selection survives host-device serialization", "[Rectification]") {
+    auto node = dai::node::Rectification::create();
+    REQUIRE(node->properties.backend == dai::Backend::AUTO);
+    for(auto backend : {dai::Backend::CPU, dai::Backend::HW, dai::Backend::GPU, dai::Backend::AUTO}) {
+        REQUIRE(&node->setBackend(backend) == node.get());
+        for(auto format : {dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK}) {
+            std::vector<uint8_t> data;
+            node->getProperties().serialize(data, format);
+            dai::RectificationProperties decoded;
+            REQUIRE(dai::utility::deserialize(data, decoded, format));
+            REQUIRE(decoded.backend == backend);
+        }
+    }
+}
 
 TEST_CASE("GPUStereo rectification toggle updates Rectification subnode properties", "[GPUStereo]") {
     auto node = dai::node::GPUStereo::create();
