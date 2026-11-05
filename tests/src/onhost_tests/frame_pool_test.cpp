@@ -37,13 +37,13 @@ TEST_CASE("Frame pool properties default to automatic and roundtrip", "[frame-po
 
 TEST_CASE("Automatic frame pools use FPS and required padded frame size", "[frame-pool]") {
     const auto fps = GENERATE(0.0, -1.0, 10.0, 20.0, 30.0, 60.0, 120.0, 1000.0);
-    const auto expected = fps > 0 && fps <= 20 ? 2u : fps <= 30 ? 3u : fps == 60 ? 6u : fps == 120 ? 12u : 30u;
+    const auto expected = fps == 10 ? 2u : fps == 20 ? 4u : fps <= 30 ? 6u : fps == 60 ? 12u : fps == 120 ? 24u : 30u;
     const auto resolved = resolveFramePool({}, 4096, fps);
     REQUIRE(resolved.outputFrameSize == 4096);
     REQUIRE(resolved.numFramesPool == expected);
     REQUIRE(resolved.maxPoolSize == 4096 * expected);
-    REQUIRE(resolveFramePool({}, 4096, std::numeric_limits<double>::infinity()).numFramesPool == 3);
-    REQUIRE(resolveFramePool({}, 4096, std::numeric_limits<double>::quiet_NaN()).numFramesPool == 3);
+    REQUIRE(resolveFramePool({}, 4096, std::numeric_limits<double>::infinity()).numFramesPool == 6);
+    REQUIRE(resolveFramePool({}, 4096, std::numeric_limits<double>::quiet_NaN()).numFramesPool == 6);
     REQUIRE(resolveFramePool({}, 32 * 1024 * 1024, 120).numFramesPool == 6);
 }
 
@@ -52,7 +52,7 @@ TEST_CASE("All combinations of automatic and explicit frame pool fields resolve 
     const auto count = GENERATE(0u, 6u);
     const auto maxSize = GENERATE(0u, 16384u);
     FramePoolProperties request{frameSize, count, maxSize};
-    const auto resolved = resolveFramePool(request, 1024, 60);
+    const auto resolved = resolveFramePool(request, 1024, 30);
     REQUIRE(resolved.outputFrameSize == (frameSize ? frameSize : 1024));
     REQUIRE(resolved.numFramesPool == 6);
     REQUIRE(resolved.maxPoolSize >= resolved.outputFrameSize * resolved.numFramesPool);

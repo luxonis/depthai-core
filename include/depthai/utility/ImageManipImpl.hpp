@@ -751,6 +751,10 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
         return *this;
     prevConfig = newCfgStr;
     outputOps.clear();
+    // Rebuild the operation mask from this configuration, including transitions
+    // back to passthrough or away from a format requiring input conversion.
+    mode = 0;
+    convertInput = false;
 
     if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
         throw std::runtime_error("Input image is one dimensional");

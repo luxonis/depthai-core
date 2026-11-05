@@ -35,7 +35,7 @@ inline FramePoolProperties reconcileFramePool(FramePoolProperties pool, int numF
 }
 
 /** Resolve one pool without modifying the requested configuration.
- * Automatic count targets 100 ms of buffering (2..30 frames), limited to a soft
+ * Automatic count targets 200 ms of buffering (2..30 frames), limited to a soft
  * platform budget (192 MiB by default), expanded to fit at least two buffers.
  * Explicit counts override that soft budget. A supplied maxPoolSize
  * is a hard limit, and can reduce an automatic count down to max(2, minimumFrames).
@@ -56,7 +56,7 @@ inline FramePoolProperties resolveFramePool(const FramePoolProperties& requested
 
     if(resolved.numFramesPool == 0) {
         if(!std::isfinite(expectedFps) || expectedFps <= 0) expectedFps = 30.0;
-        auto target = static_cast<std::uint32_t>(std::clamp(std::ceil(expectedFps * 0.1), 2.0, 30.0));
+        auto target = static_cast<std::uint32_t>(std::clamp(std::ceil(expectedFps * 0.2), 2.0, 30.0));
         const auto automaticMinimum = minimumFrames;
         if(!requested.maxPoolSize && resolved.outputFrameSize > std::numeric_limits<std::uint64_t>::max() / automaticMinimum)
             throw std::overflow_error("Frame pool automatic budget multiplication overflow");
