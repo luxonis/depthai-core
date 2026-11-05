@@ -106,7 +106,8 @@ python -m unittest discover -s ci/tests -p 'test_python_bindings.py'
 The check parses headers under `include/depthai` and binding sources listed in
 `bindings/python/CMakeLists.txt`. New public classes, enums, enum values, fields,
 constructors and functions in `dai` need a corresponding pybind11 registration.
-Private/protected members, anonymous namespaces, `detail`/`internal`/`impl` namespaces,
+Private/protected members, anonymous namespaces, `detail`/`internal`/`impl` namespaces
+and nested types (such as `PointCloud::Impl`), `DEPTHAI_SERIALIZE*` member-list macros,
 and `internal`/`test` header directories are excluded. Existing omissions are not
 reported. Adding an overload or changing parameter types requires a change to
 that function's binding registration, even if its name is already bound.

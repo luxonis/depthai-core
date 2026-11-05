@@ -817,6 +817,10 @@ if(DEPTHAI_BUILD_BETA)
     dai_add_test(multi_device_calibration_result_test src/onhost_tests/multi_device_calibration_result_test.cpp)
     dai_set_test_labels(multi_device_calibration_result_test onhost ci)
 
+    # One RVC2 device with a RAM-only calibration whose chain root is not the lowest socket.
+    dai_add_test(multi_device_calibration_origin_test src/ondevice_tests/multi_device_calibration_origin_test.cpp)
+    dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci)
+
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
 
@@ -958,6 +962,13 @@ dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 # Align test
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
 dai_set_test_labels(align_node_test ondevice rvc4 ci)
+
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    # Shared ImageAlign/Align bounds checks and synthetic rotated depth coverage.
+    dai_add_test(align_coverage_test src/ondevice_tests/align_coverage_test.cpp)
+    target_include_directories(align_coverage_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src)
+    dai_set_test_labels(align_coverage_test ondevice rvc2_all rvc4 ci)
+endif()
 
 # Align device execution test (device-side Align is only available on RVC4)
 dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)

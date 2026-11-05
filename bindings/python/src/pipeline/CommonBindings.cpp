@@ -280,6 +280,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), py::arg("force") = false, DOC(dai, RotatedRect, denormalize))
         .def("getPoints", &RotatedRect::getPoints, DOC(dai, RotatedRect, getPoints))
         .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect))
+        .def("getOuterRectInFrame", &RotatedRect::getOuterRectInFrame, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, getOuterRectInFrame))
         .def("getOuterXYWH", &RotatedRect::getOuterXYWH, DOC(dai, RotatedRect, getOuterXYWH))
         .def("getOuterCXCYWH", &RotatedRect::getOuterCXCYWH, DOC(dai, RotatedRect, getOuterCXCYWH));
 
