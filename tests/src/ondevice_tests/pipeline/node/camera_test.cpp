@@ -41,7 +41,7 @@ TEST_CASE("Test raw camera output") {
     }
 }
 
-TEST_CASE("Test camera with multiple outputs with different FPS") {
+TEST_CASE("Test camera with multiple outputs with different FPS", "[camera-hil]") {
     // Create pipeline
     dai::Pipeline p;
     auto camera = p.create<dai::node::Camera>()->build();
@@ -115,7 +115,7 @@ TEST_CASE("Test camera with multiple outputs with different FPS") {
 //     }
 // }
 
-TEST_CASE("Multiple outputs") {
+TEST_CASE("Multiple outputs", "[camera-hil]") {
     dai::Pipeline p;
     auto camera = p.create<dai::node::Camera>()->build();
     auto* camOut1 = camera->requestOutput({500, 300}, dai::ImgFrame::Type::NV12);
@@ -146,7 +146,7 @@ TEST_CASE("Multiple outputs") {
 }
 #endif
 
-TEST_CASE("Camera start/stop stream") {
+TEST_CASE("Camera start/stop stream", "[camera-hil]") {
     constexpr float K_FPS = 30.0f;
     constexpr uint32_t K_REPORT_EVERY_N = 10;
     const auto kReportTimeout = std::chrono::seconds(4);
@@ -173,6 +173,7 @@ TEST_CASE("Camera start/stop stream") {
     };
 
     p.start();
+    REQUIRE(waitForReport(kReportTimeout) == nullptr);
 
     auto startCtrl = std::make_shared<dai::CameraControl>();
     startCtrl->setStartStreaming();
@@ -199,7 +200,7 @@ TEST_CASE("Camera start/stop stream") {
     REQUIRE(restartedReport != nullptr);
 }
 
-TEST_CASE("Test how default FPS is generated for a specific output") {
+TEST_CASE("Test how default FPS is generated for a specific output", "[camera-hil]") {
     constexpr float FPS_TO_SET = 20.0;
     // Create pipeline
     dai::Pipeline p;
@@ -222,11 +223,13 @@ TEST_CASE("Test how default FPS is generated for a specific output") {
     }
 }
 
-TEST_CASE("Camera run without calibration") {
+TEST_CASE("Camera run without calibration", "[camera-hil]") {
     dai::Pipeline p;
     p.setCalibrationData(dai::CalibrationHandler());  // empty calibration data
+    const auto sockets = p.getDefaultDevice()->getConnectedCameras();
+    REQUIRE_FALSE(sockets.empty());
     std::vector<std::shared_ptr<dai::MessageQueue>> outputQueues;
-    for(auto socket : p.getDefaultDevice()->getConnectedCameras()) {
+    for(auto socket : sockets) {
         auto camera = p.create<dai::node::Camera>()->build(socket);
         auto* output = camera->requestFullResolutionOutput();
         REQUIRE(output != nullptr);
@@ -234,10 +237,63 @@ TEST_CASE("Camera run without calibration") {
     }
     p.start();
     for(auto& queue : outputQueues) {
-        auto frame = queue->get<dai::ImgFrame>();
+        bool timedOut = false;
+        auto frame = queue->get<dai::ImgFrame>(std::chrono::seconds(10), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(frame != nullptr);
         REQUIRE(frame->getWidth() > 0);
         REQUIRE(frame->getHeight() > 0);
     }
+}
+
+TEST_CASE("Camera output carries session calibration", "[camera-hil]") {
+    constexpr unsigned int OUTPUT_WIDTH = 320;
+    constexpr unsigned int OUTPUT_HEIGHT = 240;
+    constexpr float FOCAL_X = 800.0f;
+    constexpr float FOCAL_Y = 810.0f;
+
+    dai::Pipeline p;
+    const auto cameras = p.getDefaultDevice()->getConnectedCameraFeatures();
+    REQUIRE_FALSE(cameras.empty());
+    const auto& cameraFeatures = cameras.front();
+    REQUIRE_FALSE(cameraFeatures.configs.empty());
+    const auto& mode = cameraFeatures.configs.front();
+    REQUIRE(mode.width > 0);
+    REQUIRE(mode.height > 0);
+    const auto modeWidth = static_cast<float>(mode.width);
+    const auto modeHeight = static_cast<float>(mode.height);
+
+    dai::CalibrationHandler calibration;
+    calibration.setCameraIntrinsics(
+        cameraFeatures.socket, {{FOCAL_X, 0.0f, modeWidth / 2.0f}, {0.0f, FOCAL_Y, modeHeight / 2.0f}, {0.0f, 0.0f, 1.0f}}, mode.width, mode.height);
+    std::vector<float> distortion(14, 0.0f);
+    distortion[0] = 0.01f;
+    distortion[1] = -0.02f;
+    calibration.setDistortionCoefficients(cameraFeatures.socket, distortion);
+    p.setCalibrationData(calibration);
+
+    auto camera = p.create<dai::node::Camera>()->build(cameraFeatures.socket, std::pair(mode.width, mode.height));
+    camera->setImageOrientation(dai::CameraImageOrientation::NORMAL);
+    auto* output = camera->requestOutput({OUTPUT_WIDTH, OUTPUT_HEIGHT}, dai::ImgFrame::Type::GRAY8, dai::ImgResizeMode::STRETCH, std::nullopt, false);
+    REQUIRE(output != nullptr);
+    auto queue = output->createOutputQueue();
+    p.start();
+
+    bool timedOut = false;
+    const auto frame = queue->get<dai::ImgFrame>(std::chrono::seconds(10), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(frame != nullptr);
+    REQUIRE(frame->getWidth() == OUTPUT_WIDTH);
+    REQUIRE(frame->getHeight() == OUTPUT_HEIGHT);
+    REQUIRE(frame->getType() == dai::ImgFrame::Type::GRAY8);
+
+    const auto& transformation = frame->getTransformation();
+    const auto intrinsics = transformation.getIntrinsicMatrix();
+    REQUIRE(intrinsics[0][0] == Catch::Approx(FOCAL_X * OUTPUT_WIDTH / modeWidth));
+    REQUIRE(intrinsics[1][1] == Catch::Approx(FOCAL_Y * OUTPUT_HEIGHT / modeHeight));
+    REQUIRE(intrinsics[0][2] == Catch::Approx(OUTPUT_WIDTH / 2.0f));
+    REQUIRE(intrinsics[1][2] == Catch::Approx(OUTPUT_HEIGHT / 2.0f));
+    REQUIRE(transformation.getDistortionCoefficients() == distortion);
 }
 
 TEST_CASE("Camera: Test isp output - Correct resolution") {
