@@ -485,6 +485,10 @@ dai_set_test_labels(xlink_in_host_test onhost ci)
 dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
 dai_set_test_labels(multi_device_pipeline_test onhost)
 
+# Pipeline released on a node thread (host only)
+dai_add_test(pipeline_release_on_node_thread_test src/onhost_tests/pipeline/pipeline_release_on_node_thread_test.cpp)
+dai_set_test_labels(pipeline_release_on_node_thread_test onhost ci)
+
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)

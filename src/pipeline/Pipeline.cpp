@@ -15,6 +15,7 @@
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
+#include "pipeline/JoinedByPipelineScope.hpp"
 #include "properties/GlobalProperties.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
@@ -42,6 +43,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string_view>
+#include <system_error>
 #include <thread>
 #include <unordered_set>
 
@@ -70,7 +72,47 @@ struct hash<::dai::NodeConnectionSchema> {
 
 namespace dai {
 
+namespace utility {
+
 namespace {
+thread_local int joinedByPipelineScopeDepth = 0;
+}  // namespace
+
+JoinedByPipelineScope::JoinedByPipelineScope() {
+    ++joinedByPipelineScopeDepth;
+}
+
+JoinedByPipelineScope::~JoinedByPipelineScope() {
+    --joinedByPipelineScopeDepth;
+}
+
+bool JoinedByPipelineScope::isActive() {
+    return joinedByPipelineScopeDepth > 0;
+}
+
+}  // namespace utility
+
+namespace {
+
+// Deleter of every PipelineImpl. The destructor stops the pipeline and joins the node and device
+// threads. When the last reference is released on one of those threads, destroying the pipeline
+// in place would make the thread join itself, so the destructor runs on a separate thread.
+void destroyPipelineImpl(PipelineImpl* impl) {
+    if(utility::JoinedByPipelineScope::isActive()) {
+        try {
+            std::thread([impl]() { delete impl; }).detach();
+            return;
+        } catch(const std::system_error& ex) {
+            Logging::getInstance().logger.error("Failed to start the pipeline teardown thread, destroying the pipeline in place: {}", ex.what());
+        }
+    }
+    delete impl;
+}
+
+template <typename... Args>
+std::shared_ptr<PipelineImpl> makePipelineImpl(Args&&... args) {
+    return std::shared_ptr<PipelineImpl>(new PipelineImpl(std::forward<Args>(args)...), destroyPipelineImpl);
+}
 
 std::shared_ptr<Device> getAssignedDevice(const std::shared_ptr<Node>& node) {
     // A device node that runs on the host has no device-side presence: its device is not
@@ -233,9 +275,9 @@ Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
 
-Pipeline::Pipeline(bool createImplicitDevice) : pimpl(std::make_shared<PipelineImpl>(createImplicitDevice)) {}
+Pipeline::Pipeline(bool createImplicitDevice) : pimpl(makePipelineImpl(createImplicitDevice)) {}
 
-Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<PipelineImpl>(device)) {}
+Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(makePipelineImpl(std::move(device))) {}
 
 Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) : pimpl(std::move(pimpl)) {}
 
