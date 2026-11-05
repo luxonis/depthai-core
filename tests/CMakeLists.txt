@@ -929,6 +929,13 @@ dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci noreplay
 dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
 dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
+# A killed PoE host must not leave queued system logs refreshing the watchdog.
+dai_add_test(tcp_host_disconnect_test src/ondevice_tests/regression/tcp_host_disconnect.cpp)
+target_include_directories(tcp_host_disconnect_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_compile_definitions(tcp_host_disconnect_test PRIVATE DEPTHAI_TCP_DISCONNECT_TEST_PATH="$<TARGET_FILE:tcp_host_disconnect_test>")
+dai_set_test_labels(tcp_host_disconnect_test ondevice rvc2 poe ci noreplayci)
+set_tests_properties(tcp_host_disconnect_test PROPERTIES TIMEOUT 150)
+
 dai_add_test(regression_boot_test src/ondevice_tests/regression/boot.cpp)
 dai_set_test_labels(regression_boot_test ondevice rvc2 rvc4 usb ci noreplayci)
 
