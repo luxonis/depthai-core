@@ -28,11 +28,25 @@ void Rectification::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
+Rectification& Rectification::setBackend(Backend backend) {
+    properties.backend = backend;
+    return *this;
+}
+
 bool Rectification::runOnHost() const {
     return runOnHostVar;
 }
 
+void Rectification::remapPair(const RemapFrame& left, const RemapFrame& right, bool) {
+    remapFrame(left);
+    remapFrame(right);
+}
+
 #if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+void Rectification::remapFrame(const RemapFrame&) {
+    throw std::runtime_error("Rectification node requires OpenCV support");
+}
+
 void Rectification::run() {
     throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
 }
@@ -105,9 +119,22 @@ dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& e
     return outputImgTransformation;
 }
 
+void Rectification::remapFrame(const RemapFrame& frame) {
+    const auto& input = frame.input;
+    const auto& output = frame.output;
+    output->setData(std::vector<uint8_t>(static_cast<size_t>(output->getWidth()) * output->getHeight()));
+    auto image = input->getCvFrame();
+    if(image.channels() == 3) cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+    const cv::Rect area(0, 0, output->getWidth(), output->getHeight());
+    cv::remap(image, output->getFrame(), frame.mapX(area), frame.mapY(area), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+}
+
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
+    if(runOnHostVar && (properties.backend == Backend::GPU || properties.backend == Backend::HW)) {
+        throw std::runtime_error("Rectification GPU/HW backends require device execution");
+    }
     logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
     if(runOnHost()) {
         // Check the platform of the device this node runs on (falls back to the pipeline default device when the node has none)
@@ -159,7 +186,8 @@ void Rectification::run() {
             initialized = false;
         }
 
-        if(!initialized) {
+        const bool mapsChanged = !initialized;
+        if(mapsChanged) {
             dai::ImgTransformation input1ImgTransformation = input1Frame->transformation;
             dai::ImgTransformation input2ImgTransformation = input2Frame->transformation;
 
@@ -221,7 +249,7 @@ void Rectification::run() {
                                         cv_d1,
                                         cv_R1,
                                         cv_targetCameraMatrix1,
-                                        cv::Size(output1FrameWidth, output1FrameHeight),
+                                        cv::Size(output1FrameWidth + 1, output1FrameHeight + 1),
                                         CV_32FC1,
                                         cv_rectificationMap1X,
                                         cv_rectificationMap1Y);
@@ -229,7 +257,7 @@ void Rectification::run() {
                                         cv_d2,
                                         cv_R2,
                                         cv_targetCameraMatrix2,
-                                        cv::Size(output2FrameWidth, output2FrameHeight),
+                                        cv::Size(output2FrameWidth + 1, output2FrameHeight + 1),
                                         CV_32FC1,
                                         cv_rectificationMap2X,
                                         cv_rectificationMap2Y);
@@ -252,8 +280,6 @@ void Rectification::run() {
         }
 
         std::shared_ptr<dai::ImgFrame> rectifiedFrame1 = std::make_shared<dai::ImgFrame>();
-        size_t frameSize1 = output1FrameWidth * output1FrameHeight;
-        rectifiedFrame1->setData(std::vector<uint8_t>(frameSize1));
 
         rectifiedFrame1->setMetadata(*input1Frame);
         rectifiedFrame1->setWidth(output1FrameWidth);
@@ -265,9 +291,6 @@ void Rectification::run() {
 
         std::shared_ptr<dai::ImgFrame> rectifiedFrame2 = std::make_shared<dai::ImgFrame>();
 
-        size_t frameSize2 = output2FrameWidth * output2FrameHeight;
-        rectifiedFrame2->setData(std::vector<uint8_t>(frameSize2));
-
         rectifiedFrame2->setMetadata(*input2Frame);
         rectifiedFrame2->setWidth(output2FrameWidth);
         rectifiedFrame2->setHeight(output2FrameHeight);
@@ -276,21 +299,13 @@ void Rectification::run() {
         rectifiedFrame2->setType(dai::ImgFrame::Type::RAW8);
         rectifiedFrame2->fb.stride = rectifiedFrame2->fb.width * rectifiedFrame2->getBytesPerPixel();
 
-        cv::Mat cv_input1 = input1Frame->getCvFrame();
-        cv::Mat cv_input2 = input2Frame->getCvFrame();
-
-        // convert to gray if needed
-        if(cv_input1.channels() == 3) {
-            cv::cvtColor(cv_input1, cv_input1, cv::COLOR_BGR2GRAY);
-        }
-        if(cv_input2.channels() == 3) {
-            cv::cvtColor(cv_input2, cv_input2, cv::COLOR_BGR2GRAY);
-        }
-
-        cv::remap(
-            cv_input1, rectifiedFrame1->getFrame(), cv_rectificationMap1X, cv_rectificationMap1Y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
-        cv::remap(
-            cv_input2, rectifiedFrame2->getFrame(), cv_rectificationMap2X, cv_rectificationMap2Y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+        const auto tRemapBeginning = steady_clock::now();
+        remapPair({input1Frame, rectifiedFrame1, cv_rectificationMap1X, cv_rectificationMap1Y},
+                  {input2Frame, rectifiedFrame2, cv_rectificationMap2X, cv_rectificationMap2Y},
+                  mapsChanged);
+        logger->trace("Rectification pair remap took {}us sequence={}",
+                      duration_cast<microseconds>(steady_clock::now() - tRemapBeginning).count(),
+                      input1Frame->getSequenceNum());
 
         rectifiedFrame1->transformation = output1ImgTransformation;
         rectifiedFrame2->transformation = output2ImgTransformation;
