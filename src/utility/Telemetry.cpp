@@ -1059,14 +1059,14 @@ void addDeviceTelemetryProperties(const DeviceBase& device, nlohmann::json& prop
     }
 }
 
-void addPipelineTelemetryProperties(const Pipeline& pipeline, nlohmann::json& properties) {
+void addPipelineTelemetryProperties(const std::string& pipelineId, const std::shared_ptr<Device>& defaultDevice, nlohmann::json& properties) {
     normalizeTelemetryProperties(properties);
     if(!properties.contains("pipeline_id")) {
-        properties["pipeline_id"] = pipeline.getTelemetryPipelineId();
+        properties["pipeline_id"] = pipelineId;
     }
-    if(auto device = pipeline.getDefaultDevice()) {
+    if(defaultDevice) {
         if(!properties.contains("device_id")) {
-            properties["device_id"] = device->getTemporaryTelemetryDeviceId();
+            properties["device_id"] = defaultDevice->getTemporaryTelemetryDeviceId();
         }
     }
 }
@@ -1114,11 +1114,11 @@ void Telemetry::event(const DeviceBase& device, std::string eventName, nlohmann:
     }
 }
 
-void Telemetry::event(const Pipeline& pipeline, std::string eventName, nlohmann::json properties) {
+void Telemetry::event(const PipelineImpl& pipeline, std::string eventName, nlohmann::json properties) {
     if(!isTelemetryEnabled()) {
         return;
     }
-    addPipelineTelemetryProperties(pipeline, properties);
+    addPipelineTelemetryProperties(pipeline.telemetryPipelineId, pipeline.defaultDevice, properties);
     if(impl) {
         impl->event(std::move(eventName), std::move(properties));
     }
