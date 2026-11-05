@@ -37,6 +37,7 @@ void bind_thermal(pybind11::module& m, void* pCallstack) {
         .def_readonly("inputConfig", &Thermal::inputConfig, DOC(dai, node, Thermal, inputConfig), DOC(dai, node, Thermal, inputConfig))
         .def_readonly("temperature", &Thermal::temperature, DOC(dai, node, Thermal, temperature), DOC(dai, node, Thermal, temperature))
         .def_readonly("color", &Thermal::color, DOC(dai, node, Thermal, color), DOC(dai, node, Thermal, color))
+        .def_readonly("raw", &Thermal::raw, DOC(dai, node, Thermal, raw), DOC(dai, node, Thermal, raw))
 
         .def("build", &Thermal::build, "boardSocket"_a = CameraBoardSocket::AUTO, "fps"_a = float(25), DOC(dai, node, Thermal, build))
         .def("getBoardSocket", &Thermal::getBoardSocket, DOC(dai, node, Thermal, getBoardSocket));

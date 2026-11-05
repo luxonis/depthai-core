@@ -46,9 +46,14 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
     Output temperature{*this, {"temperature", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
-     * Outputs YUV422i grayscale thermal image.
+     * Outputs YUV422i grayscale thermal image, colored with ThermalConfig's color palette.
      */
     Output color{*this, {"color", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    /**
+     * Outputs RAW16 sensor counts after the non-uniformity correction, before the AGC.
+     */
+    Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Build with a specific board socket and fps.
