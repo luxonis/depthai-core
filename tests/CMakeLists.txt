@@ -486,7 +486,14 @@ dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_p
 dai_set_test_labels(multi_device_pipeline_test onhost)
 
 # Pipeline released on a node thread (host only)
+add_executable(pipeline_release_on_node_thread_test_child src/onhost_tests/pipeline/pipeline_release_on_node_thread_test_child.cpp)
+add_default_flags(pipeline_release_on_node_thread_test_child LEAN)
+target_link_libraries(pipeline_release_on_node_thread_test_child PRIVATE depthai::core Threads::Threads)
 dai_add_test(pipeline_release_on_node_thread_test src/onhost_tests/pipeline/pipeline_release_on_node_thread_test.cpp)
+target_include_directories(pipeline_release_on_node_thread_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_compile_definitions(pipeline_release_on_node_thread_test
+                           PRIVATE DEPTHAI_PIPELINE_RELEASE_TEST_CHILD_PATH="$<TARGET_FILE:pipeline_release_on_node_thread_test_child>")
+add_dependencies(pipeline_release_on_node_thread_test pipeline_release_on_node_thread_test_child)
 dai_set_test_labels(pipeline_release_on_node_thread_test onhost ci)
 
 # NNArchive test

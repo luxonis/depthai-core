@@ -1,12 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <condition_variable>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <thread>
 
 #include "depthai/depthai.hpp"
+#include "subprocess.hpp"
 
 namespace {
 
@@ -98,4 +101,26 @@ TEST_CASE("Pipeline whose last reference is released on the user thread is destr
     REQUIRE(handshake->waitFor(&Handshake::nodeReleasedPipeline, 10s));
     pipeline.reset();
     REQUIRE(handshake->isSet(&Handshake::nodeDestroyed));
+}
+
+TEST_CASE("Process waits at exit for a pipeline that a node thread released") {
+#ifndef DEPTHAI_PIPELINE_RELEASE_TEST_CHILD_PATH
+    FAIL("DEPTHAI_PIPELINE_RELEASE_TEST_CHILD_PATH was not defined");
+#else
+    const auto childPath = std::filesystem::path(DEPTHAI_PIPELINE_RELEASE_TEST_CHILD_PATH).string();
+    subprocess::Popen child({childPath}, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::PIPE});
+    auto output = child.communicate();
+    const std::string stdoutText(output.first.buf.begin(), output.first.buf.end());
+    const std::string stderrText(output.second.buf.begin(), output.second.buf.end());
+    INFO("Child stdout:\n" << stdoutText);
+    INFO("Child stderr:\n" << stderrText);
+
+    REQUIRE(child.retcode() == 0);
+    // The teardown takes longer than the rest of main(), so its line comes last
+    const auto mainReturns = stdoutText.find("main returns");
+    const auto pipelineDestroyed = stdoutText.find("pipeline destroyed");
+    REQUIRE(mainReturns != std::string::npos);
+    REQUIRE(pipelineDestroyed != std::string::npos);
+    REQUIRE(mainReturns < pipelineDestroyed);
+#endif
 }
