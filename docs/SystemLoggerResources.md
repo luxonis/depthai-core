@@ -32,3 +32,14 @@ Use the SDK with matching RVC4 firmware that includes these fields.
 
 The C++ and Python SystemLogger examples print the new metrics and display
 `unavailable` for values equal to `-1`.
+
+## Validation and limits
+
+The paired firmware is reviewed in [MR !448](https://gitlab.luxonis.com/luxonis/depthai/depthai-device-kb/-/merge_requests/448).
+An idle OAK4 running OS 1.47.0 passed 270 SystemLogger assertions with the paired schema, including existing CPU, memory and temperature fields. The host serialization suite for this message passed 19 assertions; five firmware fixture cases covered missing and malformed sensors, duplicate labels and sensor disappearance/reappearance.
+
+A 100-sample device collector probe averaged 2.00 ms per read (maximum 3.01 ms). This is collector wall time, not whole-pipeline overhead. Twenty messages at a requested 1 Hz averaged 1.022 s between deliveries; twenty at requested 10 Hz averaged 0.120 s (about 8.35 Hz). Existing SystemLogger scheduling sleeps before collecting measurements, so its configured rate is not an exact delivery-rate guarantee.
+
+At 1 Hz, mean processor power was 1.105 W versus 1.119 W in adjacent raw samples; PoE was 1.505 W versus 1.529 W. These are independently timed readings, not atomic equality checks. GPU/HVX/HMX/Q6 all reported zero in this idle run. The absent system rail remained unavailable; the ToF rail was a valid zero. Nonzero accelerator activity, other boards, RVC2 hardware and other desktop platforms remain unvalidated.
+
+The broader existing serialization regression has an unrelated RVC4 failure: its Roundtrip case calls unsupported StereoDepth.setOutputSize. The new message-specific tests pass. Firmware artifact publication is required before the pinned SDK can build without a local firmware override.
