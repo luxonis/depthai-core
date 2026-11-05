@@ -1010,6 +1010,10 @@ dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 rvc2ng ci)
 dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
 dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 rvc2ng ci)
 
+# StereoDepth presets on frames sent from the host; needs no stereo camera pair.
+dai_add_test(stereo_depth_host_frames_test src/ondevice_tests/stereo_depth_host_frames_test.cpp)
+dai_set_test_labels(stereo_depth_host_frames_test ondevice rvc2ng ci)
+
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
