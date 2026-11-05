@@ -143,20 +143,18 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     void postBuildStage() override;
 
     /**
-     * Give the calibration a metric reference through fiducial markers in the scene. Image correspondences fix
-     * the relative rotation and the direction of the baseline between the cameras but not the length of the
-     * baseline; measured distances between marker centers, and from marker centers to camera sockets, fix that
-     * length. Markers are detected in every image set the node loads, their centers are collected (up to
-     * WorldConstraints::maxObservationSets frame sets, cleared by the ResetData command) and handed to
-     * the calibration together with the image features. A distance to a socket that is not one of the image
-     * inputs uses that socket's current calibration. Set before the pipeline starts.
+     * Refine camera orientations using measured marker distances and printed sizes, preserving the resulting
+     * camera centers and baseline lengths. Markers are detected in every image set the node loads and their
+     * observations are collected (up to WorldConstraints::maxObservationSets frame sets, cleared by ResetData)
+     * and handed to the calibration together with the image features. A distance to a socket that is not one of the image
+     * inputs uses that socket's current calibration. Set before the pipeline is built.
      */
     void setWorldConstraints(const WorldConstraints& constraints);
     /// Same as setWorldConstraints() with the JSON form described in WorldConstraints.
     void setWorldConstraintsFromJson(const std::string& json);
     /// Same as setWorldConstraints() with the JSON form described in WorldConstraints read from a file.
     void setWorldConstraintsFromFile(const std::filesystem::path& path);
-    /// Remove the marker constraints again. Takes effect before the pipeline starts.
+    /// Remove the marker constraints again. Takes effect before the pipeline is built.
     void clearWorldConstraints();
     std::optional<WorldConstraints> getWorldConstraints() const;
 

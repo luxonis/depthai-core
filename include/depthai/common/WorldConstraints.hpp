@@ -44,14 +44,11 @@ std::string toString(ArucoDictionary dictionary);
 ArucoDictionary arucoDictionaryFromString(const std::string& name);
 
 /**
- * Kinds of fiducial markers the calibration can use as scene points. Every kind yields an integer id and one
- * reference point per marker; adding a kind means a value here, its parameters in WorldConstraints and a
- * detector for it in the dynamic calibration library.
+ * Marker families accepted by the calibration. Marker IDs identify printed targets across camera views.
  */
 enum class MarkerType : int32_t {
     ARUCO = 0,    ///< ArUco / AprilTag markers of one dictionary; the reference point is the marker center.
-    LUXONIS = 1,  ///< Luxonis Markers: the Luxonis lens logo as a concentric-ring fiducial (CCTag-like, ids 0-5 coded in
-                  ///< the iris radii, the stub gives the orientation); the reference point is the center of the rings.
+    LUXONIS = 1,  ///< Luxonis markers, IDs 0-5; the reference point is the marker center.
 };
 std::string toString(MarkerType type);
 MarkerType markerTypeFromString(const std::string& name);
@@ -59,11 +56,11 @@ MarkerType markerTypeFromString(const std::string& name);
 /**
  * Metric reference for dynamic calibration given through fiducial markers placed in the scene.
  *
- * Image correspondences cannot observe how long the baseline between two cameras is, only its direction and the
- * relative rotation. Known distances between marker reference points, from marker reference points to camera
- * sockets, and known marker sizes provide that missing scale. A marker of known size needs no measured distance:
- * its image in one camera tells how far it is from that camera. A marker needs to be seen by at least two of the
- * calibrated cameras in the same synchronized frame set to count. One constraint set describes markers of one type.
+ * Known distances between marker centers, distances from marker centers to camera optical centers, and printed
+ * marker sizes refine camera orientations after image-based calibration. This refinement preserves camera centers
+ * and baseline lengths. A marker needs to be seen by at least two calibrated cameras in the same synchronized
+ * frame set to count. One constraint set describes markers of one type. Measurements are fitted together and may
+ * not be met exactly. Set the constraints before building the pipeline.
  *
  * Distances are stored in meters. The JSON form accepted by fromJson() is:
  *

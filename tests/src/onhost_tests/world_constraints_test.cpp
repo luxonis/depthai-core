@@ -7,7 +7,7 @@
 #include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
 
 // After the depthai headers: the DCL headers define macros that collide with depthai enumerators.
-#include <LuxonisMarker.hpp>
+#include <DynamicCalibration.hpp>
 
 namespace {
 using Socket = dai::CameraBoardSocket;

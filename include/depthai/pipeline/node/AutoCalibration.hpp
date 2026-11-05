@@ -59,7 +59,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     /**
      * Give the calibration a metric reference through fiducial markers in the scene, see
      * DynamicCalibration::setWorldConstraints(). Forwarded to the DynamicCalibration subnode; set before the
-     * pipeline starts.
+     * pipeline is built.
      */
     void setWorldConstraints(const WorldConstraints& constraints);
     /// Same as setWorldConstraints() with the JSON form described in WorldConstraints.

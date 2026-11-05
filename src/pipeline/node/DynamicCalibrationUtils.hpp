@@ -1,7 +1,6 @@
 #pragma once
 
 #include <DynamicCalibration.hpp>
-#include <Markers.hpp>
 #include <array>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
