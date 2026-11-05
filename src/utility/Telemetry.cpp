@@ -565,6 +565,14 @@ TelemetrySharedState::TelemetrySharedState() {
         logger::debug("Telemetry curl global init failed: {}", curl_easy_strerror(curlInitResult));
     }
 
+    // Only the side effect is needed: create cpr's private, function-local static mutex that guards
+    // curl_easy_init(). Statics are destroyed in the reverse order of their construction. This constructor runs
+    // inside the construction of the static TelemetryStateHolder, so the mutex is constructed first and destroyed
+    // after this state. Without this, the mutex is first created by a later request and destroyed first at exit().
+    // The final flush in the destructor then locks a destroyed mutex: on macOS this throws "mutex lock failed:
+    // Invalid argument" and all queued events are lost. The braces release the curl handle at once.
+    { cpr::CurlHolder createInitMutex; }
+
     worker = std::thread([this]() { workerLoop(); });
 #else
     logger::debug("Telemetry disabled: depthai-core was built without CURL support");
