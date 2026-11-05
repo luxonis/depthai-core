@@ -21,6 +21,18 @@ def printSystemInformationRVC4(info: dai.SystemInformationRVC4):
 
     t = info.chipTemperature
     print(f"Chip temperature - average: {t.average:.2f}, cpuss: {t.cpuss:.2f}, gpuss: {t.gpuss:.2f}, mdmss: {t.mdmss:.2f}, video: {t.video:.2f}, ddr: {t.ddr:.2f}, camera: {t.camera:.2f}")
+    def print_metric(name: str, value: float, unit: str):
+        print(f"{name}: unavailable" if value < 0 else f"{name}: {value}{unit}")
+
+    print_metric("GPU utilization (whole GPU, vendor counter)", info.gpuUtilizationPercent, "%")
+    print_metric("DSP HVX activity (not awake residency or total NPU utilization)", info.dspHvxActivityPercent, "%")
+    print_metric("DSP HMX activity (not awake residency or total NPU utilization)", info.dspHmxActivityPercent, "%")
+    print_metric("DSP Q6 load (vendor counter)", info.dspQ6LoadKcps, " KCPS")
+    print("Power rails (separate readings; do not add):")
+    print_metric("  System", info.powerSystemWatts, " W")
+    print_metric("  Processor", info.powerProcessorWatts, " W")
+    print_metric("  PoE", info.powerPoeWatts, " W")
+    print_metric("  ToF", info.powerTofWatts, " W")
     print("----------------------------------------")
 
 # Create pipeline

@@ -36,6 +36,23 @@ void printSystemInformation(const dai::SystemInformationRVC4& info) {
     const auto& t = info.chipTemperature;
     std::cout << "Chip temperature - average: " << t.average << ", cpuss: " << t.cpuss << ", gpuss: " << t.gpuss << ", mdmss: " << t.mdmss
               << ", video: " << t.video << ", ddr: " << t.ddr << ", camera: " << t.camera << std::endl;
+    const auto printMetric = [](const char* name, double value, const char* unit) {
+        std::cout << name << ": ";
+        if(value < 0)
+            std::cout << "unavailable";
+        else
+            std::cout << value << unit;
+        std::cout << std::endl;
+    };
+    printMetric("GPU utilization (whole GPU, vendor counter)", info.gpuUtilizationPercent, "%");
+    printMetric("DSP HVX activity (not awake residency or total NPU utilization)", info.dspHvxActivityPercent, "%");
+    printMetric("DSP HMX activity (not awake residency or total NPU utilization)", info.dspHmxActivityPercent, "%");
+    printMetric("DSP Q6 load (vendor counter)", info.dspQ6LoadKcps, " KCPS");
+    std::cout << "Power rails (separate readings; do not add):" << std::endl;
+    printMetric("  System", info.powerSystemWatts, " W");
+    printMetric("  Processor", info.powerProcessorWatts, " W");
+    printMetric("  PoE", info.powerPoeWatts, " W");
+    printMetric("  ToF", info.powerTofWatts, " W");
     std::cout << "----------------------------------------" << std::endl;
 }
 

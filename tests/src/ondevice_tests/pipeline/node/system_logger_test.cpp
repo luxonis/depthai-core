@@ -1,4 +1,6 @@
 #include <catch2/catch_all.hpp>
+#include <cmath>
+#include <limits>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
@@ -42,6 +44,9 @@ void testSystemLoggerNode(const dai::SystemInformation& info) {
 
 void testSystemLoggerNode(const dai::SystemInformationRVC4& info) {
     constexpr float kCpuUsageTolerance = 1e-4f;
+    const auto isUnavailableOrInRange = [](double value, double upperBound) {
+        return value == -1 || (std::isfinite(value) && value >= 0 && value <= upperBound);
+    };
 
     // DDR memory
     REQUIRE(info.ddrMemoryUsage.used > 0);
@@ -71,6 +76,16 @@ void testSystemLoggerNode(const dai::SystemInformationRVC4& info) {
     float total = info.chipTemperature.cpuss + info.chipTemperature.gpuss + info.chipTemperature.mdmss + info.chipTemperature.video + info.chipTemperature.ddr
                   + info.chipTemperature.camera;
     REQUIRE(info.chipTemperature.average == Catch::Approx(total / 6.0f).epsilon(0.01));
+
+    // Vendor counters may be unavailable on a platform/firmware combination.
+    REQUIRE(isUnavailableOrInRange(info.gpuUtilizationPercent, 100));
+    REQUIRE(isUnavailableOrInRange(info.dspHvxActivityPercent, 100));
+    REQUIRE(isUnavailableOrInRange(info.dspHmxActivityPercent, 100));
+    REQUIRE(isUnavailableOrInRange(info.dspQ6LoadKcps, std::numeric_limits<double>::max()));
+    REQUIRE(isUnavailableOrInRange(info.powerSystemWatts, std::numeric_limits<double>::max()));
+    REQUIRE(isUnavailableOrInRange(info.powerProcessorWatts, std::numeric_limits<double>::max()));
+    REQUIRE(isUnavailableOrInRange(info.powerPoeWatts, std::numeric_limits<double>::max()));
+    REQUIRE(isUnavailableOrInRange(info.powerTofWatts, std::numeric_limits<double>::max()));
 }
 
 TEST_CASE("Test SystemLogger Node") {
