@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -65,7 +67,8 @@ TEST_CASE("Camera sensor configs configurations", "[camera-hil]") {
                 }
                 dai::Pipeline pipeline{std::make_shared<dai::Device>(connectedDeviceInfo)};
                 auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
-                benchmarkIn->sendReportEveryNMessages(static_cast<uint32_t>(std::round(fpsVariant)));
+                // Average several frame intervals even when the sensor runs at 1 or 2 FPS.
+                benchmarkIn->sendReportEveryNMessages(std::max(4U, static_cast<uint32_t>(std::round(fpsVariant))));
                 auto camera = pipeline.create<dai::node::Camera>()->build(cameraFeatures.socket, std::pair(config.width, config.height), fpsVariant);
                 auto* output = camera->requestOutput(std::pair(config.width, config.height));
                 REQUIRE(output != nullptr);
