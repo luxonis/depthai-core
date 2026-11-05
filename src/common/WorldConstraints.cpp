@@ -237,6 +237,15 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
         distance.distanceMeters = distanceFromJson(entry, toMeters);
         constraints.socketDistances.push_back(distance);
     }
+    for(const auto& entry : json.value("markerSizes", nlohmann::json::array())) {
+        if(!entry.contains("size") || !entry.at("size").is_number()) {
+            throw std::invalid_argument("WorldConstraints: every marker size entry needs a numeric \"size\"");
+        }
+        MarkerSize size;
+        size.marker = markerIdFromJson(entry.at("marker"));
+        size.sizeMeters = entry.at("size").get<float>() * toMeters;
+        constraints.markerSizes.push_back(size);
+    }
     constraints.validate();
     return constraints;
 }
@@ -282,11 +291,16 @@ nlohmann::json WorldConstraints::toJson() const {
         socketDistancesJson.push_back({{"marker", distance.marker}, {"socket", toString(distance.socket)}, {"distance", distance.distanceMeters}});
     }
     json["socketDistances"] = socketDistancesJson;
+    auto markerSizesJson = nlohmann::json::array();
+    for(const auto& size : markerSizes) {
+        markerSizesJson.push_back({{"marker", size.marker}, {"size", size.sizeMeters}});
+    }
+    json["markerSizes"] = markerSizesJson;
     return json;
 }
 
 bool WorldConstraints::empty() const {
-    return markerDistances.empty() && socketDistances.empty();
+    return markerDistances.empty() && socketDistances.empty() && markerSizes.empty();
 }
 
 std::vector<int32_t> WorldConstraints::referencedMarkerIds() const {
@@ -297,6 +311,9 @@ std::vector<int32_t> WorldConstraints::referencedMarkerIds() const {
     }
     for(const auto& distance : socketDistances) {
         ids.insert(distance.marker);
+    }
+    for(const auto& size : markerSizes) {
+        ids.insert(size.marker);
     }
     return {ids.begin(), ids.end()};
 }
@@ -346,6 +363,20 @@ void WorldConstraints::validate() const {
             throw std::invalid_argument("WorldConstraints: " + what + " refers to a marker outside \"markers\"");
         }
         checkDistance(distance.distanceMeters, what);
+    }
+    std::set<int32_t> sizedMarkers;
+    for(const auto& size : markerSizes) {
+        const std::string what = "size of marker " + std::to_string(size.marker);
+        if(size.marker < 0) {
+            throw std::invalid_argument("WorldConstraints: " + what + " needs a non-negative marker id");
+        }
+        if(!markerKnown(size.marker)) {
+            throw std::invalid_argument("WorldConstraints: " + what + " refers to a marker outside \"markers\"");
+        }
+        if(!sizedMarkers.insert(size.marker).second) {
+            throw std::invalid_argument("WorldConstraints: " + what + " is given twice");
+        }
+        checkDistance(size.sizeMeters, what);
     }
     if(maxObservationSets == 0) {
         throw std::invalid_argument("WorldConstraints: maxObservationSets must be at least 1");

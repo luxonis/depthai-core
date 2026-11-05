@@ -60,10 +60,10 @@ MarkerType markerTypeFromString(const std::string& name);
  * Metric reference for dynamic calibration given through fiducial markers placed in the scene.
  *
  * Image correspondences cannot observe how long the baseline between two cameras is, only its direction and the
- * relative rotation. Known distances between marker reference points, and from marker reference points to camera
- * sockets, provide that missing scale. The marker size does not matter, only the reference points are used; a
- * marker needs to be seen by at least two of the calibrated cameras in the same synchronized frame set to count.
- * One constraint set describes markers of one type.
+ * relative rotation. Known distances between marker reference points, from marker reference points to camera
+ * sockets, and known marker sizes provide that missing scale. A marker of known size needs no measured distance:
+ * its image in one camera tells how far it is from that camera. A marker needs to be seen by at least two of the
+ * calibrated cameras in the same synchronized frame set to count. One constraint set describes markers of one type.
  *
  * Distances are stored in meters. The JSON form accepted by fromJson() is:
  *
@@ -73,10 +73,13 @@ MarkerType markerTypeFromString(const std::string& name);
  *       "lengthUnit": "m",                      // optional: "m", "cm", "mm" or "in" for every distance below
  *       "markers": [37, 43],                    // optional: markers that belong to the scene (others are ignored)
  *       "markerDistances": [ {"markers": [37, 43], "distance": 0.84} ],
- *       "socketDistances": [ {"marker": 37, "socket": "CAM_A", "distance": 1.68} ]
+ *       "socketDistances": [ {"marker": 37, "socket": "CAM_A", "distance": 1.68} ],
+ *       "markerSizes": [ {"marker": 37, "size": 0.10} ]
  *     }
  *
- * Either list may be empty; at least one distance is required for the constraints to have an effect.
+ * The size of an ArUco marker is the length of a side of its black square, the distance between two neighbouring
+ * corners; the size of a Luxonis Marker is the outer diameter of its lens ring. Any of the three lists may be empty;
+ * at least one entry is required for the constraints to have an effect.
  */
 struct WorldConstraints {
     /// Distance between the reference points of two markers.
@@ -96,6 +99,13 @@ struct WorldConstraints {
         DEPTHAI_SERIALIZE(MarkerSocketDistance, marker, socket, distanceMeters);
     };
 
+    /// Printed size of a marker: ARUCO the length of a side of the black square, LUXONIS the outer diameter of the ring.
+    struct MarkerSize {
+        int32_t marker = -1;
+        float sizeMeters = 0.0f;
+        DEPTHAI_SERIALIZE(MarkerSize, marker, sizeMeters);
+    };
+
     MarkerType markerType = MarkerType::ARUCO;
     /// ARUCO: the dictionary the markers were printed from. Ignored by other marker types.
     ArucoDictionary arucoDictionary = ArucoDictionary::DICT_4X4_50;
@@ -103,6 +113,7 @@ struct WorldConstraints {
     std::vector<int32_t> markerIds;
     std::vector<MarkerDistance> markerDistances;
     std::vector<MarkerSocketDistance> socketDistances;
+    std::vector<MarkerSize> markerSizes;
     /// How many synchronized frame sets with marker observations are kept for the calibration (oldest dropped).
     uint32_t maxObservationSets = 50;
 
@@ -114,28 +125,43 @@ struct WorldConstraints {
     /// The JSON form documented above, distances in meters.
     nlohmann::json toJson() const;
 
-    /// True when no distance is given.
+    /// True when neither a distance nor a marker size is given.
     bool empty() const;
-    /// markerIds together with every marker a distance refers to, sorted, without duplicates.
+    /// markerIds together with every marker a distance or a size refers to, sorted, without duplicates.
     std::vector<int32_t> referencedMarkerIds() const;
     /// Sockets referred to by socketDistances, sorted, without duplicates.
     std::vector<CameraBoardSocket> referencedSockets() const;
-    /// Throws std::invalid_argument when a distance is not positive, refers to the same marker twice, or names
-    /// a marker outside markerIds (when markerIds is given) or the AUTO socket.
+    /// Throws std::invalid_argument when a distance or size is not positive, a distance refers to the same marker
+    /// twice, a marker has two sizes, or an entry names a marker outside markerIds (when markerIds is given) or the
+    /// AUTO socket.
     void validate() const;
 
-    DEPTHAI_SERIALIZE(WorldConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, maxObservationSets);
+    DEPTHAI_SERIALIZE(WorldConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, markerSizes, maxObservationSets);
 
    private:
     static WorldConstraints parseJson(const nlohmann::json& json);
 };
 
 /**
- * Marker reference points found in one synchronized set of frames: pixel coordinates per marker id and camera socket.
+ * Image of a marker's shape in one camera, in pixels: what a known marker size is measured against.
+ */
+struct MarkerOutline {
+    /// ARUCO: the 4 corners, clockwise from the marker's top-left corner.
+    std::vector<std::array<float, 2>> corners;
+    /// LUXONIS: points on the outer and the inner edge of the lens ring.
+    std::vector<std::array<float, 2>> outerEdge;
+    std::vector<std::array<float, 2>> innerEdge;
+    DEPTHAI_SERIALIZE(MarkerOutline, corners, outerEdge, innerEdge);
+};
+
+/**
+ * Markers found in one synchronized set of frames, per marker id and camera socket: reference points in pixels and,
+ * for the markers with a known size, their outlines.
  */
 struct MarkerObservationSet {
     std::map<int32_t, std::map<CameraBoardSocket, std::array<float, 2>>> centers;
-    DEPTHAI_SERIALIZE(MarkerObservationSet, centers);
+    std::map<int32_t, std::map<CameraBoardSocket, MarkerOutline>> outlines;
+    DEPTHAI_SERIALIZE(MarkerObservationSet, centers, outlines);
 };
 
 }  // namespace dai

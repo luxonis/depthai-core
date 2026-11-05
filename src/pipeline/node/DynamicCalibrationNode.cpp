@@ -452,14 +452,14 @@ dcl::MarkerSpec DclUtils::toDclMarkerSpec(const WorldConstraints& constraints) {
     throw std::invalid_argument("DynamicCalibration: marker type " + toString(constraints.markerType) + " has no detector");
 }
 
-std::map<int32_t, std::array<float, 2>> DclUtils::detectMarkerCenters(const dcl::ImageData& image, const WorldConstraints& constraints) {
-    std::map<int32_t, std::array<float, 2>> centers;
+std::map<int32_t, dcl::MarkerDetection> DclUtils::detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints) {
+    std::map<int32_t, dcl::MarkerDetection> found;
     auto detections = dcl::detectMarkers(image, toDclMarkerSpec(constraints));
     if(!detections.passed()) {
         static std::once_flag reported;
         std::call_once(
             reported, [&] { Logging::getInstance().logger.warn("Marker detection failed, world constraints are not applied: {}", detections.errorMessage()); });
-        return centers;
+        return found;
     }
     const auto wanted = constraints.referencedMarkerIds();
     std::set<int32_t> ambiguous;
@@ -468,14 +468,38 @@ std::map<int32_t, std::array<float, 2>> DclUtils::detectMarkerCenters(const dcl:
             continue;
         }
         // A marker id that appears more than once in one image is ambiguous: drop it.
-        if(centers.count(detection.id) != 0) {
-            centers.erase(detection.id);
+        if(found.count(detection.id) != 0) {
+            found.erase(detection.id);
             ambiguous.insert(detection.id);
             continue;
         }
-        centers[detection.id] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
+        found[detection.id] = detection;
+    }
+    return found;
+}
+
+std::map<int32_t, std::array<float, 2>> DclUtils::detectMarkerCenters(const dcl::ImageData& image, const WorldConstraints& constraints) {
+    std::map<int32_t, std::array<float, 2>> centers;
+    for(const auto& [id, detection] : detectConfiguredMarkers(image, constraints)) {
+        centers[id] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
     }
     return centers;
+}
+
+MarkerOutline DclUtils::toMarkerOutline(const dcl::MarkerDetection& detection) {
+    const auto toFloats = [](const std::vector<dcl::Point2>& points) {
+        std::vector<std::array<float, 2>> converted;
+        converted.reserve(points.size());
+        for(const auto& point : points) {
+            converted.push_back({static_cast<float>(point[0]), static_cast<float>(point[1])});
+        }
+        return converted;
+    };
+    MarkerOutline outline;
+    outline.corners = toFloats(detection.corners);
+    outline.outerEdge = toFloats(detection.outerEdge);
+    outline.innerEdge = toFloats(detection.innerEdge);
+    return outline;
 }
 
 dcl::WorldConstraints DclUtils::buildWorldConstraints(const WorldConstraints& constraints,
@@ -521,10 +545,42 @@ dcl::WorldConstraints DclUtils::buildWorldConstraints(const WorldConstraints& co
             }
             world.sensorDistances.push_back({it->second, sensor, static_cast<double>(distance.distanceMeters)});
         }
+        for(const auto& size : constraints.markerSizes) {
+            const auto it = pointIndexOfMarker.find(size.marker);
+            const auto outlines = set.outlines.find(size.marker);
+            if(it == pointIndexOfMarker.end() || outlines == set.outlines.end()) {
+                continue;
+            }
+            const auto& centers = set.centers.at(size.marker);
+            for(const auto& [socket, outline] : outlines->second) {
+                auto sensor = sensorForSocket(socket);
+                const auto center = centers.find(socket);
+                if(!sensor || center == centers.end()) {
+                    continue;
+                }
+                const auto toPoints = [](const std::vector<std::array<float, 2>>& points) {
+                    std::vector<dcl::Point2> converted;
+                    converted.reserve(points.size());
+                    for(const auto& point : points) {
+                        converted.push_back({static_cast<double>(point[0]), static_cast<double>(point[1])});
+                    }
+                    return converted;
+                };
+                dcl::MarkerDetection detection;
+                detection.id = size.marker;
+                detection.center = {static_cast<double>(center->second[0]), static_cast<double>(center->second[1])};
+                detection.corners = toPoints(outline.corners);
+                detection.outerEdge = toPoints(outline.outerEdge);
+                detection.innerEdge = toPoints(outline.innerEdge);
+                world.markerSizes.push_back(
+                    {it->second, sensor, toDclMarkerSpec(constraints).type, std::move(detection), static_cast<double>(size.sizeMeters)});
+            }
+        }
     }
     counts.points = world.points.size();
     counts.pointDistances = world.pointDistances.size();
     counts.sensorDistances = world.sensorDistances.size();
+    counts.markerSizes = world.markerSizes.size();
     if(summary) {
         *summary = counts;
     }
@@ -742,7 +798,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                       productName,
                       boardName);
     }
-    // Marker distances give the baseline lengths a metric reference that the image features cannot provide.
+    // Marker distances and sizes give the calibration a metric reference that the image features cannot provide.
     dcl::WorldConstraints worldConstraints;
     if(properties.worldConstraints && !markerObservations.empty()) {
         const auto sensorForSocket = [this](CameraBoardSocket socket) -> std::shared_ptr<const dcl::CameraSensorHandle> {
@@ -758,11 +814,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         };
         DclUtils::WorldConstraintsSummary summary;
         worldConstraints = DclUtils::buildWorldConstraints(*properties.worldConstraints, markerObservations, sensorForSocket, &summary);
-        logger->info("Marker constraints: {} frame sets, {} scene points, {} marker distances, {} socket distances",
+        logger->info("Marker constraints: {} frame sets, {} scene points, {} marker distances, {} socket distances, {} marker sizes",
                      summary.observationSets,
                      summary.points,
                      summary.pointDistances,
-                     summary.sensorDistances);
+                     summary.sensorDistances,
+                     summary.markerSizes);
     } else if(properties.worldConstraints) {
         logger->debug("Marker constraints configured but no marker was seen by two cameras yet, calibrating without a metric reference");
     }
@@ -936,8 +993,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     if(properties.worldConstraints) {
         MarkerObservationSet observations;
         for(size_t idx = 0; idx < images.size(); ++idx) {
-            for(const auto& [markerId, center] : DclUtils::detectMarkerCenters(images[idx].second, *properties.worldConstraints)) {
-                observations.centers[markerId][connectedSensors[idx].socket] = center;
+            for(const auto& [markerId, detection] : DclUtils::detectConfiguredMarkers(images[idx].second, *properties.worldConstraints)) {
+                const auto socket = connectedSensors[idx].socket;
+                observations.centers[markerId][socket] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
+                if(!properties.worldConstraints->markerSizes.empty()) {
+                    observations.outlines[markerId][socket] = DclUtils::toMarkerOutline(detection);
+                }
             }
         }
         size_t usableMarkers = 0;

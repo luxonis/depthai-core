@@ -8,5 +8,9 @@
     ],
     "socketDistances": [
         {"marker": 37, "socket": "CAM_A", "distance": 1.68}
+    ],
+    "markerSizes": [
+        {"marker": 37, "size": 0.15},
+        {"marker": 43, "size": 0.15}
     ]
 }

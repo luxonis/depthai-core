@@ -18,7 +18,8 @@ const char* kWorldJson = R"({
     "lengthUnit": "cm",
     "markers": [37, 43],
     "markerDistances": [{"markers": [37, 43], "distance": 84}],
-    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 168}]
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 168}],
+    "markerSizes": [{"marker": 43, "size": 15}]
 })";
 
 std::shared_ptr<dcl::CameraCalibrationHandle> dclCalibration(double x) {
@@ -57,6 +58,12 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
     const auto fromWire = wire.get<dai::WorldConstraints>();
     REQUIRE(fromWire.socketDistances[0].socket == Socket::CAM_A);
     REQUIRE(fromWire.markerDistances[0].distanceMeters == Catch::Approx(0.84f));
+
+    REQUIRE(constraints.markerSizes.size() == 1);
+    REQUIRE(constraints.markerSizes[0].marker == 43);
+    REQUIRE(constraints.markerSizes[0].sizeMeters == Catch::Approx(0.15f));
+    REQUIRE(roundTrip.markerSizes[0].sizeMeters == Catch::Approx(0.15f));
+    REQUIRE(fromWire.markerSizes[0].marker == 43);
 
     // Alternative spellings.
     const auto alternative = dai::WorldConstraints::fromJsonString(
@@ -188,10 +195,51 @@ TEST_CASE("DynamicCalibration assembles world constraints from marker observatio
     REQUIRE(withImageInput.sensorDistances[0].sensor == sensors[Socket::CAM_C]);
     REQUIRE(withImageInput.sensorDistances[0].distanceMeters == Catch::Approx(1.2));
 
+    // A marker size adds one observation per sensor that saw the marker of a scene point.
+    auto sized = constraints;
+    sized.markerDistances.clear();
+    sized.socketDistances.clear();
+    sized.markerSizes = {{43, 0.2f}};
+    auto outlined = sets;
+    dai::MarkerOutline outline;
+    outline.corners = {{{1.f, 2.f}}, {{3.f, 2.f}}, {{3.f, 4.f}}, {{1.f, 4.f}}};
+    outlined[0].outlines[43] = {{Socket::CAM_B, outline}, {Socket::CAM_C, outline}};
+    outlined[1].outlines[43] = {{Socket::CAM_B, outline}};  // this marker is no scene point in frame set 1
+    DclUtils::WorldConstraintsSummary sizedSummary;
+    const auto withSizes = DclUtils::buildWorldConstraints(sized, outlined, sensorForSocket, &sizedSummary);
+    REQUIRE(sizedSummary.markerSizes == 2);
+    REQUIRE(withSizes.markerSizes.size() == 2);
+    REQUIRE(withSizes.markerSizes[0].pointIndex == 1);
+    REQUIRE(withSizes.markerSizes[0].sensor == sensors[Socket::CAM_B]);
+    REQUIRE(withSizes.markerSizes[1].sensor == sensors[Socket::CAM_C]);
+    REQUIRE(withSizes.markerSizes[0].type == dcl::MarkerType::ARUCO);
+    REQUIRE(withSizes.markerSizes[0].sizeMeters == Catch::Approx(0.2));
+    REQUIRE(withSizes.markerSizes[0].detection.center[0] == Catch::Approx(600.0));
+    REQUIRE(withSizes.markerSizes[0].detection.corners.size() == 4);
+    REQUIRE(withSizes.markerSizes[0].detection.corners[2][1] == Catch::Approx(4.0));
+    REQUIRE_FALSE(withSizes.empty());
+    // Without outlines there is nothing to measure the size against.
+    REQUIRE(DclUtils::buildWorldConstraints(sized, sets, sensorForSocket).markerSizes.empty());
+
     // Nothing seen by two cameras: no constraints at all.
     std::deque<dai::MarkerObservationSet> single(1);
     single[0].centers[37] = {{Socket::CAM_B, {100.f, 200.f}}};
     REQUIRE(DclUtils::buildWorldConstraints(constraints, single, sensorForSocket).empty());
+}
+
+TEST_CASE("WorldConstraints validates marker sizes", "[WorldConstraints]") {
+    using Constraints = dai::WorldConstraints;
+    const auto sizesOnly = Constraints::fromJsonString(R"({"lengthUnit": "mm", "markerSizes": [{"marker": 3, "size": 100}]})");
+    REQUIRE_FALSE(sizesOnly.empty());
+    REQUIRE(sizesOnly.markerSizes[0].sizeMeters == Catch::Approx(0.1f));
+    REQUIRE(sizesOnly.referencedMarkerIds() == std::vector<int32_t>{3});
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": -0.1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"size": 0.1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": -1, "size": 0.1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markers": [1], "markerSizes": [{"marker": 3, "size": 0.1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(Constraints::fromJsonString(R"({"markerSizes": [{"marker": 3, "size": 0.1}, {"marker": 3, "size": 0.2}]})"), std::invalid_argument);
 }
 
 namespace {
@@ -273,6 +321,10 @@ TEST_CASE("DynamicCalibration detects Luxonis Marker centers through DCL", "[Wor
     }
     const auto centers = DclUtils::detectMarkerCenters(image, constraints);
     REQUIRE(centers.size() == 3);
+    const auto outline = DclUtils::toMarkerOutline(DclUtils::detectConfiguredMarkers(image, constraints).at(0));
+    REQUIRE(outline.corners.size() == 4);
+    REQUIRE_FALSE(outline.outerEdge.empty());
+    REQUIRE_FALSE(outline.innerEdge.empty());
     for(const auto& [id, uv] : truth) {
         REQUIRE(centers.count(id) == 1);
         REQUIRE(centers.at(id)[0] == Catch::Approx(uv[0]).margin(0.3));

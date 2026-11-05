@@ -52,22 +52,29 @@ struct DclUtils {
     /// The marker detector request for a constraint set. Throws std::invalid_argument for a marker type the library cannot detect.
     static dcl::MarkerSpec toDclMarkerSpec(const WorldConstraints& constraints);
 
-    /// Reference points of the configured markers in one image, keyed by marker id. Markers outside the configuration are dropped.
+    /// The configured markers found in one image, keyed by marker id. Markers outside the configuration are dropped.
+    static std::map<int32_t, dcl::MarkerDetection> detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints);
+
+    /// Reference points of the configured markers in one image, keyed by marker id.
     static std::map<int32_t, std::array<float, 2>> detectMarkerCenters(const dcl::ImageData& image, const WorldConstraints& constraints);
+
+    /// The shape of a detection, as kept in a MarkerObservationSet.
+    static MarkerOutline toMarkerOutline(const dcl::MarkerDetection& detection);
 
     struct WorldConstraintsSummary {
         size_t observationSets = 0;
         size_t points = 0;
         size_t pointDistances = 0;
         size_t sensorDistances = 0;
+        size_t markerSizes = 0;
     };
 
     /**
      * Turns the collected marker centers into DCL world constraints. Every frame set contributes one scene
      * point per marker that at least two sensors saw, the configured marker distances between the points of
-     * the same frame set, and the configured socket distances for points of that frame set. sensorForSocket
-     * returns the DCL sensor of a socket, or nullptr for sockets the node does not know, whose constraints are
-     * skipped.
+     * the same frame set, the configured socket distances for points of that frame set, and one size observation
+     * per sensor that saw a point's marker when that marker has a configured size. sensorForSocket returns the DCL
+     * sensor of a socket, or nullptr for sockets the node does not know, whose constraints are skipped.
      */
     static dcl::WorldConstraints buildWorldConstraints(const WorldConstraints& constraints,
                                                        const std::deque<MarkerObservationSet>& observationSets,

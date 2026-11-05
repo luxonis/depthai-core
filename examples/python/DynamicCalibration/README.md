@@ -139,8 +139,8 @@ Mean Sampson error current    = 0.38 px
 **Script:** `calibration_dynamic_world_constraints.py` (constraints file: `world_constraints.json`)
 
 **What it does:**
-- Loads a JSON description of fiducial markers in the scene (ArUco / AprilTag today, `markerType` selects the kind): measured distances between marker centers and from
-  marker centers to camera sockets (`setWorldConstraintsFromFile`, also available on `AutoCalibration`)
+- Loads a JSON description of fiducial markers in the scene (ArUco / AprilTag or Luxonis Markers, `markerType` selects the kind): measured distances between marker centers,
+  from marker centers to camera sockets, and marker sizes (`setWorldConstraintsFromFile`, also available on `AutoCalibration`)
 - Detects the markers in every loaded image set; their centers are collected together with the image features
 - Runs the calibration: image features fix the relative pose except for the **vergence**, the turn about the
   axis perpendicular to the baseline and the optical axis, which moves image points along the epipolar lines
@@ -155,9 +155,14 @@ Mean Sampson error current    = 0.38 px
     "lengthUnit": "m",
     "markers": [37, 43],
     "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
-    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}]
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}],
+    "markerSizes": [{"marker": 37, "size": 0.15}]
 }
 ```
+
+Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
+marker tells each camera how far away the marker is. The size of an ArUco marker is the length of a side of its
+black square, the size of a Luxonis Marker is the outer diameter of its ring.
 
 The same description can be handed to the implicit `AutoCalibration` node that a plain pipeline creates at
 build time, without creating any node: `pipeline.setAutoCalibrationWorldConstraintsFromFile("world_constraints.json")`
