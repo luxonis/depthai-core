@@ -29,6 +29,7 @@ void bind_align(pybind11::module& m, void* pCallstack) {
     // Properties
     alignProperties.def_readwrite("initialConfig", &AlignProperties::initialConfig, DOC(dai, AlignProperties, initialConfig))
         .def_readwrite("pool", &AlignProperties::pool)
+        .def_readwrite("numFramesPool", &AlignProperties::numFramesPool, "Deprecated: use pool.numFramesPool instead; zero means automatic.")
         .def_readwrite("interpolation", &AlignProperties::interpolation, DOC(dai, AlignProperties, interpolation));
 
     // Node

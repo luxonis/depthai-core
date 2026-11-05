@@ -35,8 +35,14 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     /// Initial configuration for ImageManip node
     ImageManipConfig initialConfig;
 
-    /// Output frame pool configuration; all fields default to automatic.
-    FramePoolProperties pool;
+    /// Deprecated frame capacity fallback for pool.outputFrameSize, in bytes; zero means automatic.
+    [[deprecated("Use pool.outputFrameSize instead")]] int outputFrameSize = 0;
+
+    /// Deprecated frame count fallback for pool.numFramesPool; zero means automatic.
+    [[deprecated("Use pool.numFramesPool instead")]] int numFramesPool = 0;
+
+    /// Deprecated memory limit fallback for pool.maxPoolSize, in bytes; zero means automatic.
+    [[deprecated("Use pool.maxPoolSize instead")]] unsigned int maxPoolSize = 0;
 
     /// Backend preference for ImageManip. Only applied on RVC4.
     Backend backend = Backend::AUTO;
@@ -44,9 +50,13 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     /// Performance mode for ImageManip. Only applied on RVC4.
     PerformanceMode performanceMode = PerformanceMode::PERFORMANCE;
 
+    /// Pool configuration. Nonzero fields override legacy fields; zero falls back to the legacy value.
+    /// Legacy fields also default to zero (automatic). Prefer pool for new code.
+    FramePoolProperties pool{};
+
     ~ImageManipProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, pool, backend, performanceMode);
+DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, maxPoolSize, backend, performanceMode, pool);
 
 }  // namespace dai

@@ -43,6 +43,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     stereoDepthProperties.def_readwrite("enableFrameSync", &dai::StereoDepthProperties::enableFrameSync, DOC(dai, StereoDepthProperties, enableFrameSync))
         .def_readwrite("initialConfig", &StereoDepthProperties::initialConfig, DOC(dai, StereoDepthProperties, initialConfig))
         .def_readwrite("pool", &StereoDepthProperties::pool)
+        .def_readwrite("numFramesPool", &StereoDepthProperties::numFramesPool, "Deprecated: use pool.numFramesPool instead; zero means automatic.")
         .def_readwrite("depthAlignCamera", &StereoDepthProperties::depthAlignCamera, DOC(dai, StereoDepthProperties, depthAlignCamera))
         .def_readwrite("enableRectification", &StereoDepthProperties::enableRectification, DOC(dai, StereoDepthProperties, enableRectification))
         .def_readwrite("rectifyEdgeFillColor", &StereoDepthProperties::rectifyEdgeFillColor, DOC(dai, StereoDepthProperties, rectifyEdgeFillColor))

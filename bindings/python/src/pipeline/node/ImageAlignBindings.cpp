@@ -29,6 +29,7 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
     // Properties
     imageAlignProperties.def_readwrite("initialConfig", &ImageAlignProperties::initialConfig, DOC(dai, ImageAlignProperties, initialConfig))
         .def_readwrite("pool", &ImageAlignProperties::pool)
+        .def_readwrite("numFramesPool", &ImageAlignProperties::numFramesPool, "Deprecated: use pool.numFramesPool instead; zero means automatic.")
         .def_readwrite("numShaves", &ImageAlignProperties::numShaves, DOC(dai, ImageAlignProperties, numShaves))
         .def_readwrite("warpHwIds", &ImageAlignProperties::warpHwIds, DOC(dai, ImageAlignProperties, warpHwIds))
         .def_readwrite("alignHeight", &ImageAlignProperties::alignHeight, DOC(dai, ImageAlignProperties, alignHeight))

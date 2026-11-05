@@ -1,4 +1,3 @@
-#include "depthai/utility/FramePool.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
 #include <fmt/format.h>  // fmt::format
@@ -11,6 +10,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/utility/FramePool.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -44,7 +44,7 @@ StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
-    dai::utility::validateFramePoolCount(properties.pool.numFramesPool);
+    properties.pool = dai::utility::reconcileFramePool(properties.pool, properties.numFramesPool);
     properties.initialConfig = *initialConfig;
     return properties;
 }
@@ -151,11 +151,13 @@ void StereoDepth::setRuntimeModeSwitch(bool enable) {
 void StereoDepth::setPoolProperties(const FramePoolProperties& pool) {
     dai::utility::validateFramePoolCount(pool.numFramesPool);
     properties.pool = pool;
+    properties.numFramesPool = 0;
 }
 
 void StereoDepth::setNumFramesPool(int numFramesPool) {
     if(numFramesPool < 0 || numFramesPool == 1) throw std::invalid_argument("numFramesPool must be 0 (automatic) or at least 2");
     properties.pool.numFramesPool = numFramesPool;
+    properties.numFramesPool = numFramesPool;
 }
 
 void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemorySlices) {

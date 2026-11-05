@@ -20,7 +20,7 @@ TEST_CASE("Frame pool properties default to automatic and roundtrip", "[frame-po
         REQUIRE(properties.pool.numFramesPool == 0);
         REQUIRE(properties.pool.maxPoolSize == 0);
         properties.pool = {12345, 6, 99999};
-        for(auto type : {dai::SerializationType::LIBNOP, dai::SerializationType::JSON}) {
+        for(auto type : {dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK}) {
             const auto bytes = dai::utility::serialize(properties, type);
             decltype(properties) decoded;
             dai::utility::deserialize(bytes, decoded, type);
@@ -128,7 +128,8 @@ TEST_CASE("Automatic frame pools fit at least two maximum-resolution buffers", "
 }
 
 namespace {
-template <typename T> struct PoolPropertiesProbe : T {
+template <typename T>
+struct PoolPropertiesProbe : T {
     using T::getProperties;
 };
 }  // namespace
@@ -166,4 +167,29 @@ TEST_CASE("Full-resolution RVC4 RGB output resolves to exactly two automatic fra
     const auto resolved = resolveFramePool({}, size + padding, fps);
     REQUIRE(resolved.numFramesPool == 2);
     REQUIRE(resolved.maxPoolSize == (size + padding) * 2);
+}
+
+TEST_CASE("Legacy pool settings are reconciled before node serialization", "[frame-pool]") {
+    const auto check = [](auto node) {
+        node->properties.numFramesPool = 7;
+        REQUIRE(node->getProperties().pool.numFramesPool == 7);
+        node->properties.pool.numFramesPool = 9;
+        REQUIRE(node->getProperties().pool.numFramesPool == 9);
+        node->setPoolProperties({});
+        REQUIRE(node->getProperties().pool.numFramesPool == 0);
+        node->properties.numFramesPool = -1;
+        REQUIRE_THROWS_AS(node->getProperties(), std::invalid_argument);
+    };
+    check(std::make_shared<PoolPropertiesProbe<dai::node::ImageManip>>());
+    check(std::make_shared<PoolPropertiesProbe<dai::node::StereoDepth>>());
+    check(std::make_shared<PoolPropertiesProbe<dai::node::ImageAlign>>());
+    check(std::make_shared<PoolPropertiesProbe<dai::node::Align>>());
+    PoolPropertiesProbe<dai::node::ImageManip> manip;
+    manip.properties.outputFrameSize = 8192;
+    manip.properties.maxPoolSize = 65536;
+    REQUIRE(manip.getProperties().pool.outputFrameSize == 8192);
+    REQUIRE(manip.getProperties().pool.maxPoolSize == 65536);
+    manip.setPoolProperties({});
+    REQUIRE(manip.getProperties().pool.outputFrameSize == 0);
+    REQUIRE(manip.getProperties().pool.maxPoolSize == 0);
 }

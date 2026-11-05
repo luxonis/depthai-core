@@ -17,6 +17,23 @@ inline void validateFramePoolCount(std::uint32_t count) {
     if(count == 1) throw std::invalid_argument("Frame pool numFramesPool must be 0 (automatic) or at least 2");
 }
 
+/** Merge deprecated property fields into automatic fields of the new configuration.
+ * Explicit new values take precedence. Zero in both interfaces means automatic.
+ */
+inline FramePoolProperties reconcileFramePool(FramePoolProperties pool, int numFramesPool, int outputFrameSize = 0, unsigned int maxPoolSize = 0) {
+    if(pool.numFramesPool == 0) {
+        if(numFramesPool < 0) throw std::invalid_argument("numFramesPool must be nonnegative");
+        pool.numFramesPool = static_cast<std::uint32_t>(numFramesPool);
+    }
+    if(pool.outputFrameSize == 0) {
+        if(outputFrameSize < 0) throw std::invalid_argument("outputFrameSize must be nonnegative");
+        pool.outputFrameSize = static_cast<std::uint64_t>(outputFrameSize);
+    }
+    if(pool.maxPoolSize == 0) pool.maxPoolSize = maxPoolSize;
+    validateFramePoolCount(pool.numFramesPool);
+    return pool;
+}
+
 /** Resolve one pool without modifying the requested configuration.
  * Automatic count targets 100 ms of buffering (2..30 frames), limited to a soft
  * platform budget (192 MiB by default), expanded to fit at least two buffers.
@@ -43,8 +60,7 @@ inline FramePoolProperties resolveFramePool(const FramePoolProperties& requested
         const auto automaticMinimum = minimumFrames;
         if(!requested.maxPoolSize && resolved.outputFrameSize > std::numeric_limits<std::uint64_t>::max() / automaticMinimum)
             throw std::overflow_error("Frame pool automatic budget multiplication overflow");
-        const auto budget = requested.maxPoolSize ? requested.maxPoolSize
-                                                 : std::max(automaticBudget, resolved.outputFrameSize * automaticMinimum);
+        const auto budget = requested.maxPoolSize ? requested.maxPoolSize : std::max(automaticBudget, resolved.outputFrameSize * automaticMinimum);
         const auto affordable = budget / resolved.outputFrameSize;
         resolved.numFramesPool = std::max(minimumFrames, static_cast<std::uint32_t>(std::min<std::uint64_t>(target, affordable)));
     }

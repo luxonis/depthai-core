@@ -38,6 +38,9 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
 
     imageManipProperties.def_readwrite("initialConfig", &ImageManipProperties::initialConfig)
         .def_readwrite("pool", &ImageManipProperties::pool)
+        .def_readwrite("numFramesPool", &ImageManipProperties::numFramesPool, "Deprecated: use pool.numFramesPool instead; zero means automatic.")
+        .def_readwrite("outputFrameSize", &ImageManipProperties::outputFrameSize, "Deprecated: use pool.outputFrameSize instead; zero means automatic.")
+        .def_readwrite("maxPoolSize", &ImageManipProperties::maxPoolSize, "Deprecated: use pool.maxPoolSize instead; zero means automatic.")
         .def_readwrite("backend", &ImageManipProperties::backend)
         .def_readwrite("performanceMode", &ImageManipProperties::performanceMode);
 

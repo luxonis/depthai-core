@@ -100,8 +100,8 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     bool enableRuntimeStereoModeSwitch = false;
 
-    /// Frame pool configuration; all fields default to automatic.
-    FramePoolProperties pool;
+    /// Deprecated frame count fallback for pool.numFramesPool; zero means automatic.
+    [[deprecated("Use pool.numFramesPool instead")]] int numFramesPool = 0;
 
     /**
      * Number of shaves reserved for stereo depth post processing.
@@ -196,6 +196,10 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     std::optional<float> alphaScaling;
 
+    /// Pool configuration. Nonzero fields override legacy fields; zero falls back to the legacy value.
+    /// Legacy fields also default to zero (automatic). Prefer pool for new code.
+    FramePoolProperties pool{};
+
     ~StereoDepthProperties() override;
 };
 
@@ -211,7 +215,7 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       outKeepAspectRatio,
                       mesh,
                       enableRuntimeStereoModeSwitch,
-                      pool,
+                      numFramesPool,
                       numPostProcessingShaves,
                       numPostProcessingMemorySlices,
                       focalLengthFromCalibration,
@@ -222,5 +226,6 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       disparityToDepthUseSpecTranslation,
                       rectificationUseSpecTranslation,
                       depthAlignmentUseSpecTranslation,
-                      alphaScaling);
+                      alphaScaling,
+                      pool);
 }  // namespace dai

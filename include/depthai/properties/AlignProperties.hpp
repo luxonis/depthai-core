@@ -13,15 +13,19 @@ namespace dai {
 struct AlignProperties : PropertiesSerializable<Properties, AlignProperties> {
     AlignConfig initialConfig;
 
-    /// Frame pool configuration; all fields default to automatic.
-    FramePoolProperties pool;
+    /// Deprecated frame count fallback for pool.numFramesPool; zero means automatic.
+    [[deprecated("Use pool.numFramesPool instead")]] int numFramesPool = 0;
 
     /// Image interpolation. AUTO preserves the existing backend default.
     Interpolation interpolation = Interpolation::AUTO;
 
+    /// Pool configuration. Nonzero fields override legacy fields; zero falls back to the legacy value.
+    /// Legacy fields also default to zero (automatic). Prefer pool for new code.
+    FramePoolProperties pool{};
+
     ~AlignProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(AlignProperties, initialConfig, pool, interpolation);
+DEPTHAI_SERIALIZE_EXT(AlignProperties, initialConfig, numFramesPool, interpolation, pool);
 
 }  // namespace dai
