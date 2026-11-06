@@ -1,5 +1,6 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraFeatures.hpp"
+#include "depthai/common/BsplineCalibration.hpp"
 #include "depthai/common/CameraInfo.hpp"
 #include "depthai/common/ChipTemperature.hpp"
 #include "depthai/common/ChipTemperatureRVC4.hpp"
@@ -34,6 +35,8 @@ namespace dai {
 DEPTHAI_SERIALIZE_DEFINE(ImgFrameCapability)
 DEPTHAI_SERIALIZE_EXT_DEFINE(CameraSensorConfig)
 DEPTHAI_SERIALIZE_DEFINE(CameraFeatures)
+DEPTHAI_SERIALIZE_DEFINE(BsplineCameraCalibration)
+DEPTHAI_SERIALIZE_DEFINE(BsplineStereoCalibration)
 DEPTHAI_SERIALIZE_DEFINE(CameraInfo)
 DEPTHAI_SERIALIZE_EXT_DEFINE(ChipTemperature)
 DEPTHAI_SERIALIZE_EXT_DEFINE(ChipTemperatureRVC4)

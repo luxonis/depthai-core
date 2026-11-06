@@ -195,6 +195,12 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     std::optional<float> alphaScaling;
 
+    /**
+     * Lens model used for rectification. AUTO keeps legacy rectification, even when a B-spline calibration is stored.
+     */
+    enum class RectificationModel { AUTO = 0, LEGACY = AUTO, BSPLINE = 1 };
+    RectificationModel rectificationModel = RectificationModel::AUTO;
+
     ~StereoDepthProperties() override;
 };
 
@@ -221,7 +227,8 @@ DEPTHAI_SERIALIZE_EXT_DECL(StereoDepthProperties,
                            disparityToDepthUseSpecTranslation,
                            rectificationUseSpecTranslation,
                            depthAlignmentUseSpecTranslation,
-                           alphaScaling);
+                           alphaScaling,
+                           rectificationModel);
 }  // namespace dai
 
 extern template struct dai::PropertiesSerializable<dai::Properties, dai::StereoDepthProperties>;

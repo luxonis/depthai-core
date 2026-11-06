@@ -28,7 +28,7 @@ void fromJson(const nlohmann::json& j, T& t, std::index_sequence<I...>) {
 template <typename Members, typename T, std::size_t... I>
 void toJsonOptional(nlohmann::json& j, const T& t, std::index_sequence<I...>) {
     const char* const* names = depthaiSerializeFieldNames(&t);
-    ((void)nlohmann::to_json(j[names[I]], Members::template At<I>::Resolve(t)), ...);
+    ((void)(j[names[I]] = Members::template At<I>::Resolve(t)), ...);  // assignment, so std::optional members use the adl_serializer
 }
 
 template <typename Members, typename T, std::size_t... I>

@@ -249,6 +249,14 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Rectify input images or not.
      */
     void setRectification(bool enable);
+    using RectificationModel = StereoDepthProperties::RectificationModel;
+    /** Select LEGACY (also the AUTO default) or an independent stored BSPLINE
+     * calibration. Installing a spline never changes the default selection.
+     * BSPLINE is RVC4 only; device generates and
+     * caches the warp on initialization/calibration update, never per frame.
+     * Requires native calibration resolution and RECTIFIED_LEFT/RIGHT alignment.
+     */
+    void setRectificationModel(RectificationModel model);
 
     /**
      * Computes and combines disparities in both L-R and R-L directions, and combine them.

@@ -878,6 +878,15 @@ dai::ImuCalibrationParams CalibrationHandler::getImuParameters() const {
     return params;
 }
 
+void CalibrationHandler::setBsplineStereoCalibration(const BsplineStereoCalibration& calibration) {
+    calibration.validate();
+    eepromData.bsplineStereoCalibration = calibration;
+}
+std::optional<BsplineStereoCalibration> CalibrationHandler::getBsplineStereoCalibration() const {
+    return eepromData.bsplineStereoCalibration;
+}
+void CalibrationHandler::clearBsplineStereoCalibration() { eepromData.bsplineStereoCalibration.reset(); }
+
 bool CalibrationHandler::eepromToJsonFile(std::filesystem::path destPath) const {
     nlohmann::json j = eepromData;
     std::ofstream ob(destPath);
