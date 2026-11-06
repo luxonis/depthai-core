@@ -26,7 +26,7 @@ int main() {
     gpu->initialConfig->setConfidenceThreshold(10);
     // AUTO defaults to GPU_CPU on supported devices; GPU keeps matching entirely on the GPU.
     gpu->setBackend(dai::node::StereoDepth::Backend::GPU_CPU);
-    gpu->initialConfig->postProcessing.temporalFilter.enable = true;
+    gpu->initialConfig->postProcessing.temporalFilter.enable = false;
 
     auto dispQ = gpu->disparity.createOutputQueue();
 

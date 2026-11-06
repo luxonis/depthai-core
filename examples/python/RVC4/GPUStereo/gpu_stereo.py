@@ -21,10 +21,10 @@ with dai.Pipeline(device) as pipeline:
     gpu.build(camLeft.requestOutput((1280, 800), dai.ImgFrame.Type.GRAY8, fps=30),
               camRight.requestOutput((1280, 800), dai.ImgFrame.Type.GRAY8, fps=30))
     # Confidence 0..255, higher = more confident; pixels below the threshold are invalidated (0 = off).
-    gpu.initialConfig.setConfidenceThreshold(10)
+    gpu.initialConfig.setConfidenceThreshold(20)
     # AUTO defaults to GPU_CPU on supported devices; GPU keeps matching entirely on the GPU.
     gpu.setBackend(dai.node.StereoDepth.Backend.GPU_CPU)
-    gpu.initialConfig.postProcessing.temporalFilter.enable = True
+    gpu.initialConfig.postProcessing.temporalFilter.enable = False
 
     depthQ = gpu.depth.createOutputQueue()
 
