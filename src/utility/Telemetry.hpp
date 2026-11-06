@@ -8,7 +8,7 @@
 
 namespace dai {
 class DeviceBase;
-class Pipeline;
+class PipelineImpl;
 }  // namespace dai
 
 namespace dai {
@@ -36,9 +36,18 @@ class Telemetry {
      */
     void event(std::string eventName, nlohmann::json properties);
 
+    /**
+     * Adds device_id and the ID of the pipeline started on the device. Does not take ownership of the pipeline,
+     * so node threads can use it.
+     */
     void event(const DeviceBase& device, std::string eventName, nlohmann::json properties);
 
-    void event(const Pipeline& pipeline, std::string eventName, nlohmann::json properties);
+    /**
+     * Adds pipeline_id and device_id of the default device. Takes a PipelineImpl, not a Pipeline: a node thread must
+     * not take ownership of its pipeline to send an event, because it can become the last owner (~PipelineImpl then
+     * runs on that thread and joins it). Nodes use the device overload.
+     */
+    void event(const PipelineImpl& pipeline, std::string eventName, nlohmann::json properties);
 
     /**
      * Use this functions if you want to send aggregate metrics. Don't schedule your custom events
