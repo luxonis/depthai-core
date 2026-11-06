@@ -27,8 +27,6 @@ cmake --build build
 
 Use `dai::node::ImgDetectionsFilter` / `dai.node.ImgDetectionsFilter` to filter detections or combine synchronized camera detections on a calibrated panorama. See the [node guide and multi-device examples](docs/ImgDetectionsFilter.md).
 
-For RVC4 SystemLogger accelerator and power readings, their meanings, unavailable-value convention and matching-firmware requirement, see the [resource metrics guide](docs/SystemLoggerResources.md).
-
 ## Beta features
 The `beta` namespace is a staging area for experimental DepthAI features. It
 allows new features to be developed and iterated on quickly before they are

@@ -1,6 +1,8 @@
 #include <atomic>
 #include <csignal>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 #include "depthai/depthai.hpp"
 
@@ -36,23 +38,17 @@ void printSystemInformation(const dai::SystemInformationRVC4& info) {
     const auto& t = info.chipTemperature;
     std::cout << "Chip temperature - average: " << t.average << ", cpuss: " << t.cpuss << ", gpuss: " << t.gpuss << ", mdmss: " << t.mdmss
               << ", video: " << t.video << ", ddr: " << t.ddr << ", camera: " << t.camera << std::endl;
-    const auto printMetric = [](const char* name, double value, const char* unit) {
-        std::cout << name << ": ";
-        if(value < 0)
-            std::cout << "unavailable";
-        else
-            std::cout << value << unit;
-        std::cout << std::endl;
+    const auto formatMetric = [](double value, const char* unit) -> std::string {
+        if(value < 0) return "unavailable";
+        std::ostringstream text;
+        text << std::fixed << std::setprecision(2) << value << unit;
+        return text.str();
     };
-    printMetric("GPU utilization (whole GPU, vendor counter)", info.gpuUtilizationPercent, "%");
-    printMetric("DSP HVX activity (not awake residency or total NPU utilization)", info.dspHvxActivityPercent, "%");
-    printMetric("DSP HMX activity (not awake residency or total NPU utilization)", info.dspHmxActivityPercent, "%");
-    printMetric("DSP Q6 load (vendor counter)", info.dspQ6LoadKcps, " KCPS");
-    std::cout << "Power rails (separate readings; do not add):" << std::endl;
-    printMetric("  System", info.powerSystemWatts, " W");
-    printMetric("  Processor", info.powerProcessorWatts, " W");
-    printMetric("  PoE", info.powerPoeWatts, " W");
-    printMetric("  ToF", info.powerTofWatts, " W");
+    std::cout << "GPU utilization: " << formatMetric(info.gpuUtilizationPercent, "%") << '\n';
+    std::cout << "DSP - HVX: " << formatMetric(info.dspHvxActivityPercent, "%") << ", HMX: " << formatMetric(info.dspHmxActivityPercent, "%")
+              << ", Q6: " << formatMetric(info.dspQ6LoadKcps, " KCPS") << '\n';
+    std::cout << "Power rails - System: " << formatMetric(info.powerSystemWatts, " W") << ", Processor: " << formatMetric(info.powerProcessorWatts, " W")
+              << ", PoE: " << formatMetric(info.powerPoeWatts, " W") << ", ToF: " << formatMetric(info.powerTofWatts, " W") << '\n';
     std::cout << "----------------------------------------" << std::endl;
 }
 
