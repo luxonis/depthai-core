@@ -287,6 +287,17 @@ void drawMarker37(dcl::ImageData& image, int x, int y, int cell) {
         }
     }
 }
+
+/// Reference points of the configured markers found in one image, keyed by marker id.
+std::map<int32_t, std::array<float, 2>> markerCenters(const dcl::ImageData& image, const dai::WorldConstraints& constraints) {
+    auto detected = dai::node::DclUtils::detectConfiguredMarkers(image, constraints);
+    REQUIRE(detected.passed());
+    std::map<int32_t, std::array<float, 2>> centers;
+    for(const auto& [id, detection] : detected.value) {
+        centers[id] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
+    }
+    return centers;
+}
 }  // namespace
 
 TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstraints]") {
@@ -294,13 +305,13 @@ TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstr
     const auto constraints = dai::WorldConstraints::fromJsonString(kWorldJson);
 
     // A white image holds no marker.
-    REQUIRE(DclUtils::detectMarkerCenters(whiteImage(64, 64), constraints).empty());
+    REQUIRE(markerCenters(whiteImage(64, 64), constraints).empty());
 
     // Marker 37 drawn at 16 px per cell with its top-left corner at (40, 40): the center is the middle of the 96 px
     // square, i.e. 40 + 48 - 0.5 in pixel-center coordinates.
     auto image = whiteImage(320, 240);
     drawMarker37(image, 40, 40, 16);
-    const auto centers = DclUtils::detectMarkerCenters(image, constraints);
+    const auto centers = markerCenters(image, constraints);
     REQUIRE(centers.size() == 1);
     REQUIRE(centers.count(37) == 1);
     REQUIRE(centers.at(37)[0] == Catch::Approx(87.5).margin(0.75));
@@ -311,11 +322,11 @@ TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstr
     others.markerIds = {43};
     others.markerDistances.clear();
     others.socketDistances = {{43, Socket::CAM_A, 1.0f}};
-    REQUIRE(DclUtils::detectMarkerCenters(image, others).empty());
+    REQUIRE(markerCenters(image, others).empty());
 
     // The same id twice in one image is ambiguous: neither copy is used.
     drawMarker37(image, 200, 120, 16);
-    REQUIRE(DclUtils::detectMarkerCenters(image, constraints).empty());
+    REQUIRE(markerCenters(image, constraints).empty());
 }
 
 TEST_CASE("DynamicCalibration detects Luxonis Marker centers through DCL", "[WorldConstraints]") {
@@ -338,9 +349,9 @@ TEST_CASE("DynamicCalibration detects Luxonis Marker centers through DCL", "[Wor
         }
         truth[id] = {origin.first + tile.width / 2.0f - 0.5f, origin.second + tile.height / 2.0f - 0.5f};
     }
-    const auto centers = DclUtils::detectMarkerCenters(image, constraints);
+    const auto centers = markerCenters(image, constraints);
     REQUIRE(centers.size() == 3);
-    const auto outline = DclUtils::toMarkerOutline(DclUtils::detectConfiguredMarkers(image, constraints).at(0));
+    const auto outline = DclUtils::toMarkerOutline(DclUtils::detectConfiguredMarkers(image, constraints).value.at(0));
     REQUIRE(outline.corners.size() == 4);
     REQUIRE_FALSE(outline.outerEdge.empty());
     REQUIRE_FALSE(outline.innerEdge.empty());
@@ -353,7 +364,7 @@ TEST_CASE("DynamicCalibration detects Luxonis Marker centers through DCL", "[Wor
     constraints.markerIds = {0};
     constraints.socketDistances.clear();
     constraints.markerDistances = {{0, 4, 0.6f}};
-    REQUIRE(DclUtils::detectMarkerCenters(image, constraints).size() == 2);
+    REQUIRE(markerCenters(image, constraints).size() == 2);
     auto aruco = dai::WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [0, 4], "distance": 0.6}]})");
-    REQUIRE(DclUtils::detectMarkerCenters(image, aruco).empty());
+    REQUIRE(markerCenters(image, aruco).empty());
 }

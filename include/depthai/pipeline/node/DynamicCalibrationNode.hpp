@@ -255,6 +255,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     // When old calibration is encountered, issue a warning once
     bool oldCalibrationWarningIssued = false;
+
+    // When the marker detector rejects an image, issue a warning once
+    bool markerDetectionWarningIssued = false;
 };
 
 }  // namespace node

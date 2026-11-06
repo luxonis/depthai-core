@@ -452,15 +452,13 @@ dcl::MarkerSpec DclUtils::toDclMarkerSpec(const WorldConstraints& constraints) {
     throw std::invalid_argument("DynamicCalibration: marker type " + toString(constraints.markerType) + " has no detector");
 }
 
-std::map<int32_t, dcl::MarkerDetection> DclUtils::detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints) {
-    std::map<int32_t, dcl::MarkerDetection> found;
+dcl::Result<std::map<int32_t, dcl::MarkerDetection>> DclUtils::detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints) {
+    using Found = std::map<int32_t, dcl::MarkerDetection>;
     auto detections = dcl::detectMarkers(image, toDclMarkerSpec(constraints));
     if(!detections.passed()) {
-        static std::once_flag reported;
-        std::call_once(
-            reported, [&] { Logging::getInstance().logger.warn("Marker detection failed, world constraints are not applied: {}", detections.errorMessage()); });
-        return found;
+        return dcl::Result<Found>::error(detections.errorCode);
     }
+    Found found;
     const auto wanted = constraints.referencedMarkerIds();
     std::set<int32_t> ambiguous;
     for(const auto& detection : detections.value) {
@@ -475,15 +473,7 @@ std::map<int32_t, dcl::MarkerDetection> DclUtils::detectConfiguredMarkers(const 
         }
         found[detection.id] = detection;
     }
-    return found;
-}
-
-std::map<int32_t, std::array<float, 2>> DclUtils::detectMarkerCenters(const dcl::ImageData& image, const WorldConstraints& constraints) {
-    std::map<int32_t, std::array<float, 2>> centers;
-    for(const auto& [id, detection] : detectConfiguredMarkers(image, constraints)) {
-        centers[id] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
-    }
-    return centers;
+    return dcl::Result<Found>::ok(std::move(found));
 }
 
 MarkerOutline DclUtils::toMarkerOutline(const dcl::MarkerDetection& detection) {
@@ -993,7 +983,15 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     if(properties.worldConstraints) {
         MarkerObservationSet observations;
         for(size_t idx = 0; idx < images.size(); ++idx) {
-            for(const auto& [markerId, detection] : DclUtils::detectConfiguredMarkers(images[idx].second, *properties.worldConstraints)) {
+            auto detected = DclUtils::detectConfiguredMarkers(images[idx].second, *properties.worldConstraints);
+            if(!detected.passed()) {
+                if(!markerDetectionWarningIssued) {
+                    logger->warn("Marker detection failed, world constraints are not applied: {}", detected.errorMessage());
+                    markerDetectionWarningIssued = true;
+                }
+                continue;
+            }
+            for(const auto& [markerId, detection] : detected.value) {
                 const auto socket = connectedSensors[idx].socket;
                 observations.centers[markerId][socket] = {static_cast<float>(detection.center[0]), static_cast<float>(detection.center[1])};
                 if(!properties.worldConstraints->markerSizes.empty()) {

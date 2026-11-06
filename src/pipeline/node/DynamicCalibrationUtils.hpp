@@ -51,11 +51,9 @@ struct DclUtils {
     /// The marker detector request for a constraint set. Throws std::invalid_argument for a marker type the library cannot detect.
     static dcl::MarkerSpec toDclMarkerSpec(const WorldConstraints& constraints);
 
-    /// The configured markers found in one image, keyed by marker id. Markers outside the configuration are dropped.
-    static std::map<int32_t, dcl::MarkerDetection> detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints);
-
-    /// Reference points of the configured markers in one image, keyed by marker id.
-    static std::map<int32_t, std::array<float, 2>> detectMarkerCenters(const dcl::ImageData& image, const WorldConstraints& constraints);
+    /// The configured markers found in one image, keyed by marker id. Markers outside the configuration and ids that
+    /// appear more than once in the image are dropped. Fails when the detector rejects the image.
+    static dcl::Result<std::map<int32_t, dcl::MarkerDetection>> detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints);
 
     /// The shape of a detection, as kept in a MarkerObservationSet.
     static MarkerOutline toMarkerOutline(const dcl::MarkerDetection& detection);
