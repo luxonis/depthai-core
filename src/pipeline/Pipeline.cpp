@@ -15,6 +15,7 @@
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
+#include "pipeline/JoinedByPipelineScope.hpp"
 #include "properties/GlobalProperties.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
@@ -34,6 +35,7 @@
 
 // std
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <cctype>
 #include <cmath>
@@ -70,7 +72,115 @@ struct hash<::dai::NodeConnectionSchema> {
 
 namespace dai {
 
+namespace utility {
+
 namespace {
+thread_local int joinedByPipelineScopeDepth = 0;
+}  // namespace
+
+JoinedByPipelineScope::JoinedByPipelineScope() {
+    ++joinedByPipelineScopeDepth;
+}
+
+JoinedByPipelineScope::~JoinedByPipelineScope() {
+    --joinedByPipelineScopeDepth;
+}
+
+bool JoinedByPipelineScope::isActive() {
+    return joinedByPipelineScopeDepth > 0;
+}
+
+}  // namespace utility
+
+namespace {
+
+// Threads that destroy pipelines released on a node or device thread. The process waits for them at
+// exit, so that such a pipeline still stops its nodes and closes its devices before the process ends.
+class PipelineTeardownThreads {
+   public:
+    static PipelineTeardownThreads& getInstance() {
+        // Statics are destroyed in the reverse order of their construction. Create the singletons that
+        // a teardown uses first, so that they still exist when this instance joins the teardown threads.
+        Logging::getInstance();
+        utility::Telemetry::getInstance();
+        static PipelineTeardownThreads instance;
+        return instance;
+    }
+
+    PipelineTeardownThreads(const PipelineTeardownThreads&) = delete;
+    PipelineTeardownThreads& operator=(const PipelineTeardownThreads&) = delete;
+    PipelineTeardownThreads(PipelineTeardownThreads&&) = delete;
+    PipelineTeardownThreads& operator=(PipelineTeardownThreads&&) = delete;
+
+    ~PipelineTeardownThreads() {
+        std::vector<Teardown> pending;
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            pending = std::move(teardowns);
+        }
+        for(auto& teardown : pending) {
+            teardown.thread.join();
+        }
+    }
+
+    // Destroys the pipeline on a new thread. Throws when the thread cannot be started; the pipeline
+    // is then not destroyed.
+    void start(PipelineImpl* impl) {
+        std::lock_guard<std::mutex> lock(mtx);
+        joinFinished();
+        // Allocate first: after the thread starts, nothing may throw before it is stored
+        auto finished = std::make_shared<std::atomic<bool>>(false);
+        teardowns.reserve(teardowns.size() + 1);
+        teardowns.push_back({std::thread([impl, finished]() {
+                                 delete impl;
+                                 *finished = true;
+                             }),
+                             finished});
+    }
+
+   private:
+    struct Teardown {
+        std::thread thread;
+        std::shared_ptr<std::atomic<bool>> finished;
+    };
+
+    PipelineTeardownThreads() = default;
+
+    // Joins the threads that are done, so that the list does not grow in a long-running process
+    void joinFinished() {
+        for(auto it = teardowns.begin(); it != teardowns.end();) {
+            if(*it->finished) {
+                it->thread.join();
+                it = teardowns.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    std::mutex mtx;
+    std::vector<Teardown> teardowns;
+};
+
+// Deleter of every PipelineImpl. The destructor stops the pipeline and joins the node and device
+// threads. When the last reference is released on one of those threads, destroying the pipeline
+// in place would make the thread join itself, so the destructor runs on a separate thread.
+void destroyPipelineImpl(PipelineImpl* impl) {
+    if(utility::JoinedByPipelineScope::isActive()) {
+        try {
+            PipelineTeardownThreads::getInstance().start(impl);
+            return;
+        } catch(const std::exception& ex) {
+            Logging::getInstance().logger.error("Failed to start the pipeline teardown thread, destroying the pipeline in place: {}", ex.what());
+        }
+    }
+    delete impl;
+}
+
+template <typename... Args>
+std::shared_ptr<PipelineImpl> makePipelineImpl(Args&&... args) {
+    return std::shared_ptr<PipelineImpl>(new PipelineImpl(std::forward<Args>(args)...), destroyPipelineImpl);
+}
 
 std::shared_ptr<Device> getAssignedDevice(const std::shared_ptr<Node>& node) {
     // A device node that runs on the host has no device-side presence: its device is not
@@ -233,9 +343,9 @@ Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
 
-Pipeline::Pipeline(bool createImplicitDevice) : pimpl(std::make_shared<PipelineImpl>(createImplicitDevice)) {}
+Pipeline::Pipeline(bool createImplicitDevice) : pimpl(makePipelineImpl(createImplicitDevice)) {}
 
-Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<PipelineImpl>(device)) {}
+Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(makePipelineImpl(std::move(device))) {}
 
 Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) : pimpl(std::move(pimpl)) {}
 
