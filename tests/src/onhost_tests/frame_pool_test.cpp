@@ -160,7 +160,7 @@ TEST_CASE("Automatic budgets expand only to the algorithm minimum", "[frame-pool
     REQUIRE_THROWS_AS(resolveFramePool({0, 0, 600 * MiB}, 200 * MiB, 120, 4), std::invalid_argument);
 }
 
-TEST_CASE("Full-resolution RVC4 RGB output resolves to exactly two automatic frames", "[frame-pool]") {
+TEST_CASE("Default policy resolves full-resolution RGB output to two initial frames", "[frame-pool]") {
     const auto size = GENERATE(uint64_t(7680) * 4320 * 3, uint64_t(8000) * 6000 * 3);
     const auto padding = GENERATE(uint64_t(0), uint64_t(4096));
     const auto fps = GENERATE(30.0, 60.0, 120.0);
@@ -192,4 +192,56 @@ TEST_CASE("Legacy pool settings are reconciled before node serialization", "[fra
     manip.setPoolProperties({});
     REQUIRE(manip.getProperties().pool.outputFrameSize == 0);
     REQUIRE(manip.getProperties().pool.maxPoolSize == 0);
+}
+
+TEST_CASE("Automatic initial counts honor platform defaults and algorithm minimums", "[frame-pool]") {
+    const auto initial = GENERATE(3u, 4u);
+    const auto budget = dai::utility::DEFAULT_FRAME_POOL_BUDGET;
+    const auto lowFps = resolveFramePool({}, 4096, 10, 2, budget, initial);
+    REQUIRE(lowFps.numFramesPool == initial);
+    REQUIRE(lowFps.maxPoolSize == 4096 * initial);
+    REQUIRE(resolveFramePool({}, 4096, 60, 2, budget, initial).numFramesPool == 12);
+    REQUIRE(resolveFramePool({}, 4096, 10, 4, budget, initial).numFramesPool == 4);
+    REQUIRE(resolveFramePool({0, 2, 0}, 4096, 120, 2, budget, initial).numFramesPool == 2);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 3, 0}, 4096, 10, 4, budget, initial), std::invalid_argument);
+}
+
+TEST_CASE("Explicit budgets constrain platform initial counts without relaxing algorithm minimums", "[frame-pool]") {
+    const auto initial = GENERATE(3u, 4u);
+    const auto budget = dai::utility::DEFAULT_FRAME_POOL_BUDGET;
+    REQUIRE(resolveFramePool({0, 0, 8192}, 4096, 10, 2, budget, initial).numFramesPool == 2);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 0, 4096}, 4096, 10, 2, budget, initial), std::invalid_argument);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 0, 12288}, 4096, 10, 4, budget, initial), std::invalid_argument);
+    REQUIRE_THROWS_AS(resolveFramePool({0, 4, 12288}, 4096, 10, 2, budget, initial), std::invalid_argument);
+    REQUIRE_THROWS_AS(resolveFramePool({2048, 0, 0}, 4096, 10, 2, budget, initial), std::invalid_argument);
+}
+
+TEST_CASE("Pool growth policy uses the supplied platform budget and preserves fixed counts", "[frame-pool]") {
+    using dai::utility::framePoolGrowthBudget;
+    constexpr uint64_t platformBudget = 16384;
+    const auto size = GENERATE(uint64_t(1024), uint64_t(8192));
+    const FramePoolProperties automatic;
+    const auto resolved = resolveFramePool(automatic, size, 10, 2, platformBudget, 4);
+    REQUIRE(resolved.numFramesPool == 4);
+    REQUIRE(framePoolGrowthBudget(automatic, resolved, platformBudget) == (size == 1024 ? platformBudget : 32768));
+
+    const FramePoolProperties limited{0, 0, size * 2};
+    const auto constrained = resolveFramePool(limited, size, 120, 2, platformBudget, 4);
+    REQUIRE(constrained.numFramesPool == 2);
+    REQUIRE(framePoolGrowthBudget(limited, constrained, platformBudget) == limited.maxPoolSize);
+
+    const FramePoolProperties fixed{0, 8, 0};
+    const auto explicitCount = resolveFramePool(fixed, size, 120, 2, platformBudget, 4);
+    REQUIRE(explicitCount.numFramesPool == 8);
+    REQUIRE(framePoolGrowthBudget(fixed, explicitCount, platformBudget) == 0);
+}
+
+TEST_CASE("Platform initial floors expand soft budgets with checked arithmetic", "[frame-pool]") {
+    constexpr uint64_t MiB = 1024 * 1024;
+    const auto initial = GENERATE(3u, 4u);
+    const auto resolved = resolveFramePool({}, 200 * MiB, 120, 2, 32 * MiB, initial);
+    REQUIRE(resolved.numFramesPool == initial);
+    REQUIRE(resolved.maxPoolSize == 200 * MiB * initial);
+    REQUIRE(dai::utility::framePoolGrowthBudget({}, resolved, 32 * MiB) == resolved.maxPoolSize);
+    REQUIRE_THROWS_AS(resolveFramePool({}, std::numeric_limits<uint64_t>::max() / initial + 1, 10, 2, 32 * MiB, initial), std::overflow_error);
 }
