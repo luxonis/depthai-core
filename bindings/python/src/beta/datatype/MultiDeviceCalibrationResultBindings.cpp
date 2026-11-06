@@ -11,7 +11,7 @@ void bind_beta_multidevicecalibrationresult(pybind11::module& m, void* pCallstac
     using namespace dai;
     using Result = beta::MultiDeviceCalibrationResult;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<Result, Buffer, std::shared_ptr<Result>>(betaModule, "MultiDeviceCalibrationResult", DOC(dai, beta, MultiDeviceCalibrationResult))
+    py::class_<Result, Buffer, py::smart_holder>(betaModule, "MultiDeviceCalibrationResult", DOC(dai, beta, MultiDeviceCalibrationResult))
         .def(py::init<>())
         .def(py::init<std::string>(), py::arg("info"))
         .def_readwrite("graph", &Result::graph)

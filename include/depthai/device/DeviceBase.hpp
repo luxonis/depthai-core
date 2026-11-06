@@ -4,7 +4,9 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <filesystem>
 #include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -15,6 +17,9 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+
+#include "depthai/utility/RecordingStore.hpp"
+#include "depthai/utility/ReplayCache.hpp"
 
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -566,6 +571,131 @@ class DeviceBase {
      * For OAK-D-Pro it should be `[{"LM3644", 2, 0x63}]`
      */
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
+
+    /**
+     * Lists recordings in the RVC4 device store.
+     * Names, sizes, creation time in milliseconds since the epoch, and whether every node closed its files.
+     * @throws std::runtime_error when the device is not RVC4.
+     */
+    std::vector<RecordingInfo> listRecordings();
+
+    /**
+     * Copies one device recording into `<hostDir>/<name>/`.
+     * `hostDir` must already exist. The destination directory must not.
+     * A partial copy deletes the destination directory that this call created.
+     * @throws std::invalid_argument when the name fails the record name rules.
+     * @throws std::runtime_error when the device is not RVC4, the recording is missing or in use, or the copy fails.
+     */
+    void downloadRecording(const std::string& name, const std::filesystem::path& hostDir);
+
+    /**
+     * Deletes one recording from the RVC4 device store.
+     * @throws std::invalid_argument when the name fails the record name rules.
+     * @throws std::runtime_error when the device is not RVC4, or the recording is missing or in use.
+     */
+    void deleteRecording(const std::string& name);
+
+    /**
+     * Asks the device to close record nodes and mark recordings as not in use before a download.
+     * Pipeline stop calls this once per device. A missing firmware method throws, and stop logs that error.
+     * @throws std::runtime_error when the device is not RVC4 or the device call fails.
+     */
+    void prepareRecordingDownload();
+
+    /**
+     * Reads the RVC4 replay cache. Firmware implements the call. A missing method throws.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    ReplayCacheInfo getReplayCacheInfo();
+
+    /**
+     * Sets the RVC4 replay-cache limit in bytes. The new limit removes nothing by itself.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void setReplayCacheLimit(std::uint64_t bytes);
+
+    /**
+     * Removes RVC4 replay-cache entries that are not in use.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void clearReplayCache();
+
+    /**
+     * Looks up one source hash in the RVC4 replay cache.
+     * @return present, device path, and size in bytes.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    std::tuple<bool, std::string, std::uint64_t> replayCacheQuery(const std::string& hash);
+
+    /**
+     * Starts an upload of `totalBytes` for `hash`. An interrupted upload leaves no entry.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheBegin(const std::string& hash, std::uint64_t totalBytes);
+
+    /**
+     * Acquires a cached RVC4 file or reserves space for its upload.
+     * @param hash Lowercase SHA-256 of the file bytes.
+     * @param totalBytes Exact file size.
+     * @return Cache hit, destination device path, and file size.
+     * On a miss the path becomes usable after replayCacheCommit. A hit or
+     * successful commit owns one hold, released by replayCacheRelease after use.
+     * @throws std::runtime_error when the source cannot fit or the RPC is unavailable.
+     */
+    std::tuple<bool, std::string, std::uint64_t> replayCachePrepareFile(const std::string& hash, std::uint64_t totalBytes);
+
+    /**
+     * Acquires an RVC4 directory source or starts its upload using direct filenames and byte sizes.
+     * The content hash covers sorted filenames, a zero byte after each name, and file contents.
+     * @param hash Lowercase SHA-256 of the directory contents.
+     * @param files Filenames and exact file sizes; nested paths and links are not accepted.
+     * @return Cache hit, destination device path, and total file bytes.
+     * On a miss the path becomes usable after replayCacheCommit.
+     * A hit or successful commit owns one hold, released by replayCacheRelease after use.
+     * @throws std::runtime_error when the manifest is invalid or the upload cannot fit in the cache.
+     */
+    std::tuple<bool, std::string, std::uint64_t> replayCacheBeginDirectory(const std::string& hash, const std::map<std::string, std::uint64_t>& files);
+
+    /**
+     * Writes one chunk of an upload. The chunk size used by the host is 1 MiB.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheWrite(const std::string& hash, std::uint64_t offset, const std::vector<std::uint8_t>& bytes);
+
+    /**
+     * Writes an ordered chunk of a file declared by replayCacheBeginDirectory.
+     * @param hash Content hash of the pending directory upload.
+     * @param filename Direct filename declared in its manifest.
+     * @param offset Next byte offset in this file, starting at zero.
+     * @param bytes File bytes, with at most 1 MiB used per chunk by replay nodes.
+     * @throws std::runtime_error for an undeclared file, invalid offset, or a write failure.
+     */
+    void replayCacheWriteFile(const std::string& hash, const std::string& filename, std::uint64_t offset, const std::vector<std::uint8_t>& bytes);
+
+    /**
+     * Finishes an upload after the hash matches.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheCommit(const std::string& hash);
+
+    /**
+     * Drops an unfinished upload so it does not become a cache entry.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheAbort(const std::string& hash);
+
+    /**
+     * Drops cache holds for the given keys. New non-persistent entries are removed
+     * after playback stops; completed uploads are retained if preparation failed before playback.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    void replayCacheRelease(const std::vector<std::string>& keys);
+
+    /**
+     * Reads the width, height, and fps of a source that is already on the device.
+     * @throws std::runtime_error when the device is not RVC4 or the call fails.
+     */
+    std::tuple<int, int, double> replayCacheSourceSize(const std::string& absolutePath);
 
     /**
      * Retrieves current device state in a crash dump format.
@@ -1319,6 +1449,8 @@ class DeviceBase {
     void init(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
 
    private:
+    // Stop device writers and return their final serialized status snapshots.
+    std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>> prepareRecordingDownloadWithStatus();
     // private functions
     void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();

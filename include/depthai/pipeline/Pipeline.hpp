@@ -76,6 +76,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool enableHolisticRecordReplay = false;
     std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
+    /// A device recording download failed. Holistic packing must not build a partial archive.
+    bool recordTransferFailed = false;
+    /// finishHolisticRecordAndReplay skips packing when stop() already packed the archive.
+    bool holisticRecordPacked = false;
+    /// Join host RecordVideo and RecordMetadataOnly threads before output queues close.
+    void waitForRecordNodes();
+    /// Join host replay threads, then drop cache holds created by this start.
+    void waitForReplayNodes();
+    /// Copy device recordings to the host while the device is still connected.
+    void transferRecordings();
     std::string defaultDeviceId;
     std::unordered_map<Node::Id, std::shared_ptr<Device>> bridgeHostDevices;
     // Is the pipeline building on host? Some steps should be skipped when building on device
@@ -220,6 +230,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::thread deviceLossStopThread;
     std::mutex deviceLossStopMtx;
     void joinDeviceLossStop();
+    // Observe normal device replay completion even while its connection stays healthy.
+    // This worker owns no pipeline reference; start(), wait(), and destruction join it.
+    std::thread devicePipelineMonitorThread;
+    std::mutex devicePipelineMonitorMtx;
+    void startDevicePipelineMonitor();
+    void joinDevicePipelineMonitor();
     std::string telemetryPipelineId{createTelemetryPipelineId()};
     std::optional<std::chrono::steady_clock::time_point> telemetryPipelineStartedAt;
 

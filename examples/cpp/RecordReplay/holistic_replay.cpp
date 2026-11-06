@@ -6,6 +6,12 @@
     #error This example needs OpenCV support, which is not available on your system
 #endif
 
+// On RVC4, enableHolisticReplay creates one ReplayVideo for each camera and one
+// ReplayMetadataOnly for every other source, including the IMU. Those nodes run on
+// the device from one uploaded recording. On RVC2 the recording is extracted and
+// replayed on the host, as before.
+// A video stream whose metadata message count differs from the frame count fails at
+// start. The CI recording.tar is one of those files (119 frames, 140 metadata messages).
 int main(int argc, char** argv) {
     dai::Pipeline pipeline;
 

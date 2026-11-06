@@ -1,9 +1,9 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO luxonis/pybind11
-    REF f760e2b984b66be2cfa202c93da9d341a557fb5d
-    SHA512 8baad5c326553075926901b9e2d5fcb574d298b382f17ba8ae0abf022fe3c92f4704b4a3fdce9b63d12ef31a436afc04d11a2050639f254be886a88d201a8b85
-    HEAD_REF luxonis-smart-holder
+    REPO pybind/pybind11
+    REF fdec8c350aa0c7fbb552ec70d8176f8a13eb0561
+    SHA512 6b98b6d7d2aaafc070ea0d3247d145c581eb4fa4d3bc7390c1127d093df550ce78ad0c8cd59bba1aa99fd5b4fca0c6929ce5efd6f56e8abe29a1c6e184d25aaa
+    HEAD_REF master
 )
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"

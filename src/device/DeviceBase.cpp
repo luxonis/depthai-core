@@ -10,6 +10,8 @@
 #include <chrono>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -35,6 +37,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "DeviceRpc.hpp"
 #include "depthai/build/version.hpp"
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
@@ -459,7 +462,7 @@ class DeviceBase::Impl {
         // ScopedRpcTimeout guard(std::nullopt);
         auto client = std::atomic_load(&rpcClient);
         if(!client) throw std::system_error(std::make_error_code(std::errc::not_connected), "Device already closed or disconnected");
-        return client->call(name, std::forward<Args>(args)...);
+        return detail::callDeviceRpc(*client, name, std::forward<Args>(args)...);
     }
 
     template <typename Ret, typename... Args>
@@ -2814,6 +2817,210 @@ std::string DeviceBase::getPlatformAsString() const {
 
 XLinkProtocol_t DeviceBase::getProtocol() const {
     return getDeviceInfo().protocol;
+}
+
+namespace {
+
+void requireRecordingStore(const DeviceBase& device) {
+    if(device.getDeviceInfo().platform != X_LINK_RVC4) {
+        throw std::runtime_error("Recording store is not supported");
+    }
+}
+
+void requireReplayCache(const DeviceBase& device) {
+    if(device.getDeviceInfo().platform != X_LINK_RVC4) {
+        throw std::runtime_error("Replay cache is not supported");
+    }
+}
+
+bool rejectedStorePath(const std::string& relative) {
+    const std::filesystem::path path(relative);
+    if(path.is_absolute()) return true;
+    for(const auto& part : path) {
+        if(part == "..") return true;
+    }
+    return false;
+}
+
+}  // namespace
+
+std::vector<RecordingInfo> DeviceBase::listRecordings() {
+    requireRecordingStore(*this);
+    const auto rows = pimpl->rpcCallChecked<std::vector<std::tuple<std::string, std::uint64_t, std::int64_t, bool>>>("recordStoreList");
+    std::vector<RecordingInfo> recordings;
+    recordings.reserve(rows.size());
+    for(const auto& row : rows) {
+        RecordingInfo info;
+        info.name = std::get<0>(row);
+        info.sizeBytes = std::get<1>(row);
+        info.createdMs = std::get<2>(row);
+        info.complete = std::get<3>(row);
+        recordings.push_back(std::move(info));
+    }
+    return recordings;
+}
+
+void DeviceBase::downloadRecording(const std::string& name, const std::filesystem::path& hostDir) {
+    validateRecordingName(name);
+    requireRecordingStore(*this);
+    std::filesystem::create_directories(hostDir);
+    const auto destination = hostDir / name;
+    if(std::filesystem::exists(destination)) {
+        throw std::runtime_error("Record download destination already exists: " + destination.string());
+    }
+    std::filesystem::create_directories(destination);
+    try {
+        const auto files = pimpl->rpcCallChecked<std::vector<std::tuple<std::string, std::uint64_t>>>("recordStoreListFiles", name);
+        std::uint64_t total = 0;
+        for(const auto& file : files) total += std::get<1>(file);
+        std::uint64_t done = 0;
+        int lastBucket = 0;
+        constexpr std::uint64_t chunkBytes = 1024ull * 1024ull;
+        auto noteProgress = [&]() {
+            if(total == 0) return;
+            const int bucket = static_cast<int>((done * 100) / total) / 10 * 10;
+            if(bucket < lastBucket + 10) return;
+            lastBucket = bucket;
+            Logging::getInstance().logger.info("Record download {}/{} bytes", done, total);
+        };
+        for(const auto& file : files) {
+            const auto& relative = std::get<0>(file);
+            const auto size = std::get<1>(file);
+            if(rejectedStorePath(relative)) {
+                throw std::runtime_error("Record download rejected path: " + relative);
+            }
+            const auto outputPath = destination / relative;
+            std::filesystem::create_directories(outputPath.parent_path());
+            std::ofstream output(outputPath, std::ios::binary);
+            if(!output) {
+                throw std::runtime_error("Record download could not create " + outputPath.string());
+            }
+            std::uint64_t offset = 0;
+            while(offset < size) {
+                const auto length = std::min(chunkBytes, size - offset);
+                auto bytes = pimpl->rpcCallChecked<std::vector<std::uint8_t>>("recordStoreReadChunk", name, relative, offset, length);
+                if(bytes.empty() || bytes.size() > length) {
+                    throw std::runtime_error("Record download returned an invalid chunk");
+                }
+                // ofstream::write takes char*. The chunk is raw file bytes.
+                output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+                if(!output) {
+                    throw std::runtime_error("Record download write failed");
+                }
+                offset += static_cast<std::uint64_t>(bytes.size());
+                done += static_cast<std::uint64_t>(bytes.size());
+                noteProgress();
+            }
+            output.close();
+            if(!output) throw std::runtime_error("Record download close failed");
+        }
+        if(total > 0 && lastBucket < 100) {
+            Logging::getInstance().logger.info("Record download {}/{} bytes", total, total);
+        }
+    } catch(...) {
+        std::error_code error;
+        std::filesystem::remove_all(destination, error);
+        throw;
+    }
+}
+
+void DeviceBase::deleteRecording(const std::string& name) {
+    validateRecordingName(name);
+    requireRecordingStore(*this);
+    pimpl->rpcCallCheckedVoid("recordStoreDelete", name);
+}
+
+void DeviceBase::prepareRecordingDownload() {
+    prepareRecordingDownloadWithStatus();
+}
+
+std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>> DeviceBase::prepareRecordingDownloadWithStatus() {
+    requireRecordingStore(*this);
+    return pimpl->rpcCallChecked<std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>>>("recordStorePrepareDownload");
+}
+
+ReplayCacheInfo DeviceBase::getReplayCacheInfo() {
+    requireReplayCache(*this);
+    using Row = std::tuple<std::string, std::int32_t, std::string, std::uint64_t, std::int64_t, bool>;
+    const auto reply = pimpl->rpcCallChecked<std::tuple<std::uint64_t, std::uint64_t, std::vector<Row>>>("replayCacheInfo");
+    ReplayCacheInfo info;
+    info.limitBytes = std::get<0>(reply);
+    info.usedBytes = std::get<1>(reply);
+    for(const auto& row : std::get<2>(reply)) {
+        ReplayCacheEntry entry;
+        entry.key = std::get<0>(row);
+        entry.kind = static_cast<ReplayCacheKind>(std::get<1>(row));
+        entry.sourceHash = std::get<2>(row);
+        entry.sizeBytes = std::get<3>(row);
+        entry.lastUseMs = std::get<4>(row);
+        entry.inUse = std::get<5>(row);
+        info.entries.push_back(std::move(entry));
+    }
+    return info;
+}
+
+void DeviceBase::setReplayCacheLimit(std::uint64_t bytes) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheSetLimit", bytes);
+}
+
+void DeviceBase::clearReplayCache() {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheClear");
+}
+
+std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCacheQuery(const std::string& hash) {
+    requireReplayCache(*this);
+    return pimpl->rpcCallChecked<std::tuple<bool, std::string, std::uint64_t>>("replayCacheQuery", hash);
+}
+
+void DeviceBase::replayCacheBegin(const std::string& hash, std::uint64_t totalBytes) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheBegin", hash, totalBytes);
+}
+
+std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCachePrepareFile(const std::string& hash, std::uint64_t totalBytes) {
+    requireReplayCache(*this);
+    return pimpl->rpcCallChecked<std::tuple<bool, std::string, std::uint64_t>>("replayCachePrepareFile", hash, totalBytes);
+}
+
+std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCacheBeginDirectory(const std::string& hash, const std::map<std::string, std::uint64_t>& files) {
+    requireReplayCache(*this);
+    return pimpl->rpcCallChecked<std::tuple<bool, std::string, std::uint64_t>>("replayCacheBeginDirectory", hash, files);
+}
+
+void DeviceBase::replayCacheWrite(const std::string& hash, std::uint64_t offset, const std::vector<std::uint8_t>& bytes) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheWrite", hash, offset, bytes);
+}
+
+void DeviceBase::replayCacheWriteFile(const std::string& hash, const std::string& filename, std::uint64_t offset, const std::vector<std::uint8_t>& bytes) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheWriteFile", hash, filename, offset, bytes);
+}
+
+void DeviceBase::replayCacheCommit(const std::string& hash) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheCommit", hash);
+}
+
+void DeviceBase::replayCacheAbort(const std::string& hash) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheAbort", hash);
+}
+
+void DeviceBase::replayCacheRelease(const std::vector<std::string>& keys) {
+    requireReplayCache(*this);
+    // NanoRPC's argument-tuple conversion interprets a two-string vector as
+    // a JSON object. Release keys individually to preserve the existing wire format.
+    for(const auto& key : keys) {
+        pimpl->rpcCallCheckedVoid("replayCacheRelease", std::vector<std::string>{key});
+    }
+}
+
+std::tuple<int, int, double> DeviceBase::replayCacheSourceSize(const std::string& absolutePath) {
+    requireReplayCache(*this);
+    return pimpl->rpcCallChecked<std::tuple<int, int, double>>("replayCacheSourceSize", absolutePath);
 }
 
 }  // namespace dai

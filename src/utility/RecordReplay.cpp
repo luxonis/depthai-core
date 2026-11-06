@@ -56,36 +56,57 @@ void ByteRecorder::setWriter(const std::string& filePath, RecordConfig::Compress
             options.compression = mcap::Compression::None;
             break;
         case RecordConfig::CompressionLevel::FASTEST:
+            options.compression = mcap::Compression::Lz4;
             options.compressionLevel = mcap::CompressionLevel::Fastest;
             break;
         case RecordConfig::CompressionLevel::FAST:
+            options.compression = mcap::Compression::Lz4;
             options.compressionLevel = mcap::CompressionLevel::Fast;
             break;
         case RecordConfig::CompressionLevel::DEFAULT:
+            options.compression = mcap::Compression::Lz4;
             options.compressionLevel = mcap::CompressionLevel::Default;
             break;
         case RecordConfig::CompressionLevel::SLOW:
+            options.compression = mcap::Compression::Lz4;
             options.compressionLevel = mcap::CompressionLevel::Slow;
             break;
         case RecordConfig::CompressionLevel::SLOWEST:
+            options.compression = mcap::Compression::Lz4;
             options.compressionLevel = mcap::CompressionLevel::Slowest;
             break;
     }
-    options.compression = mcap::Compression::Lz4;
-    const auto res = writer.open(filePath, options);
-    if(!res.ok()) {
-        throw std::runtime_error("Failed to open file for writing: " + res.message);
+    output.exceptions(std::ios::failbit | std::ios::badbit);
+    output.open(filePath, std::ios::binary | std::ios::trunc);
+    try {
+        writer.open(output, options);
+        initialized = true;
+    } catch(...) {
+        writer.terminate();
+        throw;
     }
 }
 
 ByteRecorder::~ByteRecorder() {
-    close();
+    try {
+        close();
+    } catch(const std::exception&) {
+        // Recording nodes report errors from explicit close; destructors only clean up.
+    }
 }
 
 void ByteRecorder::close() {
     if(initialized) {
-        writer.close();
         initialized = false;
+        try {
+            writer.close();
+            output.close();
+        } catch(...) {
+            writer.terminate();
+            output.exceptions(std::ios::goodbit);
+            output.close();
+            throw;
+        }
     }
 }
 
@@ -198,6 +219,8 @@ bool checkRecordConfig(std::filesystem::path& recordPath, RecordConfig& config) 
                 spdlog::warn("DEPTHAI_RECORD outputDir is not a directory. Record disabled.");
                 return false;
             }
+        } catch(const std::invalid_argument&) {
+            throw;
         } catch(const std::exception& e) {
             spdlog::warn("Error while processing DEPTHAI_RECORD json file: {}. Record disabled.", e.what());
             return false;

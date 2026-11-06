@@ -11,68 +11,12 @@
 namespace dai {
 namespace utility {
 
-constexpr unsigned int MP4V2_TIMESCALE = 90000;
-
-enum class NALU { P = 1, I = 5, SPS = 7, PPS = 8, INVALID = 0x00 };
-
-struct NaluView {
-    dai::span<const uint8_t> data;
-    NALU type = NALU::INVALID;
-};
-
-struct H26xNals {
-    dai::span<const uint8_t> data;
-    size_t index = 0;
-
-    H26xNals(dai::span<const uint8_t> data) : data(data) {}
-
-    static bool findStartCode(dai::span<const uint8_t> data, size_t offset, size_t& start, size_t& startCodePos) {
-        for(size_t i = offset; i + 3 < data.size(); ++i) {
-            if(data[i] == 0 && data[i + 1] == 0) {
-                if(data[i + 2] == 1) {
-                    startCodePos = i;
-                    start = i + 3;
-                    return true;
-                }
-                if(data[i + 2] == 0 && data[i + 3] == 1) {
-                    startCodePos = i;
-                    start = i + 4;
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    std::optional<NaluView> next() {
-        if(index >= data.size()) return std::nullopt;
-        size_t start = 0;
-        size_t startCodePos = 0;
-        if(!findStartCode(data, index, start, startCodePos)) {
-            if(index == 0 && !data.empty()) {
-                index = data.size();
-                return NaluView{data, static_cast<NALU>(data[0] & 0x1F)};
-            }
-            return std::nullopt;
-        }
-        size_t nextStart = 0;
-        size_t nextStartCodePos = 0;
-        size_t end = data.size();
-        if(findStartCode(data, start, nextStart, nextStartCodePos)) {
-            end = nextStartCodePos;
-        }
-        if(end <= start) {
-            index = end;
-            return std::nullopt;
-        }
-        index = end;
-        auto nal = data.subspan(start, end - start);
-        return NaluView{nal, static_cast<NALU>(nal[0] & 0x1F)};
-    }
-};
-
 VideoRecorder::~VideoRecorder() {
-    close();
+    try {
+        close();
+    } catch(const std::exception&) {
+        // Explicit close reports write errors. Destructors must still release the writer.
+    }
 }
 
 void VideoRecorder::init(const std::string& filePath, unsigned int width, unsigned int height, unsigned int fps, VideoCodec codec) {
@@ -96,18 +40,8 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
     switch(codec) {
         case VideoCodec::H264:
         case VideoCodec::MJPEG:
-#ifdef DEPTHAI_ENABLE_MP4V2
-            if(pathObj.extension() != ".mp4") {
-                throw std::runtime_error("Encoded video can only be recorded in .mp4 format");
-            }
-            mp4Writer = MP4Create(filePath.c_str());
-            if(mp4Writer == MP4_INVALID_FILE_HANDLE) {
-                throw std::runtime_error("Failed to create MP4 file");
-            }
-            MP4SetTimeScale(mp4Writer, MP4V2_TIMESCALE);
-#else
-            throw std::runtime_error("Encoded video not support. Please recompile with DEPTHAI_ENABLE_MP4V2=ON");
-#endif
+            encodedWriter = std::make_unique<EncodedVideoRecorder>();
+            encodedWriter->init(filePath, width, height, fps, codec == VideoCodec::MJPEG);
             break;
         case VideoCodec::RAW:
             if(pathObj.extension() != ".avi" && pathObj.extension() != ".mkv") {
@@ -126,89 +60,10 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
         throw std::runtime_error("VideoRecorder not initialized");
     }
     switch(this->codec) {
-#ifdef DEPTHAI_ENABLE_MP4V2
-        case VideoCodec::H264: {
-            H26xNals nals(data);
-            std::vector<dai::span<const uint8_t>> sampleNals;
-            bool isSyncSample = false;
-            auto nal = nals.next();
-            while(nal.has_value()) {
-                auto nalData = nal->data;
-                switch(nal->type) {
-                    case NALU::SPS:
-                        if(mp4Track == MP4_INVALID_TRACK_ID && nalData.size() >= 4) {
-                            mp4Track =
-                                MP4AddH264VideoTrack(mp4Writer, MP4V2_TIMESCALE, MP4V2_TIMESCALE / fps, width, height, nalData[1], nalData[2], nalData[3], 3);
-                            assert(mp4Track != MP4_INVALID_TRACK_ID);
-                            MP4SetVideoProfileLevel(mp4Writer, 0x7F);
-                        }
-                        if(mp4Track != MP4_INVALID_TRACK_ID) {
-                            MP4AddH264SequenceParameterSet(mp4Writer, mp4Track, nalData.data(), nalData.size());
-                        }
-                        break;
-                    case NALU::PPS:
-                        if(mp4Track != MP4_INVALID_TRACK_ID) {
-                            MP4AddH264PictureParameterSet(mp4Writer, mp4Track, nalData.data(), nalData.size());
-                        }
-                        break;
-                    case NALU::I:
-                        isSyncSample = true;
-                        sampleNals.push_back(nalData);
-                        break;
-                    case NALU::P:
-                        sampleNals.push_back(nalData);
-                        break;
-                    case NALU::INVALID:
-                    default:
-                        break;
-                }
-                nal = nals.next();
-            }
-
-            if(mp4Track == MP4_INVALID_TRACK_ID) {
-                break;
-            }
-            if(sampleNals.empty()) {
-                break;
-            }
-
-            size_t totalSize = 0;
-            for(const auto& n : sampleNals) {
-                totalSize += 4 + n.size();
-            }
-            std::vector<uint8_t> sampleData;
-            sampleData.reserve(totalSize);
-            for(const auto& n : sampleNals) {
-                uint32_t naluSize = static_cast<uint32_t>(n.size());
-                sampleData.push_back(static_cast<uint8_t>((naluSize >> 24) & 0xFF));
-                sampleData.push_back(static_cast<uint8_t>((naluSize >> 16) & 0xFF));
-                sampleData.push_back(static_cast<uint8_t>((naluSize >> 8) & 0xFF));
-                sampleData.push_back(static_cast<uint8_t>(naluSize & 0xFF));
-                sampleData.insert(sampleData.end(), n.begin(), n.end());
-            }
-
-            if(!MP4WriteSample(mp4Writer, mp4Track, sampleData.data(), sampleData.size(), MP4V2_TIMESCALE / fps, 0, isSyncSample)) {
-                spdlog::warn("Failed to write sample to MP4 file");
-            }
-            break;
-        }
-        case VideoCodec::MJPEG:
-            if(mp4Track == MP4_INVALID_TRACK_ID) {
-                mp4Track = MP4AddVideoTrack(mp4Writer, MP4V2_TIMESCALE, MP4V2_TIMESCALE / fps, width, height, MP4_JPEG_VIDEO_TYPE);
-                assert(mp4Track != MP4_INVALID_TRACK_ID);
-                MP4SetVideoProfileLevel(mp4Writer, 0x7F);
-            }
-            if(!MP4WriteSample(mp4Writer, mp4Track, data.data(), data.size(), MP4V2_TIMESCALE / fps)) {
-                spdlog::warn("Failed to write sample to MP4 file");
-            }
-            break;
-#else
         case VideoCodec::H264:
-        case VideoCodec::MJPEG: {
-            throw std::runtime_error("Encoded video not support. Please recompile with DEPTHAI_ENABLE_MP4V2=ON");
+        case VideoCodec::MJPEG:
+            encodedWriter->write(data);
             break;
-        }
-#endif
         case VideoCodec::RAW: {
             if(!cvWriter->isOpened()) {
                 throw std::runtime_error("VideoRecorder OpenCV writer is not initialized");
@@ -226,14 +81,10 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
 }
 
 void VideoRecorder::close() {
-#ifdef DEPTHAI_ENABLE_MP4V2
-    if(mp4Writer != MP4_INVALID_FILE_HANDLE) {
-        // MP4Dump(mp4Writer);
-        MP4Close(mp4Writer);
-        mp4Writer = MP4_INVALID_FILE_HANDLE;
-        mp4Track = MP4_INVALID_TRACK_ID;
+    if(encodedWriter) {
+        encodedWriter->close();
+        encodedWriter.reset();
     }
-#endif
     if(cvWriter && cvWriter->isOpened()) {
         cvWriter->release();
     }

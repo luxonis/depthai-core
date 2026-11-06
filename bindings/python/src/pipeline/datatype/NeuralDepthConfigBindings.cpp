@@ -16,8 +16,7 @@
 void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<NeuralDepthConfig, Py<NeuralDepthConfig>, Buffer, std::shared_ptr<NeuralDepthConfig>> neuralDepthConfig(
-        m, "NeuralDepthConfig", DOC(dai, NeuralDepthConfig));
+    py::class_<NeuralDepthConfig, Py<NeuralDepthConfig>, Buffer, py::smart_holder> neuralDepthConfig(m, "NeuralDepthConfig", DOC(dai, NeuralDepthConfig));
     py::class_<NeuralDepthConfig::AlgorithmControl> algorithmControl(neuralDepthConfig, "AlgorithmControl", DOC(dai, NeuralDepthConfig, AlgorithmControl));
     py::class_<NeuralDepthConfig::PostProcessing> postProcessing(neuralDepthConfig, "PostProcessing", DOC(dai, NeuralDepthConfig, PostProcessing));
 

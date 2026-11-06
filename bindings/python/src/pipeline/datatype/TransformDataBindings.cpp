@@ -15,7 +15,7 @@ void bind_transformdata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<Transform> transform(m, "Transform", DOC(dai, Transform));
-    py::class_<TransformData, Py<TransformData>, Buffer, std::shared_ptr<TransformData>> transformData(m, "TransformData", DOC(dai, TransformData));
+    py::class_<TransformData, Py<TransformData>, Buffer, py::smart_holder> transformData(m, "TransformData", DOC(dai, TransformData));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

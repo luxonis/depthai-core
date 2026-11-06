@@ -17,9 +17,10 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawCameraControl, RawBuffer, std::shared_ptr<RawCameraControl>> rawCameraControl(m, "RawCameraControl", DOC(dai, RawCameraControl));
-    py::class_<CameraControl, Py<CameraControl>, Buffer, std::shared_ptr<CameraControl>> cameraControl(m, "CameraControl", DOC(dai, CameraControl));
+    py::class_<CameraControl, Py<CameraControl>, Buffer, py::smart_holder> cameraControl(m, "CameraControl", DOC(dai, CameraControl));
     py::class_<CameraControl::ManualExposureParams> manualExposure(cameraControl, "ManualExposureParams", DOC(dai, CameraControl, ManualExposureParams));
     py::class_<CameraControl::RegionParams> region(cameraControl, "RegionParams", DOC(dai, CameraControl, RegionParams));
+
     py::enum_<CameraControl::Command> cameraControlCommand(cameraControl, "Command", DOC(dai, CameraControl, Command));
     py::enum_<CameraControl::AutoFocusMode> cameraControlAutoFocusMode(cameraControl, "AutoFocusMode", DOC(dai, CameraControl, AutoFocusMode));
     py::enum_<CameraControl::AutoWhiteBalanceMode> cameraControlAutoWhiteBalanceMode(

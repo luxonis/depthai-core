@@ -11,10 +11,12 @@
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
 #endif
+#include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
+#include "depthai/utility/RecordingStore.hpp"
 #include "properties/GlobalProperties.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
@@ -24,6 +26,9 @@
 #include "utility/PipelineImplHelper.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "depthai/pipeline/node/host/Replay.hpp"
+#endif
 #include "utility/Serialization.hpp"
 #include "utility/Telemetry.hpp"
 #include "utility/Uuid.hpp"
@@ -43,6 +48,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <thread>
+#include <unordered_map>
 #include <unordered_set>
 
 // libraries
@@ -1490,8 +1496,16 @@ void PipelineImpl::build() {
     // end of ---Add AutoCalibration block---
 
     // Run first build stage for all nodes
-    for(const auto& node : getAllNodes()) {
-        node->buildStage1();
+    try {
+        for(const auto& node : getAllNodes()) {
+            node->buildStage1();
+        }
+    } catch(...) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        Pipeline replayPipeline(shared_from_this());
+        node::releaseEveryReplayPrepare(replayPipeline);
+#endif
+        throw;
     }
 
     // Go through the build stages sequentially
@@ -1753,6 +1767,8 @@ void PipelineImpl::build() {
 }
 
 void PipelineImpl::start() {
+    DAI_CHECK_V(!running, "Pipeline is already running");
+    joinDevicePipelineMonitor();
     // A stop triggered by a device loss may still be finishing on its own thread - it must
     // complete before the pipeline is started again (it takes stateMtx itself)
     joinDeviceLossStop();
@@ -1949,6 +1965,52 @@ void PipelineImpl::start() {
             });
         }
     }
+    startDevicePipelineMonitor();
+}
+
+void PipelineImpl::startDevicePipelineMonitor() {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(!buildingOnHost) return;
+    std::vector<std::shared_ptr<Device>> replayDevices;
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) continue;
+        if(std::dynamic_pointer_cast<node::ReplayVideo>(node) == nullptr && std::dynamic_pointer_cast<node::ReplayMetadataOnly>(node) == nullptr) continue;
+        auto device = getAssignedDevice(node);
+        if(device && std::find(replayDevices.begin(), replayDevices.end(), device) == replayDevices.end()) replayDevices.push_back(std::move(device));
+    }
+    if(replayDevices.empty()) return;
+
+    std::lock_guard<std::mutex> lock(devicePipelineMonitorMtx);
+    devicePipelineMonitorThread = std::thread([this, replayDevices = std::move(replayDevices)]() {
+        while(running && !stopping) {
+            for(const auto& device : replayDevices) {
+                if(!running || stopping) return;
+                if(device->isClosed() || device->getDeviceState() != DeviceState::RUNNING) continue;
+                bool deviceRunning;
+                try {
+                    deviceRunning = device->isPipelineRunning();
+                } catch(const std::exception& ex) {
+                    // Connection loss and recovery are handled by the device monitor.
+                    Logging::getInstance().logger.debug("Could not query replay pipeline state: {}", ex.what());
+                    continue;
+                }
+                if(deviceRunning || device->isClosed() || device->getDeviceState() != DeviceState::RUNNING || !running || stopping) continue;
+                try {
+                    stop();
+                } catch(const std::exception& ex) {
+                    Logging::getInstance().logger.error("Failed to stop pipeline after device replay completion: {}", ex.what());
+                }
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    });
+#endif
+}
+
+void PipelineImpl::joinDevicePipelineMonitor() {
+    std::lock_guard<std::mutex> lock(devicePipelineMonitorMtx);
+    if(devicePipelineMonitorThread.joinable()) devicePipelineMonitorThread.join();
 }
 
 void PipelineImpl::resetConnections(DeviceBase* device) {
@@ -2104,6 +2166,9 @@ void PipelineImpl::setDeviceStateCallback(std::function<void(std::shared_ptr<Dev
 }
 
 void PipelineImpl::wait() {
+    // The completion worker stops and joins replay nodes as part of teardown.
+    // Join it first so wait() cannot join those same node threads concurrently.
+    joinDevicePipelineMonitor();
     // Waits for all nodes to finish the execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
@@ -2132,6 +2197,187 @@ void PipelineImpl::joinDeviceLossStop() {
     thread.join();
 }
 
+void PipelineImpl::waitForRecordNodes() {
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || defined(DEPTHAI_CORE_RECORD_SUPPORT)
+    for(const auto& node : getAllNodes()) {
+        if(!node->runOnHost()) continue;
+        if(std::dynamic_pointer_cast<node::RecordVideo>(node) != nullptr || std::dynamic_pointer_cast<node::RecordMetadataOnly>(node) != nullptr) {
+            node->wait();
+        }
+    }
+#endif
+}
+
+void PipelineImpl::waitForReplayNodes() {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    for(const auto& node : getAllNodes()) {
+        const bool replay =
+            std::dynamic_pointer_cast<node::ReplayVideo>(node) != nullptr || std::dynamic_pointer_cast<node::ReplayMetadataOnly>(node) != nullptr;
+        if(!replay) continue;
+        if(node->runOnHost()) {
+            if(auto threaded = std::dynamic_pointer_cast<ThreadedNode>(node)) {
+                if(threaded->thread.get_id() != std::this_thread::get_id()) node->wait();
+            } else {
+                node->wait();
+            }
+        }
+        if(auto video = std::dynamic_pointer_cast<node::ReplayVideo>(node)) video->releaseAfterStop();
+        if(auto metadata = std::dynamic_pointer_cast<node::ReplayMetadataOnly>(node)) metadata->releaseAfterStop();
+    }
+#endif
+}
+
+void PipelineImpl::transferRecordings() {
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || defined(DEPTHAI_CORE_RECORD_SUPPORT)
+    struct Group {
+        std::shared_ptr<Device> device;
+        std::string name;
+        fs::path outputDirectory;
+        bool transfer = false;
+        bool keep = false;
+        bool anyLegacy = false;
+        bool anyNew = false;
+        std::vector<std::shared_ptr<node::RecordVideo>> nodes;
+    };
+    std::vector<Group> groups;
+    std::string holisticName;
+    if(const auto found = recordReplayFilenames.find("holistic_recording"); found != recordReplayFilenames.end()) {
+        holisticName = found->second.filename().string();
+    }
+    const auto markHolistic = [&](const std::string& name) {
+        if(!holisticName.empty() && name == holisticName) recordTransferFailed = true;
+    };
+    for(const auto& node : getAllNodes()) {
+        const auto record = std::dynamic_pointer_cast<node::RecordVideo>(node);
+        if(record == nullptr || record->runOnHost()) continue;
+        auto device = record->getDevice();
+        if(device == nullptr) continue;
+        Group* group = nullptr;
+        for(auto& candidate : groups) {
+            if(candidate.device == device && candidate.name == record->getRecordingName()) {
+                group = &candidate;
+                break;
+            }
+        }
+        if(group == nullptr) {
+            groups.push_back(Group{});
+            group = &groups.back();
+            group->device = std::move(device);
+            group->name = record->getRecordingName();
+            group->outputDirectory = record->getOutputDirectory();
+        }
+        group->nodes.push_back(record);
+        group->transfer = group->transfer || record->getTransferToHost();
+        group->keep = group->keep || record->getKeepOnDevice();
+        if(record->isLegacyLayout()) {
+            group->anyLegacy = true;
+        } else {
+            group->anyNew = true;
+        }
+    }
+
+    std::unordered_set<Device*> prepared;
+    std::unordered_set<Device*> prepareFailed;
+    std::unordered_map<Device*, std::vector<std::tuple<std::int64_t, std::vector<std::uint8_t>>>> finalStatuses;
+    for(auto& group : groups) {
+        if(group.name.empty()) continue;
+        DeviceState state = DeviceState::RUNNING;
+        try {
+            state = group.device->getDeviceState();
+        } catch(const std::exception&) {
+            state = DeviceState::RUNNING;
+        }
+        if(state == DeviceState::DISCONNECTED || state == DeviceState::FAILED) {
+            Logging::getInstance().logger.error("Record download of {} skipped: device disconnected", group.name);
+            markHolistic(group.name);
+            continue;
+        }
+        if(prepared.insert(group.device.get()).second) {
+            try {
+                finalStatuses[group.device.get()] = group.device->prepareRecordingDownloadWithStatus();
+            } catch(const std::exception& ex) {
+                prepareFailed.insert(group.device.get());
+                Logging::getInstance().logger.error("Record download of {} failed: {}", group.name, ex.what());
+                markHolistic(group.name);
+                continue;
+            }
+        } else if(prepareFailed.count(group.device.get()) != 0) {
+            Logging::getInstance().logger.error("Record download of {} failed: prepare failed", group.name);
+            markHolistic(group.name);
+            continue;
+        }
+        for(const auto& snapshot : finalStatuses[group.device.get()]) {
+            if(std::get<1>(snapshot).empty()) continue;
+            for(const auto& record : group.nodes) {
+                if(record->id != std::get<0>(snapshot)) continue;
+                RecordStatus finalStatus;
+                utility::deserialize(std::get<1>(snapshot), finalStatus);
+                std::lock_guard<std::mutex> lock(record->statusMutex);
+                if(!record->lastStatus || finalStatus.getSequenceNum() > record->lastStatus->getSequenceNum()) record->lastStatus = std::move(finalStatus);
+            }
+        }
+        if(!group.transfer) continue;
+        try {
+            if(group.anyLegacy && !group.anyNew) {
+                const auto tempRoot = fs::temp_directory_path() / ("dai-record-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+                std::filesystem::create_directories(tempRoot);
+                try {
+                    group.device->downloadRecording(group.name, tempRoot);
+                    const auto downloaded = tempRoot / group.name;
+                    for(const auto& record : group.nodes) {
+                        const auto video = record->getRecordVideoFile();
+                        const auto metadata = record->getRecordMetadataFile();
+                        const auto stem = video.empty() ? metadata.stem().string() : video.stem().string();
+                        if(!std::filesystem::exists(downloaded)) continue;
+                        for(const auto& entry : std::filesystem::recursive_directory_iterator(downloaded)) {
+                            if(!entry.is_regular_file()) continue;
+                            const auto filename = entry.path().filename().string();
+                            if(!filename.empty() && filename.front() == '.') continue;
+                            const auto fileStem = entry.path().stem().string();
+                            int segment = -1;
+                            if(fileStem == stem) {
+                                segment = 0;
+                            } else {
+                                const auto prefix = stem + "_s";
+                                if(fileStem.rfind(prefix, 0) == 0) {
+                                    const auto suffix = fileStem.substr(prefix.size());
+                                    const bool digits = !suffix.empty() && std::all_of(suffix.begin(), suffix.end(), [](unsigned char character) {
+                                        return std::isdigit(character) != 0;
+                                    });
+                                    if(digits) segment = std::stoi(suffix);
+                                }
+                            }
+                            if(segment < 0) continue;
+                            fs::path destination;
+                            if(!video.empty() && entry.path().extension() == video.extension()) {
+                                destination = pathWithSegment(video, segment);
+                            } else if(!metadata.empty() && entry.path().extension() == metadata.extension()) {
+                                destination = pathWithSegment(metadata, segment);
+                            }
+                            if(destination.empty()) continue;
+                            std::filesystem::create_directories(destination.parent_path());
+                            std::filesystem::copy_file(entry.path(), destination, std::filesystem::copy_options::overwrite_existing);
+                        }
+                    }
+                } catch(...) {
+                    std::error_code removeError;
+                    std::filesystem::remove_all(tempRoot, removeError);
+                    throw;
+                }
+                std::error_code removeError;
+                std::filesystem::remove_all(tempRoot, removeError);
+            } else {
+                group.device->downloadRecording(group.name, group.outputDirectory);
+            }
+            if(!group.keep) group.device->deleteRecording(group.name);
+        } catch(const std::exception& ex) {
+            Logging::getInstance().logger.error("Record download of {} failed: {}", group.name, ex.what());
+            markHolistic(group.name);
+        }
+    }
+#endif
+}
+
 void PipelineImpl::stop() {
     std::lock_guard<std::mutex> lock(stateMtx);
     if(!running) {
@@ -2141,10 +2387,6 @@ void PipelineImpl::stop() {
     // not re-trigger a stop or user callbacks. 'running' itself stays set until the teardown
     // is complete, so isRunning()/run() only return once the devices are closed.
     stopping = true;
-
-    // Wake any XLink host node parked waiting for a reconnect - stopping joins the
-    // node threads and a parked node would never exit on its own
-    disconnectXLinkHosts();
 
     if(telemetryPipelineStartedAt.has_value()) {
         const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - *telemetryPipelineStartedAt).count();
@@ -2167,12 +2409,25 @@ void PipelineImpl::stop() {
         telemetryPipelineStartedAt.reset();
     }
 
+    // Device writers must close while host status receivers are still running.
+    // This also releases recordings configured to remain on the device.
+    transferRecordings();
+
+    // Wake transports parked waiting for reconnection before joining them.
+    disconnectXLinkHosts();
+
     // Stops the pipeline execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
             node->stop();
         }
     }
+
+    // Record threads close files and publish the final status before output queues close.
+    waitForRecordNodes();
+    utility::PipelineImplHelper::packHolisticRecording(this);
+    // Replay threads release cache holds after they leave run().
+    waitForReplayNodes();
 
     // Close all the output queues
     for(auto& queue : outputQueues) {

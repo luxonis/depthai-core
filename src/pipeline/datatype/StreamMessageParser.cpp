@@ -73,6 +73,8 @@
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
+#include "depthai/pipeline/datatype/RecordControl.hpp"
+#include "depthai/pipeline/datatype/RecordStatus.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
@@ -471,6 +473,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::CoverageData:
             break;
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        case DatatypeEnum::RecordControl:
+            return parseDatatype<RecordControl>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::RecordStatus:
+            return parseDatatype<RecordStatus>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::COUNT:
             break;
         default:

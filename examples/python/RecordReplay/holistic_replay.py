@@ -8,7 +8,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--source", default="recordings/recording.tar", help="Recording path")
 args = parser.parse_args()
 
-# Create pipeline
+# On RVC4 the pipeline builds one device ReplayVideo per camera and one
+# ReplayMetadataOnly for the IMU, from a single uploaded recording.
+# On RVC2 the recording is extracted and replayed on the host.
+# Video and metadata counts must match. recording.tar from CI does not (119 vs 140).
 with dai.Pipeline(True) as pipeline:
     pipeline.enableHolisticReplay(args.source)
 

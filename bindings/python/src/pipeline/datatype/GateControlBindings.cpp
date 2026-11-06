@@ -12,7 +12,7 @@ void bind_gate_control(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace pybind11::literals;
 
-    py::class_<GateControl, Buffer, std::shared_ptr<GateControl>> gateControl(m, "GateControl", DOC(dai, GateControl));
+    py::class_<GateControl, Buffer, py::smart_holder> gateControl(m, "GateControl", DOC(dai, GateControl));
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling
