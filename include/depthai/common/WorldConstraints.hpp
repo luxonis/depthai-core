@@ -129,8 +129,8 @@ struct WorldConstraints {
     /// Sockets referred to by socketDistances, sorted, without duplicates.
     std::vector<CameraBoardSocket> referencedSockets() const;
     /// Throws std::invalid_argument when a distance or size is not positive, a distance refers to the same marker
-    /// twice, a marker has two sizes, or an entry names a marker outside markerIds (when markerIds is given) or the
-    /// AUTO socket.
+    /// twice, a marker has two sizes, an entry names a marker outside markerIds (when markerIds is given) or the
+    /// AUTO socket, maxObservationSets is 0, or markerType / arucoDictionary is not one of the enumerators.
     void validate() const;
 
     DEPTHAI_SERIALIZE(WorldConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, markerSizes, maxObservationSets);

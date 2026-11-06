@@ -212,7 +212,11 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
         constraints.markerIds = markerIdsFromJson(json.at("markers"));
     }
     if(json.contains("maxObservationSets")) {
-        constraints.maxObservationSets = json.at("maxObservationSets").get<uint32_t>();
+        const auto& sets = json.at("maxObservationSets");
+        if(!sets.is_number_integer() || sets.get<int64_t>() < 1) {
+            throw std::invalid_argument("WorldConstraints: maxObservationSets must be a positive integer, got " + sets.dump());
+        }
+        constraints.maxObservationSets = sets.get<uint32_t>();
     }
     for(const auto& entry : json.value("markerDistances", nlohmann::json::array())) {
         MarkerDistance distance;
@@ -383,6 +387,9 @@ void WorldConstraints::validate() const {
     }
     if(toString(markerType) == "UNKNOWN") {
         throw std::invalid_argument("WorldConstraints: unknown markerType " + std::to_string(static_cast<int32_t>(markerType)));
+    }
+    if(toString(arucoDictionary) == "UNKNOWN") {
+        throw std::invalid_argument("WorldConstraints: unknown arucoDictionary " + std::to_string(static_cast<int32_t>(arucoDictionary)));
     }
 }
 

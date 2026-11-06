@@ -106,6 +106,19 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markerA": 1, "distance": 1}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [1, 2], "distance": "far"}]})"), std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString("{not json"), std::invalid_argument);
+    // Enumerators given as numbers are range-checked, as is the observation window.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": 99, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 7, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": 0, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": -1, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": 2.5, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE(WorldConstraints::fromJsonString(R"({"maxObservationSets": 3, "arucoDictionary": 4, "markerDistances": [{"markers": [1, 2], "distance": 1}]})")
+                .maxObservationSets
+            == 3);
     {
         WorldConstraints negative;
         negative.socketDistances.push_back({-1, Socket::CAM_A, 1.0f});
@@ -113,6 +126,12 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
         WorldConstraints unknownSocket;
         unknownSocket.socketDistances.push_back({1, static_cast<Socket>(99), 1.0f});
         REQUIRE_THROWS_AS(unknownSocket.validate(), std::invalid_argument);
+        WorldConstraints unknownDictionary = WorldConstraints::fromJsonString(kWorldJson);
+        unknownDictionary.arucoDictionary = static_cast<dai::ArucoDictionary>(99);
+        REQUIRE_THROWS_AS(unknownDictionary.validate(), std::invalid_argument);
+        WorldConstraints noWindow = WorldConstraints::fromJsonString(kWorldJson);
+        noWindow.maxObservationSets = 0;
+        REQUIRE_THROWS_AS(noWindow.validate(), std::invalid_argument);
     }
 
     dai::Pipeline pipeline(false);
