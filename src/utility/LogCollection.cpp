@@ -2,6 +2,8 @@
 #include "LogCollection.hpp"
 
 #include <XLink/XLinkPublicDefines.h>
+#include <cstddef>
+#include <string>
 #ifdef DEPTHAI_ENABLE_CURL
     #include <cpr/cpr.h>
 #endif
@@ -20,6 +22,7 @@ namespace dai {
 namespace logCollection {
 
 constexpr auto LOG_ENDPOINT = "https://logs.luxonis.com/logs";
+constexpr int64 UPLOAD_LIMIT = (128LL*1024*1024) - (256LL*1024);
 
 struct FileWithSHA1 {
     std::string content;
@@ -104,16 +107,25 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
         return false;
     }
     cpr::Multipart multipart{};
-    if(pipelineData) {
-        cpr::Buffer pipelineBuffer(pipelineData->content.begin(), pipelineData->content.end(), pipelineData->name);
-        multipart.parts.emplace_back("pipelineFile", pipelineBuffer);
-        multipart.parts.emplace_back("pipelineId", pipelineData->sha1Hash);
-    }
-
+    int64 freeSpace = UPLOAD_LIMIT;
+    
     if(crashDumpData) {
         cpr::Buffer crashDumpBuffer(crashDumpData->content.begin(), crashDumpData->content.end(), crashDumpData->name);
-        multipart.parts.emplace_back("crashDumpFile", crashDumpBuffer);
+        if (static_cast<int64>(crashDumpBuffer.datalen) < freeSpace) {
+            multipart.parts.emplace_back("crashDumpFile", crashDumpBuffer);
+            freeSpace -= static_cast<int64>(crashDumpBuffer.datalen);
+        }
+        else logger::warn("Not uploading crashdump because it exceeds size limit {}/{}bytes", crashDumpBuffer.datalen, freeSpace);
         multipart.parts.emplace_back("crashDumpId", crashDumpData->sha1Hash);
+        multipart.parts.emplace_back("crashDumpFileSize", std::to_string(crashDumpBuffer.datalen));
+    }
+    
+    if(pipelineData) {
+        cpr::Buffer pipelineBuffer(pipelineData->content.begin(), pipelineData->content.end(), pipelineData->name);
+        if (static_cast<int64>(pipelineBuffer.datalen) < freeSpace) multipart.parts.emplace_back("pipelineFile", pipelineBuffer);
+        else logger::warn("Not uploading crashdump pipeline data because it exceeds size limit {}/{}bytes left", pipelineBuffer.datalen, freeSpace);
+        multipart.parts.emplace_back("pipelineId", pipelineData->sha1Hash);
+        multipart.parts.emplace_back("pipelineFileSize", std::to_string(pipelineBuffer.datalen));
     }
 
     multipart.parts.emplace_back("platform", platformToString(deviceInfo.platform));
