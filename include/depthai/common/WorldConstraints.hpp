@@ -71,12 +71,15 @@ MarkerType markerTypeFromString(const std::string& name);
  *       "markers": [37, 43],                    // optional: markers that belong to the scene (others are ignored)
  *       "markerDistances": [ {"markers": [37, 43], "distance": 0.84} ],
  *       "socketDistances": [ {"marker": 37, "socket": "CAM_A", "distance": 1.68} ],
- *       "markerSizes": [ {"marker": 37, "size": 0.10} ]
+ *       "markerSizes": [ {"marker": 37, "size": 0.10} ],
+ *       "maxObservationSets": 50                // optional: synchronized frame sets with markers kept, default 50
  *     }
  *
  * The size of an ArUco marker is the length of a side of its black square, the distance between two neighbouring
  * corners; the size of a Luxonis Marker is the outer diameter of its lens ring. Any of the three lists may be empty;
- * at least one entry is required for the constraints to have an effect.
+ * at least one entry is required for the constraints to have an effect. Names are matched regardless of case; the
+ * dictionary may omit its "DICT_" prefix, a socket may be given as "A" or its number, "ft" is a lengthUnit too, and
+ * a marker distance may name its ends as {"markerA": 37, "markerB": 43, "distance": 0.84}.
  */
 struct WorldConstraints {
     /// Distance between the reference points of two markers.
