@@ -1054,6 +1054,18 @@ dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
+# Sensor config FPS sweep on OAK 4 FFC testbeds. Only that test case, "Camera pool sizes" assumes
+# the OAK 4 D cameras.
+add_test(NAME camera_fps_config_ffc_test COMMAND camera_fps_config_test "Camera sensor configs configurations")
+set_tests_properties(camera_fps_config_ffc_test PROPERTIES ENVIRONMENT "${test_env}")
+dai_set_test_labels(camera_fps_config_ffc_test ondevice rvc4ffc ci_nightly noreplayci)
+set_property(TEST camera_fps_config_ffc_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
+
+# Multi-port camera stack test, runs only on the OAK 4 FFC testbeds
+dai_add_test(camera_ffc_test src/ondevice_tests/pipeline/node/camera_ffc_test.cpp)
+dai_set_test_labels(camera_ffc_test ondevice rvc4ffc ci_nightly noreplayci)
+set_property(TEST camera_ffc_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
+
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
