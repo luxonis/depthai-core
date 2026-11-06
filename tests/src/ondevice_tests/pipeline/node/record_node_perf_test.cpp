@@ -10,12 +10,11 @@ extern "C" const char* __asan_default_options() {
 
 using record_test::DeviceLogCapture;
 using record_test::EnvGuard;
+using record_test::getStatus;
 using record_test::LineLevel;
 using record_test::LogCapture;
-using record_test::RecordingGuard;
-using record_test::TempDir;
-using record_test::getStatus;
 using record_test::openRvc4OrSkip;
+using record_test::RecordingGuard;
 using record_test::setFormat;
 using record_test::setFps;
 using record_test::setOutputDirectory;
@@ -25,6 +24,7 @@ using record_test::setStreamName;
 using record_test::setTransferToHost;
 using record_test::setWaitForTrigger;
 using record_test::startControl;
+using record_test::TempDir;
 using record_test::uniqueName;
 
 namespace {
@@ -39,11 +39,7 @@ struct Perf {
     std::unique_ptr<dai::Pipeline> pipeline;
     std::unique_ptr<RecordingGuard> guard;
 
-    Perf()
-        : device(openRvc4OrSkip()),
-          unsetReplay("DEPTHAI_REPLAY"),
-          unsetRecord("DEPTHAI_RECORD"),
-          devLog(*device, dai::LogLevel::DEBUG) {}
+    Perf() : device(openRvc4OrSkip()), unsetReplay("DEPTHAI_REPLAY"), unsetRecord("DEPTHAI_RECORD"), devLog(*device, dai::LogLevel::DEBUG) {}
 
     dai::Pipeline& begin() {
         pipeline = std::make_unique<dai::Pipeline>(device);
@@ -199,7 +195,8 @@ TEST_CASE("VD4 the pre-trigger buffer is written without skips", "[record][perf]
     auto started = takeStatus(status, std::chrono::seconds(15));
     CHECK(started->state == dai::RecordStatus::State::STARTED);
     const auto marked = std::chrono::steady_clock::now();
-    const bool wrote = perf.devLog.waitFor("Record wrote frame", std::chrono::seconds(1)) || perf.hostLog.waitFor("Record wrote frame", std::chrono::milliseconds(1));
+    const bool wrote =
+        perf.devLog.waitFor("Record wrote frame", std::chrono::seconds(1)) || perf.hostLog.waitFor("Record wrote frame", std::chrono::milliseconds(1));
     const auto elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - marked).count();
     CHECK(wrote);
     CHECK(elapsed <= 1.0);

@@ -6,8 +6,8 @@
 #include <fstream>
 #include <functional>
 #include <mutex>
-#include <optional>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <set>
 #include <stdexcept>
 
@@ -359,16 +359,20 @@ void addHold(Entry& entry, std::uint64_t nodeId, std::uint64_t token, bool persi
 }
 
 void dropHolds(const std::filesystem::path& dir, const std::function<bool(const Hold&)>& match) {
-    gIndex.entries.erase(std::remove_if(gIndex.entries.begin(), gIndex.entries.end(), [&](Entry& entry) {
-        const auto before = entry.holds.size();
-        entry.holds.erase(std::remove_if(entry.holds.begin(), entry.holds.end(), match), entry.holds.end());
-        if(before == entry.holds.size() || !entry.holds.empty() || entry.persistent || entry.createdToken == 0) return false;
-        if(entry.ownsFiles && !entry.relativePath.empty()) {
-            std::error_code error;
-            std::filesystem::remove_all(dir / entry.relativePath, error);
-        }
-        return true;
-    }), gIndex.entries.end());
+    gIndex.entries.erase(std::remove_if(gIndex.entries.begin(),
+                                        gIndex.entries.end(),
+                                        [&](Entry& entry) {
+                                            const auto before = entry.holds.size();
+                                            entry.holds.erase(std::remove_if(entry.holds.begin(), entry.holds.end(), match), entry.holds.end());
+                                            if(before == entry.holds.size() || !entry.holds.empty() || entry.persistent || entry.createdToken == 0)
+                                                return false;
+                                            if(entry.ownsFiles && !entry.relativePath.empty()) {
+                                                std::error_code error;
+                                                std::filesystem::remove_all(dir / entry.relativePath, error);
+                                            }
+                                            return true;
+                                        }),
+                         gIndex.entries.end());
 }
 
 std::filesystem::path safeRelative(const std::string& key) {
@@ -541,10 +545,11 @@ void commitCacheEntry(std::uint64_t nodeId, std::uint64_t pipelineToken, bool pe
     try {
         saveIndex(dir);
     } catch(...) {
-        if(previous) *findEntry(request.key) = std::move(*previous);
-        else gIndex.entries.erase(std::remove_if(gIndex.entries.begin(), gIndex.entries.end(), [&](const Entry& entry) {
-            return entry.key == request.key;
-        }), gIndex.entries.end());
+        if(previous)
+            *findEntry(request.key) = std::move(*previous);
+        else
+            gIndex.entries.erase(std::remove_if(gIndex.entries.begin(), gIndex.entries.end(), [&](const Entry& entry) { return entry.key == request.key; }),
+                                 gIndex.entries.end());
         // The caller still owns the failed reservation. abortCacheEntry removes
         // its files before releasing the key to a waiting writer.
         throw;

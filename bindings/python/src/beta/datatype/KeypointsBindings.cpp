@@ -9,8 +9,7 @@ void bind_beta_keypoints(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::Keypoints, Py<beta::Keypoints>, Buffer, Transformable, py::smart_holder> keypoints(
-        betaModule, "Keypoints", DOC(dai, beta, Keypoints));
+    py::class_<beta::Keypoints, Py<beta::Keypoints>, Buffer, Transformable, py::smart_holder> keypoints(betaModule, "Keypoints", DOC(dai, beta, Keypoints));
 
     ///////////////////////////////////////////////////////////////////////
     // Callstack handling

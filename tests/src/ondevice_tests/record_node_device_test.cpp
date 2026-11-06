@@ -1,9 +1,9 @@
-#include <catch2/catch_all.hpp>
 #include <algorithm>
+#include <catch2/catch_all.hpp>
 #include <chrono>
-#include <opencv2/videoio.hpp>
 #include <filesystem>
 #include <fstream>
+#include <opencv2/videoio.hpp>
 #include <thread>
 #include <utility>
 
@@ -104,7 +104,12 @@ TEST_CASE("Device recording store protects writers and transfers retained record
     const auto name = "retained_" + dai::makeRecordingTimestamp();
     dai::Pipeline pipeline(device);
     auto record = pipeline.create<dai::node::RecordVideo>();
-    record->setRunOnHost(false).setFormat(dai::RecordFormat::RAW_FRAMES).setRecordingName(name).setTransferToHost(false).setWaitForTrigger(true).setPreTriggerFrames(0);
+    record->setRunOnHost(false)
+        .setFormat(dai::RecordFormat::RAW_FRAMES)
+        .setRecordingName(name)
+        .setTransferToHost(false)
+        .setWaitForTrigger(true)
+        .setPreTriggerFrames(0);
     auto input = record->input.createInputQueue();
     auto control = record->inputControl.createInputQueue();
     auto status = record->status.createOutputQueue(16, true);
@@ -140,7 +145,10 @@ TEST_CASE("Device Script constructs record messages and triggers segments", "[re
     OutputDirectory output;
     dai::Pipeline pipeline(device);
     auto record = pipeline.create<dai::node::RecordVideo>();
-    record->setRunOnHost(false).setFormat(dai::RecordFormat::RAW_FRAMES).setRecordingName("script_" + dai::makeRecordingTimestamp()).setOutputDirectory(output.path);
+    record->setRunOnHost(false)
+        .setFormat(dai::RecordFormat::RAW_FRAMES)
+        .setRecordingName("script_" + dai::makeRecordingTimestamp())
+        .setOutputDirectory(output.path);
     record->setWaitForTrigger(true).setPreTriggerFrames(0);
     auto script = pipeline.create<dai::node::Script>();
     script->setScript(R"(

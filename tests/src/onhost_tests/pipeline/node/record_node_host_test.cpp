@@ -2,17 +2,19 @@ extern "C" const char* __asan_default_options() {
     return "detect_container_overflow=0";
 }
 
+#include <unistd.h>
+
 #include <cmath>
 #include <cstdlib>
 #include <regex>
-#include <unistd.h>
 
 #include "../../../helpers/record_test_support.hpp"
 
 namespace {
 
-using record_test::HostRecord;
+using Catch::Matchers::ContainsSubstring;
 using record_test::expectStatus;
+using record_test::HostRecord;
 using record_test::makeEnc;
 using record_test::makeEnc265;
 using record_test::makeEncJ;
@@ -20,7 +22,6 @@ using record_test::makeEncPad;
 using record_test::makeImg;
 using record_test::makeMcap;
 using record_test::sendFrame;
-using Catch::Matchers::ContainsSubstring;
 
 constexpr auto kWait = std::chrono::seconds(10);
 
@@ -77,7 +78,8 @@ void beginRecord(record_test::HostRecord& fx) {
     expectStatus(fx.status, dai::RecordStatus::State::STARTED, 0, 0, -1, -1, 0);
 }
 
-std::shared_ptr<dai::RecordStatus> stoppedOf(record_test::HostRecord& fx, std::int32_t segment, std::int32_t frames, std::int64_t first, std::int64_t last, std::int32_t skipped) {
+std::shared_ptr<dai::RecordStatus> stoppedOf(
+    record_test::HostRecord& fx, std::int32_t segment, std::int32_t frames, std::int64_t first, std::int64_t last, std::int32_t skipped) {
     auto stopped = readStopped(fx);
     CHECK(stopped->segment == segment);
     CHECK(stopped->frameCount == frames);
@@ -93,8 +95,9 @@ void sendControl(record_test::HostRecord& fx, const std::shared_ptr<dai::RecordC
 
 }  // namespace
 
-using record_test::HostRecord;
+using Catch::Matchers::ContainsSubstring;
 using record_test::expectStatus;
+using record_test::HostRecord;
 using record_test::makeEnc;
 using record_test::makeEnc265;
 using record_test::makeEncJ;
@@ -102,7 +105,6 @@ using record_test::makeEncPad;
 using record_test::makeImg;
 using record_test::makeMcap;
 using record_test::sendFrame;
-using Catch::Matchers::ContainsSubstring;
 
 TEST_CASE("data record helpers", "[record][data]") {
     if(!record_test::recordDataAvailable()) SKIP("needs the generated data");
@@ -341,9 +343,7 @@ TEST_CASE("A20 two streams in one recording", "[record][host]") {
         sendFrame(fx.frames, makeImg(64, 48, n));
         sendFrame(rightIn, makeImg(64, 48, n));
         REQUIRE(record_test::waitUntil(
-            [&] {
-                return record_test::fileCount(fx.recDir() / "left", "left") == n + 1 && record_test::fileCount(fx.recDir() / "right", "right") == n + 1;
-            },
+            [&] { return record_test::fileCount(fx.recDir() / "left", "left") == n + 1 && record_test::fileCount(fx.recDir() / "right", "right") == n + 1; },
             kWait));
     }
     fx.pipeline.stop();

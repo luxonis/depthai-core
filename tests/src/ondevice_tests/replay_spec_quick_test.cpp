@@ -1,6 +1,6 @@
+#include <atomic>
 #include <catch2/catch_all.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
-#include <atomic>
 #include <chrono>
 #include <fstream>
 #include <map>
@@ -148,8 +148,10 @@ TEST_CASE("RVC4 rejects missing explicit metadata and names every stream", "[spe
         replay->setSource(source.second, dai::ReplaySourceLocation::DEVICE).setRunOnHost(false).setSize(28, 16);
         if(missingMetadata) replay->setMetadataFile("/tmp/absent-replay-spec-metadata.mcap");
         auto queue = replay->out.createOutputQueue();
-        if(missingMetadata) REQUIRE_THROWS_WITH(pipeline.start(), ContainsSubstring("metadata file is missing"));
-        else REQUIRE_THROWS_WITH(pipeline.start(), ContainsSubstring("left") && ContainsSubstring("right"));
+        if(missingMetadata)
+            REQUIRE_THROWS_WITH(pipeline.start(), ContainsSubstring("metadata file is missing"));
+        else
+            REQUIRE_THROWS_WITH(pipeline.start(), ContainsSubstring("left") && ContainsSubstring("right"));
     }
     if(!device->isClosed()) {
         device->replayCacheRelease({source.first});

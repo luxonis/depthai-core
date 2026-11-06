@@ -18,7 +18,6 @@
 #include <thread>
 #include <utility>
 
-#include "nanorpc/core/exception.h"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -33,6 +32,7 @@
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/utility/ReplayPlayback.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "nanorpc/core/exception.h"
 #include "opencv/ReplayInternal.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/Environment.hpp"
@@ -554,8 +554,10 @@ std::string uploadFile(Device& device, const std::shared_ptr<spdlog::async_logge
         if(total > 0 && lastBucket < 100) logProgress(logger, "upload", hash, total, total);
     } catch(...) {
         try {
-            if(completed && !legacy) device.replayCacheRelease({hash});
-            else device.replayCacheAbort(hash);
+            if(completed && !legacy)
+                device.replayCacheRelease({hash});
+            else
+                device.replayCacheAbort(hash);
         } catch(const std::exception&) {
         }
         throw;
@@ -581,8 +583,8 @@ void checkRecordingClosed(const replay::ListedSource& source) {
 }
 
 std::pair<std::string, std::string> uploadDirectory(Device& device,
-                                                  const std::shared_ptr<spdlog::async_logger>& logger,
-                                                  const std::filesystem::path& directory) {
+                                                    const std::shared_ptr<spdlog::async_logger>& logger,
+                                                    const std::filesystem::path& directory) {
     // Keep the flat directory layout and its TR-1 hash, including automatic
     // metadata sidecars. A tar would have a different hash and cache size.
     std::map<std::string, std::uint64_t> files;
@@ -634,8 +636,10 @@ std::pair<std::string, std::string> uploadDirectory(Device& device,
         completed = true;
     } catch(...) {
         try {
-            if(completed) device.replayCacheRelease({hash});
-            else device.replayCacheAbort(hash);
+            if(completed)
+                device.replayCacheRelease({hash});
+            else
+                device.replayCacheAbort(hash);
         } catch(const std::exception&) {
         }
         throw;
@@ -1170,7 +1174,8 @@ void ReplayVideo::buildStage1() {
                 throw;
             }
             runtime->cacheKeys.push_back(hash);
-            local = properties.archiveEntrySet ? replay::resolveArchiveEntry(slot.path, properties.archiveEntry, false) : replay::selectReplayArchiveSource(slot.path);
+            local = properties.archiveEntrySet ? replay::resolveArchiveEntry(slot.path, properties.archiveEntry, false)
+                                               : replay::selectReplayArchiveSource(slot.path);
         } else if(onHost && std::filesystem::is_directory(sourcePath)) {
             hash = replay::sha256OfDirectory(sourcePath);
             replay::CacheSlotRequest request;
@@ -1444,8 +1449,10 @@ void ReplayVideo::run() {
         }
         std::optional<replay::PlaybackClock::duration> recordedInterval;
         if(runtime->recorded && timing.present) {
-            if(index == 0 && sent > 0) recordedInterval = runtime->nominal;
-            else if(previousDevice) recordedInterval = timing.timestampDevice - *previousDevice;
+            if(index == 0 && sent > 0)
+                recordedInterval = runtime->nominal;
+            else if(previousDevice)
+                recordedInterval = timing.timestampDevice - *previousDevice;
             previousDevice = timing.timestampDevice;
         }
         const auto sendTime = pacing.waitToSend(recordedInterval, [this] { return mainLoop(); });
@@ -1662,7 +1669,8 @@ void ReplayMetadataOnly::buildStage1() {
                     throw;
                 }
                 runtime->cacheKeys.push_back(hash);
-                local = properties.archiveEntrySet ? replay::resolveArchiveEntry(slot.path, properties.archiveEntry, true) : replay::selectReplayArchiveSource(slot.path);
+                local = properties.archiveEntrySet ? replay::resolveArchiveEntry(slot.path, properties.archiveEntry, true)
+                                                   : replay::selectReplayArchiveSource(slot.path);
             } else {
                 const auto hash = replay::sha256OfFile(sourcePath);
                 replay::CacheSlotRequest request;
@@ -1757,8 +1765,10 @@ void ReplayMetadataOnly::run() {
         timing.timestampSystem = buffer->getTimestampSystem();
         std::optional<replay::PlaybackClock::duration> recordedInterval;
         if(sent > 0) {
-            if(index == 0) recordedInterval = runtime->nominal;
-            else if(havePrevious) recordedInterval = timing.timestampDevice - previousDevice;
+            if(index == 0)
+                recordedInterval = runtime->nominal;
+            else if(havePrevious)
+                recordedInterval = timing.timestampDevice - previousDevice;
         }
         checkSnaps(runtime->snaps);
         const int pass = runtime->count == 0 ? 0 : sent / runtime->count;

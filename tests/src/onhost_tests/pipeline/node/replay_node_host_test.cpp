@@ -53,19 +53,21 @@ TEST_CASE("data replay helpers", "[replay][data]") {
 #include <cctype>
 #include <limits>
 
+using Catch::Matchers::ContainsSubstring;
+using record_test::LineLevel;
+using record_test::loadImg;
+using record_test::timestampMs;
 using replay_test::CacheKind;
-using replay_test::DecodeMode;
-using replay_test::FrameFill;
-using replay_test::HostCacheGuard;
-using replay_test::HostReplay;
-using replay_test::Location;
-using replay_test::OtherKind;
-using replay_test::TarKind;
 using replay_test::checkArrivals;
 using replay_test::clearHostCache;
 using replay_test::copyFile;
+using replay_test::DecodeMode;
+using replay_test::FrameFill;
 using replay_test::getHostCacheInfo;
 using replay_test::hashDir;
+using replay_test::HostCacheGuard;
+using replay_test::HostReplay;
+using replay_test::Location;
 using replay_test::makeDaiDir;
 using replay_test::makeDaiFrame;
 using replay_test::makeDaiOther;
@@ -74,6 +76,7 @@ using replay_test::makeS1;
 using replay_test::makeTar;
 using replay_test::meanY;
 using replay_test::near;
+using replay_test::OtherKind;
 using replay_test::pixelsEqual;
 using replay_test::rangeSeq;
 using replay_test::rangeTs;
@@ -96,11 +99,8 @@ using replay_test::setSource;
 using replay_test::setStopPipelineAtEnd;
 using replay_test::takeFrames;
 using replay_test::takeTimed;
+using replay_test::TarKind;
 using replay_test::writeMeta;
-using Catch::Matchers::ContainsSubstring;
-using record_test::LineLevel;
-using record_test::loadImg;
-using record_test::timestampMs;
 
 namespace {
 
@@ -161,7 +161,8 @@ std::filesystem::path videoOf(HostReplay& fx, const char* name) {
     return copyFile(replayDataRoot() / name, fx.dir.path / name);
 }
 
-std::filesystem::path metaFile(const std::filesystem::path& dir, const char* name, int count, std::int64_t seq0, std::int64_t ts0, int width, int height, std::int64_t step) {
+std::filesystem::path metaFile(
+    const std::filesystem::path& dir, const char* name, int count, std::int64_t seq0, std::int64_t ts0, int width, int height, std::int64_t step) {
     const auto path = dir / name;
     writeMeta(path, count, seq0, ts0, width, height, step);
     return path;
@@ -219,7 +220,13 @@ void checkUvNear(const dai::ImgFrame& frame, int value, int tolerance) {
     }
 }
 
-std::filesystem::path customDir(HostReplay& fx, int width, int height, const std::vector<std::int64_t>& sequences, const std::vector<std::int64_t>& timestamps, FrameFill fill = {}, const std::vector<std::string>& names = {}) {
+std::filesystem::path customDir(HostReplay& fx,
+                                int width,
+                                int height,
+                                const std::vector<std::int64_t>& sequences,
+                                const std::vector<std::int64_t>& timestamps,
+                                FrameFill fill = {},
+                                const std::vector<std::string>& names = {}) {
     fx.source = fx.dir.path / "src";
     makeDaiDir(fx.source, width, height, sequences, timestamps, fill, names);
     setSource(*fx.node, fx.source);
@@ -1352,7 +1359,8 @@ TEST_CASE("D14 same size does not resize", "[replay][host]") {
     fx.pipeline.start();
     auto frames = takeFrames(fx.out, 2);
     for(int index = 0; index < 2; ++index) {
-        CHECK(pixelsEqual(*frames[static_cast<std::size_t>(index)], packedOf(source / ("cam_" + std::to_string(index) + ".dai")), 640, 480, dai::ImgFrame::Type::NV12));
+        CHECK(pixelsEqual(
+            *frames[static_cast<std::size_t>(index)], packedOf(source / ("cam_" + std::to_string(index) + ".dai")), 640, 480, dai::ImgFrame::Type::NV12));
     }
 }
 

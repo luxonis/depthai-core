@@ -35,18 +35,17 @@ std::filesystem::path writeSource(const std::filesystem::path& root, bool metada
         frame.setTimestamp(time);
         frame.setTimestampDevice(time);
         frame.setData(std::vector<std::uint8_t>(64 * 48 * 3 / 2, 100));
-        if(metadata) recorder.write(frame.serializeProto());
-        else frame.save(frames / ("cam_" + std::to_string(index) + ".dai"));
+        if(metadata)
+            recorder.write(frame.serializeProto());
+        else
+            frame.save(frames / ("cam_" + std::to_string(index) + ".dai"));
     }
     if(metadata) recorder.close();
     return metadata ? mcap : frames;
 }
 
-std::shared_ptr<dai::MessageQueue> addReplay(dai::Pipeline& pipeline,
-                                              const std::filesystem::path& source,
-                                              bool metadata,
-                                              bool loop = false,
-                                              bool stopAtEnd = true) {
+std::shared_ptr<dai::MessageQueue> addReplay(
+    dai::Pipeline& pipeline, const std::filesystem::path& source, bool metadata, bool loop = false, bool stopAtEnd = true) {
     if(metadata) {
         auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
         replay->setReplayFile(source);
@@ -58,7 +57,9 @@ std::shared_ptr<dai::MessageQueue> addReplay(dai::Pipeline& pipeline,
     return replay->out.createOutputQueue(32, false);
 }
 
-void requireCompleted(dai::Pipeline& pipeline, const std::shared_ptr<dai::Device>& device, std::future<void>& execution,
+void requireCompleted(dai::Pipeline& pipeline,
+                      const std::shared_ptr<dai::Device>& device,
+                      std::future<void>& execution,
                       std::chrono::steady_clock::time_point deadline) {
     const bool completed = execution.wait_until(deadline) == std::future_status::ready;
     // Release a blocked wait even when testing the original broken implementation.
@@ -93,8 +94,8 @@ TEST_CASE("Device replay completion stops the host and releases wait", "[replay]
     const auto start = std::chrono::steady_clock::now();
     auto completion = std::async(std::launch::async, [&] { pipeline.wait(); });
     requireCompleted(pipeline, device, completion, start + (count - 1) * 100ms + 1s);
-    std::cout << "metadata=" << metadata << " frames=" << count << " waitMs="
-              << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() << '\n';
+    std::cout << "metadata=" << metadata << " frames=" << count
+              << " waitMs=" << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() << '\n';
 }
 
 TEST_CASE("Device replay completion releases run", "[replay][completion][rvc4]") {

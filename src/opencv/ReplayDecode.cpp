@@ -725,12 +725,12 @@ DecodedPixels convertPixels(const DecodedPixels& pixels, ImgFrame::Type outType,
     if(width <= 0 || height <= 0 || outW <= 0 || outH <= 0) fail("ReplayVideo frame dimensions are invalid");
     const bool explicitOffsets = pixels.fb.p1Offset != 0 || pixels.fb.p2Offset != 0 || pixels.fb.p3Offset != 0;
     const auto firstOffset = static_cast<std::size_t>(pixels.fb.p1Offset);
-    const auto rowStride = pixels.fb.stride != 0 ? static_cast<std::size_t>(pixels.fb.stride)
-                                               : static_cast<std::size_t>(width) * ((pixels.type == ImgFrame::Type::RGB888i || pixels.type == ImgFrame::Type::BGR888i) ? 3 : 1);
+    const auto rowStride = pixels.fb.stride != 0
+                               ? static_cast<std::size_t>(pixels.fb.stride)
+                               : static_cast<std::size_t>(width) * ((pixels.type == ImgFrame::Type::RGB888i || pixels.type == ImgFrame::Type::BGR888i) ? 3 : 1);
     const auto plane = [&](int rows, int cols, int type, std::size_t offset, std::size_t stride) {
         const auto rowBytes = static_cast<std::size_t>(cols) * CV_ELEM_SIZE(type);
-        if(rows <= 0 || cols <= 0 || stride < rowBytes || offset > pixels.data.size()
-           || pixels.data.size() - offset < rowBytes
+        if(rows <= 0 || cols <= 0 || stride < rowBytes || offset > pixels.data.size() || pixels.data.size() - offset < rowBytes
            || static_cast<std::size_t>(rows - 1) > (pixels.data.size() - offset - rowBytes) / stride) {
             fail("ReplayVideo frame payload is too small or has an invalid plane layout");
         }

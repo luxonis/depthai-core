@@ -1,7 +1,8 @@
-#include "depthai/utility/RecordReplay.hpp"
 #include <fstream>
-#include "mcap/mcap.hpp"
+
 #include "EncodedVideoRecorder.hpp"
+#include "depthai/utility/RecordReplay.hpp"
+#include "mcap/mcap.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <google/protobuf/descriptor.h>
 #endif

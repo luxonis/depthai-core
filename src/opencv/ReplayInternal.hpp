@@ -1,7 +1,5 @@
 #pragma once
 
-#include "utility/ReplayArchive.hpp"
-
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -12,6 +10,7 @@
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/ReplayCache.hpp"
+#include "utility/ReplayArchive.hpp"
 
 namespace dai {
 namespace replay {

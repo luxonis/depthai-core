@@ -89,8 +89,8 @@ void setPythonNodeName(ThreadedHostNode& node, std::string name) {
 
 void bind_hostnode(pybind11::module& m, void* pCallstack) {
     // declare upfront
-    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, py::smart_holder>(
-        daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
+    auto threadedHostNode =
+        py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, py::smart_holder>(daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
     auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, py::smart_holder>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
 
     ///////////////////////////////////////////////////////////////////////

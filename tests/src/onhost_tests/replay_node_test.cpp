@@ -9,16 +9,16 @@
 #include <fstream>
 #include <future>
 #include <limits>
-#include <optional>
 #include <opencv2/imgcodecs.hpp>
+#include <optional>
 #include <thread>
 #include <vector>
 
+#include "../ReplayImageArchiveFixture.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "opencv/ReplayInternal.hpp"
-#include "../ReplayImageArchiveFixture.hpp"
 
 #ifdef _WIN32
     #include <process.h>
@@ -858,8 +858,8 @@ TEST_CASE("Replay rejects a negative fps at start", "[pacing]") {
 }
 
 TEST_CASE("Replay conversion respects padded planes and rejects short payloads", "[spec-quick]") {
-    const auto type = GENERATE(dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::BGR888i,
-                               dai::ImgFrame::Type::NV12, dai::ImgFrame::Type::YUV420p);
+    const auto type = GENERATE(
+        dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::NV12, dai::ImgFrame::Type::YUV420p);
     dai::replay::DecodedPixels tight;
     tight.width = 4;
     tight.height = 4;
@@ -963,8 +963,10 @@ TEST_CASE("A failed host cache begin can be retried", "[spec-quick]") {
     request.sourceHash = request.key;
     request.ownsFiles = true;
     const auto blocked = cacheDir() / (indexFailure ? "index.json.tmp" : request.key);
-    if(indexFailure) std::filesystem::create_directory(blocked);
-    else std::ofstream(blocked) << "blocks the cache directory";
+    if(indexFailure)
+        std::filesystem::create_directory(blocked);
+    else
+        std::ofstream(blocked) << "blocks the cache directory";
     REQUIRE_THROWS(dai::replay::beginCacheEntry(1, 1, false, request));
     std::filesystem::remove_all(blocked);
     auto retry = std::async(std::launch::async, [&] { return dai::replay::beginCacheEntry(1, 1, false, request); });

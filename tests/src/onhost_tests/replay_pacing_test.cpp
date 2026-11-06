@@ -19,12 +19,16 @@ struct SimulatedClock {
     std::vector<Pacer::Duration> sleeps;
 
     std::optional<Pacer::Time> send(Pacer& pacer, std::optional<Pacer::Duration> recorded = std::nullopt) {
-        return pacer.waitToSend(recorded, [this] { return running; }, [this] { return current; }, [this](Pacer::Duration delay) {
-            sleeps.push_back(delay);
-            current += delay + oversleep;
-            oversleep = Pacer::Duration::zero();
-            if(stopAfterSleep) running = false;
-        });
+        return pacer.waitToSend(
+            recorded,
+            [this] { return running; },
+            [this] { return current; },
+            [this](Pacer::Duration delay) {
+                sleeps.push_back(delay);
+                current += delay + oversleep;
+                oversleep = Pacer::Duration::zero();
+                if(stopAfterSleep) running = false;
+            });
     }
 };
 

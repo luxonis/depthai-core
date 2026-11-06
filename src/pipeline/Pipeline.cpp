@@ -11,6 +11,7 @@
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/node/AutoCalibration.hpp"
 #endif
+#include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -25,7 +26,6 @@
 #include "utility/PipelineImplHelper.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
-#include "depthai/pipeline/node/host/Record.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "depthai/pipeline/node/host/Replay.hpp"
 #endif

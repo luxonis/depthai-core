@@ -19,8 +19,7 @@ void bind_systeminformation(pybind11::module& m, void* pCallstack) {
 
     // py::class_<RawSystemInformation, RawBuffer, std::shared_ptr<RawSystemInformation>> rawSystemInformation(m, "RawSystemInformation", DOC(dai,
     // RawSystemInformation));
-    py::class_<SystemInformation, Py<SystemInformation>, Buffer, py::smart_holder> systemInformation(
-        m, "SystemInformation", DOC(dai, SystemInformation));
+    py::class_<SystemInformation, Py<SystemInformation>, Buffer, py::smart_holder> systemInformation(m, "SystemInformation", DOC(dai, SystemInformation));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

@@ -2,9 +2,10 @@ extern "C" const char* __asan_default_options() {
     return "detect_container_overflow=0";
 }
 
+#include <unistd.h>
+
 #include <fstream>
 #include <regex>
-#include <unistd.h>
 
 #include "../../../helpers/replay_test_support.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
@@ -15,40 +16,41 @@ extern "C" const char* __asan_default_options() {
 #include "depthai/utility/Compression.hpp"
 #include "nlohmann/json.hpp"
 
-using record_test::DeviceLogCapture;
-using record_test::EnvGuard;
-using record_test::LineLevel;
-using record_test::LogCapture;
-using record_test::RecordingGuard;
-using record_test::TempDir;
+using Catch::Matchers::ContainsSubstring;
 using record_test::allFiles;
 using record_test::deleteRecording;
+using record_test::DeviceLogCapture;
 using record_test::downloadRecording;
+using record_test::EnvGuard;
 using record_test::fileCount;
 using record_test::fileSizeSum;
 using record_test::getStatus;
+using record_test::isFrameFile;
+using record_test::LineLevel;
 using record_test::listRecordings;
 using record_test::loadImg;
+using record_test::LogCapture;
 using record_test::makeImg;
 using record_test::openRvc2OrSkip;
 using record_test::openRvc4OrSkip;
+using record_test::RecordingGuard;
 using record_test::sendFrame;
-using record_test::isFrameFile;
 using record_test::setFormat;
 using record_test::setFps;
 using record_test::setKeepOnDevice;
 using record_test::setMaxPreTriggerBytes;
-using record_test::setPreTriggerFrames;
 using record_test::setOutputDirectory;
+using record_test::setPreTriggerFrames;
+using record_test::setRecordingName;
 using record_test::setRecordMetadataFile;
 using record_test::setRecordVideoFile;
-using record_test::setRecordingName;
 using record_test::setRunOnHost;
 using record_test::setStreamName;
 using record_test::setTransferToHost;
 using record_test::setWaitForTrigger;
 using record_test::startControl;
 using record_test::stopControl;
+using record_test::TempDir;
 using record_test::uniqueName;
 using record_test::waitUntil;
 using replay_test::makeDaiDir;
@@ -59,7 +61,6 @@ using replay_test::setLoop;
 using replay_test::setMetadataFile;
 using replay_test::setSource;
 using replay_test::setStopPipelineAtEnd;
-using Catch::Matchers::ContainsSubstring;
 
 namespace {
 
@@ -73,11 +74,7 @@ struct Store {
     std::unique_ptr<dai::Pipeline> pipeline;
     std::unique_ptr<RecordingGuard> guard;
 
-    Store()
-        : device(openRvc4OrSkip()),
-          unsetReplay("DEPTHAI_REPLAY"),
-          unsetRecord("DEPTHAI_RECORD"),
-          devLog(*device, dai::LogLevel::DEBUG) {
+    Store() : device(openRvc4OrSkip()), unsetReplay("DEPTHAI_REPLAY"), unsetRecord("DEPTHAI_RECORD"), devLog(*device, dai::LogLevel::DEBUG) {
         try {
             deleteRecording(*device, "test");
         } catch(const std::exception&) {
@@ -115,7 +112,8 @@ struct RawNode {
     std::shared_ptr<dai::MessageQueue> status;
 };
 
-RawNode addRaw(dai::Pipeline& pipeline, const std::filesystem::path& dir, const std::string& name, bool setTransfer, bool transfer, const std::string& stream = "cam") {
+RawNode addRaw(
+    dai::Pipeline& pipeline, const std::filesystem::path& dir, const std::string& name, bool setTransfer, bool transfer, const std::string& stream = "cam") {
     RawNode raw;
     raw.node = pipeline.create<dai::node::RecordVideo>();
     record_test::watchNode(*raw.node);

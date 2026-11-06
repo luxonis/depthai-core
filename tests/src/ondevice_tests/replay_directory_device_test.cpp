@@ -147,9 +147,10 @@ TEST_CASE("RVC4 replays unpacked host directories and reuses their content hash"
         pipeline.start();
         for(const auto& queue : queues) receive(queue, std::string(extension) == ".dai");
         const auto info = device->getReplayCacheInfo();
-        REQUIRE(std::count_if(info.entries.begin(), info.entries.end(), [&](const auto& entry) {
-                    return entry.kind == dai::ReplayCacheKind::SOURCE && entry.sourceHash == hash;
-                }) == 1);
+        REQUIRE(std::count_if(info.entries.begin(),
+                              info.entries.end(),
+                              [&](const auto& entry) { return entry.kind == dai::ReplayCacheKind::SOURCE && entry.sourceHash == hash; })
+                == 1);
         const auto entry = std::find_if(info.entries.begin(), info.entries.end(), [&](const auto& value) {
             return value.kind == dai::ReplayCacheKind::SOURCE && value.sourceHash == hash;
         });

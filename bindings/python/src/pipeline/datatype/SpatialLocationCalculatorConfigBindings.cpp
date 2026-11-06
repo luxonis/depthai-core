@@ -22,8 +22,8 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         m, "SpatialLocationCalculatorAlgorithm", DOC(dai, SpatialLocationCalculatorAlgorithm));
     py::class_<SpatialLocationCalculatorConfigData> spatialLocationCalculatorConfigData(
         m, "SpatialLocationCalculatorConfigData", DOC(dai, SpatialLocationCalculatorConfigData));
-    py::class_<SpatialLocationCalculatorConfig, Py<SpatialLocationCalculatorConfig>, Buffer, py::smart_holder>
-        spatialLocationCalculatorConfig(m, "SpatialLocationCalculatorConfig", DOC(dai, SpatialLocationCalculatorConfig));
+    py::class_<SpatialLocationCalculatorConfig, Py<SpatialLocationCalculatorConfig>, Buffer, py::smart_holder> spatialLocationCalculatorConfig(
+        m, "SpatialLocationCalculatorConfig", DOC(dai, SpatialLocationCalculatorConfig));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

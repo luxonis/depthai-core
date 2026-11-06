@@ -2973,8 +2973,7 @@ std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCachePrepareFile(
     return pimpl->rpcCallChecked<std::tuple<bool, std::string, std::uint64_t>>("replayCachePrepareFile", hash, totalBytes);
 }
 
-std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCacheBeginDirectory(const std::string& hash,
-                                                                              const std::map<std::string, std::uint64_t>& files) {
+std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCacheBeginDirectory(const std::string& hash, const std::map<std::string, std::uint64_t>& files) {
     requireReplayCache(*this);
     return pimpl->rpcCallChecked<std::tuple<bool, std::string, std::uint64_t>>("replayCacheBeginDirectory", hash, files);
 }
@@ -2984,10 +2983,7 @@ void DeviceBase::replayCacheWrite(const std::string& hash, std::uint64_t offset,
     pimpl->rpcCallCheckedVoid("replayCacheWrite", hash, offset, bytes);
 }
 
-void DeviceBase::replayCacheWriteFile(const std::string& hash,
-                                    const std::string& filename,
-                                    std::uint64_t offset,
-                                    const std::vector<std::uint8_t>& bytes) {
+void DeviceBase::replayCacheWriteFile(const std::string& hash, const std::string& filename, std::uint64_t offset, const std::vector<std::uint8_t>& bytes) {
     requireReplayCache(*this);
     pimpl->rpcCallCheckedVoid("replayCacheWriteFile", hash, filename, offset, bytes);
 }

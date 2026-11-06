@@ -3,9 +3,9 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
-#include <algorithm>
 #include <fstream>
 #include <memory>
 #include <stdexcept>
@@ -34,7 +34,8 @@ void checkOutputPath(const std::filesystem::path& destination, const std::filesy
     if(std::filesystem::is_symlink(std::filesystem::symlink_status(path))) throw std::runtime_error("ReplayVideo archive destination is a symlink");
     for(const auto& part : relative) {
         path /= part;
-        if(std::filesystem::is_symlink(std::filesystem::symlink_status(path))) throw std::runtime_error("ReplayVideo archive entry is a symlink: " + relative.string());
+        if(std::filesystem::is_symlink(std::filesystem::symlink_status(path)))
+            throw std::runtime_error("ReplayVideo archive entry is a symlink: " + relative.string());
     }
 }
 
@@ -84,8 +85,10 @@ ArchiveListing extractReplayArchive(const std::filesystem::path& archivePath, co
         }
         checkOutputPath(destination, name);
         const auto output = destination / name;
-        if(type == AE_IFDIR) std::filesystem::create_directories(output);
-        else if(type == AE_IFREG) listing.entryBytes += extractFile(reader.get(), output);
+        if(type == AE_IFDIR)
+            std::filesystem::create_directories(output);
+        else if(type == AE_IFREG)
+            listing.entryBytes += extractFile(reader.get(), output);
         archive_read_data_skip(reader.get());
     }
     if(result != ARCHIVE_EOF) throw std::runtime_error("ReplayVideo archive cannot be read: " + archivePath.string());

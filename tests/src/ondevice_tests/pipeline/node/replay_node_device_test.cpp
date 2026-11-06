@@ -17,20 +17,23 @@ extern "C" const char* __asan_default_options() {
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/utility/Compression.hpp"
 
+using Catch::Matchers::ContainsSubstring;
+using record_test::deleteRecording;
+using record_test::LineLevel;
+using record_test::timestampMs;
+using replay_test::buildCamera;
 using replay_test::CacheKind;
+using replay_test::clearReplayCache;
+using replay_test::countKind;
 using replay_test::DecodeMode;
 using replay_test::DeviceReplay;
 using replay_test::FrameFill;
-using replay_test::HostReplay;
-using replay_test::Location;
-using replay_test::TarKind;
-using replay_test::buildCamera;
-using replay_test::clearReplayCache;
-using replay_test::countKind;
 using replay_test::getReplayCacheInfo;
 using replay_test::hashDir;
 using replay_test::hashFile;
 using replay_test::hashFileAndMetadata;
+using replay_test::HostReplay;
+using replay_test::Location;
 using replay_test::makeDaiDir;
 using replay_test::makeDaiFrame;
 using replay_test::makeDeviceSource;
@@ -56,10 +59,7 @@ using replay_test::setRunOnHost;
 using replay_test::setSource;
 using replay_test::setStopPipelineAtEnd;
 using replay_test::takeFrames;
-using Catch::Matchers::ContainsSubstring;
-using record_test::LineLevel;
-using record_test::deleteRecording;
-using record_test::timestampMs;
+using replay_test::TarKind;
 
 namespace {
 
@@ -375,11 +375,8 @@ TEST_CASE("VA12 three directories evict down to the two that fit", "[replay][dev
     const auto dirB = makeFrames(fx.dir.path / "B", 640, 480, 3, FrameFill::plainYuv(20, 128, 128));
     const auto dirC = makeFrames(fx.dir.path / "C", 640, 480, 3, FrameFill::plainYuv(30, 128, 128));
     const std::vector<std::filesystem::path> order{dirA, dirB, dirC, dirB, dirA};
-    const std::vector<std::set<std::string>> expected{{hashDir(dirA)},
-                                                      {hashDir(dirA), hashDir(dirB)},
-                                                      {hashDir(dirB), hashDir(dirC)},
-                                                      {hashDir(dirB), hashDir(dirC)},
-                                                      {hashDir(dirA), hashDir(dirB)}};
+    const std::vector<std::set<std::string>> expected{
+        {hashDir(dirA)}, {hashDir(dirA), hashDir(dirB)}, {hashDir(dirB), hashDir(dirC)}, {hashDir(dirB), hashDir(dirC)}, {hashDir(dirA), hashDir(dirB)}};
     for(std::size_t step = 0; step < order.size(); ++step) {
         auto& pipeline = fx.begin();
         auto play = addPlay(pipeline, order[step], true);

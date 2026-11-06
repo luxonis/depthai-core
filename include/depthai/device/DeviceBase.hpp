@@ -6,8 +6,8 @@
 #include <condition_variable>
 #include <filesystem>
 #include <functional>
-#include <memory>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -654,8 +654,7 @@ class DeviceBase {
      * A hit or successful commit owns one hold, released by replayCacheRelease after use.
      * @throws std::runtime_error when the manifest is invalid or the upload cannot fit in the cache.
      */
-    std::tuple<bool, std::string, std::uint64_t> replayCacheBeginDirectory(const std::string& hash,
-                                                                       const std::map<std::string, std::uint64_t>& files);
+    std::tuple<bool, std::string, std::uint64_t> replayCacheBeginDirectory(const std::string& hash, const std::map<std::string, std::uint64_t>& files);
 
     /**
      * Writes one chunk of an upload. The chunk size used by the host is 1 MiB.
@@ -671,10 +670,7 @@ class DeviceBase {
      * @param bytes File bytes, with at most 1 MiB used per chunk by replay nodes.
      * @throws std::runtime_error for an undeclared file, invalid offset, or a write failure.
      */
-    void replayCacheWriteFile(const std::string& hash,
-                             const std::string& filename,
-                             std::uint64_t offset,
-                             const std::vector<std::uint8_t>& bytes);
+    void replayCacheWriteFile(const std::string& hash, const std::string& filename, std::uint64_t offset, const std::vector<std::uint8_t>& bytes);
 
     /**
      * Finishes an upload after the hash matches.

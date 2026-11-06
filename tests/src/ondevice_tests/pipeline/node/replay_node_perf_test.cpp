@@ -12,6 +12,8 @@ extern "C" const char* __asan_default_options() {
 #include "depthai/pipeline/node/ImageManip.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
 
+using record_test::deleteRecording;
+using record_test::timestampMs;
 using replay_test::DecodeMode;
 using replay_test::DeviceReplay;
 using replay_test::Location;
@@ -26,8 +28,6 @@ using replay_test::setFps;
 using replay_test::setLoop;
 using replay_test::setSource;
 using replay_test::setStopPipelineAtEnd;
-using record_test::deleteRecording;
-using record_test::timestampMs;
 
 namespace {
 
@@ -86,8 +86,10 @@ TEST_CASE("VD1 predecode loop stays at 60 fps", "[replay][perf]") {
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(180);
     while(std::chrono::steady_clock::now() < deadline && report == nullptr) {
         if(auto message = sysQueue->tryGet()) {
-            if(auto cpu = std::dynamic_pointer_cast<dai::SystemInformationRVC4>(message)) samples.push_back(cpu->cpuAvgUsage.average);
-            else if(auto cpu = std::dynamic_pointer_cast<dai::SystemInformation>(message)) samples.push_back(cpu->leonCssCpuUsage.average);
+            if(auto cpu = std::dynamic_pointer_cast<dai::SystemInformationRVC4>(message))
+                samples.push_back(cpu->cpuAvgUsage.average);
+            else if(auto cpu = std::dynamic_pointer_cast<dai::SystemInformation>(message))
+                samples.push_back(cpu->leonCssCpuUsage.average);
         }
         report = reportQueue->tryGet<dai::BenchmarkReport>();
         if(report == nullptr) std::this_thread::sleep_for(std::chrono::milliseconds(20));
@@ -148,9 +150,9 @@ TEST_CASE("VD3 ffv1 span is 19.97 seconds", "[replay][perf]") {
     pipeline.start();
     const auto frames = readFrames(*out, 600);
     pipeline.stop();
-    const double span = frames.size() < 2
-                            ? 0.0
-                            : static_cast<double>(timestampMs(frames.back()->getTimestampDevice()) - timestampMs(frames.front()->getTimestampDevice())) / 1000.0;
+    const double span =
+        frames.size() < 2 ? 0.0
+                          : static_cast<double>(timestampMs(frames.back()->getTimestampDevice()) - timestampMs(frames.front()->getTimestampDevice())) / 1000.0;
     std::cout << "VD3 tsDevice span s " << span << std::endl;
     checkSpan(frames);
 }
@@ -184,10 +186,11 @@ TEST_CASE("VD4 three cameras span 19.97 seconds", "[replay][perf]") {
     for(auto& reader : readers) reader.join();
     pipeline.stop();
     for(int index = 0; index < 3; ++index) {
-        const double span = frames[index].size() < 2 ? 0.0
-                                                      : static_cast<double>(timestampMs(frames[index].back()->getTimestampDevice())
-                                                                            - timestampMs(frames[index].front()->getTimestampDevice()))
-                                                            / 1000.0;
+        const double span =
+            frames[index].size() < 2
+                ? 0.0
+                : static_cast<double>(timestampMs(frames[index].back()->getTimestampDevice()) - timestampMs(frames[index].front()->getTimestampDevice()))
+                      / 1000.0;
         std::cout << "VD4 camera " << index << " tsDevice span s " << span << std::endl;
         checkSpan(frames[index]);
     }

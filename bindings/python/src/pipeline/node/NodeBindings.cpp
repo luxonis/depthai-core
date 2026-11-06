@@ -399,12 +399,9 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("descendants", &Node::DatatypeHierarchy::descendants);
 
     // XLink internal node bindings
-    py::class_<node::internal::XLinkIn, DeviceNode, py::smart_holder> pyXLinkIn(
-        daiNodeInternalModule, "XLinkIn", DOC(dai, node, internal, XLinkIn));
-    py::class_<node::internal::XLinkOut, DeviceNode, py::smart_holder> pyXLinkOut(
-        daiNodeInternalModule, "XLinkOut", DOC(dai, node, internal, XLinkOut));
-    py::class_<node::internal::XLinkInHost, Node, py::smart_holder> pyXLinkInHost(
-        daiNodeInternalModule, "XLinkInHost", DOC(dai, node, internal, XLinkInHost));
+    py::class_<node::internal::XLinkIn, DeviceNode, py::smart_holder> pyXLinkIn(daiNodeInternalModule, "XLinkIn", DOC(dai, node, internal, XLinkIn));
+    py::class_<node::internal::XLinkOut, DeviceNode, py::smart_holder> pyXLinkOut(daiNodeInternalModule, "XLinkOut", DOC(dai, node, internal, XLinkOut));
+    py::class_<node::internal::XLinkInHost, Node, py::smart_holder> pyXLinkInHost(daiNodeInternalModule, "XLinkInHost", DOC(dai, node, internal, XLinkInHost));
     py::class_<node::internal::XLinkOutHost, Node, py::smart_holder> pyXLinkOutHost(
         daiNodeInternalModule, "XLinkOutHost", DOC(dai, node, internal, XLinkOutHost));
 
