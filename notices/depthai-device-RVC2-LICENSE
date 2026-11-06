@@ -64,7 +64,7 @@ cpython
 ~~~~~~~
 
 License: PSF-2.0
-Version: v3.9.2-6-gc803297
+Version: v3.9.2-6-gc803297940
 Source: 3rdparty/cpython/cpython
 Note: upstream LICENSE includes additional bundled-license notices.
 
@@ -352,7 +352,7 @@ eigen
 ~~~~~
 
 Primary license: MPL-2.0
-Version: 3147391
+Version: 3.4.0
 Source: 3rdparty/eigen/eigen
 Note: upstream COPYING.README states Eigen is primarily MPL-2.0 licensed.
 
@@ -812,7 +812,7 @@ pybind11
 ~~~~~~~~
 
 License: BSD-3-Clause
-Version: 0e01c24
+Version: v2.6.2-26-g0e01c243
 Source: 3rdparty/pybind11/pybind11
 
 Copyright (c) 2016 Wenzel Jakob <wenzel.jakob@epfl.ch>, All rights reserved.

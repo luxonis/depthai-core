@@ -9,9 +9,10 @@ It changes output selection, not sensor calibration or correction settings.
 
 ```python
 tof = pipeline.create(dai.node.ToF).build(dai.CameraBoardSocket.CAM_A, fps=45)
-tof.tofBase.initialConfig.setEnableIntermediateDepth(False)  # production default
-# Opt in to the additional history-based depth updates:
-tof.tofBase.initialConfig.setEnableIntermediateDepth(True)
+config = tof.getInitialConfig()
+config.setEnableIntermediateDepth(False)  # production default
+# Set True to opt in to the additional history-based depth updates.
+tof.setInitialConfig(config)
 ```
 
 In C++ the corresponding call is
@@ -19,7 +20,7 @@ In C++ the corresponding call is
 The public `enableIntermediateDepth` field is also exposed in C++ and Python,
 consistent with the other ToF configuration fields.
 
-The setting can also be changed through the existing `tof.tofBase.inputConfig`
+The setting can also be changed through the existing `tof.inputConfig`
 queue at runtime. Send a complete `ToFConfig` preserving the other active
 settings. Profile selection does not reset this setting. Burst mode suppresses
 the intermediate output regardless of this option. Other sensors and operation
