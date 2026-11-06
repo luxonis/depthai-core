@@ -87,7 +87,7 @@ int main() {
     auto thermalCam = pipeline.create<dai::node::Thermal>()->build(thermalSocket, FPS);
 
     auto sync = pipeline.create<dai::node::Sync>();
-    auto align = pipeline.create<dai::node::ImageAlign>();
+    auto align = pipeline.create<dai::node::Align>();
 
     auto camRgbOut = camRgb->requestOutput(COLOR_RESOLUTION, std::nullopt, dai::ImgResizeMode::CROP, FPS, true);
 
