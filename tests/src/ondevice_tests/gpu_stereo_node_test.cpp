@@ -167,3 +167,26 @@ TEST_CASE("StereoDepth GPU backends preserve the GPUStereo algorithm", "[StereoD
         REQUIRE(confidenceMatches);
     }
 }
+
+TEST_CASE("StereoDepth rejects matcher-side rectification on RVC4", "[StereoDepth][Rectification][ondevice]") {
+    auto device = std::make_shared<dai::Device>();
+    if(device->getPlatform() != dai::Platform::RVC4) {
+        WARN("This rectification contract applies to RVC4");
+        return;
+    }
+    struct InvalidMatcherRectification : dai::node::StereoDepth {
+        Properties& getProperties() override {
+            auto& props = dai::node::StereoDepth::getProperties();
+            // Simulate an older SDK requesting rectification inside the matcher.
+            props.enableRectification = true;
+            return props;
+        }
+    };
+    dai::Pipeline pipeline(device);
+    auto stereo = std::make_shared<InvalidMatcherRectification>();
+    pipeline.add(stereo);
+    stereo->buildInternal();
+    stereo->setBackend(dai::node::StereoDepth::Backend::HW);
+    stereo->setRectification(false);
+    REQUIRE_THROWS_WITH(pipeline.start(), Catch::Matchers::ContainsSubstring("rectification must be handled by its Rectification subnode"));
+}

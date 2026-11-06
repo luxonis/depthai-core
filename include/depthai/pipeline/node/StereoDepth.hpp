@@ -1,6 +1,9 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/node/Rectification.hpp>
+#include <depthai/pipeline/node/Sync.hpp>
 #include <memory>
 
 // shared
@@ -20,13 +23,22 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     using Backend = Properties::Backend;
 
     /**
+     * Rectification subnode used on RVC4 whenever setRectification(true) is selected.
+     * Disabled rectification bypasses this node. Rectified images are synchronized before matching.
+     */
+    Subnode<Rectification> rectification{*this, "rectification"};
+
+    void buildInternal() override;
+    void buildStage1() override;
+
+    /**
      * Select stereo matching placement. AUTO (default) selects GPU_CPU when the device reports
      * GPU stereo support, otherwise HW. HW forces the existing platform implementation.
      * GPU runs classical stereo entirely on the RVC4 GPU; GPU_CPU runs horizontal SGM paths
      * on one CPU core and the remaining matching on the GPU.
      *
      * GPU backends accept 1280x800 or 640x400 GRAY8/RAW8, NV12 or YUV420p pairs (luma only),
-     * and rectify on EVA when enabled.
+     * and always use the rectification subnode when rectification is enabled.
      * Disparity is always RAW16 with four fractional bits (1/16 pixel), in the rectified left
      * perspective. Confidence is RAW8, higher is better; initialConfig's confidence threshold
      * and temporalFilter.enable configure the algorithm. Temporal filtering is applied at startup.
@@ -88,6 +100,10 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     Properties& getProperties();
 
    private:
+    Subnode<Sync> rectificationSync{*this, "rectificationSync"};
+    InputMap matcherInputs{
+        *this, "", {"", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{DatatypeEnum::MessageGroup, false}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
     // Platform specific profile presets
     void setRvc2ProfilePreset(PresetMode mode);
     void setRvc4ProfilePreset(PresetMode mode);

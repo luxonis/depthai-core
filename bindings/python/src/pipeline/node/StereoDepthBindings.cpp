@@ -95,6 +95,11 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
 
     // Node
     stereoDepth
+        .def_property_readonly(
+            "rectification",
+            [](StereoDepth& node) { return &*node.rectification; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, StereoDepth, rectification))
         .def("setBackend", &StereoDepth::setBackend, py::arg("backend"), py::return_value_policy::reference_internal, DOC(dai, node, StereoDepth, setBackend))
         .def("getBackend", &StereoDepth::getBackend, DOC(dai, node, StereoDepth, getBackend))
         .def(py::init([](Node::Output& left, Node::Output& right, StereoDepth::PresetMode presetMode) {

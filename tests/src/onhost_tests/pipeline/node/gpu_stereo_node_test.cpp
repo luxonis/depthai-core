@@ -1,4 +1,6 @@
-#include <catch2/catch_test_macros.hpp>
+#include <algorithm>
+#include <catch2/catch_all.hpp>
+#include <depthai/pipeline/Pipeline.hpp>
 #include <depthai/pipeline/node/GPUStereo.hpp>
 #include <depthai/pipeline/node/Rectification.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
@@ -85,4 +87,89 @@ TEST_CASE("StereoDepth backend selection survives host-device serialization", "[
     REQUIRE_THROWS_AS(node->setBackend(static_cast<dai::node::StereoDepth::Backend>(0)), std::invalid_argument);
     REQUIRE_THROWS_AS(node->setBackend(static_cast<dai::node::StereoDepth::Backend>(255)), std::invalid_argument);
     REQUIRE(node->getBackend() == dai::node::StereoDepth::Backend::GPU_CPU);
+}
+
+TEST_CASE("StereoDepth follows Rectification then Sync, with a true bypass when disabled", "[StereoDepth][Rectification]") {
+    const bool enabled = GENERATE(true, false);
+    const auto backend = GENERATE(dai::node::StereoDepth::Backend::HW, dai::node::StereoDepth::Backend::GPU, dai::node::StereoDepth::Backend::GPU_CPU);
+    dai::Pipeline pipeline(false);
+    struct HostStereoDepth : dai::node::StereoDepth {
+        bool runOnHost() const override {
+            return true;
+        }
+    };
+    auto stereo = std::make_shared<HostStereoDepth>();
+    pipeline.add(stereo);
+    stereo->buildInternal();
+    stereo->rectification->setRunOnHost(true);
+    for(auto& child : stereo->getNodeMap()) {
+        if(auto sync = std::dynamic_pointer_cast<dai::node::Sync>(child)) sync->setRunOnHost(true);
+    }
+    stereo->setBackend(backend);
+    const bool configureBeforeLinking = GENERATE(true, false);
+    if(configureBeforeLinking) stereo->setRectification(enabled);
+    auto left = stereo->left.createInputQueue();
+    auto right = stereo->right.createInputQueue();
+    auto syncedLeft = stereo->syncedLeft.createOutputQueue();
+    auto syncedRight = stereo->syncedRight.createOutputQueue();
+    auto sourceOf = [&](dai::Node::Input& input) -> dai::Node::Output* {
+        for(auto& node : pipeline.getAllNodes()) {
+            for(auto* output : node->getOutputRefs()) {
+                for(auto& connection : output->getConnections()) {
+                    if(connection.in == &input) return output;
+                }
+            }
+        }
+        return nullptr;
+    };
+    auto* leftSource = sourceOf(stereo->left);
+    auto* rightSource = sourceOf(stereo->right);
+    REQUIRE(leftSource != nullptr);
+    REQUIRE(rightSource != nullptr);
+    // Changing the route after producer links exist must preserve those links.
+    if(!configureBeforeLinking) {
+        stereo->setRectification(!enabled);
+        stereo->setRectification(enabled);
+    }
+    REQUIRE(stereo->rectification->properties.enableRectification == enabled);
+    // StereoDepth owns the rectification toggle, including when the subnode was configured directly.
+    stereo->rectification->enableRectification(false);
+    stereo->left.setMaxSize(7);
+    stereo->left.setBlocking(false);
+
+    pipeline.build();
+    std::shared_ptr<dai::node::Sync> sync;
+    for(const auto& child : stereo->getNodeMap()) {
+        if(auto candidate = std::dynamic_pointer_cast<dai::node::Sync>(child)) sync = candidate;
+        REQUIRE(std::string(child->getName()) != "MessageDemux");
+    }
+    REQUIRE(sync != nullptr);
+    REQUIRE(sync->getSyncThreshold() == std::chrono::nanoseconds(16'666'666));
+    REQUIRE(stereo->getNodeMap().size() == (enabled ? 2 : 1));
+    REQUIRE(sync->out.getConnections().at(0).in == stereo->getInputRef("inputSynced"));
+    REQUIRE_FALSE(stereo->properties.enableRectification);
+    REQUIRE(stereo->syncedRight.getQueueConnections().at(0).queue == syncedRight);
+    auto& leftInput = enabled ? stereo->rectification->input1 : sync->inputs["left"];
+    auto& rightInput = enabled ? stereo->rectification->input2 : sync->inputs["right"];
+    REQUIRE(leftSource->getConnections().at(0).in == &leftInput);
+    REQUIRE(rightSource->getConnections().at(0).in == &rightInput);
+    REQUIRE(leftInput.getMaxSize() == 7);
+    REQUIRE_FALSE(leftInput.getBlocking());
+    auto leftFrame = std::make_shared<dai::ImgFrame>();
+    auto rightFrame = std::make_shared<dai::ImgFrame>();
+    leftSource->send(leftFrame);
+    rightSource->send(rightFrame);
+    REQUIRE(leftInput.tryGet<dai::ImgFrame>() == leftFrame);
+    REQUIRE(rightInput.tryGet<dai::ImgFrame>() == rightFrame);
+    if(enabled) {
+        REQUIRE(stereo->rectification->properties.enableRectification);
+        REQUIRE(stereo->rectification->output1.getConnections().at(0).in == &sync->inputs["left"]);
+        REQUIRE(stereo->rectification->output2.getConnections().at(0).in == &sync->inputs["right"]);
+        REQUIRE(stereo->rectification->passthrough1.getConnections().at(0).in == &sync->inputs["originalLeft"]);
+        REQUIRE(stereo->rectification->passthrough2.getConnections().at(0).in == &sync->inputs["originalRight"]);
+    } else {
+        REQUIRE(sync->inputs.size() == 2);
+        REQUIRE_FALSE(stereo->rectification->input1.isConnected());
+        REQUIRE_FALSE(stereo->rectification->input2.isConnected());
+    }
 }
