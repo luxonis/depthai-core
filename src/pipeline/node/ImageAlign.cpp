@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <cmath>
 #include <sstream>
+#include <stdexcept>
 #include <unordered_set>
 
+#include "depthai/utility/FramePool.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
@@ -20,6 +22,7 @@ namespace node {
 static constexpr const bool PRINT_DEBUG = false;
 
 ImageAlignProperties& ImageAlign::getProperties() {
+    properties.pool = dai::utility::reconcileFramePool(properties.pool, properties.numFramesPool);
     properties.initialConfig = *initialConfig;
     return properties;
 }
@@ -44,7 +47,15 @@ ImageAlign& ImageAlign::setNumShaves(int numShaves) {
     return *this;
 }
 
+void ImageAlign::setPoolProperties(const FramePoolProperties& pool) {
+    dai::utility::validateFramePoolCount(pool.numFramesPool);
+    properties.pool = pool;
+    properties.numFramesPool = 0;
+}
+
 ImageAlign& ImageAlign::setNumFramesPool(int numFramesPool) {
+    if(numFramesPool < 0 || numFramesPool == 1) throw std::invalid_argument("numFramesPool must be 0 (automatic) or at least 2");
+    properties.pool.numFramesPool = numFramesPool;
     properties.numFramesPool = numFramesPool;
     return *this;
 }

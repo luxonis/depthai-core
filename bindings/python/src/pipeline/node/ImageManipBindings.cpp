@@ -37,9 +37,10 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .value("AUTO", ImageManipProperties::Backend::AUTO);
 
     imageManipProperties.def_readwrite("initialConfig", &ImageManipProperties::initialConfig)
-        .def_readwrite("outputFrameSize", &ImageManipProperties::outputFrameSize)
-        .def_readwrite("numFramesPool", &ImageManipProperties::numFramesPool)
-        .def_readwrite("maxPoolSize", &ImageManipProperties::maxPoolSize)
+        .def_readwrite("pool", &ImageManipProperties::pool)
+        .def_readwrite("numFramesPool", &ImageManipProperties::numFramesPool, "Deprecated: use pool.numFramesPool instead; zero means automatic.")
+        .def_readwrite("outputFrameSize", &ImageManipProperties::outputFrameSize, "Deprecated: use pool.outputFrameSize instead; zero means automatic.")
+        .def_readwrite("maxPoolSize", &ImageManipProperties::maxPoolSize, "Deprecated: use pool.maxPoolSize instead; zero means automatic.")
         .def_readwrite("backend", &ImageManipProperties::backend)
         .def_readwrite("performanceMode", &ImageManipProperties::performanceMode);
 
@@ -54,6 +55,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setRunOnHost", &ImageManip::setRunOnHost, py::arg("runOnHost") = true, DOC(dai, node, ImageManip, setRunOnHost))
         .def("setBackend", &ImageManip::setBackend, DOC(dai, node, ImageManip, setBackend))
         .def("setPerformanceMode", &ImageManip::setPerformanceMode, DOC(dai, node, ImageManip, setPerformanceMode))
+        .def("setPoolProperties", &ImageManip::setPoolProperties, py::arg("pool"))
         .def("setNumFramesPool", &ImageManip::setNumFramesPool, DOC(dai, node, ImageManip, setNumFramesPool))
         .def("setMaxOutputFrameSize", &ImageManip::setMaxOutputFrameSize, DOC(dai, node, ImageManip, setMaxOutputFrameSize))
         .def("setMaxPoolSize", &ImageManip::setMaxPoolSize, DOC(dai, node, ImageManip, setMaxPoolSize));

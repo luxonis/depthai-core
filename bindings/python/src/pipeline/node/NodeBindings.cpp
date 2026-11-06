@@ -14,6 +14,7 @@
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
+#include "depthai/properties/FramePoolProperties.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 // Libraries
@@ -355,6 +356,12 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
 void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace std::chrono;
+
+    py::class_<FramePoolProperties>(m, "FramePoolProperties")
+        .def(py::init<>())
+        .def_readwrite("outputFrameSize", &FramePoolProperties::outputFrameSize)
+        .def_readwrite("numFramesPool", &FramePoolProperties::numFramesPool)
+        .def_readwrite("maxPoolSize", &FramePoolProperties::maxPoolSize);
 
     //// Bindings for actual nodes
     // Move properties into nodes and nodes under 'node' submodule

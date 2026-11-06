@@ -2,6 +2,7 @@
 
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/properties/FramePoolProperties.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -34,14 +35,14 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     /// Initial configuration for ImageManip node
     ImageManipConfig initialConfig;
 
-    /// Maximum output frame size in bytes (eg: 300x300 BGR image -> 300*300*3 bytes)
-    int outputFrameSize = 1 * 1024 * 1024;
+    /// Deprecated frame capacity fallback for pool.outputFrameSize, in bytes; zero means automatic.
+    [[deprecated("Use pool.outputFrameSize instead")]] int outputFrameSize = 0;
 
-    /// Num frames in output pool
-    int numFramesPool = 4;
+    /// Deprecated frame count fallback for pool.numFramesPool; zero means automatic.
+    [[deprecated("Use pool.numFramesPool instead")]] int numFramesPool = 0;
 
-    /// Maximum pool size for automatic calculation of pool size. Currently only used on RVC4
-    unsigned int maxPoolSize = 400000000;
+    /// Deprecated memory limit fallback for pool.maxPoolSize, in bytes; zero means automatic.
+    [[deprecated("Use pool.maxPoolSize instead")]] unsigned int maxPoolSize = 0;
 
     /// Backend preference for ImageManip. Only applied on RVC4.
     Backend backend = Backend::AUTO;
@@ -49,9 +50,13 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     /// Performance mode for ImageManip. Only applied on RVC4.
     PerformanceMode performanceMode = PerformanceMode::PERFORMANCE;
 
+    /// Pool configuration. Nonzero fields override legacy fields; zero falls back to the legacy value.
+    /// Legacy fields also default to zero (automatic). Prefer pool for new code.
+    FramePoolProperties pool{};
+
     ~ImageManipProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, maxPoolSize, backend, performanceMode);
+DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, maxPoolSize, backend, performanceMode, pool);
 
 }  // namespace dai

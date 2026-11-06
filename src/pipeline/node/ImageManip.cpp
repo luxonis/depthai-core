@@ -1,5 +1,8 @@
 #include "depthai/pipeline/node/ImageManip.hpp"
 
+#include <stdexcept>
+
+#include "depthai/utility/FramePool.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
@@ -79,19 +82,33 @@ void ImageManip::run() {
         });
 }
 
+void ImageManip::setPoolProperties(const FramePoolProperties& pool) {
+    dai::utility::validateFramePoolCount(pool.numFramesPool);
+    properties.pool = pool;
+    properties.numFramesPool = 0;
+    properties.outputFrameSize = 0;
+    properties.maxPoolSize = 0;
+}
+
 void ImageManip::setNumFramesPool(int numFramesPool) {
+    if(numFramesPool < 0 || numFramesPool == 1) throw std::invalid_argument("numFramesPool must be 0 (automatic) or at least 2");
+    properties.pool.numFramesPool = numFramesPool;
     properties.numFramesPool = numFramesPool;
 }
 
 void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
+    if(maxFrameSize < 0) throw std::invalid_argument("outputFrameSize must be nonnegative (0 means automatic)");
+    properties.pool.outputFrameSize = maxFrameSize;
     properties.outputFrameSize = maxFrameSize;
 }
 
 void ImageManip::setMaxPoolSize(unsigned int maxPoolSize) {
+    properties.pool.maxPoolSize = maxPoolSize;
     properties.maxPoolSize = maxPoolSize;
 }
 
 ImageManip::Properties& ImageManip::getProperties() {
+    properties.pool = dai::utility::reconcileFramePool(properties.pool, properties.numFramesPool, properties.outputFrameSize, properties.maxPoolSize);
     properties.initialConfig = *initialConfig;
     return properties;
 }

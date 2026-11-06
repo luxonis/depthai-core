@@ -28,7 +28,8 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
 
     // Properties
     imageAlignProperties.def_readwrite("initialConfig", &ImageAlignProperties::initialConfig, DOC(dai, ImageAlignProperties, initialConfig))
-        .def_readwrite("numFramesPool", &ImageAlignProperties::numFramesPool, DOC(dai, ImageAlignProperties, numFramesPool))
+        .def_readwrite("pool", &ImageAlignProperties::pool)
+        .def_readwrite("numFramesPool", &ImageAlignProperties::numFramesPool, "Deprecated: use pool.numFramesPool instead; zero means automatic.")
         .def_readwrite("numShaves", &ImageAlignProperties::numShaves, DOC(dai, ImageAlignProperties, numShaves))
         .def_readwrite("warpHwIds", &ImageAlignProperties::warpHwIds, DOC(dai, ImageAlignProperties, warpHwIds))
         .def_readwrite("alignHeight", &ImageAlignProperties::alignHeight, DOC(dai, ImageAlignProperties, alignHeight))
@@ -48,6 +49,7 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
         .def("setOutKeepAspectRatio", &ImageAlign::setOutKeepAspectRatio, py::arg("keep"), DOC(dai, node, ImageAlign, setOutKeepAspectRatio))
         .def("setInterpolation", &ImageAlign::setInterpolation, py::arg("interp"), DOC(dai, node, ImageAlign, setInterpolation))
         .def("setNumShaves", &ImageAlign::setNumShaves, py::arg("numShaves"), DOC(dai, node, ImageAlign, setNumShaves))
+        .def("setPoolProperties", &ImageAlign::setPoolProperties, py::arg("pool"))
         .def("setNumFramesPool", &ImageAlign::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, ImageAlign, setNumFramesPool))
         .def("setRunOnHost", &ImageAlign::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ImageAlign, setRunOnHost))
         .def("runOnHost", &ImageAlign::runOnHost, DOC(dai, node, ImageAlign, runOnHost));

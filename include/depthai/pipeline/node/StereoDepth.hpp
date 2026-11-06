@@ -292,9 +292,14 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     void setRuntimeModeSwitch(bool enable);
 
+    /** Set the frame pool configuration. Zero selects automatic for each field.
+     * Applies independently to each pool, including intermediate pools.
+     */
+    void setPoolProperties(const FramePoolProperties& pool);
+
     /**
      * Specify number of frames in pool.
-     * @param numFramesPool How many frames should the pool have
+     * @param numFramesPool Number of frames: 0 selects automatic, otherwise at least 2
      */
     void setNumFramesPool(int numFramesPool);
 
