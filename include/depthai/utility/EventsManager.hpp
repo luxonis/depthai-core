@@ -1,9 +1,8 @@
 #pragma once
 
-#include <deque>
-
 #include <atomic>
 #include <condition_variable>
+#include <deque>
 #include <future>
 #include <memory>
 #include <mutex>
