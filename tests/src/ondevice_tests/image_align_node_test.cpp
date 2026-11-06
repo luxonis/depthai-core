@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <vector>
 
 #include "depthai/depthai.hpp"
@@ -50,25 +51,88 @@ void requireAlignedFrameMetadata(const dai::ImgFrame& aligned, const dai::ImgFra
     }
 }
 
+/** Cameras for the live tests: CAM_A as the target with CAM_B and CAM_C when the device has all three. Otherwise the second
+ *  camera is the target and the first the input; depth then comes from both cameras, aligned to the first. */
+struct LiveSockets {
+    dai::CameraBoardSocket target, left, right;
+    bool threeCameras;
+};
+
+LiveSockets liveSockets(dai::Pipeline& pipeline) {
+    const auto sockets = pipeline.getDefaultDevice()->getConnectedCameras();
+    const auto has = [&](dai::CameraBoardSocket socket) { return std::find(sockets.begin(), sockets.end(), socket) != sockets.end(); };
+    if(has(dai::CameraBoardSocket::CAM_A) && has(dai::CameraBoardSocket::CAM_B) && has(dai::CameraBoardSocket::CAM_C))
+        return {dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, true};
+    if(sockets.size() < 2) SKIP("ImageAlign needs two cameras");
+    return {sockets[1], sockets[0], sockets[1], false};
+}
+
+/** Keeps the device calibration when it relates the cameras, and otherwise sets a nominal one: a 71.86 degree FOV at each
+ *  sensor's full size and 7.5 cm between neighboring cameras. */
+void useCalibrationFor(dai::Pipeline& pipeline, const LiveSockets& sockets) {
+    auto device = pipeline.getDefaultDevice();
+    try {
+        const auto calibration = device->getCalibration();
+        calibration.getCameraExtrinsics(sockets.left, sockets.target);
+        calibration.getCameraExtrinsics(sockets.left, sockets.right);
+        return;
+    } catch(const std::exception&) {
+    }
+    dai::CalibrationHandler calibration;
+    for(const auto& camera : device->getConnectedCameraFeatures()) {
+        const float width = static_cast<float>(camera.width), height = static_cast<float>(camera.height);
+        const float focal = width / (2 * std::tan(71.86f * 3.14159265f / 360));
+        calibration.setCameraIntrinsics(camera.socket, {{focal, 0, width / 2}, {0, focal, height / 2}, {0, 0, 1}}, camera.width, camera.height);
+        calibration.setDistortionCoefficients(camera.socket, std::vector<float>(14, 0));
+        calibration.setFov(camera.socket, 71.86f);
+    }
+    const std::vector<std::vector<float>> identity{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const std::vector<float> baseline{-7.5f, 0, 0};
+    calibration.setCameraExtrinsics(sockets.left, sockets.right, identity, baseline, baseline);
+    if(sockets.threeCameras) {
+        const std::vector<float> toCenter{3.75f, 0, 0};
+        calibration.setCameraExtrinsics(sockets.right, sockets.target, identity, toCenter, toCenter);
+    }
+    calibration.setStereoLeft(sockets.left, identity);
+    calibration.setStereoRight(sockets.right, identity);
+    pipeline.setCalibrationData(calibration);
+}
+
 void runImageAlignTest(bool useDepth, bool runOnHost, dai::ImgResizeMode resizeMode) {
     dai::Pipeline p;
-    auto rgbCam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto leftCam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto rightCam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    const auto sockets = liveSockets(p);
+    useCalibrationFor(p, sockets);
+    const bool rvc2ng = p.getDefaultDevice()->getPlatform() == dai::Platform::RVC2NG;
+    // RVC2NG cameras cannot undistort; the aligned output is the undistorted target camera either way.
+    const bool undistort = !rvc2ng;
+    auto rgbCam = p.create<dai::node::Camera>()->build(sockets.target);
+    auto leftCam = p.create<dai::node::Camera>()->build(sockets.left);
+    std::shared_ptr<dai::node::Camera> rightCam;
+    if(sockets.threeCameras) {
+        rightCam = p.create<dai::node::Camera>()->build(sockets.right);
+    }
     std::shared_ptr<dai::node::StereoDepth> stereo;
     auto align = p.create<dai::node::ImageAlign>();
-    auto* rgbOut = rgbCam->requestOutput({1280, 640}, std::nullopt, resizeMode, std::nullopt, true);
-    auto* leftOut = leftCam->requestOutput({1280, 800}, std::nullopt);
-    auto* rightOut = rightCam->requestOutput({1280, 800}, std::nullopt);
+    auto* rgbOut = rgbCam->requestOutput({1280, 640}, std::nullopt, resizeMode, std::nullopt, undistort);
+    // The host node has no NV16 path, which RVC2NG color cameras output by default.
+    const auto inputType = runOnHost && rvc2ng ? std::optional<dai::ImgFrame::Type>(dai::ImgFrame::Type::NV12) : std::nullopt;
+    auto* leftOut = leftCam->requestOutput({1280, 800}, inputType);
+    // With two cameras, the target camera is also the right stereo camera.
+    dai::Node::Output* rightOut = nullptr;
+    if(rightCam || useDepth) rightOut = (rightCam ? rightCam : rgbCam)->requestOutput({1280, 800}, std::nullopt);
 
     if(useDepth) {
         stereo = p.create<dai::node::StereoDepth>();
         leftOut->link(stereo->left);
         rightOut->link(stereo->right);
         stereo->depth.link(align->input);
+        if(!sockets.threeCameras) {
+            // The target is the right camera, so depth stays on the left one.
+            stereo->setDepthAlign(dai::StereoDepthConfig::AlgorithmControl::DepthAlign::RECTIFIED_LEFT);
+        }
     } else {
         leftOut->link(align->input);
-        rightOut->createOutputQueue();  // TODO remove once left&rgb only streaming on RVC4 is supported
+        if(rightOut) rightOut->createOutputQueue();  // TODO remove once left&rgb only streaming on RVC4 is supported
     }
     rgbOut->link(align->inputAlignTo);
 
@@ -87,6 +151,8 @@ void runImageAlignTest(bool useDepth, bool runOnHost, dai::ImgResizeMode resizeM
     auto alignToFrame = alignToQueue->get<dai::ImgFrame>();
     REQUIRE(alignToFrame != nullptr);
     const auto alignToIntrinsics = alignToFrame->transformation.getIntrinsicMatrix();
+    auto undistortedTarget = alignToFrame->transformation;
+    undistortedTarget.setDistortionCoefficients(std::vector<float>(undistortedTarget.getDistortionCoefficients().size(), 0.0f));
 
     constexpr size_t N = 20;
     for(size_t i = 0; i < N; ++i) {
@@ -96,7 +162,7 @@ void runImageAlignTest(bool useDepth, bool runOnHost, dai::ImgResizeMode resizeM
         auto inputFrame = passthroughQueue->get<dai::ImgFrame>();
         REQUIRE(inputFrame != nullptr);
         requireInputMetadata(*aligned, *inputFrame);
-        REQUIRE(aligned->transformation.isAlignedTo(alignToFrame->transformation));
+        REQUIRE(aligned->transformation.isAlignedTo(undistortedTarget));
         REQUIRE(aligned->getInstanceNum() == alignToFrame->getInstanceNum());
     }
     p.stop();
@@ -129,8 +195,10 @@ std::shared_ptr<dai::ImgFrame> makeRuntimeTransformationFrame(const dai::ImgTran
 
 std::shared_ptr<dai::ImgFrame> alignSyntheticDepth(bool runOnHost,
                                                    const dai::ImgTransformation& depthTransformation,
-                                                   const dai::ImgTransformation& imageTransformation) {
+                                                   const dai::ImgTransformation& imageTransformation,
+                                                   dai::Platform* platform = nullptr) {
     dai::Pipeline pipeline(!runOnHost);
+    if(platform && !runOnHost) *platform = pipeline.getDefaultDevice()->getPlatform();
     auto align = pipeline.create<dai::node::ImageAlign>();
     align->setRunOnHost(runOnHost);
     auto depthQueue = align->input.createInputQueue();
@@ -209,15 +277,39 @@ TEST_CASE("Test ImageAlign synthetic depth to image host device parity") {
     const dai::ImgTransformation depthTransformation(width, height, intrinsics, dai::CameraModel::Perspective, {}, depthExtrinsics);
     const dai::ImgTransformation imageTransformation(width, height, intrinsics, dai::CameraModel::Perspective, {}, imageExtrinsics);
 
+    dai::Platform platform = dai::Platform::RVC4;
     const auto host = alignSyntheticDepth(true, depthTransformation, imageTransformation);
-    const auto device = alignSyntheticDepth(false, depthTransformation, imageTransformation);
+    const auto device = alignSyntheticDepth(false, depthTransformation, imageTransformation, &platform);
     const size_t imageBytes = width * height * 2;
     const auto hostData = host->getData();
     const auto deviceData = device->getData();
     REQUIRE(hostData.size() >= imageBytes);
     REQUIRE(deviceData.size() >= imageBytes);
     REQUIRE(std::any_of(hostData.begin(), hostData.begin() + imageBytes, [](uint8_t pixel) { return pixel != 0; }));
-    REQUIRE(std::equal(hostData.begin(), hostData.begin() + imageBytes, deviceData.begin()));
+    if(platform != dai::Platform::RVC2NG) {
+        REQUIRE(std::equal(hostData.begin(), hostData.begin() + imageBytes, deviceData.begin()));
+        return;
+    }
+    // RVC2NG reprojects each depth sample to its nearest target pixel, while the host warp can place a sample one pixel
+    // further along the baseline, or past the image edge. Both must cover the same pixels, and each host value must be
+    // the device value of that pixel or of a horizontal neighbor.
+    std::vector<uint16_t> hostDepth(width * height), deviceDepth(width * height);
+    std::memcpy(hostDepth.data(), hostData.data(), imageBytes);
+    std::memcpy(deviceDepth.data(), deviceData.data(), imageBytes);
+    size_t coverageMismatches = 0, valueMismatches = 0;
+    for(size_t y = 0; y < height; ++y) {
+        for(size_t x = 0; x < width; ++x) {
+            const auto value = hostDepth[y * width + x];
+            coverageMismatches += (value == 0) != (deviceDepth[y * width + x] == 0);
+            if(value == 0) continue;
+            bool found = false;
+            for(size_t nx = x == 0 ? 0 : x - 1; nx <= std::min(width - 1, x + 1); ++nx) found = found || deviceDepth[y * width + nx] == value;
+            valueMismatches += !found;
+        }
+    }
+    CAPTURE(coverageMismatches, valueMismatches);
+    REQUIRE(coverageMismatches == 0);
+    REQUIRE(valueMismatches == 0);
 }
 
 // Feeds synthetic frames with hand-made ImgTransformations through ImageAlign and checks that a transformation change on

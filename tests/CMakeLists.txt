@@ -984,7 +984,7 @@ dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
-dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 rvc2ng ci)
 
 # Align test
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
