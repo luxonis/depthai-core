@@ -352,6 +352,17 @@ ctest -L rvc2
 ctest -L rvc4
 ```
 
+Build the Camera test targets and use the `[camera-hil]` filter to run the selected cases on a connected device.
+
+```sh
+cmake --build build --target camera_test camera_stream_restart_test camera_fps_config_test
+./build/tests/camera_test '[camera-hil]'
+./build/tests/camera_stream_restart_test '[camera-hil]'
+DEPTHAI_AUTOCALIBRATION=OFF ./build/tests/camera_fps_config_test '[camera-hil]'
+```
+
+The calibration case supplies intrinsics and distortion coefficients for the current session and checks the metadata on the resized frames.
+
 ## Style check
 
 The library uses clang format to enforce a certain coding style.

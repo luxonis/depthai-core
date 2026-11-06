@@ -320,6 +320,8 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Frame type " + std::to_string((int)srcSpecs.type) + " not supported");
             break;
@@ -394,6 +396,8 @@ dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, d
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Frame type not supported");
             break;
@@ -481,6 +485,8 @@ bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPl
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             return false;
             break;
@@ -829,6 +835,8 @@ size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& spec
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -890,6 +898,8 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -1343,6 +1353,8 @@ bool colorConvertToRGB888p(const ColorChangeArgs& args) {
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -1662,6 +1674,8 @@ bool colorConvertToBGR888p(const ColorChangeArgs& args) {
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -1873,6 +1887,8 @@ bool colorConvertToRGB888i(const ColorChangeArgs& args) {
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -2096,6 +2112,8 @@ bool colorConvertToBGR888i(const ColorChangeArgs& args) {
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -2352,6 +2370,8 @@ bool colorConvertToNV12(const ColorChangeArgs& args) {
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -2628,6 +2648,8 @@ bool colorConvertToYUV420p(const ColorChangeArgs& args) {
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -2860,6 +2882,8 @@ bool colorConvertToGRAY8(const ColorChangeArgs& args) {
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -2931,6 +2955,8 @@ void ColorChangeH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_p
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -3011,6 +3037,8 @@ Warp& Warp::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             break;
     }
@@ -3470,6 +3498,8 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
         case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NV16:
+        case ImgFrame::Type::NATIVE:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Unsupported image format. Only YUV420p, RGB888p, BGR888p, RGB888i, BGR888i, RAW8, NV12, GRAY8 are supported");
             break;

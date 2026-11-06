@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/Camera.hpp"
 
 // std
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -113,25 +114,21 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
             throw std::runtime_error("Invalid sensor resolution specified, maximum supported resolution is " + std::to_string(cameraFeatures.width) + "x"
                                      + std::to_string(cameraFeatures.height));
         }
-        found = false;
-        for(const auto& config : cameraFeatures.configs) {
-            auto signedWidth = static_cast<int32_t>(sensorResolution->first);
-            auto signedHeight = static_cast<int32_t>(sensorResolution->second);
-            if(config.width == signedWidth && config.height == signedHeight) {
-                found = true;
-                properties.resolutionWidth = signedWidth;
-                properties.resolutionHeight = signedHeight;
-                if(fps > config.maxFps || (fps < config.minFps && fps != -1.0f)) {
-                    throw std::runtime_error("Invalid sensor FPS specified, supported range is " + std::to_string(config.minFps) + " - "
-                                             + std::to_string(config.maxFps));
-                }
-                break;
-            }
-        }
-        if(!found) {
+        const auto width = static_cast<int32_t>(sensorResolution->first);
+        const auto height = static_cast<int32_t>(sensorResolution->second);
+        const auto matchesSize = [=](const CameraSensorConfig& config) { return config.width == width && config.height == height; };
+        const auto& configs = cameraFeatures.configs;
+        const auto firstSize = std::find_if(configs.begin(), configs.end(), matchesSize);
+        if(firstSize == configs.end()) {
             throw std::runtime_error(
                 "Invalid sensor resolution specified - check the supported resolutions for the connected device with device.getConnectedCameraFeatures()");
         }
+        if(fps != -1.0f
+           && std::none_of(firstSize, configs.end(), [&](const auto& config) { return matchesSize(config) && fps >= config.minFps && fps <= config.maxFps; })) {
+            throw std::runtime_error("Invalid sensor FPS specified for this resolution - check the supported modes with device.getConnectedCameraFeatures()");
+        }
+        properties.resolutionWidth = width;
+        properties.resolutionHeight = height;
     }
 
     if(fps != -1.0f) {
@@ -162,6 +159,8 @@ std::shared_ptr<Camera> Camera::build(ReplayVideo& replay) {
 
 Camera::Properties& Camera::getProperties() {
     properties.initialControl = initialControl;
+    properties.numFramesPoolIsp = getIspNumFramesPool();
+    properties.maxSizePoolIsp = getMaxSizePoolIsp();
     return properties;
 }
 
@@ -426,10 +425,16 @@ int Camera::getMaxSizePoolRaw() const {
 }
 
 int Camera::getIspNumFramesPool() const {
+    if(properties.numFramesPoolIsp == CameraProperties::AUTO && device) {
+        return device->getPlatform() == Platform::RVC2NG ? 4 : 3;
+    }
     return properties.numFramesPoolIsp;
 }
 
 int Camera::getMaxSizePoolIsp() const {
+    if(properties.maxSizePoolIsp == CameraProperties::AUTO && device && device->getPlatform() != Platform::RVC2NG) {
+        return 10 * 1024 * 1024;
+    }
     return properties.maxSizePoolIsp;
 }
 

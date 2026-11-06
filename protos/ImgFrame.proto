@@ -65,4 +65,6 @@ enum Type {
     GRAYF16 = 31;        // FP16 grayscale (normalized)
     RAW32 = 32;          // 32 bits raw
     NONE = 33;
+    NV16 = 34;    // Y plane and full-height interleaved UV plane
+    NATIVE = 35;  // Opaque device-native storage
 }
