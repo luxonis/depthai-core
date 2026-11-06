@@ -11,7 +11,7 @@ inputs:
     description: >
       Cache family. Jobs whose vcpkg packages have the same ABI hashes (same ports, features,
       triplet, compiler and vcpkg tools) share one family. The key is vcpkg-<family>-<runner.os>-<run_id>-<attempt>,
-      so when a workflow uses several runner images of one OS (macos-14 and macos-15-intel), the family
+      so when a workflow uses several runner images of one OS (macos-15 and macos-15-intel), the family
       name must include the image. Callers must not set VCPKG_BINARY_SOURCES themselves.
     required: true
   fallback-families:

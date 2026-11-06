@@ -428,7 +428,9 @@ jobs:
       - name: Download audited wheels
         uses: actions/download-artifact@v8
         with:
-          pattern: audited-wheels-macos-${{ matrix.os }}-*
+          # The Python version follows the runner name. A plain '*' also matches the artifacts of
+          # a runner whose name starts with this one (macos-15 also matches macos-15-intel).
+          pattern: audited-wheels-macos-${{ matrix.os }}-[0-9]*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
       - name: Combine wheels
