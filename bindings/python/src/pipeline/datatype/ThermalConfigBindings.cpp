@@ -162,7 +162,7 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
     thermalHistEqGainLimitFactorMode.value("AUTO", ThermalConfig::ThermalHistEqGainLimitFactorMode::AUTO)
         .value("MANUAL", ThermalConfig::ThermalHistEqGainLimitFactorMode::MANUAL);
 
-    thermalHistEqPlateauRedistributionMode.value("DISABLED", ThermalConfig::ThermalHistEqPlateauRedistributionMode::DISABLED)
+    thermalHistEqPlateauRedistributionMode.value("NO_REDISTRIBUTION", ThermalConfig::ThermalHistEqPlateauRedistributionMode::NO_REDISTRIBUTION)
         .value("ALL_BINS", ThermalConfig::ThermalHistEqPlateauRedistributionMode::ALL_BINS)
         .value("ACTIVE_BINS_ONLY", ThermalConfig::ThermalHistEqPlateauRedistributionMode::ACTIVE_BINS_ONLY);
 

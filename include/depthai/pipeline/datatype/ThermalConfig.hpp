@@ -66,7 +66,7 @@ class ThermalConfig : public Buffer {
     /// Where the pixels of histogram bins above the plateau go.
     enum class ThermalHistEqPlateauRedistributionMode : int32_t {
         /// Not redistributed
-        DISABLED,
+        NO_REDISTRIBUTION,
         /// Evenly among all bins
         ALL_BINS,
         /// Evenly among the bins with at least one pixel
