@@ -1,7 +1,10 @@
+#include <atomic>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
+#include <future>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -13,6 +16,56 @@
 #ifndef DEVICE_SEARCH_TIMEOUT_SECONDS
     #define DEVICE_SEARCH_TIMEOUT_SECONDS 30
 #endif
+
+// Upper bound for the post-failure crash dump sweep. Connecting to a device whose firmware dies at
+// every start can block without a bound (seen on RVC4), which made the whole test hang.
+#ifndef CRASH_DUMP_SWEEP_TIMEOUT_SECONDS
+    #define CRASH_DUMP_SWEEP_TIMEOUT_SECONDS 120
+#endif
+
+// Exit code when the example did not stop after SIGINT and had to be killed (ExecuteTestTimeout.cmake fails on it)
+constexpr int FORCEFULLY_KILLED_RETCODE = 133;
+
+// Post-failure sweep: reconnect to the same device and check if a pending crash dump exists for this failed run.
+// Sets crashDumpFound as soon as it is known, so the result is kept also if closing the device takes too long.
+static void postFailureCrashDumpSweep(const std::string& targetDeviceId, std::atomic<bool>& crashDumpFound) {
+    try {
+        bool found = false;
+        dai::DeviceInfo deviceInfo;
+        auto startSweep = std::chrono::steady_clock::now();
+        while(!found && std::chrono::steady_clock::now() - startSweep < std::chrono::seconds(15)) {
+            if(!targetDeviceId.empty()) {
+                std::tie(found, deviceInfo) = dai::Device::getDeviceById(targetDeviceId);
+                if(!found) {
+                    std::tie(found, deviceInfo) = dai::XLinkConnection::getDeviceById(targetDeviceId, X_LINK_ANY_STATE, false);
+                }
+            } else {
+                break;
+            }
+            if(!found) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            }
+        }
+        if(found) {
+            dai::Device::Config config;
+            config.logLevel = dai::LogLevel::CRITICAL;
+            config.outputLogLevel = dai::LogLevel::CRITICAL;
+            dai::Device crashDumpSweep(config, deviceInfo);
+            crashDumpFound = crashDumpSweep.hasCrashDump();
+            if(crashDumpFound) {
+                std::cout << "Post-failure crash dump sweep found pending crash dump." << std::endl;
+            } else {
+                std::cout << "Post-failure crash dump sweep found no pending crash dump." << std::endl;
+            }
+        } else if(targetDeviceId.empty()) {
+            std::cout << "Post-failure crash dump sweep skipped (no target device id)." << std::endl;
+        } else {
+            std::cout << "Post-failure crash dump sweep skipped (device not found)." << std::endl;
+        }
+    } catch(const std::exception& ex) {
+        std::cout << "[wrapper] Post-failure crash dump sweep failed: " << ex.what() << std::endl;
+    }
+}
 
 int main(int argc, char* argv[]) {
     if(argc < 3) {
@@ -79,6 +132,7 @@ int main(int argc, char* argv[]) {
         // Run the process with captured output and timeout
         auto start = std::chrono::steady_clock::now();
         bool timedOut = false;
+        bool forcefullyKilled = false;
 
         subprocess::Popen proc(args);
 
@@ -120,6 +174,12 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Process still running after SIGINT, sending SIGKILL..." << std::endl;
                 proc.kill(SIGKILL);                                    // Force kill
                 std::this_thread::sleep_for(std::chrono::seconds(1));  // Short wait after SIGKILL
+                forcefullyKilled = true;
+                // Reap the child, otherwise retcode() stays -1 and the wrapper exits with 255
+                auto killTime = std::chrono::steady_clock::now();
+                while(proc.poll() == -1 && std::chrono::steady_clock::now() - killTime < std::chrono::seconds(5)) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
             }
 #endif
             std::cerr << "Process terminated." << std::endl;
@@ -137,50 +197,41 @@ int main(int argc, char* argv[]) {
         int retcode = proc.retcode();
 
         bool crashDumpFound = false;
+        bool sweepTimedOut = false;
         if(retcode != 0) {
-            // Post-failure sweep: reconnect to the same device and check if a pending
-            // crash dump exists for this failed run.
-            try {
-                bool found = false;
-                dai::DeviceInfo deviceInfo;
-                auto startSweep = std::chrono::steady_clock::now();
-                while(!found && std::chrono::steady_clock::now() - startSweep < std::chrono::seconds(15)) {
-                    if(!targetDeviceId.empty()) {
-                        std::tie(found, deviceInfo) = dai::Device::getDeviceById(targetDeviceId);
-                        if(!found) {
-                            std::tie(found, deviceInfo) = dai::XLinkConnection::getDeviceById(targetDeviceId, X_LINK_ANY_STATE, false);
-                        }
-                    } else {
-                        break;
-                    }
-                    if(!found) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    }
-                }
-                if(found) {
-                    dai::Device::Config config;
-                    config.logLevel = dai::LogLevel::CRITICAL;
-                    config.outputLogLevel = dai::LogLevel::CRITICAL;
-                    dai::Device crashDumpSweep(config, deviceInfo);
-                    crashDumpFound = crashDumpSweep.hasCrashDump();
-                    if(crashDumpFound) {
-                        std::cout << "Post-failure crash dump sweep found pending crash dump." << std::endl;
-                    } else {
-                        std::cout << "Post-failure crash dump sweep found no pending crash dump." << std::endl;
-                    }
-                } else if(targetDeviceId.empty()) {
-                    std::cout << "Post-failure crash dump sweep skipped (no target device id)." << std::endl;
-                } else {
-                    std::cout << "Post-failure crash dump sweep skipped (device not found)." << std::endl;
-                }
-            } catch(const std::exception& ex) {
-                std::cout << "[wrapper] Post-failure crash dump sweep failed: " << ex.what() << std::endl;
+            // Run the sweep in its own thread, so that a device connection which never returns cannot hang the test
+            constexpr auto CRASH_DUMP_SWEEP_TIMEOUT = std::chrono::seconds(CRASH_DUMP_SWEEP_TIMEOUT_SECONDS);
+            auto sweepCrashDumpFound = std::make_shared<std::atomic<bool>>(false);
+            std::packaged_task<void()> sweepTask([targetDeviceId, sweepCrashDumpFound]() { postFailureCrashDumpSweep(targetDeviceId, *sweepCrashDumpFound); });
+            auto sweepDone = sweepTask.get_future();
+            std::thread sweepThread(std::move(sweepTask));
+            if(sweepDone.wait_for(CRASH_DUMP_SWEEP_TIMEOUT) == std::future_status::ready) {
+                sweepThread.join();
+            } else {
+                // The thread is blocked inside depthai, it can not be joined
+                sweepThread.detach();
+                sweepTimedOut = true;
+                std::cout << "[wrapper] Post-failure crash dump sweep did not finish within " << CRASH_DUMP_SWEEP_TIMEOUT.count() << " seconds, giving up."
+                          << std::endl;
             }
+            crashDumpFound = *sweepCrashDumpFound;
         }
 
-        // 2 signifies that proc was killed by a timeout
-        if(retcode == 2 && !crashDumpFound) {
+        // 2 signifies that proc was stopped with SIGINT by this wrapper after the timeout (clean stop)
+        if(timedOut && !forcefullyKilled && retcode == 2 && !crashDumpFound) {
             retcode = 0;
+        }
+
+        if(forcefullyKilled) {
+            std::cerr << "=== Process did not stop after SIGINT and had to be killed ===" << std::endl;
+            retcode = FORCEFULLY_KILLED_RETCODE;
+        }
+
+        if(sweepTimedOut) {
+            // The detached sweep thread still uses depthai, do not run static destructors under it
+            std::cout << std::flush;
+            std::cerr << std::flush;
+            std::_Exit(retcode);
         }
 
         return retcode;
