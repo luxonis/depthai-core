@@ -476,6 +476,11 @@ class CalibrationHandler {
      * @param destPath  Full path to the json file in which raw calibration data will be stored
      * @return True on success, false otherwise
      */
+    /** RVC4 experimental native-resolution spline calibration, persisted by flashCalibration. */
+    void setBsplineStereoCalibration(const BsplineStereoCalibration& calibration);
+    std::optional<BsplineStereoCalibration> getBsplineStereoCalibration() const;
+    void clearBsplineStereoCalibration();
+
     bool eepromToJsonFile(std::filesystem::path destPath) const;
 
     /**

@@ -1,5 +1,8 @@
 #pragma once
 #include <string>
+#include <optional>
+#include "depthai/common/optional.hpp"
+#include "depthai/common/BsplineCalibration.hpp"
 #include <unordered_map>
 #include <vector>
 
@@ -34,6 +37,7 @@ struct EepromData {
     // IMU calibration payload serialized with EepromData via DEPTHAI_SERIALIZE_OPTIONAL_EXT;
     // includes biases, scale/shear/rotation decomposition, and IMU noise parameters.
     ImuCalibrationParams imuCalibrationParams;
+    std::optional<BsplineStereoCalibration> bsplineStereoCalibration;
 };
 
 DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
@@ -56,6 +60,7 @@ DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
                                stereoUseSpecTranslation,
                                stereoEnableDistortionCorrection,
                                verticalCameraSocket,
-                               imuCalibrationParams);
+                               imuCalibrationParams,
+                               bsplineStereoCalibration);
 
 }  // namespace dai

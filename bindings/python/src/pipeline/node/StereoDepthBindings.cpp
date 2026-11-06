@@ -29,6 +29,10 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    py::enum_<StereoDepth::RectificationModel>(stereoDepth, "RectificationModel")
+        .value("AUTO", StereoDepth::RectificationModel::AUTO)
+        .value("LEGACY", StereoDepth::RectificationModel::LEGACY)
+        .value("BSPLINE", StereoDepth::RectificationModel::BSPLINE);
     // Properties
     rectificationMesh
         .def_readwrite("meshLeftUri", &StereoDepthProperties::RectificationMesh::meshLeftUri, DOC(dai, StereoDepthProperties, RectificationMesh, meshLeftUri))
@@ -38,7 +42,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def_readwrite("stepWidth", &StereoDepthProperties::RectificationMesh::stepWidth, DOC(dai, StereoDepthProperties, RectificationMesh, stepWidth))
         .def_readwrite("stepHeight", &StereoDepthProperties::RectificationMesh::stepHeight, DOC(dai, StereoDepthProperties, RectificationMesh, stepHeight));
 
-    stereoDepthProperties.def(py::init<>());
+    stereoDepthProperties.def(py::init<>()).def_readwrite("rectificationModel", &StereoDepthProperties::rectificationModel);
 
     stereoDepthProperties.def_readwrite("enableFrameSync", &dai::StereoDepthProperties::enableFrameSync, DOC(dai, StereoDepthProperties, enableFrameSync))
         .def_readwrite("initialConfig", &StereoDepthProperties::initialConfig, DOC(dai, StereoDepthProperties, initialConfig))
@@ -160,6 +164,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              static_cast<void (StereoDepth::*)(CameraBoardSocket)>(&StereoDepth::setDepthAlign),
              py::arg("camera"),
              DOC(dai, node, StereoDepth, setDepthAlign, 2))
+        .def("setRectificationModel", &StereoDepth::setRectificationModel, py::arg("model"))
         .def("setRectification", &StereoDepth::setRectification, py::arg("enable"), DOC(dai, node, StereoDepth, setRectification))
         .def("setLeftRightCheck", &StereoDepth::setLeftRightCheck, py::arg("enable"), DOC(dai, node, StereoDepth, setLeftRightCheck))
         .def("setSubpixel", &StereoDepth::setSubpixel, py::arg("enable"), DOC(dai, node, StereoDepth, setSubpixel))

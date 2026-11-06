@@ -56,6 +56,9 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * Enable stereo rectification/dewarp or not.
      * Useful to disable when replaying pre-recorded rectified frames.
      */
+    // AUTO retains legacy behavior, even when a spline calibration is stored.
+    enum class RectificationModel { AUTO = 0, LEGACY = AUTO, BSPLINE = 1 };
+    RectificationModel rectificationModel = RectificationModel::AUTO;
     bool enableRectification = true;
 
     /**
@@ -221,5 +224,6 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       disparityToDepthUseSpecTranslation,
                       rectificationUseSpecTranslation,
                       depthAlignmentUseSpecTranslation,
-                      alphaScaling);
+                      alphaScaling,
+                      rectificationModel);
 }  // namespace dai
