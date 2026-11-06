@@ -145,8 +145,9 @@ struct WorldConstraints {
 struct MarkerOutline {
     /// ARUCO: the 4 corners, clockwise from the marker's top-left corner.
     std::vector<std::array<float, 2>> corners;
-    /// LUXONIS: points on the outer and the inner edge of the lens ring.
+    /// LUXONIS: points on the outer edge of the lens ring.
     std::vector<std::array<float, 2>> outerEdge;
+    /// LUXONIS: points on the inner edge of the lens ring.
     std::vector<std::array<float, 2>> innerEdge;
     DEPTHAI_SERIALIZE(MarkerOutline, corners, outerEdge, innerEdge);
 };
@@ -156,7 +157,9 @@ struct MarkerOutline {
  * for the markers with a known size, their outlines.
  */
 struct MarkerObservationSet {
+    /// Reference point of each marker in each camera that saw it, in pixels.
     std::map<int32_t, std::map<CameraBoardSocket, std::array<float, 2>>> centers;
+    /// Outline of each marker with a configured size in each camera that saw it.
     std::map<int32_t, std::map<CameraBoardSocket, MarkerOutline>> outlines;
     DEPTHAI_SERIALIZE(MarkerObservationSet, centers, outlines);
 };
