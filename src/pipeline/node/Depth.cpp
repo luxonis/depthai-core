@@ -507,6 +507,28 @@ Node::Output& Depth::confidence() {
     return *confidenceOut_;
 }
 
+bool Depth::hasRectifiedOutputs() {
+    if(!graphBuilt_) {
+        buildInternal();
+    }
+    DAI_CHECK_V(graphBuilt_, "Depth: attach the node to a pipeline with a device before querying rectified outputs.");
+    return rectifiedLeftOut_ != nullptr && rectifiedRightOut_ != nullptr;
+}
+
+Node::Output& Depth::rectifiedLeft() {
+    DAI_CHECK_V(hasRectifiedOutputs(),
+                "Depth: rectified outputs are unavailable for the {} backend. Select a stereo-based algorithm if a rectified pair is required.",
+                algorithmName(resolved_.algorithm));
+    return *rectifiedLeftOut_;
+}
+
+Node::Output& Depth::rectifiedRight() {
+    DAI_CHECK_V(hasRectifiedOutputs(),
+                "Depth: rectified outputs are unavailable for the {} backend. Select a stereo-based algorithm if a rectified pair is required.",
+                algorithmName(resolved_.algorithm));
+    return *rectifiedRightOut_;
+}
+
 // --- Setters ---
 
 std::shared_ptr<Depth> Depth::setAlgorithm(Algorithm algorithm) {
@@ -530,7 +552,7 @@ std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
 // --- Internal ---
 
 void Depth::requireNotBuilt(const char* method) const {
-    DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first depth()/confidence() access).", method);
+    DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first output access or hasRectifiedOutputs() call).", method);
 }
 
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) {
@@ -874,6 +896,8 @@ void Depth::buildInternal() {
             tofStereoFusionBackend_->build(left, right, fps);
             depthOut_ = &tofStereoFusionBackend_->depth;
             confidenceOut_ = &tofStereoFusionBackend_->confidence;
+            rectifiedLeftOut_ = &tofStereoFusionBackend_->neuralDepth->rectification->output1;
+            rectifiedRightOut_ = &tofStereoFusionBackend_->neuralDepth->rectification->output2;
             wiredResolution = {left->getMaxRequestedWidth(), left->getMaxRequestedHeight()};
             wiredFps = fps;
             break;
@@ -889,6 +913,8 @@ void Depth::buildInternal() {
             depthOut_ = &nasBackend_->depth;
 #endif
             confidenceOut_ = &(*nasBackend_->stereoDepth).confidenceMap;
+            rectifiedLeftOut_ = &nasBackend_->rectification->output1;
+            rectifiedRightOut_ = &nasBackend_->rectification->output2;
             wiredResolution = stereo.resolution;
             if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
                 wiredFps = stereo.maxCameraFps;
@@ -901,6 +927,9 @@ void Depth::buildInternal() {
             (*gpuStereoBackend_)->setRectification(true).build(*stereo.left, *stereo.right);
             depthOut_ = &(**gpuStereoBackend_).depth;
             confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
+            auto& rectification = *(*gpuStereoBackend_)->rectification;
+            rectifiedLeftOut_ = &rectification->output1;
+            rectifiedRightOut_ = &rectification->output2;
             wiredResolution = stereo.resolution;
             if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
                 wiredFps = stereo.maxCameraFps;
@@ -916,6 +945,8 @@ void Depth::buildInternal() {
             (*neuralBackend_)->build(*stereo.left, *stereo.right, model);
             depthOut_ = &(**neuralBackend_).depth;
             confidenceOut_ = &(**neuralBackend_).confidence;
+            rectifiedLeftOut_ = &(*neuralBackend_)->rectification->output1;
+            rectifiedRightOut_ = &(*neuralBackend_)->rectification->output2;
             wiredResolution = stereo.resolution;
             if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
                 wiredFps = stereo.maxCameraFps;
@@ -929,6 +960,8 @@ void Depth::buildInternal() {
             (*stereoBackend_)->build(*stereo.left, *stereo.right, stereoPresetFromConfig(resolved_.config));
             depthOut_ = &(**stereoBackend_).depth;
             confidenceOut_ = &(**stereoBackend_).confidenceMap;
+            rectifiedLeftOut_ = &(**stereoBackend_).rectifiedLeft;
+            rectifiedRightOut_ = &(**stereoBackend_).rectifiedRight;
             wiredResolution = stereo.resolution;
             if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
                 wiredFps = stereo.maxCameraFps;

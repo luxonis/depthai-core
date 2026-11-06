@@ -1031,6 +1031,32 @@ static inline void RGBfromYUV(float& R, float& G, float& B, float Y, float U, fl
     B = 1.164f * Y + 2.017f * U;
 }
 
+// Rectified RAW8 and GRAY8 are full-range monochrome samples, not limited-range YUV.
+// Keep this path independent of OpenCV/FastCV so the same implementation works on
+// the host and in the RVC4 device runtime. Frame and plane offsets include padding.
+static bool colorConvertMono8ToColor(const ColorChangeArgs& args, bool planar) {
+    const auto& srcSpecs = args.srcSpecs;
+    const auto& dstSpecs = args.dstSpecs;
+    const auto* src = args.inputFrame->getOffsetData().data();
+    auto* dst = args.outputFrame->getOffsetData().data();
+    const std::array<uint32_t, 3> offsets{dstSpecs.p1Offset, dstSpecs.p2Offset, dstSpecs.p3Offset};
+    const std::array<uint32_t, 3> strides{dstSpecs.p1Stride, dstSpecs.p2Stride, dstSpecs.p3Stride};
+    for(uint32_t y = 0; y < srcSpecs.height; ++y) {
+        const auto* row = src + srcSpecs.p1Offset + y * srcSpecs.p1Stride;
+        if(planar) {
+            for(size_t channel = 0; channel < offsets.size(); ++channel) {
+                std::copy_n(row, srcSpecs.width, dst + offsets[channel] + y * strides[channel]);
+            }
+        } else {
+            auto* out = dst + dstSpecs.p1Offset + y * dstSpecs.p1Stride;
+            for(uint32_t x = 0; x < srcSpecs.width; ++x) {
+                std::fill_n(out + 3 * x, 3, row[x]);
+            }
+        }
+    }
+    return true;
+}
+
 bool colorConvertToRGB888p(const ColorChangeArgs& args) {
     // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888p;
     const std::shared_ptr<OffsetMemory>& inputFrame = args.inputFrame;
@@ -1046,6 +1072,9 @@ bool colorConvertToRGB888p(const ColorChangeArgs& args) {
 
     bool done = false;
     switch(from) {
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+            return colorConvertMono8ToColor(args, true);
         case dai::ImgFrame::Type::RGB888p:
             std::copy(src, src + inputSize, outputFrame->getOffsetData().data());
             done = true;
@@ -1329,7 +1358,6 @@ bool colorConvertToRGB888p(const ColorChangeArgs& args) {
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::RAW8:
         case ImgFrame::Type::PACK10:
         case ImgFrame::Type::PACK12:
         case ImgFrame::Type::YUV444i:
@@ -1340,7 +1368,6 @@ bool colorConvertToRGB888p(const ColorChangeArgs& args) {
         case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGBF16F16F16i:
         case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
@@ -1365,6 +1392,9 @@ bool colorConvertToBGR888p(const ColorChangeArgs& args) {
 
     bool done = false;
     switch(from) {
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+            return colorConvertMono8ToColor(args, true);
         case dai::ImgFrame::Type::RGB888p:
             std::copy(src + srcSpecs.p1Offset, src + srcSpecs.p2Offset, outputFrame->getOffsetData().data() + dstSpecs.p3Offset);
             std::copy(src + srcSpecs.p2Offset, src + srcSpecs.p3Offset, outputFrame->getOffsetData().data() + dstSpecs.p2Offset);
@@ -1648,7 +1678,6 @@ bool colorConvertToBGR888p(const ColorChangeArgs& args) {
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::RAW8:
         case ImgFrame::Type::PACK10:
         case ImgFrame::Type::PACK12:
         case ImgFrame::Type::YUV444i:
@@ -1659,7 +1688,6 @@ bool colorConvertToBGR888p(const ColorChangeArgs& args) {
         case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGBF16F16F16i:
         case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
@@ -1684,6 +1712,9 @@ bool colorConvertToRGB888i(const ColorChangeArgs& args) {
 
     bool done = false;
     switch(from) {
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+            return colorConvertMono8ToColor(args, false);
         case dai::ImgFrame::Type::RGB888p: {
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
             fcvChannelCombine3Planesu8(src + srcSpecs.p1Offset,
@@ -1859,7 +1890,6 @@ bool colorConvertToRGB888i(const ColorChangeArgs& args) {
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::RAW8:
         case ImgFrame::Type::PACK10:
         case ImgFrame::Type::PACK12:
         case ImgFrame::Type::YUV444i:
@@ -1870,7 +1900,6 @@ bool colorConvertToRGB888i(const ColorChangeArgs& args) {
         case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGBF16F16F16i:
         case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
@@ -1897,6 +1926,9 @@ bool colorConvertToBGR888i(const ColorChangeArgs& args) {
 
     bool done = false;
     switch(from) {
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+            return colorConvertMono8ToColor(args, false);
         case dai::ImgFrame::Type::RGB888p: {
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
             fcvChannelCombine3Planesu8(src + srcSpecs.p3Offset,
@@ -2082,7 +2114,6 @@ bool colorConvertToBGR888i(const ColorChangeArgs& args) {
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::RAW8:
         case ImgFrame::Type::PACK10:
         case ImgFrame::Type::PACK12:
         case ImgFrame::Type::YUV444i:
@@ -2093,7 +2124,6 @@ bool colorConvertToBGR888i(const ColorChangeArgs& args) {
         case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGBF16F16F16i:
         case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
