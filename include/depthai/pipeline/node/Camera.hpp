@@ -38,6 +38,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Get a high resolution output with full FOV on the sensor.
      * By default the function will not use the resolutions higher than 5000x4000, as those often need a lot of resources,
      * making them hard to use in combination with other nodes.
+     * For example, on RVC4 devices with the 48 MP IMX586 sensor (8000x6000), the default output is 4000x3000.
+     * Set useHighestResolution to true to get the full sensor resolution (8000x6000 on IMX586).
      * @param type Type of the output (NV12, BGR, ...) - by default it's auto-selected for best performance
      * @param fps FPS of the output - by default it's auto-selected to highest possible that a sensor config support or 30, whichever is lower
      * @param useHighestResolution If true, the function will use the highest resolution available on the sensor, even if it's higher than 5000x4000

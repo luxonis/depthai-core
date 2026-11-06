@@ -5,6 +5,7 @@
 #include <spdlog/async_logger.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <sstream>
@@ -580,7 +581,9 @@ void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners
                               const uint32_t srcWidth,
                               const uint32_t srcHeight,
                               uint32_t& outputWidth,
-                              uint32_t& outputHeight);
+                              uint32_t& outputHeight,
+                              const uint32_t cropWidth = 0,
+                              const uint32_t cropHeight = 0);
 
 void getTransformImpl(const ManipOp& op,
                       std::array<std::array<float, 3>, 3>& transform,
@@ -656,7 +659,7 @@ inline std::array<float, 2> matvecmul(std::array<std::array<float, 2>, 2> M, std
 
 template <typename C>
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getTransform(
-    const C& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t outputWidth, uint32_t outputHeight) {
+    const C& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t& outputWidth, uint32_t& outputHeight) {
     std::array<std::array<float, 3>, 3> transform{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 2>, 4> imageCorners{{{0, 0}, {(float)inputWidth, 0}, {(float)inputWidth, (float)inputHeight}, {0, (float)inputHeight}}};
     std::vector<std::array<std::array<float, 2>, 4>> srcCorners;
@@ -676,9 +679,23 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 
     auto operations = base.getOperations();
 
-    auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
+    // Crop and CropRotated write the size that they request into these copies. base keeps the output size that the user set.
+    uint32_t cropWidth = base.outputWidth;
+    uint32_t cropHeight = base.outputHeight;
+    auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, cropWidth, cropHeight);
+    const bool hasCrop = std::any_of(operations.begin(), operations.end(), [](const ManipOp& op) {
+        return std::holds_alternative<Crop>(op.op) || std::holds_alternative<CropRotated>(op.op);
+    });
 
-    getOutputSizeFromCorners(imageCorners, base.center, matrix::getMatrixInverse(matrix), inputWidth, inputHeight, base.outputWidth, base.outputHeight);
+    getOutputSizeFromCorners(imageCorners,
+                             base.center,
+                             matrix::getMatrixInverse(matrix),
+                             inputWidth,
+                             inputHeight,
+                             base.outputWidth,
+                             base.outputHeight,
+                             hasCrop ? cropWidth : 0,
+                             hasCrop ? cropHeight : 0);
 
     if(base.resizeMode != ImageManipOpsBase<C>::ResizeMode::NONE) {
         Resize res;

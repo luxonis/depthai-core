@@ -552,7 +552,9 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
                                          const uint32_t srcWidth,
                                          const uint32_t srcHeight,
                                          uint32_t& outputWidth,
-                                         uint32_t& outputHeight) {
+                                         uint32_t& outputHeight,
+                                         const uint32_t cropWidth,
+                                         const uint32_t cropHeight) {
     auto [dstMinx, dstMaxx, dstMiny, dstMaxy] = dai::impl::getOuterRect(std::vector(corners.begin(), corners.end()));
 
     float innerMinx = ceilf(dstMinx);
@@ -586,12 +588,16 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
 
     if(outputWidth > 0 && outputHeight > 0) return;
 
+    // The automatic size limit must not cut an explicit crop. Use the crop diagonal for both axes, so that a rotation after the crop also fits.
+    const auto cropDiagonal = static_cast<size_t>(std::ceil(std::hypot(static_cast<float>(cropWidth), static_cast<float>(cropHeight))));
+    const size_t maxWidth = std::max(MAX_AUTO_WIDTH, cropDiagonal);
+    const size_t maxHeight = std::max(MAX_AUTO_HEIGHT, cropDiagonal);
     if(!center) {
-        if(outputWidth == 0) outputWidth = std::min((size_t)rmaxx, MAX_AUTO_WIDTH);
-        if(outputHeight == 0) outputHeight = std::min((size_t)rmaxy, MAX_AUTO_HEIGHT);
+        if(outputWidth == 0) outputWidth = std::min((size_t)rmaxx, maxWidth);
+        if(outputHeight == 0) outputHeight = std::min((size_t)rmaxy, maxHeight);
     } else {
-        if(outputWidth == 0) outputWidth = std::min((size_t)std::max(rmaxx - rminx, 0.f), MAX_AUTO_WIDTH);
-        if(outputHeight == 0) outputHeight = std::min((size_t)std::max(rmaxy - rminy, 0.f), MAX_AUTO_HEIGHT);
+        if(outputWidth == 0) outputWidth = std::min((size_t)std::max(rmaxx - rminx, 0.f), maxWidth);
+        if(outputHeight == 0) outputHeight = std::min((size_t)std::max(rmaxy - rminy, 0.f), maxHeight);
     }
 }
 
