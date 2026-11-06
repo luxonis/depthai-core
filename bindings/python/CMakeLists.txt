@@ -39,6 +39,26 @@ option(DEPTHAI_PYTHON_ENABLE_TESTS "Enable tests" OFF)
 option(DEPTHAI_PYTHON_ENABLE_EXAMPLES "Enable examples" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCSTRINGS "Generate docstrings from header files if module 'pybind11_mkdoc' available" ON)
 option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
+option(DEPTHAI_PYTHON_GIL_FREE "Declare Python bindings safe to run with the GIL disabled" OFF)
+include(CMakeDependentOption)
+cmake_dependent_option(DEPTHAI_PYTHON_TEST_GIL_DISABLED
+    "Run Python tests and examples with PYTHON_GIL=0 and verify GIL state"
+    OFF "DEPTHAI_PYTHON_GIL_FREE" OFF)
+option(DEPTHAI_PYTHON_TEST_SKIP_MISSING_DEPENDENCIES "Skip examples whose optional Python dependencies are unavailable" OFF)
+set(DEPTHAI_PYTHON_TEST_EXTRA_PATH "" CACHE PATH "Additional Python module directory for tests and examples (e.g. an OpenCV python_loader)")
+set(DEPTHAI_PYTHON_TEST_ENVIRONMENT "")
+if(DEPTHAI_PYTHON_TEST_GIL_DISABLED)
+    execute_process(
+        COMMAND ${PYTHON_EXECUTABLE} -c "import sysconfig; print(sysconfig.get_config_var('Py_GIL_DISABLED') == 1)"
+        OUTPUT_VARIABLE DEPTHAI_PYTHON_IS_FREE_THREADED
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+    if(NOT DEPTHAI_PYTHON_IS_FREE_THREADED STREQUAL "True")
+        message(FATAL_ERROR "DEPTHAI_PYTHON_TEST_GIL_DISABLED requires a free-threaded Python interpreter")
+    endif()
+    set(DEPTHAI_PYTHON_TEST_ENVIRONMENT "PYTHON_GIL=0" "DEPTHAI_REQUIRE_GIL_DISABLED=1")
+endif()
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
@@ -262,6 +282,9 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Add files for python module
+# Only the module entry point needs the GIL declaration switch.
+set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    "DEPTHAI_PYTHON_GIL_FREE=$<BOOL:${DEPTHAI_PYTHON_GIL_FREE}>")
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     add_library(${TARGET_NAME} ${SOURCE_LIST})
 else()
