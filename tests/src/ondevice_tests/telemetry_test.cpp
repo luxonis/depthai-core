@@ -26,7 +26,10 @@ constexpr int kPort = 8955;
 constexpr char kTelemetryUrl[] = "http://localhost:8955";
 constexpr char kTelemetryApiKey[] = "phc_depthai_telemetry_test";
 constexpr char kTelemetryCorrelationId[] = "depthai-telemetry-test-correlation-id";
-constexpr auto kRequestTimeout = std::chrono::seconds(20);
+// Time for the child to run to its end. A PoE (TCP) device can first need about 10 s to reboot after
+// the previous session, before the child can boot it.
+constexpr auto kChildTimeout = std::chrono::seconds(120);
+constexpr auto kPostExitEventTimeout = std::chrono::seconds(1);
 
 using Json = nlohmann::json;
 
@@ -157,10 +160,24 @@ subprocess::env_map_t makeChildEnv(const std::filesystem::path& tempHome) {
     };
 }
 
-ChildResult collectChildResult(subprocess::Popen& proc, bool wasKilled) {
+ChildResult waitForChildExit(subprocess::Popen& proc, std::chrono::steady_clock::duration timeout) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    int status = proc.poll();
+    while(status == -1 && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        status = proc.poll();
+    }
+    const bool wasKilled = status == -1;
+    if(wasKilled) {
+        proc.kill();
+        const auto killDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while((status = proc.poll()) == -1 && std::chrono::steady_clock::now() < killDeadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
     auto childOutput = proc.communicate();
     return {
-        proc.retcode(),
+        status,
         std::string(childOutput.first.buf.begin(), childOutput.first.buf.end()),
         std::string(childOutput.second.buf.begin(), childOutput.second.buf.end()),
         wasKilled,
@@ -258,20 +275,10 @@ std::vector<ReceivedRequest> runTelemetryScenario() {
 
     const std::set<std::string> requiredEvents = {
         "depthai_load", "depthai_device_constructor", "depthai_camera_sensor_mode_started", "depthai_pipeline_start", "depthai_pipeline_stop"};
-    const bool waitedForEvents = server.waitForRequiredEvents(requiredEvents, kRequestTimeout);
+    const auto childResult = waitForChildExit(proc, kChildTimeout);
+    const bool waitedForEvents = server.waitForRequiredEvents(requiredEvents, kPostExitEventTimeout);
     const auto requests = server.snapshot();
     const bool listenFailed = server.hadListenFailure();
-    int status = proc.poll();
-    bool childKilled = false;
-    if(status == -1) {
-        proc.kill();
-        childKilled = true;
-        const auto killDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-        while((status = proc.poll()) == -1 && std::chrono::steady_clock::now() < killDeadline) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    }
-    const auto childResult = collectChildResult(proc, childKilled);
 
     CAPTURE(childResult.status);
     CAPTURE(childResult.wasKilled);
@@ -298,9 +305,8 @@ std::vector<ReceivedRequest> runTelemetryScenario() {
 
     REQUIRE(waitedForEvents);
     REQUIRE_FALSE(listenFailed);
-    if(!childResult.wasKilled) {
-        REQUIRE(childResult.status == 0);
-    }
+    REQUIRE_FALSE(childResult.wasKilled);
+    REQUIRE(childResult.status == 0);
     return requests;
 }
 
@@ -323,26 +329,11 @@ std::vector<ReceivedRequest> runTelemetryDisabledScenario() {
                            subprocess::environment{std::move(childEnv)},
                            subprocess::session_leader{true});
 
-    const auto deadline = std::chrono::steady_clock::now() + kRequestTimeout;
-    int status = proc.poll();
-    bool childKilled = false;
-    while(status == -1 && std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        status = proc.poll();
-    }
-    if(status == -1) {
-        proc.kill();
-        childKilled = true;
-        const auto killDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-        while((status = proc.poll()) == -1 && std::chrono::steady_clock::now() < killDeadline) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    }
+    const auto childResult = waitForChildExit(proc, kChildTimeout);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     const auto requests = server.snapshot();
     const bool listenFailed = server.hadListenFailure();
-    const auto childResult = collectChildResult(proc, childKilled);
     server.stop();
 
     CAPTURE(childResult.status);
