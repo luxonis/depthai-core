@@ -587,7 +587,7 @@ ListedSource inspectReplaySource(const std::filesystem::path& path) {
 std::filesystem::path resolveArchiveEntry(const std::filesystem::path& root, const std::string& entry, bool metadataOnly) {
     if(entry.empty()) return root;
     const auto direct = root / entry;
-    if(std::filesystem::is_directory(direct)) return direct;
+    if(!metadataOnly && std::filesystem::is_directory(direct)) return direct;
     if(metadataOnly) {
         const auto mcap = root / (entry + ".mcap");
         if(std::filesystem::exists(mcap)) return mcap;
@@ -722,29 +722,45 @@ DecodedPixels convertPixels(const DecodedPixels& pixels, ImgFrame::Type outType,
     cv::Mat bgr;
     const int width = pixels.width;
     const int height = pixels.height;
-    const int ySize = width * height;
-    const int cSize = ySize / 4;
+    if(width <= 0 || height <= 0 || outW <= 0 || outH <= 0) fail("ReplayVideo frame dimensions are invalid");
+    const bool explicitOffsets = pixels.fb.p1Offset != 0 || pixels.fb.p2Offset != 0 || pixels.fb.p3Offset != 0;
+    const auto firstOffset = static_cast<std::size_t>(pixels.fb.p1Offset);
+    const auto rowStride = pixels.fb.stride != 0 ? static_cast<std::size_t>(pixels.fb.stride)
+                                               : static_cast<std::size_t>(width) * ((pixels.type == ImgFrame::Type::RGB888i || pixels.type == ImgFrame::Type::BGR888i) ? 3 : 1);
+    const auto plane = [&](int rows, int cols, int type, std::size_t offset, std::size_t stride) {
+        const auto rowBytes = static_cast<std::size_t>(cols) * CV_ELEM_SIZE(type);
+        if(rows <= 0 || cols <= 0 || stride < rowBytes || offset > pixels.data.size()
+           || pixels.data.size() - offset < rowBytes
+           || static_cast<std::size_t>(rows - 1) > (pixels.data.size() - offset - rowBytes) / stride) {
+            fail("ReplayVideo frame payload is too small or has an invalid plane layout");
+        }
+        return cv::Mat(rows, cols, type, const_cast<std::uint8_t*>(pixels.data.data() + offset), stride).clone();
+    };
+    const int chromaWidth = width / 2 + width % 2;
+    const int chromaHeight = height / 2 + height % 2;
     if(pixels.type == ImgFrame::Type::GRAY8) {
-        y = cv::Mat(height, width, CV_8UC1, const_cast<std::uint8_t*>(pixels.data.data())).clone();
-        u = cv::Mat(height / 2 + height % 2, width / 2 + width % 2, CV_8UC1, cv::Scalar(128));
+        y = plane(height, width, CV_8UC1, firstOffset, rowStride);
+        u = cv::Mat(chromaHeight, chromaWidth, CV_8UC1, cv::Scalar(128));
         v = u.clone();
     } else if(pixels.type == ImgFrame::Type::BGR888i || pixels.type == ImgFrame::Type::RGB888i) {
-        bgr = cv::Mat(height, width, CV_8UC3, const_cast<std::uint8_t*>(pixels.data.data())).clone();
+        bgr = plane(height, width, CV_8UC3, firstOffset, rowStride);
         if(pixels.type == ImgFrame::Type::RGB888i) cv::cvtColor(bgr, bgr, cv::COLOR_RGB2BGR);
         bgrToPlanes(bgr, pixels.fullRange, y, u, v);
     } else if(pixels.type == ImgFrame::Type::YUV420p) {
-        y = cv::Mat(height, width, CV_8UC1, const_cast<std::uint8_t*>(pixels.data.data())).clone();
-        u = cv::Mat(height / 2, width / 2, CV_8UC1, const_cast<std::uint8_t*>(pixels.data.data() + ySize)).clone();
-        v = cv::Mat(height / 2, width / 2, CV_8UC1, const_cast<std::uint8_t*>(pixels.data.data() + ySize + cSize)).clone();
+        const auto chromaStride = (rowStride + 1) / 2;
+        const auto secondOffset = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p2Offset) : rowStride * height;
+        const auto thirdOffset = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p3Offset) : secondOffset + chromaStride * chromaHeight;
+        y = plane(height, width, CV_8UC1, firstOffset, rowStride);
+        u = plane(chromaHeight, chromaWidth, CV_8UC1, secondOffset, chromaStride);
+        v = plane(chromaHeight, chromaWidth, CV_8UC1, thirdOffset, chromaStride);
     } else if(pixels.type == ImgFrame::Type::NV12) {
-        y = cv::Mat(height, width, CV_8UC1, const_cast<std::uint8_t*>(pixels.data.data())).clone();
-        u.create(height / 2, width / 2, CV_8UC1);
-        v.create(height / 2, width / 2, CV_8UC1);
-        const auto* uv = pixels.data.data() + ySize;
-        for(int i = 0; i < cSize; i++) {
-            u.data[i] = uv[i * 2];
-            v.data[i] = uv[i * 2 + 1];
-        }
+        const auto secondOffset = explicitOffsets ? static_cast<std::size_t>(pixels.fb.p2Offset) : rowStride * height;
+        y = plane(height, width, CV_8UC1, firstOffset, rowStride);
+        const auto uv = plane(chromaHeight, chromaWidth, CV_8UC2, secondOffset, rowStride);
+        std::vector<cv::Mat> planes;
+        cv::split(uv, planes);
+        u = planes[0];
+        v = planes[1];
     } else {
         fail(std::string("ReplayVideo output type is not supported: ") + frameTypeName(pixels.type));
     }

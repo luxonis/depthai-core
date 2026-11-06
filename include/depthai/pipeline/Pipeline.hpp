@@ -225,6 +225,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::thread deviceLossStopThread;
     std::mutex deviceLossStopMtx;
     void joinDeviceLossStop();
+    // Observe normal device replay completion even while its connection stays healthy.
+    // This worker owns no pipeline reference; start(), wait(), and destruction join it.
+    std::thread devicePipelineMonitorThread;
+    std::mutex devicePipelineMonitorMtx;
+    void startDevicePipelineMonitor();
+    void joinDevicePipelineMonitor();
     std::string telemetryPipelineId{createTelemetryPipelineId()};
     std::optional<std::chrono::steady_clock::time_point> telemetryPipelineStartedAt;
 

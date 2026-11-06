@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <map>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -633,10 +634,47 @@ class DeviceBase {
     void replayCacheBegin(const std::string& hash, std::uint64_t totalBytes);
 
     /**
+     * Acquires a cached RVC4 file or reserves space for its upload.
+     * @param hash Lowercase SHA-256 of the file bytes.
+     * @param totalBytes Exact file size.
+     * @return Cache hit, destination device path, and file size.
+     * On a miss the path becomes usable after replayCacheCommit. A hit or
+     * successful commit owns one hold, released by replayCacheRelease after use.
+     * @throws std::runtime_error when the source cannot fit or the RPC is unavailable.
+     */
+    std::tuple<bool, std::string, std::uint64_t> replayCachePrepareFile(const std::string& hash, std::uint64_t totalBytes);
+
+    /**
+     * Acquires an RVC4 directory source or starts its upload using direct filenames and byte sizes.
+     * The content hash covers sorted filenames, a zero byte after each name, and file contents.
+     * @param hash Lowercase SHA-256 of the directory contents.
+     * @param files Filenames and exact file sizes; nested paths and links are not accepted.
+     * @return Cache hit, destination device path, and total file bytes.
+     * On a miss the path becomes usable after replayCacheCommit.
+     * A hit or successful commit owns one hold, released by replayCacheRelease after use.
+     * @throws std::runtime_error when the manifest is invalid or the upload cannot fit in the cache.
+     */
+    std::tuple<bool, std::string, std::uint64_t> replayCacheBeginDirectory(const std::string& hash,
+                                                                       const std::map<std::string, std::uint64_t>& files);
+
+    /**
      * Writes one chunk of an upload. The chunk size used by the host is 1 MiB.
      * @throws std::runtime_error when the device is not RVC4 or the call fails.
      */
     void replayCacheWrite(const std::string& hash, std::uint64_t offset, const std::vector<std::uint8_t>& bytes);
+
+    /**
+     * Writes an ordered chunk of a file declared by replayCacheBeginDirectory.
+     * @param hash Content hash of the pending directory upload.
+     * @param filename Direct filename declared in its manifest.
+     * @param offset Next byte offset in this file, starting at zero.
+     * @param bytes File bytes, with at most 1 MiB used per chunk by replay nodes.
+     * @throws std::runtime_error for an undeclared file, invalid offset, or a write failure.
+     */
+    void replayCacheWriteFile(const std::string& hash,
+                             const std::string& filename,
+                             std::uint64_t offset,
+                             const std::vector<std::uint8_t>& bytes);
 
     /**
      * Finishes an upload after the hash matches.
@@ -651,7 +689,8 @@ class DeviceBase {
     void replayCacheAbort(const std::string& hash);
 
     /**
-     * Drops cache holds for the given keys. Entries created by this start that are unused and not persistent are removed.
+     * Drops cache holds for the given keys. New non-persistent entries are removed
+     * after playback stops; completed uploads are retained if preparation failed before playback.
      * @throws std::runtime_error when the device is not RVC4 or the call fails.
      */
     void replayCacheRelease(const std::vector<std::string>& keys);

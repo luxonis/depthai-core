@@ -3,6 +3,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iomanip>
 #include <optional>
 #include <sstream>
@@ -12,6 +13,7 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/RecordControl.hpp"
 #include "depthai/pipeline/datatype/RecordStatus.hpp"
+#include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/Serialization.hpp"
 
@@ -609,4 +611,127 @@ TEST_CASE("RecordVideo device scenarios need RVC4 firmware") {
     }
     if(!rvc4) SKIP("S7, S10, S11 and S15 need an RVC4 device and recording-store firmware");
     SKIP("S7, S10, S11 and S15 need recording-store firmware that is not in this repository");
+}
+
+TEST_CASE("RecordVideo pipeline stop drains frames already received before START", "[spec-quick]") {
+    TempDir dir;
+    dai::Pipeline pipeline(false);
+    auto record = pipeline.create<dai::node::RecordVideo>();
+    record->setFormat(dai::RecordFormat::RAW_FRAMES).setOutputDirectory(dir.path).setRecordingName("stop-flush");
+    record->setWaitForTrigger(true).setPreTriggerFrames(8);
+    record->input.setMaxSize(16);
+    auto control = record->inputControl.createInputQueue();
+    auto status = record->status.createOutputQueue(16, false);
+    std::promise<void> started;
+    auto startedFuture = started.get_future();
+    std::promise<void> allowWrites;
+    auto allowed = allowWrites.get_future().share();
+    status->addCallback([&](const std::shared_ptr<dai::ADatatype>& message) {
+        auto value = std::dynamic_pointer_cast<dai::RecordStatus>(message);
+        if(value && value->state == dai::RecordStatus::State::STARTED) {
+            started.set_value();
+            allowed.wait();
+        }
+    });
+    pipeline.start();
+    for(int index = 0; index < 8; ++index) record->input.send(makeFrame(index, 64, 48, 90));
+    const auto idleDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while(record->input.getSize() && std::chrono::steady_clock::now() < idleDeadline) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    control->send(dai::RecordControl::start());
+    const bool signalled = startedFuture.wait_for(std::chrono::seconds(2)) == std::future_status::ready;
+    if(!signalled) {
+        allowWrites.set_value();
+        pipeline.stop();
+    }
+    REQUIRE(signalled);
+    auto shutdown = std::async(std::launch::async, [&] { pipeline.stop(); });
+    const auto stoppingDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while(record->isRunning() && std::chrono::steady_clock::now() < stoppingDeadline) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    allowWrites.set_value();
+    shutdown.get();
+    auto stopped = record->getStatus();
+    REQUIRE(stopped);
+    REQUIRE(stopped->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(stopped->frameCount == 8);
+    REQUIRE(stopped->firstSequenceNum == 0);
+    REQUIRE(stopped->lastSequenceNum == 7);
+}
+
+TEST_CASE("RecordVideo applies STOP then START while pre-trigger writes are pending", "[spec-quick]") {
+    TempDir dir;
+    dai::Pipeline pipeline(false);
+    auto record = pipeline.create<dai::node::RecordVideo>();
+    record->setFormat(dai::RecordFormat::RAW_FRAMES).setOutputDirectory(dir.path).setRecordingName("restart-flush");
+    record->setWaitForTrigger(true).setPreTriggerFrames(8);
+    record->input.setMaxSize(16);
+    auto control = record->inputControl.createInputQueue();
+    auto status = record->status.createOutputQueue(16, false);
+    std::promise<void> started;
+    auto startedFuture = started.get_future();
+    std::promise<void> resume;
+    auto resumed = resume.get_future().share();
+    status->addCallback([&](const std::shared_ptr<dai::ADatatype>& message) {
+        auto value = std::dynamic_pointer_cast<dai::RecordStatus>(message);
+        if(value && value->state == dai::RecordStatus::State::STARTED && value->segment == 0) {
+            started.set_value();
+            resumed.wait();
+        }
+    });
+    pipeline.start();
+    for(int index = 0; index < 8; ++index) record->input.send(makeFrame(index, 64, 48, 90));
+    const auto idleDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while(record->input.getSize() && std::chrono::steady_clock::now() < idleDeadline) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    control->send(dai::RecordControl::start());
+    const bool signalled = startedFuture.wait_for(std::chrono::seconds(2)) == std::future_status::ready;
+    control->send(dai::RecordControl::stop());
+    control->send(dai::RecordControl::start());
+    resume.set_value();
+    REQUIRE(signalled);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while(std::chrono::steady_clock::now() < deadline) {
+        const auto current = record->getStatus();
+        if(current && current->segment == 1 && current->state == dai::RecordStatus::State::STARTED) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    const auto current = record->getStatus();
+    REQUIRE(current);
+    REQUIRE(current->segment == 1);
+    REQUIRE(current->state == dai::RecordStatus::State::STARTED);
+    record->input.send(makeFrame(8, 64, 48, 100));
+    waitForFile(dir.path / "restart-flush" / "frames" / "frames_00000008.dai");
+    control->send(dai::RecordControl::stop());
+    const auto states = readStatuses(status, 4, std::chrono::seconds(2));
+    REQUIRE(states.size() == 4);
+    REQUIRE(states[1]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(states[1]->frameCount == 8);
+    REQUIRE(states[3]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(states[3]->frameCount == 1);
+    pipeline.stop();
+}
+
+TEST_CASE("RecordVideo publishes ERROR when metadata cannot flush at close", "[spec-quick][close-error]") {
+    if(!std::filesystem::exists("/dev/full")) SKIP("Requires /dev/full for a deterministic close-time storage error");
+    TempDir dir;
+    dai::Pipeline pipeline(false);
+    auto record = pipeline.create<dai::node::RecordVideo>();
+    record->setOutputDirectory(dir.path).setRecordingName("close-error").setPreTriggerFrames(0);
+    auto input = record->input.createInputQueue();
+    auto control = record->inputControl.createInputQueue();
+    pipeline.start();
+    std::filesystem::create_symlink("/dev/full", dir.path / "close-error" / "frames.mcap");
+    input->send(makeFrame(0, 64, 48, 90));
+    waitForFile(dir.path / "close-error" / "frames.avi");
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    const auto active = record->getStatus();
+    REQUIRE(active);
+    REQUIRE(active->state == dai::RecordStatus::State::STARTED);
+    control->send(dai::RecordControl::stop());
+    const auto error = waitForState(*record, dai::RecordStatus::State::ERROR, std::chrono::seconds(2));
+    REQUIRE(error);
+    REQUIRE(error->state == dai::RecordStatus::State::ERROR);
+    REQUIRE_THAT(error->error, Catch::Matchers::ContainsSubstring("metadata close failed"));
+    REQUIRE(error->frameCount == 1);
+    pipeline.stop();
 }

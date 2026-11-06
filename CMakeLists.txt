@@ -676,6 +676,9 @@ endif()
 
 
 add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
+if(NOT DEPTHAI_HAVE_OPENCV_SUPPORT)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_CORE_RECORD_SUPPORT)
+endif()
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)

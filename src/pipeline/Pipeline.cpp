@@ -25,8 +25,8 @@
 #include "utility/PipelineImplHelper.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
+#include "depthai/pipeline/node/host/Record.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include "depthai/pipeline/node/host/Record.hpp"
     #include "depthai/pipeline/node/host/Replay.hpp"
 #endif
 #include "utility/Serialization.hpp"
@@ -1767,6 +1767,8 @@ void PipelineImpl::build() {
 }
 
 void PipelineImpl::start() {
+    DAI_CHECK_V(!running, "Pipeline is already running");
+    joinDevicePipelineMonitor();
     // A stop triggered by a device loss may still be finishing on its own thread - it must
     // complete before the pipeline is started again (it takes stateMtx itself)
     joinDeviceLossStop();
@@ -1962,6 +1964,52 @@ void PipelineImpl::start() {
             });
         }
     }
+    startDevicePipelineMonitor();
+}
+
+void PipelineImpl::startDevicePipelineMonitor() {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(!buildingOnHost) return;
+    std::vector<std::shared_ptr<Device>> replayDevices;
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) continue;
+        if(std::dynamic_pointer_cast<node::ReplayVideo>(node) == nullptr && std::dynamic_pointer_cast<node::ReplayMetadataOnly>(node) == nullptr) continue;
+        auto device = getAssignedDevice(node);
+        if(device && std::find(replayDevices.begin(), replayDevices.end(), device) == replayDevices.end()) replayDevices.push_back(std::move(device));
+    }
+    if(replayDevices.empty()) return;
+
+    std::lock_guard<std::mutex> lock(devicePipelineMonitorMtx);
+    devicePipelineMonitorThread = std::thread([this, replayDevices = std::move(replayDevices)]() {
+        while(running && !stopping) {
+            for(const auto& device : replayDevices) {
+                if(!running || stopping) return;
+                if(device->isClosed() || device->getDeviceState() != DeviceState::RUNNING) continue;
+                bool deviceRunning;
+                try {
+                    deviceRunning = device->isPipelineRunning();
+                } catch(const std::exception& ex) {
+                    // Connection loss and recovery are handled by the device monitor.
+                    Logging::getInstance().logger.debug("Could not query replay pipeline state: {}", ex.what());
+                    continue;
+                }
+                if(deviceRunning || device->isClosed() || device->getDeviceState() != DeviceState::RUNNING || !running || stopping) continue;
+                try {
+                    stop();
+                } catch(const std::exception& ex) {
+                    Logging::getInstance().logger.error("Failed to stop pipeline after device replay completion: {}", ex.what());
+                }
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    });
+#endif
+}
+
+void PipelineImpl::joinDevicePipelineMonitor() {
+    std::lock_guard<std::mutex> lock(devicePipelineMonitorMtx);
+    if(devicePipelineMonitorThread.joinable()) devicePipelineMonitorThread.join();
 }
 
 void PipelineImpl::resetConnections(DeviceBase* device) {
@@ -2117,6 +2165,9 @@ void PipelineImpl::setDeviceStateCallback(std::function<void(std::shared_ptr<Dev
 }
 
 void PipelineImpl::wait() {
+    // The completion worker stops and joins replay nodes as part of teardown.
+    // Join it first so wait() cannot join those same node threads concurrently.
+    joinDevicePipelineMonitor();
     // Waits for all nodes to finish the execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
@@ -2146,7 +2197,7 @@ void PipelineImpl::joinDeviceLossStop() {
 }
 
 void PipelineImpl::waitForRecordNodes() {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || defined(DEPTHAI_CORE_RECORD_SUPPORT)
     for(const auto& node : getAllNodes()) {
         if(!node->runOnHost()) continue;
         if(std::dynamic_pointer_cast<node::RecordVideo>(node) != nullptr || std::dynamic_pointer_cast<node::RecordMetadataOnly>(node) != nullptr) {
@@ -2176,7 +2227,7 @@ void PipelineImpl::waitForReplayNodes() {
 }
 
 void PipelineImpl::transferRecordings() {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || defined(DEPTHAI_CORE_RECORD_SUPPORT)
     struct Group {
         std::shared_ptr<Device> device;
         std::string name;

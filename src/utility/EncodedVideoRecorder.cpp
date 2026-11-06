@@ -1,5 +1,6 @@
 #include "EncodedVideoRecorder.hpp"
 
+#include <algorithm>
 #include <cerrno>
 #include <cmath>
 #include <filesystem>
@@ -9,7 +10,7 @@
 #include <vector>
 
 #ifdef DEPTHAI_ENABLE_MP4V2
-#include <mp4v2.h>
+    #include <mp4v2.h>
 #endif
 
 namespace dai {
@@ -85,6 +86,39 @@ struct EncodedVideoRecorder::State {
     unsigned int height = 0;
     MP4Duration duration = 0;
     bool mjpeg = false;
+    bool waitForKeyframe = false;
+    bool sawKeyframe = false;
+    bool spsInstalled = false;
+    bool ppsInstalled = false;
+    std::vector<uint8_t> cachedSps;
+    std::vector<uint8_t> cachedPps;
+
+    static bool sameBytes(span<const uint8_t> left, const std::vector<uint8_t>& right) {
+        return left.size() == right.size() && std::equal(left.begin(), left.end(), right.begin());
+    }
+
+    void remember(NALU type, span<const uint8_t> data) {
+        if(type == NALU::SPS)
+            cachedSps.assign(data.begin(), data.end());
+        else if(type == NALU::PPS)
+            cachedPps.assign(data.begin(), data.end());
+    }
+
+    void addParameterSet(NALU type, span<const uint8_t> data) {
+        if(data.size() > std::numeric_limits<uint16_t>::max()) throw std::runtime_error("Record H264 parameter set is too large");
+        const auto size = static_cast<uint16_t>(data.size());
+        if(type == NALU::SPS) {
+            if(data.size() < 4) throw std::runtime_error("Record invalid H264 SPS");
+            MP4SetTrackIntegerProperty(mp4Writer, mp4Track, "mdia.minf.stbl.stsd.avc1.avcC.AVCProfileIndication", data[1]);
+            MP4SetTrackIntegerProperty(mp4Writer, mp4Track, "mdia.minf.stbl.stsd.avc1.avcC.profile_compatibility", data[2]);
+            MP4SetTrackIntegerProperty(mp4Writer, mp4Track, "mdia.minf.stbl.stsd.avc1.avcC.AVCLevelIndication", data[3]);
+            MP4AddH264SequenceParameterSet(mp4Writer, mp4Track, data.data(), size);
+            spsInstalled = true;
+        } else {
+            MP4AddH264PictureParameterSet(mp4Writer, mp4Track, data.data(), size);
+            ppsInstalled = true;
+        }
+    }
 
     void requireTrack(span<const uint8_t> sps = {}) {
         if(mp4Track != MP4_INVALID_TRACK_ID) return;
@@ -93,28 +127,29 @@ struct EncodedVideoRecorder::State {
         } else {
             // A triggered segment can start before the next SPS/keyframe. Keep its
             // samples; a later SPS supplies the decoder configuration for this track.
-            const uint8_t avcProfile = sps.size() >= 4 ? sps[1] : 77;
-            const uint8_t compatibility = sps.size() >= 4 ? sps[2] : 0;
-            const uint8_t level = sps.size() >= 4 ? sps[3] : 40;
+            const auto profileSource = sps.size() >= 4 ? sps : span<const uint8_t>(cachedSps);
+            const uint8_t avcProfile = profileSource.size() >= 4 ? profileSource[1] : 77;
+            const uint8_t compatibility = profileSource.size() >= 4 ? profileSource[2] : 0;
+            const uint8_t level = profileSource.size() >= 4 ? profileSource[3] : 40;
             mp4Track = MP4AddH264VideoTrack(mp4Writer, MP4V2_TIMESCALE, duration, width, height, avcProfile, compatibility, level, 3);
         }
         if(mp4Track == MP4_INVALID_TRACK_ID) throw std::runtime_error("Failed to create MP4 video track");
         MP4SetVideoProfileLevel(mp4Writer, 0x7F);
+        if(mjpeg) return;
+        if(!cachedSps.empty() && !spsInstalled) addParameterSet(NALU::SPS, cachedSps);
+        if(!cachedPps.empty() && !ppsInstalled) addParameterSet(NALU::PPS, cachedPps);
     }
 
     void parameterSet(const NaluView& nal) {
-        requireTrack(nal.type == NALU::SPS ? nal.data : span<const uint8_t>{});
-        const auto size = static_cast<uint16_t>(nal.data.size());
-        if(nal.data.size() > std::numeric_limits<uint16_t>::max()) throw std::runtime_error("Record H264 parameter set is too large");
-        if(nal.type == NALU::SPS) {
-            if(nal.data.size() < 4) throw std::runtime_error("Record invalid H264 SPS");
-            MP4SetTrackIntegerProperty(mp4Writer, mp4Track, "mdia.minf.stbl.stsd.avc1.avcC.AVCProfileIndication", nal.data[1]);
-            MP4SetTrackIntegerProperty(mp4Writer, mp4Track, "mdia.minf.stbl.stsd.avc1.avcC.profile_compatibility", nal.data[2]);
-            MP4SetTrackIntegerProperty(mp4Writer, mp4Track, "mdia.minf.stbl.stsd.avc1.avcC.AVCLevelIndication", nal.data[3]);
-            MP4AddH264SequenceParameterSet(mp4Writer, mp4Track, nal.data.data(), size);
-        } else {
-            MP4AddH264PictureParameterSet(mp4Writer, mp4Track, nal.data.data(), size);
+        const bool already = (nal.type == NALU::SPS && spsInstalled && sameBytes(nal.data, cachedSps))
+                             || (nal.type == NALU::PPS && ppsInstalled && sameBytes(nal.data, cachedPps));
+        if(already) return;
+        remember(nal.type, nal.data);
+        if(mp4Track == MP4_INVALID_TRACK_ID) {
+            requireTrack(nal.type == NALU::SPS ? nal.data : span<const uint8_t>{});
+            return;
         }
+        addParameterSet(nal.type, nal.data);
     }
 
     void writeSample(span<const uint8_t> data, bool sync) {
@@ -125,7 +160,7 @@ struct EncodedVideoRecorder::State {
         }
     }
 
-    void writeH264(span<const uint8_t> data) {
+    bool writeH264(span<const uint8_t> data) {
         H26xNals nals(data);
         std::vector<uint8_t> sample;
         sample.reserve(data.size());
@@ -145,13 +180,25 @@ struct EncodedVideoRecorder::State {
             sample.push_back(static_cast<uint8_t>(size));
             sample.insert(sample.end(), nal->data.begin(), nal->data.end());
         }
-        if(sample.empty()) throw std::runtime_error("Record H264 frame contains no sample");
+        if(sample.empty()) {
+            if(waitForKeyframe && !sawKeyframe) return false;
+            throw std::runtime_error("Record H264 frame contains no sample");
+        }
+        // A short segment that starts mid-GOP cannot be decoded. Hold those slices
+        // until the IDR requested for this file arrives. The first written frame is
+        // then the keyframe, so the segment's skip count stays zero.
+        if(waitForKeyframe && !sawKeyframe && !sync) return false;
         writeSample(sample, sync);
+        if(sync) sawKeyframe = true;
+        return true;
     }
 
-    void write(span<const uint8_t> data) {
-        if(mjpeg) writeSample(data, true);
-        else writeH264(data);
+    bool write(span<const uint8_t> data) {
+        if(mjpeg) {
+            writeSample(data, true);
+            return true;
+        }
+        return writeH264(data);
     }
 
 #endif
@@ -193,11 +240,60 @@ void EncodedVideoRecorder::init(const std::string& filePath, unsigned int width,
 #endif
 }
 
-void EncodedVideoRecorder::write(span<const uint8_t> data) {
+void EncodedVideoRecorder::setH264ParameterSets(span<const uint8_t> sps, span<const uint8_t> pps) {
+#ifdef DEPTHAI_ENABLE_MP4V2
+    if(!state) throw std::runtime_error("EncodedVideoRecorder not initialized");
+    if(state->mjpeg) throw std::runtime_error("H264 parameter sets do not apply to MJPEG");
+    if(sps.size() < 4) throw std::runtime_error("Record invalid H264 SPS");
+    if(pps.empty()) throw std::runtime_error("Record invalid H264 PPS");
+    if(state->mp4Track != MP4_INVALID_TRACK_ID) throw std::runtime_error("H264 parameter sets must be set before the first sample");
+    state->cachedSps.assign(sps.begin(), sps.end());
+    state->cachedPps.assign(pps.begin(), pps.end());
+    state->spsInstalled = false;
+    state->ppsInstalled = false;
+#else
+    (void)sps;
+    (void)pps;
+    throw std::runtime_error("Encoded video requires DEPTHAI_ENABLE_MP4V2=ON");
+#endif
+}
+
+H264ParameterSets EncodedVideoRecorder::copyH264ParameterSets() const {
+#ifdef DEPTHAI_ENABLE_MP4V2
+    if(!state) return {};
+    return {state->cachedSps, state->cachedPps};
+#else
+    return {};
+#endif
+}
+
+H264ParameterSets EncodedVideoRecorder::peekH264ParameterSets(span<const uint8_t> data) {
+    H264ParameterSets sets;
+    H26xNals nals(data);
+    while(auto nal = nals.next()) {
+        if(nal->type == NALU::SPS && nal->data.size() >= 4)
+            sets.sps.assign(nal->data.begin(), nal->data.end());
+        else if(nal->type == NALU::PPS && !nal->data.empty())
+            sets.pps.assign(nal->data.begin(), nal->data.end());
+    }
+    return sets;
+}
+
+void EncodedVideoRecorder::setWaitForKeyframe(bool wait) {
+#ifdef DEPTHAI_ENABLE_MP4V2
+    if(!state) throw std::runtime_error("EncodedVideoRecorder not initialized");
+    state->waitForKeyframe = wait;
+#else
+    (void)wait;
+    throw std::runtime_error("Encoded video requires DEPTHAI_ENABLE_MP4V2=ON");
+#endif
+}
+
+bool EncodedVideoRecorder::write(span<const uint8_t> data) {
 #ifdef DEPTHAI_ENABLE_MP4V2
     if(!state) throw std::runtime_error("EncodedVideoRecorder not initialized");
     if(data.size() > std::numeric_limits<uint32_t>::max()) throw std::runtime_error("Record encoded frame is too large");
-    state->write(data);
+    return state->write(data);
 #else
     (void)data;
     throw std::runtime_error("Encoded video requires DEPTHAI_ENABLE_MP4V2=ON");

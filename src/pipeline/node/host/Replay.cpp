@@ -10,12 +10,15 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <limits>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <thread>
 #include <utility>
 
+#include "nanorpc/core/exception.h"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -62,30 +65,34 @@ using Steady = std::chrono::steady_clock;
 using SteadyTime = Steady::time_point;
 
 struct TokenBook {
+    struct Lease {
+        std::uint64_t token;
+        std::size_t holders;
+    };
     std::mutex mutex;
     std::uint64_t next = 1;
-    const void* key = nullptr;
-    std::uint64_t token = 0;
-    int holders = 0;
+    std::map<const void*, Lease> pipelines;
 };
 
 TokenBook gTokens;
 
 std::uint64_t acquireToken(const void* key) {
     std::lock_guard<std::mutex> lock(gTokens.mutex);
-    if(gTokens.key == key && gTokens.holders > 0) {
-        gTokens.holders++;
-        return gTokens.token;
+    auto found = gTokens.pipelines.find(key);
+    if(found != gTokens.pipelines.end()) {
+        ++found->second.holders;
+        return found->second.token;
     }
-    gTokens.key = key;
-    gTokens.token = gTokens.next++;
-    gTokens.holders = 1;
-    return gTokens.token;
+    if(gTokens.next == 0) throw std::runtime_error("Replay pipeline token overflow");
+    const auto token = gTokens.next++;
+    gTokens.pipelines.emplace(key, TokenBook::Lease{token, 1});
+    return token;
 }
 
 void releaseToken(const void* key) {
     std::lock_guard<std::mutex> lock(gTokens.mutex);
-    if(gTokens.key == key && gTokens.holders > 0) gTokens.holders--;
+    const auto found = gTokens.pipelines.find(key);
+    if(found != gTokens.pipelines.end() && --found->second.holders == 0) gTokens.pipelines.erase(found);
 }
 
 bool deviceIsRvc4(const DeviceNode& node) {
@@ -108,7 +115,7 @@ std::uint64_t outputBytes(ImgFrame::Type type, int width, int height) {
 
 bool fpsIsSentinel(bool fpsSet, float fps) {
     // 1000 paces at 1 ms, but pass-boundary timestamps keep the recorded mean. Only exactly 1000 is that sentinel.
-    return !fpsSet || !(fps > 0.f) || std::abs(fps - 1000.f) < 0.1f;
+    return !fpsSet || !(fps > 0.f) || fps == 1000.f;
 }
 
 std::uint64_t archiveContentBytes(const std::filesystem::path& archive) {
@@ -502,14 +509,25 @@ void offsetRGBDChildFrameMetadata(const std::shared_ptr<Buffer>& buffer,
 }
 
 std::string uploadFile(Device& device, const std::shared_ptr<spdlog::async_logger>& logger, const std::filesystem::path& file, const std::string& hash) {
-    const auto found = device.replayCacheQuery(hash);
-    if(std::get<0>(found)) {
-        if(logger) logger->info("Replay cache hit {}", hash);
-        return std::get<1>(found);
-    }
     const auto total = static_cast<std::uint64_t>(std::filesystem::file_size(file));
-    device.replayCacheBegin(hash, total);
+    std::tuple<bool, std::string, std::uint64_t> prepared;
+    bool legacy = false;
     try {
+        prepared = device.replayCachePrepareFile(hash, total);
+    } catch(const nanorpc::core::exception::logic& error) {
+        const std::string message = error.what();
+        if(message.find("Function not found.") == std::string::npos || message.find("(replayCachePrepareFile)") == std::string::npos) throw;
+        // Older firmware still supports file replay through the original RPCs.
+        legacy = true;
+        prepared = device.replayCacheQuery(hash);
+        if(!std::get<0>(prepared)) device.replayCacheBegin(hash, total);
+    }
+    bool completed = std::get<0>(prepared);
+    try {
+        if(completed) {
+            if(logger) logger->info("Replay cache hit {}", hash);
+            return std::get<1>(prepared);
+        }
         std::ifstream input(file, std::ios::binary);
         if(!input) throw std::runtime_error("ReplayVideo source cannot be read: " + file.string());
         std::uint64_t offset = 0;
@@ -530,19 +548,100 @@ std::string uploadFile(Device& device, const std::shared_ptr<spdlog::async_logge
                 }
             }
         }
+        if(input.bad() || offset != total) throw std::runtime_error("ReplayVideo source changed: " + file.string());
         device.replayCacheCommit(hash);
+        completed = true;
         if(total > 0 && lastBucket < 100) logProgress(logger, "upload", hash, total, total);
     } catch(...) {
         try {
-            device.replayCacheAbort(hash);
+            if(completed && !legacy) device.replayCacheRelease({hash});
+            else device.replayCacheAbort(hash);
         } catch(const std::exception&) {
         }
         throw;
     }
     if(logger) logger->info("Replay cache upload {} {} bytes", hash, total);
+    if(!legacy) return std::get<1>(prepared);
     const auto committed = device.replayCacheQuery(hash);
     if(std::get<0>(committed) && !std::get<1>(committed).empty()) return std::get<1>(committed);
     return "/data/depthai/replay_cache/" + hash;
+}
+
+void checkRecordingClosed(const replay::ListedSource& source) {
+    if(source.kind != replay::ListedSource::Kind::Frames || !source.dai) return;
+    for(const auto& directory : {source.path, source.path.parent_path()}) {
+        const auto marker = directory / (".dai_closed_" + source.stream);
+        if(!std::filesystem::exists(marker)) continue;
+        std::ifstream input(marker);
+        std::string text;
+        std::getline(input, text);
+        while(!text.empty() && (text.back() == '\r' || text.back() == ' ')) text.pop_back();
+        if(text == "open") throw std::runtime_error("ReplayVideo recording is still open: " + marker.string());
+    }
+}
+
+std::pair<std::string, std::string> uploadDirectory(Device& device,
+                                                  const std::shared_ptr<spdlog::async_logger>& logger,
+                                                  const std::filesystem::path& directory) {
+    // Keep the flat directory layout and its TR-1 hash, including automatic
+    // metadata sidecars. A tar would have a different hash and cache size.
+    std::map<std::string, std::uint64_t> files;
+    std::uint64_t total = 0;
+    for(const auto& entry : std::filesystem::directory_iterator(directory)) {
+        const auto name = entry.path().filename().string();
+        if(name.empty() || name.front() == '.') continue;
+        if(entry.is_symlink()) throw std::runtime_error("ReplayVideo directory contains a symbolic link: " + entry.path().string());
+        if(!entry.is_regular_file()) continue;
+        const auto size = static_cast<std::uint64_t>(entry.file_size());
+        if(size > std::numeric_limits<std::uint64_t>::max() - total) throw std::runtime_error("ReplayVideo directory size overflow");
+        total += size;
+        files.emplace(name, size);
+    }
+    checkRecordingClosed(replay::inspectReplaySource(directory));
+    const auto hash = replay::sha256OfDirectory(directory);
+    const auto prepared = device.replayCacheBeginDirectory(hash, files);
+    bool completed = std::get<0>(prepared);
+    try {
+        if(completed) {
+            if(logger) logger->info("Replay cache hit {}", hash);
+            return {hash, std::get<1>(prepared)};
+        }
+        std::uint64_t done = 0;
+        int lastBucket = 0;
+        std::vector<std::uint8_t> chunk(static_cast<std::size_t>(replay::kUploadChunk));
+        for(const auto& file : files) {
+            const auto path = directory / file.first;
+            std::ifstream input(path, std::ios::binary);
+            if(!input) throw std::runtime_error("ReplayVideo source cannot be read: " + path.string());
+            std::uint64_t offset = 0;
+            while(offset < file.second) {
+                const auto count = std::min<std::uint64_t>(chunk.size(), file.second - offset);
+                input.read(reinterpret_cast<char*>(chunk.data()), static_cast<std::streamsize>(count));
+                if(input.gcount() != static_cast<std::streamsize>(count)) throw std::runtime_error("ReplayVideo source changed: " + path.string());
+                const std::vector<std::uint8_t> bytes(chunk.begin(), chunk.begin() + static_cast<std::ptrdiff_t>(count));
+                device.replayCacheWriteFile(hash, file.first, offset, bytes);
+                offset += count;
+                done += count;
+                const int bucket = total == 0 ? 100 : static_cast<int>(static_cast<long double>(done) * 100 / total) / 10 * 10;
+                if(bucket >= lastBucket + 10 || done == total) {
+                    lastBucket = bucket;
+                    logProgress(logger, "upload", hash, done, total);
+                }
+            }
+            if(input.peek() != std::char_traits<char>::eof() || input.bad()) throw std::runtime_error("ReplayVideo source changed: " + path.string());
+        }
+        device.replayCacheCommit(hash);
+        completed = true;
+    } catch(...) {
+        try {
+            if(completed) device.replayCacheRelease({hash});
+            else device.replayCacheAbort(hash);
+        } catch(const std::exception&) {
+        }
+        throw;
+    }
+    if(logger) logger->info("Replay cache upload {} {} bytes", hash, total);
+    return {hash, std::get<1>(prepared)};
 }
 
 replay::CacheSlot acquireSlot(ReplayRuntime& runtime,
@@ -711,7 +810,8 @@ std::shared_ptr<ImgFrame> frameFromPixels(const replay::DecodedPixels& raw, cons
         if(raw.transformation.getSize().first != 0) frame->transformation = raw.transformation;
     }
     if(!runtime.passthrough && (runtime.outW != runtime.listed.width || runtime.outH != runtime.listed.height) && runtime.listed.width > 0
-       && runtime.listed.height > 0) {
+       && runtime.listed.height > 0 && frame->transformation.getSize().first == static_cast<std::size_t>(runtime.listed.width)
+       && frame->transformation.getSize().second == static_cast<std::size_t>(runtime.listed.height)) {
         frame->transformation.addScale(static_cast<float>(runtime.outW) / static_cast<float>(runtime.listed.width),
                                        static_cast<float>(runtime.outH) / static_cast<float>(runtime.listed.height));
     }
@@ -801,9 +901,13 @@ ReplayVideo::~ReplayVideo() {
 void ReplayVideo::releaseAfterStop() {
     if(runtime == nullptr || runtime->released) return;
     runtime->released = true;
-    if(runtime->onHost)
-        replay::releaseReplayNode(runtime->nodeId, runtime->token);
-    else if(runtime->device) {
+    if(runtime->onHost) {
+        try {
+            replay::releaseReplayNode(runtime->nodeId, runtime->token);
+        } catch(const std::exception& ex) {
+            if(pimpl->logger) pimpl->logger->warn("Replay cache release failed: {}", ex.what());
+        }
+    } else if(runtime->device) {
         try {
             runtime->device->replayCacheRelease(runtime->cacheKeys);
         } catch(const std::exception& ex) {
@@ -949,7 +1053,7 @@ ReplayVideo& ReplayVideo::setRunOnHost(bool runOnHost) {
 }
 
 ReplayVideo& ReplayVideo::setPersistentUpload(bool persistent) {
-    properties.persistentUpload = properties.persistentUpload || persistent;
+    properties.persistentUpload = persistent;
     properties.persistentUploadSet = true;
     return *this;
 }
@@ -1027,9 +1131,6 @@ void ReplayVideo::buildStage1() {
                 prepared = true;
                 return;
             }
-            if(std::filesystem::is_directory(sourcePath)) {
-                throw std::runtime_error("ReplayVideo directory source must be archived before device replay: " + sourcePath.string());
-            }
         }
 
         if(onHost && getDevice() && getDevice()->getProtocol() == X_LINK_LOCAL_SHDMEM) replay::setReplayCacheStandalone(true);
@@ -1100,8 +1201,13 @@ void ReplayVideo::buildStage1() {
             acquireSlot(*runtime, logger, request, false);
             local = sourcePath;
         } else {
-            hash = replay::sha256OfFile(sourcePath);
-            properties.resolvedPath = uploadFile(*getDevice(), logger, sourcePath, hash);
+            const bool directory = std::filesystem::is_directory(sourcePath);
+            if(directory) {
+                std::tie(hash, properties.resolvedPath) = uploadDirectory(*getDevice(), logger, sourcePath);
+            } else {
+                hash = replay::sha256OfFile(sourcePath);
+                properties.resolvedPath = uploadFile(*getDevice(), logger, sourcePath, hash);
+            }
             properties.sourceHash = hash;
             properties.resolvedOnHost = false;
             runtime->cacheKeys.push_back(hash);
@@ -1125,16 +1231,7 @@ void ReplayVideo::buildStage1() {
         }
 
         runtime->listed = replay::inspectReplaySource(local);
-        if(runtime->listed.kind == replay::ListedSource::Kind::Frames) {
-            const auto marker = runtime->listed.path / (".dai_closed_" + runtime->listed.stream);
-            if(std::filesystem::exists(marker)) {
-                std::ifstream input(marker);
-                std::string text;
-                std::getline(input, text);
-                while(!text.empty() && (text.back() == '\r' || text.back() == ' ')) text.pop_back();
-                if(text == "open") throw std::runtime_error("ReplayVideo recording is still open: " + marker.string());
-            }
-        }
+        checkRecordingClosed(runtime->listed);
         if(!properties.sizeSet && ((runtime->listed.width % 2) != 0 || (runtime->listed.height % 2) != 0)) {
             throw std::runtime_error("ReplayVideo size " + std::to_string(runtime->listed.width) + "x" + std::to_string(runtime->listed.height)
                                      + " is not supported");
@@ -1390,9 +1487,13 @@ ReplayMetadataOnly::~ReplayMetadataOnly() {
 void ReplayMetadataOnly::releaseAfterStop() {
     if(runtime == nullptr || runtime->released) return;
     runtime->released = true;
-    if(runtime->onHost)
-        replay::releaseReplayNode(runtime->nodeId, runtime->token);
-    else if(runtime->device) {
+    if(runtime->onHost) {
+        try {
+            replay::releaseReplayNode(runtime->nodeId, runtime->token);
+        } catch(const std::exception& ex) {
+            if(pimpl->logger) pimpl->logger->warn("Replay cache release failed: {}", ex.what());
+        }
+    } else if(runtime->device) {
         try {
             runtime->device->replayCacheRelease(runtime->cacheKeys);
         } catch(const std::exception& ex) {
@@ -1456,7 +1557,7 @@ ReplayMetadataOnly& ReplayMetadataOnly::setRunOnHost(bool runOnHost) {
     return *this;
 }
 ReplayMetadataOnly& ReplayMetadataOnly::setPersistentUpload(bool persistent) {
-    properties.persistentUpload = properties.persistentUpload || persistent;
+    properties.persistentUpload = persistent;
     properties.persistentUploadSet = true;
     return *this;
 }

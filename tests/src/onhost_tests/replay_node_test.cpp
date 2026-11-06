@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <limits>
 #include <optional>
 #include <opencv2/imgcodecs.hpp>
@@ -854,4 +855,204 @@ TEST_CASE("Replay rejects a negative fps at start", "[pacing]") {
     auto replay = pipeline.create<dai::node::ReplayVideo>();
     replay->setFps(-1.f);
     REQUIRE_THROWS_WITH(pipeline.start(), ContainsSubstring("fps must be 0 or more"));
+}
+
+TEST_CASE("Replay conversion respects padded planes and rejects short payloads", "[spec-quick]") {
+    const auto type = GENERATE(dai::ImgFrame::Type::GRAY8, dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::BGR888i,
+                               dai::ImgFrame::Type::NV12, dai::ImgFrame::Type::YUV420p);
+    dai::replay::DecodedPixels tight;
+    tight.width = 4;
+    tight.height = 4;
+    tight.type = type;
+    const bool color = type == dai::ImgFrame::Type::RGB888i || type == dai::ImgFrame::Type::BGR888i;
+    const int rowBytes = color ? 12 : 4;
+    tight.data.resize(color ? 48 : type == dai::ImgFrame::Type::GRAY8 ? 16 : 24);
+    for(std::size_t index = 0; index < tight.data.size(); ++index) tight.data[index] = static_cast<std::uint8_t>(40 + index * 3);
+    auto padded = tight;
+    padded.fb.stride = rowBytes + 4;
+    padded.fb.p1Offset = 3;
+    padded.data.assign(128, 255);
+    for(int row = 0; row < 4; ++row) {
+        std::copy_n(tight.data.begin() + row * rowBytes, rowBytes, padded.data.begin() + 3 + row * padded.fb.stride);
+    }
+    std::size_t end = 3 + 3 * padded.fb.stride + rowBytes;
+    if(type == dai::ImgFrame::Type::NV12) {
+        padded.fb.p2Offset = 64;
+        for(int row = 0; row < 2; ++row) std::copy_n(tight.data.begin() + 16 + row * 4, 4, padded.data.begin() + 64 + row * 8);
+        end = 76;
+    } else if(type == dai::ImgFrame::Type::YUV420p) {
+        padded.fb.p2Offset = 64;
+        padded.fb.p3Offset = 80;
+        for(int row = 0; row < 2; ++row) {
+            std::copy_n(tight.data.begin() + 16 + row * 2, 2, padded.data.begin() + 64 + row * 4);
+            std::copy_n(tight.data.begin() + 20 + row * 2, 2, padded.data.begin() + 80 + row * 4);
+        }
+        end = 86;
+    }
+    padded.data.resize(end);
+    REQUIRE(dai::replay::convertPixels(padded, type, 4, 4).data == dai::replay::convertPixels(tight, type, 4, 4).data);
+    padded.data.pop_back();
+    REQUIRE_THROWS_WITH(dai::replay::convertPixels(padded, type, 4, 4), ContainsSubstring("payload"));
+}
+
+TEST_CASE("Resize without metadata keeps an output-sized identity", "[spec-quick]") {
+    resetCache();
+    const auto source = makeRoot("identity-resize");
+    REQUIRE(cv::imwrite((source / "cam_0.png").string(), cv::Mat(48, 64, CV_8UC3, cv::Scalar(50, 100, 150))));
+    dai::Pipeline pipeline(false);
+    auto replay = pipeline.create<dai::node::ReplayVideo>();
+    replay->setSource(source).setRunOnHost(true).setSize(32, 24).setLoop(false).setStopPipelineAtEnd(false);
+    auto queue = replay->out.createOutputQueue();
+    pipeline.start();
+    auto frame = queue->get<dai::ImgFrame>();
+    REQUIRE(frame->transformation.getSize().first == 32);
+    REQUIRE(frame->transformation.getSize().second == 24);
+    pipeline.stop();
+}
+
+TEST_CASE("Replay checks the raw recording marker in either directory", "[spec-quick]") {
+    resetCache();
+    const bool parent = GENERATE(false, true);
+    const auto root = makeRoot("open-marker");
+    const auto frames = root / "frames";
+    std::filesystem::create_directory(frames);
+    writeNv12(frames / "cam_0.dai", 0, 0, 64, 48, 80, pinhole(64, 48, 32, 32, 32, 24));
+    const auto marker = (parent ? root : frames) / ".dai_closed_cam";
+    std::ofstream(marker) << "open";
+    {
+        dai::Pipeline pipeline(false);
+        auto replay = pipeline.create<dai::node::ReplayVideo>();
+        replay->setSource(frames).setRunOnHost(true);
+        REQUIRE_THROWS_WITH(pipeline.start(), ContainsSubstring("recording is still open"));
+    }
+    std::ofstream(marker) << "closed";
+    REQUIRE(collect(frames, 1, 30, false, false).size() == 1);
+}
+
+TEST_CASE("A later false persistence setter removes this start's cache entries", "[spec-quick]") {
+    resetCache();
+    const auto source = writeStream("toggle-persistent", 64, 48, {{0, 0, 0, 50}});
+    dai::Pipeline pipeline(false);
+    auto replay = pipeline.create<dai::node::ReplayVideo>();
+    replay->setSource(source).setRunOnHost(true).setLoop(false).setStopPipelineAtEnd(false).setDecodeMode(dai::ReplayDecodeMode::PRE_DECODE);
+    replay->setPersistentUpload(true).setPersistentUpload(false);
+    auto queue = replay->out.createOutputQueue();
+    pipeline.start();
+    REQUIRE(queue->get<dai::ImgFrame>());
+    pipeline.stop();
+    REQUIRE(dai::node::ReplayVideo::getReplayCacheInfo().entries.empty());
+    dai::Pipeline metadataPipeline(false);
+    auto metadata = metadataPipeline.create<dai::node::ReplayMetadataOnly>();
+    metadata->setPersistentUpload(true).setPersistentUpload(false);
+    REQUIRE_FALSE(metadata->getPersistentUpload());
+}
+
+TEST_CASE("Only exactly 1000 uses recorded gaps at a loop boundary", "[spec-quick]") {
+    resetCache();
+    const auto source = writeStream("sentinel-neighbor", 64, 48, {{0, 0, 0, 50}, {1, 1, 100, 90}});
+    const auto frames = collect(source, 3, 999.95f, true, false);
+    const auto gap = std::chrono::duration<double>(frames[2]->getTimestampDevice() - frames[1]->getTimestampDevice()).count();
+    REQUIRE(gap == Catch::Approx(1.0 / 999.95).margin(0.00001));
+}
+
+TEST_CASE("A failed host cache begin can be retried", "[spec-quick]") {
+    resetCache();
+    const bool indexFailure = GENERATE(false, true);
+    dai::replay::CacheSlotRequest request;
+    request.key = "begin-failure";
+    request.sourceHash = request.key;
+    request.ownsFiles = true;
+    const auto blocked = cacheDir() / (indexFailure ? "index.json.tmp" : request.key);
+    if(indexFailure) std::filesystem::create_directory(blocked);
+    else std::ofstream(blocked) << "blocks the cache directory";
+    REQUIRE_THROWS(dai::replay::beginCacheEntry(1, 1, false, request));
+    std::filesystem::remove_all(blocked);
+    auto retry = std::async(std::launch::async, [&] { return dai::replay::beginCacheEntry(1, 1, false, request); });
+    const bool ready = retry.wait_for(1s) == std::future_status::ready;
+    if(!ready) dai::replay::abortCacheEntry(request.key);
+    const auto slot = retry.get();
+    dai::replay::abortCacheEntry(request.key);
+    REQUIRE(ready);
+    REQUIRE_FALSE(slot.hit);
+}
+
+TEST_CASE("Interleaved pipeline preparation keeps separate cache leases", "[spec-quick]") {
+    resetCache();
+    const bool creatorStopsFirst = GENERATE(false, true);
+    const auto source = writeStream("interleaved-tokens", 64, 48, {{0, 0, 0, 50}, {1, 1, 100, 90}});
+    dai::Pipeline creator(false);
+    dai::Pipeline other(false);
+    const auto add = [&](dai::Pipeline& pipeline) {
+        auto replay = pipeline.create<dai::node::ReplayVideo>();
+        replay->setSource(source).setRunOnHost(true).setDecodeMode(dai::ReplayDecodeMode::PRE_DECODE).setFps(10);
+        return replay;
+    };
+    auto first = add(creator);
+    auto middle = add(other);
+    auto last = add(creator);
+    auto firstQueue = first->out.createOutputQueue();
+    auto middleQueue = middle->out.createOutputQueue();
+    auto lastQueue = last->out.createOutputQueue();
+    first->buildStage1();
+    middle->buildStage1();
+    last->buildStage1();
+    creator.start();
+    other.start();
+    REQUIRE(firstQueue->get<dai::ImgFrame>());
+    REQUIRE(middleQueue->get<dai::ImgFrame>());
+    REQUIRE(lastQueue->get<dai::ImgFrame>());
+    (creatorStopsFirst ? creator : other).stop();
+    const auto info = dai::node::ReplayVideo::getReplayCacheInfo();
+    REQUIRE_FALSE(info.entries.empty());
+    for(const auto& entry : info.entries) REQUIRE(entry.inUse);
+    (creatorStopsFirst ? other : creator).stop();
+    REQUIRE(dai::node::ReplayVideo::getReplayCacheInfo().entries.empty());
+}
+
+TEST_CASE("A failed persistent cache commit does not leave a ghost cache hit", "[spec-quick]") {
+    resetCache();
+    dai::replay::CacheSlotRequest request;
+    request.key = "commit-failure";
+    request.sourceHash = request.key;
+    request.ownsFiles = true;
+    request.sizeBytes = 4;
+    const auto slot = dai::replay::beginCacheEntry(1, 101, true, request);
+    std::ofstream(slot.path / "data") << "test";
+    const auto blocked = cacheDir() / "index.json.tmp";
+    std::filesystem::create_directory(blocked);
+    REQUIRE_THROWS(dai::replay::commitCacheEntry(1, 101, true, request));
+    dai::replay::abortCacheEntry(request.key);
+    std::filesystem::remove_all(blocked);
+    REQUIRE(dai::replay::readHostCacheInfo().entries.empty());
+    const auto retry = dai::replay::beginCacheEntry(2, 102, true, request);
+    REQUIRE_FALSE(retry.hit);
+    std::ofstream(retry.path / "data") << "test";
+    dai::replay::commitCacheEntry(2, 102, true, request);
+    dai::replay::releaseReplayNode(2, 102);
+    std::filesystem::create_directory(blocked);
+    REQUIRE_THROWS(dai::replay::beginCacheEntry(3, 103, false, request));
+    std::filesystem::remove_all(blocked);
+    const auto info = dai::replay::readHostCacheInfo();
+    REQUIRE(info.entries.size() == 1);
+    REQUIRE_FALSE(info.entries[0].inUse);
+    dai::node::ReplayVideo::clearReplayCache();
+}
+
+TEST_CASE("Archive selection uses root entries and metadata takes its mcap", "[spec-quick]") {
+    resetCache();
+    const auto source = makeRoot("entry-priority");
+    std::filesystem::create_directory(source / "cam");
+    for(const auto* ext : {".mp4", ".avi", ".mcap"}) std::ofstream(source / (std::string("cam") + ext)) << "placeholder";
+    REQUIRE(dai::replay::resolveArchiveEntry(source, "cam", false) == source / "cam");
+    REQUIRE(dai::replay::resolveArchiveEntry(source, "cam", true) == source / "cam.mcap");
+    std::filesystem::remove(source / "cam");
+    REQUIRE(dai::replay::resolveArchiveEntry(source, "cam", false) == source / "cam.mp4");
+    std::filesystem::remove(source / "cam.mp4");
+    REQUIRE(dai::replay::resolveArchiveEntry(source, "cam", false) == source / "cam.avi");
+    std::filesystem::remove(source / "cam.avi");
+    REQUIRE(dai::replay::resolveArchiveEntry(source, "cam", false) == source / "cam.mcap");
+    std::filesystem::create_directory(source / "nested");
+    std::ofstream(source / "nested" / "cam.mp4") << "not a root entry";
+    std::filesystem::remove(source / "cam.mcap");
+    REQUIRE_THROWS_WITH(dai::replay::resolveArchiveEntry(source, "cam", false), ContainsSubstring("missing"));
 }

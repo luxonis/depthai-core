@@ -37,6 +37,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "DeviceRpc.hpp"
 #include "depthai/build/version.hpp"
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
@@ -456,7 +457,7 @@ class DeviceBase::Impl {
         // ScopedRpcTimeout guard(std::nullopt);
         auto client = std::atomic_load(&rpcClient);
         if(!client) throw std::system_error(std::make_error_code(std::errc::not_connected), "Device already closed or disconnected");
-        return client->call(name, std::forward<Args>(args)...);
+        return detail::callDeviceRpc(*client, name, std::forward<Args>(args)...);
     }
 
     template <typename Ret, typename... Args>
@@ -2967,9 +2968,28 @@ void DeviceBase::replayCacheBegin(const std::string& hash, std::uint64_t totalBy
     pimpl->rpcCallCheckedVoid("replayCacheBegin", hash, totalBytes);
 }
 
+std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCachePrepareFile(const std::string& hash, std::uint64_t totalBytes) {
+    requireReplayCache(*this);
+    return pimpl->rpcCallChecked<std::tuple<bool, std::string, std::uint64_t>>("replayCachePrepareFile", hash, totalBytes);
+}
+
+std::tuple<bool, std::string, std::uint64_t> DeviceBase::replayCacheBeginDirectory(const std::string& hash,
+                                                                              const std::map<std::string, std::uint64_t>& files) {
+    requireReplayCache(*this);
+    return pimpl->rpcCallChecked<std::tuple<bool, std::string, std::uint64_t>>("replayCacheBeginDirectory", hash, files);
+}
+
 void DeviceBase::replayCacheWrite(const std::string& hash, std::uint64_t offset, const std::vector<std::uint8_t>& bytes) {
     requireReplayCache(*this);
     pimpl->rpcCallCheckedVoid("replayCacheWrite", hash, offset, bytes);
+}
+
+void DeviceBase::replayCacheWriteFile(const std::string& hash,
+                                    const std::string& filename,
+                                    std::uint64_t offset,
+                                    const std::vector<std::uint8_t>& bytes) {
+    requireReplayCache(*this);
+    pimpl->rpcCallCheckedVoid("replayCacheWriteFile", hash, filename, offset, bytes);
 }
 
 void DeviceBase::replayCacheCommit(const std::string& hash) {
@@ -2984,7 +3004,11 @@ void DeviceBase::replayCacheAbort(const std::string& hash) {
 
 void DeviceBase::replayCacheRelease(const std::vector<std::string>& keys) {
     requireReplayCache(*this);
-    pimpl->rpcCallCheckedVoid("replayCacheRelease", keys);
+    // NanoRPC's argument-tuple conversion interprets a two-string vector as
+    // a JSON object. Release keys individually to preserve the existing wire format.
+    for(const auto& key : keys) {
+        pimpl->rpcCallCheckedVoid("replayCacheRelease", std::vector<std::string>{key});
+    }
 }
 
 std::tuple<int, int, double> DeviceBase::replayCacheSourceSize(const std::string& absolutePath) {

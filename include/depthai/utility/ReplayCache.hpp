@@ -49,7 +49,10 @@ struct ReplayCacheInfo {
  *   replayCacheClear()
  *   replayCacheQuery(hash) -> (present, devicePath, sizeBytes)
  *   replayCacheBegin(hash, totalBytes)
+ *   replayCachePrepareFile(hash, totalBytes) -> (hit, devicePath, sizeBytes), holds the source until release
+ *   replayCacheBeginDirectory(hash, map of direct filenames to sizes) -> (hit, devicePath, sizeBytes), also holds the source
  *   replayCacheWrite(hash, offset, bytes)
+ *   replayCacheWriteFile(hash, filename, offset, bytes)
  *   replayCacheCommit(hash)
  *   replayCacheAbort(hash)
  *   replayCacheRelease(keys)

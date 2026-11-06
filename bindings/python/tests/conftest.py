@@ -211,6 +211,7 @@ def gc_collect():
     gc.collect()
 
 
-def pytest_configure():
+def pytest_configure(config):
     pytest.suppress = suppress
     pytest.gc_collect = gc_collect
+    config.addinivalue_line("markers", "rvc4: needs an RVC4 device")

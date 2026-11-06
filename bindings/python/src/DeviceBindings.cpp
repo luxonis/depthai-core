@@ -1403,6 +1403,26 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("bytes"),
              py::call_guard<py::gil_scoped_release>(),
              DOC(dai, DeviceBase, replayCacheWrite))
+        .def("replayCachePrepareFile",
+             &DeviceBase::replayCachePrepareFile,
+             py::arg("hash"),
+             py::arg("totalBytes"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCachePrepareFile))
+        .def("replayCacheBeginDirectory",
+             &DeviceBase::replayCacheBeginDirectory,
+             py::arg("hash"),
+             py::arg("files"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheBeginDirectory))
+        .def("replayCacheWriteFile",
+             &DeviceBase::replayCacheWriteFile,
+             py::arg("hash"),
+             py::arg("filename"),
+             py::arg("offset"),
+             py::arg("bytes"),
+             py::call_guard<py::gil_scoped_release>(),
+             DOC(dai, DeviceBase, replayCacheWriteFile))
         .def("replayCacheCommit",
              &DeviceBase::replayCacheCommit,
              py::arg("hash"),

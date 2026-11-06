@@ -89,7 +89,7 @@ struct DecodedPixels {
     int width = 0;
     int height = 0;
     ImgFrame::Type type = ImgFrame::Type::YUV420p;
-    /// Tightly packed payload for `type`, or the passthrough frame's data.
+    /// Payload in the supplied fb layout, or tightly packed when fb has no stride/offsets.
     std::vector<std::uint8_t> data;
     bool passthrough = false;
     bool fullRange = false;

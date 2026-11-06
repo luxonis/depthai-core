@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/host/Record.hpp"
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -155,7 +156,7 @@ struct RecordHostState {
             fatal = true;
             const bool mp4Ok = closeFilesQuiet();
             std::string error = text;
-            if(videoOpened && text.find("storage is full") != std::string::npos) {
+            if(videoOpened && text.find("storage is full") != std::string::npos && text.find("mp4 close ") == std::string::npos) {
                 error += mp4Ok ? "; mp4 close succeeded" : "; mp4 close failed";
             }
             const bool idle = phase != Phase::Recording;
@@ -175,21 +176,28 @@ struct RecordHostState {
         if(output) output << contents;
     }
 
-    bool closeFilesQuiet() {
+    bool closeFilesQuiet(std::string* failure = nullptr) {
         bool mp4Ok = true;
+        const auto noteFailure = [&](const char* kind, const std::exception& error) {
+            if(failure == nullptr) return;
+            if(!failure->empty()) *failure += "; ";
+            if(errno == ENOSPC) *failure += "Record storage is full; ";
+            *failure += std::string("Record ") + kind + " close failed: " + error.what();
+        };
         if(metadata) {
             try {
                 metadata->close();
-            } catch(const std::exception&) {
-                mp4Ok = mp4Ok && true;
+            } catch(const std::exception& error) {
+                noteFailure("metadata", error);
             }
             metadata.reset();
         }
         if(video) {
             try {
                 video->close();
-            } catch(const std::exception&) {
+            } catch(const std::exception& error) {
                 mp4Ok = false;
+                noteFailure("video", error);
             }
             video.reset();
         }
@@ -495,7 +503,12 @@ struct RecordHostState {
             stopRequested = false;
             return;
         }
-        closeFilesQuiet();
+        std::string closeFailure;
+        const bool mp4Ok = closeFilesQuiet(&closeFailure);
+        if(!closeFailure.empty()) {
+            if(videoOpened) closeFailure += mp4Ok ? "; mp4 close succeeded" : "; mp4 close failed";
+            fail(closeFailure);
+        }
         writeMarker("closed");
         publish(RecordStatus::State::STOPPED, "", false);
         phase = Phase::Idle;
@@ -566,8 +579,19 @@ struct RecordHostState {
         beginSegment(control->maxFrames, control->maxDurationMs);
     }
 
+    void flushPending() {
+        if(pending.empty() && !incoming.empty()) pending.swap(incoming);
+        while(phase == Phase::Recording && !pending.empty()) writeOne();
+    }
+
     void drainControls() {
-        while(auto control = node.inputControl.tryGet<RecordControl>()) apply(control);
+        while(auto control = node.inputControl.tryGet<RecordControl>()) {
+            if(stopRequested && phase == Phase::Recording) {
+                flushPending();
+                closeSegment();
+            }
+            apply(control);
+        }
     }
 
     void noteFrame(const std::shared_ptr<Buffer>& message, std::chrono::steady_clock::time_point received) {
@@ -590,6 +614,7 @@ struct RecordHostState {
     void onPipelineStop() {
         if(fatal) return;
         if(phase == Phase::Recording) {
+            flushPending();
             closeSegment();
         } else {
             // An idle pipeline stop discards the pre-trigger buffer and leaves the closed-marker open.

@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <thread>
+#include <utility>
 
 #include "depthai/depthai.hpp"
 #include "depthai/utility/RecordingStore.hpp"
@@ -80,8 +81,17 @@ TEST_CASE("Device recorder writes raw frames and transfers at stop", "[record][r
     REQUIRE(restored.getWidth() == 64);
     REQUIRE(restored.getHeight() == 48);
     const auto bytes = restored.getData();
-    REQUIRE(bytes.size() == original->getData().size());
-    REQUIRE(std::all_of(bytes.begin(), bytes.end(), [](auto value) { return value == 17; }));
+    // Host input is realigned into RVC4 DMA planes. Compare the visible NV12
+    // pixels using the recorded offsets and stride; allocation padding may grow.
+    REQUIRE(restored.getType() == dai::ImgFrame::Type::NV12);
+    REQUIRE(restored.getStride() >= 64);
+    for(const auto& plane : {std::make_pair(restored.fb.p1Offset, 48u), std::make_pair(restored.fb.p2Offset, 24u)}) {
+        for(unsigned row = 0; row < plane.second; ++row) {
+            const auto start = static_cast<std::size_t>(plane.first) + row * restored.getStride();
+            REQUIRE(start + 64 <= bytes.size());
+            REQUIRE(std::all_of(bytes.begin() + start, bytes.begin() + start + 64, [](auto value) { return value == 17; }));
+        }
+    }
     const auto last = record->getStatus();
     REQUIRE(last);
     REQUIRE(last->state == dai::RecordStatus::State::STOPPED);

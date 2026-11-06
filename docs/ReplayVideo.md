@@ -45,17 +45,19 @@ On the first pass the recorded sequence numbers and timestamps are kept. Later p
 
 `setLoop(true)` is the default. The node returns to the first frame after the last one. `setStopPipelineAtEnd` has no effect while looping. With loop off, the node logs `Replay finished` and, by default, stops the pipeline. `setStopPipelineAtEnd(false)` ends the node thread and leaves the pipeline running.
 
+When RVC4 replay stops its device pipeline, the host observes that state and completes normal pipeline shutdown without requiring application polling or a disconnect. `wait()` and `run()` return after that shutdown.
+
 Automatic pipeline stop can discard frames still queued for consumers. To drain every frame, use `setStopPipelineAtEnd(false)` and stop the pipeline after the consumer has received the expected count.
 
 ## Cache
 
-Host files are read in place. An archive is extracted into the host cache. A source that is sent to an RVC4 device is uploaded once, in 1 MiB chunks, under its SHA-256. A later run with the same bytes logs `Replay cache hit <hash>` and does not upload again.
+Host files are read in place. An archive is extracted into the host cache. A source that is sent to an RVC4 device is uploaded once, in 1 MiB chunks, under its SHA-256. Unpacked frame directories are uploaded directly; they do not need an archive. Their hash includes each direct, non-hidden regular filename and its contents in filename order. Nested directories are ignored. The device verifies the hash before publishing the cache entry. A later run with the same source logs `Replay cache hit <hash>` and does not upload again.
 
 The default limit is 32 GiB. `ReplayVideo::setReplayCacheLimit` changes it and does not delete anything by itself. Entries that are not in use are removed when a new entry would pass the limit or the free space. The oldest entry goes first. An entry larger than the limit fails before anything is removed.
 
-`setPersistentUpload(true)` keeps the entries created by that start after the pipeline stops. The default removes them. The flag stays on once it is set. `DEPTHAI_REPLAY_CACHE` selects the host cache directory. `DEPTHAI_REPLAY_PERSISTENT_UPLOAD=1` and `DEPTHAI_REPLAY_DECODE_MODE=PRE_DECODE` apply when the setters were not called.
+`setPersistentUpload(true)` keeps the entries created by that start after the pipeline stops. The default removes them. Calling `setPersistentUpload(false)` before starting restores that default. An entry shared with another node that requests persistence remains persistent. `DEPTHAI_REPLAY_CACHE` selects the host cache directory. `DEPTHAI_REPLAY_PERSISTENT_UPLOAD=1` and `DEPTHAI_REPLAY_DECODE_MODE=PRE_DECODE` apply when the setters were not called.
 
-`ReplayVideo::getReplayCacheInfo` and `clearReplayCache` read and clean the host cache. The same methods on `Device` talk to the RVC4 cache. They throw on any other platform. The device methods need firmware that implements the cache RPC. This repository does not contain that firmware.
+`ReplayVideo::getReplayCacheInfo` and `clearReplayCache` read and clean the host cache. The same methods on `Device`, along with `Device::setReplayCacheLimit`, talk to the RVC4 cache. The device limit persists across reconnects, and changing it does not immediately remove entries. Sources prepared for a starting pipeline remain in use until that pipeline releases them. The device methods throw on any other platform and need firmware that implements the cache RPC. This repository does not contain that firmware.
 
 `PRE_DECODE` decodes every frame before the pipeline starts and reuses that set on the next run. `STREAM` is the default. It checks the source at start, decodes the first frame, and decodes the rest during the run. A frame that changes or fails during the run stops the pipeline.
 

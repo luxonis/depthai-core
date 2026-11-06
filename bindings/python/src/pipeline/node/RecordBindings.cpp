@@ -3,6 +3,7 @@
 
 #include "Common.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
+#include "depthai/utility/RecordingStore.hpp"
 
 void bind_record(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -68,4 +69,7 @@ void bind_record(pybind11::module& m, void* pCallstack) {
         .def("getCompressionLevel", &RecordMetadataOnly::getCompressionLevel, DOC(dai, node, RecordMetadataOnly, getCompressionLevel));
 
     daiNodeModule.attr("RecordMessage") = recordMessage;
+
+    m.def("makeRecordingTimestamp", &makeRecordingTimestamp, DOC(dai, makeRecordingTimestamp));
+    m.def("makeDefaultRecordingName", &makeDefaultRecordingName, DOC(dai, makeDefaultRecordingName));
 }

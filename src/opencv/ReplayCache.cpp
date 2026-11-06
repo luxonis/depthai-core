@@ -6,6 +6,7 @@
 #include <fstream>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <nlohmann/json.hpp>
 #include <set>
 #include <stdexcept>
@@ -220,9 +221,11 @@ void saveIndex(const std::filesystem::path& dir) {
     const auto path = indexPath(dir);
     const auto temporary = path.string() + ".tmp";
     {
-        std::ofstream out(temporary, std::ios::trunc);
-        if(!out) throw std::runtime_error("Replay cache index cannot be written: " + path.string());
+        std::ofstream out;
+        out.exceptions(std::ios::failbit | std::ios::badbit);
+        out.open(temporary, std::ios::trunc);
         out << root.dump(2);
+        out.close();
     }
     std::filesystem::rename(temporary, path);
 }
@@ -344,7 +347,7 @@ void ensureSpace(const std::filesystem::path& dir, const CacheSlotRequest& reque
 
 void addHold(Entry& entry, std::uint64_t nodeId, std::uint64_t token, bool persistent) {
     for(const auto& hold : entry.holds) {
-        if(hold.nodeId == nodeId) {
+        if(hold.nodeId == nodeId && hold.token == token) {
             entry.lastUseMs = nowMs();
             if(persistent) entry.persistent = true;
             return;
@@ -355,23 +358,17 @@ void addHold(Entry& entry, std::uint64_t nodeId, std::uint64_t token, bool persi
     if(persistent) entry.persistent = true;
 }
 
-void dropHolds(const std::filesystem::path& dir, const std::function<bool(const Hold&)>& match, std::uint64_t tokenFilter) {
-    for(auto& entry : gIndex.entries) {
+void dropHolds(const std::filesystem::path& dir, const std::function<bool(const Hold&)>& match) {
+    gIndex.entries.erase(std::remove_if(gIndex.entries.begin(), gIndex.entries.end(), [&](Entry& entry) {
+        const auto before = entry.holds.size();
         entry.holds.erase(std::remove_if(entry.holds.begin(), entry.holds.end(), match), entry.holds.end());
-    }
-    std::vector<std::string> removeKeys;
-    for(const auto& entry : gIndex.entries) {
-        if(!entry.holds.empty() || entry.persistent || entry.createdToken != tokenFilter) continue;
+        if(before == entry.holds.size() || !entry.holds.empty() || entry.persistent || entry.createdToken == 0) return false;
         if(entry.ownsFiles && !entry.relativePath.empty()) {
             std::error_code error;
             std::filesystem::remove_all(dir / entry.relativePath, error);
         }
-        removeKeys.push_back(entry.key);
-    }
-    gIndex.entries.erase(std::remove_if(gIndex.entries.begin(),
-                                        gIndex.entries.end(),
-                                        [&](const Entry& entry) { return std::find(removeKeys.begin(), removeKeys.end(), entry.key) != removeKeys.end(); }),
-                         gIndex.entries.end());
+        return true;
+    }), gIndex.entries.end());
 }
 
 std::filesystem::path safeRelative(const std::string& key) {
@@ -480,8 +477,14 @@ CacheSlot beginCacheEntry(std::uint64_t nodeId, std::uint64_t pipelineToken, boo
     gCv.wait(lock, [&]() { return gPending.count(request.key) == 0; });
     CacheSlot slot;
     if(auto* existing = findEntry(request.key)) {
-        addHold(*existing, nodeId, pipelineToken, persistent);
-        saveIndex(dir);
+        const auto previous = *existing;
+        try {
+            addHold(*existing, nodeId, pipelineToken, persistent);
+            saveIndex(dir);
+        } catch(...) {
+            *existing = previous;
+            throw;
+        }
         slot.hit = true;
         if(existing->ownsFiles && !existing->relativePath.empty())
             slot.path = dir / existing->relativePath;
@@ -495,23 +498,30 @@ CacheSlot beginCacheEntry(std::uint64_t nodeId, std::uint64_t pipelineToken, boo
     }
     ensureSpace(dir, request);
     gPending.insert(request.key);
-    saveIndex(dir);
-    slot.hit = false;
-    if(request.ownsFiles) {
-        slot.path = dir / safeRelative(request.key);
-        std::filesystem::create_directories(slot.path);
-    } else {
-        slot.path = request.externalPath;
+    try {
+        saveIndex(dir);
+        slot.hit = false;
+        if(request.ownsFiles) {
+            slot.path = dir / safeRelative(request.key);
+            std::filesystem::create_directories(slot.path);
+        } else {
+            slot.path = request.externalPath;
+        }
+        return slot;
+    } catch(...) {
+        gPending.erase(request.key);
+        gCv.notify_all();
+        throw;
     }
-    return slot;
 }
 
 void commitCacheEntry(std::uint64_t nodeId, std::uint64_t pipelineToken, bool persistent, const CacheSlotRequest& request) {
     const auto dir = hostCacheDirectory(false);
     std::lock_guard<std::mutex> lock(gMutex);
     loadIndex(dir);
-    gPending.erase(request.key);
+    std::optional<Entry> previous;
     if(auto* existing = findEntry(request.key)) {
+        previous = *existing;
         addHold(*existing, nodeId, pipelineToken, persistent);
     } else {
         Entry entry;
@@ -528,7 +538,18 @@ void commitCacheEntry(std::uint64_t nodeId, std::uint64_t pipelineToken, bool pe
         entry.holds.push_back(Hold{nodeId, pipelineToken});
         gIndex.entries.push_back(std::move(entry));
     }
-    saveIndex(dir);
+    try {
+        saveIndex(dir);
+    } catch(...) {
+        if(previous) *findEntry(request.key) = std::move(*previous);
+        else gIndex.entries.erase(std::remove_if(gIndex.entries.begin(), gIndex.entries.end(), [&](const Entry& entry) {
+            return entry.key == request.key;
+        }), gIndex.entries.end());
+        // The caller still owns the failed reservation. abortCacheEntry removes
+        // its files before releasing the key to a waiting writer.
+        throw;
+    }
+    gPending.erase(request.key);
     gCv.notify_all();
 }
 
@@ -546,7 +567,7 @@ void releaseReplayNode(std::uint64_t nodeId, std::uint64_t pipelineToken) {
     std::lock_guard<std::mutex> lock(gMutex);
     if(!std::filesystem::exists(dir)) return;
     loadIndex(dir);
-    dropHolds(dir, [&](const Hold& hold) { return hold.nodeId == nodeId; }, pipelineToken);
+    dropHolds(dir, [&](const Hold& hold) { return hold.nodeId == nodeId && hold.token == pipelineToken; });
     saveIndex(dir);
 }
 
@@ -555,7 +576,7 @@ void releaseReplayToken(std::uint64_t pipelineToken) {
     std::lock_guard<std::mutex> lock(gMutex);
     if(!std::filesystem::exists(dir)) return;
     loadIndex(dir);
-    dropHolds(dir, [&](const Hold& hold) { return hold.token == pipelineToken; }, pipelineToken);
+    dropHolds(dir, [&](const Hold& hold) { return hold.token == pipelineToken; });
     saveIndex(dir);
 }
 
