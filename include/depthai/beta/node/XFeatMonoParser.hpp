@@ -193,7 +193,7 @@ class XFeatMonoParser : public DeviceNodeCRTP<BetaNode, XFeatMonoParser, XFeatMo
      * Specify whether to run on host or device.
      * By default, the node runs on the device.
      */
-    void setRunOnHost(bool runOnHost);
+    void setRunOnHost(bool runOnHost) override;
 
     /**
      * Check if the node is set to run on host.

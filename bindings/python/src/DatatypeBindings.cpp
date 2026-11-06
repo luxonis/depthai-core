@@ -15,6 +15,7 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack);
 void bind_thermalconfig(pybind11::module& m, void* pCallstack);
 void bind_tofconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack);
+void bind_imgdetectionsfilterconfig(pybind11::module& m, void* pCallstack);
 void bind_imgdetections(pybind11::module& m, void* pCallstack);
 void bind_imgframe(pybind11::module& m, void* pCallstack);
 void bind_encodedframe(pybind11::module& m, void* pCallstack);
@@ -22,6 +23,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack);
 void bind_message_group(pybind11::module& m, void* pCallstack);
 void bind_nndata(pybind11::module& m, void* pCallstack);
 void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack);
+void bind_odometry(pybind11::module& m, void* pCallstack);
 void bind_gpustereoconfig(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
 void bind_detectionparserconfig(pybind11::module& m, void* pCallstack);
@@ -35,6 +37,7 @@ void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack);
 void bind_trackedfeatures(pybind11::module& m, void* pCallstack);
 void bind_tracklets(pybind11::module& m, void* pCallstack);
 void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
+void bind_objecttrackerconfig(pybind11::module& m, void* pCallstack);
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
 void bind_pipelineevent(pybind11::module& m, void* pCallstack);
@@ -73,6 +76,8 @@ void bind_beta_keypoints(pybind11::module& m, void* pCallstack);
 void bind_beta_lines(pybind11::module& m, void* pCallstack);
 void bind_beta_map2d(pybind11::module& m, void* pCallstack);
 void bind_beta_predictions(pybind11::module& m, void* pCallstack);
+void bind_beta_multidevicecalibrationcontrol(pybind11::module& m, void* pCallstack);
+void bind_beta_multidevicecalibrationresult(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_BETA
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
@@ -92,6 +97,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_thermalconfig);
     callstack.push_front(bind_tofconfig);
     callstack.push_front(bind_imagemanipconfig);
+    callstack.push_front(bind_imgdetectionsfilterconfig);
     callstack.push_front(bind_imgdetections);
     callstack.push_front(bind_imgframe);
     callstack.push_front(bind_encodedframe);
@@ -113,10 +119,12 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_tracklets);
     callstack.push_front(bind_benchmarkreport);
     callstack.push_front(bind_pointcloudconfig);
+    callstack.push_front(bind_objecttrackerconfig);
     callstack.push_front(bind_pointclouddata);
     callstack.push_front(bind_pipelineevent);
     callstack.push_front(bind_pipelinestate);
     callstack.push_front(bind_transformdata);
+    callstack.push_front(bind_odometry);
     callstack.push_front(bind_imagealignconfig);
     callstack.push_front(bind_alignconfig);
     callstack.push_front(bind_imageannotations);
@@ -137,6 +145,8 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_lines);
     callstack.push_front(bind_beta_map2d);
     callstack.push_front(bind_beta_predictions);
+    callstack.push_front(bind_beta_multidevicecalibrationcontrol);
+    callstack.push_front(bind_beta_multidevicecalibrationresult);
     callstack.push_front(bind_beta_classificationsequenceparserconfig);
     callstack.push_front(bind_beta_fastsamparserconfig);
     callstack.push_front(bind_beta_hrnetparserconfig);
@@ -173,7 +183,14 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     m.def("isDatatypeSubclassOf", &isDatatypeSubclassOf);
 
-    datatypeEnum.value("ADatatype", DatatypeEnum::ADatatype)
+    datatypeEnum.value("CalibrationMetrics", dai::DatatypeEnum::CalibrationMetrics)
+        .value("GateControl", dai::DatatypeEnum::GateControl)
+        .value("NeuralDepthConfig", dai::DatatypeEnum::NeuralDepthConfig)
+        .value("ObjectTrackerConfig", dai::DatatypeEnum::ObjectTrackerConfig)
+        .value("PacketizedData", dai::DatatypeEnum::PacketizedData)
+        .value("PipelineEventAggregationConfig", dai::DatatypeEnum::PipelineEventAggregationConfig)
+        .value("COUNT", dai::DatatypeEnum::COUNT)
+        .value("ADatatype", DatatypeEnum::ADatatype)
         .value("Buffer", DatatypeEnum::Buffer)
         .value("Transformable", DatatypeEnum::Transformable)
         .value("ImgFrame", DatatypeEnum::ImgFrame)
@@ -205,6 +222,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("BenchmarkReport", DatatypeEnum::BenchmarkReport)
         .value("MessageGroup", DatatypeEnum::MessageGroup)
         .value("TransformData", DatatypeEnum::TransformData)
+        .value("Odometry", DatatypeEnum::Odometry)
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
@@ -242,6 +260,8 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
     datatypeEnum.value("MapOutputParserConfig", DatatypeEnum::MapOutputParserConfig);
     datatypeEnum.value("XFeatMonoParserConfig", DatatypeEnum::XFeatMonoParserConfig);
     datatypeEnum.value("XFeatStereoParserConfig", DatatypeEnum::XFeatStereoParserConfig);
+    datatypeEnum.value("MultiDeviceCalibrationControl", DatatypeEnum::MultiDeviceCalibrationControl);
+    datatypeEnum.value("MultiDeviceCalibrationResult", DatatypeEnum::MultiDeviceCalibrationResult);
 #endif  // DEPTHAI_HAVE_BETA
     datatypeEnum.value("CoverageData", DatatypeEnum::CoverageData);
 }

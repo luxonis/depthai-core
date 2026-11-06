@@ -1,7 +1,7 @@
 # DepthAI Library
 
 [![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
-[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://stg.docs.luxonis.com/software/v3/)
+[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://docs.luxonis.com/software-v3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
@@ -23,6 +23,10 @@ cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
 
+## Detection filtering and calibrated panoramas
+
+Use `dai::node::ImgDetectionsFilter` / `dai.node.ImgDetectionsFilter` to filter detections or combine synchronized camera detections on a calibrated panorama. See the [node guide and multi-device examples](docs/ImgDetectionsFilter.md).
+
 ## Beta features
 The `beta` namespace is a staging area for experimental DepthAI features. It
 allows new features to be developed and iterated on quickly before they are
@@ -33,17 +37,77 @@ Beta features are well-developed, but minor API and behavioral changes may occur
 In C++, beta nodes are available under `dai::beta::node`:
 
 ```cpp
-auto node = pipeline.create<dai::beta::node::ImgDetectionsFilter>();
+auto node = pipeline.create<dai::beta::node::ClassificationParser>();
 ```
 
 In Python, they are available under `dai.beta.node`:
 
 ```python
-node = pipeline.create(dai.beta.node.ImgDetectionsFilter)
+node = pipeline.create(dai.beta.node.ClassificationParser)
 ```
 
 On-device execution of Beta nodes is supported only on RVC4. If running Beta nodes on RVC2, DepthAI
 automatically configures beta nodes to run on the host.
+
+## Multiple devices in one pipeline
+
+A single `dai::Pipeline` can drive several devices. Devices become part of the pipeline
+explicitly with `addDevice(...)` or implicitly when a node is created with an explicit
+device; the first device becomes the master (default device) used by nodes created
+without one.
+
+```python
+pipeline = dai.Pipeline(False)                    # no implicit device
+devA = pipeline.addDevice("10.0.0.10")            # promoted to master
+devB = pipeline.addDevice("10.0.0.11")
+
+camA = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)          # master
+camB = pipeline.create(dai.node.Camera, device=devB).build(dai.CameraBoardSocket.CAM_A)
+
+sync = pipeline.create(dai.node.Sync)             # host Sync aligns both streams
+sync.setRunOnHost(True)
+camA.requestOutput((640, 400)).link(sync.inputs["a"])
+camB.requestOutput((640, 400)).link(sync.inputs["b"])
+```
+
+Key behaviors:
+
+- **Device-to-device links.** Linking an output on device A to an input on device B
+  inserts a host relay automatically at build time.
+- **Partial operation.** Losing one device leaves its streams idle while the rest of
+  the pipeline keeps running; the lost device reconnects on its own. Observe this via
+  `pipeline.getDeviceState(device)` and `pipeline.setDeviceStateCallback(...)`. The
+  pipeline stops itself only when the last device is gone or when a device that
+  consumes another device's streams is lost for good. Call
+  `pipeline.setStopOnDeviceLoss(True)` to stop when any device that runs a node is
+  lost for good (reconnection exhausted); with `device.setMaxReconnectionAttempts(0)`
+  it stops as soon as the disconnect is detected.
+- **Time.** `getTimestamp()` values are host-clock based and comparable across
+  devices; per-device `getTimestampDevice()` values are not (a host `Sync` node
+  rejects the DEVICE timestamp source across devices at build).
+- **Source devices.** After build, a host node can ask `input.getSourceDevice()` /
+  `inputs.getSourceDevices()` which device produces each of its inputs.
+- **Per-device configuration.** Every pipeline-level device setter/getter has a
+  `(device, ...)` overload; the form without a device targets the master.
+- Holistic record/replay is not supported with more than one device yet.
+
+See `examples/{cpp,python}/.../MultiDevice/` for frame sync, a device-to-device relay
+and a multi-device host node.
+
+### Running on the device (standalone)
+
+The pipeline process may itself run on an RVC4 and use the local device over shared
+memory, with further devices attached over the network:
+
+```python
+local = pipeline.addDevice(dai.DeviceInfo.local())   # this RVC4, no search timeout
+remote = pipeline.addDevice("10.0.0.11")             # a remote device over TCP
+```
+
+Requirements: outbound TCP to each remote device's gate (port 11492) and XLink ports,
+and `/tmp` shared with the device runtime for the local socket. Note that
+`DEPTHAI_PROTOCOL` and `DEPTHAI_DEVICE_ID_LIST` are process-wide discovery filters -
+leave them unset (`any`) when mixing local and remote devices.
 
 ## Dependencies
 - CMake >= 3.20
@@ -189,7 +253,7 @@ cmake --build build
 
 To integrate into a different build system than CMake, the preferred way is to compile as a dynamic library and set the correct build options.
 1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
-2. Then install: [Installing](#installing)
+2. Then install: [Installing](#installation-and-integration)
 
 In your non-CMake project (new Visual Studio project, ...)
 1. Set needed library directories:
@@ -249,6 +313,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_TELEMETRY_URL                | Overrides the telemetry capture URL.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | DEPTHAI_TELEMETRY_API_KEY            | Overrides the telemetry API key.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| DEPTHAI_DISABLE_STARTUP_NOTIFICATIONS| Startup notifications are enabled by default when CURL support is available. Set to `1` or `true` to disable fetching and displaying them. |
+| DEPTHAI_STARTUP_NOTIFICATIONS_URL    | Overrides the startup notification JSON URL. Defaults to `https://depthai-releases.luxonis.com/startup_notifications.json`. Requires CURL support. |
 | DEPTHAI_HUB_EVENTS_BASE_URL          | URL for events of the Luxonis Hub                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | DEPTHAI_HUB_API_KEY                  | API key for the Luxonis Hub                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | DEPTHAI_ZOO_INTERNET_CHECK           | (Default) 1 - perform internet check, if available, download the newest model version 0 - skip internet check and use cached model                                                                                                                                                                                                                                                                                                                                                                |
@@ -262,6 +328,23 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_AUTOCALIBRATION              | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)`. If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
 
 ## Running tests
+
+For pull requests targeting `main` or `develop`, expand the successful checks
+in the PR merge panel and open **Details** beside **Run C++ tests** or
+**Run Python tests**. The check summary links to its
+workflow run; select **Re-run all jobs** there to run the full suite.
+You can also open the latest workflow run directly from GitHub Actions.
+No `testable` label is needed for a manual rerun of these suites.
+HIL tests do not run when a PR is opened. Adding the `testable` label runs them,
+and each later push runs them again while the label is on the PR. A new push
+cancels a HIL run that is still in progress. Without the label, open
+**Details** beside **Run HIL tests** after a push and select **Re-run all jobs**
+to run them on the new commit. To rerun failed HIL tests, select
+**Re-run all jobs** in that run.
+Adding the `testable` label also starts the full C++ and Python suites. PR
+updates and approvals do not start them, even while the label remains on the PR.
+After pushing new commits, select the new run; rerunning an older run tests
+its original commit. Lightweight style and binding checks still run on PR updates.
 
 To run the tests build the library with the following options
 ```

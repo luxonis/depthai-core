@@ -20,6 +20,14 @@ namespace node {
 
 /*u
  * @brief Dynamic calibration node. Performs calibration check and dynamically calibrates the device
+ *
+ * Calibrated cameras retain their DCL-produced poses relative to housing when available.
+ * Other cameras preserve their measured factory transforms from the default stereo-depth reference camera
+ * of the first device stereo pair,
+ * regardless of calibration chain order. That camera must be a calibration input. Factory
+ * calibration is required when any cameras in the handler are not calibration inputs.
+ * Housing extrinsics are updated to preserve the calibrated poses. This also applies
+ * when the node is used internally by AutoCalibration.
  */
 class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration, DynamicCalibrationProperties>, public HostRunnable {
    public:
@@ -139,14 +147,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         std::vector<std::vector<float>> intrinsics;
         std::vector<float> distortion;
         CameraModel distortionModel = CameraModel::Perspective;
-        size_t connectionOrder;
         std::pair<int, int> resolution;
         std::shared_ptr<dcl::CameraSensorHandle> sensorDcl;
     };
 
     std::vector<ConnectedSensor> connectedSensors;
     std::vector<CameraBoardSocket> socketsInHandler;
-    std::vector<std::vector<std::vector<float>>> socketToSensorExtrinsics;
     std::optional<CameraBoardSocket> leftQueueSocket;
     std::optional<CameraBoardSocket> rightQueueSocket;
 

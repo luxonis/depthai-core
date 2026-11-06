@@ -60,6 +60,7 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, DeviceInfo, DeviceInfo, 2))
         .def(py::init<std::string>(), py::arg("deviceIdOrName"), DOC(dai, DeviceInfo, DeviceInfo, 3))
         .def(py::init<const deviceDesc_t&>(), DOC(dai, DeviceInfo, DeviceInfo, 4))
+        .def_static("local", &DeviceInfo::local, DOC(dai, DeviceInfo, local))
         .def("getDeviceId", &DeviceInfo::getDeviceId, DOC(dai, DeviceInfo, getDeviceId))
         .def("getXLinkDeviceDesc", &DeviceInfo::getXLinkDeviceDesc)
         .def_readwrite("name", &DeviceInfo::name)
@@ -123,6 +124,7 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
     xLinkConnection.def(py::init<const DeviceInfo&, std::vector<std::uint8_t> >())
         .def(py::init<const DeviceInfo&, std::string>())
         .def(py::init<const DeviceInfo&>())
+        .def("getDeviceInfo", &XLinkConnection::getDeviceInfo, DOC(dai, XLinkConnection, getDeviceInfo))
         .def_static(
             "getAllConnectedDevices",
             [](XLinkDeviceState_t state, bool skipInvalidDevices, int timeoutMs) {

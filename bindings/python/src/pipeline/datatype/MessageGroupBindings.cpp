@@ -50,6 +50,8 @@ void bind_message_group(pybind11::module& m, void* pCallstack) {
             py::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */)
         .def("isSynced", &MessageGroup::isSynced, py::arg("thresholdNs"), DOC(dai, MessageGroup, isSynced))
         .def("getIntervalNs", &MessageGroup::getIntervalNs, DOC(dai, MessageGroup, getIntervalNs))
+        .def("getTimestampSource", &MessageGroup::getTimestampSource, DOC(dai, MessageGroup, getTimestampSource))
+        .def("setTimestampSource", &MessageGroup::setTimestampSource, py::arg("source"), DOC(dai, MessageGroup, setTimestampSource))
         .def("getNumMessages", &MessageGroup::getNumMessages, DOC(dai, MessageGroup, getNumMessages))
         .def("getMessageNames", &MessageGroup::getMessageNames, DOC(dai, MessageGroup, getMessageNames));
 }

@@ -218,13 +218,14 @@ bool RFDETRParser::runOnHost() const {
 
 void RFDETRParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->debug("RFDETRParser started");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     RFDETRParserConfig activeConfig = getProperties().initialConfig;
     DAI_CHECK(activeConfig.validate(), "RFDETRParser initial configuration is invalid.");
     const bool inputConfigSync = inputConfig.getWaitForMessage();
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<dai::NNData> nnData;
         {
             auto blockEvent = this->inputBlockEvent();
@@ -250,6 +251,7 @@ void RFDETRParser::run() {
                 continue;
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         const RFDETRParserConfig config = activeConfig;
 
@@ -294,15 +296,18 @@ void RFDETRParser::run() {
                                                                          detections.maskWidth,
                                                                          detections.maskHeight);
         if(nnData->transformation.has_value()) {
-            message->setTransformation(*nnData->transformation);
+            utilities::DetectionUtils::setTransformationAndBounds(*message, *nnData->transformation);
         }
         message->setBufferMetadataFrom(nnData);
 
         logger->debug("RFDETRParser created message with {} detections", message->detections.size());
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(message);
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

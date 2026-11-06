@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -115,9 +116,10 @@ class DeviceHealthCheck {
 
     /**
      * Performs all configured health-check steps and aggregates the results.
+     * Stops early (returns the results collected so far) when shouldStop returns true.
      */
    private:
-    static HealthCheckMetrics run(const DeviceInfo& devInfo, const HealthCheckConfig& config);
+    static HealthCheckMetrics run(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop = nullptr);
 };
 
 }  // namespace dai

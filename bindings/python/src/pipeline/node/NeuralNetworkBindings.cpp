@@ -1,4 +1,5 @@
 #include <optional>
+#include <string_view>
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
@@ -14,6 +15,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     // Node and Properties declare upfront
     py::class_<NeuralNetworkProperties, std::shared_ptr<NeuralNetworkProperties>> neuralNetworkProperties(
         m, "NeuralNetworkProperties", DOC(dai, NeuralNetworkProperties));
+    py::enum_<NeuralNetworkProperties::ModelSource> modelSource(neuralNetworkProperties, "ModelSource", DOC(dai, NeuralNetworkProperties, ModelSource));
     auto neuralNetwork = ADD_NODE(NeuralNetwork);
     py::class_<NeuralNetwork::Model> neuralNetworkModel(neuralNetwork, "Model");
     neuralNetworkModel.def(py::init<const NNModelDescription&>(), py::arg("modelDesc"))
@@ -33,14 +35,42 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    modelSource.value("BLOB", NeuralNetworkProperties::ModelSource::BLOB).value("CUSTOM_MODEL", NeuralNetworkProperties::ModelSource::CUSTOM_MODEL);
+
     // Properties
-    neuralNetworkProperties.def_readwrite("blobSize", &NeuralNetworkProperties::blobSize)
+    neuralNetworkProperties.def(py::init<>());
+
+    neuralNetworkProperties.def_readwrite("modelSource", &NeuralNetworkProperties::modelSource, DOC(dai, NeuralNetworkProperties, modelSource))
+        .def_readwrite("backend", &dai::NeuralNetworkProperties::backend, DOC(dai, NeuralNetworkProperties, backend))
+        .def_readwrite("backendProperties", &dai::NeuralNetworkProperties::backendProperties, DOC(dai, NeuralNetworkProperties, backendProperties))
+        .def_readwrite("deviceModel", &dai::NeuralNetworkProperties::deviceModel, DOC(dai, NeuralNetworkProperties, deviceModel))
+        .def_readwrite("modelUri", &dai::NeuralNetworkProperties::modelUri, DOC(dai, NeuralNetworkProperties, modelUri))
+        .def_readwrite("numShavesPerThread", &dai::NeuralNetworkProperties::numShavesPerThread, DOC(dai, NeuralNetworkProperties, numShavesPerThread))
+        .def_readwrite("blobSize", &NeuralNetworkProperties::blobSize)
         .def_readwrite("blobUri", &NeuralNetworkProperties::blobUri)
         .def_readwrite("numFrames", &NeuralNetworkProperties::numFrames)
         .def_readwrite("numThreads", &NeuralNetworkProperties::numThreads)
         .def_readwrite("numNCEPerThread", &NeuralNetworkProperties::numNCEPerThread);
 
     // Node
+    neuralNetwork
+        .def(
+            "setOtherModelFormat",
+            [](NeuralNetwork& self, py::bytes model) {
+                const auto data = model.cast<std::string>();
+                self.setOtherModelFormat(std::vector<uint8_t>(data.begin(), data.end()));
+            },
+            py::arg("model"),
+            DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def("setOtherModelFormat",
+             py::overload_cast<std::vector<uint8_t>>(&dai::node::NeuralNetwork::setOtherModelFormat),
+             py::arg("model"),
+             DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def("setOtherModelFormat",
+             py::overload_cast<const std::filesystem::path&>(&dai::node::NeuralNetwork::setOtherModelFormat),
+             py::arg("path"),
+             DOC(dai, node, NeuralNetwork, setOtherModelFormat));
+
     neuralNetwork.def_readonly("input", &NeuralNetwork::input, DOC(dai, node, NeuralNetwork, input))
         .def_readonly("out", &NeuralNetwork::out, DOC(dai, node, NeuralNetwork, out))
         .def_readonly("passthrough", &NeuralNetwork::passthrough, DOC(dai, node, NeuralNetwork, passthrough))
@@ -64,7 +94,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
         .def("setFromModelZoo",
              py::overload_cast<NNModelDescription, bool>(&NeuralNetwork::setFromModelZoo),
              py::arg("description"),
-             py::arg("useCached"),
+             py::arg("useCached") = true,
              DOC(dai, node, NeuralNetwork, setFromModelZoo))
         .def("build",
              py::overload_cast<dai::Node::Output&, const NNArchive&>(&NeuralNetwork::build),
@@ -81,7 +111,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -103,7 +133,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("modelDesc"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -115,7 +145,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
@@ -127,7 +157,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
-            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            py::arg("resizeMode") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build, 2))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
@@ -170,6 +200,25 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
 #endif
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
         .def("setBlob", py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
+        .def(
+            "setOtherModelFormat",
+            [](NeuralNetwork& self, py::bytes model) {
+                const std::string_view data = model;
+                self.setOtherModelFormat(std::vector<uint8_t>(data.begin(), data.end()));
+            },
+            py::arg("model"),
+            DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def(
+            "setOtherModelFormat",
+            [](NeuralNetwork& self, py::array_t<uint8_t, py::array::c_style | py::array::forcecast> model) {
+                self.setOtherModelFormat(std::vector<uint8_t>(model.data(), model.data() + model.size()));
+            },
+            py::arg("model"),
+            DOC(dai, node, NeuralNetwork, setOtherModelFormat))
+        .def("setOtherModelFormat",
+             py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setOtherModelFormat),
+             py::arg("path"),
+             DOC(dai, node, NeuralNetwork, setOtherModelFormat, 2))
         .def("setModelPath", &NeuralNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, NeuralNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &NeuralNetwork::setNumShavesPerInferenceThread,

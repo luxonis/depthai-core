@@ -21,7 +21,7 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     using TimestampSource = SyncProperties::TimestampSource;
 
     /**
-     * A map of inputs
+     * A map of inputs. Inputs that exist but are never linked are left out of the synchronization.
      */
     InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
@@ -92,6 +92,11 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
      * Check if the node is set to run on host
      */
     bool runOnHost() const override;
+
+    /**
+     * Validates the timestamp source when inputs come from more than one device.
+     */
+    void buildStage1() override;
 
     void run() override;
 };

@@ -88,8 +88,11 @@ TEST_CASE("Process-level locking with dummy", "[platform]") {
     proc1.wait();
     proc2.wait();
 
-    std::cout << "proc1 stdout:\n" << proc1.communicate().first.buf.data() << std::endl;
-    std::cout << "proc2 stdout:\n" << proc2.communicate().first.buf.data() << std::endl;
+    // Buffer is not NUL-terminated: print only its valid length
+    const auto out1 = proc1.communicate().first;
+    const auto out2 = proc2.communicate().first;
+    std::cout << "proc1 stdout:\n" << std::string(out1.buf.data(), out1.length) << std::endl;
+    std::cout << "proc2 stdout:\n" << std::string(out2.buf.data(), out2.length) << std::endl;
 
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -185,4 +188,11 @@ TEST_CASE("Thread-level locking", "[platform]") {
 
     // Cleanup
     fs::remove(tempFile);
+}
+
+TEST_CASE("isIPv4Address accepts strict dotted quads only", "[platform]") {
+    using dai::platform::isIPv4Address;
+    for(auto ok : {"10.12.234.143", "192.168.1.1", "1.2.1.4", "0.0.0.0", "255.255.255.255"}) REQUIRE(isIPv4Address(ok));
+    for(auto bad : {"", "01.2.3.4", "1.2.3.04", "1.2.3", "1.2.3.4.5", "999.1.1.1", "256.1.1.1", "2.1.usb", "oak-1.local", " 1.2.3.4", "1.2.3.4 "})
+        REQUIRE_FALSE(isIPv4Address(bad));
 }

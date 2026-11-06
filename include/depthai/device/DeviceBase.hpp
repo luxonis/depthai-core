@@ -20,9 +20,11 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "depthai/device/DeviceState.hpp"
 #include "depthai/device/HealthCheck.hpp"
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
@@ -85,6 +87,14 @@ class DeviceBase {
         bool nonExclusiveMode = false;
         std::optional<LogLevel> outputLogLevel;
         std::optional<LogLevel> logLevel;
+
+        /**
+         * DANGEROUS: bypass the shared IR dot/flood power budget on RVC2 boards that enforce it, including certain EL2086 OAK-ToF variants.
+         * Individual emitter current and duty-cycle limits still apply. This flag does not turn on the emitters or control ToF illumination.
+         * The override lasts until firmware reboot. Requires supporting firmware; unsupported devices or firmware cause initialization to fail.
+         * @warning Full dot and flood power can cause power instability and device crashes.
+         */
+        bool dangerousIrPowerOverride = false;
     };
 
     // static API
@@ -199,6 +209,16 @@ class DeviceBase {
     static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 
     /**
+     * Performs a device health check
+     *
+     * @param devInfo DeviceInfo which specifies which device to check
+     * @param config Health-check steps to execute
+     * @param shouldStop stop function called in between runs. Return true to stop the health check
+     * @returns HealthCheckMetrics collected until the check completed or stopped. Steps that did not run are NOT_RUN
+     */
+    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config, const std::function<bool()>& shouldStop);
+
+    /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      */
@@ -310,6 +330,13 @@ class DeviceBase {
      * @return std::string String representation of Platform
      */
     std::string getPlatformAsString() const;
+
+    /**
+     * Get the transport protocol of the connected device.
+     *
+     * @return XLink protocol in use, such as X_LINK_USB_VSC or X_LINK_TCP_IP.
+     */
+    XLinkProtocol_t getProtocol() const;
 
     /**
      * Gets Bootloader version if it was booted through Bootloader
@@ -455,6 +482,14 @@ class DeviceBase {
      * @return DeviceInfo of the current device in execution
      */
     DeviceInfo getDeviceInfo() const;
+
+    /**
+     * State of this device from the point of view of the pipeline it belongs to: RUNNING while
+     * connected, DISCONNECTED / RECONNECTING while a lost connection is being re-established and
+     * FAILED once the device is gone for good. RUNNING for a device that is not part of a pipeline.
+     * Safe to call from any thread, including node threads.
+     */
+    DeviceState getDeviceState() const;
 
     /**
      * Get device name if available
@@ -818,6 +853,15 @@ class DeviceBase {
      *
      */
     void setCalibration(const std::optional<EepromData>& eepromData);
+
+    /**
+     * Sets the cross-device calibration graph at runtime. This is not persistent and will be lost after device reset.
+     * The device re-validates the graph against its local calibration before applying it.
+     *
+     * @throws std::runtime_error if the device rejects the graph
+     * @param graph Cross-device calibration edges, or std::nullopt to remove the graph
+     */
+    void setMultiDeviceCalibration(const std::optional<std::vector<MultiDeviceExtrinsics>>& graph);
 
     /**
      * Retrieves the CalibrationHandler shared pointer; If can not get calibration returns nullptr
@@ -1292,6 +1336,9 @@ class DeviceBase {
     void waitForRebootAndCollectCrashDump();
     void waitForGateAndCollectCrashDump();
     CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);
+    // Written by the constructing thread (search/boot) and by the monitor thread on
+    // reconnection, read by any thread through getDeviceInfo()
+    mutable std::mutex deviceInfoMtx;
     DeviceInfo deviceInfo;
     std::optional<Version> bootloaderVersion;
 
@@ -1363,9 +1410,16 @@ class DeviceBase {
     // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
+    // Keeps a copy of the telemetry ID of the started pipeline, for getActiveTelemetryPipelineId()
+    void setActiveTelemetryPipelineId(std::string telemetryPipelineId);
+    // Last state reported to the pipeline (RUNNING while connected)
+    std::atomic<DeviceState> pipelineDeviceState{DeviceState::RUNNING};
     std::atomic<bool> crashDumpHandled{false};
-    bool isClosing = false;  // if true, don't attempt to reconnect
+    std::atomic<bool> isClosing{false};  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
+
+    // Report this device's pipeline-level state to the pipeline (no-op without a pipeline)
+    void notifyPipelineDeviceState(DeviceState state);
 
     // Mock features
     bool hasMockedFeatures = false;

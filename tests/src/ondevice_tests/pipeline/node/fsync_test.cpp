@@ -235,7 +235,10 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
     p.start();
 
     for(int i = 0; i < 100; i++) {
-        auto syncData = syncQueue->get<dai::MessageGroup>();
+        CAPTURE(i);
+        bool timedOut = false;
+        auto syncData = syncQueue->get<dai::MessageGroup>(std::chrono::seconds(10), timedOut);
+        REQUIRE_FALSE(timedOut);
         REQUIRE(syncData != nullptr);
 
         auto leftFrame = syncData->get<dai::ImgFrame>("left");
@@ -265,12 +268,15 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
     }
 
     for(int i = 0; i < 4; i++) {
-        auto reportData = benchmarkQueue->get<dai::BenchmarkReport>();
+        CAPTURE(i);
+        bool timedOut = false;
+        auto reportData = benchmarkQueue->get<dai::BenchmarkReport>(std::chrono::seconds(10), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(reportData != nullptr);
         if(i < 2) {
             // Skip the first two reports, to let the FPS stabilize.
             continue;
         }
-        REQUIRE(reportData != nullptr);
         REQUIRE(reportData->numMessagesReceived > 1);
         if(!p.isHolisticReplayEnabled()) REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
     }

@@ -84,9 +84,6 @@ cv::Rect toCvRect(const Rect& r) {
 Rect fromCvRect(cv::Rect r) {
     return Rect(r.x, r.y, r.width, r.height);
 }
-Rect detToRect(const ImgDetection& det) {
-    return Rect(Point2f(det.xmin, det.ymin), Point2f(det.xmax, det.ymax));
-}
 #endif
 
 template <typename T>
@@ -100,6 +97,7 @@ bool contains(const std::vector<T>& vec, const T& el) {
 void ObjectTracker::run() {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     auto& logger = pimpl->logger;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     float trackerThreshold = properties.trackerThreshold;
     std::vector<std::uint32_t> detectionLabelsToTrack = properties.detectionLabelsToTrack;
@@ -112,6 +110,7 @@ void ObjectTracker::run() {
     impl::OCSTracker tracker(properties);
 
     while(mainLoop()) {
+        auto tAbsoluteBeginning = std::chrono::steady_clock::now();
         std::shared_ptr<ImgFrame> inputTrackerImg;
         std::shared_ptr<ImgFrame> inputDetectionImg;
         std::shared_ptr<ImgDetections> inputImgDetections;
@@ -140,7 +139,7 @@ void ObjectTracker::run() {
                     inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
                 }
             } else {
-                logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
+                logger->error("Input detection must be either ImgDetection or SpatialImgDetection type! Skipping.");
             }
             if(inputConfig.getWaitForMessage()) {
                 inputCfg = inputConfig.get<ObjectTrackerConfig>();
@@ -148,6 +147,7 @@ void ObjectTracker::run() {
                 inputCfg = inputConfig.tryGet<ObjectTrackerConfig>();
             }
         }
+        auto tGotInput = std::chrono::steady_clock::now();
 
         if(inputCfg) {
             tracker.configure(*inputCfg);
@@ -156,13 +156,15 @@ void ObjectTracker::run() {
         // Either update or track, not both
         if(gotDetections) {
             // TODO: sync messages (currently OK since only imageless tracker is supported)
-            std::vector<ImgDetection> detections;
+            std::vector<impl::TrackerDetection> detections;
             std::vector<Point3f> spatialData;
             detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
             spatialData.reserve(detections.size());
 
-            ImgTransformation detectionsTransformation = (inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation)
-                                                             .value_or(inputDetectionImg->transformation);
+            // inputDetectionImg is read only when the detections have no transformation, so it is null otherwise
+            const auto& detectionsOwnTransformation = inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation;
+            ImgTransformation detectionsTransformation =
+                detectionsOwnTransformation.has_value() ? *detectionsOwnTransformation : inputDetectionImg->transformation;
 
             if(!detectionsTransformation.isValid()) {
                 throw std::runtime_error("ImgTransformation must be set on either inputDetections or inputDetectionFrame");
@@ -171,25 +173,27 @@ void ObjectTracker::run() {
             for(size_t i = 0; i < (inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size()); ++i) {
                 const auto& detection = inputImgDetections ? inputImgDetections->detections[i] : inputSpatialImgDetections->detections[i].getImgDetection();
                 if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
-                    // Denormalize and remap to inputTrackerImg
+                    // Denormalize and remap the outer bounds to inputTrackerImg
                     uint32_t width = detectionsTransformation.getSize().first;
                     uint32_t height = detectionsTransformation.getSize().second;
 
-                    RotatedRect detRRect(detToRect(detection));
-                    if(detRRect.size.width <= 1.5f && detRRect.size.height <= 1.5f) detRRect = detRRect.denormalize(width, height, true);
+                    const auto outer = detection.getOuterBoundingBox();
+                    const bool normalized = detection.getBoundingBox().isNormalized();
+                    RotatedRect detRRect{Rect{Point2f{outer[0], outer[1], normalized}, Point2f{outer[2], outer[3], normalized}, normalized}};
+                    if(normalized) detRRect = detRRect.denormalize(width, height);
 
                     auto remapped = detectionsTransformation.remapRectTo(inputTrackerImg->transformation, detRRect);
 
                     const auto [minx, miny, maxx, maxy] = remapped.getOuterRect();
 
-                    ImgDetection det(detection);
-                    det.xmin = std::max(0.f, minx);
-                    det.ymin = std::max(0.f, miny);
-                    det.xmax = std::min((float)inputTrackerImg->getWidth(), maxx);
-                    det.ymax = std::min((float)inputTrackerImg->getHeight(), maxy);
+                    Rect roi;
+                    roi.x = std::max(0.f, minx);
+                    roi.y = std::max(0.f, miny);
+                    roi.width = std::min(static_cast<float>(inputTrackerImg->getWidth()), maxx) - roi.x;
+                    roi.height = std::min(static_cast<float>(inputTrackerImg->getHeight()), maxy) - roi.y;
 
-                    if(det.xmin < det.xmax && det.ymin < det.ymax) {
-                        detections.push_back(det);
+                    if(roi.width > 0.f && roi.height > 0.f) {
+                        detections.push_back({detection, roi});
                         if(inputSpatialImgDetections) {
                             spatialData.push_back(inputSpatialImgDetections->detections[i].spatialCoordinates);
                         } else {
@@ -215,6 +219,7 @@ void ObjectTracker::run() {
         }
         trackletsMsg->transformation = inputTrackerImg->transformation;
 
+        auto tProcessed = std::chrono::steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
 
@@ -228,6 +233,8 @@ void ObjectTracker::run() {
                 }
             }
         }
+        auto tAbsoluteEnd = std::chrono::steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 #else
     throw std::runtime_error("ObjectTracker::run() requires OpenCV support. Please compile with OpenCV.");

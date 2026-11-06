@@ -35,6 +35,9 @@
 #include "pipeline/AssetManagerBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
 #include "pipeline/FilterParamsBindings.hpp"
+#ifdef DEPTHAI_HAVE_BETA
+void bind_beta_multidevicecalibrationhandler(pybind11::module& m, void* pCallstack);
+#endif  // DEPTHAI_HAVE_BETA
 #include "pipeline/PipelineBindings.hpp"
 #include "pipeline/node/NodeBindings.hpp"
 #include "remote_connection/RemoteConnectionBindings.hpp"
@@ -92,6 +95,9 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&DeviceBindings::bind);
     callstack.push_front(&DeviceBootloaderBindings::bind);
     callstack.push_front(&CalibrationHandlerBindings::bind);
+#ifdef DEPTHAI_HAVE_BETA
+    callstack.push_front(bind_beta_multidevicecalibrationhandler);
+#endif  // DEPTHAI_HAVE_BETA
     callstack.push_front(&ZooBindings::bind);
     callstack.push_front(&EventsManagerBindings::bind);
     callstack.push_front(&RemoteConnectionBindings::bind);

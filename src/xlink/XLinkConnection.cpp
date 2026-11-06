@@ -12,6 +12,7 @@
 // project
 #include "depthai/utility/Initialization.hpp"
 #include "utility/Environment.hpp"
+#include "utility/Platform.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // libraries
@@ -44,6 +45,15 @@ DeviceInfo::DeviceInfo(std::string deviceIdOrName) {
     // Parse parameter and set to ip if any dots found
     // deviceId doesn't have a dot in the name
     if(deviceIdOrName.find(".") != std::string::npos) {
+        // An actual IP address always resolves to TCP_IP, so it can never silently land
+        // on the local shared-memory socket (TCP_IP_OR_LOCAL_SHDMEM tries that first).
+        // USB paths and hostnames keep protocol ANY. A USB port path can look like an
+        // IPv4 address too ("1.2.1.4": bus 1, two hubs, port 4) - XLinkConnection::
+        // findFirstSuitableDevice retries such a name over USB when nothing answers on
+        // the network, so the device stays reachable by its port path.
+        if(platform::isIPv4Address(deviceIdOrName)) {
+            protocol = X_LINK_TCP_IP;
+        }
         // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
         name = std::move(deviceIdOrName);
         deviceId = "";
@@ -52,6 +62,13 @@ DeviceInfo::DeviceInfo(std::string deviceIdOrName) {
         name = "";
         deviceId = std::move(deviceIdOrName);
     }
+}
+
+DeviceInfo DeviceInfo::local() {
+    DeviceInfo info;
+    info.state = X_LINK_BOOTED;
+    info.protocol = X_LINK_LOCAL_SHDMEM;
+    return info;
 }
 
 deviceDesc_t DeviceInfo::getXLinkDeviceDesc() const {
@@ -322,6 +339,32 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceById(const std::string& d
     return {false, {}};
 }
 
+// A dotted-quad name is ambiguous: DeviceInfo(std::string) reads it as an IPv4 address
+// (protocol TCP_IP, so it never matches the local shared-memory device), but XLink names
+// USB devices "<bus>.<port>.<port>..." as well, so an OAK on bus 1 behind two hubs is
+// "1.2.1.4". Only such a name-only lookup gets the USB retry: a device id, a hostname or
+// any other protocol is searched exactly as given.
+static bool isIpv4NameOnlyLookup(const DeviceInfo& deviceInfo) {
+    return deviceInfo.protocol == X_LINK_TCP_IP && deviceInfo.deviceId.empty() && platform::isIPv4Address(deviceInfo.name);
+}
+
+XLinkError_t XLinkConnection::findFirstSuitableDevice(const DeviceInfo& deviceInfo, deviceDesc_t& foundDesc) {
+    initialize();
+
+    auto rc = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+    if(rc == X_LINK_SUCCESS || !isIpv4NameOnlyLookup(deviceInfo)) {
+        return rc;
+    }
+
+    // Nothing answered on the network: retry the name as a USB port path. USB only, not
+    // ANY_PROTOCOL - ANY would also match the local shared-memory device regardless of
+    // name, which is exactly what inferring TCP_IP for an IP address prevents.
+    auto usbDesc = deviceInfo.getXLinkDeviceDesc();
+    usbDesc.protocol = X_LINK_USB_VSC;
+    logger::trace("No network device answered at \"{}\", retrying it as a USB port path", deviceInfo.name);
+    return XLinkFindFirstSuitableDevice(usbDesc, &foundDesc);
+}
+
 DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     initialize();
 
@@ -528,7 +571,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         // Wait for the device to be available
         auto tstart = steady_clock::now();
         do {
-            rc = XLinkFindFirstSuitableDevice(deviceToBoot.getXLinkDeviceDesc(), &foundDeviceDesc);
+            rc = findFirstSuitableDevice(deviceToBoot, foundDeviceDesc);
             if(rc == X_LINK_SUCCESS) break;
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < bootupTimeout);
@@ -618,6 +661,10 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
 int XLinkConnection::getLinkId() const {
     return deviceLinkId;
+}
+
+DeviceInfo XLinkConnection::getDeviceInfo() const {
+    return deviceInfo;
 }
 
 std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {

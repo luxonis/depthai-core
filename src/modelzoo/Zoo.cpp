@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
@@ -35,6 +36,8 @@ namespace dai {
 
 namespace fs = std::filesystem;
 
+// Protect settings copies only; never hold this mutex across model I/O.
+static std::mutex modelZooSettingsMutex;
 static std::string modelZooHealthEndpoint = "https://easyml.cloud.luxonis.com/models/api/v1/health/";
 static std::string modelZooDownloadEndpoint = "https://easyml.cloud.luxonis.com/models/api/v1/models/download";
 static fs::path modelZooDefaultCachePath = dai::platform::getDaiCacheDir() / "models";
@@ -1043,34 +1046,42 @@ std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescri
 namespace modelzoo {
 
 void setHealthEndpoint(const std::string& endpoint) {
+    const std::lock_guard<std::mutex> lock(modelZooSettingsMutex);
     modelZooHealthEndpoint = endpoint;
 }
 
 void setDownloadEndpoint(const std::string& endpoint) {
+    const std::lock_guard<std::mutex> lock(modelZooSettingsMutex);
     modelZooDownloadEndpoint = endpoint;
 }
 
 void setDefaultCachePath(const fs::path& path) {
+    const std::lock_guard<std::mutex> lock(modelZooSettingsMutex);
     modelZooDefaultCachePath = path;
 }
 
 void setDefaultModelsPath(const fs::path& path) {
+    const std::lock_guard<std::mutex> lock(modelZooSettingsMutex);
     modelZooDefaultModelsPath = path;
 }
 
 std::string getHealthEndpoint() {
+    const std::lock_guard<std::mutex> lock(modelZooSettingsMutex);
     return modelZooHealthEndpoint;
 }
 
 std::string getDownloadEndpoint() {
+    const std::lock_guard<std::mutex> lock(modelZooSettingsMutex);
     return modelZooDownloadEndpoint;
 }
 
 fs::path getDefaultCachePath() {
+    const std::lock_guard<std::mutex> lock(modelZooSettingsMutex);
     return modelZooDefaultCachePath;
 }
 
 fs::path getDefaultModelsPath() {
+    const std::lock_guard<std::mutex> lock(modelZooSettingsMutex);
     return modelZooDefaultModelsPath;
 }
 

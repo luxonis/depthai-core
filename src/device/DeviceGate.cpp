@@ -27,6 +27,11 @@ namespace dai {
 
 DeviceGate::GateImpl::~GateImpl() = default;
 
+static std::string trimTrailing(std::string s) {
+    while(!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
+    return s;
+}
+
 const std::string API_ROOT{"/api/v1"};
 const auto sessionsEndpoint = API_ROOT + "/sessions";
 const int DEFAULT_PORT{11492};
@@ -90,6 +95,14 @@ DeviceGate::HTTPImpl::HTTPImpl(DeviceInfo deviceInfo) {
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
     // pimpl->cli->set_connection_timeout(2);
+#ifdef SO_NOSIGPIPE
+    // cpp-httplib sends with flags 0. On macOS, a send on a gate connection that the peer reset raises SIGPIPE,
+    // which ends the process. With SO_NOSIGPIPE the send fails with EPIPE and the request gets no response.
+    pimpl->cli->set_socket_options([](socket_t sock) {
+        int enable = 1;
+        setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
+    });
+#endif
 }
 
 DeviceGate::USBImpl::USBImpl(const DeviceInfo& deviceInfo, int timeout) : deviceInfo(deviceInfo), timeout(timeout) {}
@@ -223,6 +236,8 @@ bool DeviceGate::createSession(bool exclusive) {
 
 bool DeviceGate::HTTPImpl::createSession(
     std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) {
+    lastError.clear();
+
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
                                         // {"fwp_checksum", fwpChecksum},
                                         {"fwp_version", version},
@@ -235,7 +250,8 @@ bool DeviceGate::HTTPImpl::createSession(
     if(auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json")) {
         // Parse response
         if(res->status != 200) {
-            spdlog::warn("DeviceGate createSession not successful - status: {}, error: {}", res->status, res->body);
+            lastError = fmt::format("DeviceGate createSession not successful - status: {}, error: {}", res->status, trimTrailing(res->body));
+            spdlog::warn(lastError);
             return false;
         }
         auto resp = nlohmann::json::parse(res->body);
@@ -268,25 +284,30 @@ bool DeviceGate::HTTPImpl::createSession(
                     sessionCreated = true;
                     return true;
                 } else {
-                    spdlog::warn("DeviceGate upload fwp not successful - status: {}, error: {}", res->status, res->body);
+                    lastError = fmt::format("DeviceGate upload fwp not successful - status: {}, error: {}", res.value().status, trimTrailing(res.value().body));
+                    spdlog::warn(lastError);
                     return false;
                 }
 
             } else {
-                spdlog::warn("DeviceGate upload fwp not successful - got no response");
+                lastError = "DeviceGate upload fwp not successful - got no response";
+                spdlog::warn(lastError);
                 return false;
             }
         }
         sessionCreated = true;
         return true;
     } else {
-        spdlog::warn("DeviceGate createSession not successful - got no response");
+        lastError = "DeviceGate createSession not successful - got no response";
+        spdlog::warn(lastError);
     }
     return false;
 }
 
 bool DeviceGate::USBImpl::createSession(
     std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) {
+    lastError.clear();
+
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
                                         // {"fwp_checksum", fwpChecksum},
                                         {"fwp_version", version},
@@ -309,7 +330,8 @@ bool DeviceGate::USBImpl::createSession(
         return false;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
-        spdlog::warn("DeviceGate createSession not successful - got no response");
+        lastError = "DeviceGate createSession not successful - got no response";
+        spdlog::warn(lastError);
         return false;
     }
 
@@ -341,7 +363,8 @@ bool DeviceGate::USBImpl::createSession(
         const auto packageSize = static_cast<uint64_t>(package.size());
         const auto payloadSize = static_cast<uint64_t>(sizeof(uint32_t)) + sessionIdLen + packageSize;
         if(payloadSize > std::numeric_limits<uint32_t>::max()) {
-            spdlog::error("DeviceGate upload fwp payload too large: {}", payloadSize);
+            lastError = fmt::format("DeviceGate upload fwp payload too large: {}", payloadSize);
+            spdlog::error(lastError);
             return false;
         }
 
@@ -368,7 +391,8 @@ bool DeviceGate::USBImpl::createSession(
             return false;
         }
         if(request.RequestNum == RESPONSE_ERROR) {
-            spdlog::warn("DeviceGate upload fwp not successful - got no response");
+            lastError = "DeviceGate upload fwp not successful - got no response";
+            spdlog::warn(lastError);
             return false;
         }
     }
@@ -380,17 +404,23 @@ bool DeviceGate::startSession() {
     return impl->startSession(sessionId);
 }
 
+std::string DeviceGate::getLastError() const {
+    return impl ? impl->lastError : std::string{};
+}
+
 bool DeviceGate::HTTPImpl::startSession(std::string sessionId) {
     std::string url = fmt::format("{}/{}/start", sessionsEndpoint, sessionId);
     if(auto res = pimpl->cli->Post(url.c_str())) {
         if(res->status != 200) {
-            spdlog::warn("DeviceGate start fwp not successful - status: {}, error: {}", res->status, res->body);
+            lastError = fmt::format("start session failed - status: {}, error: {}", res->status, trimTrailing(res->body));
+            spdlog::warn(lastError);
             return false;
         }
         spdlog::debug("DeviceGate start fwp successful");
         return true;
     } else {
-        spdlog::debug("DeviceGate start fwp not successful - got no response");
+        lastError = "DeviceGate start fwp not successful - got no response";
+        spdlog::debug(lastError);
     }
 
     return false;
@@ -411,7 +441,8 @@ bool DeviceGate::USBImpl::startSession(std::string sessionId) {
         return false;
     }
     if(request.RequestNum == RESPONSE_ERROR) {
-        spdlog::debug("DeviceGate start fwp not successful - got no response");
+        lastError = "DeviceGate start fwp not successful - got no response";
+        spdlog::debug(lastError);
         return false;
     }
     spdlog::debug("DeviceGate start fwp successful");

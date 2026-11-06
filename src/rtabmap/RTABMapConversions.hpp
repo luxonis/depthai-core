@@ -2,6 +2,7 @@
 
 #include "common/CameraBoardSocket.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/pipeline/datatype/Odometry.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 
 namespace rtabmap {
@@ -12,6 +13,7 @@ class StereoCameraModel;
 namespace dai {
 
 std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transformRTABMap);
+std::shared_ptr<Odometry> rtabmapToOdometry(rtabmap::Transform transformRTABMap, const Point3d& velocity);
 rtabmap::Transform getRTABMapTransform(const Transform& transform);
 rtabmap::StereoCameraModel getRTABMapCameraModel(CameraBoardSocket cameraId,
                                                  int width,

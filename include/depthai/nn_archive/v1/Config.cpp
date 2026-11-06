@@ -1,20 +1,20 @@
 #pragma once
 
+#include "Config.hpp"
+
 #include <optional>
 
-#include "Metadata.hpp"
-#include "Head.hpp"
 #include "DataType.hpp"
-#include "InputType.hpp"
-#include "PreprocessingBlock.hpp"
+#include "Head.hpp"
 #include "Input.hpp"
+#include "InputType.hpp"
+#include "Metadata.hpp"
 #include "MetadataClass.hpp"
-#include "Output.hpp"
 #include "Model.hpp"
-#include "Config.hpp"
+#include "Output.hpp"
+#include "PreprocessingBlock.hpp"
 namespace dai {
 namespace nn_archive {
-namespace v1 {
-}
-}
-}
+namespace v1 {}
+}  // namespace nn_archive
+}  // namespace dai

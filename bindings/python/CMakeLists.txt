@@ -74,6 +74,8 @@ set(SOURCE_LIST
 
     src/pipeline/node/ColorCameraBindings.cpp
     src/pipeline/node/CameraBindings.cpp
+    src/pipeline/node/HostCameraBindings.cpp
+    src/pipeline/node/DisplayBindings.cpp
     src/pipeline/node/MonoCameraBindings.cpp
     src/pipeline/node/StereoDepthBindings.cpp
     src/pipeline/node/NeuralNetworkBindings.cpp
@@ -107,6 +109,9 @@ set(SOURCE_LIST
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
+    src/pipeline/node/StitchingBindings.cpp
+    src/pipeline/datatype/ImgDetectionsFilterConfigBindings.cpp
+    src/pipeline/node/ImgDetectionsFilterBindings.cpp
     src/pipeline/node/AlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
@@ -141,6 +146,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/MessageGroupBindings.cpp
     src/pipeline/datatype/NNDataBindings.cpp
     src/pipeline/datatype/NeuralDepthConfigBindings.cpp
+    src/pipeline/datatype/OdometryBindings.cpp
     src/pipeline/datatype/GPUStereoConfigBindings.cpp
     src/pipeline/datatype/RGBDDataBindings.cpp
     src/pipeline/datatype/SpatialImgDetectionsBindings.cpp
@@ -175,12 +181,15 @@ set(SOURCE_LIST
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND SOURCE_LIST
+        src/beta/device/MultiDeviceCalibrationHandlerBindings.cpp
         src/beta/datatype/ClassificationsBindings.cpp
         src/beta/datatype/ClustersBindings.cpp
         src/beta/datatype/KeypointsBindings.cpp
         src/beta/datatype/LinesBindings.cpp
         src/beta/datatype/Map2DBindings.cpp
         src/beta/datatype/PredictionsBindings.cpp
+        src/beta/datatype/MultiDeviceCalibrationControlBindings.cpp
+        src/beta/datatype/MultiDeviceCalibrationResultBindings.cpp
         src/beta/datatype/ClassificationSequenceParserConfigBindings.cpp
         src/beta/datatype/FastSAMParserConfigBindings.cpp
         src/beta/datatype/HRNetParserConfigBindings.cpp
@@ -200,7 +209,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/FastSAMParserBindings.cpp
         src/beta/node/HRNetParserBindings.cpp
         src/beta/node/ImageOutputParserBindings.cpp
-        src/beta/node/ImgDetectionsFilterBindings.cpp
         src/beta/node/KeypointParserBindings.cpp
         src/beta/node/LaneDetectionParserBindings.cpp
         src/beta/node/MapOutputParserBindings.cpp
@@ -211,7 +219,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/RFDETRParserBindings.cpp
         src/beta/node/SCRFDParserBindings.cpp
         src/beta/node/SuperAnimalParserBindings.cpp
-        src/beta/node/StitchingBindings.cpp
         src/beta/node/ToFStereoFusionBindings.cpp
         src/beta/node/XFeatMonoParserBindings.cpp
         src/beta/node/XFeatStereoParserBindings.cpp
@@ -247,6 +254,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/datatype/AutoCalibrationConfigBindings.cpp
         src/pipeline/datatype/AutoCalibrationResultBindings.cpp
     )
+    if(DEPTHAI_BUILD_BETA)
+        list(APPEND SOURCE_LIST
+            src/beta/node/MultiDeviceCalibrationBindings.cpp
+        )
+    endif()
 endif()
 
 # Add files for python module
@@ -457,14 +469,20 @@ if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
         execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so OUTPUT_VARIABLE LIBSTDCXX_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
     endif()
     # Set preload env variable
+    # detect_container_overflow=0: vcpkg dependencies are built without ASan, see test_env in tests/CMakeLists.txt
+    # TODO: remove detect_container_overflow=0 when the vcpkg dependencies are built with ASan
     if(APPLE)
-        set(ASAN_ENVIRONMENT_VARS "DYLD_INSERT_LIBRARIES=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0")
+        set(ASAN_ENVIRONMENT_VARS "DYLD_INSERT_LIBRARIES=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0:detect_container_overflow=0")
     elseif(UNIX)
         if(LIBSTDCXX_PATH)
-            set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}:${LIBSTDCXX_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0")
+            set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}:${LIBSTDCXX_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0:detect_container_overflow=0")
         else()
-            set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0")
+            set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0:detect_container_overflow=0")
         endif()
+    endif()
+    # UBSan reports have no stack trace by default
+    if(SANITIZE_UNDEFINED)
+        list(APPEND ASAN_ENVIRONMENT_VARS "UBSAN_OPTIONS=print_stacktrace=1")
     endif()
     message(STATUS "ASAN environment variables: ${ASAN_ENVIRONMENT_VARS}")
 endif()

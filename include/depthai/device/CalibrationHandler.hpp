@@ -30,6 +30,9 @@ namespace dai {
 namespace node {
 class DclUtils;
 }  // namespace node
+namespace detail {
+class StereoPairCalculator;
+}  // namespace detail
 class DeviceBase;
 
 class CalibrationHandler {
@@ -749,6 +752,17 @@ class CalibrationHandler {
      */
     dai::CameraBoardSocket getCameraWithLowestId() const;
 
+    /**
+     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
+     * and linked to CameraBoardSocket.AUTO).
+     *
+     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated.
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data.
+     * @param originSocket Output socket of the local calibration origin.
+     * @return A transformation matrix which is 4x4 in homogeneous coordinate system.
+     */
+    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
+
    private:
     /** when the user is writing extrinsics do we validate if
      * the connection between all the cameras exists ?
@@ -770,14 +784,6 @@ class CalibrationHandler {
     };
     ExtrinsicGraphValidationResult validateExtrinsicGraph() const;
 
-    /**
-     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
-     * and linked to CameraBoardSocket.AUTO)
-     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
-     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
-     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
-     */
-    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
     std::vector<std::vector<float>> getHousingToHousingOriginExtrinsics(const HousingCoordinateSystem housingCS,
                                                                         bool useSpecTranslation,
                                                                         CameraBoardSocket& originSocket,
@@ -796,6 +802,7 @@ class CalibrationHandler {
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;
     LengthUnit getEepromTranslationUnits() const;
     friend DeviceBase;
+    friend detail::StereoPairCalculator;
 
     /**
      * Get the angle in radians between the optical z-axes of two cameras.

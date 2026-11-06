@@ -20,13 +20,21 @@ on:
         required: true
       CI_TELEMETRY_API_KEY:
         required: true
+      INFLUXDB_TEST_REPORT_BUCKET:
+        required: true
+      INFLUXDB_ORG:
+        required: true
+      INFLUXDB_TOKEN:
+        required: true
+      INFLUXDB_URL:
+        required: true
 
 jobs:
 #  mac_rvc2_test:
 #     needs: [build_docker_container]
 #     runs-on: ['self-hosted', 'testbed-runner']
 #     steps:
-#     - uses: actions/checkout@v3
+#     - uses: actions/checkout@v7
 
 #     - name: Run RVC2 tests
 #       run: |
@@ -42,7 +50,7 @@ jobs:
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
             submodules: recursive
             fetch-depth: 0
@@ -61,7 +69,7 @@ jobs:
             exec hil_runner --models "oak4_pro or oak4_d" -os mac --sync-workspace --rsync-args="--exclude=venv" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "cd /tmp/depthai-core && export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}' && export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}' && ./scripts/hil/run_hil_tests_mac.sh $PULL_REQUEST ${{ inputs.flavor }} --rvc4" 2>&1 | tee mac_rvc4_test_output.log
       - name: Upload test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ctest-log-mac-rvc4_test-rvc4os=${{ matrix.rvc4os }}
           path: mac_rvc4_test_output.log
@@ -74,7 +82,7 @@ jobs:
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
             submodules: recursive
             fetch-depth: 0
@@ -93,7 +101,7 @@ jobs:
             exec hil_runner --models "oak4_pro or oak4_d" -os mac --sync-workspace --rsync-args="--exclude=venv" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "cd /tmp/depthai-core && export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}' && export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}' && ./scripts/hil/run_hil_tests_mac.sh $PULL_REQUEST ${{ inputs.flavor }} --rvc4usb" 2>&1 | tee mac_rvc4_usb_test_output.log
       - name: Upload test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ctest-log-mac-rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
           path: mac_rvc4_usb_test_output.log
@@ -102,17 +110,38 @@ jobs:
  report_mac_test_results:
     name: Report mac test results
     needs: [mac_rvc4_test_usb, mac_rvc4_test]
-    if: always()
+    # Skip the report when the run was cancelled (by a user or by concurrency).
+    # Keep it for crashes, failures and job timeouts.
+    if: ${{ !cancelled() }}
     runs-on: ['self-hosted', 'testbed-runner']
     permissions:
+      actions: read
       contents: read
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
     - name: Download test logs
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         pattern: ctest-log-mac-*
         path: ctest-logs
+    - name: Restore single-artifact log directory
+      if: hashFiles('ctest-logs/*.log') != ''
+      uses: actions/github-script@v9
+      env:
+        ARTIFACT_PREFIX: ctest-log-mac-
+      with:
+        script: |
+          const fs = require('node:fs');
+          const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+            ...context.repo, run_id: context.runId
+          });
+          const artifact = artifacts.find(a => !a.expired && a.name.startsWith(process.env.ARTIFACT_PREFIX));
+          if (!artifact) throw new Error('Test log artifact not found');
+          const directory = `ctest-logs/${artifact.name}`;
+          fs.mkdirSync(directory, {recursive: true});
+          for (const file of fs.readdirSync('ctest-logs').filter(f => f.endsWith('.log'))) {
+            fs.renameSync(`ctest-logs/${file}`, `${directory}/${file}`);
+          }
     - name: Generate combined summary
       env:
         INFLUXDB_TEST_REPORT_BUCKET: ${{ secrets.INFLUXDB_TEST_REPORT_BUCKET }}
@@ -162,7 +191,7 @@ jobs:
         fi
     - name: Upload JUnit XML reports
       if: always() && hashFiles('ctest-reports/*.xml') != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: junit-reports-mac
         path: ctest-reports/*.xml

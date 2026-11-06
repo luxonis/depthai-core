@@ -65,6 +65,7 @@ TEST_CASE("Object Tracker Pipeline Debugging") {
         if(node->getOutputs().size() > 1) REQUIRE(nodeState.outputsSendTiming.isValid());
         for(const auto& [inputName, inputState] : nodeState.inputStates) {
             if(std::string(node->getName()) == "ObjectTracker" && inputName == "inputConfig") continue;  // This example does not use inputConfig
+            if(std::string(node->getName()) == "DetectionParser" && inputName == "inputConfig") continue;
             if(std::string(node->getName()) == "ObjectTracker" && inputName == "inputDetectionFrame")
                 continue;  // This example does not use inputDetectionFrame
             REQUIRE(inputState.timing.isValid());

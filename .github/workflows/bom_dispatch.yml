@@ -1,0 +1,59 @@
+name: BOM tests dispatch
+
+# Dispatches the luxonis-bom "Main Workflow" (dispatch_main.yml) for the commit of the calling run and puts a
+# link to that run in the job summary. It does not wait for the result: a BOM run can take longer than the
+# 6 h job limit of GitHub-hosted runners (6 h 51 min on 2026-10-22, with 84 min in the queue). The BOM
+# tests install the wheels that upload-wheels-to-ak (python-main.yml) published, so call it only after that
+# job passed. Callers:
+#   - python-main.yml, for pushes to main, release branches and tags.
+#   - hil_testing_nightly.yml, for the nightly develop build, at the same time as the HIL tests.
+
+on:
+  workflow_call:
+
+jobs:
+  dispatch-bom-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Get dev version from script
+        id: get_version
+        run: |
+          # The same rule as BUILD_COMMIT_HASH in python-main.yml: a v* tag has the release version.
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_version())")
+          else
+            VERSION=$(cd bindings/python && python -c "import find_version as v; print(v.get_package_dev_version('$GITHUB_SHA'))")
+          fi
+          echo "VERSION=$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch action and get run ID
+        uses: codex-/return-dispatch@v4.0.1
+        id: return_dispatch
+        with:
+          token: ${{ secrets.BOM_GITHUB_TOKEN }}
+          ref: "main"
+          repo: "luxonis-bom"
+          owner: "luxonis"
+          workflow: "dispatch_main.yml"
+          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
+
+      - name: Link the BOM run
+        env:
+          RUN_URL: ${{ steps.return_dispatch.outputs.run_url }}
+          DEPTHAI_VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "::notice title=BOM tests started::$RUN_URL"
+          {
+            echo "### BOM tests"
+            echo ""
+            echo "luxonis-bom Main Workflow for \`$GITHUB_REF_NAME\` (depthai \`$DEPTHAI_VERSION\`): $RUN_URL"
+            echo ""
+            echo "This job does not wait for the result; see the BOM run for it."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -5,12 +5,13 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "depthai/pipeline/Pipeline.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
     #include <opencv2/imgproc/imgproc.hpp>
+
+    #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #endif
 
 namespace dai {
@@ -67,23 +68,12 @@ void ImageAlign::run() {
 
 namespace {
 
-template <typename T>
-std::vector<T> flatten(const std::vector<std::vector<T> >& orig) {
-    std::vector<T> ret;
-    for(const auto& v : orig) ret.insert(ret.end(), v.begin(), v.end());
-    return ret;
-}
-
-cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<std::vector<float> >& orig) {
-    std::vector<float> flat = flatten(orig);
-    cv::Mat cvMat = cv::Mat(rows, cols, type);
-    memcpy(cvMat.data, flat.data(), flat.size() * sizeof(flat[0]));
-    return cvMat;
-}
-
 cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<float>& orig) {
     cv::Mat cvMat = cv::Mat(rows, cols, type);
-    memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
+    // An empty vector (e.g. no distortion coefficients) gives an empty cv::Mat with null data
+    if(!orig.empty()) {
+        memcpy(cvMat.data, orig.data(), orig.size() * sizeof(orig[0]));
+    }
     return cvMat;
 }
 
@@ -120,72 +110,30 @@ std::string matToString(const cv::Mat& mat) {
     return oss.str();
 }
 
-int shiftDepthImg(const std::shared_ptr<dai::ImgFrame>& inVec,
-                  const std::shared_ptr<dai::ImgFrame>& outVec,
-                  const std::array<std::array<float, 3>, 3>& depthSourceIntrinsics,
-                  const std::array<std::array<float, 4>, 4>& depthToAlignExtrinsics) {
-    int depthLut[65536];
-
-    auto& depthIntrinsics = depthSourceIntrinsics;
-    auto& cameraExtrinsics = depthToAlignExtrinsics;
-
-    int width = inVec->getWidth();
-    int height = inVec->getHeight();
-    int bpp = 2;  // todo
-
-    const uint16_t* plane = reinterpret_cast<const uint16_t*>(inVec->getData().data());
-    uint16_t* alignedPlane = reinterpret_cast<uint16_t*>(outVec->getData().data());
-
-    // assert(!(bpp != sizeof(*plane)) && "Wrong in/out size");
-    // assert(!(bpp != sizeof(*alignedPlane)) && "Wrong in/out size");
-
-    const int lineLength = width * bpp;
-
-    float shiftX = cameraExtrinsics[0][3];
-
-    float depthFx = depthIntrinsics[0][0];
-    // float depthCx = depthIntrinsics[0][2];
-
-    float shiftXPreComputed = shiftX * depthFx;
-
-    depthLut[0] = shiftX > 0 ? width : -width;
-    for(int i = 1; i < 65536; i++) {
-        depthLut[i] = shiftXPreComputed / (float)i + 0.5f;
-    }
+void shiftDepthImg(const cv::Mat& input, cv::Mat& output, const std::array<int, 65536>& depthLut, bool shiftPositive) {
+    const int width = input.cols;
+    const int height = input.rows;
+    output.create(input.size(), input.type());
 
     for(int i = 0; i < height; i++) {
-        const uint16_t* currentLine = plane + width * i;
-        uint16_t* alignedLine = alignedPlane + width * i;
+        const uint16_t* currentLine = input.ptr<uint16_t>(i);
+        uint16_t* alignedLine = output.ptr<uint16_t>(i);
 
-        memset(alignedLine, 0, lineLength);
+        memset(alignedLine, 0, width * sizeof(uint16_t));
 
-        if(shiftX > 0) {
-            for(int j = width - 1; j >= 0; j--) {
-                uint16_t depth = currentLine[j];
-
-                int int_u = j + depthLut[depth];
-
-                if(int_u < width - 1) {
-                    alignedLine[int_u] = depth;
-                    alignedLine[int_u + 1] = depth;
-                }
+        for(int j = shiftPositive ? width - 1 : 0; j >= 0 && j < width; j += shiftPositive ? -1 : 1) {
+            const uint16_t depth = currentLine[j];
+            if(depth == 0) continue;
+            if(depthLut[depth] == 0) {
+                alignedLine[j] = depth;
+                continue;
             }
-
-        } else {
-            for(int j = 0; j < width; j++) {
-                uint16_t depth = currentLine[j];
-
-                int int_u = j + depthLut[depth];
-
-                if(int_u > 0) {
-                    alignedLine[int_u] = depth;
-                    alignedLine[int_u - 1] = depth;
-                }
+            const int u = j + depthLut[depth];
+            for(const int x : {u, u + (shiftPositive ? 1 : -1)}) {
+                if(x >= 0 && x < width) alignedLine[x] = depth;
             }
         }
     }
-
-    return 0;
 }
 
 }  // namespace
@@ -193,14 +141,15 @@ int shiftDepthImg(const std::shared_ptr<dai::ImgFrame>& inVec,
 void ImageAlign::run() {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
-
-    dai::CalibrationHandler calibHandler;
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     bool calibrationSet = false;
     std::array<std::array<float, 3>, 3> depthSourceIntrinsics;
     std::array<std::array<float, 3>, 3> alignSourceIntrinsics;
     std::array<std::array<float, 4>, 4> depthToAlignExtrinsics;
     std::vector<float> depthDistortionCoefficients;
+    ImgTransformation depthSourceTransformation;
+    ImgTransformation alignToTransformation;
 
     dai::CameraBoardSocket alignFrom;
     dai::CameraBoardSocket alignTo;
@@ -212,9 +161,8 @@ void ImageAlign::run() {
     cv::Mat map_x_1, map_y_1;
     cv::Mat map_x_2, map_y_2;
 
-    bool allocated = false;
-    uint32_t frameSize = 0;
-    uint32_t outFrameSize = 0;
+    cv::Mat depthImgRectifiedFrame, shiftedOutput;
+    std::array<int, 65536> depthShiftLut{};
 
     std::unordered_set<ImgFrame::Type> hwSupportedFrameTypes = {ImgFrame::Type::YUV420p, ImgFrame::Type::NV12, ImgFrame::Type::GRAY8, ImgFrame::Type::RAW8};
     std::unordered_set<ImgFrame::Type> supportedFrameTypes = hwSupportedFrameTypes;
@@ -228,33 +176,16 @@ void ImageAlign::run() {
         {ImgFrame::Type::RAW16, 2.0f},
     };
 
-    auto allocatePools = [&](int width, int height, int alignWidth, int alignHeight, float inputFrameBpp) -> std::pair<bool, std::string> {
-        if(allocated) return {true, ""};
-
-        float bpp = inputFrameBpp;
-
-        frameSize = roundf(width * height * bpp);
-
-        outFrameSize = roundf(alignWidth * alignHeight * bpp);
-
-        allocated = true;
-        return {true, ""};
-    };
-
     auto extractCalibrationData = [&](int depthWidth, int depthHeight, int alignWidth, int alignHeight) {
         if(calibrationSet) return;
 
         if(depthDistortionCoefficients.empty()) {
             depthDistortionCoefficients.assign(14, 0.0f);
         }
-        auto alignDistortionCoefficients = calibHandler.getDistortionCoefficients(alignTo);
-
-        auto depthToAlignRotation = calibHandler.getCameraRotationMatrix(alignFrom, alignTo);
-        auto depthToAlignTranslation = calibHandler.getCameraTranslationVector(alignFrom, alignTo, false);
-
-        for(auto& t : depthToAlignTranslation) {
-            t *= 10;  // convert to mm
-        }
+        const auto alignDistortionCoefficients = alignToTransformation.getDistortionCoefficients();
+        const auto depthToAlignRotation = depthSourceTransformation.getRotationMatrixTo(alignToTransformation);
+        const auto depthToAlignTranslationArray = depthSourceTransformation.getTranslationVectorTo(alignToTransformation, false, LengthUnit::MILLIMETER);
+        const std::vector<float> depthToAlignTranslation(depthToAlignTranslationArray.begin(), depthToAlignTranslationArray.end());
 
         auto cv_M1 = arrayToCvMat(3, 3, CV_32FC1, depthSourceIntrinsics);
         auto cv_M2 = arrayToCvMat(3, 3, CV_32FC1, alignSourceIntrinsics);
@@ -262,7 +193,7 @@ void ImageAlign::run() {
         auto cv_d1 = vecToCvMat(1, depthDistortionCoefficients.size(), CV_32FC1, depthDistortionCoefficients);
         auto cv_dNone = vecToCvMat(
             1, alignDistortionCoefficients.size(), CV_32FC1, std::vector<float>(alignDistortionCoefficients.size(), 0.0f));  // No distortion for aligned frame
-        auto cv_R = vecToCvMat(3, 3, CV_32FC1, depthToAlignRotation);
+        auto cv_R = arrayToCvMat(3, 3, CV_32FC1, depthToAlignRotation);
         auto cv_T = vecToCvMat(1, 3, CV_32FC1, depthToAlignTranslation);
 
         cv::Mat cv_R1, cv_R2;
@@ -272,7 +203,16 @@ void ImageAlign::run() {
         // dai::CameraModel cameraModel = dai::CameraModel::Perspective;  // todo
 
         auto cv_targetCamMatrix = cv_M1.clone();
-        auto cv_meshSize = cv::Size(depthWidth, depthHeight);
+        const auto bounds = detail::rectifiedBounds(imageSize, cv_M1, cv_d1, cv_R1, {alignWidth, alignHeight}, cv_M2, cv_R2, logger.get());
+        auto rectifiedSize = bounds.size();
+        // Chroma planes require even intermediate dimensions for NV12 and YUV420p.
+        if(inputFrameType == ImgFrame::Type::NV12 || inputFrameType == ImgFrame::Type::YUV420p) {
+            rectifiedSize.width += rectifiedSize.width % 2;
+            rectifiedSize.height += rectifiedSize.height % 2;
+        }
+        cv_targetCamMatrix.at<float>(0, 2) -= bounds.x;
+        cv_targetCamMatrix.at<float>(1, 2) -= bounds.y;
+        auto cv_meshSize = rectifiedSize;
 
         cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_1, map_y_1);
 
@@ -287,6 +227,9 @@ void ImageAlign::run() {
         for(size_t i = 0; i < 3; i++) {
             depthToAlignExtrinsics[i][3] = cv_newT.at<float>(i);
         }
+
+        const float shift = depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0];
+        for(size_t i = 1; i < depthShiftLut.size(); ++i) depthShiftLut[i] = static_cast<int>(std::round(shift / static_cast<float>(i)));
 
         cv::Mat cv_combinedExtrinsics = cv::Mat::eye(4, 4, CV_32F);
         cv_newR.copyTo(cv_combinedExtrinsics(cv::Rect(0, 0, 3, 3)));
@@ -336,14 +279,6 @@ void ImageAlign::run() {
 
     auto shiftMesh = [](cv::Mat& meshX, int shiftX) { meshX = meshX + cv::Scalar(shiftX); };
 
-    auto pipeline = getParentPipeline();
-
-    try {
-        calibHandler = pipeline.getDefaultDevice()->getCalibration();
-    } catch(const std::exception& e) {
-        logger->error("Failed to get calibration data: {}", e.what());
-    }
-
     alignWidth = properties.alignWidth;
     alignHeight = properties.alignHeight;
     // bool keepAspectRatio = properties.outKeepAspectRatio;
@@ -355,10 +290,10 @@ void ImageAlign::run() {
     int previousShiftFactor = 0;
 
     ImgTransformation inputAlignToTransform;
-    ImgFrame inputAlignToImgFrame;
-    uint32_t currentEepromId = getParentPipeline().getEepromId();
-
+    ImageAlignInputState previousInputs;
+    std::shared_ptr<ImgFrame> inputAlignToImg = nullptr;
     while(mainLoop()) {
+        auto tAbsoluteBeginning = steady_clock::now();
         std::shared_ptr<ImgFrame> inputImg = nullptr;
         std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
         bool hasConfig = false;
@@ -366,15 +301,29 @@ void ImageAlign::run() {
             auto blockEvent = this->inputBlockEvent();
 
             inputImg = input.get<ImgFrame>();
+            // Non-blocking, so that a lower inputAlignTo frequency doesn't stall the main input. The queue holds a single,
+            // non-blocking slot, so this always yields the most recent alignTo frame. Only the very first frame is awaited.
+            auto newInputAlignToImg = inputAlignTo.tryGet<ImgFrame>();
+            if(newInputAlignToImg) {
+                inputAlignToImg = newInputAlignToImg;
+            } else if(inputAlignToImg == nullptr) {
+                inputAlignToImg = inputAlignTo.get<ImgFrame>();
+            }
+
+            const ImageAlignInputState currentInputs{inputImg->transformation,
+                                                     inputAlignToImg->transformation,
+                                                     {inputImg->getWidth(), inputImg->getHeight()},
+                                                     {inputAlignToImg->getWidth(), inputAlignToImg->getHeight()},
+                                                     inputImg->getType()};
+            if(currentInputs.differsFrom(previousInputs)) {
+                initialized = false;
+                calibrationSet = false;
+                previousShiftFactor = 0;
+            }
 
             if(!initialized) {
-                initialized = true;
-
-                auto inputAlignToImg = inputAlignTo.get<ImgFrame>();
-
-                inputAlignToImgFrame = *inputAlignToImg;
-
-                inputAlignToTransform = inputAlignToImg->transformation;
+                alignToTransformation = inputAlignToImg->transformation;
+                inputAlignToTransform = alignToTransformation;
                 const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
                 const bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
                 if(hasDistortion) {
@@ -384,6 +333,9 @@ void ImageAlign::run() {
                 }
 
                 alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
+                // Re-derive on every (re)initialization, the alignTo frame may have changed resolution.
+                alignWidth = properties.alignWidth;
+                alignHeight = properties.alignHeight;
                 if(alignWidth == 0 || alignHeight == 0) {
                     alignWidth = inputAlignToImg->getWidth();
                     alignHeight = inputAlignToImg->getHeight();
@@ -400,6 +352,9 @@ void ImageAlign::run() {
 
                 alignSourceIntrinsics = alignTransformForIntrinsics.getIntrinsicMatrix();
                 inputAlignToTransform = alignTransformForIntrinsics;
+
+                previousInputs = currentInputs;
+                initialized = true;
             }
 
             if(inputConfig.getWaitForMessage()) {
@@ -413,6 +368,7 @@ void ImageAlign::run() {
                 }
             }
         }
+        auto tGotInput = steady_clock::now();
 
         if(hasConfig) {
             latestConfig = inConfig;
@@ -440,20 +396,7 @@ void ImageAlign::run() {
         }
         float inputFrameBpp = frameTypeToBpp[inputFrameType];
 
-        auto [success, msg] = allocatePools(width, height, alignWidth, alignHeight, inputFrameBpp);
-        if(!success) {
-            logger->error(msg);
-            throw std::runtime_error(msg);
-        }
-
-        uint32_t latestEepromId = getParentPipeline().getEepromId();
-
-        if(latestEepromId > currentEepromId) {
-            logger->debug("EEPROM data changed (ID: {} -> {}), reconfiguring ...", currentEepromId, latestEepromId);
-            calibrationSet = false;
-            calibHandler = pipeline.getCalibrationData();
-            currentEepromId = latestEepromId;
-        }
+        depthSourceTransformation = inputImg->transformation;
 
         try {
             extractCalibrationData(width, height, alignWidth, alignHeight);
@@ -475,33 +418,21 @@ void ImageAlign::run() {
 
         previousShiftFactor = constantShiftFactor;
 
-        decltype(steady_clock::now()) t1, t2, tStart, tStop;
-        tStart = steady_clock::now();
+        decltype(steady_clock::now()) t1, t2;
         if(PRINT_DEBUG) {
             t1 = steady_clock::now();
         }
 
         // warp1
-        auto depthImgRectified = std::make_shared<ImgFrame>();
-        depthImgRectified->setData(std::vector<uint8_t>(frameSize));
-
-        depthImgRectified->setMetadata(*inputImg);
-        depthImgRectified->setWidth(inputImg->getWidth());
-        depthImgRectified->setHeight(inputImg->getHeight());
-        depthImgRectified->setType(inputImg->getType());
-        depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
-
         auto inputFrame = inputImg->getFrame();
-        auto depthImgRectifiedFrame = depthImgRectified->getFrame();
 
         if(inputFrameBpp == 1.5f) {
-            auto inputFrameCopy = inputFrame.clone();
-            if(depthImgRectified->getType() == ImgFrame::Type::NV12) {
-                remapNv12(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
-            } else if(depthImgRectified->getType() == ImgFrame::Type::YUV420p) {
-                remapYuv420(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+            if(inputImg->getType() == ImgFrame::Type::NV12) {
+                remapNv12(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1);
+            } else if(inputImg->getType() == ImgFrame::Type::YUV420p) {
+                remapYuv420(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1);
             } else {
-                logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)depthImgRectified->getType());
+                logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)inputImg->getType());
             }
         } else {
             cv::remap(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
@@ -513,37 +444,22 @@ void ImageAlign::run() {
             logger->warn("Align step1 took '{}' ms.", elapsed);
         }
 
-        auto shiftedOutput = std::make_shared<ImgFrame>();
-        shiftedOutput->setData(std::vector<uint8_t>(frameSize));
-
         if(PRINT_DEBUG) {
             t1 = steady_clock::now();
         }
 
-        auto warp2Input = depthImgRectified;
+        auto warp2InputFrame = depthImgRectifiedFrame;
 
         if(inputIsDepth && staticDepthPlane == 0) {
-            shiftedOutput->setMetadata(*inputImg);
-            shiftedOutput->setWidth(inputImg->getWidth());
-            shiftedOutput->setHeight(inputImg->getHeight());
-            shiftedOutput->setType(inputImg->getType());
-            shiftedOutput->fb.stride = shiftedOutput->fb.width * shiftedOutput->getBytesPerPixel();
-
             auto startProcessing = high_resolution_clock::now();
-
-            int nErr = 0;
-            nErr = shiftDepthImg(depthImgRectified, shiftedOutput, depthSourceIntrinsics, depthToAlignExtrinsics);
-
-            if(nErr != 0) {
-                logger->error("alignDepthImg failed with code {}", nErr);
-            }
+            shiftDepthImg(depthImgRectifiedFrame, shiftedOutput, depthShiftLut, depthToAlignExtrinsics[0][3] > 0);
 
             auto stopProcessing = high_resolution_clock::now();
 
             auto durationProcessing = duration_cast<microseconds>(stopProcessing - startProcessing);
-            logger->debug("Processing time: {} ms", durationProcessing.count() / 1000.0f);
+            logger->debug("ImageAlign depth shift took {} ms.", durationProcessing.count() / 1000.0f);
 
-            warp2Input = shiftedOutput;
+            warp2InputFrame = shiftedOutput;
         }
 
         if(PRINT_DEBUG) {
@@ -558,7 +474,7 @@ void ImageAlign::run() {
 
         // warp2
         auto alignedImg = std::make_shared<ImgFrame>();
-        alignedImg->setData(std::vector<uint8_t>(outFrameSize));
+        alignedImg->setData(std::vector<uint8_t>(static_cast<size_t>(alignWidth * alignHeight * inputFrameBpp)));
         if(PRINT_DEBUG) {
             t2 = steady_clock::now();
             auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
@@ -566,13 +482,26 @@ void ImageAlign::run() {
             t1 = steady_clock::now();
         }
 
-        alignedImg->setMetadata(inputAlignToImgFrame);
+        // manually set metadata
+        alignedImg->cam = inputImg->cam;
+        alignedImg->category = inputImg->category;
+        alignedImg->event = inputImg->event;
+        alignedImg->sourceFb = inputAlignToImg->sourceFb;
         alignedImg->setWidth(alignWidth);
         alignedImg->setHeight(alignHeight);
         alignedImg->setType(inputImg->getType());
         alignedImg->fb.stride = alignedImg->fb.width * alignedImg->getBytesPerPixel();
+        alignedImg->fb.p1Offset = 0;
+        alignedImg->fb.p2Offset = 0;
+        alignedImg->fb.p3Offset = 0;
+        if(alignedImg->getType() == ImgFrame::Type::NV12) {
+            alignedImg->fb.p2Offset = alignedImg->fb.stride * alignedImg->fb.height;
+            alignedImg->fb.p3Offset = alignedImg->fb.p2Offset;
+        } else if(alignedImg->getType() == ImgFrame::Type::YUV420p) {
+            alignedImg->fb.p2Offset = alignedImg->fb.stride * alignedImg->fb.height;
+            alignedImg->fb.p3Offset = alignedImg->fb.p2Offset + (alignedImg->fb.stride / 2) * (alignedImg->fb.height / 2);
+        }
 
-        auto warp2InputFrame = warp2Input->getFrame();
         auto alignedImgFrame = alignedImg->getFrame();
         if(inputFrameBpp == 1.5f) {
             if(alignedImg->getType() == ImgFrame::Type::NV12) {
@@ -592,23 +521,19 @@ void ImageAlign::run() {
         }
 
         alignedImg->setInstanceNum((uint32_t)alignTo);
-
         alignedImg->setBufferMetadataFrom(inputImg);
-
         alignedImg->transformation = inputAlignToTransform;
         const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
         alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
 
-        tStop = steady_clock::now();
-        auto runtime = duration_cast<milliseconds>(tStop - tStart).count();
-
-        logger->trace("ImageAlign took {} ms", runtime);
-
+        auto tProcessed = steady_clock::now();
         {
             auto blockEvent = this->outputBlockEvent();
             outputAligned.send(alignedImg);
             passthroughInput.send(inputImg);
         }
+        auto tAbsoluteEnd = steady_clock::now();
+        this->logTiming(logger, tAbsoluteBeginning, tGotInput, tProcessed, tAbsoluteEnd);
     }
 }
 

@@ -33,7 +33,8 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           py::arg("cacheDirectory") = "",
           py::arg("apiKey") = "",
           py::arg("progressFormat") = "none",
-          DOC(dai, getModelFromZoo));
+          DOC(dai, getModelFromZoo),
+          py::call_guard<py::gil_scoped_release>());
 
     m.def("downloadModelsFromZoo",
           downloadModelsFromZoo,
@@ -41,7 +42,8 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           py::arg("cacheDirectory") = "",
           py::arg("apiKey") = "",
           py::arg("progressFormat") = "none",
-          DOC(dai, downloadModelsFromZoo));
+          DOC(dai, downloadModelsFromZoo),
+          py::call_guard<py::gil_scoped_release>());
 
     // Bind NNModelDescription
     modelDescription.def(py::init<>())
@@ -59,8 +61,8 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("compressionLevel") = "",
              py::arg("snpeVersion") = "",
              py::arg("modelPrecisionType") = "")
-
         .def(py::init<>([](const std::string& model) { return NNModelDescription{model}; }), py::arg("model"))
+        .def_readwrite("globalMetadataEntryName", &dai::NNModelDescription::globalMetadataEntryName, DOC(dai, NNModelDescription, globalMetadataEntryName))
         .def_static(
             "fromYamlFile", &NNModelDescription::fromYamlFile, py::arg("yamlPath"), py::arg("modelsPath") = "", DOC(dai, NNModelDescription, fromYamlFile))
         .def("saveToYamlFile", &NNModelDescription::saveToYamlFile, py::arg("yamlPath"), DOC(dai, NNModelDescription, saveToYamlFile))

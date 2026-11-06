@@ -32,6 +32,7 @@ option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" 
 
 # Build Behaviour
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
+option(DEPTHAI_BUILD_DEVICE_MANAGER "Build depthai::device-manager, a bootloader/XLink-only library without the pipeline" OFF)
 option(DEPTHAI_BUILD_BETA "Build beta namespace APIs" ON)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
@@ -107,6 +108,7 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
 else()
     option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" OFF)
 endif()
+option(DEPTHAI_UPDATE_VISUALIZER_LICENSE "Overwrite notices/depthai-visualizer-LICENSE with the license extracted from the bundled visualizer instead of failing on mismatch" OFF)
 
 # ---------- Embedded firmware  ---------------------------
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)

@@ -73,7 +73,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getIPv4", &DeviceBootloader::Config::getIPv4)
         .def("getIPv4Mask", &DeviceBootloader::Config::getIPv4Mask)
         .def("getIPv4Gateway", &DeviceBootloader::Config::getIPv4Gateway)
-        .def("setDnsIPv4", &DeviceBootloader::Config::setDnsIPv4)
+        .def("setDnsIPv4", &DeviceBootloader::Config::setDnsIPv4, py::arg("dns"), py::arg("dnsAlt") = "", DOC(dai, DeviceBootloader, Config, setDnsIPv4))
         .def("getDnsIPv4", &DeviceBootloader::Config::getDnsIPv4)
         .def("getDnsAltIPv4", &DeviceBootloader::Config::getDnsAltIPv4)
         .def("setUsbTimeout", &DeviceBootloader::Config::setUsbTimeout)
@@ -88,6 +88,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("fromJson", &DeviceBootloader::Config::fromJson);
 
     deviceBootloderApplicationInfo.def(py::init<>())
+        .def_readwrite("memory", &dai::DeviceBootloader::ApplicationInfo::memory, DOC(dai, DeviceBootloader, ApplicationInfo, memory))
         .def_readwrite("hasApplication", &DeviceBootloader::ApplicationInfo::hasApplication)
         .def_readwrite("firmwareVersion", &DeviceBootloader::ApplicationInfo::firmwareVersion)
         .def_readwrite("applicationName", &DeviceBootloader::ApplicationInfo::applicationName);
@@ -98,53 +99,6 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("info", &DeviceBootloader::MemoryInfo::info);
 
     deviceBootloader
-        // Python only methods
-        .def("__enter__", [](DeviceBootloader& d) -> DeviceBootloader& { return d; })
-        .def("__exit__", [](DeviceBootloader& bl, py::object type, py::object value, py::object traceback) { bl.close(); })
-        .def("close",
-             &DeviceBootloader::close,
-             "Closes the connection to device. Better alternative is the usage of context manager: `with depthai.DeviceBootloader(deviceInfo) as bootloader:`")
-
-        .def_static("getFirstAvailableDevice", &DeviceBootloader::getFirstAvailableDevice, DOC(dai, DeviceBootloader, getFirstAvailableDevice))
-        .def_static("getAllAvailableDevices", &DeviceBootloader::getAllAvailableDevices, DOC(dai, DeviceBootloader, getAllAvailableDevices))
-        .def_static("saveDepthaiApplicationPackage",
-                    py::overload_cast<const std::filesystem::path&, const Pipeline&, const std::filesystem::path&, bool, const std::string&, bool>(
-                        &DeviceBootloader::saveDepthaiApplicationPackage),
-                    py::arg("path"),
-                    py::arg("pipeline"),
-                    py::arg("pathToCmd") = std::filesystem::path(),
-                    py::arg("compress") = false,
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage))
-        .def_static(
-            "saveDepthaiApplicationPackage",
-            py::overload_cast<const std::filesystem::path&, const Pipeline&, bool, const std::string&, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
-            py::arg("path"),
-            py::arg("pipeline"),
-            py::arg("compress"),
-            py::arg("applicationName") = "",
-            py::arg("checkChecksum") = false,
-            DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage, 2))
-        .def_static(
-            "createDepthaiApplicationPackage",
-            py::overload_cast<const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
-            py::arg("pipeline"),
-            py::arg("pathToCmd") = std::filesystem::path(),
-            py::arg("compress") = false,
-            py::arg("applicationName") = "",
-            py::arg("checkChecksum") = false,
-            DOC(dai, DeviceBootloader, createDepthaiApplicationPackage))
-        .def_static("createDepthaiApplicationPackage",
-                    py::overload_cast<const Pipeline&, bool, const std::string&, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
-                    py::arg("pipeline"),
-                    py::arg("compress"),
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, createDepthaiApplicationPackage, 2))
-        .def_static("getEmbeddedBootloaderVersion", &DeviceBootloader::getEmbeddedBootloaderVersion, DOC(dai, DeviceBootloader, getEmbeddedBootloaderVersion))
-        .def_static("getEmbeddedBootloaderBinary", &DeviceBootloader::getEmbeddedBootloaderBinary, DOC(dai, DeviceBootloader, getEmbeddedBootloaderBinary))
-
         .def(py::init<const DeviceInfo&, bool>(),
              py::arg("devInfo"),
              py::arg("allowFlashingBootloader") = false,
@@ -158,43 +112,23 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("nameOrDeviceId"),
              py::arg("allowFlashingBootloader") = false,
              DOC(dai, DeviceBootloader, DeviceBootloader, 6))
+        .def("isClosed", &dai::DeviceBootloader::isClosed, DOC(dai, DeviceBootloader, isClosed));
 
-        .def(
-            "flash",
-            [](DeviceBootloader& db,
-               std::function<void(float)> progressCallback,
-               const Pipeline& pipeline,
-               bool compress,
-               std::string applicationName,
-               DeviceBootloader::Memory memory,
-               bool checkChecksum) {
-                py::gil_scoped_release release;
-                return db.flash(progressCallback, pipeline, compress, applicationName, memory, checkChecksum);
-            },
-            py::arg("progressCallback"),
-            py::arg("pipeline"),
-            py::arg("compress") = false,
-            py::arg("applicationName") = "",
-            py::arg("memory") = DeviceBootloader::Memory::AUTO,
-            py::arg("checkChecksum") = false,
-            DOC(dai, DeviceBootloader, flash))
-        .def(
-            "flash",
-            [](DeviceBootloader& db,
-               const Pipeline& pipeline,
-               bool compress,
-               std::string applicationName,
-               DeviceBootloader::Memory memory,
-               bool checkChecksum) {
-                py::gil_scoped_release release;
-                return db.flash(pipeline, compress, applicationName, memory, checkChecksum);
-            },
-            py::arg("pipeline"),
-            py::arg("compress") = false,
-            py::arg("applicationName") = "",
-            py::arg("memory") = DeviceBootloader::Memory::AUTO,
-            py::arg("checkChecksum") = false,
-            DOC(dai, DeviceBootloader, flash, 2))
+    deviceBootloader
+        // Python only methods
+        .def("__enter__", [](DeviceBootloader& d) -> DeviceBootloader& { return d; })
+        .def("__exit__", [](DeviceBootloader& bl, py::object type, py::object value, py::object traceback) { bl.close(); })
+        .def("close",
+             &DeviceBootloader::close,
+             "Closes the connection to device. Better alternative is the usage of context manager: `with depthai.DeviceBootloader(deviceInfo) as bootloader:`")
+
+        .def_static("getFirstAvailableDevice", &DeviceBootloader::getFirstAvailableDevice, DOC(dai, DeviceBootloader, getFirstAvailableDevice))
+        .def_static("getAllAvailableDevices", &DeviceBootloader::getAllAvailableDevices, DOC(dai, DeviceBootloader, getAllAvailableDevices))
+        .def_static("getEmbeddedBootloaderVersion", &DeviceBootloader::getEmbeddedBootloaderVersion, DOC(dai, DeviceBootloader, getEmbeddedBootloaderVersion))
+        .def_static("getEmbeddedBootloaderBinary",
+                    &DeviceBootloader::getEmbeddedBootloaderBinary,
+                    py::arg("type") = DeviceBootloader::DEFAULT_TYPE,
+                    DOC(dai, DeviceBootloader, getEmbeddedBootloaderBinary))
 
         .def(
             "readApplicationInfo",
@@ -226,25 +160,6 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBootloader, isUserBootloaderSupported))
 
-        .def(
-            "flashDepthaiApplicationPackage",
-            [](DeviceBootloader& db, std::function<void(float)> progressCallback, std::vector<uint8_t> package, DeviceBootloader::Memory memory) {
-                py::gil_scoped_release release;
-                return db.flashDepthaiApplicationPackage(progressCallback, package);
-            },
-            py::arg("progressCallback"),
-            py::arg("package"),
-            py::arg("memory") = DeviceBootloader::Memory::AUTO,
-            DOC(dai, DeviceBootloader, flashDepthaiApplicationPackage))
-        .def(
-            "flashDepthaiApplicationPackage",
-            [](DeviceBootloader& db, std::vector<uint8_t> package, DeviceBootloader::Memory memory) {
-                py::gil_scoped_release release;
-                return db.flashDepthaiApplicationPackage(package);
-            },
-            py::arg("package"),
-            py::arg("memory") = DeviceBootloader::Memory::AUTO,
-            DOC(dai, DeviceBootloader, flashDepthaiApplicationPackage, 2))
         .def(
             "flashBootloader",
             [](DeviceBootloader& db, std::function<void(float)> progressCallback, const std::filesystem::path& path) {

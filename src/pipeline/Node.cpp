@@ -148,6 +148,17 @@ bool Node::Output::canConnect(const Input& in) {
 }
 
 void Node::Output::link(Input& in) {
+    // Linking across two different pipelines is not supported
+    auto outputPipeline = parent.get().parent.lock();
+    auto inputPipeline = in.getParent().parent.lock();
+    if(outputPipeline != nullptr && inputPipeline != nullptr && outputPipeline != inputPipeline) {
+        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}' - nodes are part of different pipelines",
+                                             getParent().getName(),
+                                             toString(),
+                                             in.getParent().getName(),
+                                             in.toString()));
+    }
+
     // First check if can connect
     if(!canConnect(in)) {
         throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
@@ -812,6 +823,37 @@ std::shared_ptr<dai::node::internal::XLinkInBridge> Node::Input::getXLinkBridge(
 
 std::shared_ptr<dai::node::internal::XLinkOutBridge> Node::Output::getXLinkBridge() const {
     return xLinkBridge;
+}
+
+std::shared_ptr<Device> Node::Input::getSourceDevice() const {
+    auto pipeline = parent.get().parent.lock();
+    if(pipeline == nullptr) {
+        return nullptr;
+    }
+    // Resolution is keyed by the address of the node's own Input object. getInputs() hands
+    // out copies, so map a copy back to the node's canonical input by group and name.
+    const Node::Input* canonical = this;
+    for(const Node::Input* input : static_cast<const Node&>(parent.get()).getInputRefs()) {
+        if(input == this) {
+            canonical = this;
+            break;
+        }
+        if(input->group == group && input->getName() == getName()) {
+            canonical = input;
+        }
+    }
+    return pipeline->getInputSourceDevice(canonical);
+}
+
+std::map<std::string, std::shared_ptr<Device>> Node::InputMap::getSourceDevices() const {
+    std::map<std::string, std::shared_ptr<Device>> sourceDevices;
+    for(const auto& entry : *this) {
+        // Inputs created with a group are keyed "<group>/<name>" so they cannot collapse
+        // onto a same-named input of another group
+        const auto key = entry.first.first == name ? entry.first.second : entry.first.first + "/" + entry.first.second;
+        sourceDevices[key] = entry.second.getSourceDevice();
+    }
+    return sourceDevices;
 }
 
 }  // namespace dai

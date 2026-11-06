@@ -35,7 +35,11 @@ void SegmentationParser::buildInternal() {
         auto platform = device->getPlatform();
         if(platform == Platform::RVC2) {
             setRunOnHost(true);
-            std::cout << "SegmentationParser: For RVC2 platform, running on host." << std::endl;
+            auto& logger = ThreadedNode::pimpl->logger;
+            if(logger)
+                logger->info("For RVC2 platform, running on host.");
+            else
+                std::cout << "SegmentationParser: For RVC2 platform, running on host." << std::endl;
         }
     }
 }
@@ -212,10 +216,8 @@ void SegmentationParser::validateTensor(std::optional<TensorInfo>& info) {
 
 void SegmentationParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    using std::chrono::duration_cast;
-    using std::chrono::microseconds;
     using std::chrono::steady_clock;
-    logger->debug("Start SegmentationParser");
+    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
 
     const bool inputConfigSync = inputConfig.getWaitForMessage();
     const bool classesInSingleLayer = properties.classesInOneLayer;
@@ -283,11 +285,7 @@ void SegmentationParser::run() {
         }
 
         auto tAbsoluteEnd = steady_clock::now();
-        logger->trace("Seg parser {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
-                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+        this->logTiming(logger, tAbsoluteBeginning, tAfterMessageBeginning, tBeforeSend, tAbsoluteEnd);
     }
 }
 
