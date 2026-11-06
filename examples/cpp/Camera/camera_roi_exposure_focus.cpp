@@ -16,7 +16,7 @@ void signalHandler(int) {
 // Global variables for ROI selection
 std::vector<cv::Point> startPoints;
 cv::Rect roiRect;
-std::pair<float, float> scaleFactors;
+dai::ImgTransformation transformation;  // Of the shown frame
 
 // Mouse callback function for ROI selection
 void selectRoi(int event, int x, int y, int flags, void* userdata) {
@@ -32,23 +32,17 @@ void selectRoi(int event, int x, int y, int flags, void* userdata) {
     } else if(event == cv::EVENT_LBUTTONUP && !startPoints.empty()) {
         cv::Point start = startPoints[0];
         roiRect = cv::Rect(std::min(start.x, x), std::min(start.y, y), std::abs(x - start.x), std::abs(y - start.y));
-
-        // Scale ROI to original resolution
-        cv::Rect roiRectScaled(static_cast<int>(roiRect.x * scaleFactors.first),
-                               static_cast<int>(roiRect.y * scaleFactors.second),
-                               static_cast<int>(roiRect.width * scaleFactors.first),
-                               static_cast<int>(roiRect.height * scaleFactors.second));
-
-        std::cout << "ROI selected: " << roiRect << std::endl;
-        std::cout << "Scaled ROI selected: " << roiRectScaled << ". Setting exposure and focus to this region." << std::endl;
-
-        // Create and send control message
-        auto ctrl = std::make_shared<dai::CameraControl>();
-        ctrl->setAutoExposureRegion(roiRectScaled.x, roiRectScaled.y, roiRectScaled.width, roiRectScaled.height);
-        ctrl->setAutoFocusRegion(roiRectScaled.x, roiRectScaled.y, roiRectScaled.width, roiRectScaled.height);
-        (*camQIn)->send(ctrl);
-
         startPoints.clear();
+        if(roiRect.empty()) return;
+
+        std::cout << "ROI selected: " << roiRect << ". Setting exposure and focus to this region." << std::endl;
+
+        // The ROI is in pixels of the shown frame; the frame's transformation maps it to the camera's sensor
+        const dai::Rect roi(roiRect.x, roiRect.y, roiRect.width, roiRect.height, false);
+        auto ctrl = std::make_shared<dai::CameraControl>();
+        ctrl->setAutoExposureRegion(roi, transformation);
+        ctrl->setAutoFocusRegion(roi, transformation);
+        (*camQIn)->send(ctrl);
     }
 }
 
@@ -78,14 +72,7 @@ int main() {
         auto imgHd = streamQ->get<dai::ImgFrame>();
         if(imgHd == nullptr) continue;
 
-        // Calculate scale factors if not set
-        if(scaleFactors.first == 0.0f) {
-            auto sourceSize = imgHd->transformation.getSourceSize();
-            auto targetSize = imgHd->transformation.getSize();
-            scaleFactors = std::make_pair(static_cast<float>(sourceSize.first) / targetSize.first, static_cast<float>(sourceSize.second) / targetSize.second);
-            std::cout << "Source size: " << sourceSize.first << "x" << sourceSize.second << std::endl;
-            std::cout << "Target size: " << targetSize.first << "x" << targetSize.second << std::endl;
-        }
+        transformation = imgHd->transformation;
 
         cv::Mat frame = imgHd->getCvFrame();
 

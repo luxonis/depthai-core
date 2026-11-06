@@ -603,6 +603,10 @@ dai_set_test_labels(imgdetections_test onhost ci)
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
 dai_set_test_labels(imgframe_test onhost ci)
 
+#CameraControl tests
+dai_add_test(camera_control_test src/onhost_tests/pipeline/datatype/camera_control_test.cpp)
+dai_set_test_labels(camera_control_test onhost ci)
+
 # PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
 dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
 dai_set_test_labels(pointclouddata_test onhost ci)

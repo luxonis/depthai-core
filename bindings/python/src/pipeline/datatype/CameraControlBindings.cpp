@@ -245,23 +245,33 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
              py::arg("macroPosition"),
              DOC(dai, CameraControl, setAutoFocusLensRange))
         .def("setAutoFocusRegion",
-             &CameraControl::setAutoFocusRegion,
+             py::overload_cast<uint16_t, uint16_t, uint16_t, uint16_t>(&CameraControl::setAutoFocusRegion),
              py::arg("startX"),
              py::arg("startY"),
              py::arg("width"),
              py::arg("height"),
              DOC(dai, CameraControl, setAutoFocusRegion))
+        .def("setAutoFocusRegion",
+             py::overload_cast<const Rect&, const ImgTransformation&>(&CameraControl::setAutoFocusRegion),
+             py::arg("rect"),
+             py::arg("transformation"),
+             DOC(dai, CameraControl, setAutoFocusRegion, 2))
         .def("setManualFocus", &CameraControl::setManualFocus, py::arg("lensPosition"), DOC(dai, CameraControl, setManualFocus))
         .def("setManualFocusRaw", &CameraControl::setManualFocusRaw, py::arg("lensPositionRaw"), DOC(dai, CameraControl, setManualFocusRaw))
         .def("setAutoExposureEnable", &CameraControl::setAutoExposureEnable, DOC(dai, CameraControl, setAutoExposureEnable))
         .def("setAutoExposureLock", &CameraControl::setAutoExposureLock, py::arg("lock"), DOC(dai, CameraControl, setAutoExposureLock))
         .def("setAutoExposureRegion",
-             &CameraControl::setAutoExposureRegion,
+             py::overload_cast<uint16_t, uint16_t, uint16_t, uint16_t>(&CameraControl::setAutoExposureRegion),
              py::arg("startX"),
              py::arg("startY"),
              py::arg("width"),
              py::arg("height"),
              DOC(dai, CameraControl, setAutoExposureRegion))
+        .def("setAutoExposureRegion",
+             py::overload_cast<const Rect&, const ImgTransformation&>(&CameraControl::setAutoExposureRegion),
+             py::arg("rect"),
+             py::arg("transformation"),
+             DOC(dai, CameraControl, setAutoExposureRegion, 2))
         .def("setAutoExposureCompensation",
              &CameraControl::setAutoExposureCompensation,
              py::arg("compensation"),
