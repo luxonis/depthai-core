@@ -1,6 +1,7 @@
+#include "depthai/pipeline/datatype/ToFConfig.hpp"
+
 #include <catch2/catch_all.hpp>
 
-#include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/properties/ToFProperties.hpp"
 #include "depthai/utility/Serialization.hpp"
 

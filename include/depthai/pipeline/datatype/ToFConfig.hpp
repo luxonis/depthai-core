@@ -46,16 +46,6 @@ class ToFConfig : public Buffer {
      */
     bool enableBurstMode = false;
 
-    /**
-     * Publish intermediate depth updates on RVC2 S5K63D when phase unwrapping
-     * is enabled. These updates combine the new frequency pair with
-     * opposite-frequency history from the previous four-frame stack.
-     * Disabled by default: only the depth result using both frequency pairs
-     * from the current stack is published. Burst mode suppresses intermediate
-     * updates regardless of this setting. Other sensors are unaffected.
-     */
-    bool enableIntermediateDepth = false;
-
     /*
      * Enable distortion correction for intensity, amplitude and depth output, if calibration is present.
      */
@@ -81,6 +71,16 @@ class ToFConfig : public Buffer {
      * Enable phase unwrapping. Used for debugging.
      */
     std::optional<bool> enablePhaseUnwrapping;
+
+    /**
+     * Publish intermediate depth updates on RVC2 S5K63D when phase unwrapping
+     * is enabled. These updates combine the new frequency pair with
+     * opposite-frequency history from the previous four-frame stack.
+     * Disabled by default: only the depth result using both frequency pairs
+     * from the current stack is published. Burst mode suppresses intermediate
+     * updates regardless of this setting. Other sensors are unaffected.
+     */
+    bool enableIntermediateDepth = false;
 
     /**
      * Construct ToFConfig message.
