@@ -28,7 +28,9 @@ std::shared_ptr<Thermal> Thermal::build(CameraBoardSocket boardSocket, float fps
     // First handle the case if the boardSocket is set to AUTO
     bool found = false;
     if(boardSocket == CameraBoardSocket::AUTO) {
-        auto defaultSockets = {CameraBoardSocket::CAM_E};
+        // CAM_E first (OAK-T), then any socket with a thermal sensor
+        std::vector<CameraBoardSocket> defaultSockets = {CameraBoardSocket::CAM_E};
+        for(const auto& cf : cameraFeatures) defaultSockets.push_back(cf.socket);
         for(auto socket : defaultSockets) {
             for(const auto& cf : cameraFeatures) {
                 if(cf.socket == socket) {

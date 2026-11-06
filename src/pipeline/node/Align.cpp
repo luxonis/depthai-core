@@ -172,7 +172,7 @@ float alignFrameTypeBytesPerPixel(ImgFrame::Type type) {
     if(type == ImgFrame::Type::GRAY8 || type == ImgFrame::Type::RAW8) {
         return 1.0f;
     }
-    if(type == ImgFrame::Type::RAW16) {
+    if(type == ImgFrame::Type::RAW16 || type == ImgFrame::Type::GRAYF16) {
         return 2.0f;
     }
     if(type == ImgFrame::Type::RGB888i || type == ImgFrame::Type::BGR888i || type == ImgFrame::Type::RGB888p || type == ImgFrame::Type::BGR888p) {
@@ -347,6 +347,15 @@ void remapYuv420(const cv::Mat& inputYuv420, cv::Mat& outputYuv420, const cv::Ma
     cv::cvtColor(remappedBgr, outputYuv420, cv::COLOR_BGR2YUV_I420);
 }
 
+// OpenCV has no remap for CV_16F: the values are remapped as 16-bit words, with nearest neighbour so they stay exact.
+// Pixels from outside the input are NaN, as in ImageAlign on RVC2.
+void remapGrayF16(const cv::Mat& input, cv::Mat& output, const cv::Mat& mapX, const cv::Mat& mapY) {
+    constexpr uint16_t kNan = 0xFFFF;
+    cv::Mat input16(input.rows, input.cols, CV_16UC1, input.data, input.step[0]);
+    cv::Mat output16(output.rows, output.cols, CV_16UC1, output.data, output.step[0]);
+    cv::remap(input16, output16, mapX, mapY, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(kNan));
+}
+
 std::shared_ptr<ImgFrame> makeRemapTarget(const ImgFrame& source, int width, int height, uint32_t dataSize) {
     auto frame = std::make_shared<ImgFrame>();
     frame->setData(std::vector<uint8_t>(dataSize));
@@ -433,6 +442,8 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
             cv::Mat remapped;
             cv::remap(src.getCvFrame(), remapped, mapX, mapY, interp, cv::BORDER_CONSTANT, bgColor);
             dst.setCvFrame(remapped, dst.getType());
+        } else if(dst.getType() == ImgFrame::Type::GRAYF16) {
+            remapGrayF16(srcFrame, dstFrame, mapX, mapY);
         } else {
             cv::remap(srcFrame, dstFrame, mapX, mapY, interp, cv::BORDER_CONSTANT, bgColor);
         }
