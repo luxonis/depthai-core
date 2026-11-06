@@ -170,8 +170,8 @@ build time, without creating any node: `pipeline.setAutoCalibrationWorldConstrai
 `pipeline.setAutoCalibrationMode(dai.Pipeline.AutoCalibrationMode.CONTINUOUS)` or the `DEPTHAI_AUTOCALIBRATION` variable.
 
 A socket that is not an image input (`CAM_A` above with a `CAM_B`/`CAM_C` pair) is used through its current
-calibration. A marker counts when it is visible in at least two of the calibrated cameras in the same frame set;
-a marker with a known size is measured in every camera that sees it.
+calibration. A marker counts when it is visible in at least two of the calibrated cameras in the same frame set and is at
+least 30 px across in each image; a marker with a known size is measured in every camera that sees it.
 
 ---
 

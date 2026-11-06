@@ -51,8 +51,15 @@ struct DclUtils {
     /// The marker detector request for a constraint set. Throws std::invalid_argument for a marker type the library cannot detect.
     static dcl::MarkerSpec toDclMarkerSpec(const WorldConstraints& constraints);
 
-    /// The configured markers found in one image, keyed by marker id. Markers outside the configuration and ids that
-    /// appear more than once in the image are dropped. Fails when the detector rejects the image.
+    /// Smallest marker the calibration uses, in pixels of the input image: the shortest side of an ArUco marker or
+    /// the smallest diameter of a Luxonis Marker ring. Smaller markers give too coarse a center and size.
+    static constexpr double kMinMarkerSizePx = 30.0;
+    /// Size of a detection as compared with kMinMarkerSizePx; 0 when the detection has no shape.
+    static double markerSizePx(MarkerType type, const dcl::MarkerDetection& detection);
+
+    /// The configured markers found in one image, keyed by marker id. Markers outside the configuration, smaller than
+    /// kMinMarkerSizePx and ids that appear more than once in the image are dropped. Fails when the detector rejects
+    /// the image.
     static dcl::Result<std::map<int32_t, dcl::MarkerDetection>> detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints);
 
     /// The shape of a detection, as kept in a MarkerObservationSet.

@@ -447,9 +447,34 @@ dcl::MarkerSpec DclUtils::toDclMarkerSpec(const WorldConstraints& constraints) {
             return spec;
         case MarkerType::LUXONIS:
             spec.type = dcl::MarkerType::LUXONIS;
+            spec.luxonisMinRadiusPx = kMinMarkerSizePx / 2.0;
             return spec;
     }
     throw std::invalid_argument("DynamicCalibration: marker type " + toString(constraints.markerType) + " has no detector");
+}
+
+double DclUtils::markerSizePx(MarkerType type, const dcl::MarkerDetection& detection) {
+    const auto distance = [](const dcl::Point2& a, const dcl::Point2& b) { return std::hypot(a[0] - b[0], a[1] - b[1]); };
+    double size = std::numeric_limits<double>::infinity();
+    switch(type) {
+        case MarkerType::ARUCO:
+            if(detection.corners.size() != 4) {
+                return 0.0;
+            }
+            for(size_t idx = 0; idx < 4; ++idx) {
+                size = std::min(size, distance(detection.corners[idx], detection.corners[(idx + 1) % 4]));
+            }
+            return size;
+        case MarkerType::LUXONIS:
+            if(detection.outerEdge.empty()) {
+                return 0.0;
+            }
+            for(const auto& point : detection.outerEdge) {
+                size = std::min(size, 2.0 * distance(point, detection.center));
+            }
+            return size;
+    }
+    return 0.0;
 }
 
 dcl::Result<std::map<int32_t, dcl::MarkerDetection>> DclUtils::detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints) {
@@ -462,7 +487,8 @@ dcl::Result<std::map<int32_t, dcl::MarkerDetection>> DclUtils::detectConfiguredM
     const auto wanted = constraints.referencedMarkerIds();
     std::set<int32_t> ambiguous;
     for(const auto& detection : detections.value) {
-        if(!std::binary_search(wanted.begin(), wanted.end(), detection.id) || ambiguous.count(detection.id) != 0) {
+        if(!std::binary_search(wanted.begin(), wanted.end(), detection.id) || ambiguous.count(detection.id) != 0
+           || markerSizePx(constraints.markerType, detection) < kMinMarkerSizePx) {
             continue;
         }
         // A marker id that appears more than once in one image is ambiguous: drop it.
