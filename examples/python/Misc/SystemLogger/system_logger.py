@@ -21,6 +21,17 @@ def printSystemInformationRVC4(info: dai.SystemInformationRVC4):
 
     t = info.chipTemperature
     print(f"Chip temperature - average: {t.average:.2f}, cpuss: {t.cpuss:.2f}, gpuss: {t.gpuss:.2f}, mdmss: {t.mdmss:.2f}, video: {t.video:.2f}, ddr: {t.ddr:.2f}, camera: {t.camera:.2f}")
+    def format_metric(value: float, unit: str) -> str:
+        return "unavailable" if value < 0 else f"{value:.2f}{unit}"
+
+    print(f"GPU utilization: {format_metric(info.gpuUtilizationPercent, '%')}")
+    print(f"DSP - HVX: {format_metric(info.dspHvxActivityPercent, '%')}, "
+          f"HMX: {format_metric(info.dspHmxActivityPercent, '%')}, "
+          f"Q6: {format_metric(info.dspQ6LoadKcps, ' KCPS')}")
+    print(f"Power rails - System: {format_metric(info.powerSystemWatts, ' W')}, "
+          f"Processor: {format_metric(info.powerProcessorWatts, ' W')}, "
+          f"PoE: {format_metric(info.powerPoeWatts, ' W')}, "
+          f"ToF: {format_metric(info.powerTofWatts, ' W')}")
     print("----------------------------------------")
 
 # Create pipeline
