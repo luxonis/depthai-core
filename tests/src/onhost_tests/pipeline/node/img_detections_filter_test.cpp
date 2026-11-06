@@ -2,12 +2,23 @@
 #include <limits>
 #include <numeric>
 #include <optional>
+#include <type_traits>
 
+#include "depthai/beta/datatype/ImgDetectionsFilterConfig.hpp"
+#include "depthai/beta/node/ImgDetectionsFilter.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 #include "img_detections_filter_test_cases.hpp"
 #include "pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.hpp"
 
 using namespace filtertest;
+
+// The v3.10 beta names are deprecated aliases of the v3.12 types (only the names, the interface changed)
+DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+static_assert(std::is_same_v<dai::beta::node::ImgDetectionsFilter, dai::node::ImgDetectionsFilter>);
+static_assert(std::is_same_v<dai::beta::ImgDetectionsFilterConfig, dai::ImgDetectionsFilterConfig>);
+static_assert(std::is_same_v<dai::beta::ImgDetectionsFilterProperties, dai::ImgDetectionsFilterProperties>);
+DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
 namespace {
 // Drive one complete round and check every detection against a literal oracle.

@@ -59,6 +59,32 @@ py::handle daiNodeModule;
 py::handle daiNodeInternalModule;
 py::handle daiBetaNodeModule;
 
+#ifdef DEPTHAI_HAVE_BETA
+// A name that moved out of a beta module in v3.12. The name stays the same, only the module changes.
+struct MovedBetaName {
+    const char* name;
+    py::handle newModule;
+    const char* newModulePath;
+};
+
+// Resolves the old beta names with a module-level __getattr__ (PEP 562). Python calls it only when the
+// normal lookup fails, so it does not touch the names that the module has. Each use of an old name gives
+// a DeprecationWarning with the new location.
+static void addMovedBetaNames(py::handle oldModule, std::string oldModulePath, std::vector<MovedBetaName> movedNames) {
+    oldModule.attr("__getattr__") = py::cpp_function(
+        [oldModulePath = std::move(oldModulePath), movedNames = std::move(movedNames)](const std::string& name) -> py::object {
+            for(const auto& moved : movedNames) {
+                if(name != moved.name) continue;
+                const std::string message = oldModulePath + "." + name + " is deprecated, use " + moved.newModulePath + "." + name + " instead";
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, message.c_str(), 1) < 0) throw py::error_already_set();
+                return py::getattr(moved.newModule, moved.name);
+            }
+            throw py::attribute_error("module '" + oldModulePath + "' has no attribute '" + name + "'");
+        },
+        py::arg("name"));
+}
+#endif
+
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const std::shared_ptr<dai::Device>& device)>>>
 NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
@@ -327,6 +353,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
 #ifdef DEPTHAI_HAVE_BETA
     daiBetaNodeModule = m.def_submodule("beta", "Experimental APIs").def_submodule("node", "Experimental nodes");
+    // v3.10 names of the classes that left beta in v3.12
+    addMovedBetaNames(
+        daiBetaNodeModule, "depthai.beta.node", {{"Stitching", daiNodeModule, "depthai.node"}, {"ImgDetectionsFilter", daiNodeModule, "depthai.node"}});
+    addMovedBetaNames(m.def_submodule("beta"),
+                      "depthai.beta",
+                      {{"StitchingProperties", m, "depthai"}, {"ImgDetectionsFilterProperties", m, "depthai"}, {"ImgDetectionsFilterConfig", m, "depthai"}});
 #endif
 
     // XLink bridge structures

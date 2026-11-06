@@ -182,7 +182,7 @@ nlohmann::json makeTelemetryNodePropertiesJson(const nlohmann::json& properties)
     return nlohmann::json::object();
 }
 
-void emitTelemetryNodeCreatedEvents(const Pipeline& pipeline, const nlohmann::json& telemetrySchema) {
+void emitTelemetryNodeCreatedEvents(const PipelineImpl& pipeline, const nlohmann::json& telemetrySchema) {
     for(const auto& node : telemetrySchema.at("nodes")) {
         const auto& nodeInfo = node.at(1);
         dai::utility::Telemetry::getInstance().event(pipeline,
@@ -1804,13 +1804,15 @@ void PipelineImpl::start() {
             pipelineDevices.push_back(device);
         }
     }
-    // Add pointer to the pipeline to every device before device-side startup, so that
-    // device-side telemetry can resolve the pipeline and a disconnect during another
-    // device's (slow) startup still finds the pipeline for reconnection.
+    // Add pointer to the pipeline to every device before device-side startup, so that a
+    // disconnect during another device's (slow) startup still finds the pipeline for
+    // reconnection. Device-side telemetry gets a copy of the pipeline telemetry ID: it runs on
+    // device threads, which must not own the pipeline.
     {
         const auto weak = std::weak_ptr<PipelineImpl>(shared_from_this());
         for(const auto& device : pipelineDevices) {
             device->pipelinePtr = weak;
+            device->setActiveTelemetryPipelineId(telemetryPipelineId);
         }
     }
 
@@ -1938,10 +1940,9 @@ void PipelineImpl::start() {
 
     telemetryPipelineStartedAt = std::chrono::steady_clock::now();
 
-    const auto pipeline = Pipeline(shared_from_this());
     const auto telemetrySchema = makeTelemetrySchemaJson(getPipelineSchema(SerializationType::JSON, false));
-    emitTelemetryNodeCreatedEvents(pipeline, telemetrySchema);
-    dai::utility::Telemetry::getInstance().event(pipeline,
+    emitTelemetryNodeCreatedEvents(*this, telemetrySchema);
+    dai::utility::Telemetry::getInstance().event(*this,
                                                  "depthai_pipeline_start",
                                                  nlohmann::json{
                                                      {"host_only", isHostOnly()},
