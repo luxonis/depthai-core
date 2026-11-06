@@ -408,9 +408,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("corners", &MarkerOutline::corners, DOC(dai, MarkerOutline, corners))
         .def_readwrite("outerEdge", &MarkerOutline::outerEdge, DOC(dai, MarkerOutline, outerEdge))
         .def_readwrite("innerEdge", &MarkerOutline::innerEdge);
-    markerObservationSet.def(py::init<>())
-        .def_readwrite("centers", &MarkerObservationSet::centers)
-        .def_readwrite("outlines", &MarkerObservationSet::outlines);
+    markerObservationSet.def(py::init<>()).def_readwrite("centers", &MarkerObservationSet::centers).def_readwrite("outlines", &MarkerObservationSet::outlines);
 
     stereoPair.def(py::init<>())
         .def_readwrite("left", &StereoPair::left)
