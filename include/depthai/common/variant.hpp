@@ -34,6 +34,15 @@ struct VariantSwitch<0> {
 }  // namespace dai
 
 namespace nlohmann {
+// std::monostate carries no data: null in JSON.
+template <>
+struct adl_serializer<std::monostate> {
+    static void to_json(json& j, const std::monostate&) {  // NOLINT this is a specialization, naming conventions don't apply
+        j = nullptr;
+    }
+    static void from_json(const json&, std::monostate&) {}  // NOLINT this is a specialization, naming conventions don't apply
+};
+
 template <typename... Args>
 struct adl_serializer<std::variant<Args...>> {
     static void to_json(json& j, std::variant<Args...> const& v) {  // NOLINT this is a specialization, naming conventi  ons don't apply
@@ -96,6 +105,34 @@ struct VariantReadNop<0> {
 
 // std::variant serialization for libnop
 namespace nop {
+
+// std::monostate encoding format (same as libnop's EmptyVariant):
+//
+// +-------+
+// | EMPTY |
+// +-------+
+//
+template <>
+struct Encoding<std::monostate> : EncodingIO<std::monostate> {
+    static constexpr EncodingByte Prefix(const std::monostate& /*value*/) {
+        return EncodingByte::Empty;
+    }
+    static constexpr std::size_t Size(const std::monostate& value) {
+        return BaseEncodingSize(Prefix(value));
+    }
+    static constexpr bool Match(EncodingByte prefix) {
+        return prefix == EncodingByte::Empty;
+    }
+    template <typename Writer>
+    static constexpr Status<void> WritePayload(EncodingByte /*prefix*/, const std::monostate& /*value*/, Writer* /*writer*/) {
+        return {};
+    }
+    template <typename Reader>
+    static constexpr Status<void> ReadPayload(EncodingByte /*prefix*/, std::monostate* /*value*/, Reader* /*reader*/) {
+        return {};
+    }
+};
+
 //
 // std::variant<Ts...> encoding format:
 //

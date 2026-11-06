@@ -298,9 +298,11 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         endif()
     else()
         # On non-Windows platforms, search for the release version of the library
+        # NO_CMAKE_FIND_ROOT_PATH: the extracted package lives in the build tree, not in a cross-compile sysroot
         find_library(DYNAMIC_CALIBRATION_RELEASE dynamic_calibration
             PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
             NO_DEFAULT_PATH
+            NO_CMAKE_FIND_ROOT_PATH
         )
         if(NOT DYNAMIC_CALIBRATION_RELEASE)
             message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")

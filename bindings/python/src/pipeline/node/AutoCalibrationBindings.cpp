@@ -32,6 +32,9 @@ void bind_auto_calibration(pybind11::module& m, void* pCallstack) {
     dynamicCalibrationWorker.def("build", &AutoCalibration::build, py::arg("cameraLeft"), py::arg("cameraRight"), DOC(dai, node, AutoCalibration, build))
         .def("setRunOnHost", &AutoCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, AutoCalibration, setRunOnHost))
         .def_readonly("output", &AutoCalibration::output, DOC(dai, node, AutoCalibration, output))
+        .def("runOnHost", &AutoCalibration::runOnHost, DOC(dai, node, AutoCalibration, runOnHost))
+        .def("setThreadPolicy", &AutoCalibration::setThreadPolicy, py::arg("policy"), DOC(dai, node, AutoCalibration, setThreadPolicy))
+        .def("getThreadPolicy", &AutoCalibration::getThreadPolicy, DOC(dai, node, AutoCalibration, getThreadPolicy))
         .def_property(
             "initialConfig",
             [](AutoCalibration& self) -> std::shared_ptr<AutoCalibrationConfig> {
