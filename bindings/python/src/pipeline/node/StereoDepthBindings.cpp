@@ -14,6 +14,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     py::class_<StereoDepthProperties> stereoDepthProperties(m, "StereoDepthProperties", DOC(dai, StereoDepthProperties));
     py::class_<StereoDepthProperties::RectificationMesh> rectificationMesh(
         stereoDepthProperties, "RectificationMesh", DOC(dai, StereoDepthProperties, RectificationMesh));
+    py::enum_<StereoDepth::Backend> backend(stereoDepth, "Backend", DOC(dai, StereoDepthProperties, Backend));
     py::enum_<StereoDepth::PresetMode> stereoDepthPresetMode(stereoDepth, "PresetMode", DOC(dai, node, StereoDepth, PresetMode));
 
     ///////////////////////////////////////////////////////////////////////
@@ -28,6 +29,12 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
+
+    backend.value("AUTO", StereoDepth::Backend::AUTO)
+        .value("HW", StereoDepth::Backend::HW)
+        .value("GPU", StereoDepth::Backend::GPU)
+        .value("GPU_CPU", StereoDepth::Backend::GPU_CPU);
+    stereoDepthProperties.attr("Backend") = backend;
 
     // Properties
     rectificationMesh
@@ -74,7 +81,8 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def_readwrite("depthAlignmentUseSpecTranslation",
                        &StereoDepthProperties::depthAlignmentUseSpecTranslation,
                        DOC(dai, StereoDepthProperties, depthAlignmentUseSpecTranslation))
-        .def_readwrite("alphaScaling", &StereoDepthProperties::alphaScaling, DOC(dai, StereoDepthProperties, alphaScaling));
+        .def_readwrite("alphaScaling", &StereoDepthProperties::alphaScaling, DOC(dai, StereoDepthProperties, alphaScaling))
+        .def_readwrite("backend", &StereoDepthProperties::backend, DOC(dai, StereoDepthProperties, backend));
 
     stereoDepthPresetMode.value("FAST_ACCURACY", StereoDepth::PresetMode::FAST_ACCURACY)
         .value("FAST_DENSITY", StereoDepth::PresetMode::FAST_DENSITY)
@@ -87,6 +95,8 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
 
     // Node
     stereoDepth
+        .def("setBackend", &StereoDepth::setBackend, py::arg("backend"), py::return_value_policy::reference_internal, DOC(dai, node, StereoDepth, setBackend))
+        .def("getBackend", &StereoDepth::getBackend, DOC(dai, node, StereoDepth, getBackend))
         .def(py::init([](Node::Output& left, Node::Output& right, StereoDepth::PresetMode presetMode) {
                  auto self = getImplicitPipeline()->create<StereoDepth>();
                  self->build(left, right, presetMode);

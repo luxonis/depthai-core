@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <stdexcept>
 
+#include "utility/Logging.hpp"
+
 namespace dai {
 namespace node {
 
@@ -29,6 +31,7 @@ GPUStereo& GPUStereo::setRectification(bool enable) {
 }
 
 void GPUStereo::buildInternal() {
+    logger::warn("GPUStereo is deprecated. Use StereoDepth.setBackend(StereoDepth.Backend.GPU) or StereoDepth.setBackend(StereoDepth.Backend.GPU_CPU).");
     if(device) {
         auto platform = device->getPlatform();
         if(platform != Platform::RVC4) {

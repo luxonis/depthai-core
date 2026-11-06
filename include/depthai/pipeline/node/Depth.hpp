@@ -13,7 +13,6 @@
 #include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
-#include "depthai/pipeline/node/GPUStereo.hpp"
 #include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
 #include "depthai/pipeline/node/NeuralDepth.hpp"
@@ -27,7 +26,7 @@ class Pipeline;
 namespace node {
 
 /**
- * @brief Depth node. Unified depth output from StereoDepth, NeuralDepth, NeuralAssistedStereo, ToF, or GPUStereo.
+ * @brief Depth node. Unified depth output from StereoDepth, NeuralDepth, NeuralAssistedStereo, ToF, or GPU stereo.
  *
  * With Algorithm::AUTO, the backend is chosen from device capabilities, target FPS, and stereo resolution.
  * On RVC4 this prefers NeuralDepth when available; on other platforms it uses ToF when a ToF sensor is
@@ -252,7 +251,7 @@ class Depth : public DeviceNodeGroup {
 
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;
-    std::unique_ptr<::dai::Subnode<GPUStereo>> gpuStereoBackend_;
+    std::unique_ptr<::dai::Subnode<StereoDepth>> gpuStereoBackend_;
     std::shared_ptr<NeuralAssistedStereo> nasBackend_;
     std::shared_ptr<ToF> tofBackend_;
     std::shared_ptr<beta::node::ToFStereoFusion> tofStereoFusionBackend_;

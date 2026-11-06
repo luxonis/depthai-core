@@ -16,14 +16,15 @@ with dai.Pipeline(device) as pipeline:
     camLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     camRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
-    gpu = pipeline.create(dai.node.GPUStereo)
+    gpu = pipeline.create(dai.node.StereoDepth)
     # Supported input sizes: 1280x800 and 640x400 (rectified inside the node).
     gpu.build(camLeft.requestOutput((1280, 800), dai.ImgFrame.Type.GRAY8, fps=30),
               camRight.requestOutput((1280, 800), dai.ImgFrame.Type.GRAY8, fps=30))
     # Confidence 0..255, higher = more confident; pixels below the threshold are invalidated (0 = off).
     gpu.initialConfig.setConfidenceThreshold(10)
-    # GPU_CPU (default) balances GPU and CPU; GPU_ONLY keeps the CPU almost free (GPU fully busy).
-    gpu.initialConfig.setComputeMode(dai.GPUStereoConfig.ComputeMode.GPU_CPU)
+    # AUTO defaults to GPU_CPU on supported devices; GPU keeps matching entirely on the GPU.
+    gpu.setBackend(dai.node.StereoDepth.Backend.GPU_CPU)
+    gpu.initialConfig.postProcessing.temporalFilter.enable = True
 
     depthQ = gpu.depth.createOutputQueue()
 

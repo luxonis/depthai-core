@@ -17,6 +17,29 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
    public:
     constexpr static const char* NAME = "StereoDepth";
     StereoDepth() = default;
+    using Backend = Properties::Backend;
+
+    /**
+     * Select stereo matching placement. AUTO (default) selects GPU_CPU when the device reports
+     * GPU stereo support, otherwise HW. HW forces the existing platform implementation.
+     * GPU runs classical stereo entirely on the RVC4 GPU; GPU_CPU runs horizontal SGM paths
+     * on one CPU core and the remaining matching on the GPU.
+     *
+     * GPU backends accept 1280x800 or 640x400 GRAY8/RAW8, NV12 or YUV420p pairs (luma only),
+     * and rectify on EVA when enabled.
+     * Disparity is always RAW16 with four fractional bits (1/16 pixel), in the rectified left
+     * perspective. Confidence is RAW8, higher is better; initialConfig's confidence threshold
+     * and temporalFilter.enable configure the algorithm. Temporal filtering is applied at startup.
+     * Depth units, baseline/focal-length overrides, synced and rectified outputs are supported.
+     * Other matching and postprocessing parameters/presets do not configure the GPU algorithm.
+     * Alignment, output resizing, custom meshes, outConfig and debug outputs are unsupported.
+     * GPU inputConfig updates only the confidence threshold.
+     * Backend selection is applied at startup and requires matching RVC4 firmware.
+     */
+    StereoDepth& setBackend(Backend backend);
+
+    /** Get the configured backend preference. AUTO is resolved on the device at startup. */
+    Backend getBackend() const;
 
     /**
      * Preset modes for stereo depth.
@@ -107,7 +130,9 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
-     * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
+     * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data.
+     * GPU/GPU_CPU backends always output RAW16 with four fractional bits (1/16 pixel).
+     * For the HW backend:
      * RAW8 encoded (0..95) for standard mode;
      * RAW8 encoded (0..190) for extended disparity mode;
      * RAW16 encoded for subpixel disparity mode:

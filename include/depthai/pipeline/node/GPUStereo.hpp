@@ -13,13 +13,15 @@ namespace node {
 
 /**
  * @brief GPU-accelerated stereo depth node for RVC4.
+ * @deprecated Use StereoDepth with setBackend(StereoDepth::Backend::GPU) or setBackend(StereoDepth::Backend::GPU_CPU).
  *
  * Computes disparity, depth and a confidence map from a synchronized stereo camera pair with a classical
  * stereo method on the Adreno GPU (OpenCL) and the CPU, see GPUStereoConfig::ComputeMode. Rectification is
  * part of the node (EVA warp engine, controlled via @ref setRectification). Supported input sizes: 1280x800
  * and 640x400, GRAY8 / RAW8.
  */
-class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperties> {
+class [[deprecated("Use StereoDepth with setBackend(StereoDepth::Backend::GPU) or setBackend(StereoDepth::Backend::GPU_CPU)")]] GPUStereo
+    : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperties> {
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;
     Properties& getProperties() override;

@@ -43,7 +43,27 @@ StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = *initialConfig;
+    if(device && (properties.backend == Backend::GPU || properties.backend == Backend::GPU_CPU) && !device->isGpuStereoSupported()) {
+        throw std::runtime_error("StereoDepth GPU backends require a device with GPU stereo support");
+    }
     return properties;
+}
+
+StereoDepth& StereoDepth::setBackend(Backend backend) {
+    switch(backend) {
+        case Backend::AUTO:
+        case Backend::HW:
+        case Backend::GPU:
+        case Backend::GPU_CPU:
+            properties.backend = backend;
+            return *this;
+        default:
+            throw std::invalid_argument("StereoDepth supports AUTO, HW, GPU and GPU_CPU backends");
+    }
+}
+
+StereoDepth::Backend StereoDepth::getBackend() const {
+    return properties.backend;
 }
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {

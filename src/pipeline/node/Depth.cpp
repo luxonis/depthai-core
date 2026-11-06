@@ -895,9 +895,13 @@ void Depth::buildInternal() {
             break;
         }
         case Algorithm::GPU_STEREO: {
-            gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
+            gpuStereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "gpuStereo");
             const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
-            (*gpuStereoBackend_)->setRectification(true).build(*stereo.left, *stereo.right);
+            (*gpuStereoBackend_)->build(*stereo.left, *stereo.right);
+            (*gpuStereoBackend_)->setBackend(StereoDepth::Backend::GPU_CPU);
+            (*gpuStereoBackend_)->setRectification(true);
+            (*gpuStereoBackend_)->initialConfig->setConfidenceThreshold(10);
+            (*gpuStereoBackend_)->initialConfig->postProcessing.temporalFilter.enable = true;
             depthOut_ = &(**gpuStereoBackend_).depth;
             confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
             wiredResolution = stereo.resolution;
@@ -923,6 +927,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
+            (*stereoBackend_)->setBackend(StereoDepth::Backend::HW);
             const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
             validateStereoDepthResolution(stereo.resolution.first, stereo.resolution.second);
             (*stereoBackend_)->build(*stereo.left, *stereo.right, stereoPresetFromConfig(resolved_.config));

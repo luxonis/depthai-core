@@ -195,6 +195,12 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     std::optional<float> alphaScaling;
 
+    /** Stereo matching backends, exposed as StereoDepth::Backend. */
+    enum class Backend : std::uint8_t { HW = 1, GPU = 2, AUTO = 3, GPU_CPU = 4 };
+
+    /// Stereo matching backend. AUTO selects GPU_CPU on GPU-stereo-capable devices, otherwise HW.
+    Backend backend = Backend::AUTO;
+
     ~StereoDepthProperties() override;
 };
 
@@ -221,5 +227,6 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       disparityToDepthUseSpecTranslation,
                       rectificationUseSpecTranslation,
                       depthAlignmentUseSpecTranslation,
-                      alphaScaling);
+                      alphaScaling,
+                      backend);
 }  // namespace dai

@@ -121,6 +121,11 @@ void requireDepthSingleBackendChild(const node::Depth& depth, const char* expect
         return;
     }
     REQUIRE(std::strcmp(child->getName(), expectedNodeName) == 0);
+    if(auto stereo = std::dynamic_pointer_cast<node::StereoDepth>(child)) {
+        const auto expected =
+            depth.getResolvedAlgorithm() == node::Depth::Algorithm::GPU_STEREO ? node::StereoDepth::Backend::GPU_CPU : node::StereoDepth::Backend::HW;
+        REQUIRE(stereo->getBackend() == expected);
+    }
 }
 
 std::shared_ptr<Device> requireDefaultDevice(Pipeline& pipeline) {
@@ -152,7 +157,7 @@ void requireDepthAutoBackend(const node::Depth& depth, Platform platform, bool h
                 requireDepthSingleBackendChild(depth, "NeuralAssistedStereo");
                 break;
             case node::Depth::Algorithm::GPU_STEREO:
-                requireDepthSingleBackendChild(depth, "GPUStereo");
+                requireDepthSingleBackendChild(depth, "StereoDepth");
                 break;
             case node::Depth::Algorithm::STEREO:
                 requireDepthSingleBackendChild(depth, "StereoDepth");
@@ -386,8 +391,7 @@ void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
             REQUIRE(depthFrame->getWidth() > 0);
             REQUIRE(depthFrame->getHeight() > 0);
         } else {
-            const char* backendName = resolved == node::Depth::Algorithm::GPU_STEREO ? "GPUStereo" : "StereoDepth";
-            requireDepthSingleBackendChild(*depth, backendName);
+            requireDepthSingleBackendChild(*depth, "StereoDepth");
             REQUIRE(depthFrame->getWidth() > 0);
             REQUIRE(depthFrame->getHeight() > 0);
         }
@@ -852,7 +856,7 @@ TEST_CASE("Depth: TOF algorithm wires ToF backend when ToF sensor present") {
     requireDepthSingleBackendChild(*depth, "ToF");
 }
 
-TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow") {
+TEST_CASE("Depth: GPU_STEREO wires StereoDepth on RVC4 when build and device allow") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     if(device->getPlatform() != Platform::RVC4) {
@@ -871,7 +875,7 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
         SKIP(std::string("Skipping GPU_STEREO positive test: ") + ex.what());
     }
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
-    requireDepthSingleBackendChild(*depth, "GPUStereo");
+    requireDepthSingleBackendChild(*depth, "StereoDepth");
 }
 
 TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline cameras") {

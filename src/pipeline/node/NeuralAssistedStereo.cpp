@@ -27,7 +27,8 @@ void NeuralAssistedStereo::setInitialValues() {
 
     neuralDepth->initialConfig->setConfidenceThreshold(static_cast<int>(0.14 * 255));
 
-    // // Stereo node (fixed config for now)
+    // The injected texture and matching parameters below target the HW stereo algorithm.
+    stereoDepth->setBackend(StereoDepth::Backend::HW);
     stereoDepth->setRectification(false);
     stereoDepth->setExtendedDisparity(true);
     stereoDepth->setLeftRightCheck(true);
