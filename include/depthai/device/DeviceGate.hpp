@@ -4,6 +4,7 @@
 #include <XLink/XLinkPublicDefines.h>
 
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -91,6 +92,8 @@ class DeviceGate {
        private:
         DeviceInfo deviceInfo;
         int timeout;
+        // One request and its response use the same USB endpoints; keep exchanges from different threads apart
+        std::mutex mtx;
     };
 
     class HTTPImpl : public GateImpl {
