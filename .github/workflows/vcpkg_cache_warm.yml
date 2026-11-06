@@ -94,8 +94,8 @@ jobs:
             family: py-pytest
           - os: windows-2025
             family: wheel
-          - os: macos-14
-            family: wheel-macos-14
+          - os: macos-15
+            family: wheel-macos-15
           - os: macos-15-intel
             family: wheel-macos-15-intel
     runs-on: ${{ matrix.os }}
