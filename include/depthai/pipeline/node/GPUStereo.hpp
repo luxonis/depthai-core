@@ -4,7 +4,6 @@
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/datatype/GPUStereoConfig.hpp>
 #include <depthai/pipeline/node/MessageDemux.hpp>
-#include <depthai/pipeline/node/Rectification.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/GPUStereoProperties.hpp>
 #include <memory>
@@ -15,9 +14,10 @@ namespace node {
 /**
  * @brief GPU-accelerated stereo depth node for RVC4.
  *
- * Computes disparity and depth maps from a synchronized stereo camera pair using
- * OpenCL on the Adreno GPU. Supports both rectified and unrectified inputs
- * (controlled via @ref setRectification).
+ * Computes disparity, depth and a confidence map from a synchronized stereo camera pair with a classical
+ * stereo method on the Adreno GPU (OpenCL) and the CPU, see GPUStereoConfig::ComputeMode. Rectification is
+ * part of the node (EVA warp engine, controlled via @ref setRectification). Supported input sizes: 1280x800
+ * and 640x400, GRAY8 / RAW8.
  */
 class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperties> {
    protected:
@@ -37,14 +37,13 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
     /**
      * @brief Enable or disable built-in stereo rectification.
      *
-     * When enabled, the node rectifies the input images internally using calibration data.
-     * When disabled, inputs are expected to be already rectified.
+     * When enabled (default), the node rectifies the input images internally (EVA warp engine) using the
+     * calibration carried by the frames. When disabled, inputs are expected to be already rectified.
      */
     GPUStereo& setRectification(bool enable);
 
     Subnode<Sync> sync{*this, "sync"};
     Subnode<MessageDemux> messageDemux{*this, "messageDemux"};
-    std::unique_ptr<Subnode<Rectification>> rectification;
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     Input& left{sync->inputs["left"]};
@@ -67,9 +66,9 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
-     * Outputs ImgFrame message that carries RAW8 confidence map.
-     * Lower values mean lower confidence of the calculated disparity value.
-     * Note: postprocessing steps like LR-check/median filter are not applied to confidence map.
+     * Outputs ImgFrame message that carries RAW8 confidence map (0..255).
+     * Higher values mean higher confidence of the calculated disparity value; see
+     * GPUStereoConfig::confidenceThreshold.
      */
     Output confidenceMap{*this, {"confidenceMap", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
@@ -79,12 +78,9 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
      * Initial config to use for GPUStereo.
      *
      * Use this to configure startup parameters before the pipeline starts.
-     * Note: Only `confidenceThreshold` is supported/exposed for this node.
+     * Supported: `confidenceThreshold`, `computeMode` and `temporalFilter`.
      */
     std::shared_ptr<GPUStereoConfig> initialConfig = std::make_shared<GPUStereoConfig>();
-
-   private:
-    bool rectificationEnabled = true;
 };
 
 }  // namespace node
