@@ -12,12 +12,6 @@ namespace node {
 
 /**
  * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
- *
- * RVC4 CPU/GPU backends and the host implementation support GRAYF16 and
- * planar/interleaved RGB/BGR FP16 frames. Geometric operations preserve the
- * floating-point numeric range. Conversion between 8-bit and FP16 does not
- * normalize values; FP16-to-8-bit conversion rounds and saturates to [0, 255].
- * FP16 undistortion supports the CPU and GPU backends. EVA does not process FP16 frames.
  */
 class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>, public HostRunnable {
    private:
