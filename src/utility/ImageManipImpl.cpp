@@ -103,15 +103,20 @@ void transformOpenCV(const uint8_t* src,
     cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
     int ssF = srcImgSpecs.width / srcWidth;
     assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
+    const size_t planeMinX = sourceMinX / ssF;
+    const size_t planeMinY = sourceMinY / ssF;
+    const size_t planeMaxX = std::min((sourceMaxX + ssF - 1) / ssF, srcWidth);
+    const size_t planeMaxY = std::min((sourceMaxY + ssF - 1) / ssF, srcHeight);
+    const cv::Rect roi(planeMinX, planeMinY, planeMaxX - planeMinX, planeMaxY - planeMinY);
     if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
         // Affine transform
         float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
-        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
-        if(sourceMinX != 0 || sourceMinY != 0) {
-            affine[2] = affine[0] * ((float)sourceMinX / ssF) + affine[1] * ((float)sourceMinY / ssF) + affine[2];
-            affine[5] = affine[3] * ((float)sourceMinX / ssF) + affine[4] * ((float)sourceMinY / ssF) + affine[5];
+        if(planeMinX != 0 || planeMinY != 0) {
+            affine[2] += affine[0] * planeMinX + affine[1] * planeMinY;
+            affine[5] += affine[3] * planeMinX + affine[4] * planeMinY;
         }
-        if(floatEq(affine[0], 1.f) && floatEq(affine[1], 0.f) && floatEq(affine[3], 0.f) && floatEq(affine[4], 1.f) && floatEq(affine[5], 0.f)) {
+        if(floatEq(affine[0], 1.f) && floatEq(affine[1], 0.f) && floatEq(affine[2], 0.f) && floatEq(affine[3], 0.f) && floatEq(affine[4], 1.f)
+           && floatEq(affine[5], 0.f) && roi.size() == cvDst.size()) {
             // Crop only
             cvSrc(roi).copyTo(cvDst);
         } else {
@@ -128,11 +133,10 @@ void transformOpenCV(const uint8_t* src,
         // Perspective transform
         float projection[9] = {
             matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
-        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
-        if(sourceMinX != 0 || sourceMinY != 0) {
-            projection[2] = projection[0] * ((float)sourceMinX / ssF) + projection[1] * ((float)sourceMinY / ssF) + projection[2];
-            projection[5] = projection[3] * ((float)sourceMinX / ssF) + projection[4] * ((float)sourceMinY / ssF) + projection[5];
-            projection[8] = projection[6] * ((float)sourceMinX / ssF) + projection[7] * ((float)sourceMinY / ssF) + projection[8];
+        if(planeMinX != 0 || planeMinY != 0) {
+            projection[2] += projection[0] * planeMinX + projection[1] * planeMinY;
+            projection[5] += projection[3] * planeMinX + projection[4] * planeMinY;
+            projection[8] += projection[6] * planeMinX + projection[7] * planeMinY;
         }
         cv::Mat cvProjection(3, 3, CV_32F, projection);
         cv::warpPerspective(cvSrc(roi),
@@ -3188,6 +3192,15 @@ void WarpH::build(const FrameSpecs srcFrameSpecs,
         this->sourceMaxY = std::min(this->sourceMaxY, (size_t)std::ceil(maxy));
     }
     if(this->sourceMinX >= this->sourceMaxX || this->sourceMinY >= this->sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
+
+    const bool axisAlignedScale = floatEq(matrix[0][1], 0.f) && floatEq(matrix[1][0], 0.f) && matrix[0][0] > 0.f && matrix[1][1] > 0.f
+                                  && floatEq(matrix[2][0], 0.f) && floatEq(matrix[2][1], 0.f) && floatEq(matrix[2][2], 1.f);
+    if(!axisAlignedScale) {
+        // Retain the neighboring samples needed for interpolation, as on RVC4.
+        const size_t padding = type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p ? 2 : 1;
+        this->sourceMaxX = std::min(this->sourceMaxX + padding, static_cast<size_t>(inWidth));
+        this->sourceMaxY = std::min(this->sourceMaxY + padding, static_cast<size_t>(inHeight));
+    }
 }
 
 void WarpH::buildUndistort(bool enable,
