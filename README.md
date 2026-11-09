@@ -143,6 +143,8 @@ For more specific information about Python bindings, see [Python README](./bindi
 
 ## Building
 
+To use the installed SDK and build tools in a container, see the [Docker guide](docs/Docker.md).
+
 Make sure submodules are updated
 ```
 git submodule update --init --recursive
