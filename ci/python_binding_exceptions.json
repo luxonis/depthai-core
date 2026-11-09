@@ -260,5 +260,10 @@
   "dai::node::Stitching::buildInternal()": "Internal pipeline build hook called by the runtime; intentionally C++ only.",
   "dai::node::Stitching::buildStage1()": "Internal pipeline build hook called by the runtime; intentionally C++ only.",
   "dai::node::Stitching::run()": "Internal host execution loop called by the runtime; intentionally C++ only.",
-  "dai::node::Stitching::setPlane(constPlane&)": "Bound through an explicit static_cast whose parameter is spelled StitchingProperties::Plane while the declaration uses the Stitching::Plane alias; the checker matches parameter spellings textually."
+  "dai::node::Stitching::setPlane(constPlane&)": "Bound through an explicit static_cast whose parameter is spelled StitchingProperties::Plane while the declaration uses the Stitching::Plane alias; the checker matches parameter spellings textually.",
+  "dai::utility::DEFAULT_FRAME_POOL_BUDGET": "C++ frame-pool allocation utility constant; Python configures pools through FramePoolProperties and node setters.",
+  "dai::utility::framePoolGrowthBudget(constFramePoolProperties&,constFramePoolProperties&,std::uint64_t)": "C++ allocation utility for platform pool growth; intentionally C++ only. Python configures pools through FramePoolProperties and node setters.",
+  "dai::utility::reconcileFramePool(FramePoolProperties,int,int,unsignedint)": "C++ compatibility utility for merging deprecated pool fields; intentionally C++ only. Python configures pools through FramePoolProperties and node setters.",
+  "dai::utility::resolveFramePool(constFramePoolProperties&,std::uint64_t,double,std::uint32_t,std::uint64_t,std::uint32_t)": "C++ allocation utility for resolving platform pool sizes; intentionally C++ only. Python configures pools through FramePoolProperties and node setters.",
+  "dai::utility::validateFramePoolCount(std::uint32_t)": "C++ validation utility used by pool setters and allocators; intentionally C++ only. Python configures pools through FramePoolProperties and node setters."
 }
