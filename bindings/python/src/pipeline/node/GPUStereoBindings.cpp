@@ -3,8 +3,10 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/GPUStereo.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 void bind_gpustereo(pybind11::module& m, void* pCallstack) {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     using namespace dai;
     using namespace dai::node;
 
@@ -31,4 +33,5 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
         .def("build", &GPUStereo::build, py::arg("leftInput"), py::arg("rightInput"), DOC(dai, node, GPUStereo, build));
 
     daiNodeModule.attr("GPUStereo").attr("Properties") = properties;
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
