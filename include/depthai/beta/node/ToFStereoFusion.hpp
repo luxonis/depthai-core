@@ -26,7 +26,9 @@ namespace dai::beta::node {
  * - STEREO_NETWORK: the rectified stereo pair and ToF planes (ToF reprojected into the rectified-left view) go into one network,
  *   whose disparity is composed with the ToF on the device. Output in the rectified-left view. The network is not in the model zoo;
  *   set it with neuralNetwork->setModelPath() before starting the pipeline. The stereo pair is rectified by a Rectification
- *   subnode on the EVA warp (Backend::HW) with alpha scaling 0, the geometry the networks are trained on.
+ *   subnode on the EVA warp (Backend::HW) with alpha scaling 0, the geometry the networks are trained on. Each stereo frame is
+ *   fused with the newest ToF frame already processed (at most 100 ms older; usually one ToF frame period, as the ToF processing
+ *   takes longer than the stereo path), so the ToF does not add to the latency.
  *
  * @note This node is supported on RVC4 devices only. Creating it for an RVC2 device throws an exception.
  */
@@ -149,6 +151,8 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     Input syncedInputs{*this, {"syncedInputs", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::MessageGroup, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Input nnDataInput{*this, {"nnDataInput", DEFAULT_GROUP, false, 2, {{{DatatypeEnum::NNData, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Output nnInput{*this, {"nnInput", DEFAULT_GROUP, {{{DatatypeEnum::NNData, false}}}}};
+    /** STEREO_NETWORK: the ToF planes of one ToF frame; the node pairs each stereo frame with the newest one. */
+    Input tofInputs{*this, {"tofInputs", DEFAULT_GROUP, false, 2, {{{DatatypeEnum::MessageGroup, false}}}, false}};
 
    private:
     Properties& getProperties() override;
@@ -159,6 +163,7 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     std::unique_ptr<Subnode<dai::node::Sync>> pairSync;
     std::unique_ptr<Subnode<dai::node::MessageDemux>> pairDemux;
     std::unique_ptr<Subnode<dai::node::Rectification>> rectification;
+    std::unique_ptr<Subnode<dai::node::Sync>> tofSync;
 };
 
 }  // namespace dai::beta::node

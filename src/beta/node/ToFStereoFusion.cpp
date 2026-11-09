@@ -94,15 +94,21 @@ void ToFStereoFusion::buildStereoNetwork(const std::shared_ptr<dai::node::Camera
     (*rectification)->output1.link(sync->inputs["left"]);
     (*rectification)->output2.link(sync->inputs["right"]);
 
+    // The ToF planes of one ToF frame (same timestamp) are grouped on their own, not with the stereo pair: the node fuses each
+    // stereo frame with the newest ToF frame it has, so the slower ToF processing does not hold the stereo frames back.
+    tofSync = std::make_unique<Subnode<dai::node::Sync>>(*this, "tofSync");
+    (*tofSync)->setRunOnHost(false);
+    (*tofSync)->setSyncThreshold(std::chrono::milliseconds(1));
+    (*tofSync)->out.link(tofInputs);
     tof->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, fps);
     tof->setOutputUndistortion(true);
-    tof->tofBaseNode.depth.link(sync->inputs["tofDepth"]);
-    tof->tofBaseNode.confidence.link(sync->inputs["tofConfidence"]);
-    tof->tofBaseNode.amplitude.link(sync->inputs["tofAmplitude"]);
+    tof->tofBaseNode.depth.link((*tofSync)->inputs["tofDepth"]);
+    tof->tofBaseNode.confidence.link((*tofSync)->inputs["tofConfidence"]);
+    tof->tofBaseNode.amplitude.link((*tofSync)->inputs["tofAmplitude"]);
     // The network is trained on the ToF fusion depth mode; its phases replace the ones derived from the depth.
     if(properties.tofConfidenceScale == Properties::ToFConfidenceScale::FUSION) {
         tof->tofBaseNode.initialConfig->setDepthMode(ToFConfig::DepthMode::FUSION);
-        tof->tofBaseNode.phase.link(sync->inputs["tofPhase"]);
+        tof->tofBaseNode.phase.link((*tofSync)->inputs["tofPhase"]);
     }
 
     // The network replaces the zoo model set in buildInternal(); the user provides it with neuralNetwork->setModelPath().
