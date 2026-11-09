@@ -67,6 +67,13 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     }
 
     /**
+     * Free scaling of the rectified camera, as in StereoDepth::setAlphaScaling: 0 keeps only valid pixels, 1 keeps every
+     * source pixel. When set, both outputs use the intrinsics of cv::stereoRectify (CALIB_ZERO_DISPARITY) for the output
+     * size. When unset (default), the outputs keep the left input's intrinsics.
+     */
+    Rectification& setAlphaScaling(float alpha);
+
+    /**
      * Enable or disable rectification (useful for minimal changes during debugging)
      */
     Rectification& enableRectification(bool enable) {

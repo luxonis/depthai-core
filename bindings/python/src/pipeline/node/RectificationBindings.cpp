@@ -60,6 +60,11 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
              py::arg("backend"),
              py::return_value_policy::reference_internal,
              "Select CPU, EVA hardware (HW), or GPU. AUTO defaults to GPU on device with CPU fallback")
+        .def("setAlphaScaling",
+             &Rectification::setAlphaScaling,
+             py::arg("alpha"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, Rectification, setAlphaScaling))
         .def("enableRectification", &Rectification::enableRectification, py::arg("enable"), DOC(dai, node, Rectification, enableRectification))
         .def("setOutputSize",
              (Rectification & (Rectification::*)(uint32_t, uint32_t)) & Rectification::setOutputSize,

@@ -2,6 +2,9 @@
 
 #include <array>
 #include <chrono>
+#include <cmath>
+#include <optional>
+#include <stdexcept>
 #include <vector>
 
 #include "common/Extrinsics.hpp"
@@ -30,6 +33,14 @@ void Rectification::setRunOnHost(bool runOnHost) {
 
 Rectification& Rectification::setBackend(Backend backend) {
     properties.backend = backend;
+    return *this;
+}
+
+Rectification& Rectification::setAlphaScaling(float alpha) {
+    if(!std::isfinite(alpha)) {
+        throw std::invalid_argument("Rectification alpha scaling must be finite");
+    }
+    properties.alphaScaling = alpha;
     return *this;
 }
 
@@ -66,7 +77,13 @@ cv::Mat arrayToCvMat(int rows, int cols, int type, const std::array<std::array<f
     return cvMat;
 }
 
-std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1, cv::Mat M2, cv::Mat d2, cv::Size imageSize, cv::Mat R, cv::Mat T) {
+struct RectificationMatrices {
+    cv::Mat R1, R2;
+    cv::Mat KRect;  // P1(0:3, 0:3) for the output size; empty unless alphaScaling is set
+};
+
+RectificationMatrices computeRectificationMatrices(
+    cv::Mat M1, cv::Mat d1, cv::Mat M2, cv::Mat d2, cv::Size imageSize, cv::Mat R, cv::Mat T, cv::Size outputSize, const std::optional<float>& alphaScaling) {
     cv::Mat R1, R2, P1, P2, Q;
     cv::Mat _cv_M1, _cv_M2, _cv_d1, _cv_d2, _cv_R, _cv_T;
     M1.convertTo(_cv_M1, CV_64FC1);
@@ -77,14 +94,17 @@ std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1,
     T.convertTo(_cv_T, CV_64FC1);
     _cv_T = _cv_T.t();
 
-    cv::stereoRectify(
-        _cv_M1, _cv_d1, _cv_M2, _cv_d2, imageSize, _cv_R, _cv_T, R1, R2, P1, P2, Q);  // todo expose alpha param to user for increased fov, maybe flags?
-
-    cv::Mat cv_R1, cv_R2;
-    R1.convertTo(cv_R1, CV_32FC1);
-    R2.convertTo(cv_R2, CV_32FC1);
-
-    return std::make_pair(cv_R1, cv_R2);
+    RectificationMatrices result;
+    if(alphaScaling.has_value()) {
+        // Same rectified camera as the RVC4 StereoDepth warp: shared fx and cx (CALIB_ZERO_DISPARITY), scaled to the output.
+        cv::stereoRectify(_cv_M1, _cv_d1, _cv_M2, _cv_d2, imageSize, _cv_R, _cv_T, R1, R2, P1, P2, Q, cv::CALIB_ZERO_DISPARITY, *alphaScaling, outputSize);
+        P1(cv::Rect(0, 0, 3, 3)).convertTo(result.KRect, CV_32FC1);
+    } else {
+        cv::stereoRectify(_cv_M1, _cv_d1, _cv_M2, _cv_d2, imageSize, _cv_R, _cv_T, R1, R2, P1, P2, Q);
+    }
+    R1.convertTo(result.R1, CV_32FC1);
+    R2.convertTo(result.R2, CV_32FC1);
+    return result;
 }
 
 std::string matToString(const cv::Mat& mat) {
@@ -211,7 +231,17 @@ void Rectification::run() {
 
             cv::Mat cv_R1, cv_R2;
             cv::Size imageSize = cv::Size(input1Frame->getWidth(), input1Frame->getHeight());
-            std::tie(cv_R1, cv_R2) = computeRectificationMatrices(cv_M1, cv_d1, cv_M2, cv_d2, imageSize, cv_R, cv_T);
+            const auto rectification = computeRectificationMatrices(cv_M1,
+                                                                    cv_d1,
+                                                                    cv_M2,
+                                                                    cv_d2,
+                                                                    imageSize,
+                                                                    cv_R,
+                                                                    cv_T,
+                                                                    cv::Size(output1FrameWidth, output1FrameHeight),
+                                                                    properties.enableRectification ? properties.alphaScaling : std::optional<float>{});
+            cv_R1 = rectification.R1;
+            cv_R2 = rectification.R2;
 
             targetM1 = M1;
             targetM2 = M2;
@@ -228,6 +258,9 @@ void Rectification::run() {
                 targetM2 = input2ImgTransformation.getIntrinsicMatrix();
             }
 
+            if(!rectification.KRect.empty()) {
+                targetM1 = dai::matrix::cvMatToMatrix3x3(rectification.KRect);
+            }
             targetM2 = targetM1;  // TODO alignment target
 
             auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
