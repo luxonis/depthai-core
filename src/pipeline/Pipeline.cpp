@@ -1813,7 +1813,7 @@ void PipelineImpl::start() {
             } else {
                 try {
                     role = d->getExternalFrameSyncRole();
-                } catch (std::runtime_error &e) {
+                } catch(std::runtime_error& e) {
                     // Rvc2 devices will fail, treat them as independent masters
                     role = dai::ExternalFrameSyncRole::MASTER;
                 }
