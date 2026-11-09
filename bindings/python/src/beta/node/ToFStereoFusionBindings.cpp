@@ -13,7 +13,19 @@ void bind_beta_tofstereofusion(pybind11::module& m, void* pCallstack) {
         .def("setConfidenceThreshold",
              &beta::ToFStereoFusionConfig::setConfidenceThreshold,
              py::arg("threshold"),
-             DOC(dai, beta, ToFStereoFusionConfig, setConfidenceThreshold));
+             DOC(dai, beta, ToFStereoFusionConfig, setConfidenceThreshold))
+        .def_readwrite("nearRangePassthrough", &beta::ToFStereoFusionConfig::nearRangePassthrough, DOC(dai, beta, ToFStereoFusionConfig, nearRangePassthrough))
+        .def_readwrite("nearRangeMinDepth", &beta::ToFStereoFusionConfig::nearRangeMinDepth, DOC(dai, beta, ToFStereoFusionConfig, nearRangeMinDepth))
+        .def_readwrite("nearRangeTofMaxDepth", &beta::ToFStereoFusionConfig::nearRangeTofMaxDepth, DOC(dai, beta, ToFStereoFusionConfig, nearRangeTofMaxDepth))
+        .def_readwrite(
+            "nearRangeFusedMaxDepth", &beta::ToFStereoFusionConfig::nearRangeFusedMaxDepth, DOC(dai, beta, ToFStereoFusionConfig, nearRangeFusedMaxDepth))
+        .def("setNearRangePassthrough",
+             &beta::ToFStereoFusionConfig::setNearRangePassthrough,
+             py::arg("enabled"),
+             py::arg("minDepth") = 150.0f,
+             py::arg("tofMaxDepth") = 343.0f,
+             py::arg("fusedMaxDepth") = 418.0f,
+             DOC(dai, beta, ToFStereoFusionConfig, setNearRangePassthrough));
 
     m.def_submodule("beta", "Experimental APIs").attr("ToFStereoFusionConfig") = m.attr("ToFStereoFusionConfig");
     auto node = addBetaNode<ToFStereoFusion>("ToFStereoFusion", DOC(dai, beta, node, ToFStereoFusion));
