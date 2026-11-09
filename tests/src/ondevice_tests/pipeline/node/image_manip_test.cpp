@@ -996,3 +996,113 @@ TEST_CASE("RVC4 ImageManip backends preserve FP16 samples and metadata", "[image
         }
     }
 }
+
+TEST_CASE("RVC4 FP16 mesh undistortion matches OpenCV without a camera", "[imagemanip][fp16][mesh][rvc4]") {
+    dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    if(device->getPlatform() != dai::Platform::RVC4 || !device->hasGPU()) SKIP("Requires an RVC4 with a GPU");
+    auto cpu = pipeline.create<dai::node::ImageManip>();
+    auto gpu = pipeline.create<dai::node::ImageManip>();
+    cpu->setBackend(dai::ImageManipProperties::Backend::CPU);
+    gpu->setBackend(dai::ImageManipProperties::Backend::GPU);
+    for(auto manip : {cpu, gpu}) {
+        manip->setMaxOutputFrameSize(8192);
+        manip->inputConfig.setWaitForMessage(true);
+    }
+    auto cpuInput = cpu->inputImage.createInputQueue();
+    auto gpuInput = gpu->inputImage.createInputQueue();
+    auto cpuConfig = cpu->inputConfig.createInputQueue();
+    auto gpuConfig = gpu->inputConfig.createInputQueue();
+    auto cpuOutput = cpu->out.createOutputQueue();
+    auto gpuOutput = gpu->out.createOutputQueue();
+    pipeline.start();
+
+    using Type = dai::ImgFrame::Type;
+    // Switch between FP16 and RAW16 with identical plane geometry to check
+    // cached mesh configurations also track the sample format.
+    const std::vector<Type> types = {Type::GRAYF16,
+                                     Type::RAW16,
+                                     Type::GRAYF16,
+                                     Type::RGBF16F16F16i,
+                                     Type::BGRF16F16F16i,
+                                     Type::RGBF16F16F16p,
+                                     Type::BGRF16F16F16p,
+                                     Type::GRAY8,
+                                     Type::RGB888i};
+    const std::array<std::array<float, 3>, 3> intrinsics = {{{20, 0, 11}, {0, 20, 8}, {0, 0, 1}}};
+    cv::Mat camera(3, 3, CV_32F, const_cast<float*>(intrinsics[0].data()));
+    cv::Mat newCamera = camera.clone();
+    newCamera.at<float>(0, 2) += 1.25f;
+    newCamera.at<float>(1, 2) -= 0.5f;
+    int sequence = 0;
+    for(bool dense : {false, true}) {
+        const cv::Size outputSize = dense ? cv::Size(2, 2) : cv::Size(23, 17);
+        for(bool distorted : {false, true}) {
+            const std::vector<float> distortion = distorted ? std::vector<float>{0.005f, 0.001f, 0.0002f, -0.0001f, 0} : std::vector<float>(5, 0);
+            cv::Mat mapX, mapY;
+            cv::initUndistortRectifyMap(camera, distortion, cv::Mat(), newCamera, outputSize, CV_32FC1, mapX, mapY);
+            for(auto type : types) {
+                for(bool padded : {false, true}) {
+                    CAPTURE(dense, distorted, type, padded);
+                    std::shared_ptr<dai::ImgFrame> input;
+                    if(dai::impl::isFp16(type)) {
+                        input = fp16test::makeFrame(type, padded);
+                    } else {
+                        input = std::make_shared<dai::ImgFrame>();
+                        cv::Mat image(17, 23, CV_8UC3);
+                        for(int y = 0; y < image.rows; ++y) {
+                            for(int x = 0; x < image.cols; ++x) image.at<cv::Vec3b>(y, x) = cv::Vec3b(4 + x, 8 + y, 12 + x + y);
+                        }
+                        if(type == Type::RAW16) {
+                            cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+                            image.convertTo(image, CV_16U);
+                        }
+                        input->setCvFrame(image, type);
+                    }
+                    input->transformation = dai::ImgTransformation(23, 17, intrinsics, dai::CameraModel::Perspective, distortion);
+                    input->setSequenceNum(++sequence);
+                    auto config = std::make_shared<dai::ImageManipConfig>();
+                    config->addTransformPerspective({1, 0, 1.25f, 0, 1, -0.5f, 0, 0, 1});
+                    config->setOutputSize(outputSize.width, outputSize.height);
+                    config->base.setOutputCenter(false);
+                    config->setUndistort(true);
+                    cpuConfig->send(config);
+                    gpuConfig->send(config);
+                    cpuInput->send(input);
+                    gpuInput->send(input);
+                    bool cpuTimedOut = false, gpuTimedOut = false;
+                    auto cpuFrame = cpuOutput->get<dai::ImgFrame>(std::chrono::seconds(10), cpuTimedOut);
+                    auto gpuFrame = gpuOutput->get<dai::ImgFrame>(std::chrono::seconds(10), gpuTimedOut);
+                    REQUIRE_FALSE(cpuTimedOut);
+                    REQUIRE_FALSE(gpuTimedOut);
+                    REQUIRE(cpuFrame != nullptr);
+                    REQUIRE(gpuFrame != nullptr);
+                    REQUIRE(gpuFrame->getType() == type);
+                    CHECK(gpuFrame->getSequenceNum() == sequence);
+                    CHECK(gpuFrame->getTimestamp() == input->getTimestamp());
+                    CHECK(gpuFrame->getWidth() == outputSize.width);
+                    CHECK(gpuFrame->getHeight() == outputSize.height);
+                    const auto sourcePlanes = dai::impl::isFp16(type) ? fp16test::planes(*input) : std::vector<cv::Mat>{input->getFrame()};
+                    const auto cpuPlanes = dai::impl::isFp16(type) ? fp16test::planes(*cpuFrame) : std::vector<cv::Mat>{cpuFrame->getFrame()};
+                    const auto gpuPlanes = dai::impl::isFp16(type) ? fp16test::planes(*gpuFrame) : std::vector<cv::Mat>{gpuFrame->getFrame()};
+                    REQUIRE(sourcePlanes.size() == gpuPlanes.size());
+                    for(size_t p = 0; p < sourcePlanes.size(); ++p) {
+                        cv::Mat source, expected, actualCpu, actualGpu;
+                        sourcePlanes[p].convertTo(source, CV_32F);
+                        cpuPlanes[p].convertTo(actualCpu, CV_32F);
+                        gpuPlanes[p].convertTo(actualGpu, CV_32F);
+                        cv::remap(source, expected, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+                        // Sparse meshes approximate distortion between mesh points;
+                        // OpenCV also quantizes interpolation to 1/32 of a pixel.
+                        // Compare every pixel, including zero and partial borders.
+                        const double maxError = dai::impl::isFp16(type) ? 0.75 : 1.1;
+                        const double meanError = dai::impl::isFp16(type) ? 0.06 : 0.55;
+                        CHECK(cv::norm(actualGpu, expected, cv::NORM_INF) <= maxError);
+                        CHECK(cv::norm(actualGpu, expected, cv::NORM_L1) / (actualGpu.total() * actualGpu.channels()) <= meanError);
+                        CHECK(cv::norm(actualCpu, expected, cv::NORM_INF) <= (dai::impl::isFp16(type) ? 0.032 : 1.1));
+                    }
+                }
+            }
+        }
+    }
+}
