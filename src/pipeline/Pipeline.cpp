@@ -1811,13 +1811,22 @@ void PipelineImpl::start() {
             if(d->getPlatform() != dai::Platform::RVC4) {
                 role = dai::ExternalFrameSyncRole::MASTER;
             } else {
-                role = d->getExternalFrameSyncRole();
+                try {
+                    role = d->getExternalFrameSyncRole();
+                } catch (std::runtime_error &e) {
+                    // Rvc2 devices will fail, treat them as independent masters
+                    role = dai::ExternalFrameSyncRole::MASTER;
+                }
             }
 
             if(role == dai::ExternalFrameSyncRole::MASTER) {
                 masterDevices.push_back(d);
             } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
                 slaveDevices.push_back(d);
+            } else if(role == dai::ExternalFrameSyncRole::AUTO_DETECT) {
+                // This should not happen, but bugs on depthai-device can
+                // leak this role. treat them as independent masters
+                masterDevices.push_back(d);
             } else {
                 throw std::runtime_error("Unknown external frame sync role");
             }
