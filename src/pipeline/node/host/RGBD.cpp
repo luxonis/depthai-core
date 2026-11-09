@@ -519,7 +519,7 @@ void RGBD::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
         auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
         colorCamOutput->link(inColor);
         stereo->depth.link(inDepth);
-        stereo->setDepthAlign(camera->getBoardSocket());
+        colorCamOutput->link(stereo->inputAlignTo);
     }
 }
 
