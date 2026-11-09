@@ -120,9 +120,10 @@ void ToF::postBuildStage() {
         if(hasRawDepthConnections) {
             throw std::runtime_error("ToF on RVC4 does not support rawDepth output.");
         }
+        // RVC4 produces phase frames only in ToFConfig::DepthMode::FUSION; the mode can also be switched at runtime.
         const bool hasPhaseConnections = !phase.getConnections().empty() || !phase.getQueueConnections().empty();
-        if(hasPhaseConnections) {
-            throw std::runtime_error("ToF on RVC4 does not support Phase output.");
+        if(hasPhaseConnections && tofBase->initialConfig->depthMode != ToFConfig::DepthMode::FUSION) {
+            if(logger) logger->warn("ToF on RVC4 sends phase frames only when ToFConfig::depthMode is FUSION.");
         }
     }
 #endif
