@@ -39,11 +39,59 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
 
 StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)),
-      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {
+    matcherInputs["inputSynced"];
+}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = *initialConfig;
     return properties;
+}
+
+void StereoDepth::buildInternal() {
+    if(configureMode) return;
+    rectification->setBackend(Rectification::Backend::HW);
+    rectification->setRunOnHost(false);
+    rectificationSync->setRunOnHost(false);
+    rectificationSync->setSyncThreshold(std::chrono::nanoseconds(std::chrono::seconds(1)) / 60);
+    rectificationSync->setTimestampSource(Sync::TimestampSource::DEVICE);
+    rectificationSync->out.link(matcherInputs["inputSynced"]);
+    rectification->output1.link(rectificationSync->inputs["left"]);
+    rectification->output2.link(rectificationSync->inputs["right"]);
+    setRectification(properties.enableRectification);
+}
+
+void StereoDepth::buildStage1() {
+    if(configureMode) return;
+    if(properties.enableRectification) {
+        rectification->enableRectification(true);
+        rectification->passthrough1.link(rectificationSync->inputs["originalLeft"]);
+        rectification->passthrough2.link(rectificationSync->inputs["originalRight"]);
+    } else {
+        remove(rectification->shared_from_this());
+    }
+    for(auto& input : rectificationSync->inputs) {
+        input.second.setBlocking(true);
+        input.second.setMaxSize(DEFAULT_QUEUE_SIZE);
+    }
+    auto& leftInput = properties.enableRectification ? rectification->input1 : rectificationSync->inputs["left"];
+    auto& rightInput = properties.enableRectification ? rectification->input2 : rectificationSync->inputs["right"];
+    leftInput.setMaxSize(left.getMaxSize());
+    leftInput.setBlocking(left.getBlocking());
+    leftInput.setWaitForMessage(left.getWaitForMessage());
+    rightInput.setMaxSize(right.getMaxSize());
+    rightInput.setBlocking(right.getBlocking());
+    rightInput.setWaitForMessage(right.getWaitForMessage());
+    // Route the original producer links after the user has configured rectification.
+    for(const auto& entry : getParentPipeline().getConnectionMap()) {
+        for(const auto& connection : entry.second) {
+            auto* input = connection.in == &left ? &leftInput : connection.in == &right ? &rightInput : nullptr;
+            if(!input) continue;
+            connection.out->unlink(*connection.in);
+            connection.out->link(*input);
+        }
+    }
+    properties.enableRectification = false;  // The rectification subnode handles this before matching.
 }
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
@@ -120,6 +168,9 @@ void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
 
 void StereoDepth::setRectification(bool enable) {
     properties.enableRectification = enable;
+    if(!configureMode) {
+        rectification->enableRectification(enable);
+    }
 }
 void StereoDepth::setLeftRightCheck(bool enable) {
     initialConfig->setLeftRightCheck(enable);
