@@ -3,13 +3,17 @@
 #include "depthai/depthai.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
 
-void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::ProcessorType backend = dai::ProcessorType::CPU) {
+void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset,
+                           dai::ProcessorType backend = dai::ProcessorType::CPU,
+                           dai::node::StereoDepth::Backend matcher = dai::node::StereoDepth::Backend::AUTO) {
     dai::Pipeline p;
     auto left = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto right = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
-    auto stereo = p.create<dai::node::StereoDepth>()->build(*left->requestOutput(std::make_pair(640, 400)), *right->requestOutput(std::make_pair(640, 400)));
+    const auto size = matcher == dai::node::StereoDepth::Backend::HW ? std::make_pair(1280, 800) : std::make_pair(640, 400);
+    auto stereo = p.create<dai::node::StereoDepth>()->build(*left->requestOutput(size), *right->requestOutput(size));
 
     stereo->setDefaultProfilePreset(preset);
+    stereo->setBackend(matcher);
     stereo->initialConfig->setFiltersComputeBackend(backend);
 
     auto disparityQueue = stereo->disparity.createOutputQueue();
@@ -57,6 +61,10 @@ TEST_CASE("Test StereoDepth node CPU backend") {
 
 TEST_CASE("Test StereoDepth node DSP backend") {
     testStereoDepthPreset(dai::node::StereoDepth::PresetMode::DEFAULT, dai::ProcessorType::DSP);
+}
+
+TEST_CASE("Test StereoDepth node HW matcher") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::DEFAULT, dai::ProcessorType::CPU, dai::node::StereoDepth::Backend::HW);
 }
 
 TEST_CASE("StereoDepth running while repeatedly setting calibration does not crash device") {

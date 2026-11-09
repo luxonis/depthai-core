@@ -52,7 +52,7 @@ StereoDepth::Properties& StereoDepth::getProperties() {
 }
 
 void StereoDepth::buildInternal() {
-    if(configureMode || (device && device->getPlatform() != Platform::RVC4)) return;
+    if(configureMode) return;
     rectification->setBackend(Rectification::Backend::HW);
     rectification->setRunOnHost(false);
     rectificationSync->setRunOnHost(false);
@@ -66,14 +66,25 @@ void StereoDepth::buildInternal() {
 
 void StereoDepth::buildStage1() {
     if(configureMode) return;
-    if(device && device->getPlatform() != Platform::RVC4) {
-        remove(rectification->shared_from_this());
-        remove(rectificationSync->shared_from_this());
-        matcherInputs.erase({"", "inputSynced"});
-        return;
-    }
     if(properties.enableRectification) {
         rectification->enableRectification(true);
+        if(device && device->getPlatform() == Platform::RVC2) {
+            auto& rectifyProps = rectification->properties;
+            rectifyProps.mesh = properties.mesh;
+            // Mesh assets belong to StereoDepth; resolve them before the child loads them.
+            for(auto* uri : {&rectifyProps.mesh.meshLeftUri, &rectifyProps.mesh.meshRightUri}) {
+                if(uri->rfind("asset:", 0) == 0 && uri->size() > 6 && (*uri)[6] != '/') {
+                    *uri = "asset:/node/" + std::to_string(id) + "/" + uri->substr(6);
+                }
+            }
+            rectifyProps.rectifyEdgeFillColor = properties.rectifyEdgeFillColor;
+            rectifyProps.useHomographyRectification = properties.useHomographyRectification;
+            rectifyProps.rectificationUseSpecTranslation = properties.rectificationUseSpecTranslation;
+            rectifyProps.alphaScaling = properties.alphaScaling;
+            rectifyProps.depthAlign = initialConfig->algorithmControl.depthAlign;
+            rectifyProps.depthAlignCamera = properties.depthAlignCamera;
+            rectifyProps.numFramesPool = properties.numFramesPool;
+        }
         rectification->passthrough1.link(rectificationSync->inputs["originalLeft"]);
         rectification->passthrough2.link(rectificationSync->inputs["originalRight"]);
     } else {
@@ -194,7 +205,7 @@ void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
 
 void StereoDepth::setRectification(bool enable) {
     properties.enableRectification = enable;
-    if(!configureMode && (!device || device->getPlatform() == Platform::RVC4)) {
+    if(!configureMode) {
         rectification->enableRectification(enable);
     }
 }

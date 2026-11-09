@@ -23,7 +23,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     using Backend = Properties::Backend;
 
     /**
-     * Rectification subnode used on RVC4 whenever setRectification(true) is selected.
+     * Rectification subnode used whenever setRectification(true) is selected.
      * Disabled rectification bypasses this node. Rectified images are synchronized before matching.
      */
     Subnode<Rectification> rectification{*this, "rectification"};

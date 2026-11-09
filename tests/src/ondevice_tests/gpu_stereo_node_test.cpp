@@ -190,3 +190,28 @@ TEST_CASE("StereoDepth rejects matcher-side rectification on RVC4", "[StereoDept
     stereo->setRectification(false);
     REQUIRE_THROWS_WITH(pipeline.start(), Catch::Matchers::ContainsSubstring("rectification must be handled by its Rectification subnode"));
 }
+
+TEST_CASE("StereoDepth requires its Sync subnode on RVC4", "[StereoDepth][Sync][ondevice]") {
+    const auto backend = GENERATE(dai::node::StereoDepth::Backend::HW, dai::node::StereoDepth::Backend::GPU, dai::node::StereoDepth::Backend::GPU_CPU);
+    auto device = std::make_shared<dai::Device>();
+    if(device->getPlatform() != dai::Platform::RVC4) SKIP("Requires RVC4");
+    if(backend != dai::node::StereoDepth::Backend::HW && !device->isGpuStereoSupported()) SKIP("Requires GPU stereo support");
+    struct UnsyncedStereoDepth : dai::node::StereoDepth {
+        void buildStage1() override {
+            dai::node::StereoDepth::buildStage1();
+            // Simulate an older SDK connecting images directly to the matcher.
+            for(const auto& entry : getParentPipeline().getConnectionMap()) {
+                for(const auto& connection : entry.second) {
+                    if(connection.in->getName() == "inputSynced") connection.out->unlink(*connection.in);
+                }
+            }
+        }
+    };
+    dai::Pipeline pipeline(device);
+    auto stereo = std::make_shared<UnsyncedStereoDepth>();
+    pipeline.add(stereo);
+    stereo->buildInternal();
+    stereo->setBackend(backend);
+    stereo->setRectification(false);
+    REQUIRE_THROWS_WITH(pipeline.start(), Catch::Matchers::ContainsSubstring("expects input from its Sync subnode"));
+}

@@ -12,6 +12,17 @@ static_assert(!std::is_same_v<dai::node::StereoDepth::Backend, dai::Backend>, "S
 TEST_CASE("Rectification backend selection survives host-device serialization", "[Rectification]") {
     auto node = dai::node::Rectification::create();
     REQUIRE(node->properties.backend == dai::Backend::AUTO);
+    node->properties.mesh.meshLeftUri = "asset:/node/1/meshLeft";
+    node->properties.mesh.meshRightUri = "asset:/node/1/meshRight";
+    node->properties.mesh.meshSize = 256;
+    node->properties.mesh.stepWidth = 32;
+    node->properties.rectifyEdgeFillColor = -1;
+    node->properties.useHomographyRectification = true;
+    node->properties.rectificationUseSpecTranslation = false;
+    node->properties.alphaScaling = 0.5f;
+    node->properties.depthAlign = dai::StereoDepthProperties::DepthAlign::RECTIFIED_RIGHT;
+    node->properties.depthAlignCamera = dai::CameraBoardSocket::CAM_C;
+    node->properties.numFramesPool = 7;
     for(auto backend : {dai::Backend::CPU, dai::Backend::HW, dai::Backend::GPU, dai::Backend::AUTO}) {
         REQUIRE(&node->setBackend(backend) == node.get());
         for(auto format : {dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK}) {
@@ -20,6 +31,17 @@ TEST_CASE("Rectification backend selection survives host-device serialization", 
             dai::RectificationProperties decoded;
             REQUIRE(dai::utility::deserialize(data, decoded, format));
             REQUIRE(decoded.backend == backend);
+            REQUIRE(decoded.mesh.meshLeftUri == node->properties.mesh.meshLeftUri);
+            REQUIRE(decoded.mesh.meshRightUri == node->properties.mesh.meshRightUri);
+            REQUIRE(decoded.mesh.meshSize == 256);
+            REQUIRE(decoded.mesh.stepWidth == 32);
+            REQUIRE(decoded.rectifyEdgeFillColor == -1);
+            REQUIRE(decoded.useHomographyRectification == true);
+            REQUIRE(decoded.rectificationUseSpecTranslation == false);
+            REQUIRE(decoded.alphaScaling == 0.5f);
+            REQUIRE(decoded.depthAlign == dai::StereoDepthProperties::DepthAlign::RECTIFIED_RIGHT);
+            REQUIRE(decoded.depthAlignCamera == dai::CameraBoardSocket::CAM_C);
+            REQUIRE(decoded.numFramesPool == 7);
         }
     }
 }
