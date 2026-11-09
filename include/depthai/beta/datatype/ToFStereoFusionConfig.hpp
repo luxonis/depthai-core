@@ -31,6 +31,16 @@ struct ToFStereoFusionConfig {
         return *this;
     }
 
+    /**
+     * Set the confidence threshold.
+     *
+     * With the ALPHA_BLEND model a pixel is kept when its fused confidence is at least the threshold.
+     * With the STEREO_NETWORK model the threshold grows linearly with depth: a pixel at depth Z is kept
+     * when its confidence is at least threshold * Z / 10 m, so the value is the threshold at 10 m.
+     *
+     * @param threshold Threshold in [0, 1].
+     * @return This configuration for chaining.
+     */
     ToFStereoFusionConfig& setConfidenceThreshold(float threshold) {
         if(threshold < 0.0f || threshold > 1.0f) throw std::invalid_argument("confidence threshold must be between 0 and 1");
         confidenceThreshold = threshold;

@@ -631,6 +631,9 @@ dai_set_test_labels(model_slug_test onhost ci)
 dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
 dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
+dai_add_test(tof_stereo_fusion_config_test src/onhost_tests/pipeline/node/tof_stereo_fusion_config_test.cpp)
+dai_set_test_labels(tof_stereo_fusion_config_test onhost ci)
+
 # Stitching device-node configuration tests (must not require host OpenCV support)
 dai_add_test(stitching_device_node_test src/onhost_tests/pipeline/node/stitching_device_node_test.cpp)
 dai_set_test_labels(stitching_device_node_test onhost ci)
