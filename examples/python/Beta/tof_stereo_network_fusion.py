@@ -25,7 +25,7 @@ with dai.Pipeline() as pipeline:
     fusion.setNetworkInputSize(*args.size)
     fusion.build(left, right)
     fusion.neuralNetwork.setModelPath(args.model)
-    backend_properties = {"output_tensors": "disp_low,head9,conf"}
+    backend_properties = {"output_tensors": "disp_low,head9,conf", "output_memory": "dma_buf", "register_dma_buf": "true"}
     if args.udo_package:
         backend_properties["udo_package"] = args.udo_package
     fusion.neuralNetwork.setBackendProperties(backend_properties)

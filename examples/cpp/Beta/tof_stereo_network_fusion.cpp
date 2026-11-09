@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     fusion->setNetworkInputSize(width, height);
     fusion->build(left, right);
     fusion->neuralNetwork->setModelPath(model);
-    std::map<std::string, std::string> backendProperties{{"output_tensors", "disp_low,head9,conf"}};
+    std::map<std::string, std::string> backendProperties{{"output_tensors", "disp_low,head9,conf"}, {"output_memory", "dma_buf"}, {"register_dma_buf", "true"}};
     if(!udoPackage.empty()) backendProperties["udo_package"] = udoPackage;
     fusion->neuralNetwork->setBackendProperties(backendProperties);
     // Keep pixels at depth Z with confidence >= 0.6 * Z / 10 m, and output the ToF depth closer than the network can.

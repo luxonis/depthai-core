@@ -103,7 +103,9 @@ void ToFStereoFusion::buildStereoNetwork(const std::shared_ptr<dai::node::Camera
 
     // The network replaces the zoo model set in buildInternal(); the user provides it with neuralNetwork->setModelPath().
     neuralNetwork->properties.deviceModel.reset();
-    neuralNetwork->setBackendProperties({{"output_tensors", "disp_low,head9,conf"}});
+    // Network I/O as dma-bufs (one per tensor), registered with SNPE: the device pre- and post-processing read and write
+    // them in place.
+    neuralNetwork->setBackendProperties({{"output_tensors", "disp_low,head9,conf"}, {"output_memory", "dma_buf"}, {"register_dma_buf", "true"}});
 }
 
 std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<dai::node::Camera>& left,
