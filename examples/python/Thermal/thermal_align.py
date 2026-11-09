@@ -3,7 +3,7 @@
 """
 Due to an issue with our calibration, you might receive the following error when running this script on early release OAK Thermal devices:
 ```bash
-[ImageAlign(4)] [error] Failed to get calibration data: Extrinsic connection between the requested cameraId's doesn't exist. Please recalibrate or modify your calibration data
+[Align(4)] [error] Node threw exception, stopping the node. Exception message: Target camera sockets are not set for extrinsics. Align node requires input and alignTo messages to carry complete transformation extrinsics. Input message toCameraSocket: AUTO, alignTo message toCameraSocket: CAM_A. ...
 ```
 If this happens, please download the calibration data + script from https://drive.google.com/drive/folders/1Q_MZMqWMKDC1eOqVHGPeDO-NJgFmnY5U,
 place them into the same folder, connect the camera to the computer and run the script. This will update the
@@ -63,7 +63,7 @@ with dai.Pipeline() as pipeline:
     thermalCam = pipeline.create(dai.node.Thermal).build(thermalSocket, fps=FPS)
 
     sync = pipeline.create(dai.node.Sync)
-    align = pipeline.create(dai.node.ImageAlign)
+    align = pipeline.create(dai.node.Align)
 
     camRgbOut = camRgb.requestOutput(COLOR_RESOLUTION, fps=FPS, enableUndistortion=True)
 
