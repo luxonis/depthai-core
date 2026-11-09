@@ -41,6 +41,71 @@ void ToFStereoFusion::buildInternal() {
     neuralNetwork->setModelFromDeviceZoo(DeviceModelZoo::TOF_NEURAL_FUSION_672X804);
 }
 
+ToFStereoFusion& ToFStereoFusion::setModel(Properties::Model model) {
+    properties.model = model;
+    return *this;
+}
+
+ToFStereoFusion::Properties::Model ToFStereoFusion::getModel() const {
+    return properties.model;
+}
+
+ToFStereoFusion& ToFStereoFusion::setBackend(Properties::Backend backend) {
+    properties.backend = backend;
+    return *this;
+}
+
+ToFStereoFusion& ToFStereoFusion::setToFConfidenceScale(Properties::ToFConfidenceScale scale) {
+    properties.tofConfidenceScale = scale;
+    return *this;
+}
+
+ToFStereoFusion& ToFStereoFusion::setNetworkInputSize(uint32_t width, uint32_t height) {
+    // The network packs its input in 1/4-resolution planes and the correlation operator works on rows of 32 cells.
+    if(width < 512 || height < 256 || width % 128 != 0 || height % 32 != 0) {
+        throw std::invalid_argument("ToFStereoFusion network input must be at least 512x256, width a multiple of 128 and height a multiple of 32");
+    }
+    networkInputSize = {width, height};
+    return *this;
+}
+
+void ToFStereoFusion::buildStereoNetwork(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right, float fps) {
+    // NeuralDepth is not used by this model; drop it so that its network is not loaded.
+    remove(neuralDepth->shared_from_this());
+
+    pairSync = std::make_unique<Subnode<dai::node::Sync>>(*this, "pairSync");
+    pairDemux = std::make_unique<Subnode<dai::node::MessageDemux>>(*this, "pairDemux");
+    rectification = std::make_unique<Subnode<dai::node::Rectification>>(*this, "rectification");
+    (*pairSync)->setRunOnHost(false);
+    (*pairSync)->out.link((*pairDemux)->input);
+    (*pairDemux)->outputs["left"].link((*rectification)->input1);
+    (*pairDemux)->outputs["right"].link((*rectification)->input2);
+    (*rectification)->setOutputSize(networkInputSize);
+
+    // Scale, do not crop: the network was trained on the full field of view. Rectification also undistorts.
+    auto* leftOutput = left->requestOutput(networkInputSize, ImgFrame::Type::GRAY8, ImgResizeMode::STRETCH, fps, false);
+    auto* rightOutput = right->requestOutput(networkInputSize, ImgFrame::Type::GRAY8, ImgResizeMode::STRETCH, fps, false);
+    leftOutput->link((*pairSync)->inputs["left"]);
+    rightOutput->link((*pairSync)->inputs["right"]);
+    (*rectification)->output1.link(sync->inputs["left"]);
+    (*rectification)->output2.link(sync->inputs["right"]);
+
+    tof->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, fps);
+    tof->setOutputUndistortion(true);
+    tof->tofBaseNode.depth.link(sync->inputs["tofDepth"]);
+    tof->tofBaseNode.confidence.link(sync->inputs["tofConfidence"]);
+    tof->tofBaseNode.amplitude.link(sync->inputs["tofAmplitude"]);
+    // The network is trained on the ToF fusion depth mode; its phases replace the ones derived from the depth.
+    if(properties.tofConfidenceScale == Properties::ToFConfidenceScale::FUSION) {
+        tof->tofBaseNode.initialConfig->setDepthMode(ToFConfig::DepthMode::FUSION);
+        tof->tofBaseNode.phase.link(sync->inputs["tofPhase"]);
+    }
+
+    // The network replaces the zoo model set in buildInternal(); the user provides it with neuralNetwork->setModelPath().
+    neuralNetwork->properties.deviceModel.reset();
+    neuralNetwork->setBackendProperties({{"output_tensors", "disp_low,head9,conf"}});
+}
+
 std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<dai::node::Camera>& left,
                                                         const std::shared_ptr<dai::node::Camera>& right,
                                                         float fps) {
@@ -63,6 +128,11 @@ std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<da
     }
     if(leftFps != CameraProperties::AUTO && rightFps != CameraProperties::AUTO && leftFps != rightFps) {
         logger::warn("ToFStereoFusion camera FPS values differ (left: {}, right: {}); outputs may not synchronize", leftFps, rightFps);
+    }
+
+    if(properties.model == Properties::Model::STEREO_NETWORK) {
+        buildStereoNetwork(left, right, fps);
+        return std::static_pointer_cast<ToFStereoFusion>(shared_from_this());
     }
 
     constexpr auto neuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_MEDIUM;
