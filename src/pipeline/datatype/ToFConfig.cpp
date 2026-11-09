@@ -14,6 +14,11 @@ ToFConfig& ToFConfig::setMedianFilter(filters::params::MedianFilter median) {
     return *this;
 }
 
+ToFConfig& ToFConfig::setDepthMode(DepthMode mode) {
+    depthMode = mode;
+    return *this;
+}
+
 void ToFConfig::setProfilePreset(Profile prof) {
     profile = prof;
     switch(prof) {
