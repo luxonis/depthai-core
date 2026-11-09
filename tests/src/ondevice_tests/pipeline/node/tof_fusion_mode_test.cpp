@@ -69,10 +69,18 @@ TEST_CASE("ToF FUSION depth mode sends phase frames matching the depth frame", "
     REQUIRE(confidence->getWidth() == depth->getWidth());
     REQUIRE(confidence->getHeight() == depth->getHeight());
 
-    // The first frame is the TNR start-up frame (vendor unwrap, no phase); the next ones come from the spatial unwrap.
-    timedOut = false;
-    const auto phase = phaseQueue->get<ImgFrame>(FRAME_TIMEOUT, timedOut);
-    REQUIRE_FALSE(timedOut);
+    // The first frame is the TNR start-up frame (vendor unwrap: an empty phase frame); the next ones come from the spatial
+    // unwrap.
+    std::shared_ptr<ImgFrame> phase;
+    const auto deadline = std::chrono::steady_clock::now() + FRAME_TIMEOUT;
+    while(std::chrono::steady_clock::now() < deadline) {
+        timedOut = false;
+        phase = phaseQueue->get<ImgFrame>(FRAME_TIMEOUT, timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(phase != nullptr);
+        if(!phase->getData().empty()) break;
+        REQUIRE(phase->getWidth() == 0);
+    }
     REQUIRE(phase != nullptr);
     REQUIRE(phase->getType() == ImgFrame::Type::RAW8);
     REQUIRE(phase->getWidth() == depth->getWidth() * PHASE_BYTES_PER_PIXEL);
@@ -81,7 +89,7 @@ TEST_CASE("ToF FUSION depth mode sends phase frames matching the depth frame", "
     REQUIRE(phase->getData().size() == static_cast<size_t>(depth->getWidth()) * depth->getHeight() * PHASE_BYTES_PER_PIXEL);
 }
 
-TEST_CASE("ToF STANDARD depth mode accepts a phase link on RVC4", "[ToF][fusion]") {
+TEST_CASE("ToF STANDARD depth mode sends empty phase frames on RVC4", "[ToF][fusion]") {
     const auto device = std::make_shared<Device>();
     if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) {
         SKIP("Requires an RVC4 device with a ToF sensor.");
@@ -99,6 +107,12 @@ TEST_CASE("ToF STANDARD depth mode accepts a phase link on RVC4", "[ToF][fusion]
     const auto depth = depthQueue->get<ImgFrame>(FRAME_TIMEOUT, timedOut);
     REQUIRE_FALSE(timedOut);
     REQUIRE(depth != nullptr);
-    // STANDARD mode never sends on the phase output.
-    REQUIRE(phaseQueue->tryGet<ImgFrame>() == nullptr);
+    // STANDARD mode sends one empty phase frame (width 0: vendor unwrap) per depth frame, so a Sync with the depth does not
+    // stall.
+    timedOut = false;
+    const auto phase = phaseQueue->get<ImgFrame>(FRAME_TIMEOUT, timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(phase != nullptr);
+    REQUIRE(phase->getData().empty());
+    REQUIRE(phase->getWidth() == 0);
 }

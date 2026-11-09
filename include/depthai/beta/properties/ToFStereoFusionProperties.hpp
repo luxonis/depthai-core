@@ -21,6 +21,7 @@ struct ToFStereoFusionProperties : PropertiesSerializable<Properties, ToFStereoF
         /** GPU when the device has one and OpenCL initializes, else CPU. */
         AUTO = 0,
         CPU = 1,
+        /** GPU only; the node fails instead of falling back to the CPU. */
         GPU = 2,
     };
 
