@@ -42,6 +42,8 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
 
     stereoDepthProperties.def_readwrite("enableFrameSync", &dai::StereoDepthProperties::enableFrameSync, DOC(dai, StereoDepthProperties, enableFrameSync))
         .def_readwrite("initialConfig", &StereoDepthProperties::initialConfig, DOC(dai, StereoDepthProperties, initialConfig))
+        .def_readwrite("pool", &StereoDepthProperties::pool)
+        .def_readwrite("numFramesPool", &StereoDepthProperties::numFramesPool, "Deprecated: use pool.numFramesPool instead; zero means automatic.")
         .def_readwrite("depthAlignCamera", &StereoDepthProperties::depthAlignCamera, DOC(dai, StereoDepthProperties, depthAlignCamera))
         .def_readwrite("enableRectification", &StereoDepthProperties::enableRectification, DOC(dai, StereoDepthProperties, enableRectification))
         .def_readwrite("rectifyEdgeFillColor", &StereoDepthProperties::rectifyEdgeFillColor, DOC(dai, StereoDepthProperties, rectifyEdgeFillColor))
@@ -54,7 +56,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def_readwrite("enableRuntimeStereoModeSwitch",
                        &StereoDepthProperties::enableRuntimeStereoModeSwitch,
                        DOC(dai, StereoDepthProperties, enableRuntimeStereoModeSwitch))
-        .def_readwrite("numFramesPool", &StereoDepthProperties::numFramesPool, DOC(dai, StereoDepthProperties, numFramesPool))
         .def_readwrite("numPostProcessingShaves", &StereoDepthProperties::numPostProcessingShaves, DOC(dai, StereoDepthProperties, numPostProcessingShaves))
         .def_readwrite("numPostProcessingMemorySlices",
                        &StereoDepthProperties::numPostProcessingMemorySlices,
@@ -170,6 +171,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def("setExtendedDisparity", &StereoDepth::setExtendedDisparity, py::arg("enable"), DOC(dai, node, StereoDepth, setExtendedDisparity))
         .def("setRectifyEdgeFillColor", &StereoDepth::setRectifyEdgeFillColor, py::arg("color"), DOC(dai, node, StereoDepth, setRectifyEdgeFillColor))
         .def("setRuntimeModeSwitch", &StereoDepth::setRuntimeModeSwitch, DOC(dai, node, StereoDepth, setRuntimeModeSwitch))
+        .def("setPoolProperties", &StereoDepth::setPoolProperties, py::arg("pool"))
         .def("setNumFramesPool", &StereoDepth::setNumFramesPool, DOC(dai, node, StereoDepth, setNumFramesPool))
         .def("setPostProcessingHardwareResources",
              &StereoDepth::setPostProcessingHardwareResources,

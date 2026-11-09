@@ -5,6 +5,7 @@
 #include "depthai/common/Interpolation.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
+#include "depthai/properties/FramePoolProperties.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -15,8 +16,8 @@ namespace dai {
 struct ImageAlignProperties : PropertiesSerializable<Properties, ImageAlignProperties> {
     ImageAlignConfig initialConfig;
 
-    /// Num frames in output pool
-    int numFramesPool = 4;
+    /// Deprecated frame count fallback for pool.numFramesPool; zero means automatic.
+    [[deprecated("Use pool.numFramesPool instead")]] int numFramesPool = 0;
 
     /**
      * Optional output width
@@ -42,9 +43,14 @@ struct ImageAlignProperties : PropertiesSerializable<Properties, ImageAlignPrope
      */
     std::int32_t numShaves = 2;
 
+    /// Pool configuration. Nonzero fields override legacy fields; zero falls back to the legacy value.
+    /// Legacy fields also default to zero (automatic). Prefer pool for new code.
+    FramePoolProperties pool{};
+
     ~ImageAlignProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageAlignProperties, initialConfig, numFramesPool, alignWidth, alignHeight, warpHwIds, interpolation, outKeepAspectRatio, numShaves);
+DEPTHAI_SERIALIZE_EXT(
+    ImageAlignProperties, initialConfig, numFramesPool, alignWidth, alignHeight, warpHwIds, interpolation, outKeepAspectRatio, numShaves, pool);
 
 }  // namespace dai
