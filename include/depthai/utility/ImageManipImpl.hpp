@@ -556,6 +556,38 @@ struct ColorChangeArgs {
 FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
 FrameSpecs getCcDstFrameSpecs(const FrameSpecs& srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
 FrameSpecs getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type);
+/** Return whether the image format stores IEEE 754 half-precision samples. */
+inline bool isFp16(ImgFrame::Type type) {
+    return type == ImgFrame::Type::RGBF16F16F16p || type == ImgFrame::Type::BGRF16F16F16p || type == ImgFrame::Type::RGBF16F16F16i
+           || type == ImgFrame::Type::BGRF16F16F16i || type == ImgFrame::Type::GRAYF16;
+}
+
+/**
+ * Convert FP16 and supported integer layouts without normalizing sample values.
+ * Integer output is rounded and saturated; unsupported layouts throw std::invalid_argument.
+ */
+void colorConvertFp16(const std::shared_ptr<OffsetMemory>& src,
+                      const std::shared_ptr<OffsetMemory>& dst,
+                      const FrameSpecs& srcSpecs,
+                      const FrameSpecs& dstSpecs,
+                      ImgFrame::Type from,
+                      ImgFrame::Type to);
+/**
+ * Warp the source sampling rectangle in FP32 and store rounded FP16 output.
+ * The matrix maps full-image coordinates; pixels outside the rectangle use background.
+ */
+void transformFp16(const std::shared_ptr<OffsetMemory>& src,
+                   const std::shared_ptr<OffsetMemory>& dst,
+                   const FrameSpecs& srcSpecs,
+                   const FrameSpecs& dstSpecs,
+                   uint32_t channels,
+                   const std::array<std::array<float, 3>, 3>& matrix,
+                   const std::vector<uint32_t>& background,
+                   size_t minX,
+                   size_t minY,
+                   size_t maxX,
+                   size_t maxY);
+
 size_t getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height);
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
@@ -746,11 +778,15 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
         else
             outType = inFrameType;
     }
-    if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
-       && inFrameType == inType)
-        return *this;
+    const auto sameSpecs = [](const FrameSpecs& a, const FrameSpecs& b) {
+        return std::tie(a.width, a.height, a.p1Offset, a.p2Offset, a.p3Offset, a.p1Stride, a.p2Stride, a.p3Stride)
+               == std::tie(b.width, b.height, b.p1Offset, b.p2Offset, b.p3Offset, b.p1Stride, b.p2Stride, b.p3Stride);
+    };
+    if(newCfgStr == prevConfig && outType == outputFrameType && sameSpecs(srcFrameSpecs, srcSpecs) && inFrameType == inType) return *this;
     prevConfig = newCfgStr;
     outputOps.clear();
+    mode = 0;
+    convertInput = false;
 
     if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
         throw std::runtime_error("Input image is one dimensional");
@@ -938,6 +974,11 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
     if(mode == 0) return 0;
     size_t size = 0;
     switch(outputFrameType) {
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
         case ImgFrame::Type::RGB888i:
@@ -983,11 +1024,6 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Output frame type not supported");
@@ -1001,10 +1037,15 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
     if(mode == 0) return 0;
     size_t size = 0;
     switch(outputFrameType) {
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
             size = getOutputPlaneSize(0) * 3;
             break;
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
         case ImgFrame::Type::GRAY8:
@@ -1036,11 +1077,6 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Output frame type not supported");

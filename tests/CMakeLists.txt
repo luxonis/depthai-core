@@ -991,6 +991,13 @@ dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignme
 dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
 
 # ImageManip test
+if(DEPTHAI_OPENCV_SUPPORT)
+    dai_add_test(image_manip_fp16_test src/onhost_tests/image_manip_fp16_test.cpp)
+    dai_set_test_labels(image_manip_fp16_test onhost)
+
+    dai_add_test(image_manip_host_test src/onhost_tests/image_manip_host_test.cpp)
+    dai_set_test_labels(image_manip_host_test onhost)
+endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
     target_compile_definitions(image_manip_node_test PRIVATE LENNA_PATH="${lenna_png}")

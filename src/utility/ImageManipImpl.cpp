@@ -1,6 +1,9 @@
 #include "depthai/utility/ImageManipImpl.hpp"
 
+#include <fp16/fp16.h>
+
 #include <algorithm>
+#include <cstring>
 #include <stdexcept>
 
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
@@ -100,15 +103,20 @@ void transformOpenCV(const uint8_t* src,
     cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
     int ssF = srcImgSpecs.width / srcWidth;
     assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
+    const size_t planeMinX = sourceMinX / ssF;
+    const size_t planeMinY = sourceMinY / ssF;
+    const size_t planeMaxX = std::min((sourceMaxX + ssF - 1) / ssF, srcWidth);
+    const size_t planeMaxY = std::min((sourceMaxY + ssF - 1) / ssF, srcHeight);
+    const cv::Rect roi(planeMinX, planeMinY, planeMaxX - planeMinX, planeMaxY - planeMinY);
     if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
         // Affine transform
         float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
-        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
-        if(sourceMinX != 0 || sourceMinY != 0) {
-            affine[2] = affine[0] * ((float)sourceMinX / ssF) + affine[1] * ((float)sourceMinY / ssF) + affine[2];
-            affine[5] = affine[3] * ((float)sourceMinX / ssF) + affine[4] * ((float)sourceMinY / ssF) + affine[5];
+        if(planeMinX != 0 || planeMinY != 0) {
+            affine[2] += affine[0] * planeMinX + affine[1] * planeMinY;
+            affine[5] += affine[3] * planeMinX + affine[4] * planeMinY;
         }
-        if(floatEq(affine[0], 1.f) && floatEq(affine[1], 0.f) && floatEq(affine[3], 0.f) && floatEq(affine[4], 1.f) && floatEq(affine[5], 0.f)) {
+        if(floatEq(affine[0], 1.f) && floatEq(affine[1], 0.f) && floatEq(affine[2], 0.f) && floatEq(affine[3], 0.f) && floatEq(affine[4], 1.f)
+           && floatEq(affine[5], 0.f) && roi.size() == cvDst.size()) {
             // Crop only
             cvSrc(roi).copyTo(cvDst);
         } else {
@@ -125,11 +133,10 @@ void transformOpenCV(const uint8_t* src,
         // Perspective transform
         float projection[9] = {
             matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
-        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
-        if(sourceMinX != 0 || sourceMinY != 0) {
-            projection[2] = projection[0] * ((float)sourceMinX / ssF) + projection[1] * ((float)sourceMinY / ssF) + projection[2];
-            projection[5] = projection[3] * ((float)sourceMinX / ssF) + projection[4] * ((float)sourceMinY / ssF) + projection[5];
-            projection[8] = projection[6] * ((float)sourceMinX / ssF) + projection[7] * ((float)sourceMinY / ssF) + projection[8];
+        if(planeMinX != 0 || planeMinY != 0) {
+            projection[2] += projection[0] * planeMinX + projection[1] * planeMinY;
+            projection[5] += projection[3] * planeMinX + projection[4] * planeMinY;
+            projection[8] += projection[6] * planeMinX + projection[7] * planeMinY;
         }
         cv::Mat cvProjection(3, 3, CV_32F, projection);
         cv::warpPerspective(cvSrc(roi),
@@ -254,22 +261,27 @@ bool transformFastCV(const uint8_t* src,
 }
 
 dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs) {
-    FrameSpecs specs;
+    FrameSpecs specs{};
     specs.width = srcSpecs.width;
     specs.height = srcSpecs.height;
     specs.p1Offset = srcSpecs.p1Offset;
+    const uint32_t bpp = isFp16(srcSpecs.type) ? 2 : 1;
     switch(srcSpecs.type) {
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
         case dai::ImgFrame::Type::RGB888p:
         case dai::ImgFrame::Type::BGR888p:
-            specs.p1Stride = srcSpecs.stride >= specs.width ? srcSpecs.stride : specs.width;
+            specs.p1Stride = srcSpecs.stride >= specs.width * bpp ? srcSpecs.stride : specs.width * bpp;
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
-            specs.p2Offset = srcSpecs.p2Offset > 0 ? srcSpecs.p2Offset : specs.p1Stride * specs.height;
-            specs.p3Offset = srcSpecs.p3Offset > 0 ? srcSpecs.p3Offset : 2 * specs.p1Stride * specs.height;
+            specs.p2Offset = srcSpecs.p2Offset > 0 ? srcSpecs.p2Offset : specs.p1Offset + specs.p1Stride * specs.height;
+            specs.p3Offset = srcSpecs.p3Offset > 0 ? srcSpecs.p3Offset : specs.p2Offset + specs.p2Stride * specs.height;
             break;
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
         case dai::ImgFrame::Type::RGB888i:
         case dai::ImgFrame::Type::BGR888i:
-            specs.p1Stride = srcSpecs.stride >= 3 * specs.width ? srcSpecs.stride : 3 * specs.width;
+            specs.p1Stride = srcSpecs.stride >= 3 * specs.width * bpp ? srcSpecs.stride : 3 * specs.width * bpp;
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
             specs.p2Offset = specs.p1Offset;
@@ -293,6 +305,7 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
         case dai::ImgFrame::Type::GRAY8:
             specs.p1Stride = srcSpecs.stride >= specs.width ? srcSpecs.stride : specs.width;
             break;
+        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW16:
             specs.p1Stride = srcSpecs.stride >= specs.width * 2 ? srcSpecs.stride : specs.width * 2;
             break;
@@ -314,11 +327,6 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Frame type " + std::to_string((int)srcSpecs.type) + " not supported");
@@ -328,22 +336,27 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
 }
 
 dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type) {
-    FrameSpecs specs;
+    FrameSpecs specs{};
     specs.width = width;
     specs.height = height;
     specs.p1Offset = 0;
+    const uint32_t bpp = isFp16(type) ? 2 : 1;
     switch(type) {
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
         case dai::ImgFrame::Type::RGB888p:  // Do not do striding for RGB/BGRi/p
         case dai::ImgFrame::Type::BGR888p:
-            specs.p1Stride = specs.width;
+            specs.p1Stride = specs.width * bpp;
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
             specs.p2Offset = specs.p1Offset + specs.p1Stride * specs.height;
             specs.p3Offset = specs.p2Offset + specs.p1Stride * specs.height;
             break;
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
         case dai::ImgFrame::Type::RGB888i:
         case dai::ImgFrame::Type::BGR888i:
-            specs.p1Stride = specs.width * 3;
+            specs.p1Stride = specs.width * 3 * bpp;
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
             specs.p2Offset = specs.p1Offset;
@@ -367,7 +380,8 @@ dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, d
         case dai::ImgFrame::Type::GRAY8:
             specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             break;
-        case ImgFrame::Type::RAW16:  // Do not do alignment for RAW16
+        case ImgFrame::Type::GRAYF16:
+        case ImgFrame::Type::RAW16:  // Do not align 16-bit grayscale frames
             specs.p1Stride = specs.width * 2;
             break;
         case ImgFrame::Type::YUV422i:
@@ -388,11 +402,6 @@ dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, d
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Frame type not supported");
@@ -414,7 +423,7 @@ bool dai::impl::isTypeSupported(dai::ImgFrame::Type type) {
     return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RGB888i || type == ImgType::BGR888i;
 #elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
     return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RAW16 || type == ImgType::RGB888i || type == ImgType::BGR888i
-           || type == ImgType::RGB888p || type == ImgType::BGR888p || type == ImgType::YUV420p || type == ImgType::NV12;
+           || type == ImgType::RGB888p || type == ImgType::BGR888p || type == ImgType::YUV420p || type == ImgType::NV12 || isFp16(type);
 #else
     return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RGB888i || type == ImgType::BGR888i || type == ImgType::RGB888p
            || type == ImgType::BGR888p || type == ImgType::YUV420p || type == ImgType::NV12;
@@ -428,15 +437,19 @@ bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPl
     outNumPlanes = 3;
 
     switch(outFrameType) {
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
         case dai::ImgFrame::Type::RGB888p:
         case dai::ImgFrame::Type::BGR888p:
-            outBpp = 1;
+            outBpp = isFp16(outFrameType) ? 2 : 1;
             outNumPlanes = 3;
             break;
 
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
         case dai::ImgFrame::Type::RGB888i:
         case dai::ImgFrame::Type::BGR888i:
-            outBpp = 3;
+            outBpp = isFp16(outFrameType) ? 6 : 3;
             outNumPlanes = 1;
             break;
 
@@ -447,6 +460,7 @@ bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPl
             outNumPlanes = 1;
             break;
 
+        case ImgFrame::Type::GRAYF16:
         case dai::ImgFrame::Type::RAW16:
             outBpp = 2;
             outNumPlanes = 1;
@@ -475,11 +489,6 @@ bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPl
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             return false;
@@ -793,18 +802,23 @@ size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& spec
     switch(type) {
         case ImgFrame::Type::YUV420p:
             return specs.p3Offset + specs.p3Stride * specs.height / 2;
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
             return specs.p3Offset + specs.p3Stride * specs.height;
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
-            return specs.p1Stride * specs.height;
+            return specs.p1Offset + specs.p1Stride * specs.height;
         case ImgFrame::Type::NV12:
             return specs.p2Offset + specs.p2Stride * specs.height / 2;
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::RAW16:
-            return specs.p1Stride * specs.height;
+            return specs.p1Offset + specs.p1Stride * specs.height;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -823,11 +837,6 @@ size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& spec
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             break;
@@ -851,6 +860,13 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
     auto alignHeight = [](size_t _height, int fx = 1) -> size_t { return ALIGN_UP(_height, DEPTHAI_HEIGHT_ALIGNMENT / fx); };
     auto alignSize = [](size_t _size) -> size_t { return ALIGN_UP(_size, DEPTHAI_PLANE_ALIGNMENT); };
     switch(type) {
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+            return width * height * 6;
+        case ImgFrame::Type::GRAYF16:
+            return width * height * 2;
         case ImgFrame::Type::YUV420p:
             return alignSize(alignWidth(width) * alignHeight(height)) + 2 * alignSize(alignWidth(width / 2) * alignHeight(height / 2, 2));
         case ImgFrame::Type::RGB888p:
@@ -884,11 +900,6 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             break;
@@ -989,8 +1000,15 @@ dai::impl::UndistortOpenCvImpl::BuildStatus dai::impl::UndistortOpenCvImpl::buil
 }
 
 void dai::impl::UndistortOpenCvImpl::undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t) {
-    cv::Mat src(srcI.height, srcI.width, getCvMatTypeFrom(srcI.bpp, srcI.channels), srcI.data->getOffsetData().data(), srcI.stride);
-    cv::Mat dst(dstI.height, dstI.width, getCvMatTypeFrom(dstI.bpp, dstI.channels), dstI.data->getOffsetData().data(), dstI.stride);
+    const bool fp16 = isFp16(type);
+    const auto matType = fp16 ? CV_MAKETYPE(CV_16F, srcI.channels) : getCvMatTypeFrom(srcI.bpp, srcI.channels);
+    cv::Mat src(srcI.height, srcI.width, matType, srcI.data->getOffsetData().data(), srcI.stride);
+    cv::Mat dst(dstI.height, dstI.width, matType, dstI.data->getOffsetData().data(), dstI.stride);
+    cv::Mat halfDst = dst;
+    if(fp16) {
+        src.convertTo(src, CV_32F);
+        dst = cv::Mat(dst.size(), CV_MAKETYPE(CV_32F, dstI.channels));
+    }
     if(dst.size().width == (int)dstWidth && dst.size().height == (int)dstHeight) {
         cv::remap(src, dst, undistortMap1, undistortMap2, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
     } else if(dst.size().width == (int)dstWidth / 2 && dst.size().height == (int)dstHeight / 2) {
@@ -1008,6 +1026,7 @@ void dai::impl::UndistortOpenCvImpl::undistort(const UndistortInput& srcI, const
                                              dstWidth / 2,
                                              dstHeight / 2));
     }
+    if(fp16) dst.convertTo(halfDst, CV_16F);
 }
 #endif
 
@@ -2867,6 +2886,137 @@ bool colorConvertToGRAY8(const ColorChangeArgs& args) {
     return done;
 }
 
+namespace {
+struct PixelLayout {
+    bool fp16;
+    bool planar;
+    bool bgr;
+    uint32_t channels;
+    uint32_t bytes;
+};
+/** Describe channel order, packing, and sample size for supported FP16 conversion layouts. */
+PixelLayout pixelLayout(ImgFrame::Type type) {
+    switch(type) {
+        case ImgFrame::Type::RGBF16F16F16p:
+            return {true, true, false, 3, 2};
+        case ImgFrame::Type::BGRF16F16F16p:
+            return {true, true, true, 3, 2};
+        case ImgFrame::Type::RGBF16F16F16i:
+            return {true, false, false, 3, 2};
+        case ImgFrame::Type::BGRF16F16F16i:
+            return {true, false, true, 3, 2};
+        case ImgFrame::Type::GRAYF16:
+            return {true, false, false, 1, 2};
+        case ImgFrame::Type::RGB888p:
+            return {false, true, false, 3, 1};
+        case ImgFrame::Type::BGR888p:
+            return {false, true, true, 3, 1};
+        case ImgFrame::Type::RGB888i:
+            return {false, false, false, 3, 1};
+        case ImgFrame::Type::BGR888i:
+            return {false, false, true, 3, 1};
+        case ImgFrame::Type::GRAY8:
+        case ImgFrame::Type::RAW8:
+            return {false, false, false, 1, 1};
+        case ImgFrame::Type::NV12:
+        case ImgFrame::Type::YUV420p:
+        case ImgFrame::Type::RAW16:
+        case ImgFrame::Type::YUV422i:
+        case ImgFrame::Type::YUV444p:
+        case ImgFrame::Type::YUV422p:
+        case ImgFrame::Type::YUV400p:
+        case ImgFrame::Type::RGBA8888:
+        case ImgFrame::Type::RGB161616:
+        case ImgFrame::Type::LUT2:
+        case ImgFrame::Type::LUT4:
+        case ImgFrame::Type::LUT16:
+        case ImgFrame::Type::RAW14:
+        case ImgFrame::Type::RAW12:
+        case ImgFrame::Type::RAW10:
+        case ImgFrame::Type::PACK10:
+        case ImgFrame::Type::PACK12:
+        case ImgFrame::Type::YUV444i:
+        case ImgFrame::Type::NV21:
+        case ImgFrame::Type::BITSTREAM:
+        case ImgFrame::Type::HDR:
+        case ImgFrame::Type::RAW32:
+        case ImgFrame::Type::NONE:
+            throw std::invalid_argument("Unsupported FP16 ImageManip color conversion");
+    }
+    throw std::invalid_argument("Unsupported FP16 ImageManip color conversion");
+}
+/** Locate a logical RGB channel sample using the frame offsets and row strides. */
+size_t pixelOffset(const PixelLayout& layout, const FrameSpecs& specs, size_t x, size_t y, uint32_t channel) {
+    if(layout.channels == 1)
+        channel = 0;
+    else if(layout.bgr)
+        channel = 2 - channel;
+    const std::array<uint32_t, 3> offsets = {specs.p1Offset, specs.p2Offset, specs.p3Offset};
+    const std::array<uint32_t, 3> strides = {specs.p1Stride, specs.p2Stride, specs.p3Stride};
+    return layout.planar ? offsets[channel] + y * strides[channel] + x * layout.bytes
+                         : specs.p1Offset + y * specs.p1Stride + (x * layout.channels + channel) * layout.bytes;
+}
+}  // namespace
+
+void colorConvertFp16(const std::shared_ptr<OffsetMemory>& src,
+                      const std::shared_ptr<OffsetMemory>& dst,
+                      const FrameSpecs& srcSpecs,
+                      const FrameSpecs& dstSpecs,
+                      ImgFrame::Type from,
+                      ImgFrame::Type to) {
+    // Reuse established YUV coefficients and subsampling. Integer formats keep
+    // their 0..255 range; FP16-to-FP16 conversions never pass through an integer.
+    const auto yuv = [](ImgFrame::Type type) { return type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p; };
+    if(yuv(from) || yuv(to)) {
+        const auto rgbSpecs = getDstFrameSpecs(srcSpecs.width, srcSpecs.height, ImgFrame::Type::RGB888i);
+        // Calls are synchronous; retain both scratch buffers per thread so
+        // independent node conversions never share mutable storage.
+        thread_local std::shared_ptr<_ImageManipMemory> rgb;
+        thread_local ColorChangeH cc;
+        const auto rgbSize = getFrameSize(ImgFrame::Type::RGB888i, rgbSpecs);
+        if(!rgb || rgb->getOffsetSize() < rgbSize) rgb = std::make_shared<_ImageManipMemory>(rgbSize);
+        if(yuv(from)) {
+            cc.build(srcSpecs, rgbSpecs, from, ImgFrame::Type::RGB888i);
+            cc.apply(src, rgb);
+            colorConvertFp16(rgb, dst, rgbSpecs, dstSpecs, ImgFrame::Type::RGB888i, to);
+        } else {
+            colorConvertFp16(src, rgb, srcSpecs, rgbSpecs, from, ImgFrame::Type::RGB888i);
+            cc.build(rgbSpecs, dstSpecs, ImgFrame::Type::RGB888i, to);
+            cc.apply(rgb, dst);
+        }
+        return;
+    }
+    const auto input = pixelLayout(from);
+    const auto output = pixelLayout(to);
+    const auto* inputData = src->getOffsetData().data();
+    auto* outputData = dst->getOffsetData().data();
+    for(size_t y = 0; y < srcSpecs.height; ++y) {
+        for(size_t x = 0; x < srcSpecs.width; ++x) {
+            std::array<float, 3> rgb{};
+            for(uint32_t c = 0; c < 3; ++c) {
+                const auto* p = inputData + pixelOffset(input, srcSpecs, x, y, c);
+                if(input.fp16) {
+                    uint16_t bits;
+                    std::memcpy(&bits, p, sizeof(bits));
+                    rgb[c] = fp16_ieee_to_fp32_value(bits);
+                } else
+                    rgb[c] = *p;
+            }
+            for(uint32_t c = 0; c < output.channels; ++c) {
+                const float value = output.channels == 1 && input.channels == 3 ? 0.299f * rgb[0] + 0.587f * rgb[1] + 0.114f * rgb[2] : rgb[c];
+                auto* p = outputData + pixelOffset(output, dstSpecs, x, y, c);
+                if(output.fp16) {
+                    const auto bits = fp16_ieee_from_fp32_value(value);
+                    std::memcpy(p, &bits, sizeof(bits));
+                } else {
+                    // NaN maps to zero, infinities saturate like finite overflow.
+                    *p = static_cast<uint8_t>(std::round(std::clamp(std::isnan(value) ? 0.f : value, 0.f, 255.f)));
+                }
+            }
+        }
+    }
+}
+
 void ColorChangeH::build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo) {
     from = typeFrom;
     to = typeTo;
@@ -2883,56 +3033,65 @@ void ColorChangeH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_p
 
     bool done = false;
     auto start = std::chrono::steady_clock::now();
-    switch(to) {
-        case dai::ImgFrame::Type::RGB888p:
-            done = colorConvertToRGB888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::BGR888p:
-            done = colorConvertToBGR888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::RGB888i:
-            done = colorConvertToRGB888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::BGR888i:
-            done = colorConvertToBGR888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::NV12:
-            done = colorConvertToNV12({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::YUV420p:
-            done = colorConvertToYUV420p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::GRAY8:
-        case dai::ImgFrame::Type::RAW8:
-            done = colorConvertToGRAY8({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case ImgFrame::Type::YUV422i:
-        case ImgFrame::Type::YUV444p:
-        case ImgFrame::Type::YUV422p:
-        case ImgFrame::Type::YUV400p:
-        case ImgFrame::Type::RGBA8888:
-        case ImgFrame::Type::RGB161616:
-        case ImgFrame::Type::LUT2:
-        case ImgFrame::Type::LUT4:
-        case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
-        case ImgFrame::Type::RAW14:
-        case ImgFrame::Type::RAW12:
-        case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::PACK10:
-        case ImgFrame::Type::PACK12:
-        case ImgFrame::Type::YUV444i:
-        case ImgFrame::Type::NV21:
-        case ImgFrame::Type::BITSTREAM:
-        case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
-        case ImgFrame::Type::RAW32:
-        case ImgFrame::Type::NONE:
-            break;
+    if(isFp16(from) || isFp16(to)) {
+        try {
+            colorConvertFp16(src, dst, srcSpecs, dstSpecs, from, to);
+            done = true;
+        } catch(const std::exception& ex) {
+            if(logger) logger->debug("ImageManip | FP16 color conversion failed: {}", ex.what());
+        }
+    } else {
+        switch(to) {
+            case dai::ImgFrame::Type::RGB888p:
+                done = colorConvertToRGB888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::BGR888p:
+                done = colorConvertToBGR888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::RGB888i:
+                done = colorConvertToRGB888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::BGR888i:
+                done = colorConvertToBGR888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::NV12:
+                done = colorConvertToNV12({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::YUV420p:
+                done = colorConvertToYUV420p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::GRAY8:
+            case dai::ImgFrame::Type::RAW8:
+                done = colorConvertToGRAY8({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case ImgFrame::Type::YUV422i:
+            case ImgFrame::Type::YUV444p:
+            case ImgFrame::Type::YUV422p:
+            case ImgFrame::Type::YUV400p:
+            case ImgFrame::Type::RGBA8888:
+            case ImgFrame::Type::RGB161616:
+            case ImgFrame::Type::LUT2:
+            case ImgFrame::Type::LUT4:
+            case ImgFrame::Type::LUT16:
+            case ImgFrame::Type::RAW16:
+            case ImgFrame::Type::RAW14:
+            case ImgFrame::Type::RAW12:
+            case ImgFrame::Type::RAW10:
+            case ImgFrame::Type::PACK10:
+            case ImgFrame::Type::PACK12:
+            case ImgFrame::Type::YUV444i:
+            case ImgFrame::Type::NV21:
+            case ImgFrame::Type::BITSTREAM:
+            case ImgFrame::Type::HDR:
+            case ImgFrame::Type::RGBF16F16F16p:
+            case ImgFrame::Type::BGRF16F16F16p:
+            case ImgFrame::Type::RGBF16F16F16i:
+            case ImgFrame::Type::BGRF16F16F16i:
+            case ImgFrame::Type::GRAYF16:
+            case ImgFrame::Type::RAW32:
+            case ImgFrame::Type::NONE:
+                break;
+        }
     }
     auto diff = std::chrono::steady_clock::now() - start;
     if(logger) logger->trace("ImageManip | colorConvert took {}ns", std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count());
@@ -2967,12 +3126,16 @@ Warp& Warp::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_
             backgroundColor[2] = std::round(v);
             break;
         }
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::RGB888i:
             backgroundColor[0] = r;
             backgroundColor[1] = g;
             backgroundColor[2] = b;
             break;
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::BGR888p:
         case ImgFrame::Type::BGR888i:
             backgroundColor[0] = b;
@@ -2984,6 +3147,7 @@ Warp& Warp::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_
             // backgroundColor[0] = 0.299f * r + 0.587f * g + 0.114f * b;
             backgroundColor[0] = b;
             break;
+        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW16:
             backgroundColor[0] = r;
             break;
@@ -3005,11 +3169,6 @@ Warp& Warp::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             break;
@@ -3044,6 +3203,12 @@ void WarpH::build(const FrameSpecs srcFrameSpecs,
         this->sourceMaxY = std::min(this->sourceMaxY, (size_t)std::ceil(maxy));
     }
     if(this->sourceMinX >= this->sourceMaxX || this->sourceMinY >= this->sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
+
+    // Retain the neighboring samples needed for interpolation, as on RVC4.
+    // These are sampling bounds only; the requested crop is unchanged.
+    const size_t padding = type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p ? 2 : 1;
+    this->sourceMaxX = std::min(this->sourceMaxX + padding, static_cast<size_t>(inWidth));
+    this->sourceMaxY = std::min(this->sourceMaxY + padding, static_cast<size_t>(inHeight));
 }
 
 void WarpH::buildUndistort(bool enable,
@@ -3105,6 +3270,37 @@ void WarpH::buildUndistort(bool enable,
 #endif
 }
 
+void transformFp16(const std::shared_ptr<OffsetMemory>& src,
+                   const std::shared_ptr<OffsetMemory>& dst,
+                   const FrameSpecs& srcSpecs,
+                   const FrameSpecs& dstSpecs,
+                   uint32_t channels,
+                   const std::array<std::array<float, 3>, 3>& matrix,
+                   const std::vector<uint32_t>& background,
+                   size_t minX,
+                   size_t minY,
+                   size_t maxX,
+                   size_t maxY) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    // OpenCV warps do not accept CV_16F. Interpolate in FP32 and round once
+    // when writing the FP16 output, preserving signed and fractional samples.
+    cv::Mat input(srcSpecs.height, srcSpecs.width, CV_MAKETYPE(CV_16F, channels), src->getOffsetData().data(), srcSpecs.p1Stride);
+    cv::Mat output(dstSpecs.height, dstSpecs.width, CV_MAKETYPE(CV_16F, channels), dst->getOffsetData().data(), dstSpecs.p1Stride);
+    cv::Mat inputFloat, outputFloat;
+    input(cv::Rect(minX, minY, maxX - minX, maxY - minY)).convertTo(inputFloat, CV_32F);
+    auto applied = matrix;
+    applied[0][2] += applied[0][0] * minX + applied[0][1] * minY;
+    applied[1][2] += applied[1][0] * minX + applied[1][1] * minY;
+    applied[2][2] += applied[2][0] * minX + applied[2][1] * minY;
+    cv::Mat projection(3, 3, CV_32F, applied.data());
+    const cv::Scalar bg(background[0], channels == 3 ? background[1] : 0, channels == 3 ? background[2] : 0);
+    cv::warpPerspective(inputFloat, outputFloat, projection, output.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, bg);
+    outputFloat.convertTo(output, CV_16F);
+#else
+    throw std::runtime_error("FP16 CPU warp requires OpenCV support");
+#endif
+}
+
 void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
                       const std::shared_ptr<OffsetMemory>& dst,
                       const size_t srcWidth,
@@ -3117,6 +3313,14 @@ void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
                       const uint16_t bpp,
                       const std::array<std::array<float, 3>, 3>& matrix,
                       const std::vector<uint32_t>& background) {
+    if(isFp16(this->type)) {
+        auto srcSpecs = this->srcSpecs;
+        auto dstSpecs = this->dstSpecs;
+        srcSpecs.p1Stride = srcStride;
+        dstSpecs.p1Stride = dstStride;
+        transformFp16(src, dst, srcSpecs, dstSpecs, numChannels, matrix, background, this->sourceMinX, this->sourceMinY, this->sourceMaxX, this->sourceMaxY);
+        return;
+    }
 #ifdef DEPTHAI_IMAGEMANIPV2_OPENCV
     transformOpenCV(src->getOffsetData().data(),
                     dst->getOffsetData().data(),
@@ -3156,6 +3360,8 @@ void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
 }
 
 void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
+    const uint32_t bpp = isFp16(this->type) ? 2 : 1;
+    const bool warpRequired = !this->undistortOneShot && (!this->isIdentityWarp() || (isFp16(this->type) && !this->enableUndistort));
     auto undistortDst = this->isIdentityWarp() || this->undistortOneShot ? dst : auxFrame;
     auto undistortSpecs =
         this->isIdentityWarp() || this->undistortOneShot ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
@@ -3163,18 +3369,20 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
     auto warpSrcSpecs = this->enableUndistort ? undistortSpecs : this->srcSpecs;
     // Apply transformation multiple times depending on the image format
     switch(this->type) {
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 this->undistortImpl->undistort(
-                    {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 3, src->offset(this->srcSpecs.p1Offset)},
-                    {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 3, undistortDst->offset(undistortSpecs.p1Offset)},
+                    {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, bpp, 3, src->offset(this->srcSpecs.p1Offset)},
+                    {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, bpp, 3, undistortDst->offset(undistortSpecs.p1Offset)},
                     0);
             }
     #endif
-            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+            if(warpRequired) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3184,7 +3392,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                           this->dstSpecs.height,
                           this->dstSpecs.p1Stride,
                           3,
-                          1,
+                          bpp,
                           this->matrix,
                           {this->backgroundColor[0], this->backgroundColor[1], this->backgroundColor[2]});
             }
@@ -3194,32 +3402,34 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
             throw std::runtime_error("OpenCV or FastCV backend not available");
 #endif
             break;
-        case ImgFrame::Type::BGR888p:
         case ImgFrame::Type::RGB888p:
+        case ImgFrame::Type::BGR888p:
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
                     this->undistortImpl->undistort(
-                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
-                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)},
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p1Stride, bpp, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p1Stride, bpp, 1, undistortDst->offset(undistortSpecs.p1Offset)},
                         0);
                 }
                 {
                     this->undistortImpl->undistort(
-                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p2Stride, 1, 1, src->offset(this->srcSpecs.p2Offset)},
-                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p2Stride, 1, 1, undistortDst->offset(undistortSpecs.p2Offset)},
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p2Stride, bpp, 1, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p2Stride, bpp, 1, undistortDst->offset(undistortSpecs.p2Offset)},
                         1);
                 }
                 {
                     this->undistortImpl->undistort(
-                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p3Stride, 1, 1, src->offset(this->srcSpecs.p3Offset)},
-                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p3Stride, 1, 1, undistortDst->offset(undistortSpecs.p3Offset)},
+                        {this->srcSpecs.width, this->srcSpecs.height, this->srcSpecs.p3Stride, bpp, 1, src->offset(this->srcSpecs.p3Offset)},
+                        {undistortSpecs.width, undistortSpecs.height, undistortSpecs.p3Stride, bpp, 1, undistortDst->offset(undistortSpecs.p3Offset)},
                         2);
                 }
             }
     #endif
-            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+            if(warpRequired) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3229,7 +3439,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                           this->dstSpecs.height,
                           this->dstSpecs.p1Stride,
                           1,
-                          1,
+                          bpp,
                           this->matrix,
                           {this->backgroundColor[0]});
                 transform(warpSrc->offset(warpSrcSpecs.p2Offset),
@@ -3241,7 +3451,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                           this->dstSpecs.height,
                           this->dstSpecs.p2Stride,
                           1,
-                          1,
+                          bpp,
                           this->matrix,
                           {this->backgroundColor[1]});
                 transform(warpSrc->offset(warpSrcSpecs.p3Offset),
@@ -3253,7 +3463,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                           this->dstSpecs.height,
                           this->dstSpecs.p3Stride,
                           1,
-                          1,
+                          bpp,
                           this->matrix,
                           {this->backgroundColor[2]});
             }
@@ -3287,7 +3497,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                 }
             }
     #endif
-            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+            if(warpRequired) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3349,7 +3559,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                 }
             }
     #endif
-            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+            if(warpRequired) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3394,7 +3604,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                 }
             }
     #endif
-            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+            if(warpRequired) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3414,6 +3624,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
             throw std::runtime_error("OpenCV or FastCV backend not available");
 #endif
             break;
+        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW16:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -3426,7 +3637,7 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                 }
             }
     #endif
-            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+            if(warpRequired) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3464,14 +3675,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
-            throw std::runtime_error("Unsupported image format. Only YUV420p, RGB888p, BGR888p, RGB888i, BGR888i, RAW8, NV12, GRAY8 are supported");
+            throw std::runtime_error("Unsupported image format for ImageManip warp");
             break;
     }
 
