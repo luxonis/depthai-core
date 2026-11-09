@@ -118,6 +118,8 @@ void SpatialDetectionNetwork::buildInternal() {
     detectionParser->input.setMaxSize(1);
     spatialLocationCalculator->inputDetections.setBlocking(true);
     spatialLocationCalculator->inputDetections.setMaxSize(1);
+    // Leave room in the upstream frame pools to replace stale depth while waiting for detections.
+    spatialLocationCalculator->inputDepth.setMaxSize(1);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,

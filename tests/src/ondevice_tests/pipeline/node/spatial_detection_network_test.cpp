@@ -1,4 +1,5 @@
 #include <catch2/catch_all.hpp>
+#include <chrono>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -71,6 +72,37 @@ TEST_CASE("SpatialDetectionNetwork model description API") {
     for(int i = 0; i < 10; i++) {
         auto tensor = detectionsQueue->get<dai::SpatialImgDetections>();
         REQUIRE(tensor != nullptr);
+    }
+}
+
+TEST_CASE("SpatialDetectionNetwork keeps depth fresh with slower detections") {
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    auto left = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto right = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    auto stereo = p.create<dai::node::StereoDepth>()->build(*left->requestOutput({640, 400}, std::nullopt, dai::ImgResizeMode::CROP, 30.0f),
+                                                            *right->requestOutput({640, 400}, std::nullopt, dai::ImgResizeMode::CROP, 30.0f));
+    stereo->setSubpixel(false);
+    auto nn = p.create<dai::node::SpatialDetectionNetwork>()->build(camera, stereo, "yolov6-nano", 5.0f);
+    nn->input.setBlocking(false);
+
+    auto benchmark = p.create<dai::node::BenchmarkIn>();
+    benchmark->logReportsAsWarnings(false);
+    benchmark->sendReportEveryNMessages(5);
+    nn->passthroughDepth.link(benchmark->input);
+    auto reports = benchmark->report.createOutputQueue(1, false);
+    p.start();
+
+    for(int i = 0; i < 8; ++i) {
+        bool timedOut = false;
+        auto report = reports->get<dai::BenchmarkReport>(std::chrono::seconds(30), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(report != nullptr);
+        if(i >= 3) {
+            CHECK(report->fps == Catch::Approx(5.0f).epsilon(0.2));
+            // Allow three detection periods; retaining upstream pools adds seconds of stale depth.
+            CHECK(report->averageLatency < 0.6f);
+        }
     }
 }
 

@@ -111,7 +111,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object
-     * Default queue is non-blocking with size 4
+     * Default queue is non-blocking with size 1
      */
     Input& inputDepth;
 
