@@ -1818,6 +1818,10 @@ void PipelineImpl::start() {
                 masterDevices.push_back(d);
             } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
                 slaveDevices.push_back(d);
+            } else if(role == dai::ExternalFrameSyncRole::AUTO_DETECT) {
+                // This should not happen, but bugs on depthai-device can
+                // leak this role. treat them as independent masters
+                masterDevices.push_back(d);
             } else {
                 throw std::runtime_error("Unknown external frame sync role");
             }
