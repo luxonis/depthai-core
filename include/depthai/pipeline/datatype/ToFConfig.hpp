@@ -93,7 +93,11 @@ class ToFConfig : public Buffer {
          * modulation frequencies: RAW8, width = 6 * depth width, per depth pixel
          * int8 (127 * cos, 127 * sin) for each frequency.
          * Without a usable GPU the node falls back to the vendor unwrap with the same
-         * filter tuning and sends no phase frames.
+         * filter tuning and vendor-scale confidence.
+         * On RVC4 a linked phase output gets one frame per depth frame, so that a Sync with
+         * the depth never stalls. A frame without phases is empty (no data): width 0 for a
+         * vendor-unwrap frame (STANDARD mode or the fallback above, confidence on the vendor
+         * scale), width 6 * depth width for a fusion-mode frame whose phase export failed.
          */
         FUSION,
     };
