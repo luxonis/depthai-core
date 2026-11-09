@@ -13,7 +13,7 @@ inline const std::array<Type, 5> types = {Type::GRAYF16, Type::RGBF16F16F16i, Ty
 
 inline std::vector<cv::Mat> planes(dai::ImgFrame& frame) {
     const auto specs = dai::impl::getSrcFrameSpecs(frame.fb);
-    const bool planar = dai::impl::isFp16Planar(frame.getType());
+    const bool planar = frame.getType() == Type::RGBF16F16F16p || frame.getType() == Type::BGRF16F16F16p;
     const auto channels = planar || frame.getType() == Type::GRAYF16 ? 1 : 3;
     const std::array<uint32_t, 3> offsets = {specs.p1Offset, specs.p2Offset, specs.p3Offset};
     const std::array<uint32_t, 3> strides = {specs.p1Stride, specs.p2Stride, specs.p3Stride};

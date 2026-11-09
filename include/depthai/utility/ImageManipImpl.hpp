@@ -336,6 +336,8 @@ class Warp {
 
     std::shared_ptr<spdlog::async_logger> logger;
 
+    bool isIdentityWarp() const;
+
    public:
     std::array<std::array<float, 3>, 3> matrix;
     ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
@@ -352,8 +354,6 @@ class Warp {
     size_t sourceMinY;
     size_t sourceMaxX;
     size_t sourceMaxY;
-
-    bool isIdentityWarp() const;
 
     Warp() = default;
     Warp(std::shared_ptr<spdlog::async_logger> logger) : logger(logger) {}
@@ -560,9 +560,7 @@ inline bool isFp16(ImgFrame::Type type) {
     return type == ImgFrame::Type::RGBF16F16F16p || type == ImgFrame::Type::BGRF16F16F16p || type == ImgFrame::Type::RGBF16F16F16i
            || type == ImgFrame::Type::BGRF16F16F16i || type == ImgFrame::Type::GRAYF16;
 }
-inline bool isFp16Planar(ImgFrame::Type type) {
-    return type == ImgFrame::Type::RGBF16F16F16p || type == ImgFrame::Type::BGRF16F16F16p;
-}
+
 void colorConvertFp16(const std::shared_ptr<OffsetMemory>& src,
                       const std::shared_ptr<OffsetMemory>& dst,
                       const FrameSpecs& srcSpecs,
@@ -580,45 +578,6 @@ void transformFp16(const std::shared_ptr<OffsetMemory>& src,
                    size_t minY,
                    size_t maxX,
                    size_t maxY);
-
-// Both warp backends use the same plane layout and undistortion sequencing.
-template <typename Transform>
-void applyFp16Warp(Warp& warp,
-                   const std::shared_ptr<OffsetMemory>& src,
-                   const std::shared_ptr<OffsetMemory>& dst,
-                   const std::shared_ptr<OffsetMemory>& aux,
-                   Undistort* undistort,
-                   Transform transform) {
-    const bool planar = isFp16Planar(warp.type);
-    const uint32_t planes = planar ? 3 : 1;
-    const uint32_t channels = planar || warp.type == ImgFrame::Type::GRAYF16 ? 1 : 3;
-    const bool direct = warp.isIdentityWarp() || warp.undistortOneShot;
-    const auto undistortSpecs = direct ? warp.dstSpecs : getDstFrameSpecs(warp.srcSpecs.width, warp.srcSpecs.height, warp.type);
-    const auto warpedSpecs = warp.enableUndistort ? undistortSpecs : warp.srcSpecs;
-    const auto warpSrc = warp.enableUndistort ? aux : src;
-    const auto undistortDst = direct ? dst : aux;
-    const auto offsets = [](const FrameSpecs& specs) { return std::array<uint32_t, 3>{specs.p1Offset, specs.p2Offset, specs.p3Offset}; };
-    const auto strides = [](const FrameSpecs& specs) { return std::array<uint32_t, 3>{specs.p1Stride, specs.p2Stride, specs.p3Stride}; };
-    for(uint32_t p = 0; p < planes; ++p) {
-        if(warp.enableUndistort) {
-            undistort->undistort(
-                {warp.srcSpecs.width, warp.srcSpecs.height, strides(warp.srcSpecs)[p], 2, channels, src->offset(offsets(warp.srcSpecs)[p])},
-                {undistortSpecs.width, undistortSpecs.height, strides(undistortSpecs)[p], 2, channels, undistortDst->offset(offsets(undistortSpecs)[p])},
-                p);
-        }
-    }
-    if(warp.enableUndistort) undistort->finish();
-    if(warp.enableUndistort && direct) return;
-    for(uint32_t p = 0; p < planes; ++p) {
-        auto srcSpecs = warpedSpecs;
-        auto dstSpecs = warp.dstSpecs;
-        srcSpecs.p1Stride = strides(warpedSpecs)[p];
-        dstSpecs.p1Stride = strides(warp.dstSpecs)[p];
-        std::vector<uint32_t> bg;
-        for(uint32_t c = 0; c < channels; ++c) bg.push_back(warp.backgroundColor[planar ? p : c]);
-        transform(warpSrc->offset(offsets(warpedSpecs)[p]), dst->offset(offsets(warp.dstSpecs)[p]), srcSpecs, dstSpecs, channels, bg);
-    }
-}
 
 size_t getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height);
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
@@ -1004,9 +963,13 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
 template <typename ImageManipData, typename ColorChangeBackend, typename WarpBackend>
 size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::getOutputPlaneSize(uint8_t plane) const {
     if(mode == 0) return 0;
-    if(isFp16(outputFrameType)) return getOutputStride(plane) * getOutputHeight();
     size_t size = 0;
     switch(outputFrameType) {
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
         case ImgFrame::Type::RGB888i:
@@ -1052,11 +1015,6 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Output frame type not supported");
@@ -1068,13 +1026,17 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
 template <typename ImageManipData, typename ColorChangeBackend, typename WarpBackend>
 size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::getOutputSize() const {
     if(mode == 0) return 0;
-    if(isFp16(outputFrameType)) return getFrameSize(outputFrameType, getOutputFrameSpecs(outputFrameType));
     size_t size = 0;
     switch(outputFrameType) {
+        case ImgFrame::Type::RGBF16F16F16p:
+        case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
             size = getOutputPlaneSize(0) * 3;
             break;
+        case ImgFrame::Type::RGBF16F16F16i:
+        case ImgFrame::Type::BGRF16F16F16i:
+        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
         case ImgFrame::Type::GRAY8:
@@ -1106,11 +1068,6 @@ size_t ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::ge
         case ImgFrame::Type::NV21:
         case ImgFrame::Type::BITSTREAM:
         case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Output frame type not supported");

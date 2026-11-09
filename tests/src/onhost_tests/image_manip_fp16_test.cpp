@@ -1,4 +1,5 @@
 #include <catch2/catch_all.hpp>
+#include <limits>
 
 #include "../image_manip_fp16_test_utils.hpp"
 
@@ -24,14 +25,17 @@ TEST_CASE("ImageManip FP16 specs and allocation agree", "[imagemanip][fp16]") {
 
 TEST_CASE("Host ImageManip warps signed fractional FP16 planes", "[imagemanip][fp16]") {
     const bool padded = GENERATE(false, true);
-    const bool perspective = GENERATE(false, true);
+    enum class Transform { Identity, Affine, Perspective };
+    const auto transform = GENERATE(Transform::Identity, Transform::Affine, Transform::Perspective);
     for(auto type : fp16test::types) {
-        CAPTURE(type, padded, perspective);
+        CAPTURE(type, padded, transform);
         auto input = fp16test::makeFrame(type, padded);
         auto output = fp16test::makeFrame(type);
         const auto srcSpecs = getSrcFrameSpecs(input->fb);
         const auto dstSpecs = getSrcFrameSpecs(output->fb);
-        const std::array<std::array<float, 3>, 3> matrix = {{{1, 0, 1.25f}, {0, 1, -0.5f}, {perspective ? 0.03125f : 0.f, 0, 1}}};
+        const std::array<std::array<float, 3>, 3> matrix = {{{1, 0, transform == Transform::Identity ? 0.f : 1.25f},
+                                                             {0, 1, transform == Transform::Identity ? 0.f : -0.5f},
+                                                             {transform == Transform::Perspective ? 0.03125f : 0.f, 0, 1}}};
         WarpH warp;
         warp.build(srcSpecs, dstSpecs, type, matrix, {});
         warp.setBackgroundColor(3, 7, 11);
@@ -71,7 +75,6 @@ TEST_CASE("ImageManip FP16 layout conversion preserves floating values", "[image
                 auto expected = fp16test::planes(*input);
                 auto actual = fp16test::planes(*restored);
                 for(size_t p = 0; p < expected.size(); ++p) {
-                    CHECK(std::memcmp(expected[p].ptr(0), actual[p].ptr(0), expected[p].cols * expected[p].elemSize()) == 0);
                     for(int y = 0; y < expected[p].rows; ++y)
                         CHECK(std::memcmp(expected[p].ptr(y), actual[p].ptr(y), expected[p].cols * expected[p].elemSize()) == 0);
                 }
@@ -195,4 +198,50 @@ TEST_CASE("Host ImageManip sequences FP16 undistortion and warping", "[imagemani
             CHECK(cv::norm(actual, expected, cv::NORM_INF) <= 0.032);
         }
     }
+}
+
+TEST_CASE("ImageManip FP16 conversion preserves magnitudes and saturates integers", "[imagemanip][fp16]") {
+    const auto integerSpecs = getDstFrameSpecs(9, 2, Type::GRAY8);
+    const auto halfSpecs = getDstFrameSpecs(9, 2, Type::GRAYF16);
+    auto integers = std::make_shared<_ImageManipMemory>(getAlignedOutputFrameSize(Type::GRAY8, 9, 2));
+    auto halves = std::make_shared<_ImageManipMemory>(getFrameSize(Type::GRAYF16, halfSpecs));
+    cv::Mat integerImage(2, 9, CV_8UC1, integers->getOffsetData().data(), integerSpecs.p1Stride);
+    cv::Mat halfImage(2, 9, CV_16FC1, halves->getOffsetData().data(), halfSpecs.p1Stride);
+    integerImage.setTo(128);
+    ColorChangeH cc;
+    cc.build(integerSpecs, halfSpecs, Type::GRAY8, Type::GRAYF16);
+    cc.apply(integers, halves);
+    for(int y = 0; y < 2; ++y) {
+        for(int x = 0; x < 9; ++x) CHECK(static_cast<float>(halfImage.at<cv::float16_t>(y, x)) == 128.f);
+    }
+    const std::array<float, 9> input = {
+        -3.f, -0.25f, 0.25f, 1.5f, 254.5f, 255.75f, 300.f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()};
+    const std::array<uint8_t, 9> expected = {0, 0, 0, 2, 255, 255, 255, 255, 0};
+    for(int y = 0; y < 2; ++y) {
+        for(int x = 0; x < 9; ++x) halfImage.at<cv::float16_t>(y, x) = cv::float16_t(input[x]);
+    }
+    cc.build(halfSpecs, integerSpecs, Type::GRAYF16, Type::GRAY8);
+    cc.apply(halves, integers);
+    for(int y = 0; y < 2; ++y) {
+        for(int x = 0; x < 9; ++x) CHECK(integerImage.at<uint8_t>(y, x) == expected[x]);
+    }
+}
+
+TEST_CASE("ImageManip planar specs infer offsets relative to the first plane", "[imagemanip][fp16]") {
+    const auto type = GENERATE(Type::RGB888p, Type::BGR888p, Type::RGBF16F16F16p, Type::BGRF16F16F16p);
+    dai::ImgFrame::Specs source{};
+    source.type = type;
+    source.width = 23;
+    source.height = 17;
+    source.stride = 64;
+    source.p1Offset = 16;
+    const auto inferred = getSrcFrameSpecs(source);
+    CHECK(inferred.p1Offset == 16);
+    CHECK(inferred.p2Offset == 16 + 64 * 17);
+    CHECK(inferred.p3Offset == 16 + 2 * 64 * 17);
+    source.p2Offset = 1200;
+    source.p3Offset = 0;
+    const auto explicitSecond = getSrcFrameSpecs(source);
+    CHECK(explicitSecond.p2Offset == 1200);
+    CHECK(explicitSecond.p3Offset == 1200 + 64 * 17);
 }

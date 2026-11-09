@@ -1037,6 +1037,8 @@ TEST_CASE("RVC4 FP16 mesh undistortion matches OpenCV without a camera", "[image
     int sequence = 0;
     for(bool dense : {false, true}) {
         const cv::Size outputSize = dense ? cv::Size(2, 2) : cv::Size(23, 17);
+        cv::Mat plainMapX, plainMapY;
+        cv::initUndistortRectifyMap(camera, std::vector<float>(5, 0), cv::Mat(), newCamera, outputSize, CV_32FC1, plainMapX, plainMapY);
         for(bool distorted : {false, true}) {
             const std::vector<float> distortion = distorted ? std::vector<float>{0.005f, 0.001f, 0.0002f, -0.0001f, 0} : std::vector<float>(5, 0);
             cv::Mat mapX, mapY;
@@ -1060,46 +1062,50 @@ TEST_CASE("RVC4 FP16 mesh undistortion matches OpenCV without a camera", "[image
                         input->setCvFrame(image, type);
                     }
                     input->transformation = dai::ImgTransformation(23, 17, intrinsics, dai::CameraModel::Perspective, distortion);
-                    input->setSequenceNum(++sequence);
                     auto config = std::make_shared<dai::ImageManipConfig>();
                     config->addTransformPerspective({1, 0, 1.25f, 0, 1, -0.5f, 0, 0, 1});
                     config->setOutputSize(outputSize.width, outputSize.height);
                     config->base.setOutputCenter(false);
-                    config->setUndistort(true);
-                    cpuConfig->send(config);
-                    gpuConfig->send(config);
-                    cpuInput->send(input);
-                    gpuInput->send(input);
-                    bool cpuTimedOut = false, gpuTimedOut = false;
-                    auto cpuFrame = cpuOutput->get<dai::ImgFrame>(std::chrono::seconds(10), cpuTimedOut);
-                    auto gpuFrame = gpuOutput->get<dai::ImgFrame>(std::chrono::seconds(10), gpuTimedOut);
-                    REQUIRE_FALSE(cpuTimedOut);
-                    REQUIRE_FALSE(gpuTimedOut);
-                    REQUIRE(cpuFrame != nullptr);
-                    REQUIRE(gpuFrame != nullptr);
-                    REQUIRE(gpuFrame->getType() == type);
-                    CHECK(gpuFrame->getSequenceNum() == sequence);
-                    CHECK(gpuFrame->getTimestamp() == input->getTimestamp());
-                    CHECK(gpuFrame->getWidth() == outputSize.width);
-                    CHECK(gpuFrame->getHeight() == outputSize.height);
-                    const auto sourcePlanes = dai::impl::isFp16(type) ? fp16test::planes(*input) : std::vector<cv::Mat>{input->getFrame()};
-                    const auto cpuPlanes = dai::impl::isFp16(type) ? fp16test::planes(*cpuFrame) : std::vector<cv::Mat>{cpuFrame->getFrame()};
-                    const auto gpuPlanes = dai::impl::isFp16(type) ? fp16test::planes(*gpuFrame) : std::vector<cv::Mat>{gpuFrame->getFrame()};
-                    REQUIRE(sourcePlanes.size() == gpuPlanes.size());
-                    for(size_t p = 0; p < sourcePlanes.size(); ++p) {
-                        cv::Mat source, expected, actualCpu, actualGpu;
-                        sourcePlanes[p].convertTo(source, CV_32F);
-                        cpuPlanes[p].convertTo(actualCpu, CV_32F);
-                        gpuPlanes[p].convertTo(actualGpu, CV_32F);
-                        cv::remap(source, expected, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-                        // Sparse meshes approximate distortion between mesh points;
-                        // OpenCV also quantizes interpolation to 1/32 of a pixel.
-                        // Compare every pixel, including zero and partial borders.
-                        const double maxError = dai::impl::isFp16(type) ? 0.75 : 1.1;
-                        const double meanError = dai::impl::isFp16(type) ? 0.06 : 0.55;
-                        CHECK(cv::norm(actualGpu, expected, cv::NORM_INF) <= maxError);
-                        CHECK(cv::norm(actualGpu, expected, cv::NORM_L1) / (actualGpu.total() * actualGpu.channels()) <= meanError);
-                        CHECK(cv::norm(actualCpu, expected, cv::NORM_INF) <= (dai::impl::isFp16(type) ? 0.032 : 1.1));
+                    // Disabling one-shot undistortion must resume the normal warp.
+                    for(bool undistort : {true, false}) {
+                        CAPTURE(undistort);
+                        input->setSequenceNum(++sequence);
+                        config->setUndistort(undistort);
+                        cpuConfig->send(config);
+                        gpuConfig->send(config);
+                        cpuInput->send(input);
+                        gpuInput->send(input);
+                        bool cpuTimedOut = false, gpuTimedOut = false;
+                        auto cpuFrame = cpuOutput->get<dai::ImgFrame>(std::chrono::seconds(10), cpuTimedOut);
+                        auto gpuFrame = gpuOutput->get<dai::ImgFrame>(std::chrono::seconds(10), gpuTimedOut);
+                        REQUIRE_FALSE(cpuTimedOut);
+                        REQUIRE_FALSE(gpuTimedOut);
+                        REQUIRE(cpuFrame != nullptr);
+                        REQUIRE(gpuFrame != nullptr);
+                        REQUIRE(gpuFrame->getType() == type);
+                        CHECK(gpuFrame->getSequenceNum() == sequence);
+                        CHECK(gpuFrame->getTimestamp() == input->getTimestamp());
+                        CHECK(gpuFrame->getWidth() == outputSize.width);
+                        CHECK(gpuFrame->getHeight() == outputSize.height);
+                        const auto sourcePlanes = dai::impl::isFp16(type) ? fp16test::planes(*input) : std::vector<cv::Mat>{input->getFrame()};
+                        const auto cpuPlanes = dai::impl::isFp16(type) ? fp16test::planes(*cpuFrame) : std::vector<cv::Mat>{cpuFrame->getFrame()};
+                        const auto gpuPlanes = dai::impl::isFp16(type) ? fp16test::planes(*gpuFrame) : std::vector<cv::Mat>{gpuFrame->getFrame()};
+                        REQUIRE(sourcePlanes.size() == gpuPlanes.size());
+                        for(size_t p = 0; p < sourcePlanes.size(); ++p) {
+                            cv::Mat source, expected, actualCpu, actualGpu;
+                            sourcePlanes[p].convertTo(source, CV_32F);
+                            cpuPlanes[p].convertTo(actualCpu, CV_32F);
+                            gpuPlanes[p].convertTo(actualGpu, CV_32F);
+                            cv::remap(source, expected, undistort ? mapX : plainMapX, undistort ? mapY : plainMapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+                            // Sparse meshes approximate distortion between mesh points;
+                            // OpenCV also quantizes interpolation to 1/32 of a pixel.
+                            // Compare every pixel, including zero and partial borders.
+                            const double maxError = dai::impl::isFp16(type) ? 0.75 : 1.1;
+                            const double meanError = dai::impl::isFp16(type) ? 0.06 : 0.55;
+                            CHECK(cv::norm(actualGpu, expected, cv::NORM_INF) <= maxError);
+                            CHECK(cv::norm(actualGpu, expected, cv::NORM_L1) / (actualGpu.total() * actualGpu.channels()) <= meanError);
+                            CHECK(cv::norm(actualCpu, expected, cv::NORM_INF) <= (dai::impl::isFp16(type) ? 0.032 : 1.1));
+                        }
                     }
                 }
             }
