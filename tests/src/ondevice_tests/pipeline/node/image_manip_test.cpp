@@ -5,6 +5,7 @@
 #include <cmath>
 #include <utility>
 
+#include "../../../image_manip_fp16_test_utils.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
@@ -912,4 +913,83 @@ TEST_CASE("ImageManip GRAY8 undistort") {
 
 TEST_CASE("ImageManip RGB888i undistort") {
     runManipTests(dai::ImgFrame::Type::RGB888i, true);
+}
+
+TEST_CASE("RVC4 ImageManip backends preserve FP16 samples and metadata", "[imagemanip][fp16][rvc4]") {
+    const auto backend = GENERATE(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::Backend::GPU);
+    const bool host = GENERATE(false, true);
+    CAPTURE(backend, host);
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("FP16 ImageManip requires RVC4 or host");
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->setBackend(backend);
+    manip->setRunOnHost(host);
+    manip->setMaxOutputFrameSize(24 * 18 * 6);
+    manip->inputConfig.setWaitForMessage(true);
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+    pipeline.start();
+    int sequence = 0;
+    for(auto type : fp16test::types) {
+        for(bool padded : {false, true}) {
+            for(bool perspective : {false, true}) {
+                CAPTURE(type, padded, perspective);
+                auto input = fp16test::makeFrame(type, padded);
+                input->setSequenceNum(++sequence);
+                const std::array<std::array<float, 3>, 3> matrix = {{{1, 0, 1.25f}, {0, 1, -0.5f}, {perspective ? 0.03125f : 0.f, 0, 1}}};
+                auto config = std::make_shared<dai::ImageManipConfig>();
+                config->addTransformPerspective({1, 0, 1.25f, 0, 1, -0.5f, matrix[2][0], 0, 1});
+                config->setOutputSize(23, 17);
+                config->base.setOutputCenter(false);
+                config->setBackgroundColor(3, 7, 11);
+                configQueue->send(config);
+                inputQueue->send(input);
+                bool timedOut = false;
+                auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(10), timedOut);
+                REQUIRE_FALSE(timedOut);
+                REQUIRE(output != nullptr);
+                CHECK(output->getType() == type);
+                CHECK(output->getWidth() == 23);
+                CHECK(output->getHeight() == 17);
+                CHECK(output->getSequenceNum() == sequence);
+                CHECK(output->getTimestamp() == input->getTimestamp());
+                const bool bgr = type == dai::ImgFrame::Type::BGRF16F16F16i || type == dai::ImgFrame::Type::BGRF16F16F16p;
+                fp16test::checkWarp(*output, *input, matrix, bgr ? std::array<uint32_t, 3>{11, 7, 3} : std::array<uint32_t, 3>{3, 7, 11});
+            }
+        }
+    }
+    // Exercise ColorChangeQ as well as the warp path, with signed/fractional
+    // values and every FP16 channel ordering. Host references verify wiring.
+    for(auto from : fp16test::types) {
+        auto input = fp16test::makeFrame(from, true);
+        for(auto to : fp16test::types) {
+            if(from == to) continue;
+            CAPTURE(from, to);
+            auto config = std::make_shared<dai::ImageManipConfig>();
+            config->setFrameType(to);
+            configQueue->send(config);
+            inputQueue->send(input);
+            bool timedOut = false;
+            auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(10), timedOut);
+            REQUIRE_FALSE(timedOut);
+            REQUIRE(output != nullptr);
+            REQUIRE(output->getType() == to);
+            const auto specs = dai::impl::getSrcFrameSpecs(output->fb);
+            auto expected = std::make_shared<dai::impl::_ImageManipMemory>(dai::impl::getFrameSize(to, specs));
+            dai::impl::ColorChangeH reference;
+            reference.build(dai::impl::getSrcFrameSpecs(input->fb), specs, from, to);
+            reference.apply(std::make_shared<dai::impl::_ImageManipMemory>(input->getData()), expected);
+            auto outputPlanes = fp16test::planes(*output);
+            const std::array<uint32_t, 3> offsets = {specs.p1Offset, specs.p2Offset, specs.p3Offset};
+            for(size_t p = 0; p < outputPlanes.size(); ++p) {
+                for(int y = 0; y < outputPlanes[p].rows; ++y) {
+                    CHECK(std::memcmp(outputPlanes[p].ptr(y),
+                                      expected->getOffsetData().data() + offsets[p] + y * specs.p1Stride,
+                                      outputPlanes[p].cols * outputPlanes[p].elemSize())
+                          == 0);
+                }
+            }
+        }
+    }
 }
