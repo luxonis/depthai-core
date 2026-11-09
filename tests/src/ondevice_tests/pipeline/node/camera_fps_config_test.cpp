@@ -83,6 +83,10 @@ std::string describe(const FpsCase& testCase) {
 std::vector<float> fpsToTest(const dai::CameraSensorConfig& config, dai::Platform platform) {
     const float minimum = platform == dai::Platform::RVC4 ? std::max(MINIMUM_FPS_RVC4, config.minFps) : config.minFps;
     const float maximum = platform == dai::Platform::RVC2 ? std::min(MAXIMUM_FPS_RVC2, config.maxFps) : config.maxFps;
+    if(maximum < minimum) {
+        // A config that only runs above the platform cap
+        return {};
+    }
     std::vector<float> fps{maximum};
     if(minimum < DEFAULT_FPS && DEFAULT_FPS < maximum) {
         fps.push_back(DEFAULT_FPS);
@@ -173,12 +177,14 @@ TEST_CASE("Camera sensor configs configurations") {
     double sensorFps = 0.0;
     if(isRvc4) {
         REQUIRE(metadata.size() > 2);
-        const auto& data = metadata.front()->getData();
-        REQUIRE(data.size() == 4);
-        const int32_t sensorMode = static_cast<int32_t>(static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8)
-                                                        | (static_cast<uint32_t>(data[2]) << 16) | (static_cast<uint32_t>(data[3]) << 24));
-        // HDR and non-HDR configs share a resolution, only the index tells them apart
-        REQUIRE(sensorMode == testCase.configIndex);
+        for(const auto& message : metadata) {
+            const auto& data = message->getData();
+            REQUIRE(data.size() == 4);
+            const int32_t sensorMode = static_cast<int32_t>(static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8)
+                                                            | (static_cast<uint32_t>(data[2]) << 16) | (static_cast<uint32_t>(data[3]) << 24));
+            // HDR and non-HDR configs share a resolution, only the index tells them apart
+            REQUIRE(sensorMode == testCase.configIndex);
+        }
 
         // The first second, while the stream starts, is left out of timing
         const auto timingStart = metadata.front()->getTimestampDevice() + std::chrono::seconds(1);

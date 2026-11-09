@@ -217,7 +217,7 @@ jobs:
 
  linux_rvc4_ffc_test:
       needs: [build_docker_container]
-      if: inputs.run_standard_tests && inputs.luxonis_os_versions_to_test_ffc != '[]'
+      if: inputs.luxonis_os_versions_to_test_ffc != '[]'
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_ffc) }}
