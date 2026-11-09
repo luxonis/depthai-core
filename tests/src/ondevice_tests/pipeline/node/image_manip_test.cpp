@@ -921,6 +921,9 @@ TEST_CASE("RVC4 ImageManip backends preserve FP16 samples and metadata", "[image
     CAPTURE(backend, host);
     dai::Pipeline pipeline;
     if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("FP16 ImageManip requires RVC4 or host");
+    if(!host && backend == dai::ImageManipProperties::Backend::GPU && !pipeline.getDefaultDevice()->hasGPU()) {
+        SKIP("GPU not available on this device");
+    }
     auto manip = pipeline.create<dai::node::ImageManip>();
     manip->setBackend(backend);
     manip->setRunOnHost(host);
