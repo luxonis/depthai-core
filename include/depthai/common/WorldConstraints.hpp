@@ -59,7 +59,7 @@ MarkerType markerTypeFromString(const std::string& name);
  * Known distances between marker centers, distances from marker centers to camera optical centers, and printed
  * marker sizes refine camera orientations after image-based calibration. This refinement preserves camera centers
  * and baseline lengths. A marker needs to be seen by at least two calibrated cameras in the same synchronized
- * frame set to count, and needs to be at least 30 px across in each image (ArUco: shortest side of the square,
+ * frame set to count, and needs to be at least 25 px across in each image (ArUco: shortest side of the square,
  * Luxonis: smallest ring diameter). One constraint set describes markers of one type. Measurements are fitted together and may
  * not be met exactly. Set the constraints before building the pipeline.
  *

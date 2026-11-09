@@ -317,11 +317,11 @@ TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstr
     REQUIRE(centers.at(37)[0] == Catch::Approx(87.5).margin(0.75));
     REQUIRE(centers.at(37)[1] == Catch::Approx(87.5).margin(0.75));
 
-    // A marker smaller than DclUtils::kMinMarkerSizePx (4 px per cell, 24 px side) is dropped; one at 6 px per cell
+    // A marker smaller than DclUtils::kMinMarkerSizePx (3 px per cell, 18 px side) is dropped; one at 6 px per cell
     // (36 px side) is used. Each is drawn alone so that it is the only copy of id 37 in the image. (Sub-pixel corners
-    // sit on pixel centers, so a square printed exactly 30 px wide measures about 29 px and is not a usable boundary.)
+    // sit on pixel centers, so a square printed exactly 25 px wide measures about 24 px and is not a usable boundary.)
     auto small = whiteImage(320, 240);
-    drawMarker37(small, 40, 40, 4);
+    drawMarker37(small, 40, 40, 3);
     REQUIRE(markerCenters(small, constraints).empty());
     auto bigEnough = whiteImage(320, 240);
     drawMarker37(bigEnough, 40, 40, 6);
@@ -370,11 +370,11 @@ TEST_CASE("DynamicCalibration detects Luxonis Marker centers through DCL", "[Wor
         REQUIRE(centers.at(id)[0] == Catch::Approx(uv[0]).margin(0.3));
         REQUIRE(centers.at(id)[1] == Catch::Approx(uv[1]).margin(0.3));
     }
-    // A ring smaller than DclUtils::kMinMarkerSizePx (outer radius 12 px, 24 px diameter) is dropped.
+    // A ring smaller than DclUtils::kMinMarkerSizePx (outer radius 10 px, 20 px diameter) is dropped.
     {
         auto small = whiteImage(640, 480);
         std::fill(small.data.begin(), small.data.end(), static_cast<uint8_t>(190));
-        const auto tile = dcl::drawLuxonisMarker(0, 12.0);
+        const auto tile = dcl::drawLuxonisMarker(0, 10.0);
         for(unsigned y = 0; y < tile.height; ++y) {
             for(unsigned x = 0; x < tile.width; ++x) {
                 small.data[(100 + y) * small.width + 100 + x] = tile.data[y * tile.width + x];
