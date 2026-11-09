@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -32,6 +33,15 @@ size_t countNodes(const Node& parent) {
     return count;
 }
 
+template <typename T>
+std::shared_ptr<T> findNode(const Node& parent) {
+    for(const auto& node : parent.getAllNodes()) {
+        if(auto match = std::dynamic_pointer_cast<T>(node)) return match;
+        if(auto match = findNode<T>(*node)) return match;
+    }
+    return nullptr;
+}
+
 }  // namespace
 
 TEST_CASE("ToFStereoFusion STEREO_NETWORK wires rectification and the ToF fusion mode instead of NeuralDepth", "[ToFStereoFusion]") {
@@ -50,6 +60,10 @@ TEST_CASE("ToFStereoFusion STEREO_NETWORK wires rectification and the ToF fusion
 
     REQUIRE(countNodes<node::NeuralDepth>(*fusion) == 0);
     REQUIRE(countNodes<node::Rectification>(*fusion) == 1);
+    const auto rectification = findNode<node::Rectification>(*fusion);
+    REQUIRE(rectification != nullptr);
+    REQUIRE(rectification->properties.backend == node::Rectification::Backend::HW);
+    REQUIRE(rectification->properties.alphaScaling == std::optional<float>(0.0f));
     REQUIRE(fusion->tof->tofBaseNode.initialConfig->depthMode == ToFConfig::DepthMode::FUSION);
     REQUIRE_FALSE(fusion->neuralNetwork->properties.deviceModel.has_value());
     REQUIRE(fusion->neuralNetwork->properties.backendProperties.at("output_tensors") == "disp_low,head9,conf");
