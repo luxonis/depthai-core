@@ -25,7 +25,8 @@ namespace dai::beta::node {
  * - ALPHA_BLEND (default): NeuralDepth is aligned to the ToF and a small network blends the two per pixel. Output in the ToF view.
  * - STEREO_NETWORK: the rectified stereo pair and ToF planes (ToF reprojected into the rectified-left view) go into one network,
  *   whose disparity is composed with the ToF on the device. Output in the rectified-left view. The network is not in the model zoo;
- *   set it with neuralNetwork->setModelPath() before starting the pipeline.
+ *   set it with neuralNetwork->setModelPath() before starting the pipeline. The stereo pair is rectified by a Rectification
+ *   subnode on the EVA warp (Backend::HW) with alpha scaling 0, the geometry the networks are trained on.
  *
  * @note This node is supported on RVC4 devices only. Creating it for an RVC2 device throws an exception.
  */
@@ -81,7 +82,8 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     /**
      * Set where the STEREO_NETWORK pre- and post-processing runs. AUTO (default) uses the GPU when available.
      *
-     * @param backend AUTO, CPU or GPU. GPU falls back to CPU with a warning if OpenCL is not available.
+     * @param backend AUTO, CPU or GPU. AUTO falls back to the CPU with a warning when OpenCL is not available; GPU does not
+     *        fall back: the node logs an error and produces no output. The device logs the backend in use at info level.
      * @return This node.
      */
     ToFStereoFusion& setBackend(Properties::Backend backend);
@@ -92,6 +94,9 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
      * With FUSION (default), build() puts the ToF into ToFConfig::DepthMode::FUSION, whose confidence is already on the fusion
      * scale, and links its phase output. With VENDOR the ToF keeps its standard depth mode and the confidence is mapped to the
      * fusion scale; use it for networks trained on the standard ToF output. Call before build().
+     * When the ToF cannot run the fusion depth mode (no GPU) or is switched to STANDARD at runtime, it sends empty phase frames
+     * with vendor-scale confidence; the node keeps producing depth from those frames (phases derived from the ToF depth, the
+     * confidence mapped as with VENDOR, lower quality) and logs a warning.
      *
      * @param scale FUSION or VENDOR.
      * @return This node.

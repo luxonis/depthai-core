@@ -81,6 +81,10 @@ void ToFStereoFusion::buildStereoNetwork(const std::shared_ptr<dai::node::Camera
     (*pairDemux)->outputs["left"].link((*rectification)->input1);
     (*pairDemux)->outputs["right"].link((*rectification)->input2);
     (*rectification)->setOutputSize(networkInputSize);
+    // EVA warp (CPU fallback for layouts it cannot take). Alpha 0 is the rectified camera the networks were trained and
+    // validated on (fx 852.7 at 1280x800 on an OAK4-LITE-TOF, against 805 for the left input's intrinsics).
+    (*rectification)->setBackend(dai::node::Rectification::Backend::HW);
+    (*rectification)->setAlphaScaling(0.0f);
 
     // Scale, do not crop: the network was trained on the full field of view. Rectification also undistorts.
     auto* leftOutput = left->requestOutput(networkInputSize, ImgFrame::Type::GRAY8, ImgResizeMode::STRETCH, fps, false);
