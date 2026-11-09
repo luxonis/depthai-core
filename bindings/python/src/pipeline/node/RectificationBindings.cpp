@@ -29,10 +29,22 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
 
     // Properties
     RectificationProperties.def(py::init<>());
+    auto backend = m.attr("ImageManipProperties").attr("Backend");
+    RectificationProperties.attr("Backend") = backend;
+    rectification.attr("Backend") = backend;
 
     RectificationProperties
         .def_readwrite("enableRectification", &dai::RectificationProperties::enableRectification, DOC(dai, RectificationProperties, enableRectification))
+        .def_readwrite("backend", &dai::RectificationProperties::backend, "Remapping backend preference")
         .def_readwrite("outputWidth", &RectificationProperties::outputWidth, DOC(dai, RectificationProperties, outputWidth))
+        .def_readwrite("mesh", &RectificationProperties::mesh)
+        .def_readwrite("rectifyEdgeFillColor", &RectificationProperties::rectifyEdgeFillColor)
+        .def_readwrite("useHomographyRectification", &RectificationProperties::useHomographyRectification)
+        .def_readwrite("rectificationUseSpecTranslation", &RectificationProperties::rectificationUseSpecTranslation)
+        .def_readwrite("alphaScaling", &RectificationProperties::alphaScaling)
+        .def_readwrite("depthAlign", &RectificationProperties::depthAlign)
+        .def_readwrite("depthAlignCamera", &RectificationProperties::depthAlignCamera)
+        .def_readwrite("numFramesPool", &RectificationProperties::numFramesPool)
         .def_readwrite("outputHeight", &RectificationProperties::outputHeight, DOC(dai, RectificationProperties, outputHeight));
 
     // Nodes
@@ -43,6 +55,11 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
         .def_readonly("input1", &Rectification::input1, DOC(dai, node, Rectification, input1))
         .def_readonly("input2", &Rectification::input2, DOC(dai, node, Rectification, input2))
         .def("setRunOnHost", &Rectification::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Rectification, setRunOnHost))
+        .def("setBackend",
+             &Rectification::setBackend,
+             py::arg("backend"),
+             py::return_value_policy::reference_internal,
+             "Select CPU, EVA hardware (HW), or GPU. AUTO defaults to GPU on device with CPU fallback")
         .def("enableRectification", &Rectification::enableRectification, py::arg("enable"), DOC(dai, node, Rectification, enableRectification))
         .def("setOutputSize",
              (Rectification & (Rectification::*)(uint32_t, uint32_t)) & Rectification::setOutputSize,

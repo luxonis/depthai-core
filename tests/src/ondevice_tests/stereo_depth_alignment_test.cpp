@@ -112,7 +112,12 @@ std::shared_ptr<dai::ImgFrame> frame(
     result->setHeight(height);
     result->setStride(width);
     result->setInstanceNum(static_cast<unsigned>(socket));
-    result->setTransformation(dai::ImgTransformation(width, height, k));
+    dai::ImgTransformation transformation(width, height, k);
+    const std::vector<std::vector<float>> identity = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    dai::Extrinsics pose(identity, {socket == dai::CameraBoardSocket::CAM_C ? BASELINE_CM : 0.0f, 0, 0}, dai::CameraBoardSocket::CAM_B);
+    pose.toDeviceId = "stereo-alignment-test-origin";
+    transformation.setExtrinsics(pose);
+    result->setTransformation(transformation);
     if(padRows) {
         auto data = pixels;
         // RVC4 stereo reads complete 32-row blocks even when the logical image height

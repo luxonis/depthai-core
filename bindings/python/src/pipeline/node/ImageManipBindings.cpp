@@ -12,6 +12,13 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
     py::class_<ImageManipProperties, std::shared_ptr<ImageManipProperties>> imageManipProperties(m, "ImageManipProperties", DOC(dai, ImageManipProperties));
     auto imageManip = ADD_NODE(ImageManip);
 
+    // Shared backend type must exist before the other node bindings run.
+    py::enum_<ImageManipProperties::Backend> backend(imageManipProperties, "Backend");
+    backend.value("HW", ImageManipProperties::Backend::HW)
+        .value("CPU", ImageManipProperties::Backend::CPU)
+        .value("GPU", ImageManipProperties::Backend::GPU)
+        .value("AUTO", ImageManipProperties::Backend::AUTO);
+
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
@@ -29,12 +36,6 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
     perfMode.value("BALANCED", ImageManipProperties::PerformanceMode::BALANCED)
         .value("PERFORMANCE", ImageManipProperties::PerformanceMode::PERFORMANCE)
         .value("LOW_POWER", ImageManipProperties::PerformanceMode::LOW_POWER);
-
-    py::enum_<ImageManipProperties::Backend> backend(imageManipProperties, "Backend");
-    backend.value("HW", ImageManipProperties::Backend::HW)
-        .value("CPU", ImageManipProperties::Backend::CPU)
-        .value("GPU", ImageManipProperties::Backend::GPU)
-        .value("AUTO", ImageManipProperties::Backend::AUTO);
 
     imageManipProperties.def_readwrite("initialConfig", &ImageManipProperties::initialConfig)
         .def_readwrite("outputFrameSize", &ImageManipProperties::outputFrameSize)
