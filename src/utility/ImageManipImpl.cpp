@@ -2894,6 +2894,7 @@ struct PixelLayout {
     uint32_t channels;
     uint32_t bytes;
 };
+/** Describe channel order, packing, and sample size for supported FP16 conversion layouts. */
 PixelLayout pixelLayout(ImgFrame::Type type) {
     switch(type) {
         case ImgFrame::Type::RGBF16F16F16p:
@@ -2944,6 +2945,7 @@ PixelLayout pixelLayout(ImgFrame::Type type) {
     }
     throw std::invalid_argument("Unsupported FP16 ImageManip color conversion");
 }
+/** Locate a logical RGB channel sample using the frame offsets and row strides. */
 size_t pixelOffset(const PixelLayout& layout, const FrameSpecs& specs, size_t x, size_t y, uint32_t channel) {
     if(layout.channels == 1)
         channel = 0;
@@ -2967,8 +2969,12 @@ void colorConvertFp16(const std::shared_ptr<OffsetMemory>& src,
     const auto yuv = [](ImgFrame::Type type) { return type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p; };
     if(yuv(from) || yuv(to)) {
         const auto rgbSpecs = getDstFrameSpecs(srcSpecs.width, srcSpecs.height, ImgFrame::Type::RGB888i);
-        auto rgb = std::make_shared<_ImageManipMemory>(getFrameSize(ImgFrame::Type::RGB888i, rgbSpecs));
-        ColorChangeH cc;
+        // Calls are synchronous; retain both scratch buffers per thread so
+        // independent node conversions never share mutable storage.
+        thread_local std::shared_ptr<_ImageManipMemory> rgb;
+        thread_local ColorChangeH cc;
+        const auto rgbSize = getFrameSize(ImgFrame::Type::RGB888i, rgbSpecs);
+        if(!rgb || rgb->getOffsetSize() < rgbSize) rgb = std::make_shared<_ImageManipMemory>(rgbSize);
         if(yuv(from)) {
             cc.build(srcSpecs, rgbSpecs, from, ImgFrame::Type::RGB888i);
             cc.apply(src, rgb);
@@ -3021,66 +3027,71 @@ void ColorChangeH::build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFra
 }
 
 void ColorChangeH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
-    if(isFp16(from) || isFp16(to)) {
-        colorConvertFp16(src, dst, srcSpecs, dstSpecs, from, to);
-        return;
-    }
     float bpp;
     int numPlanes;
     getFrameTypeInfo(to, numPlanes, bpp);
 
     bool done = false;
     auto start = std::chrono::steady_clock::now();
-    switch(to) {
-        case dai::ImgFrame::Type::RGB888p:
-            done = colorConvertToRGB888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::BGR888p:
-            done = colorConvertToBGR888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::RGB888i:
-            done = colorConvertToRGB888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::BGR888i:
-            done = colorConvertToBGR888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::NV12:
-            done = colorConvertToNV12({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::YUV420p:
-            done = colorConvertToYUV420p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case dai::ImgFrame::Type::GRAY8:
-        case dai::ImgFrame::Type::RAW8:
-            done = colorConvertToGRAY8({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
-            break;
-        case ImgFrame::Type::YUV422i:
-        case ImgFrame::Type::YUV444p:
-        case ImgFrame::Type::YUV422p:
-        case ImgFrame::Type::YUV400p:
-        case ImgFrame::Type::RGBA8888:
-        case ImgFrame::Type::RGB161616:
-        case ImgFrame::Type::LUT2:
-        case ImgFrame::Type::LUT4:
-        case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
-        case ImgFrame::Type::RAW14:
-        case ImgFrame::Type::RAW12:
-        case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::PACK10:
-        case ImgFrame::Type::PACK12:
-        case ImgFrame::Type::YUV444i:
-        case ImgFrame::Type::NV21:
-        case ImgFrame::Type::BITSTREAM:
-        case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
-        case ImgFrame::Type::RAW32:
-        case ImgFrame::Type::NONE:
-            break;
+    if(isFp16(from) || isFp16(to)) {
+        try {
+            colorConvertFp16(src, dst, srcSpecs, dstSpecs, from, to);
+            done = true;
+        } catch(const std::exception& ex) {
+            if(logger) logger->debug("ImageManip | FP16 color conversion failed: {}", ex.what());
+        }
+    } else {
+        switch(to) {
+            case dai::ImgFrame::Type::RGB888p:
+                done = colorConvertToRGB888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::BGR888p:
+                done = colorConvertToBGR888p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::RGB888i:
+                done = colorConvertToRGB888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::BGR888i:
+                done = colorConvertToBGR888i({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::NV12:
+                done = colorConvertToNV12({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::YUV420p:
+                done = colorConvertToYUV420p({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case dai::ImgFrame::Type::GRAY8:
+            case dai::ImgFrame::Type::RAW8:
+                done = colorConvertToGRAY8({src, dst, srcSpecs, dstSpecs, from, ccAuxFrame});
+                break;
+            case ImgFrame::Type::YUV422i:
+            case ImgFrame::Type::YUV444p:
+            case ImgFrame::Type::YUV422p:
+            case ImgFrame::Type::YUV400p:
+            case ImgFrame::Type::RGBA8888:
+            case ImgFrame::Type::RGB161616:
+            case ImgFrame::Type::LUT2:
+            case ImgFrame::Type::LUT4:
+            case ImgFrame::Type::LUT16:
+            case ImgFrame::Type::RAW16:
+            case ImgFrame::Type::RAW14:
+            case ImgFrame::Type::RAW12:
+            case ImgFrame::Type::RAW10:
+            case ImgFrame::Type::PACK10:
+            case ImgFrame::Type::PACK12:
+            case ImgFrame::Type::YUV444i:
+            case ImgFrame::Type::NV21:
+            case ImgFrame::Type::BITSTREAM:
+            case ImgFrame::Type::HDR:
+            case ImgFrame::Type::RGBF16F16F16p:
+            case ImgFrame::Type::BGRF16F16F16p:
+            case ImgFrame::Type::RGBF16F16F16i:
+            case ImgFrame::Type::BGRF16F16F16i:
+            case ImgFrame::Type::GRAYF16:
+            case ImgFrame::Type::RAW32:
+            case ImgFrame::Type::NONE:
+                break;
+        }
     }
     auto diff = std::chrono::steady_clock::now() - start;
     if(logger) logger->trace("ImageManip | colorConvert took {}ns", std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count());
@@ -3193,14 +3204,11 @@ void WarpH::build(const FrameSpecs srcFrameSpecs,
     }
     if(this->sourceMinX >= this->sourceMaxX || this->sourceMinY >= this->sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
 
-    const bool axisAlignedScale = floatEq(matrix[0][1], 0.f) && floatEq(matrix[1][0], 0.f) && matrix[0][0] > 0.f && matrix[1][1] > 0.f
-                                  && floatEq(matrix[2][0], 0.f) && floatEq(matrix[2][1], 0.f) && floatEq(matrix[2][2], 1.f);
-    if(!axisAlignedScale) {
-        // Retain the neighboring samples needed for interpolation, as on RVC4.
-        const size_t padding = type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p ? 2 : 1;
-        this->sourceMaxX = std::min(this->sourceMaxX + padding, static_cast<size_t>(inWidth));
-        this->sourceMaxY = std::min(this->sourceMaxY + padding, static_cast<size_t>(inHeight));
-    }
+    // Retain the neighboring samples needed for interpolation, as on RVC4.
+    // These are sampling bounds only; the requested crop is unchanged.
+    const size_t padding = type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p ? 2 : 1;
+    this->sourceMaxX = std::min(this->sourceMaxX + padding, static_cast<size_t>(inWidth));
+    this->sourceMaxY = std::min(this->sourceMaxY + padding, static_cast<size_t>(inHeight));
 }
 
 void WarpH::buildUndistort(bool enable,
@@ -3279,15 +3287,14 @@ void transformFp16(const std::shared_ptr<OffsetMemory>& src,
     cv::Mat input(srcSpecs.height, srcSpecs.width, CV_MAKETYPE(CV_16F, channels), src->getOffsetData().data(), srcSpecs.p1Stride);
     cv::Mat output(dstSpecs.height, dstSpecs.width, CV_MAKETYPE(CV_16F, channels), dst->getOffsetData().data(), dstSpecs.p1Stride);
     cv::Mat inputFloat, outputFloat;
-    input.convertTo(inputFloat, CV_32F);
+    input(cv::Rect(minX, minY, maxX - minX, maxY - minY)).convertTo(inputFloat, CV_32F);
     auto applied = matrix;
     applied[0][2] += applied[0][0] * minX + applied[0][1] * minY;
     applied[1][2] += applied[1][0] * minX + applied[1][1] * minY;
     applied[2][2] += applied[2][0] * minX + applied[2][1] * minY;
     cv::Mat projection(3, 3, CV_32F, applied.data());
     const cv::Scalar bg(background[0], channels == 3 ? background[1] : 0, channels == 3 ? background[2] : 0);
-    cv::warpPerspective(
-        inputFloat(cv::Rect(minX, minY, maxX - minX, maxY - minY)), outputFloat, projection, output.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, bg);
+    cv::warpPerspective(inputFloat, outputFloat, projection, output.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, bg);
     outputFloat.convertTo(output, CV_16F);
 #else
     throw std::runtime_error("FP16 CPU warp requires OpenCV support");

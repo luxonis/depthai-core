@@ -12,6 +12,7 @@ struct TestImage {
     std::shared_ptr<dai::impl::_ImageManipMemory> memory;
     std::vector<cv::Mat> planes;
 
+    /** Allocate the requested format and expose its storage planes for reference checks. */
     TestImage(Type type, int width, int height) : specs(dai::impl::getDstFrameSpecs(width, height, type)) {
         memory = std::make_shared<dai::impl::_ImageManipMemory>(dai::impl::getAlignedOutputFrameSize(type, width, height));
         std::fill(memory->getOffsetData().begin(), memory->getOffsetData().end(), 0xa5);
@@ -29,6 +30,7 @@ struct TestImage {
         }
     }
 
+    /** Fill every plane with a spatial pattern that exposes interpolation errors. */
     void fill() {
         for(size_t p = 0; p < planes.size(); ++p) {
             auto& image = planes[p];
@@ -47,6 +49,7 @@ struct TestImage {
     }
 };
 
+/** Compare transformed planes with OpenCV using the same background and chroma scale. */
 void checkWarp(const TestImage& input, const TestImage& output, const Matrix& matrix, const uint32_t* background, bool perspective = false) {
     REQUIRE(output.planes.size() == input.planes.size());
     for(size_t p = 0; p < input.planes.size(); ++p) {
@@ -74,6 +77,7 @@ void checkWarp(const TestImage& input, const TestImage& output, const Matrix& ma
     }
 }
 
+/** Map output boundaries back into source coordinates for crop construction. */
 std::vector<std::array<std::array<float, 2>, 4>> sourceCorners(const Matrix& matrix, int width, int height) {
     auto copy = matrix;
     cv::Mat inverse = cv::Mat(3, 3, CV_32F, copy.data()).inv();
@@ -144,4 +148,28 @@ TEST_CASE("Host ImageManip rotated and perspective crops retain interpolation ne
             checkWarp(input, output, matrix, warp.backgroundColor, perspective);
         }
     }
+}
+
+TEST_CASE("Host ImageManip scaled crops retain interpolation neighbors", "[imagemanip][host-warp]") {
+    const auto type = GENERATE(Type::GRAY8,
+                               Type::RAW16,
+                               Type::RGB888i,
+                               Type::RGB888p,
+                               Type::NV12,
+                               Type::YUV420p,
+                               Type::GRAYF16,
+                               Type::RGBF16F16F16i,
+                               Type::BGRF16F16F16i,
+                               Type::RGBF16F16F16p,
+                               Type::BGRF16F16F16p);
+    const float scale = GENERATE(1.5f, 2.f, 3.f);
+    CAPTURE(type, scale);
+    TestImage input(type, 64, 48), output(type, 16, 12);
+    input.fill();
+    const Matrix matrix = {{{scale, 0, -24 * scale}, {0, scale, -18 * scale}, {0, 0, 1}}};
+    dai::impl::WarpH warp;
+    warp.build(input.specs, output.specs, type, matrix, sourceCorners(matrix, 16, 12));
+    warp.setBackgroundColor(17, 43, 91);
+    warp.apply(input.memory, output.memory);
+    checkWarp(input, output, matrix, warp.backgroundColor);
 }

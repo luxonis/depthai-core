@@ -556,17 +556,26 @@ struct ColorChangeArgs {
 FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
 FrameSpecs getCcDstFrameSpecs(const FrameSpecs& srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
 FrameSpecs getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type);
+/** Return whether the image format stores IEEE 754 half-precision samples. */
 inline bool isFp16(ImgFrame::Type type) {
     return type == ImgFrame::Type::RGBF16F16F16p || type == ImgFrame::Type::BGRF16F16F16p || type == ImgFrame::Type::RGBF16F16F16i
            || type == ImgFrame::Type::BGRF16F16F16i || type == ImgFrame::Type::GRAYF16;
 }
 
+/**
+ * Convert FP16 and supported integer layouts without normalizing sample values.
+ * Integer output is rounded and saturated; unsupported layouts throw std::invalid_argument.
+ */
 void colorConvertFp16(const std::shared_ptr<OffsetMemory>& src,
                       const std::shared_ptr<OffsetMemory>& dst,
                       const FrameSpecs& srcSpecs,
                       const FrameSpecs& dstSpecs,
                       ImgFrame::Type from,
                       ImgFrame::Type to);
+/**
+ * Warp the source sampling rectangle in FP32 and store rounded FP16 output.
+ * The matrix maps full-image coordinates; pixels outside the rectangle use background.
+ */
 void transformFp16(const std::shared_ptr<OffsetMemory>& src,
                    const std::shared_ptr<OffsetMemory>& dst,
                    const FrameSpecs& srcSpecs,

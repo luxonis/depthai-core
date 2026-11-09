@@ -1,4 +1,5 @@
 #include <catch2/catch_all.hpp>
+#include <future>
 #include <limits>
 
 #include "../image_manip_fp16_test_utils.hpp"
@@ -104,6 +105,31 @@ TEST_CASE("ImageManip FP16 converts integer samples without normalization", "[im
         // preserve constant integer samples to YUV coefficient rounding.
         if(halfType != Type::GRAYF16 || integerType == Type::GRAY8) {
             for(size_t i = 0; i < actual->getOffsetSize(); ++i) CHECK(std::abs(int(actual->getOffsetData()[i]) - int(source->getOffsetData()[i])) <= 2);
+        } else {
+            // Decode the original layout independently, then compute luminance
+            // with OpenCV rather than the ImageManip conversion helper.
+            cv::Mat bgr, expectedGray;
+            input.getCvFrame().convertTo(bgr, CV_32F);
+            cv::cvtColor(bgr, expectedGray, cv::COLOR_BGR2GRAY);
+            expectedGray.convertTo(expectedGray, CV_16F);
+            cv::Mat halfImage(18, 24, CV_16FC1, half->getOffsetData().data(), halfSpecs.p1Stride);
+            cv::Mat grayFloat, actualFloat;
+            expectedGray.convertTo(grayFloat, CV_32F);
+            halfImage.convertTo(actualFloat, CV_32F);
+            // YUV420p's scalar decoder and OpenCV use slightly different
+            // fixed-point coefficients; allow one integer level for YUV.
+            const float tolerance = integerType == Type::NV12 || integerType == Type::YUV420p ? 1.f : 0.125f;
+            CHECK(cv::norm(actualFloat, grayFloat, cv::NORM_INF) <= tolerance);
+
+            cv::Mat grayInteger, restoredBgr;
+            grayFloat.convertTo(grayInteger, CV_8U);
+            cv::cvtColor(grayInteger, restoredBgr, cv::COLOR_GRAY2BGR);
+            dai::ImgFrame expected;
+            expected.setCvFrame(restoredBgr, integerType);
+            REQUIRE(expected.getData().size() == actual->getOffsetSize());
+            for(size_t i = 0; i < actual->getOffsetSize(); ++i) {
+                CHECK(std::abs(int(actual->getOffsetData()[i]) - int(expected.getData()[i])) <= 2);
+            }
         }
     }
 }
@@ -244,4 +270,68 @@ TEST_CASE("ImageManip planar specs infer offsets relative to the first plane", "
     const auto explicitSecond = getSrcFrameSpecs(source);
     CHECK(explicitSecond.p2Offset == 1200);
     CHECK(explicitSecond.p3Offset == 1200 + 64 * 17);
+}
+
+TEST_CASE("Host ImageManip rejects RAW16 and GRAYF16 conversions without throwing", "[imagemanip][fp16]") {
+    const bool toHalf = GENERATE(false, true);
+    const auto from = toHalf ? Type::RAW16 : Type::GRAYF16;
+    const auto to = toHalf ? Type::GRAYF16 : Type::RAW16;
+    const auto srcSpecs = getDstFrameSpecs(8, 4, from);
+    const auto dstSpecs = getDstFrameSpecs(8, 4, to);
+    auto src = std::make_shared<_ImageManipMemory>(getFrameSize(from, srcSpecs));
+    auto dst = std::make_shared<_ImageManipMemory>(getFrameSize(to, dstSpecs));
+    std::fill(src->getOffsetData().begin(), src->getOffsetData().end(), 0x5a);
+    std::fill(dst->getOffsetData().begin(), dst->getOffsetData().end(), 0);
+    ColorChangeH cc;
+    cc.build(srcSpecs, dstSpecs, from, to);
+    REQUIRE_NOTHROW(cc.apply(src, dst));
+    // Unsupported conversions use the existing bounded-copy fallback.
+    const auto copied = std::min(src->getOffsetSize(), dst->getOffsetSize());
+    CHECK(std::equal(src->getOffsetData().begin(), src->getOffsetData().begin() + copied, dst->getOffsetData().begin()));
+}
+
+TEST_CASE("ImageManip FP16 YUV scratch handles resizing and concurrent conversions", "[imagemanip][fp16]") {
+    auto convert = [](int worker) {
+        for(auto type : {Type::NV12, Type::YUV420p}) {
+            ColorChangeH cc;
+            for(int width : {24, 48, 16, 48}) {
+                const int height = width / 2;
+                dai::ImgFrame input;
+                input.setCvFrame(cv::Mat(height, width, CV_8UC3, cv::Scalar(12 + worker * 30, 89, 203 - worker * 30)), type);
+                const auto specs = getSrcFrameSpecs(input.fb);
+                const auto halfSpecs = getDstFrameSpecs(width, height, Type::RGBF16F16F16i);
+                auto src = std::make_shared<_ImageManipMemory>(input.getData());
+                auto half = std::make_shared<_ImageManipMemory>(getFrameSize(Type::RGBF16F16F16i, halfSpecs));
+                auto dst = std::make_shared<_ImageManipMemory>(getFrameSize(type, specs));
+                cc.build(specs, halfSpecs, type, Type::RGBF16F16F16i);
+                cc.apply(src, half);
+                cc.build(halfSpecs, specs, Type::RGBF16F16F16i, type);
+                cc.apply(half, dst);
+                for(size_t i = 0; i < dst->getOffsetSize(); ++i) {
+                    if(std::abs(int(dst->getOffsetData()[i]) - int(src->getOffsetData()[i])) > 2) return false;
+                }
+            }
+        }
+        return true;
+    };
+    auto first = std::async(std::launch::async, convert, 0);
+    auto second = std::async(std::launch::async, convert, 1);
+    CHECK(first.get());
+    CHECK(second.get());
+}
+
+TEST_CASE("Host ImageManip handles FP16 OpenCV conversion exceptions", "[imagemanip][fp16]") {
+    // Odd NV12 dimensions violate OpenCV's two-plane conversion requirements.
+    const auto srcSpecs = getDstFrameSpecs(7, 3, Type::NV12);
+    const auto dstSpecs = getDstFrameSpecs(7, 3, Type::RGBF16F16F16i);
+    auto src = std::make_shared<_ImageManipMemory>(getFrameSize(Type::NV12, srcSpecs));
+    auto dst = std::make_shared<_ImageManipMemory>(getFrameSize(Type::RGBF16F16F16i, dstSpecs));
+    std::fill(src->getOffsetData().begin(), src->getOffsetData().end(), 0x5a);
+    // Verify this exercises a backend exception rather than an unsupported layout.
+    REQUIRE_THROWS_AS(colorConvertFp16(src, dst, srcSpecs, dstSpecs, Type::NV12, Type::RGBF16F16F16i), cv::Exception);
+    ColorChangeH cc;
+    cc.build(srcSpecs, dstSpecs, Type::NV12, Type::RGBF16F16F16i);
+    REQUIRE_NOTHROW(cc.apply(src, dst));
+    const auto copied = std::min(src->getOffsetSize(), dst->getOffsetSize());
+    CHECK(std::equal(src->getOffsetData().begin(), src->getOffsetData().begin() + copied, dst->getOffsetData().begin()));
 }

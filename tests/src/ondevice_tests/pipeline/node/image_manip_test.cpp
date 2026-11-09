@@ -920,7 +920,7 @@ TEST_CASE("RVC4 ImageManip backends preserve FP16 samples and metadata", "[image
     const bool host = GENERATE(false, true);
     CAPTURE(backend, host);
     dai::Pipeline pipeline;
-    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("FP16 ImageManip requires RVC4 or host");
+    if(!host && pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("FP16 ImageManip requires RVC4 or host");
     if(!host && backend == dai::ImageManipProperties::Backend::GPU && !pipeline.getDefaultDevice()->hasGPU()) {
         SKIP("GPU not available on this device");
     }
@@ -936,14 +936,20 @@ TEST_CASE("RVC4 ImageManip backends preserve FP16 samples and metadata", "[image
     int sequence = 0;
     for(auto type : fp16test::types) {
         for(bool padded : {false, true}) {
-            for(bool perspective : {false, true}) {
-                CAPTURE(type, padded, perspective);
+            for(int transform = 0; transform < 3; ++transform) {
+                const bool perspective = transform == 1;
+                const bool scaledCrop = transform == 2;
+                CAPTURE(type, padded, perspective, scaledCrop);
                 auto input = fp16test::makeFrame(type, padded);
                 input->setSequenceNum(++sequence);
-                const std::array<std::array<float, 3>, 3> matrix = {{{1, 0, 1.25f}, {0, 1, -0.5f}, {perspective ? 0.03125f : 0.f, 0, 1}}};
+                const float scale = scaledCrop ? 2.f : 1.f;
+                const int width = scaledCrop ? 16 : 23;
+                const int height = scaledCrop ? 12 : 17;
+                const std::array<std::array<float, 3>, 3> matrix = {
+                    {{scale, 0, scaledCrop ? -6.f : 1.25f}, {0, scale, scaledCrop ? -4.f : -0.5f}, {perspective ? 0.03125f : 0.f, 0, 1}}};
                 auto config = std::make_shared<dai::ImageManipConfig>();
-                config->addTransformPerspective({1, 0, 1.25f, 0, 1, -0.5f, matrix[2][0], 0, 1});
-                config->setOutputSize(23, 17);
+                config->addTransformPerspective({matrix[0][0], 0, matrix[0][2], 0, matrix[1][1], matrix[1][2], matrix[2][0], 0, 1});
+                config->setOutputSize(width, height);
                 config->base.setOutputCenter(false);
                 config->setBackgroundColor(3, 7, 11);
                 configQueue->send(config);
@@ -953,14 +959,32 @@ TEST_CASE("RVC4 ImageManip backends preserve FP16 samples and metadata", "[image
                 REQUIRE_FALSE(timedOut);
                 REQUIRE(output != nullptr);
                 CHECK(output->getType() == type);
-                CHECK(output->getWidth() == 23);
-                CHECK(output->getHeight() == 17);
+                CHECK(output->getWidth() == width);
+                CHECK(output->getHeight() == height);
                 CHECK(output->getSequenceNum() == sequence);
                 CHECK(output->getTimestamp() == input->getTimestamp());
                 const bool bgr = type == dai::ImgFrame::Type::BGRF16F16F16i || type == dai::ImgFrame::Type::BGRF16F16F16p;
                 fp16test::checkWarp(*output, *input, matrix, bgr ? std::array<uint32_t, 3>{11, 7, 3} : std::array<uint32_t, 3>{3, 7, 11});
             }
         }
+    }
+    // Failed conversions must use the fallback and leave the node available
+    // for the next frame, for both RAW16/GRAYF16 directions.
+    for(bool toHalf : {false, true}) {
+        auto input = fp16test::makeFrame(dai::ImgFrame::Type::GRAYF16);
+        input->setType(toHalf ? dai::ImgFrame::Type::RAW16 : dai::ImgFrame::Type::GRAYF16);
+        auto config = std::make_shared<dai::ImageManipConfig>();
+        config->setFrameType(toHalf ? dai::ImgFrame::Type::GRAYF16 : dai::ImgFrame::Type::RAW16);
+        configQueue->send(config);
+        inputQueue->send(input);
+        bool timedOut = false;
+        auto output = outputQueue->get<dai::ImgFrame>(std::chrono::seconds(10), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(output != nullptr);
+        CHECK(output->getType() == config->outputFrameType);
+        // Device frame pools can retain capacity from a larger previous output.
+        REQUIRE(output->getData().size() >= input->getData().size());
+        CHECK(std::equal(input->getData().begin(), input->getData().end(), output->getData().begin()));
     }
     // Exercise ColorChangeQ as well as the warp path, with signed/fractional
     // values and every FP16 channel ordering. Host references verify wiring.

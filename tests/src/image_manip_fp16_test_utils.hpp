@@ -11,6 +11,7 @@ namespace fp16test {
 using Type = dai::ImgFrame::Type;
 inline const std::array<Type, 5> types = {Type::GRAYF16, Type::RGBF16F16F16i, Type::BGRF16F16F16i, Type::RGBF16F16F16p, Type::BGRF16F16F16p};
 
+/** View each FP16 storage plane without copying, honoring offsets and strides. */
 inline std::vector<cv::Mat> planes(dai::ImgFrame& frame) {
     const auto specs = dai::impl::getSrcFrameSpecs(frame.fb);
     const bool planar = frame.getType() == Type::RGBF16F16F16p || frame.getType() == Type::BGRF16F16F16p;
@@ -23,6 +24,7 @@ inline std::vector<cv::Mat> planes(dai::ImgFrame& frame) {
     }
     return result;
 }
+/** Create a signed, fractional FP16 pattern with optional plane and row padding. */
 inline std::shared_ptr<dai::ImgFrame> makeFrame(Type type, bool padded = false) {
     constexpr int width = 23, height = 17;
     auto frame = std::make_shared<dai::ImgFrame>();
@@ -50,6 +52,7 @@ inline std::shared_ptr<dai::ImgFrame> makeFrame(Type type, bool padded = false) 
     }
     return frame;
 }
+/** Compare all output planes with an independent FP32 OpenCV warp reference. */
 inline void checkWarp(dai::ImgFrame& output,
                       dai::ImgFrame& input,
                       const std::array<std::array<float, 3>, 3>& matrix,
