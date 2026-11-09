@@ -874,6 +874,9 @@ dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
 dai_add_test(tof_fusion_mode_test src/ondevice_tests/pipeline/node/tof_fusion_mode_test.cpp)
 dai_set_test_labels(tof_fusion_mode_test ondevice rvc4)
 
+dai_add_test(tof_stereo_network_fusion_test src/ondevice_tests/pipeline/node/tof_stereo_network_fusion_test.cpp)
+dai_set_test_labels(tof_stereo_network_fusion_test ondevice rvc4)
+
 # Depth algorithm selection (on-device)
 dai_add_test(depth_algorithm_selection_test src/ondevice_tests/pipeline/node/depth_algorithm_selection_test.cpp)
 dai_set_test_labels(depth_algorithm_selection_test ondevice rvc2_all rvc4 ci)
