@@ -222,11 +222,12 @@ jobs:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_ffc) }}
           # OAK4-FFC testbeds, each with different sensors on its ports. They are in the 4ffc
-          # scope, which hil only picks by name. slo5192-4lite is left out until its board is
-          # recovered from Qualcomm download mode.
+          # scope, which hil only picks by name. Left out until their boards are fixed:
+          # - slo5192-4lite: stuck in Qualcomm download mode
+          # - slo6282-4ffc: CAM_B and CAM_C deliver no frames on their own, so hil's sanity
+          #   check fails and blocks the testbed
           testbed:
             - {name: slo7132-4ffc, cameras: 5}
-            - {name: slo6282-4ffc, cameras: 5}
             - {name: slo5302-4lite, cameras: 5}
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
