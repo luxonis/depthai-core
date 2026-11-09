@@ -218,7 +218,9 @@ jobs:
  # CCM/CBA EEPROM tests run on the lightroom testbed, once per camera model there.
  # hil_runner powers off the testbed's other camera and, without --rvc4-os-version,
  # updates the selected one to the latest sBOM OS. The rig's OAK4 Lite has no factory
- # calibration, so hil's calibration and stereo-pair sanity checks are skipped.
+ # calibration, so hil's calibration and stereo-pair sanity checks are skipped. The test
+ # journals each EEPROM backup until it's restored, in a HIL host directory that outlives
+ # the container, so the next run can restore what a killed run left written.
  linux_rvc4_eeprom_test:
       needs: [build_docker_container]
       if: inputs.enable_eeprom_tests
@@ -235,7 +237,7 @@ jobs:
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.model }}-${{ inputs.job_prefix || inputs.flavor }}-eeprom"
           set -o pipefail
-          hil_runner --scope lightroom --models "${{ matrix.model }}" --sanity no-camera-calibration no-camera-stereo-pairs --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4eeprom --test-label \"${{ inputs.test_label }}\"" 2>&1 | tee rvc4_eeprom_test_output.log
+          hil_runner --scope lightroom --models "${{ matrix.model }}" --sanity no-camera-calibration no-camera-stereo-pairs --reservation-name $RESERVATION_NAME --wait --docker-run-args "-v /home/hil/camera_eeprom_test_journal:/camera_eeprom_test_journal -e CAMERA_EEPROM_TEST_JOURNAL=/camera_eeprom_test_journal" --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4eeprom --test-label \"${{ inputs.test_label }}\"" 2>&1 | tee rvc4_eeprom_test_output.log
 
       - name: Upload test log
         if: always()

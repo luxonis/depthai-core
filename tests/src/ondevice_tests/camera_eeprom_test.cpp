@@ -7,16 +7,20 @@
 //   such cameras. The shared-bus refusal cases run without EEPROMs, since the firmware refuses before any I2C traffic
 // A camera may have a CCM EEPROM, a CBA EEPROM or both. The cases for one type skip when no camera has it, and a
 // separate case fails for a camera with neither
-// - the camera board (CBA) EEPROM through the CBA calibration API, read only and with no camera streaming (see its test
-//   case)
+// - the camera board (CBA) EEPROM through the CBA calibration API, with no camera streaming. A valid calibration is only
+//   read, while an EEPROM without one is written with a dummy calibration and cleared again (see its test case)
 // The test controls which cameras stream, and never more than two at once. Every write is restored, and EEPROM contents
-// never reach the log: only fingerprints, offsets and counts do.
+// never reach the log: only fingerprints, offsets and counts do. A journal file keeps each backup until it's back in
+// place, so the next run restores what a killed run left written (CAMERA_EEPROM_TEST_JOURNAL sets its directory).
 #include <algorithm>
 #include <atomic>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -24,6 +28,7 @@
 #include <optional>
 #include <random>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -51,6 +56,10 @@ constexpr auto FRAME_PROGRESS_TIMEOUT = 2s;
 constexpr const char* SHARED_BUS_ERROR = "must be the only active camera on it";
 constexpr const char* NOT_POWERED_ERROR = "the camera must be streaming";
 constexpr const char* NOTHING_WRITTEN_ERROR = "write failed at offset 0:";
+// The firmware's CBA calibration read error for an EEPROM that was read but holds no valid calibration
+constexpr const char* NO_CALIBRATION_ERROR = "EEPROM_INVALID_DATA";
+// Marks the dummy calibration the CBA case flashes, so a leftover is recognized
+constexpr const char* DUMMY_PRODUCT_NAME = "camera_eeprom_test dummy";
 
 std::string name(CameraBoardSocket socket) {
     return dai::toString(socket);
@@ -370,11 +379,16 @@ void addToLayout(BusLayout& layout, CameraBoardSocket socket, const Outcome& out
     layout.shared[refusal->bus].push_back(socket);
 }
 
-// The given cameras with a CBA EEPROM, as the firmware detected it at startup
+// The given cameras with a CBA EEPROM, as the firmware detected it at startup. A failed query is only reported, so it
+// doesn't stop the CCM layout discovery. The CBA case queries again and fails on it
 std::set<CameraBoardSocket> withCbaEeprom(dai::Device& device, const std::vector<CameraBoardSocket>& sockets) {
     std::set<CameraBoardSocket> result;
     for(const auto socket : sockets) {
-        if(device.isCBAEepromAvailable(socket)) result.insert(socket);
+        try {
+            if(device.isCBAEepromAvailable(socket)) result.insert(socket);
+        } catch(const std::exception& ex) {
+            report("CBA EEPROM " + name(socket) + ": query failed: " + ex.what());
+        }
     }
     return result;
 }
@@ -505,15 +519,21 @@ void checkUnique(CcmInventory& inventory) {
     }
 }
 
+// Defined with the journal below
+std::vector<std::string> recoverJournal(const std::string& deviceId, const std::vector<CameraBoardSocket>& sockets);
+
 const CcmInventory& ccmInventory() {
     static const CcmInventory inventory = [] {
         CcmInventory result;
+        std::string deviceId;
         {
             dai::Device device;
             result.platform = device.getPlatform();
             if(result.platform != dai::Platform::RVC4) return result;
             for(const auto& features : device.getConnectedCameraFeatures()) result.connected.push_back(features.socket);
+            deviceId = device.getDeviceId();
         }
+        result.problems = recoverJournal(deviceId, result.connected);
         for(const auto socket : result.connected) readAlone(socket, result);
         checkUnique(result);
         for(const auto& problem : result.problems) report("CCM EEPROM problem: " + problem);
@@ -576,8 +596,78 @@ bool restoreWindow(dai::Device& device, CameraBoardSocket socket, const std::vec
     return false;
 }
 
-// CCM EEPROM windows written but not restored yet. restore() writes each one back in a new session that streams its
-// camera alone. The destructor does the same when a case ends early
+// A journal entry holds a written window's backup followed by its payload, from before the write until the backup is
+// back in place. CI keeps the journal on the HIL host, since the test container doesn't outlive the run
+std::filesystem::path journalPath(const std::string& deviceId, CameraBoardSocket socket) {
+    const char* dir = std::getenv("CAMERA_EEPROM_TEST_JOURNAL");
+    const auto base = dir != nullptr && *dir != '\0' ? std::filesystem::path(dir) : std::filesystem::temp_directory_path() / "camera_eeprom_test_journal";
+    return base / (deviceId + "_" + name(socket) + ".journal");
+}
+
+// Throws when the entry can't be saved, so the caller writes nothing. An entry recovery had to keep is never replaced:
+// its backup may be the only copy of the original
+void saveJournalEntry(const std::string& deviceId, CameraBoardSocket socket, const std::vector<uint8_t>& backup, const std::vector<uint8_t>& payload) {
+    const auto path = journalPath(deviceId, socket);
+    std::error_code error;
+    if(std::filesystem::exists(path, error)) throw std::runtime_error(name(socket) + " isn't written: an earlier backup is still in " + path.string());
+    std::filesystem::create_directories(path.parent_path(), error);
+    std::ofstream out(path, std::ios::binary);
+    out.write(reinterpret_cast<const char*>(backup.data()), static_cast<std::streamsize>(backup.size()));
+    out.write(reinterpret_cast<const char*>(payload.data()), static_cast<std::streamsize>(payload.size()));
+    out.close();
+    if(!out) {
+        std::filesystem::remove(path, error);
+        throw std::runtime_error("couldn't save the backup of " + name(socket) + " to " + path.string());
+    }
+}
+
+void deleteJournalEntry(const std::string& deviceId, CameraBoardSocket socket) {
+    std::error_code error;
+    std::filesystem::remove(journalPath(deviceId, socket), error);
+}
+
+// Restores what a killed run left written, before any readout could take it for the original. A window that still
+// holds the payload gets its backup back, and one that holds the backup only loses its entry. A window holding anything
+// else, e.g. after a module swap, isn't written and keeps its entry. Returns the problems
+std::vector<std::string> recoverJournal(const std::string& deviceId, const std::vector<CameraBoardSocket>& sockets) {
+    std::vector<std::string> problems;
+    for(const auto socket : sockets) {
+        const auto path = journalPath(deviceId, socket);
+        std::ifstream in(path, std::ios::binary);
+        if(!in) continue;
+        const std::vector<uint8_t> entry{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+        const auto kept = ", so its journal entry " + path.string() + " is kept";
+        if(entry.size() != 2 * WRITE_WINDOW) {
+            problems.push_back(name(socket) + " journal entry has " + std::to_string(entry.size()) + " bytes" + kept);
+            continue;
+        }
+        const std::vector<uint8_t> backup(entry.begin(), entry.begin() + WRITE_WINDOW);
+        const std::vector<uint8_t> payload(entry.begin() + WRITE_WINDOW, entry.end());
+        try {
+            Session session({socket});
+            session.start();
+            const auto current = session.firstFrames() ? readCcm(session.dev(), socket, WRITE_WINDOW) : Outcome{false, "no frames", {}};
+            if(!current.ok) {
+                problems.push_back(name(socket) + " read for the journal failed: " + current.error + kept);
+            } else if(current.data == backup) {
+                deleteJournalEntry(deviceId, socket);
+            } else if(current.data != payload) {
+                problems.push_back(name(socket) + " holds neither its journaled backup nor the payload" + kept);
+            } else if(restoreWindow(session.dev(), socket, backup)) {
+                deleteJournalEntry(deviceId, socket);
+                report("CCM EEPROM " + name(socket) + ": restored the backup a killed run left in the journal");
+            } else {
+                problems.push_back(name(socket) + " restore from the journal failed" + kept);
+            }
+        } catch(const std::exception& ex) {
+            problems.push_back(name(socket) + " journal recovery failed: " + ex.what() + kept);
+        }
+    }
+    return problems;
+}
+
+// CCM EEPROM windows written but not restored yet, each with its journal entry. restore() writes each one back in a new
+// session that streams its camera alone. The destructor does the same when a case ends early
 class PendingRestores {
    public:
     PendingRestores() = default;
@@ -588,16 +678,20 @@ class PendingRestores {
         restore();
     }
 
-    void add(CameraBoardSocket socket, const std::vector<uint8_t>& backup) {
+    // Journals the backup before the caller sends the write. Throws when it can't, so nothing is written
+    void add(const std::string& device, CameraBoardSocket socket, const std::vector<uint8_t>& backup, const std::vector<uint8_t>& payload) {
+        saveJournalEntry(device, socket, backup, payload);
+        deviceId = device;
         pending[socket] = backup;
     }
 
     void done(CameraBoardSocket socket) {
-        pending.erase(socket);
+        if(pending.erase(socket) != 0) deleteJournalEntry(deviceId, socket);
     }
 
     // Nothing reached the EEPROMs
     void discard() {
+        for(const auto& entry : pending) deleteJournalEntry(deviceId, entry.first);
         pending.clear();
     }
 
@@ -605,7 +699,7 @@ class PendingRestores {
         return pending.count(socket) != 0;
     }
 
-    // Returns the cameras whose restore failed
+    // Returns the cameras whose restore failed. Their journal entries stay for the next run
     std::vector<CameraBoardSocket> restore() {
         std::vector<CameraBoardSocket> failed;
         for(const auto& [socket, backup] : pending) {
@@ -619,10 +713,11 @@ class PendingRestores {
                 report("CCM EEPROM " + name(socket) + " restore session failed: " + ex.what());
             }
             if(restored) {
+                deleteJournalEntry(deviceId, socket);
                 report("CCM EEPROM " + name(socket) + ": backup in place, checked in a new session");
             } else {
                 report("CCM EEPROM RESTORE FAILED: " + name(socket) + ", its first " + std::to_string(backup.size()) + " bytes should have fingerprint "
-                       + fingerprint(backup));
+                       + fingerprint(backup) + ", kept in " + journalPath(deviceId, socket).string());
                 failed.push_back(socket);
             }
         }
@@ -631,6 +726,7 @@ class PendingRestores {
     }
 
    private:
+    std::string deviceId;
     std::map<CameraBoardSocket, std::vector<uint8_t>> pending;
 };
 
@@ -685,7 +781,7 @@ std::vector<RoundTrip> roundTrip(Session& session, const std::vector<CameraBoard
             trip.write.error = "the stream stalled, so the write wasn't sent";
             continue;
         }
-        pending.add(trip.socket, trip.backup);
+        pending.add(device.getDeviceId(), trip.socket, trip.backup, trip.payload);
         trip.write = writeCcm(device, trip.socket, trip.payload);
     }
     for(auto& trip : trips) {
@@ -765,6 +861,49 @@ std::optional<std::pair<CameraBoardSocket, CameraBoardSocket>> pairOnDifferentBu
         }
     }
     return std::nullopt;
+}
+
+// A calibration of no real camera board, marked with its product name so a leftover is recognized
+dai::EepromData dummyCalibration() {
+    dai::CameraInfo camera;
+    camera.width = 640;
+    camera.height = 400;
+    camera.intrinsicMatrix = {{512.5f, 0.0f, 321.25f}, {0.0f, 511.75f, 199.5f}, {0.0f, 0.0f, 1.0f}};
+    camera.distortionCoeff = std::vector<float>(14, 0.001f);
+    dai::EepromData data;
+    data.productName = DUMMY_PRODUCT_NAME;
+    data.cameraData[CameraBoardSocket::CBA] = camera;
+    return data;
+}
+
+// Compares the fields the dummy sets: a read also returns fields the firmware fills in
+bool isDummy(const dai::EepromData& data) {
+    const auto dummy = dummyCalibration().cameraData.at(CameraBoardSocket::CBA);
+    const auto camera = data.cameraData.find(CameraBoardSocket::CBA);
+    return data.productName == DUMMY_PRODUCT_NAME && camera != data.cameraData.end() && camera->second.width == dummy.width
+           && camera->second.height == dummy.height && camera->second.intrinsicMatrix == dummy.intrinsicMatrix
+           && camera->second.distortionCoeff == dummy.distortionCoeff;
+}
+
+// Flashes the dummy to a CBA EEPROM without a valid calibration, reads it back, then clears the user area, also after a
+// failed flash. Returns the problems
+std::vector<std::string> cbaWriteRoundTrip(dai::Device& device, CameraBoardSocket socket) {
+    std::vector<std::string> problems;
+    try {
+        device.flashCBACalibration(dai::CBACalibrationHandler(dummyCalibration()), socket);
+        if(!isDummy(device.readCBACalibration2(socket).getEepromData())) problems.push_back(name(socket) + " doesn't read back the dummy calibration");
+    } catch(const std::exception& ex) {
+        problems.push_back(name(socket) + " dummy calibration flash failed: " + ex.what());
+    }
+    try {
+        device.flashCBAEepromClear(socket);
+        device.readCBACalibration2(socket);
+        problems.push_back(name(socket) + " still reads a calibration after the clear");
+    } catch(const std::exception& ex) {
+        if(!contains(ex.what(), NO_CALIBRATION_ERROR)) problems.push_back(name(socket) + " clear failed: " + ex.what());
+    }
+    if(problems.empty()) report("CBA EEPROM " + name(socket) + ": dummy calibration flashed, read back and cleared");
+    return problems;
 }
 
 }  // namespace
@@ -919,7 +1058,7 @@ TEST_CASE("5: CCM EEPROM writes with two cameras on a shared I2C bus streaming",
                         const auto backup = hasEeprom ? inventoryWindow(socket) : std::vector<uint8_t>(WRITE_WINDOW, 0xFF);
                         payloads[socket] = makePayload(backup, taken);
                         taken.push_back(payloads[socket]);
-                        if(hasEeprom) pending.add(socket, backup);
+                        if(hasEeprom) pending.add(session.dev().getDeviceId(), socket, backup, payloads[socket]);
                     }
                     const auto end = Clock::now() + 1s;
                     do {
@@ -980,7 +1119,8 @@ TEST_CASE("6: CCM EEPROM read right after the stream starts", "[ccm]") {
 TEST_CASE("7: CCM EEPROM access before the pipeline starts", "[ccm]") {
     // Cameras on a shared bus are refused before the start: the bus layout case checks that
     const auto& layout = requireLayout();
-    const auto& inventory = ccmInventory();
+    // A refused read's restore backup comes from the inventory
+    const auto& inventory = requireTrustedInventory();
     std::vector<CameraBoardSocket> alone;
     for(const auto socket : layout.connected) {
         if(layout.busOf.count(socket) == 0) alone.push_back(socket);
@@ -1003,8 +1143,9 @@ TEST_CASE("7: CCM EEPROM access before the pipeline starts", "[ccm]") {
             } else {
                 // The write must fail like the read. The backup is the inventory readout, in case it doesn't
                 const auto backup = inventoryWindow(socket);
-                pending.add(socket, backup);
-                writes[socket] = writeCcm(session.dev(), socket, makePayload(backup, {}));
+                const auto payload = makePayload(backup, {});
+                pending.add(session.dev().getDeviceId(), socket, backup, payload);
+                writes[socket] = writeCcm(session.dev(), socket, payload);
             }
         }
         // A module powered without streaming (as on OAK4-FFC) can be written too
@@ -1024,10 +1165,12 @@ TEST_CASE("7: CCM EEPROM access before the pipeline starts", "[ccm]") {
     checkRoundTrips(trips);
 }
 
-// The CBA EEPROM holds the camera board's calibration, so the test only reads it: the API can't put it back exactly
-// after a write. A read returns the calibration with IMU extrinsics patched in, flashing drops the miscellaneous data,
-// and there is no raw CBA read to verify a restore with
-TEST_CASE("CBA EEPROM reads with no camera streaming", "[cba]") {
+// A valid CBA calibration is only read: the API can't put it back exactly after a write. A read returns the calibration
+// with IMU extrinsics patched in, flashing drops the miscellaneous data, and there is no raw CBA read to verify a
+// restore with. An EEPROM without a valid calibration has nothing to lose: a dummy calibration is flashed, read back and
+// cleared, which leaves the user area blank. A dummy a killed run left is cleared the same way, since the firmware
+// would otherwise merge it into the device's calibration
+TEST_CASE("CBA EEPROM reads and writes with no camera streaming", "[cba]") {
     // Before the device below connects: the layout uses its own connection
     const auto& layout = busLayout();
     // No pipeline: no sensor is active or using a camera I2C bus
@@ -1035,6 +1178,7 @@ TEST_CASE("CBA EEPROM reads with no camera streaming", "[cba]") {
     if(device.getPlatform() != dai::Platform::RVC4) SKIP("CBA EEPROM access is tested on RVC4 only");
     std::map<CameraBoardSocket, std::string> calibrations;
     std::vector<CameraBoardSocket> detected;
+    std::vector<CameraBoardSocket> uncalibrated;
     std::vector<std::string> problems;
     for(const auto& features : device.getConnectedCameraFeatures()) {
         const auto socket = features.socket;
@@ -1044,7 +1188,13 @@ TEST_CASE("CBA EEPROM reads with no camera streaming", "[cba]") {
                 continue;
             }
             detected.push_back(socket);
-            const auto first = device.readCBACalibration2(socket).eepromToJson().dump();
+            const auto calibration = device.readCBACalibration2(socket);
+            if(isDummy(calibration.getEepromData())) {
+                report("CBA EEPROM " + name(socket) + ": holds the dummy calibration of a killed run");
+                uncalibrated.push_back(socket);
+                continue;
+            }
+            const auto first = calibration.eepromToJson().dump();
             const auto second = device.readCBACalibration2(socket).eepromToJson().dump();
             if(first != second) {
                 problems.push_back(name(socket) + " read differently twice");
@@ -1053,7 +1203,13 @@ TEST_CASE("CBA EEPROM reads with no camera streaming", "[cba]") {
             report("CBA EEPROM " + name(socket) + ": calibration read, fingerprint " + fingerprint(first));
             calibrations[socket] = first;
         } catch(const dai::EepromError& ex) {
-            report("CBA EEPROM " + name(socket) + ": detected, no calibration read: " + ex.what());
+            // A blank EEPROM reads like this. Any other error means the read itself failed
+            if(contains(ex.what(), NO_CALIBRATION_ERROR)) {
+                report("CBA EEPROM " + name(socket) + ": detected, no valid calibration");
+                uncalibrated.push_back(socket);
+            } else {
+                problems.push_back(name(socket) + " calibration read failed: " + ex.what());
+            }
         } catch(const std::exception& ex) {
             problems.push_back(name(socket) + ": " + ex.what());
         }
@@ -1065,6 +1221,10 @@ TEST_CASE("CBA EEPROM reads with no camera streaming", "[cba]") {
                 problems.push_back(name(a->first) + " and " + name(b->first) + " read identical calibrations but aren't on a shared I2C bus");
             }
         }
+    }
+    for(const auto socket : uncalibrated) {
+        const auto tripProblems = cbaWriteRoundTrip(device, socket);
+        problems.insert(problems.end(), tripProblems.begin(), tripProblems.end());
     }
     for(const auto& problem : problems) report("CBA EEPROM problem: " + problem);
     INFO(join(problems));
