@@ -46,7 +46,8 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     void setRunOnHost(bool runOnHost);
 
     /**
-     * Select the remapping backend. By default, AUTO prefers GPU on device and
+     * RVC2 supports AUTO and HW using the same on-device warp engine as StereoDepth.
+     * RVC4: by default, AUTO prefers GPU on device and
      * falls back to CPU when unavailable. GPU uses CPU-compatible dense OpenCL
      * remapping on RVC4 and throws if unavailable. HW prefers EVA with CPU fallback
      * for unsupported layouts. Host execution supports CPU/AUTO only.
@@ -54,12 +55,12 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     Rectification& setBackend(Backend backend);
 
     /**
-     * Set output size
+     * Set output size. On RVC2 this must match the input size; use ImageManip to resize.
      */
     Rectification& setOutputSize(uint32_t width, uint32_t height);
 
     /**
-     * Set output size
+     * Set output size. On RVC2 this must match the input size; use ImageManip to resize.
      */
     Rectification& setOutputSize(std::pair<uint32_t, uint32_t> size) {
         return setOutputSize(size.first, size.second);

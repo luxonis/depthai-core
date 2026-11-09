@@ -777,6 +777,10 @@ dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 rvc4rgb ci)
 dai_add_test(message_group_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
 dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
 
+# RVC2 standalone rectification uses StereoDepth's device warp path.
+dai_add_test(rectification_node_test src/ondevice_tests/rectification_node_test.cpp)
+dai_set_test_labels(rectification_node_test ondevice rvc2_all ci)
+
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)

@@ -87,6 +87,11 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
 
     // Node
     stereoDepth
+        .def_property_readonly(
+            "rectification",
+            [](StereoDepth& node) { return &*node.rectification; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, StereoDepth, rectification))
         .def(py::init([](Node::Output& left, Node::Output& right, StereoDepth::PresetMode presetMode) {
                  auto self = getImplicitPipeline()->create<StereoDepth>();
                  self->build(left, right, presetMode);

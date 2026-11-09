@@ -1,6 +1,9 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/node/Rectification.hpp>
+#include <depthai/pipeline/node/Sync.hpp>
 #include <memory>
 
 // shared
@@ -17,6 +20,15 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
    public:
     constexpr static const char* NAME = "StereoDepth";
     StereoDepth() = default;
+
+    /**
+     * Rectification subnode used whenever setRectification(true) is selected.
+     * Disabled rectification bypasses this node. Rectified images are synchronized before matching.
+     */
+    Subnode<Rectification> rectification{*this, "rectification"};
+
+    void buildInternal() override;
+    void buildStage1() override;
 
     /**
      * Preset modes for stereo depth.
@@ -65,6 +77,10 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     Properties& getProperties();
 
    private:
+    Subnode<Sync> rectificationSync{*this, "rectificationSync"};
+    InputMap matcherInputs{
+        *this, "", {"", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{DatatypeEnum::MessageGroup, false}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
     // Platform specific profile presets
     void setRvc2ProfilePreset(PresetMode mode);
     void setRvc4ProfilePreset(PresetMode mode);

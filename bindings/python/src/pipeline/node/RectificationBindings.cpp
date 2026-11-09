@@ -37,6 +37,14 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
         .def_readwrite("enableRectification", &dai::RectificationProperties::enableRectification, DOC(dai, RectificationProperties, enableRectification))
         .def_readwrite("backend", &dai::RectificationProperties::backend, "Remapping backend preference")
         .def_readwrite("outputWidth", &RectificationProperties::outputWidth, DOC(dai, RectificationProperties, outputWidth))
+        .def_readwrite("mesh", &RectificationProperties::mesh)
+        .def_readwrite("rectifyEdgeFillColor", &RectificationProperties::rectifyEdgeFillColor)
+        .def_readwrite("useHomographyRectification", &RectificationProperties::useHomographyRectification)
+        .def_readwrite("rectificationUseSpecTranslation", &RectificationProperties::rectificationUseSpecTranslation)
+        .def_readwrite("alphaScaling", &RectificationProperties::alphaScaling)
+        .def_readwrite("depthAlign", &RectificationProperties::depthAlign)
+        .def_readwrite("depthAlignCamera", &RectificationProperties::depthAlignCamera)
+        .def_readwrite("numFramesPool", &RectificationProperties::numFramesPool)
         .def_readwrite("outputHeight", &RectificationProperties::outputHeight, DOC(dai, RectificationProperties, outputHeight));
 
     // Nodes
