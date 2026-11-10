@@ -144,4 +144,4 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     ccache --zero-stats && \
     cmake --build build --parallel $PARALLEL_JOBS --config Release && \
     ccache --show-stats && \
-    find build -name '*.o' -delete
+    find build \( -name '*.o' -o -name '*.gch' -o -name '*.pch' \) -delete
