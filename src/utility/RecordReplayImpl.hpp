@@ -20,6 +20,9 @@ class VideoRecorder {
 
     ~VideoRecorder();
     void init(const std::string& filePath, unsigned int width, unsigned int height, unsigned int fps, VideoCodec codec);
+    // Installs cached SPS and PPS before the first sample. A segment that starts
+    // on a later IDR does not always repeat them in the bitstream.
+    void setH264ParameterSets(span<const std::uint8_t> sps, span<const std::uint8_t> pps);
     void write(span<uint8_t>&, const uint32_t stride = 0);
     void close();
     bool isInitialized() const {

@@ -30,6 +30,10 @@ class EncodedVideoRecorder {
     // Reads SPS and PPS out of an Annex-B access unit. Absent sets are empty.
     // Does not open a file, so a recorder can remember them before the first segment.
     static H264ParameterSets peekH264ParameterSets(span<const std::uint8_t> data);
+    // True when the access unit contains an IDR slice (NAL type 5). A non-IDR
+    // intra slice is not a segment start: later P slices can still reference
+    // pictures from before it.
+    static bool containsIdr(span<const std::uint8_t> data);
     // False when the frame was dropped while waiting for an IDR.
     bool write(span<const uint8_t> data);
     void close();

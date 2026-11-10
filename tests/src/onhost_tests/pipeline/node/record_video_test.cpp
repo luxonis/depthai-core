@@ -735,3 +735,99 @@ TEST_CASE("RecordVideo publishes ERROR when metadata cannot flush at close", "[s
     REQUIRE(error->frameCount == 1);
     pipeline.stop();
 }
+
+std::shared_ptr<dai::EncodedFrame> makeAvc(std::int64_t sequence, bool idr) {
+    std::vector<std::uint8_t> data;
+    if(idr) {
+        data = {0, 0, 0, 1, 0x67, 0x42, 0x00, 0x1e, 0, 0, 0, 1, 0x68, 0xce, 0x06, 0, 0, 0, 1, 0x65, 0x88};
+    } else {
+        data = {0, 0, 0, 1, 0x41, 0x9a};
+    }
+    auto frame = std::make_shared<dai::EncodedFrame>();
+    frame->setProfile(dai::EncodedFrame::Profile::AVC);
+    frame->setWidth(64);
+    frame->setHeight(48);
+    frame->setSequenceNum(sequence);
+    frame->setTimestamp(std::chrono::steady_clock::now());
+    frame->setTimestampDevice(frame->getTimestamp());
+    frame->setData(std::move(data));
+    return frame;
+}
+
+TEST_CASE("RecordVideo drops H264 pre-trigger frames before the first IDR") {
+    TempDir dir;
+    dai::Pipeline pipeline(false);
+    auto record = pipeline.create<dai::node::RecordVideo>();
+    record->setFormat(dai::RecordFormat::VIDEO);
+    record->setOutputDirectory(dir.path);
+    record->setRecordingName("idrpref");
+    record->setStreamName("enc");
+    record->setWaitForTrigger(true);
+    record->setPreTriggerFrames(8);
+    auto input = record->input.createInputQueue();
+    auto control = record->inputControl.createInputQueue();
+    auto status = record->status.createOutputQueue(8, true);
+    pipeline.start();
+    input->send(makeAvc(0, false));
+    input->send(makeAvc(1, false));
+    input->send(makeAvc(2, true));
+    input->send(makeAvc(3, false));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    control->send(dai::RecordControl::start());
+    auto started = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(started.size() == 1);
+    REQUIRE(started[0]->state == dai::RecordStatus::State::STARTED);
+    input->send(makeAvc(4, false));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    control->send(dai::RecordControl::stop());
+    auto stopped = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(stopped.size() == 1);
+    REQUIRE(stopped[0]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(stopped[0]->frameCount == 3);
+    REQUIRE(stopped[0]->firstSequenceNum == 2);
+    REQUIRE(stopped[0]->lastSequenceNum == 4);
+    REQUIRE(stopped[0]->skippedFrames == 0);
+    REQUIRE(std::filesystem::is_regular_file(dir.path / "idrpref" / "enc.mp4"));
+    pipeline.stop();
+}
+
+TEST_CASE("RecordVideo opens the next H264 segment on an IDR near maxFrames") {
+    TempDir dir;
+    dai::Pipeline pipeline(false);
+    auto record = pipeline.create<dai::node::RecordVideo>();
+    record->setFormat(dai::RecordFormat::VIDEO);
+    record->setOutputDirectory(dir.path);
+    record->setRecordingName("idrroll");
+    record->setStreamName("enc");
+    record->setWaitForTrigger(true);
+    record->setPreTriggerFrames(0);
+    record->setFps(30);
+    auto input = record->input.createInputQueue();
+    auto control = record->inputControl.createInputQueue();
+    auto status = record->status.createOutputQueue(8, true);
+    pipeline.start();
+    control->send(dai::RecordControl::start(4, -1));
+    auto started = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(started.size() == 1);
+    REQUIRE(started[0]->segment == 0);
+    for(std::int64_t sequence = 0; sequence <= 5; ++sequence) input->send(makeAvc(sequence, sequence % 5 == 0));
+    waitForFile(dir.path / "idrroll" / "enc_s1.mp4");
+    control->send(dai::RecordControl::stop());
+    auto rest = readStatuses(status, 3, std::chrono::seconds(2));
+    REQUIRE(rest.size() == 3);
+    REQUIRE(rest[0]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(rest[0]->segment == 0);
+    REQUIRE(rest[0]->frameCount == 5);
+    REQUIRE(rest[0]->firstSequenceNum == 0);
+    REQUIRE(rest[0]->lastSequenceNum == 4);
+    REQUIRE(rest[0]->skippedFrames == 0);
+    REQUIRE(rest[1]->state == dai::RecordStatus::State::STARTED);
+    REQUIRE(rest[1]->segment == 1);
+    REQUIRE(rest[2]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(rest[2]->segment == 1);
+    REQUIRE(rest[2]->frameCount == 1);
+    REQUIRE(rest[2]->firstSequenceNum == 5);
+    REQUIRE(rest[2]->lastSequenceNum == 5);
+    REQUIRE(std::filesystem::is_regular_file(dir.path / "idrroll" / "enc.mp4"));
+    pipeline.stop();
+}

@@ -17,6 +17,11 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
     initialized = true;
 }
 
+void VideoRecorder::setH264ParameterSets(span<const std::uint8_t> sps, span<const std::uint8_t> pps) {
+    if(!encodedWriter) throw std::runtime_error("VideoRecorder has no H264 writer");
+    encodedWriter->setH264ParameterSets(sps, pps);
+}
+
 void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
     (void)stride;
     if(!initialized) throw std::runtime_error("VideoRecorder not initialized");

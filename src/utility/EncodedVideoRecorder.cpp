@@ -279,6 +279,14 @@ H264ParameterSets EncodedVideoRecorder::peekH264ParameterSets(span<const uint8_t
     return sets;
 }
 
+bool EncodedVideoRecorder::containsIdr(span<const uint8_t> data) {
+    H26xNals nals(data);
+    while(auto nal = nals.next()) {
+        if(nal->type == NALU::I) return true;
+    }
+    return false;
+}
+
 void EncodedVideoRecorder::setWaitForKeyframe(bool wait) {
 #ifdef DEPTHAI_ENABLE_MP4V2
     if(!state) throw std::runtime_error("EncodedVideoRecorder not initialized");

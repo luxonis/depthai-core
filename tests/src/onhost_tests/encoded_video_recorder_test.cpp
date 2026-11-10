@@ -76,6 +76,14 @@ TEST_CASE("Encoded recorder writes every MJPEG sample and can reopen for a new s
     }
 }
 
+TEST_CASE("Encoded recorder reports an IDR access unit") {
+    REQUIRE(dai::utility::EncodedVideoRecorder::containsIdr(kKeyframe));
+    REQUIRE(dai::utility::EncodedVideoRecorder::containsIdr(kIdrOnly));
+    REQUIRE_FALSE(dai::utility::EncodedVideoRecorder::containsIdr(kPredicted));
+    const std::vector<std::uint8_t> empty;
+    REQUIRE_FALSE(dai::utility::EncodedVideoRecorder::containsIdr(empty));
+}
+
 TEST_CASE("Encoded recorder reads H264 parameter sets without opening a file") {
     const auto sets = dai::utility::EncodedVideoRecorder::peekH264ParameterSets(kKeyframe);
     REQUIRE(sets.sps.size() >= 4);
