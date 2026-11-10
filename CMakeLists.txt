@@ -639,15 +639,9 @@ set_property(TARGET ${TARGET_CORE_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "core"
 set_property(TARGET ${TARGET_CORE_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
 if(DEPTHAI_UNITY_BUILD)
     set_target_properties(${TARGET_CORE_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
-    # These sources cannot share a unity batch: they define file-local names that other sources also
-    # define, define macros, or have a file-scope using-directive. The PCL, RTAB-Map and Basalt sources
-    # include large third-party headers and stay out of the batches as well.
     set_source_files_properties(
-        src/basalt/BasaltVIO.cpp
-        src/pcl/PointCloudData.cpp
-        src/rtabmap/RTABMapConversions.cpp
-        src/rtabmap/RTABMapSLAM.cpp
-        src/rtabmap/RTABMapVIO.cpp
+        # These define file-local names that other sources also define, define macros, or have a
+        # file-scope using-directive.
         src/beta/datatype/Classifications.cpp
         src/beta/datatype/Keypoints.cpp
         src/beta/datatype/Lines.cpp
@@ -680,12 +674,34 @@ if(DEPTHAI_UNITY_BUILD)
         src/pipeline/node/Script.cpp
         src/pipeline/node/internal/XLinkInHost.cpp
         src/pipeline/node/internal/XLinkOutHost.cpp
-        src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
         src/utility/McapImpl.cpp
         src/utility/OCVPorts.cpp
         src/utility/ObjectTrackerImpl.cpp
-        src/utility/Telemetry.cpp
         src/utility/XLinkGlobalProfilingLogger.cpp
+        # httplib.h includes <resolv.h>, which defines the macro _res. Eigen uses _res as a name.
+        src/device/DeviceGate.cpp
+        src/modelzoo/Zoo.cpp
+        src/remote_connection/RemoteConnection.cpp
+        src/remote_connection/RemoteConnectionImpl.cpp
+        src/utility/EventsManager.cpp
+        src/utility/LogCollection.cpp
+        src/utility/StartupNotifications.cpp
+        src/utility/Telemetry.cpp
+        # windows.h defines the macro ERROR, and ImageManipImpl.hpp has an enumerator ERROR.
+        src/pipeline/datatype/ImgTransformations.cpp
+        src/pipeline/datatype/SpatialImgDetections.cpp
+        src/pipeline/node/ImageManip.cpp
+        src/pipeline/node/PointCloud.cpp
+        src/pipeline/utilities/Alignment/AlignmentUtilities.cpp
+        src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+        src/pipeline/utilities/Stitching/PlanarStitcher.cpp
+        src/utility/ImageManipImpl.cpp
+        # These include large third-party headers (PCL, RTAB-Map, Basalt).
+        src/basalt/BasaltVIO.cpp
+        src/pcl/PointCloudData.cpp
+        src/rtabmap/RTABMapConversions.cpp
+        src/rtabmap/RTABMapSLAM.cpp
+        src/rtabmap/RTABMapVIO.cpp
         PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
     )
 endif()

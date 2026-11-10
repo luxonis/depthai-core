@@ -32,7 +32,6 @@ option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" 
 
 # Build Behaviour
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
-option(DEPTHAI_UNITY_BUILD "Compile the core library and the Python bindings in batches of source files (unity build)" ON)
 option(DEPTHAI_BUILD_DEVICE_MANAGER "Build depthai::device-manager, a bootloader/XLink-only library without the pipeline" OFF)
 option(DEPTHAI_BUILD_BETA "Build beta namespace APIs" ON)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
@@ -121,6 +120,13 @@ option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries i
 # ---------- Development Aids -------------------
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target" ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
+# clang-tidy must check the real sources, not the generated unity batches.
+if(DEPTHAI_CLANG_TIDY)
+    set(DEPTHAI_UNITY_BUILD_DEFAULT OFF)
+else()
+    set(DEPTHAI_UNITY_BUILD_DEFAULT ON)
+endif()
+option(DEPTHAI_UNITY_BUILD "Compile the core library and the Python bindings in batches of source files (unity build)" ${DEPTHAI_UNITY_BUILD_DEFAULT})
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
 # Local override paths
