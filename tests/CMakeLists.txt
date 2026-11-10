@@ -649,6 +649,11 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
 endif()
 ### On-device tests ###########################################################
 
+# Sustained device load test (nightly only)
+dai_add_test(stress_test src/ondevice_tests/stress_test.cpp)
+dai_set_test_labels(stress_test ondevice rvc2_all rvc4 rvc4rgb ci_nightly noreplayci)
+set_tests_properties(stress_test PROPERTIES TIMEOUT 600)
+
 # Camera stream restart test
 dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
 dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)  # Replay ignores camera stop/start controls
