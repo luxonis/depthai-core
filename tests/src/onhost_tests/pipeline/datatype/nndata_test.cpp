@@ -5,6 +5,27 @@
 #include "depthai/common/TensorInfo.hpp"
 #include "xtensor/misc/xmanipulation.hpp"
 
+TEST_CASE("NNData describes contiguous byte strides for singleton dimensions") {
+    xt::xarray<float> tensor = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+    tensor.reshape({1, 3, 1, 4});
+    for(const auto dataType : {dai::TensorInfo::DataType::FP16,
+                               dai::TensorInfo::DataType::FP32,
+                               dai::TensorInfo::DataType::FP64,
+                               dai::TensorInfo::DataType::INT,
+                               dai::TensorInfo::DataType::I8,
+                               dai::TensorInfo::DataType::U8F,
+                               dai::TensorInfo::DataType::U16F}) {
+        CAPTURE(dataType);
+        dai::NNData message;
+        message.addTensor("singleton", tensor, dataType, dai::TensorInfo::StorageOrder::NCHW);
+        const auto& info = message.tensors.at(0);
+        const auto bytes = static_cast<unsigned>(info.getDataTypeSize());
+        REQUIRE(info.dims == std::vector<unsigned>{1, 3, 1, 4});
+        REQUIRE(info.strides == std::vector<unsigned>{12 * bytes, 4 * bytes, 4 * bytes, bytes});
+        REQUIRE((message.getTensor<float>("singleton") == tensor));
+    }
+}
+
 TEST_CASE("a") {
     dai::NNData nndata;
 

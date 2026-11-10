@@ -6,6 +6,7 @@
 #include <iterator>
 #include <limits>
 #include <optional>
+#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
@@ -386,11 +387,24 @@ class NNData : public Buffer, public ProtoSerializable {
         info.order = order;
         for(uint32_t i = 0; i < tensor.dimension(); i++) {
             info.dims.push_back(tensor.shape()[i]);
-            info.strides.push_back(tensor.strides()[i] * info.getDataTypeSize());
         }
 
         // Validate storage order - past this point, the tensor shape and storage order should be correct
         try {
+            // xtensor uses zero strides for singleton dimensions. TensorInfo describes
+            // the contiguous byte layout, including those dimensions.
+            info.strides.resize(info.dims.size());
+            auto stride = static_cast<unsigned int>(info.getDataTypeSize());
+            for(size_t i = info.dims.size(); i > 0; --i) {
+                info.strides[i - 1] = stride;
+                if(i > 1) {
+                    const auto dimension = info.dims[i - 1];
+                    if(dimension != 0 && stride > std::numeric_limits<unsigned int>::max() / dimension) {
+                        throw std::overflow_error("Tensor byte stride exceeds TensorInfo capacity");
+                    }
+                    stride *= dimension;
+                }
+            }
             info.validateStorageOrder();
         } catch(...) {
             vecData->resize(offset);  // Resize vector back to its size prior to adding tensor
