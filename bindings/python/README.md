@@ -63,16 +63,24 @@ To produce a wheel instead:
 python3 -m pip wheel . --wheel-dir wheelhouse --no-deps
 ```
 
-For development, build the extension directly from the repository root:
+For development, build the extension directly from the repository root.
+Before configuring, install NumPy for the Python interpreter selected by CMake.
+The example below assumes that interpreter is `python3`:
 
 ```sh
+python3 -m pip install numpy
 cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON
-cmake --build build --parallel
+cmake --build build --parallel 2
 ```
 
 On Windows with a multi-configuration generator, add `--config Release` to the
-build command. To select a Python interpreter, pass
-`-DPYTHON_EXECUTABLE=/full/path/to/python` when configuring.
+build command. To select a different Python interpreter, pass
+`-DPYTHON_EXECUTABLE=/full/path/to/python` when configuring and use that interpreter
+in place of `python3` in the commands.
+
+The build and test examples use `--parallel 2` to limit compilation to two jobs.
+Increase the count if you have sufficient CPU and memory, or use `--parallel 1`
+on machines with limited resources.
 
 Point `PYTHONPATH` at the directory containing the built extension. On Linux/macOS:
 
@@ -81,9 +89,10 @@ export PYTHONPATH="$PWD/build/bindings/python"
 python3 -c "import depthai as dai; print(dai.__file__)"
 ```
 
-For Windows or a multi-configuration generator, use the directory containing
-`depthai*.pyd` (which may include `Release`). Printing `dai.__file__` confirms
-that Python loaded the intended build.
+Look for `depthai*.pyd` on Windows or `depthai*.so` on Linux/macOS.
+For multi-configuration generators, include the configuration subdirectory
+(such as `Release`) in `PYTHONPATH`. Printing `dai.__file__` confirms that Python
+loaded the intended build.
 
 ## Tests and contributing
 
@@ -162,8 +171,8 @@ configure, build, and run the suite:
 ```sh
 python3 -m pip install pytest numpy opencv-python jinja2 websockets
 cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_ENABLE_TESTS=ON
-cmake --build build --parallel --config Release
-cmake --build build --target pytest --config Release
+cmake --build build --parallel 2 --config Release
+cmake --build build --target pytest --parallel 2 --config Release
 ```
 
 Some tests need an OAK device. For SDK test labels and contribution rules, see
