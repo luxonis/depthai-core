@@ -47,11 +47,16 @@ void Tracklet::transform(const ImgTransformation& source, const ImgTransformatio
     auto rotatedRoi = dai::RotatedRect(roi);
     bool hasNormalized = roi.hasNormalized;
     bool isNormalized = roi.normalized;
+    RotatedRect transformedRoi;
     if(depth > 0) {
-        roi = source.projectRectTo(target, rotatedRoi, depth);
+        transformedRoi = source.projectRectTo(target, rotatedRoi, depth);
     } else {
-        roi = source.remapRectTo(target, rotatedRoi);
+        transformedRoi = source.remapRectTo(target, rotatedRoi);
     }
+    // The ROI encloses the minimum outer rotated rectangle of the mapped corners, calculated in pixels of the target frame.
+    const auto size = target.getSize();
+    const auto [minx, miny, maxx, maxy] = transformedRoi.getOuterRectInFrame(static_cast<unsigned int>(size.first), static_cast<unsigned int>(size.second));
+    roi = Rect(minx, miny, maxx - minx, maxy - miny);
     roi.hasNormalized = hasNormalized;
     roi.normalized = isNormalized;
 }

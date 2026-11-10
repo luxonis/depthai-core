@@ -23,6 +23,10 @@ cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
 
+## Detection filtering and calibrated panoramas
+
+Use `dai::node::ImgDetectionsFilter` / `dai.node.ImgDetectionsFilter` to filter detections or combine synchronized camera detections on a calibrated panorama. See the [node guide and multi-device examples](docs/ImgDetectionsFilter.md).
+
 ## Beta features
 The `beta` namespace is a staging area for experimental DepthAI features. It
 allows new features to be developed and iterated on quickly before they are
@@ -33,13 +37,13 @@ Beta features are well-developed, but minor API and behavioral changes may occur
 In C++, beta nodes are available under `dai::beta::node`:
 
 ```cpp
-auto node = pipeline.create<dai::beta::node::ImgDetectionsFilter>();
+auto node = pipeline.create<dai::beta::node::ClassificationParser>();
 ```
 
 In Python, they are available under `dai.beta.node`:
 
 ```python
-node = pipeline.create(dai.beta.node.ImgDetectionsFilter)
+node = pipeline.create(dai.beta.node.ClassificationParser)
 ```
 
 On-device execution of Beta nodes is supported only on RVC4. If running Beta nodes on RVC2, DepthAI
@@ -324,6 +328,23 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_AUTOCALIBRATION              | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)`. If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
 
 ## Running tests
+
+For pull requests targeting `main` or `develop`, expand the successful checks
+in the PR merge panel and open **Details** beside **Run C++ tests** or
+**Run Python tests**. The check summary links to its
+workflow run; select **Re-run all jobs** there to run the full suite.
+You can also open the latest workflow run directly from GitHub Actions.
+No `testable` label is needed for a manual rerun of these suites.
+HIL tests do not run when a PR is opened. Adding the `testable` label runs them,
+and each later push runs them again while the label is on the PR. A new push
+cancels a HIL run that is still in progress. Without the label, open
+**Details** beside **Run HIL tests** after a push and select **Re-run all jobs**
+to run them on the new commit. To rerun failed HIL tests, select
+**Re-run all jobs** in that run.
+Adding the `testable` label also starts the full C++ and Python suites. PR
+updates and approvals do not start them, even while the label remains on the PR.
+After pushing new commits, select the new run; rerunning an older run tests
+its original commit. Lightweight style and binding checks still run on PR updates.
 
 To run the tests build the library with the following options
 ```

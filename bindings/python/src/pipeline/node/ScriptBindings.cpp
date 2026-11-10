@@ -31,7 +31,8 @@ void bind_script(pybind11::module& m, void* pCallstack) {
         .def_readwrite("processor", &ScriptProperties::processor, DOC(dai, ScriptProperties, processor));
 
     // Node
-    script.def_readonly("inputs", &Script::inputs)
+    script.def("getScriptPath", &dai::node::Script::getScriptPath, DOC(dai, node, Script, getScriptPath))
+        .def_readonly("inputs", &Script::inputs)
         .def_readonly("outputs", &Script::outputs)
 #ifdef DEPTHAI_SCRIPT_NODE_ADD_IO
         .def_property_readonly(

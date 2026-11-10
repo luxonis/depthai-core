@@ -26,9 +26,19 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    detectionParserProperties.def_readwrite("parser", &DetectionParserProperties::parser, DOC(dai, DetectionParserProperties, parser));
+    detectionParserProperties.def(py::init<>());
+
+    detectionParserProperties.def_readwrite("networkInputs", &dai::DetectionParserProperties::networkInputs, DOC(dai, DetectionParserProperties, networkInputs))
+        .def_readwrite("numFramesPool", &dai::DetectionParserProperties::numFramesPool, DOC(dai, DetectionParserProperties, numFramesPool))
+        .def_readwrite("parser", &DetectionParserProperties::parser, DOC(dai, DetectionParserProperties, parser));
     // Node
-    detectionParser.def_readonly("input", &DetectionParser::input, DOC(dai, node, DetectionParser, input))
+    detectionParser.def("getNKeypoints", &dai::node::DetectionParser::getNKeypoints, DOC(dai, node, DetectionParser, getNKeypoints))
+        .def("getNNArchiveVersionedConfig",
+             &dai::node::DetectionParser::getNNArchiveVersionedConfig,
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, DetectionParser, getNNArchiveVersionedConfig))
+        .def("setModelPath", &dai::node::DetectionParser::setModelPath, py::arg("modelPath"), DOC(dai, node, DetectionParser, setModelPath))
+        .def_readonly("input", &DetectionParser::input, DOC(dai, node, DetectionParser, input))
         .def_readonly("inputConfig", &DetectionParser::inputConfig, DOC(dai, node, DetectionParser, inputConfig))
         .def_readonly("initialConfig", &DetectionParser::initialConfig, DOC(dai, node, DetectionParser, initialConfig))
         .def_readonly("out", &DetectionParser::out, DOC(dai, node, DetectionParser, out))

@@ -1,47 +1,34 @@
-# -*- coding: utf-8 -*-
-import sys
-
-import pytest
-
-import depthai as dai
+"""Filesystem-path conversion accepts strings/Path and rejects unrelated objects."""
+import os
 from pathlib import Path
 
-def test_dai_path_conversion_positive():
-    # Can raise RuntimeError but not TypeError (eg if string/Path weren't accepted as parameters)
-
-    with pytest.raises(Exception) as excinfo:
-        a = dai.AssetManager()
-        nn = dai.Pipeline().create(dai.node.NeuralNetwork)
-
-        string_path = 'test.txt'
-        pathlib_path = Path('pathlib.txt')
-
-        # AssetManager
-        a.set('p1', string_path)
-        a.set('p2', pathlib_path)
-
-        # NN
-        nn.setBlobPath('p1', string_path)
-        nn.setBlobPath('p2', pathlib_path)
-        nn.setBlob('p1', string_path)
-        nn.setBlob('p2', pathlib_path)
-
-    assert(excinfo is not RuntimeError)
+import depthai as dai
+import pytest
 
 
-def test_dai_path_conversion_negative():
-    # Must raise TypeError, to indicate that given argument wasn't converted to Path
+@pytest.mark.parametrize("path_type", [str, Path])
+def test_asset_path_conversion(tmp_path, path_type):
+    path = tmp_path / "asset.bin"
+    path.write_bytes(b"binding test")
+    manager = dai.AssetManager()
+    asset = manager.set("asset", path_type(path))
+    assert bytes(asset.data) == b"binding test"
 
-    a = dai.AssetManager()
-    nn = dai.Pipeline().create(dai.node.NeuralNetwork)
-    info = dai.DeviceInfo() # str representable
 
-    with pytest.raises(TypeError) as excinfo:
-        a.set('invalid', info)
+def test_asset_path_conversion_negative():
+    with pytest.raises(TypeError):
+        dai.AssetManager().set("invalid", dai.DeviceInfo())
 
-    with pytest.raises(TypeError) as excinfo:
-        nn.setBlobPath(info)
 
-    with pytest.raises(TypeError) as excinfo:
-        nn.setBlob(info)
-
+@pytest.mark.skipif(os.environ.get("DEPTHAI_BINDINGS_DEVICE_TESTS") != "1", reason="Requires a DepthAI device")
+@pytest.mark.parametrize("method_name", ["setBlobPath", "setBlob"])
+def test_network_path_conversion(tmp_path, method_name):
+    path = tmp_path / "missing.blob"
+    with dai.Device() as device, dai.Pipeline(device) as pipeline:
+        network = pipeline.create(dai.node.NeuralNetwork)
+        method = getattr(network, method_name)
+        for path_value in (str(path), path):
+            with pytest.raises(RuntimeError):
+                method(path_value)
+        with pytest.raises(TypeError):
+            method(dai.DeviceInfo())

@@ -47,7 +47,7 @@ permissions:
 jobs:
   id:
     name: Workflow ID Provider
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'workflow_dispatch'
     steps:
       - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
@@ -94,5 +94,6 @@ jobs:
             UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
           fi
 
-          printf -v STABILITY_COMMAND 'scripts/hil/run_hil_stability.sh %q %q %q %q' "$INPUT_DEPTHAI_VERSION" "$INPUT_PROTOCOL" "$INPUT_TIMEOUT" stability-wheels
+          # HIL escapes quotes, so use a nonempty value for an unlimited timeout.
+          printf -v STABILITY_COMMAND 'scripts/hil/run_hil_stability.sh %q %q %q %q' "$INPUT_DEPTHAI_VERSION" "$INPUT_PROTOCOL" "${INPUT_TIMEOUT:-unlimited}" stability-wheels
           exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name "depthai-stability-$INPUT_PROTOCOL" --commands 'cd /tmp/depthai-core || exit' "$STABILITY_COMMAND"

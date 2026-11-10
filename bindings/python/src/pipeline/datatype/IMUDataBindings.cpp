@@ -44,6 +44,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     imuReport.def(py::init<>())
+        .def_readwrite("tsSystem", &dai::IMUReport::tsSystem, DOC(dai, IMUReport, tsSystem))
         .def_readwrite("sequence", &IMUReport::sequence)
         .def_readwrite("accuracy", &IMUReport::accuracy)
         .def_readwrite("timestamp", &IMUReport::timestamp)

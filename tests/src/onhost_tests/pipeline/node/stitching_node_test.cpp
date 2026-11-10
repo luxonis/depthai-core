@@ -6,6 +6,7 @@
 #include <cmath>
 #include <depthai/pipeline/Pipeline.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
+#include <depthai/pipeline/node/ImgDetectionsFilter.hpp>
 #include <depthai/pipeline/node/Stitching.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
@@ -861,5 +862,43 @@ TEST_CASE("Stitching freezes the strongest of multiple estimation candidates", "
         } else {
             selectedSize = currentSize;
         }
+    }
+}
+
+TEST_CASE("ImgDetectionsFilter boxes land on their calibrated panorama image content", "[Stitching][ImgDetectionsFilter]") {
+    const std::vector<double> yaws = {-15, 15}, pitches = {0, 0};
+    const std::vector<cv::Vec3b> colors = {{40, 60, 80}, {80, 60, 40}};
+    const std::vector<cv::Mat> views = {cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, colors[0]), cv::Mat(VIEW_HEIGHT, VIEW_WIDTH, CV_8UC3, colors[1])};
+    for(const auto model : {dai::CameraModel::Perspective, dai::CameraModel::Cylindrical, dai::CameraModel::Equirectangular}) {
+        const auto panorama = composeCalibratedPanorama(views, yaws, pitches, model);
+        dai::Pipeline pipeline(false);
+        auto filter = pipeline.create<dai::node::ImgDetectionsFilter>();
+        filter->initialConfig->reference = panorama->getTransformation();
+        auto left = filter->inputs["left"].createInputQueue(), right = filter->inputs["right"].createInputQueue();
+        auto output = filter->out.createOutputQueue();
+        pipeline.start();
+        for(std::size_t i = 0; i < 2; ++i) {
+            auto detections = std::make_shared<dai::ImgDetections>();
+            detections->setTransformation(calibratedTransformation(yaws[i]));
+            const auto box =
+                dai::RotatedRect(dai::Point2f(i == 0 ? 80.f : 560.f, 240, false), dai::Size2f(40, 60, false), 0).normalize(VIEW_WIDTH, VIEW_HEIGHT);
+            detections->detections.emplace_back(box, .9f, static_cast<std::uint32_t>(i));
+            (i == 0 ? left : right)->send(detections);
+        }
+        bool timeout = false;
+        const auto result = output->get<dai::ImgDetections>(std::chrono::seconds(2), timeout);
+        REQUIRE_FALSE(timeout);
+        REQUIRE(result);
+        REQUIRE(result->detections.size() == 2);
+        const auto image = panorama->getCvFrame();
+        for(std::size_t i = 0; i < 2; ++i) {
+            const auto center = result->detections[i].getBoundingBox().denormalize(image.cols, image.rows).center;
+            REQUIRE(center.x >= 0);
+            REQUIRE(center.y >= 0);
+            REQUIRE(center.x < image.cols);
+            REQUIRE(center.y < image.rows);
+            REQUIRE(image.at<cv::Vec3b>(cvRound(center.y), cvRound(center.x)) == colors[i]);
+        }
+        pipeline.stop();
     }
 }

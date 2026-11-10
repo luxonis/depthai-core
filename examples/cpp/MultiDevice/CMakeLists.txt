@@ -1,0 +1,5 @@
+project(multi_device_detection_examples)
+cmake_minimum_required(VERSION 3.10)
+if(DEPTHAI_BUILD_BETA)
+    dai_add_example(multi_device_detections_panorama multi_device_detections_panorama.cpp OFF OFF)
+endif()

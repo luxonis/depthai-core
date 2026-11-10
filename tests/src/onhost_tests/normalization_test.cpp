@@ -1,5 +1,7 @@
+#include <array>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 #include <depthai/common/Rect.hpp>
 
 #include "depthai/common/Extrinsics.hpp"
@@ -129,4 +131,139 @@ TEST_CASE("RotatedRect getPoints keeps the normalization flag") {
             REQUIRE_FALSE(point.isNormalized());
         }
     }
+}
+
+TEST_CASE("RotatedRect getOuterRectInFrame rotates normalized rects in pixels") {
+    const dai::RotatedRect pixels(dai::Point2f(400, 250, false), dai::Size2f(200, 100, false), 30);
+    const auto expected = pixels.getOuterRect();
+    REQUIRE(pixels.getOuterRectInFrame(800, 500) == expected);
+
+    const auto bounds = pixels.normalize(800, 500).getOuterRectInFrame(800, 500);
+    const std::array<float, 4> scale{800, 500, 800, 500};
+    for(std::size_t i = 0; i < bounds.size(); ++i) {
+        REQUIRE_THAT(bounds[i] * scale[i], Catch::Matchers::WithinAbs(expected[i], 1e-3));
+    }
+}
+
+dai::ImgTransformation makeTransformation(unsigned int width, unsigned int height) {
+    dai::ImgTransformation transformation(width, height);
+    transformation.setExtrinsics(dai::Extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A});
+    return transformation;
+}
+
+TEST_CASE("Rect remap returns the form nearest to the source angle") {
+    const float angle = GENERATE(-0.001f, 0.0f, 0.001f, 30.0f, 45.0f, 89.0f, 90.0f, 91.0f, 170.0f, 350.0f);
+    const float rotation = GENERATE(-0.001f, 0.0f, 0.001f);
+    const bool normalized = GENERATE(false, true);
+    CAPTURE(angle, rotation, normalized);
+
+    const auto source = makeTransformation(800, 500);
+    auto target = source;
+    target.addRotation(rotation, dai::Point2f(400, 250, false));
+    dai::RotatedRect rect(dai::Point2f(400, 250, false), dai::Size2f(200, 100, false), angle);
+    if(normalized) rect = rect.normalize(800, 500);
+
+    auto result = source.remapRectTo(target, rect);
+    REQUIRE(result.isNormalized() == normalized);
+    result = result.denormalize(800, 500);
+    // The fitter wraps the angle to [0, 90); the result must keep the angle and the sides of the source.
+    REQUIRE_THAT(result.angle, Catch::Matchers::WithinAbs(angle + rotation, 1e-2));
+    REQUIRE_THAT(result.size.width, Catch::Matchers::WithinAbs(200, 0.1));
+    REQUIRE_THAT(result.size.height, Catch::Matchers::WithinAbs(100, 0.1));
+}
+
+TEST_CASE("Rect remap through a horizontal flip returns the form nearest to the source angle") {
+    // The mirror image of a 200x100 box at 30 deg is 200x100 at -30 deg, which is 100x200 at 60 deg (nearer to 30 deg).
+    const auto [angle, expectedAngle, expectedWidth, expectedHeight] =
+        GENERATE(table<float, float, float, float>({{0.0f, 0.0f, 200.0f, 100.0f}, {30.0f, 60.0f, 100.0f, 200.0f}, {91.0f, 89.0f, 200.0f, 100.0f}}));
+    CAPTURE(angle);
+
+    const auto source = makeTransformation(800, 500);
+    auto target = source;
+    target.addFlipHorizontal();
+    const dai::RotatedRect rect(dai::Point2f(300, 200, false), dai::Size2f(200, 100, false), angle);
+
+    const auto result = source.remapRectTo(target, rect);
+    REQUIRE_THAT(result.angle, Catch::Matchers::WithinAbs(expectedAngle, 1e-2));
+    REQUIRE_THAT(result.size.width, Catch::Matchers::WithinAbs(expectedWidth, 0.1));
+    REQUIRE_THAT(result.size.height, Catch::Matchers::WithinAbs(expectedHeight, 0.1));
+    // The geometry is the mirror image of the source.
+    const auto sourceOuter = rect.getOuterRect();
+    const std::array<float, 4> expectedOuter{800 - sourceOuter[2], sourceOuter[1], 800 - sourceOuter[0], sourceOuter[3]};
+    const auto outer = result.getOuterRect();
+    for(std::size_t i = 0; i < outer.size(); ++i) {
+        REQUIRE_THAT(outer[i], Catch::Matchers::WithinAbs(expectedOuter[i], 0.1));
+    }
+}
+
+TEST_CASE("Rect remap after a 90 degree frame rotation keeps an axis-aligned box at 0 degrees") {
+    const float rotation = GENERATE(90.0f, -90.0f, 270.0f);
+    const bool normalized = GENERATE(false, true);
+    CAPTURE(rotation, normalized);
+
+    const auto source = makeTransformation(800, 500);
+    auto target = source;
+    target.addRotation(rotation, dai::Point2f(400, 250, false));
+    dai::RotatedRect rect(dai::Point2f(400, 250, false), dai::Size2f(200, 100, false), 0.0f);
+    if(normalized) rect = rect.normalize(800, 500);
+
+    const auto result = source.remapRectTo(target, rect);
+    // The width is the side between corners 0 and 1 of the result: 100 px wide and 200 px high at 0 deg.
+    const auto pixels = result.denormalize(800, 500);
+    REQUIRE_THAT(pixels.angle, Catch::Matchers::WithinAbs(0, 1e-2));
+    REQUIRE_THAT(pixels.size.width, Catch::Matchers::WithinAbs(100, 0.1));
+    REQUIRE_THAT(pixels.size.height, Catch::Matchers::WithinAbs(200, 0.1));
+    // At 0 deg, getOuterRect() of the normalized result is also correct.
+    const std::array<float, 4> expectedOuter{350, 150, 450, 350};
+    const std::array<float, 4> scale = normalized ? std::array<float, 4>{800, 500, 800, 500} : std::array<float, 4>{1, 1, 1, 1};
+    const auto outer = result.getOuterRect();
+    for(std::size_t i = 0; i < outer.size(); ++i) {
+        REQUIRE_THAT(outer[i] * scale[i], Catch::Matchers::WithinAbs(expectedOuter[i], 0.1));
+    }
+}
+
+TEST_CASE("transformRect and invTransformRect return the form nearest to the source angle") {
+    // {frame rotation, expected angle after transformRect, expected width, expected height}
+    const auto [rotation, expectedAngle, expectedWidth, expectedHeight] =
+        GENERATE(table<float, float, float, float>({{-0.001f, -0.001f, 200.0f, 100.0f}, {0.001f, 0.001f, 200.0f, 100.0f}, {90.0f, 0.0f, 100.0f, 200.0f}}));
+    CAPTURE(rotation);
+
+    dai::ImgTransformation transformation(800, 500);
+    transformation.addRotation(rotation, dai::Point2f(400, 250, false));
+    const dai::RotatedRect rect(dai::Point2f(400, 250, false), dai::Size2f(200, 100, false), 0.0f);
+
+    const auto transformed = transformation.transformRect(rect);
+    REQUIRE_THAT(transformed.angle, Catch::Matchers::WithinAbs(expectedAngle, 1e-2));
+    REQUIRE_THAT(transformed.size.width, Catch::Matchers::WithinAbs(expectedWidth, 0.1));
+    REQUIRE_THAT(transformed.size.height, Catch::Matchers::WithinAbs(expectedHeight, 0.1));
+
+    const auto inverse = transformation.invTransformRect(rect);
+    REQUIRE_THAT(inverse.angle, Catch::Matchers::WithinAbs(-expectedAngle, 1e-2));
+    REQUIRE_THAT(inverse.size.width, Catch::Matchers::WithinAbs(expectedWidth, 0.1));
+    REQUIRE_THAT(inverse.size.height, Catch::Matchers::WithinAbs(expectedHeight, 0.1));
+}
+
+TEST_CASE("Rect projection returns the form nearest to the source angle and does not change its argument") {
+    const auto [rotation, expectedAngle, expectedWidth, expectedHeight] =
+        GENERATE(table<float, float, float, float>({{-0.001f, -0.001f, 200.0f, 100.0f}, {0.001f, 0.001f, 200.0f, 100.0f}, {90.0f, 0.0f, 100.0f, 200.0f}}));
+    CAPTURE(rotation);
+
+    const auto source = makeTransformation(800, 500);
+    auto target = source;
+    target.addRotation(rotation, dai::Point2f(400, 250, false));
+    const dai::RotatedRect original = dai::RotatedRect(dai::Point2f(400, 250, false), dai::Size2f(200, 100, false), 0.0f).normalize(800, 500);
+    dai::RotatedRect rect = original;
+
+    const auto projected = source.projectRectTo(target, rect, 1000.0f);
+    REQUIRE(projected.isNormalized());
+    const auto pixels = projected.denormalize(800, 500);
+    REQUIRE_THAT(pixels.angle, Catch::Matchers::WithinAbs(expectedAngle, 1e-2));
+    REQUIRE_THAT(pixels.size.width, Catch::Matchers::WithinAbs(expectedWidth, 0.1));
+    REQUIRE_THAT(pixels.size.height, Catch::Matchers::WithinAbs(expectedHeight, 0.1));
+
+    REQUIRE(rect.isNormalized());
+    REQUIRE(rect.center.x == original.center.x);
+    REQUIRE(rect.center.y == original.center.y);
+    REQUIRE(rect.size.width == original.size.width);
+    REQUIRE(rect.size.height == original.size.height);
 }
