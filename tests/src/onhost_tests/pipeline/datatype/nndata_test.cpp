@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/pipeline/datatype/NNData.hpp>
+#include <limits>
 
 #include "depthai/common/TensorInfo.hpp"
 #include "xtensor/misc/xmanipulation.hpp"
@@ -64,7 +65,7 @@ TEST_CASE("NNData copies custom-strided tensors in logical row-major order") {
     }
 }
 
-TEST_CASE("NNData rejects oversized broadcast tensors without modifying existing data") {
+TEST_CASE("NNData rejects tensors exceeding stride capacity without modifying existing data") {
     using Tensor = xt::xarray<float>;
     dai::NNData message;
     message.addTensor("existing", std::vector<std::uint8_t>{7});
@@ -80,6 +81,21 @@ TEST_CASE("NNData rejects oversized broadcast tensors without modifying existing
     message.addTensor("next", std::vector<std::uint8_t>{8});
     REQUIRE(message.getTensor<std::uint8_t>("existing")(0, 0) == 7);
     REQUIRE(message.getTensor<std::uint8_t>("next")(0, 0) == 8);
+}
+
+TEST_CASE("NNData rejects tensors exceeding buffer capacity without modifying existing data") {
+    using Tensor = xt::xarray<float>;
+    dai::NNData message;
+    message.addTensor("existing", std::vector<std::uint8_t>{7});
+    const std::vector<std::uint8_t> originalData(message.getData().begin(), message.getData().end());
+    const auto outerDimension = std::numeric_limits<unsigned int>::max();
+    // Keep the strides representable while the total byte count exceeds buffer capacity.
+    const auto innerDimension = std::vector<std::uint8_t>().max_size() / outerDimension + 1;
+    const Tensor tensor(Tensor::storage_type{1}, Tensor::inner_shape_type{outerDimension, innerDimension}, Tensor::inner_strides_type{0, 0});
+    REQUIRE_THROWS_AS(message.addTensor("oversized", tensor, dai::TensorInfo::DataType::U8F), std::length_error);
+    const std::vector<std::uint8_t> remainingData(message.getData().begin(), message.getData().end());
+    REQUIRE(remainingData == originalData);
+    REQUIRE(message.getAllLayerNames() == std::vector<std::string>{"existing"});
 }
 
 TEST_CASE("a") {
