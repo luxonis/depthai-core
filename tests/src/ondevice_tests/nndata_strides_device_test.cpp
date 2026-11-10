@@ -3,7 +3,7 @@
 
 #include "depthai/depthai.hpp"
 
-TEST_CASE("Singleton tensor strides and values survive a device roundtrip") {
+TEST_CASE("Singleton and custom tensor strides and values survive a device roundtrip") {
     dai::Pipeline pipeline;
     auto script = pipeline.create<dai::node::Script>();
     script->setScript("while True:\n    node.io['out'].send(node.io['in'].get())\n");
@@ -15,6 +15,10 @@ TEST_CASE("Singleton tensor strides and values survive a device roundtrip") {
     tensor.reshape({1, 3, 1, 4});
     auto message = std::make_shared<dai::NNData>();
     message->addTensor("singleton", tensor, dai::TensorInfo::DataType::FP32, dai::TensorInfo::StorageOrder::NCHW);
+    using Tensor = xt::xarray<float>;
+    const Tensor strided(Tensor::storage_type{0, 1, 2, 3, 4, 5, 6, 7}, Tensor::inner_shape_type{2, 2, 2}, Tensor::inner_strides_type{1, 2, 4});
+    const Tensor expected = {{{0, 4}, {2, 6}}, {{1, 5}, {3, 7}}};
+    message->addTensor("strided", strided, dai::TensorInfo::DataType::FP32, dai::TensorInfo::StorageOrder::CHW);
     input->send(message);
     bool timedOut = false;
     const auto received = output->get<dai::NNData>(std::chrono::seconds(5), timedOut);
@@ -25,6 +29,10 @@ TEST_CASE("Singleton tensor strides and values survive a device roundtrip") {
     REQUIRE(info.strides == std::vector<unsigned>{48, 16, 16, 4});
     REQUIRE(received->getDatatype() == dai::DatatypeEnum::NNData);
     REQUIRE((received->getTensor<float>("singleton") == tensor));
+    const auto& stridedInfo = received->tensors.at(1);
+    REQUIRE(stridedInfo.dims == std::vector<unsigned>{2, 2, 2});
+    REQUIRE(stridedInfo.strides == std::vector<unsigned>{16, 8, 4});
+    REQUIRE((received->getTensor<float>("strided") == expected));
     REQUIRE(received->getSequenceNum() == message->getSequenceNum());
     // RVC2 fills missing transport timestamps. Compare tensor serialization independently.
     received->setTimestamp(message->getTimestamp());
