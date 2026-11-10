@@ -267,6 +267,14 @@ if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
 else()
     pybind11_add_module(${TARGET_NAME} ${SOURCE_LIST})
 endif()
+if(DEPTHAI_UNITY_BUILD)
+    set_target_properties(${TARGET_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # HostNodeBindings.cpp has a file-scope using-directive. NNDataBindings.cpp must define
+    # FORCE_IMPORT_ARRAY before its first include.
+    set_source_files_properties(src/pipeline/node/HostNodeBindings.cpp src/pipeline/datatype/NNDataBindings.cpp
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
+endif()
 
 if(WIN32)
     # Copy dlls to target directory - Windows only

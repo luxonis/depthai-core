@@ -637,6 +637,58 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # depthai::core and depthai::device-manager define the same symbols; make CMake refuse a consumer that links both
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "core")
 set_property(TARGET ${TARGET_CORE_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
+if(DEPTHAI_UNITY_BUILD)
+    set_target_properties(${TARGET_CORE_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # These sources cannot share a unity batch: they define file-local names that other sources also
+    # define, define macros, or have a file-scope using-directive. The PCL, RTAB-Map and Basalt sources
+    # include large third-party headers and stay out of the batches as well.
+    set_source_files_properties(
+        src/basalt/BasaltVIO.cpp
+        src/pcl/PointCloudData.cpp
+        src/rtabmap/RTABMapConversions.cpp
+        src/rtabmap/RTABMapSLAM.cpp
+        src/rtabmap/RTABMapVIO.cpp
+        src/beta/datatype/Classifications.cpp
+        src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/Lines.cpp
+        src/beta/datatype/Predictions.cpp
+        src/beta/device/MultiDeviceCalibrationHandler.cpp
+        src/beta/node/FastSAMParser.cpp
+        src/beta/node/HRNetParser.cpp
+        src/beta/node/ImageOutputParser.cpp
+        src/beta/node/MLSDParser.cpp
+        src/beta/node/MapOutputParser.cpp
+        src/beta/node/MultiDeviceCalibration.cpp
+        src/beta/node/PPTextDetectionParser.cpp
+        src/beta/node/XFeatMonoParser.cpp
+        src/beta/node/XFeatStereoParser.cpp
+        src/beta/utilities/FastSAM/FastSAMUtils.cpp
+        src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
+        src/beta/utilities/PPText/PPTextUtils.cpp
+        src/beta/utilities/RFDETR/RFDETRUtils.cpp
+        src/beta/utilities/SCRFD/SCRFDUtils.cpp
+        src/beta/utilities/YuNet/YuNetUtils.cpp
+        src/device/CalibrationHandler.cpp
+        src/device/DeviceBase.cpp
+        src/opencv/HolisticRecordReplay.cpp
+        src/pipeline/Pipeline.cpp
+        src/pipeline/node/Align.cpp
+        src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/node/ImageAlign.cpp
+        src/pipeline/node/Rectification.cpp
+        src/pipeline/node/Script.cpp
+        src/pipeline/node/internal/XLinkInHost.cpp
+        src/pipeline/node/internal/XLinkOutHost.cpp
+        src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+        src/utility/McapImpl.cpp
+        src/utility/OCVPorts.cpp
+        src/utility/ObjectTrackerImpl.cpp
+        src/utility/Telemetry.cpp
+        src/utility/XLinkGlobalProfilingLogger.cpp
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
+endif()
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
