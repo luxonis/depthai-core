@@ -44,6 +44,8 @@ const int gateFileTimeout = 60000;
 // Linux limits the buffer memory of one USB transfer (usbfs_memory_mb, 16 MB by default) and a crash dump response is larger.
 // A multiple of every bulk max packet size, so the end of a chunk does not end a transfer early.
 const uint32_t gateReadChunkSize = 1024 * 1024;
+// Long enough for the gate to stop a firmware that does not respond. Without a limit, close() hangs while the gate reports the session as running.
+const auto gateSessionEndTimeout = std::chrono::seconds(30);
 
 enum USBRequestID_t {
     RESPONSE_OK,
@@ -771,6 +773,7 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
 }
 
 void DeviceGate::waitForSessionEnd() {
+    const auto deadline = std::chrono::steady_clock::now() + gateSessionEndTimeout;
     while(true) {
         switch(this->getState()) {
             case SessionState::NOT_CREATED:
@@ -785,6 +788,10 @@ void DeviceGate::waitForSessionEnd() {
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
                 return;  // Session is destroyed, we can exit
+        }
+        if(std::chrono::steady_clock::now() >= deadline) {
+            spdlog::warn("DeviceGate session did not end within {} s - continuing", gateSessionEndTimeout.count());
+            return;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }

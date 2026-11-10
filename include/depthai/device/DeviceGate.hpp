@@ -45,7 +45,7 @@ class DeviceGate {
 
     std::string getLastError() const;
 
-    // Waits for the gate session to end
+    // Waits for the gate session to end, at most 30 s
     void waitForSessionEnd();
 
     std::optional<CrashDump> getCrashDump();
