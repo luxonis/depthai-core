@@ -485,6 +485,10 @@ dai_set_test_labels(xlink_in_host_test onhost ci)
 dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
 dai_set_test_labels(multi_device_pipeline_test onhost)
 
+# Public NNArchive head serialization (no downloaded model required)
+dai_add_test(nn_archive_head_test src/onhost_tests/nn_archive/head_test.cpp)
+dai_set_test_labels(nn_archive_head_test onhost ci)
+
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)

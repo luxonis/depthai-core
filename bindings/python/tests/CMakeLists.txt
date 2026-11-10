@@ -17,6 +17,7 @@ set(PYBIND11_TEST_FILES
     "utf8_support_test.py"
     "dai_path_conversion_test.py"
     "nn_archive_gil_test.py"
+    "nn_archive_head_test.py"
     "test_registration_test.py"
     "nndata_tensor_test.py"
     "nndata_dtype_test.py"
