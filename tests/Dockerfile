@@ -18,7 +18,7 @@ ENV VCPKG_BINARY_SOURCES="clear;files,/opt/vcpkg-bincache,readwrite"
 # every image build compiles the whole tree again (scripts/hil/build_and_push.sh keeps the mounts).
 ENV CCACHE_DIR=/opt/ccache
 ENV CCACHE_MAXSIZE=10G
-ENV CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime
+ENV CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime,pch_defines,time_macros
 
 # Update and install all required packages in one go
 RUN apt-get update && \
