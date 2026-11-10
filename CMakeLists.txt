@@ -639,6 +639,11 @@ set_property(TARGET ${TARGET_CORE_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "core"
 set_property(TARGET ${TARGET_CORE_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
 if(DEPTHAI_UNITY_BUILD)
     set_target_properties(${TARGET_CORE_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # MSVC defines M_PI only when _USE_MATH_DEFINES is set before the first <cmath>. Sources define it
+    # themselves, which is too late when an earlier source of the batch included <cmath>.
+    if(MSVC)
+        target_compile_definitions(${TARGET_CORE_NAME} PRIVATE _USE_MATH_DEFINES=)
+    endif()
     set_source_files_properties(
         # These define file-local names that other sources also define, define macros, or have a
         # file-scope using-directive.
