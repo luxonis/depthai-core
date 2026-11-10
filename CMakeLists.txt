@@ -1579,6 +1579,20 @@ message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}
 # Configure build information (version, opencv, pcl support)
 set(DEPTHAI_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build/version.hpp")
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build")
+# About 70 sources include version.hpp through ErrorMacros.hpp. When only the time changed, keep the
+# BUILD_DATETIME of the existing header, so that a reconfigure does not compile them all again.
+if(EXISTS "${DEPTHAI_VERSION_HEADER}")
+    file(READ "${DEPTHAI_VERSION_HEADER}" _old_version_header)
+    if(_old_version_header MATCHES "BUILD_DATETIME = \"([^\"]*)\"")
+        set(_new_build_datetime "${BUILD_DATETIME}")
+        set(BUILD_DATETIME "${CMAKE_MATCH_1}")
+        configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.hpp.check")
+        file(READ "${CMAKE_CURRENT_BINARY_DIR}/version.hpp.check" _check_version_header)
+        if(NOT _check_version_header STREQUAL _old_version_header)
+            set(BUILD_DATETIME "${_new_build_datetime}")
+        endif()
+    endif()
+endif()
 configure_file(
     "${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in"
     "${DEPTHAI_VERSION_HEADER}"
