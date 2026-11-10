@@ -222,13 +222,13 @@ jobs:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_ffc) }}
           # OAK4-FFC testbeds, each with different sensors on its ports. They are in the 4ffc
-          # scope, which hil only picks by name. Left out until their boards are fixed:
-          # - slo5192-4lite: stuck in Qualcomm download mode
-          # - slo6282-4ffc: CAM_B and CAM_C deliver no frames on their own, so hil's sanity
-          #   check fails and blocks the testbed
+          # scope, which hil only picks by name. Left out until the OS fix is released:
+          # - slo6282-4ffc: CAM_B and CAM_C deliver no frames on their own (their frame sync
+          #   outputs are swapped up to OS 1.47.0), so hil's sanity check fails and blocks it
           testbed:
             - {name: slo7132-4ffc, cameras: 5}
             - {name: slo5302-4lite, cameras: 5}
+            - {name: slo5192-4lite, cameras: 3}
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
@@ -239,7 +239,8 @@ jobs:
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-ffc-${{ matrix.testbed.name }}"
           set -o pipefail
-          hil_runner --models "oak4_ffc" --scope 4ffc --testbed ${{ matrix.testbed.name }} --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; export DEPTHAI_TESTS_EXPECTED_CAMERAS=${{ matrix.testbed.cameras }}; ./tests/run_tests_entrypoint.sh rvc4ffc --test-label \"${{ inputs.test_label }}\"" 2>&1 | tee rvc4_ffc_test_output.log
+          # The tests connect over Ethernet, so a USB 2 link (slo5192-4lite) mustn't fail the sanity check
+          hil_runner --models "oak4_ffc" --scope 4ffc --testbed ${{ matrix.testbed.name }} --sanity no-usb-link-speed --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; export DEPTHAI_TESTS_EXPECTED_CAMERAS=${{ matrix.testbed.cameras }}; ./tests/run_tests_entrypoint.sh rvc4ffc --test-label \"${{ inputs.test_label }}\"" 2>&1 | tee rvc4_ffc_test_output.log
 
       - name: Upload test log
         if: always()
