@@ -450,5 +450,17 @@ CameraImageOrientation Camera::getImageOrientation() const {
     return properties.imageOrientation;
 }
 
+std::shared_ptr<Camera> Camera::setIsp3aFps(int isp3aFps) {
+    if(isp3aFps < 0) {
+        throw std::invalid_argument("Camera::setIsp3aFps: isp3aFps must be >= 0 (0 = run 3A on every frame)");
+    }
+    properties.isp3aFps = isp3aFps;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+int Camera::getIsp3aFps() const {
+    return properties.isp3aFps;
+}
+
 }  // namespace node
 }  // namespace dai

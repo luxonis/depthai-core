@@ -90,6 +90,24 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      */
     CameraImageOrientation getImageOrientation() const;
 
+    /**
+     * Set the ISP 3A rate (auto exposure, auto white balance, auto focus, camera controls).
+     * Default (0) matches the sensor FPS, meaning that 3A runs on every frame.
+     * On RVC2 the 3A algorithms run on the Leon CSS core together with the USB/Ethernet stack;
+     * at high frame rates (e.g. two sensors at 120 fps) running 3A on every frame saturates that core
+     * and frames are dropped, so lowering the 3A rate is required. Lower rates also slow down
+     * 3A convergence, and camera controls are processed at this rate.
+     * @param isp3aFps 3A rate in frames per second, 0 = every frame
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setIsp3aFps(int isp3aFps);
+
+    /**
+     * Get the ISP 3A rate
+     * @return 3A rate in frames per second, 0 = every frame
+     */
+    int getIsp3aFps() const;
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Build with a specific board socket and mock input

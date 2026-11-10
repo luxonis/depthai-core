@@ -47,6 +47,8 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         .def("getSensorType", &Camera::getSensorType, DOC(dai, node, Camera, getSensorType))
         .def("setImageOrientation", &Camera::setImageOrientation, py::arg("imageOrientation"), DOC(dai, node, Camera, setImageOrientation))
         .def("getImageOrientation", &Camera::getImageOrientation, DOC(dai, node, Camera, getImageOrientation))
+        .def("setIsp3aFps", &Camera::setIsp3aFps, py::arg("isp3aFps"), DOC(dai, node, Camera, setIsp3aFps))
+        .def("getIsp3aFps", &Camera::getIsp3aFps, DOC(dai, node, Camera, getIsp3aFps))
         .def("setRawNumFramesPool", &Camera::setRawNumFramesPool, "num"_a, DOC(dai, node, Camera, setRawNumFramesPool))
         .def("setMaxSizePoolRaw", &Camera::setMaxSizePoolRaw, "size"_a, DOC(dai, node, Camera, setMaxSizePoolRaw))
         .def("setIspNumFramesPool", &Camera::setIspNumFramesPool, "num"_a, DOC(dai, node, Camera, setIspNumFramesPool))
