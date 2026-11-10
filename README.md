@@ -15,6 +15,8 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
+For platform differences when reading tensors in Script, see [NNData inside Script](docs/ScriptNNData.md).
+
 ## Examples
 For the complete model-description YAML format, see the [model zoo reference](docs/ModelZoo.md).
 
