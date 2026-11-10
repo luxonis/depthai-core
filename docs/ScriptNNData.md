@@ -30,6 +30,8 @@ For an FP16 output named `scores`, this Script body works on both platforms:
 ```python
 while True:
     message = node.io["in"].get()
+    if message is None:
+        break
     if not message.hasLayer("scores"):
         node.warn("Missing scores tensor")
         continue
