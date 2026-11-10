@@ -16,6 +16,8 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
 ## Examples
+For the complete model-description YAML format, see the [model zoo reference](docs/ModelZoo.md).
+
 Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
 To build the examples in C++ configure with the following option added:
 ```
