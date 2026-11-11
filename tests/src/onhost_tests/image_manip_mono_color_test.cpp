@@ -2,7 +2,9 @@
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <cstdint>
+#include <limits>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 #include "depthai/utility/ImageManipImpl.hpp"
@@ -21,7 +23,8 @@ TEST_CASE("ImageManip converts full-range mono to RGB and BGR without touching p
     const FrameSpecs dstSpecs{5, 2, 5, 31, 59, packedDestination ? (planar ? 5U : 15U) : (planar ? 9U : 19U), 5, packedDestination ? 5U : 11U};
     constexpr size_t memoryOffset = 7;
     constexpr uint8_t sentinel = 0xA5;
-    auto src = std::make_shared<_ImageManipMemory>(100);
+    const size_t sourceSize = srcSpecs.p1Offset + (srcSpecs.height - 1) * srcSpecs.p1Stride + srcSpecs.width;
+    auto src = std::make_shared<_ImageManipMemory>(memoryOffset + sourceSize);
     auto dst = std::make_shared<_ImageManipMemory>(100);
     std::fill(src->getData().begin(), src->getData().end(), sentinel);
     std::fill(dst->getData().begin(), dst->getData().end(), sentinel);
@@ -47,4 +50,54 @@ TEST_CASE("ImageManip converts full-range mono to RGB and BGR without touching p
     conversion.apply(src, dst);
     const auto result = dst->getData();
     REQUIRE(std::vector<uint8_t>(result.begin(), result.end()) == expected);
+}
+
+TEST_CASE("ImageManip rejects invalid mono source views before writing color output", "[ImageManip][ColorConversion]") {
+    const auto inputType = GENERATE(ImgFrame::Type::RAW8, ImgFrame::Type::GRAY8);
+    const auto outputType = GENERATE(ImgFrame::Type::RGB888i, ImgFrame::Type::BGR888i, ImgFrame::Type::RGB888p, ImgFrame::Type::BGR888p);
+    FrameSpecs srcSpecs{5, 2, 3, 0, 0, 5, 0, 0};
+    const FrameSpecs dstSpecs{5, 2, 0, 10, 20, outputType == ImgFrame::Type::RGB888p || outputType == ImgFrame::Type::BGR888p ? 5U : 15U, 5, 5};
+    size_t viewSize = 10;
+    SECTION("truncated pixel data") {
+        // stride * height fits, but the plane offset puts the last three pixels outside the view.
+    }
+    SECTION("truncated padded row") {
+        srcSpecs.p1Stride = 8;
+        viewSize = 15;
+    }
+    SECTION("plane offset at the end") {
+        srcSpecs.p1Offset = static_cast<uint32_t>(viewSize);
+    }
+    SECTION("plane offset beyond the end") {
+        srcSpecs.p1Offset = std::numeric_limits<uint32_t>::max();
+    }
+    SECTION("stride smaller than width") {
+        srcSpecs.p1Stride = 4;
+        viewSize = 64;
+    }
+    SECTION("zero width and stride") {
+        srcSpecs.width = 0;
+        srcSpecs.p1Stride = 0;
+    }
+    SECTION("zero height") {
+        srcSpecs.height = 0;
+    }
+    SECTION("row extent exceeds 32-bit arithmetic") {
+        srcSpecs.width = 1;
+        srcSpecs.height = 65537;
+        srcSpecs.p1Stride = 65536;
+    }
+    constexpr size_t memoryOffset = 7;
+    // Keep backing storage larger than the logical view so the pre-fix truncated-view
+    // regression can fail without accessing memory outside the allocation.
+    auto src = std::make_shared<_ImageManipMemory>(100);
+    src->setSize(memoryOffset + viewSize);
+    src->setOffset(memoryOffset);
+    auto dst = std::make_shared<_ImageManipMemory>(30);
+    constexpr uint8_t sentinel = 0xA5;
+    std::fill(dst->getData().begin(), dst->getData().end(), sentinel);
+    ColorChangeH conversion;
+    conversion.build(srcSpecs, dstSpecs, inputType, outputType);
+    REQUIRE_THROWS_AS(conversion.apply(src, dst), std::runtime_error);
+    REQUIRE(std::all_of(dst->getData().begin(), dst->getData().end(), [](uint8_t value) { return value == sentinel; }));
 }

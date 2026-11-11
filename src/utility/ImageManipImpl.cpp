@@ -1037,9 +1037,18 @@ static inline void RGBfromYUV(float& R, float& G, float& B, float Y, float U, fl
 static bool colorConvertMono8ToColor(const ColorChangeArgs& args, bool planar) {
     const auto& srcSpecs = args.srcSpecs;
     const auto& dstSpecs = args.dstSpecs;
-    const auto* src = args.inputFrame->getOffsetData().data();
+    const auto srcView = args.inputFrame->getOffsetData();
+    const size_t stride = srcSpecs.p1Stride;
+    if(srcSpecs.width == 0 || srcSpecs.height == 0 || stride < srcSpecs.width || srcSpecs.p1Offset > srcView.size()) {
+        throw std::runtime_error("ImageManip mono-to-color conversion received invalid source image specs");
+    }
+    const size_t available = srcView.size() - srcSpecs.p1Offset;
+    // Check the last row without overflowing offset + (height - 1) * stride + width.
+    if(srcSpecs.width > available || srcSpecs.height - 1 > (available - srcSpecs.width) / stride) {
+        throw std::runtime_error("ImageManip mono-to-color conversion source view is too small for the image specs");
+    }
+    const auto* src = srcView.data() + srcSpecs.p1Offset;
     auto* dst = args.outputFrame->getOffsetData().data();
-    src += srcSpecs.p1Offset;
     if(planar) {
         const std::array<uint32_t, 3> offsets{dstSpecs.p1Offset, dstSpecs.p2Offset, dstSpecs.p3Offset};
         const std::array<uint32_t, 3> strides{dstSpecs.p1Stride, dstSpecs.p2Stride, dstSpecs.p3Stride};
@@ -1049,14 +1058,14 @@ static bool colorConvertMono8ToColor(const ColorChangeArgs& args, bool planar) {
                 std::copy_n(src, static_cast<size_t>(srcSpecs.width) * srcSpecs.height, plane);
             } else {
                 for(uint32_t y = 0; y < srcSpecs.height; ++y) {
-                    std::copy_n(src + y * srcSpecs.p1Stride, srcSpecs.width, plane + y * strides[channel]);
+                    std::copy_n(src + static_cast<size_t>(y) * stride, srcSpecs.width, plane + static_cast<size_t>(y) * strides[channel]);
                 }
             }
         }
     } else {
         for(uint32_t y = 0; y < srcSpecs.height; ++y) {
-            const auto* row = src + y * srcSpecs.p1Stride;
-            auto* out = dst + dstSpecs.p1Offset + y * dstSpecs.p1Stride;
+            const auto* row = src + static_cast<size_t>(y) * stride;
+            auto* out = dst + dstSpecs.p1Offset + static_cast<size_t>(y) * dstSpecs.p1Stride;
             for(uint32_t x = 0; x < srcSpecs.width; ++x) {
                 *out++ = row[x];
                 *out++ = row[x];
