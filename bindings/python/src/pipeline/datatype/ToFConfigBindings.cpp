@@ -49,6 +49,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("median", &ToFConfig::median, DOC(dai, ToFConfig, median))
         .def_readwrite("enablePhaseShuffleTemporalFilter", &ToFConfig::enablePhaseShuffleTemporalFilter, DOC(dai, ToFConfig, enablePhaseShuffleTemporalFilter))
         .def_readwrite("enableBurstMode", &ToFConfig::enableBurstMode, DOC(dai, ToFConfig, enableBurstMode))
+        .def_readwrite("enableIntermediateDepth", &ToFConfig::enableIntermediateDepth, DOC(dai, ToFConfig, enableIntermediateDepth))
         .def_readwrite("enableDistortionCorrection", &ToFConfig::enableDistortionCorrection, DOC(dai, ToFConfig, enableDistortionCorrection))
         .def_readwrite("phaseUnwrappingLevel", &ToFConfig::phaseUnwrappingLevel, DOC(dai, ToFConfig, phaseUnwrappingLevel))
         .def_readwrite("enableFPPNCorrection", &ToFConfig::enableFPPNCorrection, DOC(dai, ToFConfig, enableFPPNCorrection))
@@ -59,6 +60,11 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::phaseUnwrapErrorThreshold, DOC(dai, ToFConfig, phaseUnwrapErrorThreshold))
 
         .def("setMedianFilter", &ToFConfig::setMedianFilter, DOC(dai, ToFConfig, setMedianFilter))
+        .def("setEnableIntermediateDepth",
+             &ToFConfig::setEnableIntermediateDepth,
+             py::arg("enable"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, ToFConfig, setEnableIntermediateDepth))
         .def("setProfilePreset", &ToFConfig::setProfilePreset, DOC(dai, ToFConfig, setProfilePreset))
 
         // .def("set", &ToFConfig::set, py::arg("config"), DOC(dai, ToFConfig, set))
