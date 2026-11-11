@@ -169,7 +169,8 @@ TEST_CASE("RVC2 Rectification follows changing input transformations", "[Rectifi
                 for(int col = 0; col < 3; ++col) {
                     REQUIRE(actualIntrinsics[row][col] == Catch::Approx(expectedIntrinsics[row][col]).margin(1e-4));
                 }
-            REQUIRE(output->getTransformation().getSourceSize() == std::make_pair<size_t, size_t>(640, 400));
+            const auto expectedSourceSize = stage == 0 ? std::make_pair<size_t, size_t>(1280, 800) : std::make_pair<size_t, size_t>(640, 400);
+            REQUIRE(output->getTransformation().getSourceSize() == expectedSourceSize);
         }
         if(stage < 2 || stage == 4) {
             const auto value = actualRight->getData()[100 * 640 + 100];

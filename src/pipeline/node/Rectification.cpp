@@ -145,6 +145,7 @@ void Rectification::run() {
     }
 
     bool initialized = false;
+    bool bypassPair = false;
     cv::Mat cv_rectificationMap1X, cv_rectificationMap1Y;
     cv::Mat cv_rectificationMap2X, cv_rectificationMap2Y;
 
@@ -245,22 +246,32 @@ void Rectification::run() {
             output1Extrinsics.rotationMatrix = applyRectificationMatrix(output1Extrinsics, cv_R1);
             output2Extrinsics.rotationMatrix = applyRectificationMatrix(output2Extrinsics, cv_R2);
 
-            cv::initUndistortRectifyMap(cv_M1,
-                                        cv_d1,
-                                        cv_R1,
-                                        cv_targetCameraMatrix1,
-                                        cv::Size(output1FrameWidth + 1, output1FrameHeight + 1),
-                                        CV_32FC1,
-                                        cv_rectificationMap1X,
-                                        cv_rectificationMap1Y);
-            cv::initUndistortRectifyMap(cv_M2,
-                                        cv_d2,
-                                        cv_R2,
-                                        cv_targetCameraMatrix2,
-                                        cv::Size(output2FrameWidth + 1, output2FrameHeight + 1),
-                                        CV_32FC1,
-                                        cv_rectificationMap2X,
-                                        cv_rectificationMap2Y);
+            const auto identity = cv::Mat::eye(3, 3, CV_32FC1);
+            bypassPair = input1Frame->transformation.getDistortionModel() == dai::CameraModel::Perspective
+                         && input2Frame->transformation.getDistortionModel() == dai::CameraModel::Perspective && output1FrameWidth == input1Frame->getWidth()
+                         && output1FrameHeight == input1Frame->getHeight() && output2FrameWidth == input2Frame->getWidth()
+                         && output2FrameHeight == input2Frame->getHeight() && cv::norm(cv_d1, cv::NORM_INF) == 0 && cv::norm(cv_d2, cv::NORM_INF) == 0
+                         && cv::norm(cv_R1, identity, cv::NORM_INF) < 1e-6 && cv::norm(cv_R2, identity, cv::NORM_INF) < 1e-6
+                         && cv::norm(cv_M1, cv_targetCameraMatrix1, cv::NORM_INF) == 0 && cv::norm(cv_M2, cv_targetCameraMatrix2, cv::NORM_INF) == 0;
+
+            if(!bypassPair) {
+                cv::initUndistortRectifyMap(cv_M1,
+                                            cv_d1,
+                                            cv_R1,
+                                            cv_targetCameraMatrix1,
+                                            cv::Size(output1FrameWidth + 1, output1FrameHeight + 1),
+                                            CV_32FC1,
+                                            cv_rectificationMap1X,
+                                            cv_rectificationMap1Y);
+                cv::initUndistortRectifyMap(cv_M2,
+                                            cv_d2,
+                                            cv_R2,
+                                            cv_targetCameraMatrix2,
+                                            cv::Size(output2FrameWidth + 1, output2FrameHeight + 1),
+                                            CV_32FC1,
+                                            cv_rectificationMap2X,
+                                            cv_rectificationMap2Y);
+            }
 
             output1ImgTransformation = createRectifiedImgTransformation(output1Extrinsics, cv_targetCameraMatrix1, output1FrameWidth, output1FrameHeight);
             output2ImgTransformation = createRectifiedImgTransformation(output2Extrinsics, cv_targetCameraMatrix2, output2FrameWidth, output2FrameHeight);
@@ -277,6 +288,15 @@ void Rectification::run() {
             initialized = true;
             previousInput1Transformation = input1Frame->transformation;
             previousInput2Transformation = input2Frame->transformation;
+        }
+
+        if(bypassPair) {
+            auto blockEvent = this->outputBlockEvent();
+            output1.send(input1Frame);
+            output2.send(input2Frame);
+            passthrough1.send(input1Frame);
+            passthrough2.send(input2Frame);
+            continue;
         }
 
         std::shared_ptr<dai::ImgFrame> rectifiedFrame1 = std::make_shared<dai::ImgFrame>();

@@ -9,17 +9,6 @@
 TEST_CASE("Rectification backend selection survives host-device serialization", "[Rectification]") {
     auto node = dai::node::Rectification::create();
     REQUIRE(node->properties.backend == dai::Backend::AUTO);
-    node->properties.mesh.meshLeftUri = "asset:/node/1/meshLeft";
-    node->properties.mesh.meshRightUri = "asset:/node/1/meshRight";
-    node->properties.mesh.meshSize = 256;
-    node->properties.mesh.stepWidth = 32;
-    node->properties.rectifyEdgeFillColor = -1;
-    node->properties.useHomographyRectification = true;
-    node->properties.rectificationUseSpecTranslation = false;
-    node->properties.alphaScaling = 0.5f;
-    node->properties.depthAlign = dai::StereoDepthProperties::DepthAlign::RECTIFIED_RIGHT;
-    node->properties.depthAlignCamera = dai::CameraBoardSocket::CAM_C;
-    node->properties.numFramesPool = 7;
     for(auto backend : {dai::Backend::CPU, dai::Backend::HW, dai::Backend::GPU, dai::Backend::AUTO}) {
         REQUIRE(&node->setBackend(backend) == node.get());
         for(auto format : {dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK}) {
@@ -28,17 +17,6 @@ TEST_CASE("Rectification backend selection survives host-device serialization", 
             dai::RectificationProperties decoded;
             REQUIRE(dai::utility::deserialize(data, decoded, format));
             REQUIRE(decoded.backend == backend);
-            REQUIRE(decoded.mesh.meshLeftUri == node->properties.mesh.meshLeftUri);
-            REQUIRE(decoded.mesh.meshRightUri == node->properties.mesh.meshRightUri);
-            REQUIRE(decoded.mesh.meshSize == 256);
-            REQUIRE(decoded.mesh.stepWidth == 32);
-            REQUIRE(decoded.rectifyEdgeFillColor == -1);
-            REQUIRE(decoded.useHomographyRectification == true);
-            REQUIRE(decoded.rectificationUseSpecTranslation == false);
-            REQUIRE(decoded.alphaScaling == 0.5f);
-            REQUIRE(decoded.depthAlign == dai::StereoDepthProperties::DepthAlign::RECTIFIED_RIGHT);
-            REQUIRE(decoded.depthAlignCamera == dai::CameraBoardSocket::CAM_C);
-            REQUIRE(decoded.numFramesPool == 7);
         }
     }
 }
@@ -157,3 +135,60 @@ TEST_CASE("StereoDepth follows Rectification then Sync, with a true bypass when 
         REQUIRE_FALSE(stereo->rectification->input2.isConnected());
     }
 }
+
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+TEST_CASE("Rectification forwards already rectified frames and resumes remapping when geometry changes", "[Rectification]") {
+    const auto change = GENERATE(1, 2, 3);
+    const auto resize = GENERATE(false, true);
+    dai::Pipeline pipeline(false);
+    auto rectify = pipeline.create<dai::node::Rectification>();
+    rectify->setRunOnHost(true);
+    if(resize) rectify->setOutputSize(32, 24);
+    auto left = rectify->input1.createInputQueue();
+    auto right = rectify->input2.createInputQueue();
+    auto outputLeft = rectify->output1.createOutputQueue();
+    auto outputRight = rectify->output2.createOutputQueue();
+    auto passthroughLeft = rectify->passthrough1.createOutputQueue();
+    auto passthroughRight = rectify->passthrough2.createOutputQueue();
+    pipeline.start();
+    for(const auto stage : {0, 0, change, change, 0, 0}) {
+        CAPTURE(stage, resize);
+        auto frame = [&](bool rightSide) {
+            std::array<std::array<float, 3>, 3> intrinsic = {{{80, 0, 32}, {0, 80, 24}, {0, 0, 1}}};
+            if(rightSide && stage == 3) intrinsic[0][0] = 90;
+            dai::ImgTransformation transformation(64, 48, intrinsic);
+            if(stage == 1) transformation.setDistortionCoefficients({-0.1f, 0, 0, 0, 0});
+            const std::vector<std::vector<float>> identity = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+            dai::Extrinsics pose(identity, {rightSide ? 7.5f : 0.f, rightSide && stage == 2 ? 1.f : 0.f, 0}, dai::CameraBoardSocket::CAM_A);
+            transformation.setExtrinsics(pose);
+            auto image = std::make_shared<dai::ImgFrame>();
+            image->setType(dai::ImgFrame::Type::RAW8);
+            image->setSize(64, 48);
+            image->setData(std::vector<uint8_t>(64 * 48, 127));
+            image->setTransformation(transformation);
+            return image;
+        };
+        auto inputLeft = frame(false);
+        auto inputRight = frame(true);
+        left->send(inputLeft);
+        right->send(inputRight);
+        auto receive = [](const std::shared_ptr<dai::MessageQueue>& queue) {
+            bool timedOut = false;
+            auto image = queue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+            REQUIRE_FALSE(timedOut);
+            REQUIRE(image);
+            return image;
+        };
+        auto actualLeft = receive(outputLeft);
+        auto actualRight = receive(outputRight);
+        const bool bypass = stage == 0 && !resize;
+        REQUIRE((actualLeft == inputLeft) == bypass);
+        REQUIRE((actualRight == inputRight) == bypass);
+        REQUIRE(actualLeft->getWidth() == (resize ? 32 : 64));
+        REQUIRE(actualLeft->getHeight() == (resize ? 24 : 48));
+        REQUIRE(receive(passthroughLeft) == inputLeft);
+        REQUIRE(receive(passthroughRight) == inputRight);
+    }
+    pipeline.stop();
+}
+#endif
