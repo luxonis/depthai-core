@@ -1154,7 +1154,7 @@ set(device_session_tests
     calibration_override_test
 )
 foreach(name IN LISTS device_session_tests)
-    dai_set_test_labels(${name} ondevice)
+    dai_set_test_labels(${name} ondevice rvc4 ci)
 endforeach()
 set_tests_properties(${device_session_tests} PROPERTIES TIMEOUT 60)
 
