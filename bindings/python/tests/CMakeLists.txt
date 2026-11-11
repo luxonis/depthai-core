@@ -93,8 +93,22 @@ add_custom_target(
 # On macOS, resolve SDK symbols from the depthai Python extension. Statically
 # linking the SDK here copies its Objective-C classes into a second image and
 # causes duplicate-class registration when both Python modules are imported.
+# That link is also what carries cxx_std_17 and system-header usage
+# requirements. Apply them by hand. Without cxx_std_17 Apple Clang compiles
+# this target as C++14, and copying INCLUDE_DIRECTORIES drops SYSTEM, so
+# libnop's `.template Construct(...)` calls are rejected.
 if(APPLE)
     target_link_libraries(${TARGET_TEST_MODULE} PRIVATE pybind11::pybind11)
+    target_compile_features(${TARGET_TEST_MODULE} PRIVATE cxx_std_17)
+    # INTERFACE libraries: restores -isystem without linking an archive.
+    # List these before the include copy. CMake keeps the first classification
+    # of a path, and the copy below is non-system.
+    target_link_libraries(${TARGET_TEST_MODULE} PRIVATE libnop)
+    if(TARGET xtensor)
+        target_link_libraries(${TARGET_TEST_MODULE} PRIVATE xtensor)
+    endif()
+    target_include_directories(${TARGET_TEST_MODULE} SYSTEM PRIVATE
+        "$<TARGET_PROPERTY:depthai::core,INTERFACE_SYSTEM_INCLUDE_DIRECTORIES>")
     target_include_directories(${TARGET_TEST_MODULE} PRIVATE
         "$<TARGET_PROPERTY:${TARGET_NAME},INCLUDE_DIRECTORIES>")
     target_compile_definitions(${TARGET_TEST_MODULE} PRIVATE
