@@ -516,6 +516,11 @@ TEST_CASE("DetectionParser can be build using a specific head") {
 }
 
 TEST_CASE("DetectionParser replay test") {
+#if !(defined(__x86_64__) || defined(_M_X64))
+    // The host decodes the replay video. Other host CPUs (for example arm64 macOS) give pixels that differ by a few
+    // LSB from x86_64, so the detections move more than the tolerance from the x86_64 ground truth.
+    SKIP("The ground truth is valid only for replay video decoded on an x86_64 host");
+#endif
     const std::filesystem::path yoloV6R2Coco512x288GroundTruth{YOLO_V6_R2_COCO_512x288_GROUND_TRUTH};
     const std::filesystem::path yoloV6R2Coco512x384GroundTruth{YOLO_V6_R2_COCO_512x384_GROUND_TRUTH};
     const std::filesystem::path yoloV8InstanceSegmentationNanoCoco512x288GroundTruth{YOLO_V8_INSTANCE_SEGMENTATION_NANO_COCO_512x288_GROUND_TRUTH};

@@ -29,7 +29,7 @@ export DEPTHAI_PROTOCOL="${2:-tcpip}"
 export DISPLAY=:99
 
 TIMEOUT_ARGS=()
-if [[ -n "$3" ]]; then
+if [[ -n "$3" && "$3" != unlimited ]]; then
     TIMEOUT_ARGS=(--timeout "$3")
 fi
 

@@ -329,6 +329,23 @@ The following environment variables can be set to alter default behavior of the 
 
 ## Running tests
 
+For pull requests targeting `main` or `develop`, expand the successful checks
+in the PR merge panel and open **Details** beside **Run C++ tests** or
+**Run Python tests**. The check summary links to its
+workflow run; select **Re-run all jobs** there to run the full suite.
+You can also open the latest workflow run directly from GitHub Actions.
+No `testable` label is needed for a manual rerun of these suites.
+HIL tests do not run when a PR is opened. Adding the `testable` label runs them,
+and each later push runs them again while the label is on the PR. A new push
+cancels a HIL run that is still in progress. Without the label, open
+**Details** beside **Run HIL tests** after a push and select **Re-run all jobs**
+to run them on the new commit. To rerun failed HIL tests, select
+**Re-run all jobs** in that run.
+Adding the `testable` label also starts the full C++ and Python suites. PR
+updates and approvals do not start them, even while the label remains on the PR.
+After pushing new commits, select the new run; rerunning an older run tests
+its original commit. Lightweight style and binding checks still run on PR updates.
+
 To run the tests build the library with the following options
 ```
 cmake -S. -Bbuild -D'DEPTHAI_TEST_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' -D'DEPTHAI_BUILD_EXAMPLES=ON'
