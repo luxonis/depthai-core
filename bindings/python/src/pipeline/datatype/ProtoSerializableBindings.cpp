@@ -5,7 +5,7 @@
 void bind_protoserializable(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<ProtoSerializable, std::shared_ptr<ProtoSerializable>> protoSerializable(m, "ProtoSerializable", DOC(dai, ProtoSerializable));
+    py::class_<ProtoSerializable, py::smart_holder> protoSerializable(m, "ProtoSerializable", DOC(dai, ProtoSerializable));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
