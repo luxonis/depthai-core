@@ -1196,6 +1196,10 @@ dai_add_test(calibration_storage_lifecycle_test src/ondevice_tests/calibration_s
 dai_set_test_labels(calibration_storage_lifecycle_test ondevice)
 set_property(TEST calibration_storage_lifecycle_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_ALLOW_FACTORY_FLASHING=868632271")
 set_tests_properties(calibration_storage_lifecycle_test PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE)
+# The same checks without factory permission. Run it after the lifecycle test, which leaves the EEPROM erased
+dai_add_tagged_test(calibration_permission_test calibration_storage_lifecycle_test no-permission)
+dai_set_test_labels(calibration_permission_test ondevice)
+set_tests_properties(calibration_permission_test PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE DEPENDS calibration_storage_lifecycle_test)
 
 # AutoCalibration test
 dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)

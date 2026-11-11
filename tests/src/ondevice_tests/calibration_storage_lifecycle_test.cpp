@@ -2,7 +2,6 @@
 #include <catch2/catch_all.hpp>
 #include <cstdlib>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -11,6 +10,9 @@
 
 // Writes user and factory calibration. Run it only on a disposable board whose EEPROM is erased:
 // the read-only checks at the start fail on any board that holds calibration, before anything is written.
+//
+// Core reads DEPTHAI_ALLOW_FACTORY_FLASHING once per process, so the lifecycle, which needs factory
+// permission, and the checks without it are separate CTest tests with different environments.
 
 namespace {
 
@@ -27,28 +29,6 @@ float focal(const dai::CalibrationHandler& calibration) {
 bool erased(const std::vector<std::uint8_t>& bytes) {
     return !bytes.empty() && std::all_of(bytes.begin(), bytes.end(), [](std::uint8_t value) { return value == 0xff; });
 }
-
-struct FactoryPermissionGuard {
-    static constexpr const char* NAME = "DEPTHAI_ALLOW_FACTORY_FLASHING";
-    std::optional<std::string> previous;
-
-    static int put(const char* value) {
-#ifdef _WIN32
-        return _putenv_s(NAME, value ? value : "");
-#else
-        return value ? setenv(NAME, value, 1) : unsetenv(NAME);
-#endif
-    }
-
-    FactoryPermissionGuard() {
-        if(const char* value = std::getenv(NAME)) previous = value;
-        REQUIRE(put("") == 0);
-    }
-
-    ~FactoryPermissionGuard() {
-        put(previous ? previous->c_str() : nullptr);
-    }
-};
 
 }  // namespace
 
@@ -68,17 +48,8 @@ TEST_CASE("Board calibration persists across sessions and factory reset") {
     REQUIRE(erased(device->readFactoryCalibrationRaw()));
     REQUIRE_THROWS_AS(device->factoryResetCalibration(), dai::EepromError);
 
-    {
-        FactoryPermissionGuard noPermission;
-        device->flashCalibration(calibrationWithFocal(800));
-        REQUIRE(focal(device->readCalibration2()) == 800);
-        auto changed = calibrationWithFocal(801).getEepromData();
-        changed.boardName = "test-changed";
-        REQUIRE_THROWS_WITH(device->flashCalibration(dai::CalibrationHandler(changed)), Catch::Matchers::ContainsSubstring("PROTECTED permissions"));
-        REQUIRE_THROWS_WITH(device->flashFactoryCalibration(calibrationWithFocal(900)), Catch::Matchers::ContainsSubstring("not allowed"));
-        REQUIRE_THROWS_WITH(device->flashEepromClear(), Catch::Matchers::ContainsSubstring("not allowed"));
-        REQUIRE(focal(device->readCalibration2()) == 800);
-    }
+    device->flashCalibration(calibrationWithFocal(800));
+    REQUIRE(focal(device->readCalibration2()) == 800);
 
     REQUIRE(focal(device->getCalibration()) == 800);
     device->setCalibration(calibrationWithFocal(1000));
@@ -121,4 +92,24 @@ TEST_CASE("Board calibration persists across sessions and factory reset") {
     REQUIRE(device->isEepromAvailable());
     REQUIRE_THROWS_AS(device->readFactoryCalibration(), dai::EepromError);
     device->close();
+}
+
+TEST_CASE("Without factory permission, user writes keep protected fields and the factory area", "[.][no-permission]") {
+    const char* permission = std::getenv("DEPTHAI_ALLOW_FACTORY_FLASHING");
+    REQUIRE((permission == nullptr || std::string(permission).empty()));
+    const auto [found, info] = dai::Device::getAnyAvailableDevice();
+    REQUIRE(found);
+    dai::Device device(info);
+    REQUIRE(erased(device.readCalibrationRaw()));
+    REQUIRE(erased(device.readFactoryCalibrationRaw()));
+
+    device.flashCalibration(calibrationWithFocal(800));
+    REQUIRE(focal(device.readCalibration2()) == 800);
+    auto changed = calibrationWithFocal(801).getEepromData();
+    changed.boardName = "test-changed";
+    REQUIRE_THROWS_WITH(device.flashCalibration(dai::CalibrationHandler(changed)), Catch::Matchers::ContainsSubstring("PROTECTED permissions"));
+    REQUIRE_THROWS_WITH(device.flashFactoryCalibration(calibrationWithFocal(900)), Catch::Matchers::ContainsSubstring("not allowed"));
+    REQUIRE_THROWS_WITH(device.flashEepromClear(), Catch::Matchers::ContainsSubstring("not allowed"));
+    REQUIRE(focal(device.readCalibration2()) == 800);
+    REQUIRE(erased(device.readFactoryCalibrationRaw()));
 }
