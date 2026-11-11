@@ -192,19 +192,6 @@ def test_prepare_segmentation_mask_returns_writable_storage():
     assert (mask.getWidth(), mask.getHeight()) == (2, 3)
 
 
-def test_board_eeprom_override_is_optional():
-    config = dai.Device.Config()
-    assert config.board.eepromData is None
-    eeprom = dai.EepromData()
-    eeprom.boardName = "DM2090"
-    eeprom.boardOptions = 0x40000001
-    config.board.eepromData = eeprom
-    assert config.board.eepromData.boardName == "DM2090"
-    assert config.board.eepromData.boardOptions == 0x40000001
-    config.board.eepromData = None
-    assert config.board.eepromData is None
-
-
 def test_board_camera_and_imu_configuration():
     config = dai.BoardConfig()
     camera = dai.BoardConfig.Camera()

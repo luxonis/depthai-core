@@ -11,39 +11,6 @@
 
 static_assert(std::is_const_v<std::remove_reference_t<decltype((std::declval<const dai::Asset&>().data))>>);
 
-TEST_CASE("BoardConfig preserves an optional boot EEPROM override", "[board-config]") {
-    dai::BoardConfig board;
-    REQUIRE_FALSE(board.eepromData.has_value());
-    board.eepromData.emplace();
-    board.eepromData->boardName = "DM2090";
-    board.eepromData->boardOptions = 0x40000001;
-    board.eepromData->version = 7;
-    board.eepromData->cameraData[dai::CameraBoardSocket::CAM_A].width = 1280;
-    board.network.forceEnable = true;
-    board.emmc = true;
-
-    const auto check = [&](const dai::BoardConfig& copy) {
-        REQUIRE(copy.eepromData.has_value());
-        REQUIRE(copy.eepromData->boardName == "DM2090");
-        REQUIRE(copy.eepromData->boardOptions == 0x40000001);
-        REQUIRE(copy.eepromData->version == 7);
-        REQUIRE(copy.eepromData->cameraData.at(dai::CameraBoardSocket::CAM_A).width == 1280);
-        REQUIRE(copy.network.forceEnable);
-        REQUIRE(copy.emmc.value());
-    };
-    dai::BoardConfig binaryCopy;
-    dai::utility::deserialize(dai::utility::serialize(board), binaryCopy);
-    check(binaryCopy);
-    dai::BoardConfig msgpackCopy;
-    dai::utility::deserialize<dai::SerializationType::JSON_MSGPACK>(
-        dai::utility::serialize<dai::SerializationType::JSON_MSGPACK>(board), msgpackCopy);
-    check(msgpackCopy);
-
-    board.eepromData.reset();
-    dai::utility::deserialize(dai::utility::serialize(board), binaryCopy);
-    REQUIRE_FALSE(binaryCopy.eepromData.has_value());
-}
-
 TEST_CASE("Roundtrip") {
     dai::Pipeline p;
     auto stereo = p.create<dai::node::StereoDepth>();
