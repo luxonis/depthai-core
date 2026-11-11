@@ -422,6 +422,13 @@ function(dai_set_test_labels test_name)
     endif()
 endfunction()
 
+# Function for registering the hidden Catch2 cases of an existing test executable that carry a tag,
+# so they run as their own test with their own labels
+function(dai_add_tagged_test test_name target tag)
+    add_test(NAME ${test_name} COMMAND ${target} "[${tag}]")
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
+endfunction()
+
 # Function for adding compile definitions to tests
 function(dai_test_compile_definitions)
     if(TARGET ${ARGV0})
@@ -1122,6 +1129,40 @@ dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
 # Gate tests
 dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
 dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci noreplayci)
+
+# Device session tests with synthetic messages: transport, Gate grants, Sync and Demux, benchmark, close and raw RPC
+foreach(name gate_node_test sync_test benchmark_test)
+    target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+endforeach()
+dai_add_tagged_test(gate_node_transport_test gate_node_test transport)
+dai_add_tagged_test(gate_node_grant_test gate_node_test grants)
+dai_add_tagged_test(sync_device_timestamp_test sync_test device-timestamp)
+dai_add_tagged_test(benchmark_report_test benchmark_test report)
+dai_add_tagged_test(benchmark_slow_close_test benchmark_test slow-close)
+dai_add_test(gate_shutdown_test src/ondevice_tests/gate_shutdown_test.cpp)
+target_include_directories(gate_shutdown_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+dai_add_test(gate_rpc_test src/ondevice_tests/gate_rpc_test.cpp)
+dai_add_test(calibration_override_test src/ondevice_tests/calibration_override_test.cpp)
+set(device_session_tests
+    gate_node_transport_test
+    gate_node_grant_test
+    sync_device_timestamp_test
+    benchmark_report_test
+    benchmark_slow_close_test
+    gate_shutdown_test
+    gate_rpc_test
+    calibration_override_test
+)
+foreach(name IN LISTS device_session_tests)
+    dai_set_test_labels(${name} ondevice)
+endforeach()
+set_tests_properties(${device_session_tests} PROPERTIES TIMEOUT 60)
+
+# Writes user and factory calibration: run it only on a disposable board with erased EEPROM
+dai_add_test(calibration_storage_lifecycle_test src/ondevice_tests/calibration_storage_lifecycle_test.cpp)
+dai_set_test_labels(calibration_storage_lifecycle_test ondevice)
+set_property(TEST calibration_storage_lifecycle_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_ALLOW_FACTORY_FLASHING=868632271")
+set_tests_properties(calibration_storage_lifecycle_test PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE)
 
 # AutoCalibration test
 dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)

@@ -1,6 +1,9 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <cmath>
 
+#include "buffer_test_utils.hpp"
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -82,4 +85,60 @@ TEST_CASE("BenchmarkIn and BenchmarkOut run on device - high FPS") {
 
 TEST_CASE("Camera benchmarking") {
     testCameraBenchmarking(30.0f);
+}
+
+TEST_CASE("Device benchmark repeats an image four times and reports three samples", "[.][report]") {
+    using namespace buffer_test;
+    dai::Pipeline pipeline;
+    auto source = pipeline.create<dai::node::BenchmarkOut>();
+    auto sink = pipeline.create<dai::node::BenchmarkIn>();
+    source->setRunOnHost(false);
+    sink->setRunOnHost(false);
+    source->setNumMessagesToSend(4);
+    source->setFps(20);
+    sink->sendReportEveryNMessages(3);
+    sink->measureIndividualLatencies(true);
+    source->out.link(sink->input);
+    auto input = source->input.createInputQueue();
+    auto passthrough = sink->passthrough.createOutputQueue();
+    auto reports = sink->report.createOutputQueue();
+    pipeline.start();
+
+    input->send(makeImage());
+    for(int i = 0; i < 4; ++i) {
+        requireImage(take<dai::ImgFrame>(passthrough));
+    }
+    // The report goes out when the fourth message arrives and covers the first three
+    auto report = take<dai::BenchmarkReport>(reports);
+    REQUIRE(report->numMessagesReceived == 3);
+    REQUIRE(report->latencies.size() == 3);
+    for(float latency : report->latencies) {
+        REQUIRE(std::isfinite(latency));
+        REQUIRE(latency >= 0.0f);
+    }
+    // Four messages at 20 FPS span at least three 50 ms intervals
+    REQUIRE(std::isfinite(report->timeTotal));
+    REQUIRE(report->timeTotal >= 0.1f);
+    REQUIRE(std::isfinite(report->fps));
+    requireNoMessage(passthrough);
+}
+
+TEST_CASE("Closing the device interrupts a slow device BenchmarkOut", "[.][slow-close]") {
+    using namespace buffer_test;
+    dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    auto source = pipeline.create<dai::node::BenchmarkOut>();
+    source->setRunOnHost(false);
+    source->setFps(0.01f);
+    auto input = source->input.createInputQueue();
+    auto output = source->out.createOutputQueue();
+    pipeline.start();
+
+    input->send(makeBuffer(42));
+    requireBuffer(take<dai::Buffer>(output), 42);
+    const auto start = std::chrono::steady_clock::now();
+    device->close();
+    const auto closeTime = std::chrono::steady_clock::now() - start;
+    REQUIRE(closeTime < std::chrono::seconds(10));
+    REQUIRE(device->isClosed());
 }

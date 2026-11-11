@@ -3,8 +3,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <opencv2/opencv.hpp>
+#include <thread>
 #include <vector>
 
+#include "buffer_test_utils.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Gate.hpp"
 
@@ -336,4 +338,79 @@ TEST_CASE("FPS regulation") {
     CHECK(msgsFromCameraCount > 60);
 
     std::cout << "Gate frames: " << msgsFromGateCount << " | Camera frames: " << msgsFromCameraCount << std::endl;
+}
+
+TEST_CASE("Device Gate preserves buffers and mixed groups", "[.][transport]") {
+    using namespace buffer_test;
+    dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    REQUIRE(device->getDeviceId() == device->getDeviceInfo().getDeviceId());
+    auto gate = pipeline.create<dai::node::Gate>();
+    gate->setRunOnHost(false);
+    gate->initialConfig->open = true;
+    pipeline.getAssetManager().set("pipeline-test", std::vector<uint8_t>(1024, 0xa5));
+    gate->getAssetManager().set("node-test", std::vector<uint8_t>{0x12, 0x34, 0x56}, 64);
+    auto input = gate->input.createInputQueue();
+    auto output = gate->output.createOutputQueue();
+    pipeline.start();
+
+    input->send(makeBuffer(31));
+    requireBuffer(take<dai::Buffer>(output), 31);
+
+    auto large = makeBuffer(44);
+    large->setData(std::vector<uint8_t>(1024 * 1024, 0xa5));
+    input->send(large);
+    auto receivedLarge = take<dai::Buffer>(output);
+    REQUIRE(receivedLarge->getData().size() == 1024 * 1024);
+    REQUIRE(std::count(receivedLarge->getData().begin(), receivedLarge->getData().end(), 0xa5) == 1024 * 1024);
+    REQUIRE(receivedLarge->getSequenceNum() == 44);
+
+    auto group = std::make_shared<dai::MessageGroup>();
+    group->setSequenceNum(99);
+    group->add("bytes", makeBuffer(43));
+    group->add("image", makeImage());
+    input->send(group);
+    auto receivedGroup = take<dai::MessageGroup>(output);
+    REQUIRE(receivedGroup->getNumMessages() == 2);
+    REQUIRE(receivedGroup->getSequenceNum() == 99);
+    REQUIRE(receivedGroup->getMessageNames() == std::vector<std::string>{"bytes", "image"});
+    requireBuffer(receivedGroup->get<dai::Buffer>("bytes"), 43);
+    requireImage(receivedGroup->get<dai::ImgFrame>("image"));
+
+    pipeline.stop();
+    pipeline.wait();
+    REQUIRE_FALSE(pipeline.isRunning());
+    REQUIRE(device->isClosed());
+}
+
+TEST_CASE("Device Gate retains input across finite and indefinite grants", "[.][grants]") {
+    using namespace buffer_test;
+    dai::Pipeline pipeline;
+    auto gate = pipeline.create<dai::node::Gate>();
+    gate->setRunOnHost(false);
+    gate->initialConfig->open = false;
+    auto input = gate->input.createInputQueue();
+    auto control = gate->inputControl.createInputQueue();
+    auto output = gate->output.createOutputQueue();
+    pipeline.start();
+
+    input->send(makeBuffer(10));
+    requireNoMessage(output);
+    control->send(dai::GateControl::openGate(2));
+    requireBuffer(take<dai::Buffer>(output), 10);
+    input->send(makeBuffer(11));
+    requireBuffer(take<dai::Buffer>(output), 11);
+    input->send(makeBuffer(12));
+    requireNoMessage(output);
+
+    control->send(dai::GateControl::openGate());
+    requireBuffer(take<dai::Buffer>(output), 12);
+
+    control->send(dai::GateControl::closeGate());
+    // Control and data use separate streams, so let the close land before the next input
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    input->send(makeBuffer(13));
+    requireNoMessage(output);
+    control->send(dai::GateControl::openGate(1));
+    requireBuffer(take<dai::Buffer>(output), 13);
 }

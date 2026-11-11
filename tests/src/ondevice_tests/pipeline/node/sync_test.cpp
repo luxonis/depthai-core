@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 
+#include "buffer_test_utils.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
@@ -177,4 +178,41 @@ TEST_CASE("Sync node stops when system timestamps are selected and a message is 
 
     REQUIRE_FALSE(pipeline.isRunning());
     REQUIRE_THROWS_AS(syncQueue->get<dai::MessageGroup>(), dai::MessageQueue::QueueException);
+}
+
+TEST_CASE("Device Sync pairs by device timestamp and demux keeps the members", "[.][device-timestamp]") {
+    dai::Pipeline pipeline;
+    auto sync = pipeline.create<dai::node::Sync>();
+    auto demux = pipeline.create<dai::node::MessageDemux>();
+    sync->setRunOnHost(false);
+    demux->setRunOnHost(false);
+    sync->setTimestampSource(dai::node::Sync::TimestampSource::DEVICE);
+    sync->setSyncThreshold(std::chrono::milliseconds(1));
+    auto left = sync->inputs["left"].createInputQueue();
+    auto right = sync->inputs["right"].createInputQueue();
+    auto groups = sync->out.createOutputQueue();
+    sync->out.link(demux->input);
+    auto leftOut = demux->outputs["left"].createOutputQueue();
+    auto rightOut = demux->outputs["right"].createOutputQueue();
+    pipeline.start();
+
+    left->send(buffer_test::makeBuffer(51));
+    buffer_test::requireNoMessage(groups);
+    // Same host timestamp as the left buffer, so only a DEVICE comparison rejects it
+    auto stale = buffer_test::makeBuffer(50);
+    stale->setTimestampDevice(steadyMs(100));
+    right->send(stale);
+    buffer_test::requireNoMessage(groups);
+    const SteadyTimePoint partnerHostTime{std::chrono::nanoseconds(987654321)};
+    auto partner = buffer_test::makeBuffer(52);
+    partner->setTimestamp(partnerHostTime);
+    right->send(partner);
+
+    auto group = buffer_test::take<dai::MessageGroup>(groups);
+    REQUIRE(group->getMessageNames() == std::vector<std::string>{"left", "right"});
+    REQUIRE(group->getIntervalNs() == 0);
+    buffer_test::requireBuffer(group->get<dai::Buffer>("left"), 51);
+    buffer_test::requireBuffer(group->get<dai::Buffer>("right"), 52, partnerHostTime);
+    buffer_test::requireBuffer(buffer_test::take<dai::Buffer>(leftOut), 51);
+    buffer_test::requireBuffer(buffer_test::take<dai::Buffer>(rightOut), 52, partnerHostTime);
 }
