@@ -74,11 +74,12 @@ class ToFConfig : public Buffer {
 
     /**
      * Publish intermediate S5K63D depth updates using previous-stack frequency history.
-     * False (default) publishes only depth using both frequency pairs from the current stack.
+     * Enabled by default to preserve the existing output cadence. Set false to publish
+     * only depth using both frequency pairs from the current stack.
      * Applies when phase unwrapping is enabled; burst mode always suppresses intermediate updates.
      * Other sensors are unaffected. Supports initialConfig and runtime inputConfig.
      */
-    bool enableIntermediateDepth = false;
+    bool enableIntermediateDepth = true;
 
     /**
      * Construct ToFConfig message.

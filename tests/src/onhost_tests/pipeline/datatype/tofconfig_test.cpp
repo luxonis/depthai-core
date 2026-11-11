@@ -6,7 +6,7 @@
 #include "depthai/utility/Serialization.hpp"
 
 TEST_CASE("Intermediate ToF depth selection reaches initial and runtime configurations", "[ToFConfig]") {
-    REQUIRE_FALSE(dai::ToFConfig{}.enableIntermediateDepth);
+    REQUIRE(dai::ToFConfig{}.enableIntermediateDepth);
     for(bool enable : {false, true}) {
         dai::ToFProperties properties;
         properties.initialConfig.enableIntermediateDepth = enable;
