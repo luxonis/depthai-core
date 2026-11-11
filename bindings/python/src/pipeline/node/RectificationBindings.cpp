@@ -36,6 +36,7 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
     RectificationProperties
         .def_readwrite("enableRectification", &dai::RectificationProperties::enableRectification, DOC(dai, RectificationProperties, enableRectification))
         .def_readwrite("backend", &dai::RectificationProperties::backend, "Remapping backend preference")
+        .def_readwrite("alphaScaling", &RectificationProperties::alphaScaling, DOC(dai, RectificationProperties, alphaScaling))
         .def_readwrite("outputWidth", &RectificationProperties::outputWidth, DOC(dai, RectificationProperties, outputWidth))
         .def_readwrite("outputHeight", &RectificationProperties::outputHeight, DOC(dai, RectificationProperties, outputHeight));
 
@@ -53,6 +54,11 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
              py::return_value_policy::reference_internal,
              "Select CPU, EVA hardware (HW), or GPU. AUTO defaults to GPU on device with CPU fallback")
         .def("enableRectification", &Rectification::enableRectification, py::arg("enable"), DOC(dai, node, Rectification, enableRectification))
+        .def("setAlphaScaling",
+             &Rectification::setAlphaScaling,
+             py::arg("alpha"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, Rectification, setAlphaScaling))
         .def("setOutputSize",
              (Rectification & (Rectification::*)(uint32_t, uint32_t)) & Rectification::setOutputSize,
              py::arg("width"),

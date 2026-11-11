@@ -6,6 +6,7 @@
 #include <depthai/pipeline/node/StereoDepth.hpp>
 #include <depthai/properties/GPUStereoProperties.hpp>
 #include <depthai/properties/RectificationProperties.hpp>
+#include <limits>
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
@@ -25,6 +26,26 @@ TEST_CASE("Rectification backend selection survives host-device serialization", 
             REQUIRE(decoded.backend == backend);
         }
     }
+}
+
+TEST_CASE("Rectification alpha scaling is optional, validated and serialized", "[Rectification]") {
+    auto node = dai::node::Rectification::create();
+    REQUIRE_FALSE(node->properties.alphaScaling);
+    const auto alpha = GENERATE(std::optional<float>{}, std::optional<float>{-0.5f}, std::optional<float>{0.f}, std::optional<float>{1.f});
+    if(alpha) REQUIRE(&node->setAlphaScaling(*alpha) == node.get());
+    for(auto format : {dai::SerializationType::LIBNOP, dai::SerializationType::JSON, dai::SerializationType::JSON_MSGPACK}) {
+        std::vector<uint8_t> data;
+        node->getProperties().serialize(data, format);
+        dai::RectificationProperties decoded;
+        REQUIRE(dai::utility::deserialize(data, decoded, format));
+        REQUIRE(decoded.alphaScaling == alpha);
+    }
+    REQUIRE_THROWS_AS(node->setAlphaScaling(std::numeric_limits<float>::quiet_NaN()), std::invalid_argument);
+    REQUIRE_THROWS_AS(node->setAlphaScaling(std::numeric_limits<float>::infinity()), std::invalid_argument);
+    REQUIRE(node->properties.alphaScaling == alpha);
+    auto stereo = dai::node::StereoDepth::create();
+    stereo->setAlphaScaling(0.5f);
+    REQUIRE(stereo->rectification->properties.alphaScaling == 0.5f);
 }
 
 TEST_CASE("GPUStereo rectification toggle updates Rectification subnode properties", "[GPUStereo]") {
@@ -150,9 +171,14 @@ TEST_CASE("StereoDepth follows Rectification then Sync, with a true bypass when 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
 TEST_CASE("Rectification preserves RGB and BGR formats through bypass and remapping", "[Rectification]") {
     const auto type = GENERATE(dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::RGB888p, dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::BGR888p);
+    const auto alpha =
+        GENERATE(std::optional<float>{}, std::optional<float>{-0.5f}, std::optional<float>{0.f}, std::optional<float>{0.5f}, std::optional<float>{1.f});
+    const bool resize = GENERATE(false, true);
     dai::Pipeline pipeline(false);
     auto rectify = pipeline.create<dai::node::Rectification>();
     rectify->setRunOnHost(true);
+    if(alpha) rectify->setAlphaScaling(*alpha);
+    if(resize) rectify->setOutputSize(32, 24);
     auto left = rectify->input1.createInputQueue();
     auto right = rectify->input2.createInputQueue();
     auto outputLeft = rectify->output1.createOutputQueue();
@@ -162,7 +188,7 @@ TEST_CASE("Rectification preserves RGB and BGR formats through bypass and remapp
         for(int x = 0; x < pixels.cols; ++x) pixels.at<cv::Vec3b>(y, x) = cv::Vec3b(x * 3, y * 4, 220 - x);
     pipeline.start();
     for(const bool distorted : {false, true, false}) {
-        CAPTURE(type, distorted);
+        CAPTURE(type, distorted, alpha, resize);
         const std::vector<float> distortion = {distorted ? -0.1f : 0.f, 0, 0, 0, 0};
         for(int side = 0; side < 2; ++side) {
             const std::array<std::array<float, 3>, 3> intrinsic = {{{80, 0, 32}, {0, 80, 24}, {0, 0, 1}}};
@@ -175,8 +201,15 @@ TEST_CASE("Rectification preserves RGB and BGR formats through bypass and remapp
             (side == 0 ? left : right)->send(frame);
         }
         const cv::Mat intrinsic = (cv::Mat_<float>(3, 3) << 80, 0, 32, 0, 80, 24, 0, 0, 1);
+        cv::Mat target = alpha ? cv::getOptimalNewCameraMatrix(intrinsic, distortion, pixels.size(), *alpha) : intrinsic.clone();
+        target.convertTo(target, CV_32F);
+        if(resize) {
+            target.row(0) *= 0.5f;
+            target.row(1) *= 0.5f;
+        }
+        const cv::Size outputSize = resize ? cv::Size(32, 24) : pixels.size();
         cv::Mat mapX, mapY, expected;
-        cv::initUndistortRectifyMap(intrinsic, distortion, cv::Mat::eye(3, 3, CV_32F), intrinsic, pixels.size(), CV_32FC1, mapX, mapY);
+        cv::initUndistortRectifyMap(intrinsic, distortion, cv::Mat::eye(3, 3, CV_32F), target, outputSize, CV_32FC1, mapX, mapY);
         cv::remap(pixels, expected, mapX, mapY, cv::INTER_LINEAR);
         for(auto& queue : {outputLeft, outputRight}) {
             bool timedOut = false;
@@ -184,7 +217,10 @@ TEST_CASE("Rectification preserves RGB and BGR formats through bypass and remapp
             REQUIRE_FALSE(timedOut);
             REQUIRE(output);
             REQUIRE(output->getType() == type);
-            REQUIRE(output->getData().size() == 64 * 48 * 3);
+            REQUIRE(output->getData().size() == static_cast<size_t>(outputSize.area() * 3));
+            const auto actualIntrinsic = output->transformation.getIntrinsicMatrix();
+            for(int row = 0; row < 3; ++row)
+                for(int col = 0; col < 3; ++col) REQUIRE(actualIntrinsic[row][col] == Catch::Approx(target.at<float>(row, col)));
             REQUIRE(cv::norm(output->getCvFrame(), expected, cv::NORM_INF) == 0);
         }
     }

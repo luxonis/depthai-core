@@ -12,9 +12,11 @@ struct RectificationProperties : PropertiesSerializable<Properties, Rectificatio
     std::optional<uint32_t> outputWidth, outputHeight;
     bool enableRectification = true;
     Backend backend = Backend::AUTO;
+    /** Optional undistortion scaling. Unset preserves the input camera intrinsics. */
+    std::optional<float> alphaScaling = std::nullopt;
     ~RectificationProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(RectificationProperties, outputWidth, outputHeight, enableRectification, backend);
+DEPTHAI_SERIALIZE_EXT(RectificationProperties, outputWidth, outputHeight, enableRectification, backend, alphaScaling);
 
 }  // namespace dai

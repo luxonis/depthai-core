@@ -236,6 +236,7 @@ void StereoDepth::setDepthAlignmentUseSpecTranslation(bool specTranslation) {
 }
 
 void StereoDepth::setAlphaScaling(float alpha) {
+    if(!configureMode) rectification->setAlphaScaling(alpha);
     properties.alphaScaling = alpha;
 }
 

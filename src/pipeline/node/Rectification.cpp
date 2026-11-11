@@ -2,6 +2,8 @@
 
 #include <array>
 #include <chrono>
+#include <cmath>
+#include <stdexcept>
 #include <vector>
 
 #include "common/Extrinsics.hpp"
@@ -30,6 +32,12 @@ void Rectification::setRunOnHost(bool runOnHost) {
 
 Rectification& Rectification::setBackend(Backend backend) {
     properties.backend = backend;
+    return *this;
+}
+
+Rectification& Rectification::setAlphaScaling(float alpha) {
+    if(!std::isfinite(alpha)) throw std::invalid_argument("Rectification alphaScaling must be finite");
+    properties.alphaScaling = alpha;
     return *this;
 }
 
@@ -138,6 +146,7 @@ void Rectification::remapFrame(const RemapFrame& frame) {
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
+    if(properties.alphaScaling) setAlphaScaling(*properties.alphaScaling);
     if(runOnHostVar && (properties.backend == Backend::GPU || properties.backend == Backend::HW)) {
         throw std::runtime_error("Rectification GPU/HW backends require device execution");
     }
@@ -233,6 +242,18 @@ void Rectification::run() {
 
                 targetM1 = input1ImgTransformation.getIntrinsicMatrix();
                 targetM2 = input2ImgTransformation.getIntrinsicMatrix();
+            }
+
+            if(properties.alphaScaling && properties.enableRectification) {
+                if(input1ImgTransformation.getDistortionModel() != CameraModel::Perspective
+                   || input2ImgTransformation.getDistortionModel() != CameraModel::Perspective) {
+                    throw std::invalid_argument("Rectification alphaScaling requires perspective cameras");
+                }
+                cv::Mat target = cv::getOptimalNewCameraMatrix(cv_M1, cv_d1, imageSize, *properties.alphaScaling);
+                target.convertTo(target, CV_32FC1);
+                target.row(0) *= static_cast<float>(output1FrameWidth) / input1Frame->getWidth();
+                target.row(1) *= static_cast<float>(output1FrameHeight) / input1Frame->getHeight();
+                targetM1 = dai::matrix::cvMatToMatrix3x3(target);
             }
 
             targetM2 = targetM1;  // TODO alignment target

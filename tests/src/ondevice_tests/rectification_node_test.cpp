@@ -7,7 +7,9 @@
 #include "depthai/depthai.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    #include <opencv2/calib3d.hpp>
     #include <opencv2/core.hpp>
+    #include <opencv2/imgproc.hpp>
 #endif
 
 namespace {
@@ -127,6 +129,45 @@ TEST_CASE("RVC4 StereoDepth rectification preserves color across backends and fo
             const cv::Rect center(280, 160, 80, 80);
             REQUIRE(cv::norm(output->getCvFrame()(center), pixels(center), cv::NORM_INF) <= 1);
         }
+    }
+}
+
+TEST_CASE("Rectification alpha scaling reaches device meshes and output intrinsics", "[Rectification][ondevice]") {
+    const float alpha = GENERATE(0.f, 1.f);
+    dai::Pipeline pipeline;
+    auto rectify = pipeline.create<dai::node::Rectification>();
+    rectify->setAlphaScaling(alpha);
+    auto left = rectify->input1.createInputQueue();
+    auto right = rectify->input2.createInputQueue();
+    auto outputLeft = rectify->output1.createOutputQueue();
+    auto outputRight = rectify->output2.createOutputQueue();
+    pipeline.start();
+    const std::array<std::array<float, 3>, 3> intrinsic = {{{800, 0, 320}, {0, 800, 200}, {0, 0, 1}}};
+    const std::vector<float> distortion = {-0.2f, 0, 0, 0, 0, 0, 0, 0};
+    cv::Mat pixels(400, 640, CV_8UC1);
+    for(int y = 0; y < pixels.rows; ++y)
+        for(int x = 0; x < pixels.cols; ++x) pixels.at<uint8_t>(y, x) = x / 4;
+    for(int side = 0; side < 2; ++side) {
+        dai::ImgTransformation transformation(640, 400, intrinsic);
+        transformation.setDistortionCoefficients(distortion);
+        transformation.setExtrinsics(dai::Extrinsics({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {side ? 7.5f : 0.f, 0, 0}, dai::CameraBoardSocket::CAM_A));
+        auto frame = std::make_shared<dai::ImgFrame>();
+        frame->setCvFrame(pixels, dai::ImgFrame::Type::GRAY8);
+        frame->setTransformation(transformation);
+        (side == 0 ? left : right)->send(frame);
+    }
+    const cv::Mat camera = (cv::Mat_<float>(3, 3) << 800, 0, 320, 0, 800, 200, 0, 0, 1);
+    const cv::Mat target = cv::getOptimalNewCameraMatrix(camera, distortion, pixels.size(), alpha);
+    cv::Mat mapX, mapY, expected;
+    cv::initUndistortRectifyMap(camera, distortion, cv::Mat::eye(3, 3, CV_32F), target, pixels.size(), CV_32FC1, mapX, mapY);
+    cv::remap(pixels, expected, mapX, mapY, cv::INTER_LINEAR);
+    for(auto& queue : {outputLeft, outputRight}) {
+        auto output = receive(queue);
+        const auto actual = output->transformation.getIntrinsicMatrix();
+        for(int row = 0; row < 3; ++row)
+            for(int col = 0; col < 3; ++col) REQUIRE(actual[row][col] == Catch::Approx(target.at<float>(row, col)).margin(0.1));
+        const cv::Rect center(32, 32, 576, 336);
+        REQUIRE(cv::norm(output->getCvFrame()(center), expected(center), cv::NORM_INF) <= 2);
     }
 }
 #endif

@@ -55,6 +55,18 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     Rectification& setBackend(Backend backend);
 
     /**
+     * Set undistortion scaling for perspective cameras, using the first input's intrinsics
+     * as the shared target for both outputs. Applied before output-size scaling.
+     * 0 crops toward valid pixels; 1 retains all source pixels, potentially leaving borders.
+     * Negative values allow extra cropping. Rotation can leave invalid borders even at 0.
+     * By default no alpha scaling is applied. Ignored when rectification is disabled.
+     * Configure before starting the pipeline.
+     * @param alpha Finite scaling value, as in OpenCV getOptimalNewCameraMatrix.
+     * @returns This node for chaining.
+     */
+    Rectification& setAlphaScaling(float alpha);
+
+    /**
      * Set output size. On RVC2 this must match the input size; use ImageManip to resize.
      */
     Rectification& setOutputSize(uint32_t width, uint32_t height);
