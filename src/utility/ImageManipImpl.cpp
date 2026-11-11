@@ -1039,18 +1039,28 @@ static bool colorConvertMono8ToColor(const ColorChangeArgs& args, bool planar) {
     const auto& dstSpecs = args.dstSpecs;
     const auto* src = args.inputFrame->getOffsetData().data();
     auto* dst = args.outputFrame->getOffsetData().data();
-    const std::array<uint32_t, 3> offsets{dstSpecs.p1Offset, dstSpecs.p2Offset, dstSpecs.p3Offset};
-    const std::array<uint32_t, 3> strides{dstSpecs.p1Stride, dstSpecs.p2Stride, dstSpecs.p3Stride};
-    for(uint32_t y = 0; y < srcSpecs.height; ++y) {
-        const auto* row = src + srcSpecs.p1Offset + y * srcSpecs.p1Stride;
-        if(planar) {
-            for(size_t channel = 0; channel < offsets.size(); ++channel) {
-                std::copy_n(row, srcSpecs.width, dst + offsets[channel] + y * strides[channel]);
+    src += srcSpecs.p1Offset;
+    if(planar) {
+        const std::array<uint32_t, 3> offsets{dstSpecs.p1Offset, dstSpecs.p2Offset, dstSpecs.p3Offset};
+        const std::array<uint32_t, 3> strides{dstSpecs.p1Stride, dstSpecs.p2Stride, dstSpecs.p3Stride};
+        for(size_t channel = 0; channel < offsets.size(); ++channel) {
+            auto* plane = dst + offsets[channel];
+            if(srcSpecs.p1Stride == srcSpecs.width && strides[channel] == srcSpecs.width) {
+                std::copy_n(src, static_cast<size_t>(srcSpecs.width) * srcSpecs.height, plane);
+            } else {
+                for(uint32_t y = 0; y < srcSpecs.height; ++y) {
+                    std::copy_n(src + y * srcSpecs.p1Stride, srcSpecs.width, plane + y * strides[channel]);
+                }
             }
-        } else {
+        }
+    } else {
+        for(uint32_t y = 0; y < srcSpecs.height; ++y) {
+            const auto* row = src + y * srcSpecs.p1Stride;
             auto* out = dst + dstSpecs.p1Offset + y * dstSpecs.p1Stride;
             for(uint32_t x = 0; x < srcSpecs.width; ++x) {
-                std::fill_n(out + 3 * x, 3, row[x]);
+                *out++ = row[x];
+                *out++ = row[x];
+                *out++ = row[x];
             }
         }
     }

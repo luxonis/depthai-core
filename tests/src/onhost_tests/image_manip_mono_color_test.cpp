@@ -13,10 +13,12 @@ using namespace dai::impl;
 TEST_CASE("ImageManip converts full-range mono to RGB and BGR without touching padding", "[ImageManip][ColorConversion]") {
     const auto inputType = GENERATE(ImgFrame::Type::RAW8, ImgFrame::Type::GRAY8);
     const auto outputType = GENERATE(ImgFrame::Type::RGB888i, ImgFrame::Type::BGR888i, ImgFrame::Type::RGB888p, ImgFrame::Type::BGR888p);
+    const bool packedSource = GENERATE(false, true);
+    const bool packedDestination = GENERATE(false, true);
     const bool planar = outputType == ImgFrame::Type::RGB888p || outputType == ImgFrame::Type::BGR888p;
     // Odd width, row padding, separate plane strides/offsets, and memory-view offsets.
-    const FrameSpecs srcSpecs{5, 2, 3, 0, 0, 8, 0, 0};
-    const FrameSpecs dstSpecs{5, 2, 5, 31, 59, planar ? 9U : 19U, 10, 11};
+    const FrameSpecs srcSpecs{5, 2, 3, 0, 0, packedSource ? 5U : 8U, 0, 0};
+    const FrameSpecs dstSpecs{5, 2, 5, 31, 59, packedDestination ? (planar ? 5U : 15U) : (planar ? 9U : 19U), 5, packedDestination ? 5U : 11U};
     constexpr size_t memoryOffset = 7;
     constexpr uint8_t sentinel = 0xA5;
     auto src = std::make_shared<_ImageManipMemory>(100);
