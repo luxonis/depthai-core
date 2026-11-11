@@ -1092,6 +1092,39 @@ dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
+# Camera behaviour on any connected camera: each test derives its expectations from the cameras the device reports
+set(camera_behaviour_tests
+    camera_streams_test
+    camera_control_test
+    camera_calibration_metadata_test
+    camera_capability_test
+    camera_isp_rate_test
+    camera_mode_selection_test
+    camera_pool_test
+)
+foreach(name IN LISTS camera_behaviour_tests)
+    dai_add_test(${name} src/ondevice_tests/pipeline/node/${name}.cpp)
+    target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+    dai_set_test_labels(${name} ondevice)
+endforeach()
+# Picking an output from a size or rate range crashes the RVC4 firmware (OS 1.46.0).
+# The other three hold only on RVC2NG: NATIVE is its opaque capture layout, its ISP output keeps the selected
+# sensor mode's size where RVC4 scales it, and it refuses an ISP byte limit below one frame where RVC4 keeps two frames.
+set(camera_behaviour_tagged_tests
+    camera_capability_selection_test
+    camera_native_orientation_test
+    camera_isp_mode_test
+    camera_isp_byte_limit_test
+)
+dai_add_tagged_test(camera_capability_selection_test camera_capability_test capability-selection)
+dai_add_tagged_test(camera_native_orientation_test camera_capability_test native-orientation)
+dai_add_tagged_test(camera_isp_mode_test camera_mode_selection_test isp-mode)
+dai_add_tagged_test(camera_isp_byte_limit_test camera_pool_test isp-byte-limit)
+foreach(name IN LISTS camera_behaviour_tagged_tests)
+    dai_set_test_labels(${name} ondevice)
+endforeach()
+set_tests_properties(${camera_behaviour_tests} ${camera_behaviour_tagged_tests} PROPERTIES TIMEOUT 180)
+
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
