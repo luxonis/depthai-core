@@ -67,7 +67,6 @@ inline constexpr std::array BACKEND_PROFILES = {
     stereo(StereoDepth::PresetMode::FAST_ACCURACY, 30.f),
     stereo(StereoDepth::PresetMode::FAST_DENSITY, 30.f),
 
-    noConfig(Depth::Algorithm::GPU_STEREO, 2592, 1944, 5.f),
     noConfig(Depth::Algorithm::GPU_STEREO, 1280, 800, 30.f),
     noConfig(Depth::Algorithm::GPU_STEREO, 640, 400, 55.f),
 };

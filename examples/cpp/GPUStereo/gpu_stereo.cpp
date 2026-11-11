@@ -20,9 +20,12 @@ int main() {
     camRight->build(dai::CameraBoardSocket::CAM_C);
 
     auto gpu = pipeline.create<dai::node::GPUStereo>();
-    camLeft->requestFullResolutionOutput()->link(gpu->left);
-    camRight->requestFullResolutionOutput()->link(gpu->right);
-    gpu->initialConfig->setConfidenceThreshold(25);
+    // Supported input sizes: 1280x800 and 640x400 (rectified inside the node).
+    gpu->build(*camLeft->requestOutput({1280, 800}, dai::ImgFrame::Type::GRAY8), *camRight->requestOutput({1280, 800}, dai::ImgFrame::Type::GRAY8));
+    // Confidence 0..255, higher = more confident; pixels below the threshold are invalidated (0 = off).
+    gpu->initialConfig->setConfidenceThreshold(10);
+    // GPU_CPU (default) balances GPU and CPU; GPU_ONLY keeps the CPU almost free (GPU fully busy).
+    gpu->initialConfig->setComputeMode(dai::GPUStereoConfig::ComputeMode::GPU_CPU);
 
     auto dispQ = gpu->disparity.createOutputQueue();
 
@@ -36,6 +39,7 @@ int main() {
         cv::normalize(dispF, disp8, 0, 255, cv::NORM_MINMAX, CV_8U);
         cv::Mat dispColor;
         cv::applyColorMap(disp8, dispColor, cv::COLORMAP_JET);
+        dispColor.setTo(cv::Scalar(0, 0, 0), disp == 0);  // invalid pixels in black
         cv::imshow("GPUStereo Disparity", dispColor);
         if(cv::waitKey(1) == 'q') break;
     }

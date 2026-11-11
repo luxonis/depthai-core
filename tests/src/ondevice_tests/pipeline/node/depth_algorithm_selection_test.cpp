@@ -120,17 +120,18 @@ TEST_CASE("Depth::selectBackend falls back to NAS when no NeuralDepth model meet
     REQUIRE(std::holds_alternative<std::monostate>(sel.config));
 }
 
-TEST_CASE("Depth::selectBackend picks GPUStereo via resolution-fit fallback when target FPS is not met", "[Depth]") {
-    SECTION("oversized resolution falls back to highest-FPS profile that fits") {
-        // 1920x1440 exceeds every non-GPU backend cap; GPUStereo 2592x1944 @5 FPS is the resolution-fit fallback.
+TEST_CASE("Depth::selectBackend falls back to FAST_ACCURACY above the largest GPUStereo profile", "[Depth]") {
+    // GPUStereo supports up to 1280x800 (the 2592x1944 profile was dropped with the classical stereo engine), so
+    // oversized resolutions take the last-resort StereoDepth FAST_ACCURACY fallback.
+    SECTION("oversized resolution") {
         const auto sel = select(std::make_pair(1920u, 1440u), 30.f);
-        REQUIRE(sel.algorithm == Depth::Algorithm::GPU_STEREO);
-        REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+        REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
+        REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
     }
-    SECTION("native sensor resolution above 1280x800 uses the same fallback path") {
+    SECTION("native sensor resolution above 1280x800") {
         const auto sel = select(std::make_pair(2592u, 1944u), 30.f);
-        REQUIRE(sel.algorithm == Depth::Algorithm::GPU_STEREO);
-        REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+        REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
+        REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
     }
 }
 
