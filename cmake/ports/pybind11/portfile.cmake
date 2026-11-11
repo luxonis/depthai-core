@@ -1,8 +1,9 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO pybind/pybind11
-    REF 97bf890db679505a14dfe547a5e77bb2bd05dc90
-    SHA512 55d6f3974d09a613bd888bfb9d1aa23ad99d1362543dfcc8912b610397a541b7069d392ce734fa366e1339c3b80ddd252981dda5f4960c1801d8d87c70512c6b
+    # Preserve Python trampoline ownership through shared_from_this: pybind/pybind11#6163.
+    REF e0cd29d343d23ea865606250c69f84fea7404177
+    SHA512 01888694f5d0b72bfd0497c79fbc44cc0744daeba3e145804660131bf30972afdc058bd223c0b83a5c49ed444356b3b5346848872bf67bf9607526c742fd293a
     HEAD_REF master
 )
 vcpkg_cmake_configure(

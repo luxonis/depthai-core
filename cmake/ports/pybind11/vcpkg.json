@@ -1,7 +1,7 @@
 
 {
   "name": "pybind11",
-  "version-string": "3.2.0-dev-fdec8c350",
+  "version-string": "3.1.0-e0cd29d343",
   "description": "Seamless operability between C++11 and Python",
   "dependencies": [
 	    {
