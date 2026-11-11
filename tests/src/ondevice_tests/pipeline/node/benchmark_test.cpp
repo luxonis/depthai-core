@@ -139,6 +139,7 @@ TEST_CASE("Closing the device interrupts a slow device BenchmarkOut", "[.][slow-
     const auto start = std::chrono::steady_clock::now();
     device->close();
     const auto closeTime = std::chrono::steady_clock::now() - start;
-    REQUIRE(closeTime < std::chrono::seconds(10));
+    // Core destroys a Gate session that has not exited 5 s into close; finishing sooner means it did not need to
+    REQUIRE(closeTime < std::chrono::seconds(5));
     REQUIRE(device->isClosed());
 }

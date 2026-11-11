@@ -12,11 +12,12 @@ using namespace buffer_test;
 
 namespace {
 
+// Core destroys a Gate session that has not exited 5 s into close; finishing sooner means it did not need to
 void requirePromptClose(dai::Device& device) {
     const auto start = std::chrono::steady_clock::now();
     device.close();
     const auto closeTime = std::chrono::steady_clock::now() - start;
-    REQUIRE(closeTime < std::chrono::seconds(10));
+    REQUIRE(closeTime < std::chrono::seconds(5));
     REQUIRE(device.isClosed());
 }
 
