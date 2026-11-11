@@ -5,6 +5,38 @@
 
 #include "../../../src/pipeline/node/DynamicCalibrationTransforms.hpp"
 
+#if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) && defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    #include "../../../src/pipeline/node/DynamicCalibrationUtils.hpp"
+
+TEST_CASE("DynamicCalibration preserves metric ToF depth and robust amplitude", "[DynamicCalibrationImages]") {
+    cv::Mat amplitude(10, 10, CV_16UC1, cv::Scalar(100));
+    amplitude.at<std::uint16_t>(9, 9) = 60000;
+    amplitude.at<std::uint16_t>(0, 0) = 50;
+    const cv::Mat depth(10, 10, CV_16UC1, cv::Scalar(1234));
+    const cv::Mat camera(10, 10, CV_8UC1, cv::Scalar(37));
+    const auto observation = dai::node::DclUtils::makeTofObservation(amplitude, depth, camera);
+    REQUIRE(observation.depthMeters.size() == 100);
+    REQUIRE(observation.depthMeters[0] == Catch::Approx(1.234));
+    REQUIRE(observation.amplitude.data[0] == Catch::Approx(128).margin(1));
+    REQUIRE(observation.camera.data[0] == 37);
+    REQUIRE(depth.at<std::uint16_t>(0, 0) == 1234);
+    SECTION("Empty observations are rejected") {
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation({}, {}, {}), std::invalid_argument);
+    }
+    SECTION("Depth cannot be interpreted as 8-bit image data") {
+        REQUIRE_THROWS_AS(dai::node::DclUtils::makeTofObservation(amplitude, camera, camera), std::invalid_argument);
+    }
+}
+
+TEST_CASE("DynamicCalibration preserves 8-bit image data", "[DynamicCalibrationImages]") {
+    const auto channels = GENERATE(1, 3);
+    const cv::Mat input(2, 3, CV_MAKETYPE(CV_8U, channels), cv::Scalar(17, 83, 249));
+    const auto image = dai::node::DclUtils::cvMatToImageData(input);
+    REQUIRE(image.format == (channels == 1 ? dcl::DCL_8UC1 : dcl::DCL_8UC3));
+    REQUIRE(image.data == std::vector<std::uint8_t>(input.data, input.data + input.total() * input.elemSize()));
+}
+#endif
+
 namespace {
 using Socket = dai::CameraBoardSocket;
 using Transform = std::vector<std::vector<float>>;

@@ -40,9 +40,28 @@ This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCa
 
 ---
 
+## ToF depth-assisted calibration
+
+Run `python3 examples/python/DynamicCalibration/calibration_dynamic_tof.py --device <IP-or-ID>`.
+It links native ToF amplitude/depth and CAM_B to host DynamicCalibration:
+
+```python
+tof.amplitude.link(dyn.inputs["tof"])
+tof.depth.link(dyn.tofDepth)
+cameraOut.link(dyn.left)
+dyn.setRunOnHost(True)
+```
+
+The node refines the metric ToF pose against camera edges, fixing the other
+camera poses. Use common edges at several depths/orientations and a plausible
+starting calibration. Depth must share the amplitude pixel model. Collection
+progress and edge-error/rejection diagnostics are printed; no SIFT coverage is
+required. Press **a** to apply in memory, **r** to collect again, **q** to quit.
+The example never flashes EEPROM. Device-side execution is not supported yet.
+
 ## Extrinsics for cameras outside calibration
 
-The result preserves DCL-produced camera poses relative to housing, when housing
+In image-based mode, the result preserves DCL-produced camera poses relative to housing, when housing
 calibration is available. Cameras that are not calibration inputs are positioned
 using measured factory extrinsics, rather than their previous housing poses.
 Every unobserved camera is anchored to a default stereo-depth reference camera: the

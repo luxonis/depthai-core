@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DynamicCalibration.hpp>
+#include <TofCalibration.hpp>
 #include <array>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
@@ -42,6 +43,7 @@ struct DclUtils {
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     static dcl::ImageData cvMatToImageData(const cv::Mat& mat);
+    static dcl::TofCalibrationFrame makeTofObservation(const cv::Mat& amplitude, const cv::Mat& depth, const cv::Mat& camera);
 #endif
     static dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode);
 };

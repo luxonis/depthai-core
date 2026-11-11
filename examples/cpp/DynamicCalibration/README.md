@@ -82,6 +82,24 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 
 ---
 
+## 1c) ToF depth-assisted calibration
+
+**File:** [`calibration_dynamic_tof.cpp`](calibration_dynamic_tof.cpp).
+
+```bash
+cmake --build build --target calibration_dynamic_tof
+./build/examples/cpp/DynamicCalibration/calibration_dynamic_tof --device <IP-or-ID>
+```
+
+Links native ToF amplitude/depth and CAM_B to host DynamicCalibration. Refines
+only the ToF pose using metric depth and common edges; other camera poses stay
+fixed. Use several scene depths/orientations and a plausible starting calibration.
+Prints collection progress and edge diagnostics. Keys: **a** apply in memory,
+**r** collect again, **q** quit. No EEPROM writes. Host execution is required.
+The Python counterpart has the same name and wiring.
+
+---
+
 ## 2) Calibration **quality check** (legacy)
 
 **File idea:** `calibration_quality_dynamic.cpp`
