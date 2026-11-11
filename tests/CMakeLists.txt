@@ -1105,7 +1105,7 @@ set(camera_behaviour_tests
 foreach(name IN LISTS camera_behaviour_tests)
     dai_add_test(${name} src/ondevice_tests/pipeline/node/${name}.cpp)
     target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
-    dai_set_test_labels(${name} ondevice rvc4 ci noreplayci)
+    dai_set_test_labels(${name} ondevice rvc4 ci noreplayci smoke)
 endforeach()
 # Picking an output from a size or rate range crashes the RVC4 firmware (OS 1.46.0).
 # The other three hold only on RVC2NG: NATIVE is its opaque capture layout, its ISP output keeps the selected
@@ -1187,7 +1187,7 @@ set(device_session_tests
     calibration_override_test
 )
 foreach(name IN LISTS device_session_tests)
-    dai_set_test_labels(${name} ondevice rvc4 ci)
+    dai_set_test_labels(${name} ondevice rvc4 ci smoke)
 endforeach()
 set_tests_properties(${device_session_tests} PROPERTIES TIMEOUT 60)
 
