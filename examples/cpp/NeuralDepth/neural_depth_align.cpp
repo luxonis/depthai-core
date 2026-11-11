@@ -66,7 +66,7 @@ int main() {
 
     auto stereo = pipeline.create<dai::node::NeuralDepth>();
     auto sync = pipeline.create<dai::node::Sync>();
-    auto align = pipeline.create<dai::node::ImageAlign>();
+    auto align = pipeline.create<dai::node::Align>();
 
     // --- Configure nodes ---
     sync->setSyncThreshold(std::chrono::milliseconds(static_cast<long long>(1000.0 / (2.0 * FPS))));
@@ -83,6 +83,12 @@ int main() {
     rgbOut->link(align->inputAlignTo);
     rgbOut->link(sync->inputs["rgb"]);
     align->outputAligned.link(sync->inputs["depth_aligned"]);
+
+    // Avoid retaining frame pools while waiting for matching timestamps.
+    for(const auto* name : {"rgb", "depth_aligned"}) {
+        sync->inputs[name].setBlocking(false);
+        sync->inputs[name].setMaxSize(1);
+    }
 
     // Create an output queue for the synchronized frames
     auto queue = sync->out.createOutputQueue();
