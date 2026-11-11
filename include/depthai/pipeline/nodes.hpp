@@ -63,6 +63,7 @@
 #endif
 
 // Internal nodes
+#include "node/ImgDetectionsFilter.hpp"
 #include "node/internal/XLinkIn.hpp"
 #include "node/internal/XLinkInHost.hpp"
 #include "node/internal/XLinkOut.hpp"
