@@ -56,14 +56,14 @@ void StereoDepth::buildInternal() {
     rectificationSync->setSyncThreshold(std::chrono::nanoseconds(std::chrono::seconds(1)) / 60);
     rectificationSync->setTimestampSource(Sync::TimestampSource::DEVICE);
     rectificationSync->out.link(matcherInputs["inputSynced"]);
-    rectification->output1.link(rectificationSync->inputs["left"]);
-    rectification->output2.link(rectificationSync->inputs["right"]);
     setRectification(properties.enableRectification);
 }
 
 void StereoDepth::buildStage1() {
     if(configureMode) return;
     if(properties.enableRectification) {
+        rectification->output1.link(rectificationSync->inputs["left"]);
+        rectification->output2.link(rectificationSync->inputs["right"]);
         rectification->enableRectification(true);
         rectification->passthrough1.link(rectificationSync->inputs["originalLeft"]);
         rectification->passthrough2.link(rectificationSync->inputs["originalRight"]);
@@ -71,8 +71,10 @@ void StereoDepth::buildStage1() {
         remove(rectification->shared_from_this());
     }
     for(auto& input : rectificationSync->inputs) {
-        input.second.setBlocking(true);
-        input.second.setMaxSize(DEFAULT_QUEUE_SIZE);
+        // Sync may wait for just one stream; never block their shared rectification producer.
+        // Keep room in the device frame pools for the next frame to replace a queued one.
+        input.second.setBlocking(false);
+        input.second.setMaxSize(1);
     }
     auto& leftInput = properties.enableRectification ? rectification->input1 : rectificationSync->inputs["left"];
     auto& rightInput = properties.enableRectification ? rectification->input2 : rectificationSync->inputs["right"];

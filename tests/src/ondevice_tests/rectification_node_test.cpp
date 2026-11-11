@@ -6,6 +6,10 @@
 
 #include "depthai/depthai.hpp"
 
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    #include <opencv2/core.hpp>
+#endif
+
 namespace {
 
 std::shared_ptr<dai::ImgFrame> receive(const std::shared_ptr<dai::MessageQueue>& queue) {
@@ -82,6 +86,50 @@ TEST_CASE("RVC2 standalone Rectification matches StereoDepth", "[Rectification][
         }
     }
 }
+
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+TEST_CASE("RVC4 StereoDepth rectification preserves color across backends and format changes", "[Rectification][ondevice]") {
+    const auto backend = GENERATE(dai::Backend::CPU, dai::Backend::GPU, dai::Backend::HW, dai::Backend::AUTO);
+    dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC4) SKIP("Requires RVC4");
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    stereo->rectification->setBackend(backend);
+    stereo->initialConfig->setDepthAlign(dai::StereoDepthConfig::AlgorithmControl::DepthAlign::RECTIFIED_LEFT);
+    auto left = stereo->left.createInputQueue();
+    auto right = stereo->right.createInputQueue();
+    auto outputLeft = stereo->rectifiedLeft.createOutputQueue();
+    auto outputRight = stereo->rectifiedRight.createOutputQueue();
+    pipeline.start();
+    for(const auto type : {dai::ImgFrame::Type::GRAY8,
+                           dai::ImgFrame::Type::RGB888i,
+                           dai::ImgFrame::Type::RGB888p,
+                           dai::ImgFrame::Type::BGR888i,
+                           dai::ImgFrame::Type::BGR888p,
+                           dai::ImgFrame::Type::GRAY8}) {
+        CAPTURE(backend, type);
+        const bool color = type != dai::ImgFrame::Type::GRAY8;
+        const cv::Mat pixels(400, 640, color ? CV_8UC3 : CV_8UC1, cv::Scalar(40, 110, 220));
+        for(int side = 0; side < 2; ++side) {
+            const std::array<std::array<float, 3>, 3> intrinsic = {{{800, 0, 320}, {0, 800, 200}, {0, 0, 1}}};
+            dai::ImgTransformation transformation(640, 400, intrinsic);
+            // Force the regular remapping path, including when geometry stays unchanged between formats.
+            transformation.setDistortionCoefficients({-0.1f, 0, 0, 0, 0});
+            transformation.setExtrinsics(dai::Extrinsics({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {side ? 7.5f : 0.f, 0, 0}, dai::CameraBoardSocket::CAM_A));
+            auto frame = std::make_shared<dai::ImgFrame>();
+            frame->setCvFrame(pixels, type);
+            frame->setInstanceNum(static_cast<unsigned>(side ? dai::CameraBoardSocket::CAM_C : dai::CameraBoardSocket::CAM_B));
+            frame->setTransformation(transformation);
+            (side == 0 ? left : right)->send(frame);
+        }
+        for(auto& queue : {outputLeft, outputRight}) {
+            auto output = receive(queue);
+            REQUIRE(output->getType() == (color ? type : dai::ImgFrame::Type::RAW8));
+            const cv::Rect center(280, 160, 80, 80);
+            REQUIRE(cv::norm(output->getCvFrame()(center), pixels(center), cv::NORM_INF) <= 1);
+        }
+    }
+}
+#endif
 
 TEST_CASE("RVC2 StereoDepth uses Sync to discard unmatched input frames", "[StereoDepth][Sync][ondevice]") {
     dai::Pipeline pipeline;

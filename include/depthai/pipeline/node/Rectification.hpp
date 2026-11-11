@@ -34,7 +34,7 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     Output passthrough2{*this, {"passthrough2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
-     * Send outputs
+     * Rectified outputs. On host and RVC4, color inputs retain their color format, including RGB/BGR channel order and planar layout.
      */
     Output output1{*this, {"output1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     Output output2{*this, {"output2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};

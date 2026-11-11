@@ -1,10 +1,16 @@
 #include <catch2/catch_all.hpp>
 #include <depthai/pipeline/Pipeline.hpp>
+#include <depthai/pipeline/datatype/MessageGroup.hpp>
 #include <depthai/pipeline/node/GPUStereo.hpp>
 #include <depthai/pipeline/node/Rectification.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
 #include <depthai/properties/GPUStereoProperties.hpp>
 #include <depthai/properties/RectificationProperties.hpp>
+
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    #include <opencv2/calib3d.hpp>
+    #include <opencv2/imgproc.hpp>
+#endif
 
 TEST_CASE("Rectification backend selection survives host-device serialization", "[Rectification]") {
     auto node = dai::node::Rectification::create();
@@ -125,6 +131,11 @@ TEST_CASE("StereoDepth follows Rectification then Sync, with a true bypass when 
     REQUIRE(rightInput.tryGet<dai::ImgFrame>() == rightFrame);
     if(enabled) {
         REQUIRE(stereo->rectification->properties.enableRectification);
+        REQUIRE(sync->getSyncAttempts() == -1);
+        for(const auto& input : sync->inputs) {
+            REQUIRE_FALSE(input.second.getBlocking());
+            REQUIRE(input.second.getMaxSize() == 1);
+        }
         REQUIRE(stereo->rectification->output1.getConnections().at(0).in == &sync->inputs["left"]);
         REQUIRE(stereo->rectification->output2.getConnections().at(0).in == &sync->inputs["right"]);
         REQUIRE(stereo->rectification->passthrough1.getConnections().at(0).in == &sync->inputs["originalLeft"]);
@@ -137,6 +148,111 @@ TEST_CASE("StereoDepth follows Rectification then Sync, with a true bypass when 
 }
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+TEST_CASE("Rectification preserves RGB and BGR formats through bypass and remapping", "[Rectification]") {
+    const auto type = GENERATE(dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::RGB888p, dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::BGR888p);
+    dai::Pipeline pipeline(false);
+    auto rectify = pipeline.create<dai::node::Rectification>();
+    rectify->setRunOnHost(true);
+    auto left = rectify->input1.createInputQueue();
+    auto right = rectify->input2.createInputQueue();
+    auto outputLeft = rectify->output1.createOutputQueue();
+    auto outputRight = rectify->output2.createOutputQueue();
+    cv::Mat pixels(48, 64, CV_8UC3);
+    for(int y = 0; y < pixels.rows; ++y)
+        for(int x = 0; x < pixels.cols; ++x) pixels.at<cv::Vec3b>(y, x) = cv::Vec3b(x * 3, y * 4, 220 - x);
+    pipeline.start();
+    for(const bool distorted : {false, true, false}) {
+        CAPTURE(type, distorted);
+        const std::vector<float> distortion = {distorted ? -0.1f : 0.f, 0, 0, 0, 0};
+        for(int side = 0; side < 2; ++side) {
+            const std::array<std::array<float, 3>, 3> intrinsic = {{{80, 0, 32}, {0, 80, 24}, {0, 0, 1}}};
+            dai::ImgTransformation transformation(64, 48, intrinsic);
+            transformation.setDistortionCoefficients(distortion);
+            transformation.setExtrinsics(dai::Extrinsics({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {side ? 7.5f : 0.f, 0, 0}, dai::CameraBoardSocket::CAM_A));
+            auto frame = std::make_shared<dai::ImgFrame>();
+            frame->setCvFrame(pixels, type);
+            frame->setTransformation(transformation);
+            (side == 0 ? left : right)->send(frame);
+        }
+        const cv::Mat intrinsic = (cv::Mat_<float>(3, 3) << 80, 0, 32, 0, 80, 24, 0, 0, 1);
+        cv::Mat mapX, mapY, expected;
+        cv::initUndistortRectifyMap(intrinsic, distortion, cv::Mat::eye(3, 3, CV_32F), intrinsic, pixels.size(), CV_32FC1, mapX, mapY);
+        cv::remap(pixels, expected, mapX, mapY, cv::INTER_LINEAR);
+        for(auto& queue : {outputLeft, outputRight}) {
+            bool timedOut = false;
+            auto output = queue->get<dai::ImgFrame>(std::chrono::seconds(5), timedOut);
+            REQUIRE_FALSE(timedOut);
+            REQUIRE(output);
+            REQUIRE(output->getType() == type);
+            REQUIRE(output->getData().size() == 64 * 48 * 3);
+            REQUIRE(cv::norm(output->getCvFrame(), expected, cv::NORM_INF) == 0);
+        }
+    }
+    pipeline.stop();
+}
+
+TEST_CASE("StereoDepth rectification recovers from input skew larger than its queues", "[StereoDepth][Rectification]") {
+    const bool leftAhead = GENERATE(false, true);
+    dai::Pipeline pipeline(false);
+    struct HostStereoDepth : dai::node::StereoDepth {
+        Output matched{*this, {"matched", DEFAULT_GROUP, {{{dai::DatatypeEnum::MessageGroup, false}}}}};
+        bool runOnHost() const override {
+            return true;
+        }
+        void run() override {
+            while(mainLoop()) matched.send(getInputRef("inputSynced")->get<dai::MessageGroup>());
+        }
+    };
+    auto stereo = std::make_shared<HostStereoDepth>();
+    pipeline.add(stereo);
+    stereo->buildInternal();
+    stereo->rectification->setRunOnHost(true);
+    stereo->rectification->setBackend(dai::Backend::CPU);
+    for(auto& child : stereo->getNodeMap()) {
+        if(auto sync = std::dynamic_pointer_cast<dai::node::Sync>(child)) sync->setRunOnHost(true);
+    }
+    stereo->left.setMaxSize(64);
+    stereo->right.setMaxSize(64);
+    auto left = stereo->left.createInputQueue(64, true);
+    auto right = stereo->right.createInputQueue(64, true);
+    auto output = stereo->matched.createOutputQueue(64, true);
+    pipeline.start();
+    for(int index = 0; index <= 40; ++index) {
+        for(int side = 0; side < 2; ++side) {
+            const int sequence = index < 30 ? index + ((side == 0) == leftAhead ? 10 : 0) : index + 10;
+            const std::array<std::array<float, 3>, 3> intrinsic = {{{80, 0, 32}, {0, 80, 24}, {0, 0, 1}}};
+            dai::ImgTransformation transformation(64, 48, intrinsic);
+            transformation.setDistortionCoefficients({-0.1f, 0, 0, 0, 0});
+            transformation.setExtrinsics(dai::Extrinsics({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {side ? 7.5f : 0.f, 0, 0}, dai::CameraBoardSocket::CAM_A));
+            auto frame = std::make_shared<dai::ImgFrame>();
+            frame->setType(dai::ImgFrame::Type::RAW8);
+            frame->setSize(64, 48);
+            frame->setData(std::vector<uint8_t>(64 * 48, 127));
+            frame->setSequenceNum(sequence);
+            frame->setTimestampDevice(std::chrono::steady_clock::time_point(std::chrono::milliseconds(33 * sequence)));
+            frame->setTransformation(transformation);
+            (side == 0 ? left : right)->send(frame);
+        }
+    }
+    int previousSequence = -1;
+    while(previousSequence < 50) {
+        bool timedOut = false;
+        auto group = output->get<dai::MessageGroup>(std::chrono::seconds(5), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(group);
+        const auto sequence = group->get<dai::ImgFrame>("left")->getSequenceNum();
+        REQUIRE(sequence > previousSequence);
+        previousSequence = sequence;
+        for(const auto* name : {"left", "right", "originalLeft", "originalRight"}) {
+            auto frame = group->get<dai::ImgFrame>(name);
+            REQUIRE(frame);
+            REQUIRE(frame->getSequenceNum() == sequence);
+            REQUIRE(frame->getTimestampDevice() == std::chrono::steady_clock::time_point(std::chrono::milliseconds(33 * sequence)));
+        }
+    }
+    pipeline.stop();
+}
+
 TEST_CASE("Rectification forwards already rectified frames and resumes remapping when geometry changes", "[Rectification]") {
     const auto change = GENERATE(1, 2, 3);
     const auto resize = GENERATE(false, true);

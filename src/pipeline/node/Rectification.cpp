@@ -122,10 +122,16 @@ dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& e
 void Rectification::remapFrame(const RemapFrame& frame) {
     const auto& input = frame.input;
     const auto& output = frame.output;
-    output->setData(std::vector<uint8_t>(static_cast<size_t>(output->getWidth()) * output->getHeight()));
     auto image = input->getCvFrame();
-    if(image.channels() == 3) cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
     const cv::Rect area(0, 0, output->getWidth(), output->getHeight());
+    if(image.channels() == 3) {
+        cv::Mat remapped;
+        cv::remap(image, remapped, frame.mapX(area), frame.mapY(area), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+        output->fb.p1Offset = output->fb.p2Offset = output->fb.p3Offset = 0;
+        output->setCvFrame(remapped, input->getType());
+        return;
+    }
+    output->setData(std::vector<uint8_t>(static_cast<size_t>(output->getWidth()) * output->getHeight()));
     cv::remap(image, output->getFrame(), frame.mapX(area), frame.mapY(area), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
 }
 
