@@ -267,7 +267,8 @@ if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
 else()
     # pybind11 adds -flto to Release builds, and GCC then runs all LTO code generation of the module
     # in one process ("using serial compilation of 128 LTRANS jobs"). -flto=auto runs it in parallel.
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT MINGW AND NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10 AND NOT MINGW
+       AND NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
         set(DEPTHAI_PYTHON_GCC_PARALLEL_LTO ON)
     endif()
