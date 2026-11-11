@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   find_wheels:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       run_id: ${{ steps.find.outputs.run_id }}
     steps:
@@ -52,7 +52,7 @@ jobs:
   dispatch_stability:
     needs: [find_wheels, build_wheels]
     if: always() && needs.find_wheels.result == 'success' && (needs.build_wheels.result == 'success' || needs.build_wheels.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Trigger weekly stability runs
         env:

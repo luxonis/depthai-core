@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.11.0" LANGUAGES CXX C)
+project(depthai VERSION "3.12.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -201,7 +201,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d" "opencv_stitching")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_features2d")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -214,6 +214,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
         if("opencv_stitching" IN_LIST OpenCV_LIBS)
             set(DEPTHAI_HAVE_OPENCV_STITCHING ON)
+            set(OPTIONAL_OPENCV_LIBRARIES "opencv_stitching")
         endif()
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
@@ -449,13 +450,19 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+list(APPEND TARGET_CORE_SOURCES
+    src/pipeline/datatype/ImgDetectionsFilterConfig.cpp
+    src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+    src/pipeline/node/ImgDetectionsFilter.cpp
+    src/properties/ImgDetectionsFilterProperties.cpp
+)
+
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
         src/beta/BetaNode.cpp
         src/beta/device/MultiDeviceCalibrationHandler.cpp
         src/beta/datatype/Classifications.cpp
         src/beta/datatype/Clusters.cpp
-        src/beta/datatype/ImgDetectionsFilterConfig.cpp
         src/beta/datatype/Keypoints.cpp
         src/beta/datatype/MultiDeviceCalibrationControl.cpp
         src/beta/datatype/MultiDeviceCalibrationResult.cpp
@@ -481,7 +488,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/FastSAMParser.cpp
         src/beta/node/HRNetParser.cpp
         src/beta/node/ImageOutputParser.cpp
-        src/beta/node/ImgDetectionsFilter.cpp
         src/beta/node/KeypointParser.cpp
         src/beta/node/LaneDetectionParser.cpp
         src/beta/node/MapOutputParser.cpp
@@ -495,7 +501,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/XFeatMonoParser.cpp
         src/beta/node/XFeatStereoParser.cpp
         src/beta/node/YuNetParser.cpp
-        src/beta/properties/ImgDetectionsFilterProperties.cpp
         src/beta/utilities/Classification/ClassificationUtils.cpp
         src/beta/utilities/Detection/DetectionUtils.cpp
         src/beta/utilities/Detection/MaskUtils.cpp
@@ -563,10 +568,14 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
-    src/pipeline/utilities/Stitching/Stitching.cpp
-    src/pipeline/utilities/Stitching/FixedPanoramaCompositor.cpp
-    src/pipeline/utilities/Stitching/PlanarStitcher.cpp
 )
+if(DEPTHAI_HAVE_OPENCV_STITCHING)
+    list(APPEND TARGET_OPENCV_SOURCES
+        src/pipeline/utilities/Stitching/Stitching.cpp
+        src/pipeline/utilities/Stitching/FixedPanoramaCompositor.cpp
+        src/pipeline/utilities/Stitching/PlanarStitcher.cpp
+    )
+endif()
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 
@@ -628,6 +637,79 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # depthai::core and depthai::device-manager define the same symbols; make CMake refuse a consumer that links both
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "core")
 set_property(TARGET ${TARGET_CORE_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
+if(DEPTHAI_UNITY_BUILD)
+    set_target_properties(${TARGET_CORE_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # MSVC defines M_PI only when _USE_MATH_DEFINES is set before the first <cmath>. Sources define it
+    # themselves, which is too late when an earlier source of the batch included <cmath>.
+    if(MSVC)
+        target_compile_definitions(${TARGET_CORE_NAME} PRIVATE _USE_MATH_DEFINES=)
+    endif()
+    set_source_files_properties(
+        # These define file-local names that other sources also define, define macros, or have a
+        # file-scope using-directive.
+        src/beta/datatype/Classifications.cpp
+        src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/Lines.cpp
+        src/beta/datatype/Predictions.cpp
+        src/beta/device/MultiDeviceCalibrationHandler.cpp
+        src/beta/node/FastSAMParser.cpp
+        src/beta/node/HRNetParser.cpp
+        src/beta/node/ImageOutputParser.cpp
+        src/beta/node/MLSDParser.cpp
+        src/beta/node/MapOutputParser.cpp
+        src/beta/node/MultiDeviceCalibration.cpp
+        src/beta/node/PPTextDetectionParser.cpp
+        src/beta/node/XFeatMonoParser.cpp
+        src/beta/node/XFeatStereoParser.cpp
+        src/beta/utilities/FastSAM/FastSAMUtils.cpp
+        src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
+        src/beta/utilities/PPText/PPTextUtils.cpp
+        src/beta/utilities/RFDETR/RFDETRUtils.cpp
+        src/beta/utilities/SCRFD/SCRFDUtils.cpp
+        src/beta/utilities/YuNet/YuNetUtils.cpp
+        src/device/CalibrationHandler.cpp
+        src/device/DeviceBase.cpp
+        src/opencv/HolisticRecordReplay.cpp
+        src/pipeline/Pipeline.cpp
+        src/pipeline/node/Align.cpp
+        src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/node/ImageAlign.cpp
+        src/pipeline/node/Rectification.cpp
+        src/pipeline/node/Script.cpp
+        src/pipeline/node/internal/XLinkInHost.cpp
+        src/pipeline/node/internal/XLinkOutHost.cpp
+        src/utility/McapImpl.cpp
+        src/utility/OCVPorts.cpp
+        src/utility/ObjectTrackerImpl.cpp
+        src/utility/XLinkGlobalProfilingLogger.cpp
+        # httplib.h includes <resolv.h>, which defines the macro _res. Eigen uses _res as a name.
+        src/device/DeviceGate.cpp
+        src/modelzoo/Zoo.cpp
+        src/remote_connection/RemoteConnection.cpp
+        src/remote_connection/RemoteConnectionImpl.cpp
+        src/utility/EventsManager.cpp
+        src/utility/LogCollection.cpp
+        src/utility/StartupNotifications.cpp
+        src/utility/Telemetry.cpp
+        # windows.h defines the macro ERROR, and ImageManipImpl.hpp has an enumerator ERROR.
+        src/pipeline/datatype/ImgTransformations.cpp
+        src/pipeline/datatype/SpatialImgDetections.cpp
+        src/pipeline/node/ImageManip.cpp
+        src/pipeline/node/PointCloud.cpp
+        src/pipeline/utilities/Alignment/AlignmentUtilities.cpp
+        src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+        src/pipeline/utilities/Stitching/PlanarStitcher.cpp
+        src/utility/ImageManipImpl.cpp
+        # These include large third-party headers (PCL, RTAB-Map, Basalt).
+        src/basalt/BasaltVIO.cpp
+        src/pcl/PointCloudData.cpp
+        src/rtabmap/RTABMapConversions.cpp
+        src/rtabmap/RTABMapSLAM.cpp
+        src/rtabmap/RTABMapVIO.cpp
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
+endif()
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
@@ -706,7 +788,7 @@ endif()
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${OPTIONAL_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
@@ -1222,7 +1304,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_OPENCV_NAME})
 
     # Link to OpenCV (publicly)
-    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${OPTIONAL_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
@@ -1497,6 +1579,20 @@ message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}
 # Configure build information (version, opencv, pcl support)
 set(DEPTHAI_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build/version.hpp")
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build")
+# About 70 sources include version.hpp through ErrorMacros.hpp. When only the time changed, keep the
+# BUILD_DATETIME of the existing header, so that a reconfigure does not compile them all again.
+if(EXISTS "${DEPTHAI_VERSION_HEADER}")
+    file(READ "${DEPTHAI_VERSION_HEADER}" _old_version_header)
+    if(_old_version_header MATCHES "BUILD_DATETIME = \"([^\"]*)\"")
+        set(_new_build_datetime "${BUILD_DATETIME}")
+        set(BUILD_DATETIME "${CMAKE_MATCH_1}")
+        configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.hpp.check")
+        file(READ "${CMAKE_CURRENT_BINARY_DIR}/version.hpp.check" _check_version_header)
+        if(NOT _check_version_header STREQUAL _old_version_header)
+            set(BUILD_DATETIME "${_new_build_datetime}")
+        endif()
+    endif()
+endif()
 configure_file(
     "${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in"
     "${DEPTHAI_VERSION_HEADER}"

@@ -458,6 +458,11 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
     assert len(infos) > 0, "Expected at least one wheel info"
     _logger.debug(f"Found infos in {input_folder}: {infos}")
 
+    # Wheels of different architectures have files with the same names (the cpython .so, the
+    # dylibs). A combined wheel would keep only one of each, but claim all the architectures.
+    archs = {info.platform_tag.split("_", 3)[-1] for info in infos}
+    assert len(archs) == 1, f"Expected wheels of one architecture, got {sorted(archs)}"
+
     # Combined output wheel info - platforms on MacOS are not unique
     combined_info = WheelInfo.combine(infos, require_platform_uniqueness=False)
     _logger.info(f"Combined wheel name: {combined_info.wheel_name}")

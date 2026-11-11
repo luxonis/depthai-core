@@ -1345,8 +1345,8 @@ pybind11
 ~~~~~~~~
 
 License: BSD-3-Clause
-Version: luxonis-smart-holder
-Source: https://github.com/luxonis/pybind11/tree/f760e2b984b66be2cfa202c93da9d341a557fb5d
+Version: 3.2.0-dev-fdec8c350
+Source: https://github.com/pybind/pybind11/tree/97bf890db679505a14dfe547a5e77bb2bd05dc90
 
 Copyright (c) 2016 Wenzel Jakob <wenzel.jakob@epfl.ch>, All rights reserved.
 
@@ -2264,7 +2264,7 @@ eigen
 
 License: MPL-2.0
 Version: 3147391d946bb4b6c68edd901f2add6ac1f31f8c
-Source: https://gitlab.com/libeigen/eigen.git
+Source: https://eigen.googlesource.com/mirror
 
 Eigen is primarily MPL2 licensed. See COPYING.MPL2 and these links:
   http://www.mozilla.org/MPL/2.0/

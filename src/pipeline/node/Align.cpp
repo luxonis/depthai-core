@@ -26,6 +26,8 @@
     #include <opencv2/calib3d.hpp>
     #include <opencv2/core/types.hpp>
     #include <opencv2/imgproc/imgproc.hpp>
+
+    #include "pipeline/utilities/Alignment/RectifiedBounds.hpp"
 #endif
 
 namespace dai {
@@ -39,6 +41,19 @@ AlignProperties& Align::getProperties() {
 Align& Align::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
     return *this;
+}
+
+Align& Align::setInterpolation(Interpolation interpolation) {
+    switch(interpolation) {
+        case Interpolation::AUTO:
+        case Interpolation::NEAREST_NEIGHBOR:
+        case Interpolation::BILINEAR:
+        case Interpolation::BICUBIC:
+            properties.interpolation = interpolation;
+            return *this;
+        default:
+            throw std::invalid_argument("Unsupported Align interpolation");
+    }
 }
 
 void Align::setRunOnHost(bool runOnHost) {
@@ -136,6 +151,7 @@ struct ImgFrameRunState {
     int alignWidth = 0;
     int alignHeight = 0;
 
+    cv::Size inputSize;
     cv::Mat mapX1;
     cv::Mat mapY1;
     cv::Mat mapX2;
@@ -243,9 +259,9 @@ void shiftDepthImg(const ImgFrame& input,
     const float inputFx = inputIntrinsics[0][0];
     const float shiftXPreComputed = shiftX * inputFx;
 
-    depthLut[0] = shiftX > 0 ? width : -width;
+    depthLut[0] = 0;
     for(int i = 1; i < 65536; i++) {
-        depthLut[i] = shiftXPreComputed / (float)i + 0.5f;
+        depthLut[i] = static_cast<int>(std::round(shiftXPreComputed / static_cast<float>(i)));
     }
 
     for(int i = 0; i < height; i++) {
@@ -257,24 +273,30 @@ void shiftDepthImg(const ImgFrame& input,
         if(shiftX > 0) {
             for(int j = width - 1; j >= 0; j--) {
                 uint16_t depth = currentLine[j];
+                if(depth == 0) continue;
+                if(depthLut[depth] == 0) {
+                    alignedLine[j] = depth;
+                    continue;
+                }
 
                 int shifted = j + depthLut[depth];
 
-                if(shifted < width - 1) {
-                    alignedLine[shifted] = depth;
-                    alignedLine[shifted + 1] = depth;
-                }
+                if(shifted >= 0 && shifted < width) alignedLine[shifted] = depth;
+                if(shifted + 1 >= 0 && shifted + 1 < width) alignedLine[shifted + 1] = depth;
             }
         } else {
             for(int j = 0; j < width; j++) {
                 uint16_t depth = currentLine[j];
+                if(depth == 0) continue;
+                if(depthLut[depth] == 0) {
+                    alignedLine[j] = depth;
+                    continue;
+                }
 
                 int shifted = j + depthLut[depth];
 
-                if(shifted > 0) {
-                    alignedLine[shifted] = depth;
-                    alignedLine[shifted - 1] = depth;
-                }
+                if(shifted >= 0 && shifted < width) alignedLine[shifted] = depth;
+                if(shifted - 1 >= 0 && shifted - 1 < width) alignedLine[shifted - 1] = depth;
             }
         }
     }
@@ -352,7 +374,11 @@ std::shared_ptr<ImgFrame> makeRemapTarget(const ImgFrame& source, int width, int
     return frame;
 }
 
-std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunState& state, bool isSegmentationMask, std::array<uint8_t, 3> bgColorRgb) {
+std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
+                                        const ImgFrameRunState& state,
+                                        bool isSegmentationMask,
+                                        std::array<uint8_t, 3> bgColorRgb,
+                                        Interpolation interpolation = Interpolation::AUTO) {
     const cv::Scalar bgColor(bgColorRgb[0], bgColorRgb[1], bgColorRgb[2]);
 
     const ImgFrame::Type inputFrameType = inputImg.getType();
@@ -363,28 +389,45 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunSta
 
     const int width = static_cast<int>(inputImg.getWidth());
     const int height = static_cast<int>(inputImg.getHeight());
-    if(width != state.mapX1.cols || height != state.mapX1.rows) {
+    if(cv::Size(width, height) != state.inputSize) {
         throw std::runtime_error(fmt::format("Input frame size {}x{} does not match the size {}x{} the rectification maps were computed for",
                                              width,
                                              height,
-                                             state.mapX1.cols,
-                                             state.mapX1.rows));
+                                             state.inputSize.width,
+                                             state.inputSize.height));
     }
 
-    const auto frameSize = static_cast<uint32_t>(roundf(width * height * inputFrameBpp));
+    const int rectifiedWidth = state.mapX1.cols;
+    const int rectifiedHeight = state.mapX1.rows;
+    const auto frameSize = static_cast<uint32_t>(roundf(rectifiedWidth * rectifiedHeight * inputFrameBpp));
     const auto outFrameSize = static_cast<uint32_t>(roundf(state.alignWidth * state.alignHeight * inputFrameBpp));
 
-    const int interp = cv::INTER_NEAREST;
-    const int chromaInterp = isSegmentationMask ? cv::INTER_NEAREST : cv::INTER_LINEAR;
+    int interp = cv::INTER_NEAREST;
+    switch(interpolation) {
+        case Interpolation::AUTO:
+            if(inputFrameBpp == 1.5f) interp = cv::INTER_LINEAR;
+            break;
+        case Interpolation::NEAREST_NEIGHBOR:
+            break;
+        case Interpolation::BILINEAR:
+            interp = cv::INTER_LINEAR;
+            break;
+        case Interpolation::BICUBIC:
+            interp = cv::INTER_CUBIC;
+            break;
+        default:
+            throw std::invalid_argument("Unsupported Align interpolation");
+    }
+    if(isSegmentationMask || inputFrameType == ImgFrame::Type::RAW16) interp = cv::INTER_NEAREST;
 
     const auto remapFrame = [&](ImgFrame& src, ImgFrame& dst, const cv::Mat& mapX, const cv::Mat& mapY) {
         auto srcFrame = src.getFrame();
         auto dstFrame = dst.getFrame();
         if(inputFrameBpp == 1.5f) {
             if(dst.getType() == ImgFrame::Type::NV12) {
-                remapNv12(srcFrame, dstFrame, mapX, mapY, chromaInterp, bgColor);
+                remapNv12(srcFrame, dstFrame, mapX, mapY, interp, bgColor);
             } else {  // YUV420p; no other frame type has 1.5 bytes per pixel
-                remapYuv420(srcFrame, dstFrame, mapX, mapY, chromaInterp, bgColor);
+                remapYuv420(srcFrame, dstFrame, mapX, mapY, interp, bgColor);
             }
         } else if(dst.getType() == ImgFrame::Type::RGB888p || dst.getType() == ImgFrame::Type::BGR888p) {
             cv::Mat remapped;
@@ -396,12 +439,12 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunSta
     };
 
     // warp1: undistort + rectify in the input camera frame
-    auto rectified = makeRemapTarget(inputImg, width, height, frameSize);
+    auto rectified = makeRemapTarget(inputImg, rectifiedWidth, rectifiedHeight, frameSize);
     remapFrame(inputImg, *rectified, state.mapX1, state.mapY1);
 
     auto warp2Input = rectified;
     if(inputFrameType == ImgFrame::Type::RAW16 && state.staticDepthPlane == 0 && !state.degenerateStereoTransform) {
-        auto shifted = makeRemapTarget(inputImg, width, height, frameSize);
+        auto shifted = makeRemapTarget(inputImg, rectifiedWidth, rectifiedHeight, frameSize);
         shiftDepthImg(*rectified, *shifted, state.inputIntrinsics, state.inputToAlignExtrinsics);
         warp2Input = shifted;
     }
@@ -413,7 +456,9 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg, const ImgFrameRunSta
     return alignedImg;
 }
 
-ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform) {
+ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform,
+                                              const ImgTransformation& alignToTransform,
+                                              spdlog::async_logger& logger) {
     ImgFrameRunState state;
     try {
         state.inputIntrinsics = inputTransform.getIntrinsicMatrix();
@@ -463,11 +508,6 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
                 computeRectificationMatrices(inputIntrinsicsMat, inputDistortion, alignIntrinsicsMat, noDistortion, imageSize, rotation, translationMat);
         }
 
-        auto targetCamMatrix = inputIntrinsicsMat.clone();
-        auto meshSize = cv::Size(inputWidth, inputHeight);
-
-        cv::initUndistortRectifyMap(inputIntrinsicsMat, inputDistortion, rectificationR1, targetCamMatrix, meshSize, CV_32FC1, state.mapX1, state.mapY1);
-
         cv::Mat newRotation;
         cv::Mat newTranslation = cv::Mat::zeros(3, 1, CV_32FC1);
         if(state.rotationOnlyDegenerateTransform) {
@@ -495,6 +535,18 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
             backRotation = rectificationR2.t();
         }
 
+        state.inputSize = {inputWidth, inputHeight};
+        const auto bounds = detail::rectifiedBounds(
+            state.inputSize, inputIntrinsicsMat, inputDistortion, rectificationR1, {alignWidth, alignHeight}, alignIntrinsicsMat, backRotation.t(), &logger);
+        auto meshSize = bounds.size();
+        // The same maps can be reused when the input format changes to a chroma-subsampled format.
+        meshSize.width += meshSize.width % 2;
+        meshSize.height += meshSize.height % 2;
+        auto targetCamMatrix = inputIntrinsicsMat.clone();
+        targetCamMatrix.at<float>(0, 2) -= bounds.x;
+        targetCamMatrix.at<float>(1, 2) -= bounds.y;
+        cv::initUndistortRectifyMap(inputIntrinsicsMat, inputDistortion, rectificationR1, targetCamMatrix, meshSize, CV_32FC1, state.mapX1, state.mapY1);
+
         meshSize = cv::Size(alignWidth, alignHeight);
 
         cv::initUndistortRectifyMap(targetCamMatrix, noDistortion, backRotation, alignIntrinsicsMat, meshSize, CV_32FC1, state.mapX2, state.mapY2);
@@ -514,7 +566,8 @@ std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>&
                                                   const ImgTransformation& targetTransform,
                                                   const ImgFrameRunState& runState,
                                                   bool& warnedAboutDistortion,
-                                                  spdlog::async_logger& logger) {
+                                                  spdlog::async_logger& logger,
+                                                  Interpolation interpolation) {
     const auto alignToDistortion = targetTransform.getDistortionCoefficients();
     bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
 
@@ -537,7 +590,7 @@ std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>&
 
         warnAboutDistortion();
 
-        auto alignedImg = alignImgFrame(*imgFrameInput, runState, false, {0, 0, 0});
+        auto alignedImg = alignImgFrame(*imgFrameInput, runState, false, {0, 0, 0}, interpolation);
         const auto [sourceWidth, sourceHeight] = undistortedTransform.getSourceSize();
         alignedImg->setSourceSize(static_cast<unsigned int>(sourceWidth), static_cast<unsigned int>(sourceHeight));
         alignedImg->setTransformation(undistortedTransform);
@@ -669,7 +722,7 @@ void Align::run() {
                 if(runStateValid) {
                     logger->info("Input or alignTo transformation changed, updating rectification maps.");
                 }
-                runState = prepareRectificationMatrices(newInputTransform, newAlignToTransform);
+                runState = prepareRectificationMatrices(newInputTransform, newAlignToTransform, *logger);
                 runStateValid = true;
                 warnedAboutDistortion = false;
             }
@@ -681,7 +734,7 @@ void Align::run() {
         initialized = true;
 
         std::shared_ptr<Buffer> alignedInputMsg =
-            buildAlignedOutputMessage(inputMsg, inputDatatype, alignToTransform, runState, warnedAboutDistortion, *logger);
+            buildAlignedOutputMessage(inputMsg, inputDatatype, alignToTransform, runState, warnedAboutDistortion, *logger, properties.interpolation);
 
         auto tStop = std::chrono::steady_clock::now();
         auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(tStop - tStart).count();

@@ -16,7 +16,7 @@
 void bind_spatiallocationcalculatordata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<SpatialLocationCalculatorData, Py<SpatialLocationCalculatorData>, Buffer, std::shared_ptr<SpatialLocationCalculatorData>>
+    py::class_<SpatialLocationCalculatorData, Py<SpatialLocationCalculatorData>, Buffer, py::smart_holder>
         spatialLocationCalculatorData(m, "SpatialLocationCalculatorData", DOC(dai, SpatialLocationCalculatorData));
     py::class_<SpatialLocations> spatialLocations(m, "SpatialLocations", DOC(dai, SpatialLocations));
 

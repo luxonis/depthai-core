@@ -374,6 +374,8 @@ class CMakeBuild(build_ext):
         # Add additional cmake args from environment
         if 'CMAKE_ARGS' in os.environ:
             cmake_args += [os.environ['CMAKE_ARGS']]
+        if ("free-threading build" in sys.version):
+            cmake_args += ["-DDEPTHAI_PYTHON_GIL_FREE=ON"]
 
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
@@ -429,6 +431,7 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: 3.15",
         "Programming Language :: C++",
         "Programming Language :: Python :: Implementation :: CPython",
         "Topic :: Scientific/Engineering",

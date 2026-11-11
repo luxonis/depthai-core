@@ -833,7 +833,7 @@ void createImgDetections(const std::vector<DetectionCandidate>& detectionCandida
     for(const auto& det : detectionCandidates) {
         dai::ImgDetection detection;
         dai::RotatedRect rotatedRect(dai::Rect(dai::Point2f(det.xmin, det.ymin), dai::Point2f(det.xmax, det.ymax)), 0.0f);
-        detection.setBoundingBox(rotatedRect.normalize(width, height));
+        detection.setBoundingBox(rotatedRect.normalize(width, height), width, height);
         detection.confidence = det.score;
         detection.label = det.label;
         if(det.labelName) {

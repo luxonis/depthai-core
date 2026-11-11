@@ -5,7 +5,7 @@
 void bind_beta_rfdetrparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::RFDETRParserConfig, Py<beta::RFDETRParserConfig>, Buffer, std::shared_ptr<beta::RFDETRParserConfig>> config(
+    py::class_<beta::RFDETRParserConfig, Py<beta::RFDETRParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "RFDETRParserConfig", DOC(dai, beta, RFDETRParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;
