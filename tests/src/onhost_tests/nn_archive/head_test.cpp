@@ -97,12 +97,24 @@ TEST_CASE("NNArchive metadata preserves arbitrary JSON through libnop") {
 }
 
 TEST_CASE("NNArchive libnop serialization rejects truncated data") {
-    const ParserOptions options{};
+    ParserOptions options{};
+    // Truncate string payload data rather than the length byte of an empty string.
+    options.head.parser = "custom";
     auto bytes = dai::utility::serialize(options);
     bytes.pop_back();
     ParserOptions restored;
     nop::Deserializer<nop::BufferReader> deserializer{bytes.data(), bytes.size()};
-    REQUIRE_FALSE(deserializer.Read(&restored));
+    REQUIRE(deserializer.Read(&restored).error() == nop::ErrorStatus::ReadLimitReached);
+}
+
+TEST_CASE("NNArchive metadata libnop serialization rejects truncated JSON payloads") {
+    dai::nn_archive::v1::Metadata metadata;
+    metadata.extraParams = {{"custom_options", {1, 3}}};
+    auto bytes = dai::utility::serialize(metadata);
+    bytes.pop_back();
+    dai::nn_archive::v1::Metadata restored;
+    nop::Deserializer<nop::BufferReader> deserializer{bytes.data(), bytes.size()};
+    REQUIRE(deserializer.Read(&restored).error() == nop::ErrorStatus::ReadLimitReached);
 }
 
 TEST_CASE("Libnop JSON serialization rejects invalid MessagePack") {
