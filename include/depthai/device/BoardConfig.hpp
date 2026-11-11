@@ -8,6 +8,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
+#include "depthai/common/EepromData.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/common/optional.hpp"
@@ -102,6 +103,10 @@ struct BoardConfig {
     /// eMMC config
     std::optional<bool> emmc;
 
+    /// Override EEPROM data in memory before RVC2 board and camera initialization.
+    /// Does not write to the physical EEPROM.
+    std::optional<EepromData> eepromData;
+
     /// log path
     std::optional<std::string> logPath;
 
@@ -185,6 +190,7 @@ DEPTHAI_SERIALIZE_EXT(BoardConfig,
                       camera,
                       imu,
                       uvc,
-                      defaultImuExtr);
+                      defaultImuExtr,
+                      eepromData);
 
 }  // namespace dai

@@ -353,6 +353,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("usb3PhyInternalClock", &BoardConfig::usb3PhyInternalClock, DOC(dai, BoardConfig, usb3PhyInternalClock))
         .def_readwrite("mipi4LaneRgb", &BoardConfig::mipi4LaneRgb, DOC(dai, BoardConfig, mipi4LaneRgb))
         .def_readwrite("emmc", &BoardConfig::emmc, DOC(dai, BoardConfig, emmc))
+        .def_readwrite("eepromData", &BoardConfig::eepromData, DOC(dai, BoardConfig, eepromData))
         .def_readwrite("logPath", &BoardConfig::logPath, DOC(dai, BoardConfig, logPath))
         .def_readwrite("logSizeMax", &BoardConfig::logSizeMax, DOC(dai, BoardConfig, logSizeMax))
         .def_readwrite("logVerbosity", &BoardConfig::logVerbosity, DOC(dai, BoardConfig, logVerbosity))
@@ -924,6 +925,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getEthernetLinkDuplex();
             },
             "Get whether the Ethernet link is full duplex")
+        .def(
+            "getEmmcMemorySize",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getEmmcMemorySize();
+            },
+            DOC(dai, DeviceBase, getEmmcMemorySize))
         .def(
             "setProperties",
             [](DeviceBase& d, const DeviceProperties& properties) {
