@@ -60,11 +60,6 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::phaseUnwrapErrorThreshold, DOC(dai, ToFConfig, phaseUnwrapErrorThreshold))
 
         .def("setMedianFilter", &ToFConfig::setMedianFilter, DOC(dai, ToFConfig, setMedianFilter))
-        .def("setEnableIntermediateDepth",
-             &ToFConfig::setEnableIntermediateDepth,
-             py::arg("enable"),
-             py::return_value_policy::reference_internal,
-             DOC(dai, ToFConfig, setEnableIntermediateDepth))
         .def("setProfilePreset", &ToFConfig::setProfilePreset, DOC(dai, ToFConfig, setProfilePreset))
 
         // .def("set", &ToFConfig::set, py::arg("config"), DOC(dai, ToFConfig, set))

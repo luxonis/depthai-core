@@ -14,11 +14,6 @@ ToFConfig& ToFConfig::setMedianFilter(filters::params::MedianFilter median) {
     return *this;
 }
 
-ToFConfig& ToFConfig::setEnableIntermediateDepth(bool enable) {
-    enableIntermediateDepth = enable;
-    return *this;
-}
-
 void ToFConfig::setProfilePreset(Profile prof) {
     profile = prof;
     switch(prof) {

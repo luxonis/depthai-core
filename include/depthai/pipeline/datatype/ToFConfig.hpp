@@ -73,12 +73,10 @@ class ToFConfig : public Buffer {
     std::optional<bool> enablePhaseUnwrapping;
 
     /**
-     * Publish intermediate depth updates on RVC2 S5K63D when phase unwrapping
-     * is enabled. These updates combine the new frequency pair with
-     * opposite-frequency history from the previous four-frame stack.
-     * Disabled by default: only the depth result using both frequency pairs
-     * from the current stack is published. Burst mode suppresses intermediate
-     * updates regardless of this setting. Other sensors are unaffected.
+     * Publish intermediate S5K63D depth updates using previous-stack frequency history.
+     * False (default) publishes only depth using both frequency pairs from the current stack.
+     * Applies when phase unwrapping is enabled; burst mode always suppresses intermediate updates.
+     * Other sensors are unaffected. Supports initialConfig and runtime inputConfig.
      */
     bool enableIntermediateDepth = false;
 
@@ -92,16 +90,6 @@ class ToFConfig : public Buffer {
      * @param median Set kernel size for median filtering, or disable
      */
     ToFConfig& setMedianFilter(filters::params::MedianFilter median);
-
-    /**
-     * Select whether to publish intermediate S5K63D depth updates.
-     * May be used with initialConfig or sent through inputConfig at runtime.
-     * This changes output selection, not calibration corrections.
-     * @param enable True to publish intermediate updates; false by default.
-     * @return This configuration.
-     * @see enableIntermediateDepth
-     */
-    ToFConfig& setEnableIntermediateDepth(bool enable);
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
