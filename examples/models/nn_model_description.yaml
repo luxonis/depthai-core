@@ -1,0 +1,8 @@
+# Full NNModelDescription reference for an existing RVC4 export.
+# See docs/ModelZoo.md for supported values and platform-specific options.
+model: "luxonis/yolov6-nano:r2-coco-512x288"
+platform: "RVC4"
+optimization_level: "" # Hailo only; example value: "2".
+compression_level: "" # Hailo only; example value: "2".
+snpe_version: "2.23.0"
+model_precision_type: "INT8"

@@ -5,7 +5,7 @@
 void bind_beta_mppalmdetectionparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::MPPalmDetectionParserConfig, Py<beta::MPPalmDetectionParserConfig>, Buffer, std::shared_ptr<beta::MPPalmDetectionParserConfig>> config(
+    py::class_<beta::MPPalmDetectionParserConfig, Py<beta::MPPalmDetectionParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "MPPalmDetectionParserConfig", DOC(dai, beta, MPPalmDetectionParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

@@ -1066,8 +1066,9 @@ void DynamicCalibration::run() {
         logger->error("DynamicCalibration initialization failed with error code {}", static_cast<int>(initResult));
         return;
     }
+    // Sent through the device: this node thread must not own the pipeline, it could become the last owner
     utility::Telemetry::getInstance().event(
-        getParentPipeline(),
+        *device,
         "depthai_dynamic_calibration_node_started",
         nlohmann::json{{"run_on_host", runOnHost()}, {"performance_mode", toString(performanceMode)}, {"connected_sensor_count", connectedSensors.size()}});
     while(mainLoop()) {
