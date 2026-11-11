@@ -121,6 +121,14 @@ option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries i
 # ---------- Development Aids -------------------
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target" ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
+# clang-tidy must check the real sources, not the generated unity batches. Projects that add
+# depthai-core with add_subdirectory (for example the RVC4 firmware) keep their normal build.
+if(DEPTHAI_CLANG_TIDY OR NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(DEPTHAI_UNITY_BUILD_DEFAULT OFF)
+else()
+    set(DEPTHAI_UNITY_BUILD_DEFAULT ON)
+endif()
+option(DEPTHAI_UNITY_BUILD "Compile the core library and the Python bindings in batches of source files (unity build)" ${DEPTHAI_UNITY_BUILD_DEFAULT})
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
 # Local override paths
