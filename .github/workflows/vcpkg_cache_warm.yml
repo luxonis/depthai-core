@@ -6,8 +6,8 @@ name: Warm vcpkg binary caches
 # pushes at releases. Scheduled runs always execute on the default branch, so the entries saved here get
 # the main scope. The jobs run the configure step of the real jobs on the given ref (default: develop),
 # which builds the missing ports; the save action then prunes unused archives and saves only on change.
-# The configure commands must match the real
-# jobs in main.workflow.yml, python-main.yml and bindings/python/setup.py.
+# The configure commands, and the CMake on PATH (vcpkg uses it), must match the real jobs in main.workflow.yml,
+# python-main.yml, test_child_windows.yml and bindings/python/setup.py.
 
 on:
   schedule:
@@ -99,6 +99,73 @@ jobs:
         uses: ./.github/actions/vcpkg-cache/save
         with:
           vcpkg-installed-dir: build/vcpkg_installed
+
+  # test_child_windows.yml: build_windows_tests of the weekly HIL run (family 'hil-windows-long'). Only the
+  # weekly run uses this family, and GitHub deletes a cache entry that is not used for 7 days, so the weekly
+  # build found no entry and built all ports from source. Same job env, CMake and configure as that job.
+  hil-windows:
+    runs-on: windows-2025
+    env:
+      BUILD_TYPE: Release
+      CMAKE_GENERATOR: Visual Studio 18 2026
+      CMAKE_GENERATOR_PLATFORM: x64
+      CMAKE_GENERATOR_TOOLSET: v143
+      VCPKG_ROOT: C:\vcpkg
+      VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
+      VCPKG_DEFAULT_TRIPLET: x64-windows
+      VCPKG_DOWNLOADS: C:\vcpkg_downloads
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.WARM_REF }}
+          submodules: 'recursive'
+
+      - name: Copy the source to C:\depthai-core
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path "C:\depthai-core" | Out-Null
+          Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
+
+      - name: Setup cmake
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+        with:
+          cmakeVersion: '4.2.x'
+          useCloudCache: false
+
+      - name: Restore vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/restore
+        with:
+          family: hil-windows-long
+
+      - name: Configure (hil-windows-long)
+        run: |
+          cd C:\depthai-core
+          Invoke-WebRequest `
+            -Uri "https://github.com/winpython/winpython/releases/download/17.2.20250920/WinPython64-3.13.7.0dotrc.zip" `
+            -OutFile "winpython.zip"
+          New-Item -ItemType Directory -Force -Path "C:\depthai-core\winpython" | Out-Null
+          Expand-Archive -Path winpython.zip -DestinationPath "C:\depthai-core\winpython"
+          C:\depthai-core\winpython\WPy64-31700\python\python.exe -m venv venv
+          .\venv\Scripts\Activate.ps1
+          pip install --upgrade pip
+          pip install numpy pytest pytest-html
+          # The arguments of a build that is not for a pull request (test kind 'long').
+          cmake -S . -B C:/depthai-core/build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF `
+            -DVCPKG_OVERLAY_TRIPLETS=C:/depthai-core/cmake/triplets/release `
+            -DDEPTHAI_BUILD_TESTS=ON `
+            -DDEPTHAI_BUILD_EXAMPLES=ON `
+            -DDEPTHAI_BUILD_PYTHON=ON `
+            -DDEPTHAI_PYTHON_ENABLE_TESTS=ON `
+            -DDEPTHAI_TEST_EXAMPLES=ON `
+            -DDEPTHAI_PYTHON_TEST_EXAMPLES=ON `
+            -DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
+
+      - name: Save vcpkg binary cache
+        uses: ./.github/actions/vcpkg-cache/save
+        with:
+          vcpkg-installed-dir: C:/depthai-core/build/vcpkg_installed
 
   # python-main.yml: build-docstrings, pytest, build-windows-x86_64 and build-macos.
   python:
