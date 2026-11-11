@@ -41,6 +41,7 @@
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "device/DeviceGate.hpp"
 #include "device/StereoPairUtils.hpp"
+#include "pipeline/JoinedByPipelineScope.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "properties/GlobalProperties.hpp"
 #include "utility/EepromDataParser.hpp"
@@ -639,6 +640,8 @@ void DeviceBase::close() {
 
 void DeviceBase::telemetryEventLoop() {
     using namespace std::chrono_literals;
+    // Telemetry events look up the pipeline of this device, and closing the device joins this thread
+    utility::JoinedByPipelineScope joinedByPipeline;
 
     while(telemetryEventRunning) {
         std::shared_ptr<XLinkStream> stream;
@@ -1584,6 +1587,8 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 }
 
 void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, const PrevInfo& prev) {
+    // State changes and reconnection take a reference to the pipeline, and closing the device joins this thread
+    utility::JoinedByPipelineScope joinedByPipeline;
     try {
         while(true) {
             while(watchdogRunning) {

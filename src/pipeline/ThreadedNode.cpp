@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "depthai/utility/PipelineEventDispatcher.hpp"
+#include "pipeline/JoinedByPipelineScope.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -36,6 +37,8 @@ void ThreadedNode::start() {
     // Start the thread
     running = true;
     thread = std::thread([this]() {
+        // The pipeline joins this thread when it stops, so it must not be destroyed here
+        utility::JoinedByPipelineScope joinedByPipeline;
         try {
             run();
         } catch(const MessageQueue::QueueException& ex) {
