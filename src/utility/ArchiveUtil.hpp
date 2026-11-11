@@ -1,3 +1,5 @@
+#pragma once
+
 // C++ std
 #include <filesystem>
 #include <functional>

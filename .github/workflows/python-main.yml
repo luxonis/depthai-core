@@ -2,7 +2,7 @@ name: Depthai Python CI/CD
 
 # Controls when the action will run. Triggers the workflow on push
 concurrency:
-  group: depthai-python-${{ github.event.pull_request.number || github.ref }}-${{ inputs.concurrency_suffix || 'default' }}
+  group: depthai-python-${{ github.event.pull_request.number || github.ref }}-${{ inputs.concurrency_suffix || 'default' }}-${{ github.run_attempt > 1 && format('rerun-{0}-{1}', github.run_id, github.run_attempt) || 'initial' }}
   cancel-in-progress: true
 
 on:
@@ -49,35 +49,26 @@ jobs:
       id: check
       env:
         CHECK_EVENT_NAME: ${{ github.event_name }}
+        CHECK_TEST_REQUESTED: ${{ github.event.action == 'labeled' && github.event.label.name == 'testable' }}
         CHECK_GITHUB_REF: ${{ github.ref }}
-        CHECK_ACTION: ${{ github.event.action }}
       run: |
         EVENT_NAME="$CHECK_EVENT_NAME"
         GITHUB_REF="$CHECK_GITHUB_REF"
 
-        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
-        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
-          LABELS="[]"
-        else
-          LABELS="$RAW_LABELS"
-        fi
-
         SHOULD_RUN="true"
-        WHEEL_PYTHON_VERSIONS='["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]'
-        WHEEL_PYTHON_SETS='["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314"]'
+        WHEEL_PYTHON_VERSIONS='["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15", "3.15t"]'
+        WHEEL_PYTHON_SETS='["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314", "cp315-cp315", "cp315-cp315t"]'
         WHEEL_MACOS_RUNNERS='["macos-14"]'
 
         if [[ "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == "refs/heads/develop" || "$GITHUB_REF" == refs/heads/release* || "$GITHUB_REF" == refs/tags/v* ]]; then
-          WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-14"]'
+          WHEEL_MACOS_RUNNERS='["macos-15-intel", "macos-15"]'
         fi
 
         if [[ "$EVENT_NAME" == "pull_request" ]]; then
           WHEEL_PYTHON_VERSIONS='["3.14"]'
           WHEEL_PYTHON_SETS='["cp314-cp314"]'
-          if [[ "$CHECK_ACTION" != "labeled" ]]; then
-            # Run the binding precheck on edits; retain the existing full-build triggers.
-            SHOULD_RUN="false"
-          elif ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+          # PR tests require adding testable or explicitly rerunning the workflow.
+          if [[ "$GITHUB_RUN_ATTEMPT" -eq 1 && "$CHECK_TEST_REQUESTED" != "true" ]]; then
             SHOULD_RUN="false"
           fi
         fi
@@ -437,7 +428,9 @@ jobs:
       - name: Download audited wheels
         uses: actions/download-artifact@v8
         with:
-          pattern: audited-wheels-macos-${{ matrix.os }}-*
+          # The Python version follows the runner name. A plain '*' also matches the artifacts of
+          # a runner whose name starts with this one (macos-15 also matches macos-15-intel).
+          pattern: audited-wheels-macos-${{ matrix.os }}-[0-9]*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
       - name: Combine wheels
@@ -476,7 +469,7 @@ jobs:
     needs: [precheck, build-docstrings]
     runs-on: ubuntu-24.04
     container:
-      image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
+      image: quay.io/pypa/manylinux_2_28_x86_64:2026.11.01-2
       env:
         PLAT: manylinux_2_28_x86_64
     strategy:
@@ -545,7 +538,7 @@ jobs:
     needs: build-linux-x86_64
     runs-on: ubuntu-24.04
     container:
-      image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
+      image: quay.io/pypa/manylinux_2_28_x86_64:2026.11.01-2
       env:
         PLAT: manylinux_2_28_x86_64
     steps:
@@ -599,7 +592,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
-      image: quay.io/pypa/manylinux_2_28_aarch64:2025.11.10-2
+      image: quay.io/pypa/manylinux_2_28_aarch64:2026.11.01-2
       env:
         PLAT: manylinux_2_28_aarch64
     strategy:
@@ -671,7 +664,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
-      image: quay.io/pypa/manylinux_2_28_aarch64:2025.11.10-2
+      image: quay.io/pypa/manylinux_2_28_aarch64:2026.11.01-2
       env:
         PLAT: manylinux_2_28_aarch64
     steps:
@@ -773,7 +766,7 @@ jobs:
           python bindings/python/ci/smoke_depthai.py
 
   required_python_ci_report:
-    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Python CI report' || 'Python CI report (not applicable)' }}
+    name: ${{ (needs.precheck.result != 'success' || needs.precheck.outputs.should_run == 'true') && 'Required Python CI report' || 'Run Python tests (open Details)' }}
     needs: [precheck, pytest, combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
     if: always()
     runs-on: ubuntu-24.04
@@ -784,7 +777,11 @@ jobs:
         RESULTS: ${{ join(needs.*.result, ' ') }}
       run: |
         if [[ "$SHOULD_RUN" != "true" && "$RESULTS" != *failure* && "$RESULTS" != *cancelled* ]]; then
-          echo "Python CI is not required for this event."
+          echo "Open this workflow run and select Re-run all jobs to run Python tests, or add the testable label to the PR."
+          printf '%s\n' \
+            '**Python tests have not run.**' '' \
+            "[Open this workflow run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID) and select **Re-run all jobs**." '' \
+            'Alternatively, add the `testable` label to the PR to start the C++, Python, and HIL suites.' >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         if [[ "$RESULTS" == *failure* || "$RESULTS" == *cancelled* || "$RESULTS" == *skipped* ]]; then

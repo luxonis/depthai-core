@@ -56,6 +56,20 @@
         "VCPKG_INSTALL_OPTIONS": "--clean-buildtrees-after-build;--clean-packages-after-build",
         "DEPTHAI_BUILD_DEVICE_MANAGER": "ON"
       }
+    },
+    {
+      "name": "dev",
+      "displayName": "Developer build with tests, examples and Python bindings",
+      "description": "RelWithDebInfo with a shared core library. With a static library, each of the about 300 test and example executables gets its own copy of the library debug info, and the build needs about 80 GB of disk.",
+      "binaryDir": "${sourceDir}/build-dev",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "BUILD_SHARED_LIBS": "ON",
+        "DEPTHAI_BUILD_TESTS": "ON",
+        "DEPTHAI_BUILD_EXAMPLES": "ON",
+        "DEPTHAI_BUILD_PYTHON": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -73,6 +87,10 @@
         "depthai-device-manager"
       ],
       "jobs": 4
+    },
+    {
+      "name": "dev",
+      "configurePreset": "dev"
     }
   ]
 }
