@@ -26,6 +26,24 @@ permissions:
 env:
   WARM_REF: ${{ inputs.ref || 'develop' }}
   CMAKE_WINDOWS_SDK_VERSION: '10.0.26100.0'
+  # The wheel jobs build with `pip wheel`: it installs the build requirements of pyproject.toml, with its cmake
+  # pin, and puts them first on PATH. vcpkg takes the first CMake on PATH. On Windows the version of that CMake
+  # is part of every package ABI hash (CMake 4.2.7 of get-cmake gave other hashes than 4.2.3 of pip). With
+  # VCPKG_FORCE_SYSTEM_BINARIES (arm64) the hash has no CMake version, so another CMake builds archives with
+  # the same hashes (the CMake 4.4 of the manylinux image stops in the rtabmap configure). So this script
+  # installs the same build requirements and makes sure that their cmake is the first one on PATH.
+  INSTALL_WHEEL_BUILD_REQUIRES: |
+    import importlib.metadata, shutil, subprocess, sys, tomllib
+    with open("bindings/python/pyproject.toml", "rb") as f:
+        requires = tomllib.load(f)["build-system"]["requires"]
+    subprocess.check_call([sys.executable, "-m", "pip", "install", *requires])
+    want = importlib.metadata.version("cmake")
+    cmake = shutil.which("cmake")
+    have = subprocess.check_output([cmake, "--version"], text=True).split()[2]
+    if have != want:
+        print(f"::error::The first cmake on PATH is {cmake} ({have}); pyproject.toml gives cmake {want}.")
+        sys.exit(1)
+    print(f"cmake {have} from the build requirements: {cmake}")
 
 jobs:
   # main.workflow.yml: family 'core-tests' (build job) and 'core' (integration, tidy, minimal-build,
@@ -180,9 +198,8 @@ jobs:
           DEPTHAI_BUILD_BASALT: ${{ runner.os == 'Windows' && 'OFF' || 'ON' }}
           DEPTHAI_CONFIGURE_ONLY: "1"
         run: |
-          # The same build requirements as pyproject.toml, minus the cmake pin (the action above provides CMake).
           python -m pip install --upgrade pip
-          python -m pip install "setuptools>=77.0.3" "wheel>=0.45.1" mypy numpy jinja2
+          python -c "$INSTALL_WHEEL_BUILD_REQUIRES"
           cd bindings/python && python setup.py build_py build_ext
 
       - name: Save vcpkg binary cache
@@ -242,10 +259,11 @@ jobs:
 
       - name: Configure (wheel, through setup.py)
         run: |
-          PYBIN=/opt/python/cp312-cp312/bin
-          "$PYBIN/python" -m pip install --upgrade pip
-          "$PYBIN/python" -m pip install "setuptools>=77.0.3" "wheel>=0.45.1" mypy numpy jinja2
-          cd bindings/python && "$PYBIN/python" setup.py build_py build_ext
+          # This Python first on PATH, as the pip build environment of the real job (then its cmake is first too).
+          export PATH="/opt/python/cp312-cp312/bin:$PATH"
+          python -m pip install --upgrade pip
+          python -c "$INSTALL_WHEEL_BUILD_REQUIRES"
+          cd bindings/python && python setup.py build_py build_ext
 
       - name: Save vcpkg binary cache
         uses: ./.github/actions/vcpkg-cache/save
