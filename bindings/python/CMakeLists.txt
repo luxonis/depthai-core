@@ -288,7 +288,26 @@ set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     add_library(${TARGET_NAME} ${SOURCE_LIST})
 else()
+    # pybind11 adds -flto to Release builds, and GCC then runs all LTO code generation of the module
+    # in one process ("using serial compilation of 128 LTRANS jobs"). -flto=auto runs it in parallel.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10 AND NOT MINGW
+       AND NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+        set(DEPTHAI_PYTHON_GCC_PARALLEL_LTO ON)
+    endif()
     pybind11_add_module(${TARGET_NAME} ${SOURCE_LIST})
+    if(DEPTHAI_PYTHON_GCC_PARALLEL_LTO)
+        target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto;-fno-fat-lto-objects>")
+        target_link_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto>")
+    endif()
+endif()
+if(DEPTHAI_UNITY_BUILD)
+    set_target_properties(${TARGET_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # HostNodeBindings.cpp has a file-scope using-directive. NNDataBindings.cpp must define
+    # FORCE_IMPORT_ARRAY before its first include.
+    set_source_files_properties(src/pipeline/node/HostNodeBindings.cpp src/pipeline/datatype/NNDataBindings.cpp
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
 endif()
 
 if(WIN32)
@@ -474,13 +493,15 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE} "-c" "${version_command}"
 
 
 string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
-target_compile_definitions(${TARGET_NAME}
-    PRIVATE
-        DEPTHAI_PYTHON_VERSION="${DEPTHAI_PYTHON_VERSION}"
-        DEPTHAI_PYTHON_COMMIT_HASH="${BUILD_COMMIT}"
-        DEPTHAI_PYTHON_COMMIT_DATETIME="${BUILD_COMMIT_DATETIME}"
-        DEPTHAI_PYTHON_BUILD_DATETIME="${BUILD_DATETIME}"
+# Only py_bindings.cpp uses these values. As target definitions, a new BUILD_DATETIME at each configure
+# would compile all binding sources again.
+set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    "DEPTHAI_PYTHON_VERSION=\"${DEPTHAI_PYTHON_VERSION}\""
+    "DEPTHAI_PYTHON_COMMIT_HASH=\"${BUILD_COMMIT}\""
+    "DEPTHAI_PYTHON_COMMIT_DATETIME=\"${BUILD_COMMIT_DATETIME}\""
+    "DEPTHAI_PYTHON_BUILD_DATETIME=\"${BUILD_DATETIME}\""
 )
+set_source_files_properties(src/py_bindings.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
 # ASAN Settings as we are building and using shared library
 if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)

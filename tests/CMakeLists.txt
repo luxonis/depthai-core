@@ -326,6 +326,36 @@ include(CMakeParseArguments)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
+# Almost every test is one source file that includes catch2 and depthai.hpp. All tests reuse one
+# precompiled header, so these headers are parsed once and not once per test.
+option(DEPTHAI_TESTS_PCH "Share one precompiled header between the tests" ON)
+if(DEPTHAI_TESTS_PCH)
+    set(DEPTHAI_TESTS_PCH_TARGET depthai_tests_pch)
+    file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${DEPTHAI_TESTS_PCH_TARGET}.cpp" CONTENT "")
+    # An executable (main comes from Catch2WithMain), so that its PIE flags match the tests that reuse its header.
+    add_executable(${DEPTHAI_TESTS_PCH_TARGET} "${CMAKE_CURRENT_BINARY_DIR}/${DEPTHAI_TESTS_PCH_TARGET}.cpp")
+    add_default_flags(${DEPTHAI_TESTS_PCH_TARGET} LEAN)
+    set(_pch_depthai_target depthai::core)
+    if(NOT DEPTHAI_MERGED_TARGET AND TARGET depthai::opencv)
+        set(_pch_depthai_target depthai::opencv)
+    endif()
+    target_link_libraries(${DEPTHAI_TESTS_PCH_TARGET} PRIVATE ${_pch_depthai_target} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
+    target_precompile_headers(${DEPTHAI_TESTS_PCH_TARGET} PRIVATE
+        <catch2/catch_all.hpp>
+        <depthai/depthai.hpp>
+        <algorithm>
+        <chrono>
+        <memory>
+        <optional>
+        <string>
+        <thread>
+        <vector>
+    )
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${DEPTHAI_TESTS_PCH_TARGET})
+    endif()
+endif()
+
 # Function for adding new tests
 function(dai_add_test test_name test_src)
     # Parse arguments
@@ -334,6 +364,9 @@ function(dai_add_test test_name test_src)
     # Create test executable
     add_executable(${test_name} ${test_src})
     add_default_flags(${test_name} LEAN)
+    if(DEPTHAI_TESTS_PCH AND (NOT DAT_CXX_STANDARD OR DAT_CXX_STANDARD STREQUAL "17") AND NOT DAT_CONFORMING)
+        target_precompile_headers(${test_name} REUSE_FROM ${DEPTHAI_TESTS_PCH_TARGET})
+    endif()
 
     # Set compiler C++ standard if specified
     if(DAT_CXX_STANDARD)
