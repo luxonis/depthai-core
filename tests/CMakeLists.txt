@@ -628,6 +628,11 @@ dai_set_test_labels(pipeline_debugging_host_test onhost ci)
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
 dai_set_test_labels(nndata_test onhost ci)
 
+if(DEPTHAI_XTENSOR_SUPPORT)
+    dai_add_test(nndata_strides_device_test src/ondevice_tests/nndata_strides_device_test.cpp)
+    dai_set_test_labels(nndata_strides_device_test ondevice rvc2_all rvc4 ci)
+endif()
+
 #ImgDetections tests
 dai_add_test(imgdetections_test src/onhost_tests/pipeline/datatype/imgdetections_test.cpp)
 dai_set_test_labels(imgdetections_test onhost ci)

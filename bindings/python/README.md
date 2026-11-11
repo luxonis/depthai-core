@@ -23,6 +23,8 @@ when migrating.
 
 Install the released package from PyPI in a Python 3.9 or newer environment:
 
+GIL-free support is opt-in with `-DDEPTHAI_PYTHON_GIL_FREE=ON` (default OFF). Select a free-threaded Python interpreter separately to build for its ABI.
+
 ```sh
 python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade depthai

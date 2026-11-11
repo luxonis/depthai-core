@@ -1,9 +1,102 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/pipeline/datatype/NNData.hpp>
+#include <limits>
 
 #include "depthai/common/TensorInfo.hpp"
 #include "xtensor/misc/xmanipulation.hpp"
+
+TEST_CASE("NNData describes contiguous byte strides for singleton dimensions") {
+    xt::xarray<float> tensor = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+    tensor.reshape({1, 3, 1, 4});
+    for(const auto dataType : {dai::TensorInfo::DataType::FP16,
+                               dai::TensorInfo::DataType::FP32,
+                               dai::TensorInfo::DataType::FP64,
+                               dai::TensorInfo::DataType::INT,
+                               dai::TensorInfo::DataType::I8,
+                               dai::TensorInfo::DataType::U8F,
+                               dai::TensorInfo::DataType::U16F}) {
+        CAPTURE(dataType);
+        dai::NNData message;
+        message.addTensor("singleton", tensor, dataType, dai::TensorInfo::StorageOrder::NCHW);
+        const auto& info = message.tensors.at(0);
+        const auto bytes = static_cast<unsigned>(info.getDataTypeSize());
+        REQUIRE(info.dims == std::vector<unsigned>{1, 3, 1, 4});
+        REQUIRE(info.strides == std::vector<unsigned>{12 * bytes, 4 * bytes, 4 * bytes, bytes});
+        REQUIRE((message.getTensor<float>("singleton") == tensor));
+    }
+}
+
+TEST_CASE("NNData copies custom-strided tensors in logical row-major order") {
+    using Tensor = xt::xarray<float>;
+    Tensor::storage_type storage = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    Tensor::inner_strides_type strides = {1, 2, 4};
+    Tensor expected = {{{0, 4}, {2, 6}}, {{1, 5}, {3, 7}}};
+    SECTION("Dense storage") {
+        storage = Tensor::storage_type{0, 1, 2, 3, 4, 5, 6, 7};
+    }
+    SECTION("Padded storage") {
+        strides = {1, 2, 5};
+        expected = {{{0, 5}, {2, 7}}, {{1, 6}, {3, 8}}};
+    }
+    SECTION("Broadcast storage") {
+        storage = Tensor::storage_type{3};
+        strides = {0, 0, 0};
+        expected.fill(3);
+    }
+    const Tensor tensor(std::move(storage), Tensor::inner_shape_type{2, 2, 2}, std::move(strides));
+    for(const auto dataType : {dai::TensorInfo::DataType::FP16,
+                               dai::TensorInfo::DataType::FP32,
+                               dai::TensorInfo::DataType::FP64,
+                               dai::TensorInfo::DataType::INT,
+                               dai::TensorInfo::DataType::I8,
+                               dai::TensorInfo::DataType::U8F,
+                               dai::TensorInfo::DataType::U16F}) {
+        CAPTURE(dataType);
+        CAPTURE(tensor.strides());
+        dai::NNData message;
+        message.addTensor("strided", tensor, dataType, dai::TensorInfo::StorageOrder::CHW);
+        const auto& info = message.tensors.at(0);
+        const auto bytes = static_cast<unsigned>(info.getDataTypeSize());
+        REQUIRE(info.dims == std::vector<unsigned>{2, 2, 2});
+        REQUIRE(info.strides == std::vector<unsigned>{4 * bytes, 2 * bytes, bytes});
+        REQUIRE(message.getData().size() == 8 * bytes);
+        REQUIRE((message.getTensor<float>("strided") == expected));
+    }
+}
+
+TEST_CASE("NNData rejects tensors exceeding stride capacity without modifying existing data") {
+    using Tensor = xt::xarray<float>;
+    dai::NNData message;
+    message.addTensor("existing", std::vector<std::uint8_t>{7});
+    const std::vector<std::uint8_t> originalData(message.getData().begin(), message.getData().end());
+    for(const auto& shape : {Tensor::inner_shape_type{1U << 21, 1U << 20, 1U << 20}, Tensor::inner_shape_type{1U << 22, 1U << 21, 1U << 21}}) {
+        CAPTURE(shape);
+        const Tensor tensor(Tensor::storage_type{1}, Tensor::inner_shape_type(shape), Tensor::inner_strides_type{0, 0, 0});
+        REQUIRE_THROWS_AS(message.addTensor("oversized", tensor, dai::TensorInfo::DataType::FP64), std::overflow_error);
+        const std::vector<std::uint8_t> remainingData(message.getData().begin(), message.getData().end());
+        REQUIRE(remainingData == originalData);
+        REQUIRE(message.getAllLayerNames() == std::vector<std::string>{"existing"});
+    }
+    message.addTensor("next", std::vector<std::uint8_t>{8});
+    REQUIRE(message.getTensor<std::uint8_t>("existing")(0, 0) == 7);
+    REQUIRE(message.getTensor<std::uint8_t>("next")(0, 0) == 8);
+}
+
+TEST_CASE("NNData rejects tensors exceeding buffer capacity without modifying existing data") {
+    using Tensor = xt::xarray<float>;
+    dai::NNData message;
+    message.addTensor("existing", std::vector<std::uint8_t>{7});
+    const std::vector<std::uint8_t> originalData(message.getData().begin(), message.getData().end());
+    const auto outerDimension = std::numeric_limits<unsigned int>::max();
+    // Keep the strides representable while the total byte count exceeds buffer capacity.
+    const auto innerDimension = std::vector<std::uint8_t>().max_size() / outerDimension + 1;
+    const Tensor tensor(Tensor::storage_type{1}, Tensor::inner_shape_type{outerDimension, innerDimension}, Tensor::inner_strides_type{0, 0});
+    REQUIRE_THROWS_AS(message.addTensor("oversized", tensor, dai::TensorInfo::DataType::U8F), std::length_error);
+    const std::vector<std::uint8_t> remainingData(message.getData().begin(), message.getData().end());
+    REQUIRE(remainingData == originalData);
+    REQUIRE(message.getAllLayerNames() == std::vector<std::string>{"existing"});
+}
 
 TEST_CASE("a") {
     dai::NNData nndata;
