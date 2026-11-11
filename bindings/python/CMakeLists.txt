@@ -495,10 +495,13 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE} "-c" "${version_command}"
 string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
 # Only py_bindings.cpp uses these values. As target definitions, a new BUILD_DATETIME at each configure
 # would compile all binding sources again.
-set_source_files_properties(src/py_bindings.cpp PROPERTIES
-    COMPILE_DEFINITIONS "DEPTHAI_PYTHON_VERSION=\"${DEPTHAI_PYTHON_VERSION}\";DEPTHAI_PYTHON_COMMIT_HASH=\"${BUILD_COMMIT}\";DEPTHAI_PYTHON_COMMIT_DATETIME=\"${BUILD_COMMIT_DATETIME}\";DEPTHAI_PYTHON_BUILD_DATETIME=\"${BUILD_DATETIME}\""
-    SKIP_UNITY_BUILD_INCLUSION ON
+set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    "DEPTHAI_PYTHON_VERSION=\"${DEPTHAI_PYTHON_VERSION}\""
+    "DEPTHAI_PYTHON_COMMIT_HASH=\"${BUILD_COMMIT}\""
+    "DEPTHAI_PYTHON_COMMIT_DATETIME=\"${BUILD_COMMIT_DATETIME}\""
+    "DEPTHAI_PYTHON_BUILD_DATETIME=\"${BUILD_DATETIME}\""
 )
+set_source_files_properties(src/py_bindings.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
 # ASAN Settings as we are building and using shared library
 if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
