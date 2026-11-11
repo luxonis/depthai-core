@@ -1246,3 +1246,35 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     dai_add_test(poe_link_reset_test src/ondevice_tests/poe_link_reset_test.cpp)
     dai_set_test_labels(poe_link_reset_test ondevice rvc2 poe rvc4 ci noreplayci nousb smoke)
 endif()
+
+# RVC2NG: the tests that pass on the devkit. Its nightly runs every one, every push the ones labelled smoke.
+set(rvc2ng_tests
+    flash_eeprom_fields_test
+    pipeline_test
+    input_output_naming_test
+    subnode_test
+    regression_boot_test
+    bridge_large_messages
+    camera_streams_test
+    camera_calibration_metadata_test
+    camera_capability_test
+    camera_isp_rate_test
+    camera_mode_selection_test
+    camera_pool_test
+    camera_capability_selection_test
+    camera_native_orientation_test
+    camera_isp_mode_test
+    camera_isp_byte_limit_test
+    gate_node_transport_test
+    gate_node_grant_test
+    sync_device_timestamp_test
+    benchmark_report_test
+    gate_rpc_test
+    calibration_override_test
+)
+foreach(name IN LISTS rvc2ng_tests)
+    set_property(TEST ${name} APPEND PROPERTY LABELS rvc2ng)
+endforeach()
+# Every push on RVC2NG only, since none of these runs on RVC4
+set_property(TEST pipeline_test camera_capability_selection_test camera_native_orientation_test camera_isp_mode_test camera_isp_byte_limit_test
+             APPEND PROPERTY LABELS smoke)
