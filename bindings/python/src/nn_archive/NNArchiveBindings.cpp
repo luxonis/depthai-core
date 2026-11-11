@@ -156,6 +156,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1model.def_readwrite("outputs", &v1::Model::outputs, DOC(dai, nn_archive, v1, Model, outputs));
 
     v1head.def(py::init<>());
+    v1head.def(py::pickle([](const v1::Head& value) { return nlohmann::json(value).dump(); },
+                          [](const std::string& state) { return nlohmann::json::parse(state).get<v1::Head>(); }));
     v1head.def_readwrite("name", &v1::Head::name, DOC(dai, nn_archive, v1, Head, name));
     v1head.def_readwrite("metadata", &v1::Head::metadata, DOC(dai, nn_archive, v1, Head, metadata));
     v1head.def_readwrite("outputs", &v1::Head::outputs, DOC(dai, nn_archive, v1, Head, outputs));
@@ -189,6 +191,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1input.def_readwrite("shape", &v1::Input::shape, DOC(dai, nn_archive, v1, Input, shape));
 
     v1metadata.def(py::init<>());
+    v1metadata.def(py::pickle([](const v1::Metadata& value) { return nlohmann::json(value).dump(); },
+                              [](const std::string& state) { return nlohmann::json::parse(state).get<v1::Metadata>(); }));
     v1metadata.def_readwrite("postprocessorPath", &v1::Metadata::postprocessorPath, DOC(dai, nn_archive, v1, Metadata, postprocessorPath));
     v1metadata.def_readwrite("anchors", &v1::Metadata::anchors, DOC(dai, nn_archive, v1, Metadata, anchors));
     v1metadata.def_readwrite("classes", &v1::Metadata::classes, DOC(dai, nn_archive, v1, Metadata, classes));
