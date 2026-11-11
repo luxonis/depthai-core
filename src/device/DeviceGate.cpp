@@ -128,6 +128,14 @@ DeviceGate::HTTPImpl::HTTPImpl(DeviceInfo deviceInfo) {
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
     // pimpl->cli->set_connection_timeout(2);
+#ifdef SO_NOSIGPIPE
+    // cpp-httplib sends with flags 0. On macOS, a send on a gate connection that the peer reset raises SIGPIPE,
+    // which ends the process. With SO_NOSIGPIPE the send fails with EPIPE and the request gets no response.
+    pimpl->cli->set_socket_options([](socket_t sock) {
+        int enable = 1;
+        setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
+    });
+#endif
 }
 
 DeviceGate::USBImpl::USBImpl(const DeviceInfo& deviceInfo, int timeout) : deviceInfo(deviceInfo), timeout(timeout) {}

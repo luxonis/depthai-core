@@ -5,7 +5,7 @@
 void bind_beta_superanimalparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::SuperAnimalParserConfig, Py<beta::SuperAnimalParserConfig>, Buffer, std::shared_ptr<beta::SuperAnimalParserConfig>> config(
+    py::class_<beta::SuperAnimalParserConfig, Py<beta::SuperAnimalParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "SuperAnimalParserConfig", DOC(dai, beta, SuperAnimalParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

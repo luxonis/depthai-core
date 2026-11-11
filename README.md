@@ -15,7 +15,11 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
+For platform differences when reading tensors in Script, see [NNData inside Script](docs/ScriptNNData.md).
+
 ## Examples
+For the complete model-description YAML format, see the [model zoo reference](docs/ModelZoo.md).
+
 Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
 To build the examples in C++ configure with the following option added:
 ```
@@ -334,6 +338,23 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_AUTOCALIBRATION              | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)`. If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
 
 ## Running tests
+
+For pull requests targeting `main` or `develop`, expand the successful checks
+in the PR merge panel and open **Details** beside **Run C++ tests** or
+**Run Python tests**. The check summary links to its
+workflow run; select **Re-run all jobs** there to run the full suite.
+You can also open the latest workflow run directly from GitHub Actions.
+No `testable` label is needed for a manual rerun of these suites.
+HIL tests do not run when a PR is opened. Adding the `testable` label runs them,
+and each later push runs them again while the label is on the PR. A new push
+cancels a HIL run that is still in progress. Without the label, open
+**Details** beside **Run HIL tests** after a push and select **Re-run all jobs**
+to run them on the new commit. To rerun failed HIL tests, select
+**Re-run all jobs** in that run.
+Adding the `testable` label also starts the full C++ and Python suites. PR
+updates and approvals do not start them, even while the label remains on the PR.
+After pushing new commits, select the new run; rerunning an older run tests
+its original commit. Lightweight style and binding checks still run on PR updates.
 
 To run the tests build the library with the following options
 ```

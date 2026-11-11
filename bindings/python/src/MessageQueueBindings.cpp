@@ -69,7 +69,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace std::chrono;
 
     // Type definitions
-    py::class_<MessageQueue, std::shared_ptr<MessageQueue>> messageQueue(m, "MessageQueue", DOC(dai, MessageQueue));
+    py::class_<MessageQueue, py::smart_holder> messageQueue(m, "MessageQueue", DOC(dai, MessageQueue));
     constexpr auto QUEUE_EXCEPTION_NAME = "QueueException";
     py::register_exception<dai::MessageQueue::QueueException>(messageQueue, QUEUE_EXCEPTION_NAME);
     messageQueueException = messageQueue.attr(QUEUE_EXCEPTION_NAME);

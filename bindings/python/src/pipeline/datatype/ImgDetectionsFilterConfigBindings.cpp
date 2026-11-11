@@ -3,7 +3,7 @@
 
 void bind_imgdetectionsfilterconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
-    py::class_<ImgDetectionsFilterConfig, Py<ImgDetectionsFilterConfig>, Buffer, std::shared_ptr<ImgDetectionsFilterConfig>> config(
+    py::class_<ImgDetectionsFilterConfig, Py<ImgDetectionsFilterConfig>, Buffer, py::smart_holder> config(
         m, "ImgDetectionsFilterConfig", DOC(dai, ImgDetectionsFilterConfig));
     py::enum_<ImgDetectionsFilterConfig::OverlapMode> overlap(config, "OverlapMode", DOC(dai, ImgDetectionsFilterConfig, OverlapMode));
     Callstack* callstack = static_cast<Callstack*>(pCallstack);
