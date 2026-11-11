@@ -386,7 +386,7 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
     fs::path fwpPathEnv = utility::getEnvAs<std::string>(envPath, "");
     if(!fwpPathEnv.empty()) {
         finalFwpPath = fwpPathEnv;
-        spdlog::warn("Overriding device fwp: {}", finalFwpPath);
+        spdlog::info("Overriding device fwp: {}", finalFwpPath);
     }
 
     // Return binary from file if any of above paths are present
