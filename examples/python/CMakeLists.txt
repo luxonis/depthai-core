@@ -204,7 +204,7 @@ add_python_example(gpu_stereo_rvc4 RVC4/GPUStereo/gpu_stereo.py)
 dai_set_example_test_labels(gpu_stereo_rvc4 ondevice rvc4 ci nowindows)
 
 add_python_example(gpu_stereo_support_rvc4 RVC4/GPUStereo/check_gpu_stereo_support.py)
-dai_set_example_test_labels(gpu_stereo_support_rvc4 ondevice rvc4 ci nowindows)
+dai_set_example_test_labels(gpu_stereo_support_rvc4 ondevice rvc4 ci nowindows smoke)
 
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
@@ -430,7 +430,7 @@ add_python_example(pointcloud PointCloud/point_cloud.py)
 dai_set_example_test_labels(pointcloud ondevice rvc4 ci)
 
 add_python_example(pointcloud_showcase PointCloud/point_cloud_showcase.py)
-dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
+dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci smoke)
 
 add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
 dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
