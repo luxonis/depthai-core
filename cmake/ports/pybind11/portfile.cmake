@@ -5,6 +5,8 @@ vcpkg_from_github(
     REF 218a429500971f5030eda1855c870637a62aabdb
     SHA512 e485b89c75eea44107418fc87969bf54a5d49a5aa668fff093483ba2cc313365fadb317bd6977b8a16c923f1e5eb6969560b73d371585def06f28d9f669eca0a
     HEAD_REF master
+    PATCHES
+        fix-chrono-int-lookup.patch
 )
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
