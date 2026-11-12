@@ -8,7 +8,7 @@ permissions:
 jobs:
   probe:
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         shell: pwsh
@@ -68,6 +68,41 @@ jobs:
         run: |
           cmake --build build --config Release --target sdk_apriltag_math_fix --parallel 4
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Download and build remaining minimal SDK dependencies
+        run: |
+          & ./vcpkg/vcpkg.exe install 'cpp-httplib[core]' yaml-cpp bzip2 lz4 liblzma fp16 fmt neargye-semver magic-enum argparse 'libarchive[core]' --triplet x64-windows --overlay-triplets=./triplets --disable-metrics
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          git -C sdk submodule update --init --depth 1 shared/depthai-bootloader-shared
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Remove only the Windows AprilTag feature gate in the SDK checkout
+        run: |
+          python -c "from pathlib import Path; p=Path('sdk/cmake/depthaiOptions.cmake'); s=p.read_text(); old='if(WIN32)\n    message(STATUS \"AprilTag node is not supported on Windows\")\n    set(DEPTHAI_HAS_APRIL_TAG OFF)\nendif()'; assert old in s; p.write_text(s.replace(old, '# Windows feature gate removed for diagnosis only'))"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          git -C sdk diff -- cmake/depthaiOptions.cmake
+      - name: Configure complete SDK with host AprilTag enabled
+        run: |
+          cmake -S integration -B integration-build -G 'Visual Studio 17 2022' -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$pwd/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows -DVCPKG_MANIFEST_MODE=OFF `
+            -DDEPTHAI_BOOTSTRAP_VCPKG=OFF -DBUILD_SHARED_LIBS=OFF `
+            -DDEPTHAI_OPENCV_SUPPORT=OFF -DDEPTHAI_XTENSOR_SUPPORT=OFF `
+            -DDEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=OFF -DDEPTHAI_ENABLE_CURL=OFF `
+            -DDEPTHAI_ENABLE_PROTOBUF=OFF -DDEPTHAI_ENABLE_LIBUSB=OFF `
+            -DDEPTHAI_ENABLE_MP4V2=OFF -DDEPTHAI_ENABLE_BACKWARD=OFF `
+            -DDEPTHAI_ENABLE_DEVICE_FW=OFF -DDEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW=OFF `
+            -DDEPTHAI_ENABLE_DEVICE_RVC3_FW=OFF -DDEPTHAI_ENABLE_DEVICE_RVC4_FW=OFF `
+            -DDEPTHAI_ENABLE_REMOTE_CONNECTION=OFF -DDEPTHAI_GENERATE_HOUSING_COORDS=OFF `
+            -DDEPTHAI_JSON_EXTERNAL=ON -DDEPTHAI_INSTALL=OFF `
+            -DDEPTHAI_XLINK_LOCAL="$pwd/xlink" -DFETCHCONTENT_SOURCE_DIR_LIBNOP="$pwd/libnop"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Build and link the actual SDK node smoke test
+        run: |
+          cmake --build integration-build --config Release --target apriltag_node_smoke --parallel 4
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Run the actual AprilTag node in host-only pipelines
+        run: |
+          & ./integration-build/Release/apriltag_node_smoke.exe
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Save diagnosis outputs
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,6 +111,8 @@ jobs:
           path: |
             gate-result.txt
             build/Release/apriltag_smoke.exe
+            integration-build/Release/apriltag_node_smoke.exe
+            integration-build/CMakeCache.txt
             build/CMakeCache.txt
             vcpkg/buildtrees/apriltag/*.log
             vcpkg/buildtrees/pthreads/*.log
