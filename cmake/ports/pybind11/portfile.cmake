@@ -1,9 +1,12 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO pybind/pybind11
-    REF 97bf890db679505a14dfe547a5e77bb2bd05dc90
-    SHA512 55d6f3974d09a613bd888bfb9d1aa23ad99d1362543dfcc8912b610397a541b7069d392ce734fa366e1339c3b80ddd252981dda5f4960c1801d8d87c70512c6b
+    # Upstream snapshot including the shared_from_this lifetime fix: pybind/pybind11#6163.
+    REF 218a429500971f5030eda1855c870637a62aabdb
+    SHA512 e485b89c75eea44107418fc87969bf54a5d49a5aa668fff093483ba2cc313365fadb317bd6977b8a16c923f1e5eb6969560b73d371585def06f28d9f669eca0a
     HEAD_REF master
+    PATCHES
+        fix-chrono-int-lookup.patch
 )
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
