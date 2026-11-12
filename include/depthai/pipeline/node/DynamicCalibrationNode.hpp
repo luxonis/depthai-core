@@ -156,6 +156,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     void setWorldConstraintsFromFile(const std::filesystem::path& path);
     /// Remove the marker constraints again. Takes effect before the pipeline is built.
     void clearWorldConstraints();
+    /// The marker constraints set with setWorldConstraints(), or none.
     std::optional<WorldConstraints> getWorldConstraints() const;
 
    protected:

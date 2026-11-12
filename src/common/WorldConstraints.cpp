@@ -13,6 +13,7 @@ namespace dai {
 
 namespace {
 
+/// Every ArucoDictionary enumerator with its name, in enumeration order.
 const std::vector<std::pair<ArucoDictionary, const char*>>& dictionaryNames() {
     static const std::vector<std::pair<ArucoDictionary, const char*>> names = {
         {ArucoDictionary::DICT_4X4_50, "DICT_4X4_50"},
@@ -40,6 +41,7 @@ const std::vector<std::pair<ArucoDictionary, const char*>>& dictionaryNames() {
     return names;
 }
 
+/// Every MarkerType enumerator with its name.
 const std::vector<std::pair<MarkerType, const char*>>& markerTypeNames() {
     static const std::vector<std::pair<MarkerType, const char*>> names = {
         {MarkerType::ARUCO, "ARUCO"},
@@ -48,15 +50,18 @@ const std::vector<std::pair<MarkerType, const char*>>& markerTypeNames() {
     return names;
 }
 
+/// The text with every ASCII letter in upper case, for case-insensitive name matching.
 std::string upper(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
     return text;
 }
 
+/// True for a concrete camera socket (CAM_A..CAM_J), false for AUTO and values outside the enumeration.
 bool isKnownSocket(CameraBoardSocket socket) {
     return socket >= CameraBoardSocket::CAM_A && socket <= CameraBoardSocket::CAM_J;
 }
 
+/// A socket given as its number, its name ("CAM_B") or the letter alone ("b"), in any case. Throws std::invalid_argument otherwise.
 CameraBoardSocket socketFromJson(const nlohmann::json& value) {
     if(value.is_number_integer()) {
         const auto socket = static_cast<CameraBoardSocket>(value.get<int32_t>());
@@ -80,6 +85,8 @@ CameraBoardSocket socketFromJson(const nlohmann::json& value) {
     throw std::invalid_argument("WorldConstraints: unknown socket \"" + value.get<std::string>() + "\"");
 }
 
+/// The document's "lengthUnit" (meters when absent), accepting the unit's symbol and its singular and plural name in any case.
+/// Throws std::invalid_argument for an unknown unit.
 LengthUnit lengthUnitFromJson(const nlohmann::json& json) {
     if(!json.contains("lengthUnit")) {
         return LengthUnit::METER;
@@ -116,6 +123,7 @@ float lengthUnitToMeters(const nlohmann::json& json) {
     return 1.0f / getLengthUnitMultiplier(lengthUnitFromJson(json));
 }
 
+/// A marker id, which must be a non-negative integer. Throws std::invalid_argument otherwise.
 int32_t markerIdFromJson(const nlohmann::json& value) {
     if(!value.is_number_integer() || value.get<int64_t>() < 0) {
         throw std::invalid_argument("WorldConstraints: marker ids must be non-negative integers, got " + value.dump());
@@ -123,6 +131,7 @@ int32_t markerIdFromJson(const nlohmann::json& value) {
     return value.get<int32_t>();
 }
 
+/// An array of marker ids, each checked by markerIdFromJson(). Throws std::invalid_argument for anything but an array.
 std::vector<int32_t> markerIdsFromJson(const nlohmann::json& value) {
     if(!value.is_array()) {
         throw std::invalid_argument("WorldConstraints: expected an array of marker ids, got " + value.dump());
@@ -134,6 +143,7 @@ std::vector<int32_t> markerIdsFromJson(const nlohmann::json& value) {
     return ids;
 }
 
+/// The "distance" of a distance entry converted to meters. Throws std::invalid_argument when it is missing or not a number.
 float distanceFromJson(const nlohmann::json& entry, float toMeters) {
     if(!entry.contains("distance") || !entry.at("distance").is_number()) {
         throw std::invalid_argument("WorldConstraints: every distance entry needs a numeric \"distance\"");
@@ -155,7 +165,9 @@ std::string toString(ArucoDictionary dictionary) {
 ArucoDictionary arucoDictionaryFromString(const std::string& name) {
     const auto wanted = upper(name);
     for(const auto& [value, candidate] : dictionaryNames()) {
-        if(wanted == candidate || wanted == std::string(candidate).substr(5)) {
+        // Compare without case: the AprilTag names keep a lowercase "h" (DICT_APRILTAG_36h11).
+        const auto candidateUpper = upper(candidate);
+        if(wanted == candidateUpper || wanted == candidateUpper.substr(5)) {
             return value;
         }
     }

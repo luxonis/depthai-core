@@ -40,7 +40,10 @@ enum class ArucoDictionary : int32_t {
     DICT_APRILTAG_36h11,
 };
 
+/// Name of the enumerator, such as "DICT_4X4_50"; "UNKNOWN" for a value outside the enumeration.
 std::string toString(ArucoDictionary dictionary);
+/// The dictionary named like the enumerator, matched regardless of case and with or without the "DICT_" prefix.
+/// Throws std::invalid_argument for a name that is not a dictionary.
 ArucoDictionary arucoDictionaryFromString(const std::string& name);
 
 /**
@@ -50,7 +53,9 @@ enum class MarkerType : int32_t {
     ARUCO = 0,    ///< ArUco / AprilTag markers of one dictionary; the reference point is the marker center.
     LUXONIS = 1,  ///< Luxonis markers, IDs 0-5; the reference point is the marker center.
 };
+/// Name of the enumerator, "ARUCO" or "LUXONIS"; "UNKNOWN" for a value outside the enumeration.
 std::string toString(MarkerType type);
+/// The marker type named like the enumerator, matched regardless of case. Throws std::invalid_argument otherwise.
 MarkerType markerTypeFromString(const std::string& name);
 
 /**
@@ -121,7 +126,9 @@ struct WorldConstraints {
     /// Parses the JSON form documented above. Throws std::invalid_argument on malformed input (also for JSON that
     /// does not parse or has a wrong type where a value is expected).
     static WorldConstraints fromJson(const nlohmann::json& json);
+    /// Same as fromJson() for a JSON document given as text.
     static WorldConstraints fromJsonString(const std::string& json);
+    /// Same as fromJson() for a JSON document read from a file; a file that cannot be opened is a std::invalid_argument too.
     static WorldConstraints fromFile(const std::filesystem::path& path);
     /// The JSON form documented above, distances in meters.
     nlohmann::json toJson() const;
@@ -140,6 +147,7 @@ struct WorldConstraints {
     DEPTHAI_SERIALIZE(WorldConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, markerSizes, maxObservationSets);
 
    private:
+    /// fromJson() without the translation of nlohmann exceptions into std::invalid_argument.
     static WorldConstraints parseJson(const nlohmann::json& json);
 };
 

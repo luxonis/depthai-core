@@ -73,6 +73,24 @@ TEST_CASE("WorldConstraints parses the documented JSON form", "[WorldConstraints
     REQUIRE(alternative.markerIds.empty());
     REQUIRE(alternative.referencedMarkerIds() == std::vector<int32_t>{1, 2});
     REQUIRE(alternative.socketDistances[0].socket == Socket::CAM_B);
+
+    // Dictionary names match regardless of case, including the AprilTag names with their lowercase "h", and
+    // the name toJson() writes parses back.
+    for(const char* spelling : {"DICT_APRILTAG_36h11", "DICT_APRILTAG_36H11", "dict_apriltag_36h11", "apriltag_36h11"}) {
+        REQUIRE(dai::arucoDictionaryFromString(spelling) == dai::ArucoDictionary::DICT_APRILTAG_36h11);
+    }
+    for(const auto dictionary : {dai::ArucoDictionary::DICT_APRILTAG_16h5,
+                                 dai::ArucoDictionary::DICT_APRILTAG_25h9,
+                                 dai::ArucoDictionary::DICT_APRILTAG_36h10,
+                                 dai::ArucoDictionary::DICT_APRILTAG_36h11,
+                                 dai::ArucoDictionary::DICT_ARUCO_ORIGINAL,
+                                 dai::ArucoDictionary::DICT_7X7_1000}) {
+        auto apriltag = constraints;
+        apriltag.arucoDictionary = dictionary;
+        REQUIRE(dai::arucoDictionaryFromString(dai::toString(dictionary)) == dictionary);
+        REQUIRE(dai::WorldConstraints::fromJson(apriltag.toJson()).arucoDictionary == dictionary);
+        REQUIRE(dai::WorldConstraints::fromJsonString(apriltag.toJson().dump()).arucoDictionary == dictionary);
+    }
 }
 
 TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {

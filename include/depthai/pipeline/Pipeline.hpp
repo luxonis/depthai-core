@@ -786,9 +786,11 @@ class Pipeline {
     void setAutoCalibrationWorldConstraintsFromFile(const std::filesystem::path& path) {
         impl()->setAutoCalibrationWorldConstraints(WorldConstraints::fromFile(path));
     }
+    /// Remove the marker constraints of the implicit AutoCalibration node again. Takes effect before the pipeline is built.
     void clearAutoCalibrationWorldConstraints() {
         impl()->clearAutoCalibrationWorldConstraints();
     }
+    /// The marker constraints set with setAutoCalibrationWorldConstraints(), or none.
     std::optional<WorldConstraints> getAutoCalibrationWorldConstraints() const {
         return impl()->getAutoCalibrationWorldConstraints();
     }

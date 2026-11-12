@@ -66,7 +66,9 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     void setWorldConstraintsFromJson(const std::string& json);
     /// Same as setWorldConstraints() with the JSON form described in WorldConstraints read from a file.
     void setWorldConstraintsFromFile(const std::filesystem::path& path);
+    /// Remove the marker constraints again. Takes effect before the pipeline is built.
     void clearWorldConstraints();
+    /// The marker constraints set with setWorldConstraints(), or none.
     std::optional<WorldConstraints> getWorldConstraints() const;
 
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::AutoCalibrationResult, false}}}}};

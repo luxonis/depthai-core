@@ -47,6 +47,7 @@ struct DclUtils {
 #endif
     static dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode);
 
+    /// The DCL enumerator of a depthai ArucoDictionary. Throws std::invalid_argument for a value outside the enumeration.
     static dcl::ArucoDictionary toDclArucoDictionary(ArucoDictionary dictionary);
     /// The marker detector request for a constraint set. Throws std::invalid_argument for a marker type the library cannot detect.
     static dcl::MarkerSpec toDclMarkerSpec(const WorldConstraints& constraints);
