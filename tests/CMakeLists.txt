@@ -612,10 +612,6 @@ dai_set_test_labels(imgdetections_test onhost ci)
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
 dai_set_test_labels(imgframe_test onhost ci)
 
-# ToF configuration transport tests
-dai_add_test(tofconfig_test src/onhost_tests/pipeline/datatype/tofconfig_test.cpp)
-dai_set_test_labels(tofconfig_test onhost ci)
-
 # PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
 dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
 dai_set_test_labels(pointclouddata_test onhost ci)
@@ -870,16 +866,18 @@ dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
 dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
 dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
 
-# ToF FUSION depth mode: phase output on RVC4
+# ToF fusion depth mode (phase output on RVC4) and ToFStereoFusion; skip without a ToF sensor.
 dai_add_test(tof_fusion_mode_test src/ondevice_tests/pipeline/node/tof_fusion_mode_test.cpp)
-dai_set_test_labels(tof_fusion_mode_test ondevice rvc4)
+dai_set_test_labels(tof_fusion_mode_test ondevice rvc4 ci)
 
 dai_add_test(tof_stereo_network_fusion_test src/ondevice_tests/pipeline/node/tof_stereo_network_fusion_test.cpp)
-dai_set_test_labels(tof_stereo_network_fusion_test ondevice rvc4)
+dai_set_test_labels(tof_stereo_network_fusion_test ondevice rvc4 ci)
 
-# Needs the fusion network from DEPTHAI_TEST_TOF_STEREO_NETWORK_MODEL (not in the model zoo); skips without it.
-dai_add_test(tof_stereo_network_fusion_run_test src/ondevice_tests/pipeline/node/tof_stereo_network_fusion_run_test.cpp)
-dai_set_test_labels(tof_stereo_network_fusion_run_test ondevice rvc4)
+# Uses the network shipped with the RVC4 firmware (or DEPTHAI_TEST_TOF_STEREO_NETWORK_MODEL); needs OpenCV.
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    dai_add_test(tof_stereo_network_fusion_run_test src/ondevice_tests/pipeline/node/tof_stereo_network_fusion_run_test.cpp)
+    dai_set_test_labels(tof_stereo_network_fusion_run_test ondevice rvc4 ci)
+endif()
 
 # Depth algorithm selection (on-device)
 dai_add_test(depth_algorithm_selection_test src/ondevice_tests/pipeline/node/depth_algorithm_selection_test.cpp)

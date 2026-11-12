@@ -73,41 +73,6 @@ class ToFConfig : public Buffer {
     std::optional<bool> enablePhaseUnwrapping;
 
     /**
-     * Depth processing mode. Applies to RVC4; other platforms ignore it.
-     */
-    enum class DepthMode : uint32_t {
-        /**
-         * Depth as selected by the profile and phaseUnwrappingLevel (default).
-         */
-        STANDARD,
-        /**
-         * Depth for ToF + stereo fusion networks. Uses the spatial phase unwrap
-         * (phaseUnwrappingLevel 103) whatever phaseUnwrappingLevel is set to, with
-         * dense output: every pixel with a valid depth up to 15 m is kept, there is
-         * no confidence threshold, no edge filter, no 6.5 m range cap and no bleeding
-         * filter. The confidence output is calibrated as
-         * round(255 * (1 - P(|error| > 0.5 m))). The sensor filters use the tuning
-         * fusion networks are trained on: no phase-unwrap error rejection, no
-         * flying-pixel filter, bilateral and temporal noise reduction on.
-         * When the phase output is linked, it carries the wrapped phases of the three
-         * modulation frequencies: RAW8, width = 6 * depth width, per depth pixel
-         * int8 (127 * cos, 127 * sin) for each frequency.
-         * Without a usable GPU the node falls back to the vendor unwrap with the same
-         * filter tuning and vendor-scale confidence.
-         * On RVC4 a linked phase output gets one frame per depth frame, so that a Sync with
-         * the depth never stalls. A frame without phases is empty (no data): width 0 for a
-         * vendor-unwrap frame (STANDARD mode or the fallback above, confidence on the vendor
-         * scale), width 6 * depth width for a fusion-mode frame whose phase export failed.
-         */
-        FUSION,
-    };
-
-    /**
-     * Depth processing mode, see DepthMode.
-     */
-    DepthMode depthMode = DepthMode::STANDARD;
-
-    /**
      * Construct ToFConfig message.
      */
     ToFConfig() = default;
@@ -130,14 +95,6 @@ class ToFConfig : public Buffer {
      */
     void setProfilePreset(Profile profile);
 
-    /**
-     * Set the depth processing mode.
-     * May be used with initialConfig or sent through inputConfig at runtime.
-     * @param mode Depth processing mode, see DepthMode.
-     * @return This configuration.
-     */
-    ToFConfig& setDepthMode(DepthMode mode);
-
     DEPTHAI_SERIALIZE(ToFConfig,
                       profile,
                       median,
@@ -150,8 +107,7 @@ class ToFConfig : public Buffer {
                       enableWiggleCorrection,
                       enablePhaseUnwrapping,
                       phaseUnwrappingLevel,
-                      phaseUnwrapErrorThreshold,
-                      depthMode);
+                      phaseUnwrapErrorThreshold);
 };
 
 }  // namespace dai

@@ -18,7 +18,6 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
 
     py::class_<ToFConfig, Py<ToFConfig>, Buffer, py::smart_holder> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
     py::enum_<ToFConfig::Profile> toFConfigProfile(toFConfig, "Profile", DOC(dai, ToFConfig, Profile));
-    py::enum_<ToFConfig::DepthMode> toFConfigDepthMode(toFConfig, "DepthMode", DOC(dai, ToFConfig, DepthMode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -39,9 +38,6 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .value("HIGH_RANGE", ToFConfig::Profile::HIGH_RANGE)
         .export_values();
 
-    toFConfigDepthMode.value("STANDARD", ToFConfig::DepthMode::STANDARD, DOC(dai, ToFConfig, DepthMode, STANDARD))
-        .value("FUSION", ToFConfig::DepthMode::FUSION, DOC(dai, ToFConfig, DepthMode, FUSION));
-
     toFConfig.def(py::init<>())
         .def("__repr__", &ToFConfig::str)
         // .def(py::init<std::shared_ptr<ToFConfig>>())
@@ -61,11 +57,9 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("enableWiggleCorrection", &ToFConfig::enableWiggleCorrection, DOC(dai, ToFConfig, enableWiggleCorrection))
         .def_readwrite("enablePhaseUnwrapping", &ToFConfig::enablePhaseUnwrapping, DOC(dai, ToFConfig, enablePhaseUnwrapping))
         .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::phaseUnwrapErrorThreshold, DOC(dai, ToFConfig, phaseUnwrapErrorThreshold))
-        .def_readwrite("depthMode", &ToFConfig::depthMode, DOC(dai, ToFConfig, depthMode))
 
         .def("setMedianFilter", &ToFConfig::setMedianFilter, DOC(dai, ToFConfig, setMedianFilter))
         .def("setProfilePreset", &ToFConfig::setProfilePreset, DOC(dai, ToFConfig, setProfilePreset))
-        .def("setDepthMode", &ToFConfig::setDepthMode, py::arg("mode"), py::return_value_policy::reference_internal, DOC(dai, ToFConfig, setDepthMode))
 
         // .def("set", &ToFConfig::set, py::arg("config"), DOC(dai, ToFConfig, set))
         // .def("get", &ToFConfig::get, DOC(dai, ToFConfig, get))

@@ -56,6 +56,12 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    /**
+     * Wrapped phases. On RVC4, linking this output selects the fusion depth mode (the ToF input of ToFStereoFusion): spatial
+     * phase unwrap with dense depth up to 15 m and a calibrated confidence. Each frame is RAW8, width 6 * depth width: per depth
+     * pixel int8 (127 * cos, 127 * sin) for each of the three modulation frequencies. One phase frame is sent per depth frame;
+     * it is empty when the fusion mode is unavailable for that frame (no GPU: the vendor unwrap runs instead).
+     */
     Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 

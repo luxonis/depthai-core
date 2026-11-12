@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 #include "depthai/depthai.hpp"
@@ -36,18 +38,17 @@ constexpr size_t PHASE_BYTES_PER_PIXEL = 6;  // int8 (cos, sin) for each of the 
 
 }  // namespace
 
-TEST_CASE("ToF FUSION depth mode sends phase frames matching the depth frame", "[ToF][fusion]") {
+TEST_CASE("ToF with a linked phase output sends phase frames matching the depth frame", "[ToF][fusion]") {
     const auto device = std::make_shared<Device>();
     if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) {
         SKIP("Requires an RVC4 device with a ToF sensor.");
     }
     if(!device->hasGPU()) {
-        SKIP("FUSION depth mode needs the GPU; without it the node falls back to the vendor unwrap and sends no phase.");
+        SKIP("The fusion depth mode needs the GPU; without it the node falls back to the vendor unwrap and sends empty phase frames.");
     }
 
     Pipeline pipeline(device);
     auto tof = pipeline.create<node::ToF>()->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, 30.0f);
-    tof->tofBase->initialConfig->setDepthMode(ToFConfig::DepthMode::FUSION);
 
     auto depthQueue = tof->depth.createOutputQueue();
     auto confidenceQueue = tof->confidence.createOutputQueue();
@@ -89,7 +90,7 @@ TEST_CASE("ToF FUSION depth mode sends phase frames matching the depth frame", "
     REQUIRE(phase->getData().size() == static_cast<size_t>(depth->getWidth()) * depth->getHeight() * PHASE_BYTES_PER_PIXEL);
 }
 
-TEST_CASE("ToF STANDARD depth mode sends empty phase frames on RVC4", "[ToF][fusion]") {
+TEST_CASE("ToF without the phase output keeps the standard depth range on RVC4", "[ToF][fusion]") {
     const auto device = std::make_shared<Device>();
     if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) {
         SKIP("Requires an RVC4 device with a ToF sensor.");
@@ -98,21 +99,20 @@ TEST_CASE("ToF STANDARD depth mode sends empty phase frames on RVC4", "[ToF][fus
     Pipeline pipeline(device);
     auto tof = pipeline.create<node::ToF>()->build(CameraBoardSocket::AUTO, ToFConfig::Profile::MID_RANGE, 30.0f);
     auto depthQueue = tof->depth.createOutputQueue();
-    auto phaseQueue = tof->phase.createOutputQueue();
 
     PipelineStopGuard guard(pipeline);
     REQUIRE_NOTHROW(pipeline.start());
 
-    bool timedOut = false;
-    const auto depth = depthQueue->get<ImgFrame>(FRAME_TIMEOUT, timedOut);
-    REQUIRE_FALSE(timedOut);
-    REQUIRE(depth != nullptr);
-    // STANDARD mode sends one empty phase frame (width 0: vendor unwrap) per depth frame, so a Sync with the depth does not
-    // stall.
-    timedOut = false;
-    const auto phase = phaseQueue->get<ImgFrame>(FRAME_TIMEOUT, timedOut);
-    REQUIRE_FALSE(timedOut);
-    REQUIRE(phase != nullptr);
-    REQUIRE(phase->getData().empty());
-    REQUIRE(phase->getWidth() == 0);
+    // The standard mode caps the depth below 6.5 m (the fusion mode keeps up to 15 m).
+    constexpr uint16_t STANDARD_MAX_DEPTH_MM = 6500;
+    for(int i = 0; i < 5; ++i) {
+        bool timedOut = false;
+        const auto depth = depthQueue->get<ImgFrame>(FRAME_TIMEOUT, timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(depth != nullptr);
+        REQUIRE(depth->getType() == ImgFrame::Type::RAW16);
+        const auto* data = reinterpret_cast<const uint16_t*>(depth->getData().data());
+        const size_t count = static_cast<size_t>(depth->getWidth()) * depth->getHeight();
+        REQUIRE(*std::max_element(data, data + count) < STANDARD_MAX_DEPTH_MM);
+    }
 }
