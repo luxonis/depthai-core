@@ -20,6 +20,6 @@ mkdir "$TMP_PATH"
 tar -xf $1 -C "$TMP_PATH"
 
 
-"${DIR}/ex.sh" "/work/utility_scripts/container_based/debug_core_dump_helper.sh -batch /work/utility_scripts/$TMP_DIR/core.*"
+"${DIR}/ex.sh" "/work/device/rvc4/utility_scripts/container_based/debug_core_dump_helper.sh -batch /work/device/rvc4/utility_scripts/$TMP_DIR/core.*"
 
 rm -rf "$TMP_PATH"

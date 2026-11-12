@@ -278,6 +278,12 @@ In your non-CMake project (new Visual Studio project, ...)
 > ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
 The generated integration file also specifies include paths without requiring installation. -->
 
+## RVC4 device firmware
+
+The device-side firmware of RVC4 devices is part of this repository: see [device/rvc4](device/rvc4/README.md). It
+compiles the node definitions and message types of the same commit as the host library. A host build does not build
+the firmware: it embeds the firmware package that `cmake/Depthai/DepthaiDeviceRVC4Config.cmake` pins.
+
 ## CMake options
 Many features of the library can be disabled or enabled using CMake options.
 One common option when building the library tests and examples is `DEPTHAI_VCPKG_INTERNAL_ONLY=OFF` which installs a predictable version of OpenCV, PCL and other optional dependencies we also use on the libraries interface.

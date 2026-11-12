@@ -12,7 +12,7 @@
     }
   ],
   "overlay-ports": [
-    "./external/depthai-core/cmake/ports"
+    "../../cmake/ports"
   ],
   "overlay-triplets": [
     "./triplets"

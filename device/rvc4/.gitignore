@@ -31,6 +31,9 @@ __pycache__/
 utility_scripts/core_dump_tmp_*
 *.rvc4/
 
+# vcpkg checkout that the configure step fetches (see CMakeLists.txt)
+/vcpkg/
+
 # The root .gitignore of depthai-core ignores build* and .vscode. These files of the firmware tree are tracked.
 !build.sh
 !build_rvc4.sh

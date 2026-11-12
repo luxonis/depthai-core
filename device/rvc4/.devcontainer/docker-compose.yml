@@ -15,9 +15,10 @@ services:
     env_file:
       - .env
     volumes:
-      - ../:/work
+      # the depthai-core checkout (this directory is device/rvc4/.devcontainer)
+      - ../../..:/work
       # Private depthai-device-rvc4-vendor module (licensee-only Qualcomm/ST code); CMake finds it at /depthai-device-rvc4-vendor
-      - ${VENDOR_SOURCE_DIR:-../../depthai-device-vendor-fw}:/depthai-device-rvc4-vendor
+      - ${VENDOR_SOURCE_DIR:-../../../../depthai-device-vendor-fw}:/depthai-device-rvc4-vendor
       - /etc/passwd:/etc/passwd:ro
       - /etc/shadow:/etc/shadow:ro
       - ${HOME}:${HOME}:ro

@@ -41,23 +41,19 @@ NOTICE_LICENSE_PATTERNS = [
     ("GPL-2.0-only", ("gnu general public license", "version 2")),
     ("GPL-3.0-only", ("gnu general public license", "version 3")),
 ]
-# Vendored dependencies of this repository; paths are relative to the repository root.
+# Vendored dependencies of the firmware tree; paths are relative to its root (device/rvc4 of depthai-core).
+# Eigen is not here: it comes from the vcpkg manifest and is collected from the vcpkg install tree.
 VENDORED_DEPENDENCIES = {
     "external/cpp-subprocess": {
         "package": "cpp-subprocess",
         "license_expression": "MIT",
         "description": "C++ subprocess helper library.",
     },
-    "external/eigen": {
-        "package": "eigen",
-        "license_expression": "MPL-2.0",
-        "description": "Eigen C++ template library for linear algebra.",
-    },
 }
 
-# The licensee-only Qualcomm/ST code is not in this repository: it lives in the private sibling repository
-# depthai-device-rvc4-vendor (CMake: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR; in the build container it is mounted at
-# /depthai-device-rvc4-vendor next to /work). The firmware package bundles what that module builds, so its third-party
+# The licensee-only Qualcomm/ST code is not in this repository: it is the private module depthai-device-rvc4-vendor, in
+# the private repository depthai-device-vendor-fw (CMake: DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR; in the build container it is
+# mounted at /depthai-device-rvc4-vendor). The firmware package bundles what that module builds, so its third-party
 # parts are classified here. The paths are relative to that checkout, which find_private_module_root() locates;
 # when the checkout is absent, these entries are skipped with a warning.
 PRIVATE_MODULE_NAME = "depthai-device-rvc4-vendor"
@@ -67,6 +63,8 @@ PRIVATE_MODULE_ENV = "DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR"
 PRIVATE_MODULE_VENDORED_DEPENDENCIES = {
     "depthmapwrapper-vd55h1/glog": {
         "package": "glog",
+        # The private module carries a copy of glog (no submodule revision), so the version comes from its CMake file
+        "version_file": ("CMakeLists.txt", r"project\s*\(\s*glog\s+VERSION\s+([0-9][0-9.]*)"),
         "license_expression": "BSD-3-Clause",
         "supplier": "Google Inc.",
         "description": "Google logging library, used by the VD55H1 IPP library.",
@@ -90,7 +88,6 @@ VCPKG_LICENSE_OVERRIDES = {
 }
 
 EXCLUDED_SUBMODULE_PATHS = {
-    "external/depthai-core": "Luxonis depthai-core; handled by its own compliance flow.",
     "vcpkg": "Package manager; the packages that it builds are collected from the vcpkg install tree.",
 }
 
@@ -354,9 +351,8 @@ def read_notice_file(path: Path) -> str:
 
 def find_third_party_gaps(repo_root: Path) -> list[str]:
     """Git submodules and tracked directories in external/ that no table classifies."""
-    # Submodules outside this tree (paths starting with "../") belong to the depthai-core repository when the
-    # firmware is built as its device/rvc4 directory; they are covered by depthai-core's compliance flow, like
-    # the former external/depthai-core submodule (EXCLUDED_SUBMODULE_PATHS).
+    # The firmware tree is the device/rvc4 directory of the depthai-core repository. Submodules outside this tree
+    # (paths starting with "../") belong to depthai-core and are covered by its own compliance flow.
     candidates = {path for path in read_git_submodule_status(repo_root) if not path.startswith("../")}
     tracked = run(["git", "-C", str(repo_root), "ls-files", "external"], capture_output=True).stdout.splitlines()
     candidates.update("/".join(path.split("/")[:2]) for path in tracked if path.count("/") >= 2)
@@ -399,17 +395,38 @@ def detect_license_from_notice(notice_text: str | None) -> str | None:
 
 
 def read_git_submodule_status(repo_root: Path, *, strict: bool = True) -> dict[str, str]:
-    """Submodule path -> checked-out revision. With strict=False a directory that is not a git checkout
-    (for example the private module mounted as a plain directory) gives an empty result."""
-    try:
-        result = run(
-            ["git", "-C", str(repo_root), "submodule", "status", "--recursive"],
-            capture_output=True,
-        )
-    except (OSError, subprocess.CalledProcessError):
-        if strict:
-            raise
-        return {}
+    """Submodule path -> checked-out revision, for the submodules below repo_root (the firmware tree is a
+    directory of the depthai-core repository; the other submodules of that repository are not read).
+    Nested submodules are included when git can enter the submodules. It cannot when the checkout is a git
+    worktree that is mounted in a container at another path (the .git file of a submodule of a worktree has a
+    relative path to the main checkout): then the first level comes from the index, with the recorded revisions.
+    With strict=False a directory that is not a git checkout (for example the private module mounted as a
+    plain directory) gives an empty result."""
+    result = None
+    error: Exception | None = None
+    for recursion in (["--recursive"], []):
+        try:
+            result = run(
+                ["git", "-C", str(repo_root), "submodule", "status", *recursion, "--", "."],
+                capture_output=True,
+            )
+            break
+        except (OSError, subprocess.CalledProcessError) as exc:
+            error = exc
+    if result is None:
+        try:
+            index = run(["git", "-C", str(repo_root), "ls-files", "--stage", "--", "."], capture_output=True)
+        except (OSError, subprocess.CalledProcessError) as exc:
+            if strict:
+                raise error or exc
+            return {}
+        recorded: dict[str, str] = {}
+        for line in index.stdout.splitlines():
+            fields, _, path = line.partition("\t")
+            mode, revision, *_ = fields.split()
+            if mode == "160000":
+                recorded[path] = revision
+        return recorded
     revisions: dict[str, str] = {}
     for line in result.stdout.splitlines():
         if not line.strip():
@@ -445,8 +462,20 @@ def parse_gitmodules(repo_root: Path, *, strict: bool = True) -> dict[str, dict[
                     "revision": revisions.get(full_path, ""),
                 }
     gitmodules_path = repo_root / ".gitmodules"
+    prefix = ""
     if not gitmodules_path.is_file():
-        return submodules
+        # The checkout is a directory of a larger repository (the firmware tree is device/rvc4 of depthai-core):
+        # its submodules are in the .gitmodules of that repository, with paths relative to the repository root.
+        try:
+            toplevel = Path(run(["git", "-C", str(repo_root), "rev-parse", "--show-toplevel"], capture_output=True).stdout.strip())
+        except (OSError, subprocess.CalledProcessError):
+            if strict:
+                raise
+            return submodules
+        if toplevel.resolve() == repo_root.resolve() or not (toplevel / ".gitmodules").is_file():
+            return submodules
+        gitmodules_path = toplevel / ".gitmodules"
+        prefix = repo_root.resolve().relative_to(toplevel.resolve()).as_posix() + "/"
     parser = configparser.ConfigParser()
     parser.read(gitmodules_path, encoding="utf-8")
     for section in parser.sections():
@@ -457,6 +486,10 @@ def parse_gitmodules(repo_root: Path, *, strict: bool = True) -> dict[str, dict[
         url = parser.get(section, "url", fallback=None)
         if not path:
             continue
+        if prefix:
+            if not path.startswith(prefix):
+                continue
+            path = path[len(prefix) :]
         submodules[path] = {
             "logical_name": logical_name,
             "path": path,
@@ -760,7 +793,7 @@ def main() -> int:
             "manifest_features": [],
             "notes": [
                 "Uses the depthai-device RVC4 manifest and existing build_docker_arm64_rvc4 vcpkg install tree by default.",
-                "Vendored external/depthai-core and its nested dependencies are intentionally excluded because depthai-core is handled by its own compliance flow.",
+                "depthai-core (the repository that contains this firmware tree) and its dependencies are intentionally excluded because depthai-core is handled by its own compliance flow.",
                 "Every git submodule and every directory in external/ is either listed as a vendored dependency "
                 "or excluded with a reason (find_third_party_gaps).",
                 f"Third-party parts of the private {PRIVATE_MODULE_NAME} module (outside this repository) are "

@@ -1,7 +1,7 @@
 ######## Configuration flags ########
 # Repository roots (passed by CMake; the defaults assume the in-tree layout)
 DEPTHAI_DEVICE_ROOT ?= $(abspath $(CURDIR)/../../../..)
-DEPTHAI_CORE_ROOT ?= $(DEPTHAI_DEVICE_ROOT)/external/depthai-core
+DEPTHAI_CORE_ROOT ?= $(DEPTHAI_DEVICE_ROOT)/../..
 V_ARCH_EXTN=CPP
 TARGET_DIR = $(HEXAGON_LIB_DIR)/$(V_ARCH)/G0/pic
 INCDIRS+=inc

@@ -2,7 +2,7 @@
 	"name": "RVC4 FW development container",
 	"dockerComposeFile": "../docker-compose.yml",
 	"service": "rvc4-dev",
-	"workspaceFolder": "/work",
+	"workspaceFolder": "/work/device/rvc4",
 	"shutdownAction": "stopCompose",
 	"initializeCommand": ".devcontainer/createEnv.sh",
 	"customizations": {

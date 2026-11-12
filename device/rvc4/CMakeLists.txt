@@ -74,7 +74,26 @@ elseif(DEPTHAI_TSAN)
 else()
     set(VCPKG_TARGET_TRIPLET "rvc4" CACHE STRING "Vcpkg target triplet" FORCE)
 endif()
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Toolchain file to overload" FORCE)
+# vcpkg: a checkout of the pinned commit, by default in <this directory>/vcpkg. It is not a submodule of
+# depthai-core: the configure step fetches it when it is missing.
+set(DEPTHAI_DEVICE_VCPKG_COMMIT "b2cb0da531c2f1f740045bfe7c4dac59f0b2b69c" CACHE STRING "vcpkg commit that the firmware build uses")
+set(DEPTHAI_DEVICE_VCPKG_ROOT "${CMAKE_CURRENT_LIST_DIR}/vcpkg" CACHE PATH "vcpkg checkout used by the build (toolchain, license and SBOM generation)")
+if(NOT EXISTS "${DEPTHAI_DEVICE_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    find_package(Git REQUIRED)
+    message(STATUS "Fetching vcpkg ${DEPTHAI_DEVICE_VCPKG_COMMIT} into ${DEPTHAI_DEVICE_VCPKG_ROOT}")
+    file(MAKE_DIRECTORY "${DEPTHAI_DEVICE_VCPKG_ROOT}")
+    foreach(_vcpkg_git_args
+            "init;-q"
+            "fetch;-q;--depth;1;https://github.com/microsoft/vcpkg.git;${DEPTHAI_DEVICE_VCPKG_COMMIT}"
+            "checkout;-q;FETCH_HEAD")
+        execute_process(COMMAND "${GIT_EXECUTABLE}" ${_vcpkg_git_args} WORKING_DIRECTORY "${DEPTHAI_DEVICE_VCPKG_ROOT}" RESULT_VARIABLE _vcpkg_git_result)
+        if(NOT _vcpkg_git_result EQUAL 0)
+            message(FATAL_ERROR "Could not fetch vcpkg (git ${_vcpkg_git_args}). Put a checkout of vcpkg commit ${DEPTHAI_DEVICE_VCPKG_COMMIT} "
+                                "at ${DEPTHAI_DEVICE_VCPKG_ROOT}, or set DEPTHAI_DEVICE_VCPKG_ROOT to one.")
+        endif()
+    endforeach()
+endif()
+set(CMAKE_TOOLCHAIN_FILE "${DEPTHAI_DEVICE_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Toolchain file to overload" FORCE)
 
 set(DEPTHAI_ENABLE_DEVICE_FW OFF CACHE BOOL "" FORCE)
 set(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW OFF CACHE BOOL "" FORCE)
@@ -88,8 +107,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Add core
-set(DEPTHAI_DEVICE_KB_CORE_PATH "${CMAKE_CURRENT_LIST_DIR}/external/depthai-core" CACHE STRING "Path to depthai-core source")
+# Add core: this directory is device/rvc4 of the depthai-core repository, so the firmware compiles the node
+# definitions and message types of the same commit as the host library.
+get_filename_component(_depthai_core_default_path "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+set(DEPTHAI_DEVICE_KB_CORE_PATH "${_depthai_core_default_path}" CACHE PATH "Path to the depthai-core source tree")
 set(DEPTHAI_PYTHON_EMBEDDED_MODULE ON CACHE BOOL "Set depthai python as embedded module" FORCE)
 set(DEPTHAI_BUILD_PYTHON ON CACHE BOOL "Build depthai python module" FORCE)
 set(DEPTHAI_ENABLE_CURL OFF CACHE BOOL "Enable curl" FORCE)
@@ -114,7 +135,6 @@ project(depthai-device-rvc4 VERSION ${version} LANGUAGES CXX C ASM)
 # CMAKE_BINARY_DIR when the firmware is built as a subdirectory of depthai-core.
 set(DEPTHAI_DEVICE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(DEPTHAI_DEVICE_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-set(DEPTHAI_DEVICE_VCPKG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg" CACHE PATH "vcpkg checkout used by the build (license and SBOM generation)")
 
 find_program(CCACHE_PROGRAM ccache)
 
@@ -125,7 +145,8 @@ if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CCACHE_PROGRAM}")
 endif()
 
-add_subdirectory("${DEPTHAI_DEVICE_KB_CORE_PATH}" EXCLUDE_FROM_ALL)
+# depthai-core is not below this directory, so it needs an explicit binary directory
+add_subdirectory("${DEPTHAI_DEVICE_KB_CORE_PATH}" "${CMAKE_BINARY_DIR}/depthai-core" EXCLUDE_FROM_ALL)
 message(STATUS "Project version ${PROJECT_VERSION}")
 target_compile_definitions(depthai PRIVATE DEPTHAI_SCRIPT_NODE_ADD_IO)
 target_compile_definitions(depthai PRIVATE DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
@@ -144,11 +165,11 @@ include_directories(BEFORE
 )
 
 # Private Qualcomm/ST module sources (licensee-only code; not part of the public repository): the private repository
-# depthai-device-vendor-fw. Default: the environment variable DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, then a sibling checkout named
-# depthai-device-vendor-fw.
+# depthai-device-vendor-fw. Default: the environment variable DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, then a checkout named
+# depthai-device-vendor-fw next to the depthai-core checkout.
 set(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "$ENV{DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}" CACHE PATH "Path to the checkout of the private module (repository depthai-device-vendor-fw)")
-if(NOT DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/../depthai-device-vendor-fw/CMakeLists.txt")
-    get_filename_component(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../depthai-device-vendor-fw" ABSOLUTE)
+if(NOT DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR AND EXISTS "${DEPTHAI_DEVICE_KB_CORE_PATH}/../depthai-device-vendor-fw/CMakeLists.txt")
+    get_filename_component(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "${DEPTHAI_DEVICE_KB_CORE_PATH}/../depthai-device-vendor-fw" ABSOLUTE)
 endif()
 message(STATUS "Private module source dir: '${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}'")
 
@@ -168,6 +189,7 @@ if(NOT DEPTHAI_DEVICE_TOF_VD55H1)
 endif()
 
 # Add dependencies
+find_package(Eigen3 CONFIG REQUIRED)
 add_subdirectory("external")
 
 target_include_directories(depthai BEFORE PUBLIC "${DEPTHAI_DEVICE_RVC4_SYSROOT}/usr/include/python3.10/")
@@ -376,8 +398,8 @@ add_library(depthai-device-core STATIC
 add_library(depthai-device-accel-api INTERFACE)
 target_include_directories(depthai-device-accel-api
     INTERFACE
-        "${CMAKE_CURRENT_LIST_DIR}/external/depthai-core/include"
-        "${CMAKE_CURRENT_LIST_DIR}/external/depthai-core/src"
+        "${DEPTHAI_DEVICE_KB_CORE_PATH}/include"
+        "${DEPTHAI_DEVICE_KB_CORE_PATH}/src"
         "${CMAKE_CURRENT_LIST_DIR}/include"
         "${CMAKE_CURRENT_LIST_DIR}/src"
 )
@@ -630,7 +652,7 @@ target_link_libraries(depthai-device-core
     subprocess
 
     # eigen
-    eigen
+    Eigen3::Eigen
     SNPE
     opencv_core
     opencv_calib3d
@@ -715,8 +737,8 @@ if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
         target_link_libraries(depthai-device-core PRIVATE depthai-device-rvc4-vendor-tof)
     endif()
 else()
-    message(FATAL_ERROR "DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR is not set and no sibling depthai-device-vendor-fw checkout was found. "
-                        "The private module is required to build the firmware.")
+    message(FATAL_ERROR "DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR is not set and no depthai-device-vendor-fw checkout was found next to the "
+                        "depthai-core checkout. The private module is required to build the firmware.")
 endif()
 
 # Create final version

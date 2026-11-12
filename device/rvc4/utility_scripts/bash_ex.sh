@@ -12,4 +12,4 @@ if [ -z "$CONTAINER" ]; then
     exit 1
 fi
 
-docker exec -ti -w /work "$CONTAINER" /bin/bash
+docker exec -ti -w /work/device/rvc4 "$CONTAINER" /bin/bash

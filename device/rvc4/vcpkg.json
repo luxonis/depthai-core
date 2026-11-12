@@ -2,6 +2,7 @@
     "name": "depthai-device",
     "dependencies": [
         "cpp-httplib",
+        "eigen3",
         "libpng",
         "tiff",
         "yaml-cpp",
