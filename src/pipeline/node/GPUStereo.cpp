@@ -37,6 +37,9 @@ void GPUStereo::buildInternal() {
         if(platform != Platform::RVC4) {
             throw std::runtime_error("GPUStereo node is only supported on RVC4 devices.");
         }
+        if(!device->isGpuStereoSupported()) {
+            throw std::runtime_error("GPUStereo node requires an RVC4 device with a GPU.");
+        }
     }
 
     sync->setRunOnHost(false);
