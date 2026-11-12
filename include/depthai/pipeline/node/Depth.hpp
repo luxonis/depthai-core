@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -250,12 +251,15 @@ class Depth : public DeviceNodeGroup {
 
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
+    static bool usesOptimizedNeuralModels(const std::string& osVersion);
+
     static Selection selectBackend(Platform platform,
                                    std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                    float targetFps,
                                    const std::vector<Algorithm>& supportedAlgorithms,
                                    const std::vector<DeviceModelZoo>& modelFilter = {},
-                                   bool requireFpsAndResolutionMatch = false);
+                                   bool requireFpsAndResolutionMatch = false,
+                                   bool optimizedNeuralModels = false);
 
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
 
