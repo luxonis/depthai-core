@@ -321,11 +321,15 @@ endif()
 
 if(WIN32)
     # Copy dlls to target directory - Windows only
+    # Do not copy the Python interpreter DLL (python3XX.dll): the interpreter that imports the module
+    # has already loaded it, so a copy next to the module is never used.
+    set(DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX "(^|[/\\\\])python3[0-9]*t?(_d)?\\.dll$")
     # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
     if(CMAKE_VERSION VERSION_LESS "3.21")
         file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        list(FILTER depthai_dll_libraries EXCLUDE REGEX "${DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX}")
     else()
-        set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${TARGET_NAME}>")
+        set(depthai_dll_libraries "$<FILTER:$<TARGET_RUNTIME_DLLS:${TARGET_NAME}>,EXCLUDE,${DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX}>")
     endif()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND
         "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${TARGET_NAME}>>"
