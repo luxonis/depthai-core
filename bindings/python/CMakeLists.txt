@@ -300,6 +300,11 @@ else()
         target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto;-fno-fat-lto-objects>")
         target_link_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto>")
     endif()
+    # When depthai-core hides the symbols of its static dependencies, the module links its own copy
+    # of the few that it uses (spdlog, zlib). Do not export these copies from the module either.
+    if(DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS AND COMMAND exclude_archive_libs_symbols)
+        exclude_archive_libs_symbols(${TARGET_NAME})
+    endif()
 endif()
 if(DEPTHAI_UNITY_BUILD)
     set_target_properties(${TARGET_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)

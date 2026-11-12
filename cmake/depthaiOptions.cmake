@@ -45,6 +45,9 @@ option(DEPTHAI_INSTALL "Enable install target for depthai-core targets" ON)
 # ---------- Dependency Management -------------
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_VCPKG_INTERNAL_ONLY "Use VCPKG internally, but not for interface libraries" ON)
+# GNU ld only (-Wl,--exclude-libs=ALL). Without it, a shared depthai-core exports all symbols of
+# the static dependencies (PCL, RTAB-Map, OpenSSL, ...), which makes .dynsym/.dynstr large.
+option(DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS "Do not export the symbols of static libraries linked into depthai-core" ${DEPTHAI_VCPKG_INTERNAL_ONLY})
 
 set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT ON)
 if(DEPTHAI_VCPKG_INTERNAL_ONLY)
