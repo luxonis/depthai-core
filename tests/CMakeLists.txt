@@ -1322,6 +1322,9 @@ set(rvc2ng_tests
     benchmark_report_test
     gate_rpc_test
     calibration_override_test
+    stereo_depth_node_test
+    stereo_depth_alignment_test
+    stereo_depth_host_frames_test
 )
 foreach(name IN LISTS rvc2ng_tests)
     set_property(TEST ${name} APPEND PROPERTY LABELS rvc2ng)
