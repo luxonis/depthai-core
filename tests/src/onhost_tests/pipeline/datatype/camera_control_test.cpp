@@ -48,6 +48,22 @@ TEST_CASE("Region from a frame maps to its source frame", "[CameraControl][Regio
         control.setAutoExposureRegion(dai::Rect(0.5f, 0.5f, 0.25f, 0.25f, true), cropped());
         REQUIRE(asTuple(control.aeRegion) == std::make_tuple(4000, 3000, 1920, 1080));
     }
+    SECTION("normalized, between output pixels") {
+        // An 8000x6000 source scaled to 640x480: a normalized box maps as the same box in fractional pixels does.
+        dai::ImgTransformation transformation(8000, 6000);
+        transformation.addScale(0.08f, 0.08f);
+        control.setAutoFocusRegion(dai::Rect(0.1005f, 0.1005f, 0.1f, 0.1f, true), transformation);
+        REQUIRE(asTuple(control.afRegion) == std::make_tuple(804, 603, 800, 600));
+        control.setAutoFocusRegion(dai::Rect(64.32f, 48.24f, 64.0f, 48.0f, false), transformation);
+        REQUIRE(asTuple(control.afRegion) == std::make_tuple(804, 603, 800, 600));
+    }
+    SECTION("normalized, narrower than half an output pixel") {
+        // 0.0005 of 640 px is 0.32 px, 4 px of the source.
+        dai::ImgTransformation transformation(8000, 6000);
+        transformation.addScale(0.08f, 0.08f);
+        control.setAutoExposureRegion(dai::Rect(0.5f, 0.5f, 0.0005f, 0.1f, true), transformation);
+        REQUIRE(asTuple(control.aeRegion) == std::make_tuple(4000, 3000, 4, 600));
+    }
     SECTION("through a further resize") {
         // A 640x360 NN input made from the cropped 1920x1080 output.
         auto transformation = cropped();
@@ -75,4 +91,8 @@ TEST_CASE("Region from a frame rejects what cannot be mapped", "[CameraControl][
     dai::CameraControl control;
     REQUIRE_THROWS_AS(control.setAutoFocusRegion(dai::Rect(5000, 10, 20, 20, false), binned()), std::invalid_argument);
     REQUIRE_THROWS_AS(control.setAutoExposureRegion(dai::Rect(10, 10, 20, 20, false), dai::ImgTransformation()), std::invalid_argument);
+    // Empty boxes, including a negative width, which would otherwise flip into a box left of x.
+    REQUIRE_THROWS_AS(control.setAutoFocusRegion(dai::Rect(10, 20, -5, 10, false), binned()), std::invalid_argument);
+    REQUIRE_THROWS_AS(control.setAutoFocusRegion(dai::Rect(10, 20, 0, 10, false), binned()), std::invalid_argument);
+    REQUIRE_THROWS_AS(control.setAutoExposureRegion(dai::Rect(0.1f, 0.1f, 0.2f, 0.0f, true), binned()), std::invalid_argument);
 }

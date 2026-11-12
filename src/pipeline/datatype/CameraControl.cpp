@@ -13,20 +13,26 @@ namespace {
 // A rectangle in a frame as a region in pixels of the frame's source: mapped through the frame's transformation, widened
 // to whole pixels and clamped to the source.
 CameraControl::RegionParams sourceRegion(const Rect& rect, const ImgTransformation& transformation) {
+    if(rect.empty()) {
+        throw std::invalid_argument("Cannot map an empty region");
+    }
     const auto [width, height] = transformation.getSize();
     const auto [sourceWidth, sourceHeight] = transformation.getSourceSize();
     if(width == 0 || height == 0 || sourceWidth == 0 || sourceHeight == 0) {
         throw std::invalid_argument("Cannot map a region through a transformation without a frame and source size");
     }
-    const Rect inFrame = rect.denormalize(static_cast<int>(width), static_cast<int>(height));
-    const auto [minX, minY, maxX, maxY] = transformation.invTransformRect(RotatedRect(inFrame)).getOuterRect();
+    // Normalized coordinates stay fractional in frame pixels; only the source region is rounded.
+    const RotatedRect inFrame = RotatedRect(rect).denormalize(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
+    const auto [minX, minY, maxX, maxY] = transformation.invTransformRect(inFrame).getOuterRect();
     // Mapped corners land a rounding error off whole pixels; that should not widen the region by a pixel.
     constexpr float slack = 1e-3f;
     const auto clampTo = [](float value, size_t size) {
         return std::clamp(value, 0.0f, static_cast<float>(std::min<size_t>(size, std::numeric_limits<uint16_t>::max())));
     };
-    const float x0 = clampTo(std::floor(minX + slack), sourceWidth), y0 = clampTo(std::floor(minY + slack), sourceHeight);
-    const float x1 = clampTo(std::ceil(maxX - slack), sourceWidth), y1 = clampTo(std::ceil(maxY - slack), sourceHeight);
+    const float x0 = clampTo(std::floor(minX + slack), sourceWidth);
+    const float y0 = clampTo(std::floor(minY + slack), sourceHeight);
+    const float x1 = clampTo(std::ceil(maxX - slack), sourceWidth);
+    const float y1 = clampTo(std::ceil(maxY - slack), sourceHeight);
     if(x1 <= x0 || y1 <= y0) {
         throw std::invalid_argument("Region lies outside the source frame of its transformation");
     }

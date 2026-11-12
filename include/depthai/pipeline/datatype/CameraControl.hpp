@@ -513,7 +513,7 @@ class CameraControl : public Buffer {
      * set as with setAutoFocusRegion(uint16_t, uint16_t, uint16_t, uint16_t).
      * @param rect Region in pixels of the frame, or normalized to the frame's size
      * @param transformation The frame's transformation, from ImgFrame::getTransformation() or ImgDetections::getTransformation()
-     * @throws std::invalid_argument if the transformation has no size or the region lies outside the source frame
+     * @throws std::invalid_argument if the region is empty, the transformation has no size or the region lies outside the source frame
      */
     CameraControl& setAutoFocusRegion(const Rect& rect, const ImgTransformation& transformation);
 
@@ -561,7 +561,7 @@ class CameraControl : public Buffer {
      * set as with setAutoExposureRegion(uint16_t, uint16_t, uint16_t, uint16_t).
      * @param rect Region in pixels of the frame, or normalized to the frame's size
      * @param transformation The frame's transformation, from ImgFrame::getTransformation() or ImgDetections::getTransformation()
-     * @throws std::invalid_argument if the transformation has no size or the region lies outside the source frame
+     * @throws std::invalid_argument if the region is empty, the transformation has no size or the region lies outside the source frame
      */
     CameraControl& setAutoExposureRegion(const Rect& rect, const ImgTransformation& transformation);
 
