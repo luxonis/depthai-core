@@ -11,9 +11,9 @@
 
 #include "depthai/depthai.hpp"
 
-TEST_CASE("Camera ISP intrinsics follow native 4K sensor geometry", "[camera-sensor-geometry]") {
-    const bool calibrateInSelectedMode = GENERATE(false, true);
-    CAPTURE(calibrateInSelectedMode);
+TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-sensor-geometry]") {
+    const bool calibrateAtCroppedMode = GENERATE(false, true);
+    CAPTURE(calibrateAtCroppedMode);
     dai::DeviceInfo deviceInfo;
     std::vector<dai::CameraFeatures> cameras;
     dai::CalibrationHandler calibration;
@@ -22,8 +22,8 @@ TEST_CASE("Camera ISP intrinsics follow native 4K sensor geometry", "[camera-sen
         if(device.getPlatform() != dai::Platform::RVC2) {
             SKIP("This regression exercises the RVC2 ISP calibration path");
         }
-        deviceInfo.deviceId = device.getDeviceId();
-        deviceInfo.platform = device.getDeviceInfo().platform;
+        deviceInfo = device.getDeviceInfo();
+        deviceInfo.state = X_LINK_ANY_STATE;
         cameras = device.getConnectedCameraFeatures();
         calibration = device.readCalibration();
     }
@@ -33,21 +33,38 @@ TEST_CASE("Camera ISP intrinsics follow native 4K sensor geometry", "[camera-sen
     for(const auto& camera : cameras) {
         if(camera.width <= 0 || camera.height <= 0) continue;
         auto configs = camera.configs;
-        const auto isNative4k = [](const auto& config) { return config.width == 3840 && config.height == 2160; };
-        if(std::none_of(configs.begin(), configs.end(), isNative4k)) continue;
-        // Exercise the reported native 4K path first, followed by full-FOV controls.
-        std::stable_sort(configs.begin(), configs.end(), [&](const auto& a, const auto& b) { return isNative4k(a) && !isNative4k(b); });
+        const auto isSupported = [](const auto& config) { return config.type == dai::CameraSensorType::COLOR || config.type == dai::CameraSensorType::MONO; };
+        const auto getFov = [&](const auto& config) {
+            auto fov = config.fov;
+            if(fov.isNormalized()) fov = fov.denormalize(camera.width, camera.height);
+            return fov;
+        };
+        const auto isCropped = [&](const auto& config) {
+            const auto fov = getFov(config);
+            return isSupported(config) && fov.width > 0 && fov.height > 0
+                   && (fov.x != 0 || fov.y != 0 || fov.width != camera.width || fov.height != camera.height);
+        };
+        // Prefer the reported native 4K case; other sensors exercise their own
+        // cropped mode so the regression also covers mono and smaller cameras.
+        auto cropped = std::find_if(
+            configs.begin(), configs.end(), [&](const auto& config) { return config.width == 3840 && config.height == 2160 && isCropped(config); });
+        if(cropped == configs.end()) cropped = std::find_if(configs.begin(), configs.end(), isCropped);
+        if(cropped == configs.end()) continue;
+        const auto calibrationMode = *cropped;
+        const auto calibrationFov = getFov(calibrationMode);
+        const auto isCalibrationMode = [&](const auto& config) { return config.width == calibrationMode.width && config.height == calibrationMode.height; };
+        // Exercise the crop first, followed by full-FOV and binning controls.
+        std::stable_sort(configs.begin(), configs.end(), [&](const auto& a, const auto& b) { return isCalibrationMode(a) && !isCalibrationMode(b); });
         std::set<std::pair<std::int32_t, std::int32_t>> testedSizes;
         for(const auto& config : configs) {
             // Bound device memory use and avoid testing duplicate FPS/HDR modes.
-            if(config.type != dai::CameraSensorType::COLOR) continue;
+            if(!isSupported(config)) continue;
             if(config.width <= 0 || config.height <= 0 || static_cast<std::int64_t>(config.width) * config.height > 16000000) continue;
             if(!testedSizes.emplace(config.width, config.height).second) continue;
-            auto fov = config.fov;
-            if(fov.isNormalized()) fov = fov.denormalize(camera.width, camera.height);
+            const auto fov = getFov(config);
             if(fov.width <= 0 || fov.height <= 0) continue;
             const bool fullFov = fov.x == 0 && fov.y == 0 && fov.width == camera.width && fov.height == camera.height;
-            if(!isNative4k(config) && !fullFov) continue;
+            if(!isCalibrationMode(config) && !fullFov) continue;
             CAPTURE(camera.socket, camera.sensorName, config.width, config.height, fov.x, fov.y, fov.width, fov.height);
 
             // Noncentral principal points expose crop errors that a centered
@@ -56,15 +73,15 @@ TEST_CASE("Camera ISP intrinsics follow native 4K sensor geometry", "[camera-sen
                 {1000.0f, 0.0f, camera.width * 0.5f + 37.0f}, {0.0f, 1100.0f, camera.height * 0.5f - 23.0f}, {0.0f, 0.0f, 1.0f}};
             const std::vector<float> distortion = {0.01f, -0.02f, 0.001f, -0.001f, 0.005f, 0, 0, 0, 0, 0, 0, 0, 0, 0};
             auto localCalibration = calibration;
-            if(calibrateInSelectedMode) {
+            if(calibrateAtCroppedMode) {
                 auto readoutK = fullK;
-                readoutK[0][2] -= fov.x;
-                readoutK[1][2] -= fov.y;
+                readoutK[0][2] -= calibrationFov.x;
+                readoutK[1][2] -= calibrationFov.y;
                 for(size_t column = 0; column < 3; ++column) {
-                    readoutK[0][column] *= config.width / fov.width;
-                    readoutK[1][column] *= config.height / fov.height;
+                    readoutK[0][column] *= calibrationMode.width / calibrationFov.width;
+                    readoutK[1][column] *= calibrationMode.height / calibrationFov.height;
                 }
-                localCalibration.setCameraIntrinsics(camera.socket, readoutK, config.width, config.height);
+                localCalibration.setCameraIntrinsics(camera.socket, readoutK, calibrationMode.width, calibrationMode.height);
             } else {
                 localCalibration.setCameraIntrinsics(camera.socket, fullK, camera.width, camera.height);
             }
@@ -78,15 +95,19 @@ TEST_CASE("Camera ISP intrinsics follow native 4K sensor geometry", "[camera-sen
                 // Some camera modules have intrinsics without cross-camera calibration.
             }
 
-            // Allow the previous USB connection to disappear before reusing the
-            // device, as in camera_fps_config_test. Opening during reset can
-            // otherwise attach to the previous firmware session.
+            // Wait for the previous firmware session to reset. Keep the known
+            // endpoint for PoE devices, whose rediscovery can outlast a USB reset.
             const auto resetStart = std::chrono::steady_clock::now();
-            while(std::chrono::steady_clock::now() - resetStart < std::chrono::seconds(2)) {
+            bool ready = false;
+            while(std::chrono::steady_clock::now() - resetStart < std::chrono::seconds(30)) {
                 const auto devices = dai::XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, true, 50);
-                if(std::none_of(devices.begin(), devices.end(), [&](const auto& info) { return info.deviceId == deviceInfo.deviceId; })) break;
+                ready = std::any_of(devices.begin(), devices.end(), [&](const auto& info) {
+                    return info.deviceId == deviceInfo.deviceId && (info.state == X_LINK_UNBOOTED || info.state == X_LINK_BOOTLOADER);
+                });
+                if(ready) break;
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
+            REQUIRE(ready);
             auto device = std::make_shared<dai::Device>(deviceInfo);
             dai::Pipeline pipeline(device);
             pipeline.setCalibrationData(localCalibration);
@@ -148,7 +169,7 @@ TEST_CASE("Camera ISP intrinsics follow native 4K sensor geometry", "[camera-sen
             if(fov.x != 0 || fov.y != 0 || fov.width != camera.width || fov.height != camera.height) ++testedCroppedModes;
         }
     }
-    if(testedModes == 0) SKIP("This regression requires a color camera with a native 3840x2160 sensor mode");
+    if(testedModes == 0) SKIP("This regression requires an advertised cropped color or mono sensor mode");
     INFO("Checked " << testedModes << " sensor modes, including " << testedCroppedModes << " cropped modes");
     if(testedCroppedModes == 0) WARN("This device has no cropped sensor mode; only full-FOV controls were exercised");
 }
