@@ -149,6 +149,12 @@ class FsyncController {
      */
     void setExternalFrameSyncRole(dai::ExternalFrameSyncRole role);
 
+    /**
+     * Apply AUTO_DETECT unless a role is already applied. Called when a pipeline starts,
+     * so the STM stays in CONFIG 0 with the FSYNC pin free until the host needs a role.
+     */
+    void applyPendingRole();
+
     bool externalRoleForced() const;
 
     void addFsyncConsumer(dai::CameraBoardSocket socket);
@@ -176,6 +182,9 @@ class FsyncController {
     FsyncControllerLed dotProjector;
     FsyncControllerLed floodLight;
 
+    /**
+     * The applied role. Before a role is applied, the role AUTO_DETECT would choose, read without writing to the STM.
+     */
     dai::ExternalFrameSyncRole getExternalFrameSyncRole() const;
 
     /**
@@ -191,6 +200,8 @@ class FsyncController {
     float getClosestFpsIoctl(float wantedFrequency);
 
     float stopSetAndQueryActualFrequency(int pinId, float wantedFrequency);
+
+    SetInfoResult writeConfig(uint32_t configReg);
 
     void updateStmLedExposure(uint32_t exposureNs);
     void updateExternalStrobeExposure(uint32_t exposureNs);

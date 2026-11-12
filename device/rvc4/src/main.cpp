@@ -546,6 +546,7 @@ void parseAssetsToAssetManager(dai::Pipeline& pipeline, dai::Assets& assets) {
 
 std::function<std::tuple<bool, std::string>()> waitForDeviceReady = []() -> std::tuple<bool, std::string>  {
     try {
+        dai::gate::FsyncController::getInstance().applyPendingRole();
         if (dai::gate::FsyncController::getInstance().supportsExternalFrameSyncMode() &&
             dai::gate::FsyncController::getInstance().isOk())
         {

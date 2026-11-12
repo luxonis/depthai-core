@@ -161,7 +161,7 @@ FsyncController::FsyncController()
         m_supportsExternalFrameSyncMode = true;
     }
 
-    setExternalFrameSyncRole(dai::ExternalFrameSyncRole::AUTO_DETECT);
+    writeConfig(FSYNC_STM_CONFIG_MASTER_MODE_WITH_INPUT);
 
     if (m_supportsExternalFrameSyncMode) {
         // We need to turn off external fsync output when we finish.
@@ -199,18 +199,30 @@ void FsyncController::setExternalFrameSyncRole(dai::ExternalFrameSyncRole role) 
         DAI_WARN("External frame sync role set to MASTER.");
     }
 
-    SetInfoResult result = Applied{};
-    if(stmFd >= 0) {
-        struct fsync_stm_ioctl_info_data infoData = {0};
-        infoData.config_reg = configFor(resolved);
-        if(ioctl(stmFd, SET_INFO, &infoData) != 0) {
-            int err = errno;
-            m_ioctl_failure = true;
-            DAI_ERROR("Failed to write info to the fsync-stm device: {} ({})", strerror(err), err);
-            result = ControllerFailure{err};
-        }
+    m_roleState = RoleState{role, resolved, writeConfig(configFor(resolved))};
+}
+
+void FsyncController::applyPendingRole() {
+    std::unique_lock<std::recursive_mutex> lock(mtx);
+    if(!m_roleState) {
+        setExternalFrameSyncRole(ExternalFrameSyncRole::AUTO_DETECT);
     }
-    m_roleState = RoleState{role, resolved, result};
+}
+
+SetInfoResult FsyncController::writeConfig(uint32_t configReg) {
+    std::unique_lock<std::recursive_mutex> lock(mtx);
+    if(stmFd < 0) {
+        return Applied{};
+    }
+    struct fsync_stm_ioctl_info_data infoData = {0};
+    infoData.config_reg = configReg;
+    if(ioctl(stmFd, SET_INFO, &infoData) != 0) {
+        int err = errno;
+        m_ioctl_failure = true;
+        DAI_ERROR("Failed to write info to the fsync-stm device: {} ({})", strerror(err), err);
+        return ControllerFailure{err};
+    }
+    return Applied{};
 }
 
 dai::ExternalFrameSyncRole FsyncController::getExternalFrameSyncRole() const {
