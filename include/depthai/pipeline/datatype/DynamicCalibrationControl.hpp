@@ -10,6 +10,7 @@
 #include <variant>
 #include <vector>
 
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {

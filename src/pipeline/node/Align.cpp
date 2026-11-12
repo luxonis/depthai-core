@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "common/ImgTransformations.hpp"
+#include "depthai/device/Device.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/AprilTags.hpp"
 #include "pipeline/datatype/DatatypeEnum.hpp"

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "depthai/device/Device.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.hpp"

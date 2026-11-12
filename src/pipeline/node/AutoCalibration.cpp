@@ -8,6 +8,7 @@
 #include <pipeline/datatype/MessageGroup.hpp>
 #include <stdexcept>
 
+#include "depthai/device/Device.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "utility/Telemetry.hpp"

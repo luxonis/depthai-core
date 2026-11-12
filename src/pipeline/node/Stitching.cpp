@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "depthai/device/Device.hpp"
 #include "fmt/format.h"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/ErrorMacros.hpp"

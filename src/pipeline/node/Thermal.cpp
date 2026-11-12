@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/Thermal.hpp"
 
+#include "depthai/device/Device.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
