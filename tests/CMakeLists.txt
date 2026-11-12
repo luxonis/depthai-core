@@ -1055,7 +1055,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     dai_set_test_labels(align_coverage_test ondevice rvc2_all rvc4 ci)
     # Its ImageAlign cases alone, for RVC2NG, which has no device-side Align.
     dai_add_tagged_test(align_coverage_image_align_test align_coverage_test image-align)
-    dai_set_test_labels(align_coverage_image_align_test ondevice)
+    dai_set_test_labels(align_coverage_image_align_test ondevice rvc2ng)
 endif()
 
 # Align device execution test (device-side Align is only available on RVC4)
@@ -1328,6 +1328,7 @@ set(rvc2ng_tests
     stereo_depth_node_test
     stereo_depth_alignment_test
     stereo_depth_host_frames_test
+    image_align_node_test
 )
 foreach(name IN LISTS rvc2ng_tests)
     set_property(TEST ${name} APPEND PROPERTY LABELS rvc2ng)
