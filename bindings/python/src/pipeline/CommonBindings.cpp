@@ -465,7 +465,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     // ExternalFrameSyncRole enum bindings
     externalFrameSyncRole.value("AUTO_DETECT", ExternalFrameSyncRole::AUTO_DETECT)
         .value("MASTER", ExternalFrameSyncRole::MASTER)
-        .value("SLAVE", ExternalFrameSyncRole::SLAVE);
+        .value("SLAVE", ExternalFrameSyncRole::SLAVE)
+        .value("STANDALONE", ExternalFrameSyncRole::STANDALONE);
 
     // CameraSensorType enum bindings
     cameraSensorType.value("AUTO", dai::CameraSensorType::AUTO)
