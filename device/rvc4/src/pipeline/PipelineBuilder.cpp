@@ -95,15 +95,24 @@ void validateFsync1() {
     if ((fsyncRole != ExternalFrameSyncRole::MASTER || !fsyncOk) &&
         isExternalStrobeEnabled)
     {
+        auto roleState = FsyncController::getInstance().getRoleState();
+        if(auto error = roleState ? strobeNeedsPinError(*roleState) : std::nullopt) {
+            throw std::runtime_error(*error);
+        }
         throw std::runtime_error("External strobe requires the device to be set in MASTER mode.");
     }
 }
 
 void validateFsync2() {
     auto numFsyncConsumers = FsyncController::getInstance().getNumFsyncConsumers();
-    auto isExternalFsyncExplicit = FsyncController::getInstance().externalRoleForced();
+    auto roleState = FsyncController::getInstance().getRoleState();
+    bool isExternalFsyncExplicit = roleState && externalRoleForced(*roleState);
     auto isExternalStrobeEnabled = FsyncController::getInstance().getExternalStrobeEnable();
     auto fsyncOk = FsyncController::getInstance().isOk();
+
+    if(auto error = isExternalFsyncExplicit ? setRoleError(*roleState) : std::nullopt) {
+        throw std::runtime_error(*error);
+    }
 
     if ((numFsyncConsumers == 0 || !fsyncOk) && isExternalFsyncExplicit) {
         throw std::runtime_error("At least one camera with fsync enabled is needed when External Frame Sync role is forced.");

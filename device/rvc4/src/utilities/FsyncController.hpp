@@ -143,6 +143,8 @@ class FsyncController {
      *  - If we detect the M8 connector is connected, we set the role to SLAVE.
      *  - If we detect the M8 connector is disconnected, we set the role to MASTER.
      * If set to any other role, that role will be used directly.
+     * When the aux connector cannot give fsync-stm the FSYNC pin, the device keeps on-board sync and reports STANDALONE.
+     * AUTO_DETECT then logs a warning and never throws. MASTER, SLAVE and STANDALONE throw the reason when they cannot be applied.
      * NOTE: We can detect if the M8 connector is connected only on slave devices.
      *       This detection relies on the state of one GPIO pin which is pulled low only on slave devices when the M8 connector is connected.
      * WARNING: This function must be called before any calls to setFps() or start().
@@ -155,7 +157,10 @@ class FsyncController {
      */
     void applyPendingRole();
 
-    bool externalRoleForced() const;
+    /**
+     * The applied role and the outcome of its SET_INFO, std::nullopt before a role is applied.
+     */
+    std::optional<RoleState> getRoleState() const;
 
     void addFsyncConsumer(dai::CameraBoardSocket socket);
 

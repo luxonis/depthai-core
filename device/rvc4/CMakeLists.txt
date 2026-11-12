@@ -430,6 +430,7 @@ set(DEPTHAI_COMMON_SOURCES
     src/utilities/RectangleRemapUtils.cpp
     src/utilities/FsyncController.cpp
     src/utilities/FsyncRole.cpp
+    src/utilities/AuxConnector.cpp
     src/pipeline/PipelineBuilder.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/XLinkIn.cpp

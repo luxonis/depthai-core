@@ -30,6 +30,7 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
+#include "utilities/AuxConnector.hpp"
 #include "utilities/ErrorMacros.hpp"
 #include "utilities/DeviceModel.hpp"
 #include "utilities/CameraDiscovery.hpp"
@@ -200,6 +201,12 @@ void FsyncController::setExternalFrameSyncRole(dai::ExternalFrameSyncRole role) 
     }
 
     m_roleState = RoleState{role, resolved, writeConfig(configFor(resolved))};
+    if(auto warning = autoWarning(*m_roleState)) {
+        DAI_WARN("{}", *warning);
+    }
+    if(auto error = setRoleError(*m_roleState)) {
+        throw std::runtime_error(*error);
+    }
 }
 
 void FsyncController::applyPendingRole() {
@@ -218,6 +225,13 @@ SetInfoResult FsyncController::writeConfig(uint32_t configReg) {
     infoData.config_reg = configReg;
     if(ioctl(stmFd, SET_INFO, &infoData) != 0) {
         int err = errno;
+        // CONFIG 0 never asks the aux connector for the FSYNC pin
+        if(configReg != FSYNC_STM_CONFIG_MASTER_MODE_WITH_INPUT) {
+            bool linked = aux::fsyncLinkedToConnector();
+            if(auto problem = classifySetInfoError(err, linked, linked && aux::connectorBound())) {
+                return PinUnavailable{*problem};
+            }
+        }
         m_ioctl_failure = true;
         DAI_ERROR("Failed to write info to the fsync-stm device: {} ({})", strerror(err), err);
         return ControllerFailure{err};
@@ -233,9 +247,9 @@ dai::ExternalFrameSyncRole FsyncController::getExternalFrameSyncRole() const {
     return resolveRole(ExternalFrameSyncRole::AUTO_DETECT, m_supportsExternalFrameSyncMode, getM8State());
 }
 
-bool FsyncController::externalRoleForced() const {
+std::optional<RoleState> FsyncController::getRoleState() const {
     std::unique_lock<std::recursive_mutex> lock(mtx);
-    return m_roleState && gate::externalRoleForced(*m_roleState);
+    return m_roleState;
 }
 
 FsyncController& FsyncController::getInstance() {
