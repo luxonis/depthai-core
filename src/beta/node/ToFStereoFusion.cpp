@@ -27,6 +27,10 @@ ToFStereoFusion::~ToFStereoFusion() = default;
 
 ToFStereoFusion::Properties& ToFStereoFusion::getProperties() {
     properties.initialConfig = *initialConfig;
+    // initialConfig is usually set after build(): check it when the pipeline is serialized.
+    if(properties.initialConfig.cropToOverlap) {
+        logger::warn("ToFStereoFusion: cropToOverlap is not supported; the output is the full rectified-left view");
+    }
     return properties;
 }
 
@@ -82,10 +86,6 @@ std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<da
     if(leftFps != CameraProperties::AUTO && rightFps != CameraProperties::AUTO && leftFps != rightFps) {
         logger::warn("ToFStereoFusion camera FPS values differ (left: {}, right: {}); outputs may not synchronize", leftFps, rightFps);
     }
-    if(initialConfig->cropToOverlap) {
-        logger::warn("ToFStereoFusion: cropToOverlap is not supported; the output is the full rectified-left view");
-    }
-
     // NeuralDepth is not used; drop it so that its network is not loaded.
     remove(neuralDepth->shared_from_this());
 

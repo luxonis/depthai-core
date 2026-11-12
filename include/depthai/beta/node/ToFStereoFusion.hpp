@@ -72,7 +72,7 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
    public:
     /** Internal ToF pipeline; its depth output is available for downstream use. */
     Subnode<dai::node::ToF> tof{*this, "tof"};
-    /** Not used by the fusion: build() removes it from the pipeline. */
+    /** Not used by the fusion: build() removes it from the pipeline, so its outputs carry no data. */
     Subnode<dai::node::NeuralDepth> neuralDepth{*this, "neuralDepth"};
     /** Internal fusion network. */
     Subnode<dai::node::NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
@@ -87,9 +87,9 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    /** Left camera input used when the node runs outside the RVC4 device build. */
+    /** Not used by the fusion (an input of the NeuralDepth subnode, which build() removes); link the cameras with build(). */
     Input& inputLeft{neuralDepth->sync->inputs["left"]};
-    /** Right camera input used when the node runs outside the RVC4 device build. */
+    /** Not used by the fusion (an input of the NeuralDepth subnode, which build() removes); link the cameras with build(). */
     Input& inputRight{neuralDepth->sync->inputs["right"]};
 #endif
 

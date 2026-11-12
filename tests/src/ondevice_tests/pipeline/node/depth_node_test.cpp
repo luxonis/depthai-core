@@ -304,7 +304,7 @@ void requireReceiveFpsInRange(const std::shared_ptr<MessageQueue>& queue, float 
     REQUIRE(fps <= maxFps);
 }
 
-TEST_CASE("ToFStereoFusion: FPS configures neural depth and ToF subnodes", "[fusion-control]") {
+TEST_CASE("ToFStereoFusion: FPS configures the camera and ToF subnodes", "[fusion-control]") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     if(device->getPlatform() != Platform::RVC4 || !deviceReportsTofSensor(device) || device->getStereoPairs().empty()) {
@@ -323,13 +323,11 @@ TEST_CASE("ToFStereoFusion: FPS configures neural depth and ToF subnodes", "[fus
     fusion->build(left, right, 15.f);
     auto depthQueue = fusion->depth.createOutputQueue(4, false);
     auto confidenceQueue = fusion->confidence.createOutputQueue(4, false);
-    auto neuralQueue = fusion->neuralDepth->depth.createOutputQueue(4, false);
     auto tofQueue = fusion->tof->depth.createOutputQueue(4, false);
     PipelineStopGuard guard(pipeline);
     pipeline.start();
     REQUIRE_FALSE(requireStreamFrame(depthQueue, kDepthFrameTimeout)->getData().empty());
     REQUIRE_FALSE(requireStreamFrame(confidenceQueue, kDepthFrameTimeout)->getData().empty());
-    requireReceiveFpsInRange(neuralQueue, 12.f, 18.f);
     requireReceiveFpsInRange(tofQueue, 12.f, 18.f);
     requireReceiveFpsInRange(depthQueue, 12.f, 18.f);
 }

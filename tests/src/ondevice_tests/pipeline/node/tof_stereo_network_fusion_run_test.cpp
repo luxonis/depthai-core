@@ -92,6 +92,15 @@ class LogCollector {
         }
         return -1;
     }
+    /** Waits up to timeout for a line containing text (the device log arrives asynchronously). */
+    bool waitFor(const std::string& text, std::chrono::milliseconds timeout) {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while(!contains(text)) {
+            if(std::chrono::steady_clock::now() > deadline) return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        return true;
+    }
     void clear() {
         std::lock_guard<std::mutex> lock(mutex);
         lines.clear();
@@ -199,7 +208,8 @@ TEST_CASE("ToFStereoFusion outputs depth from the GPU backend with the trained r
     REQUIRE(sorted.front() >= 0.7 * medianValid);
 
     // The GPU backend was selected and did not fall back.
-    REQUIRE(logs.contains("STEREO_NETWORK backend GPU"));
+    // Device log lines this test depends on (depthai-device-kb ToFStereoFusionStereoNetwork.cpp).
+    REQUIRE(logs.waitFor("STEREO_NETWORK backend GPU", std::chrono::seconds(5)));
     REQUIRE_FALSE(logs.contains("GPU backend unavailable"));
     REQUIRE_FALSE(logs.contains("unexpected network output layout"));
     // The node read the network's inputs.
@@ -217,13 +227,18 @@ namespace {
 
 struct ConfidenceRun {
     int threshold = -1;  // the u8 threshold the device logged
+    bool uncalibrated = false;
     size_t pairs = 0, depthPixels = 0, belowThreshold = 0;
 };
 
 /** Runs the firmware network with the given threshold and counts the depth pixels whose published confidence is below the u8
  * threshold the device logged. */
-ConfidenceRun runCalibrated(const std::shared_ptr<Device>& device, LogCollector& logs, float threshold) {
-    logs.clear();
+ConfidenceRun runCalibrated(float threshold) {
+    // A device per run: stopping a pipeline closes the device.
+    const auto device = std::make_shared<Device>();
+    LogCollector logs;
+    device->setLogLevel(LogLevel::INFO);
+    device->addLogCallback([&logs](LogMessage message) { logs.add(message); });
     Pipeline pipeline(device);
     auto fusion = buildFusion(pipeline, std::nullopt);
     fusion->initialConfig->setConfidenceThreshold(threshold);
@@ -236,7 +251,11 @@ ConfidenceRun runCalibrated(const std::shared_ptr<Device>& device, LogCollector&
     REQUIRE(depthQueue->get<ImgFrame>(FIRST_FRAME_TIMEOUT, timedOut) != nullptr);
     REQUIRE_FALSE(timedOut);
     ConfidenceRun run;
+    // Device log lines this test depends on (depthai-device-kb ToFStereoFusionStereoNetwork.cpp): "calibrated confidence,
+    // threshold N", "no valid confidence calibration".
+    logs.waitFor("confidence", std::chrono::seconds(5));
     run.threshold = logs.numberAfter("calibrated confidence, threshold ");
+    run.uncalibrated = logs.contains("no valid confidence calibration");
     std::map<int64_t, std::shared_ptr<ImgFrame>> depths, confidences;
     const auto start = std::chrono::steady_clock::now();
     while(std::chrono::steady_clock::now() - start < RUN_TIME) {
@@ -271,18 +290,16 @@ ConfidenceRun runCalibrated(const std::shared_ptr<Device>& device, LogCollector&
 
 TEST_CASE("ToFStereoFusion publishes the calibrated confidence of the network shipped with the firmware", "[ToFStereoFusion][behaviour]") {
     if(modelFromEnvironment()) SKIP("a user network has no confidence calibration on the device");
-    const auto device = std::make_shared<Device>();
-    if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) SKIP("needs an RVC4 device with a ToF sensor");
-
-    LogCollector logs;
-    device->setLogLevel(LogLevel::INFO);
-    device->addLogCallback([&logs](LogMessage message) { logs.add(message); });
+    {
+        const auto device = std::make_shared<Device>();  // closed again before the runs open their own
+        if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) SKIP("needs an RVC4 device with a ToF sensor");
+    }
 
     // The default threshold maps to the calibrated default of the network.
-    const auto standard = runCalibrated(device, logs, beta::ToFStereoFusionConfig{}.confidenceThreshold);
+    const auto standard = runCalibrated(beta::ToFStereoFusionConfig{}.confidenceThreshold);
     INFO("threshold " << standard.threshold << ", pairs " << standard.pairs << ", depth pixels " << standard.depthPixels << ", below "
                       << standard.belowThreshold);
-    REQUIRE_FALSE(logs.contains("no valid confidence calibration"));
+    REQUIRE_FALSE(standard.uncalibrated);
     REQUIRE(standard.threshold > 0);
     REQUIRE(standard.pairs >= MIN_FRAMES / 2);
     REQUIRE(standard.depthPixels > 0);
@@ -290,7 +307,7 @@ TEST_CASE("ToFStereoFusion publishes the calibrated confidence of the network sh
     REQUIRE(standard.belowThreshold == 0);
 
     // Other thresholds map proportionally.
-    const auto half = runCalibrated(device, logs, 0.25f);
+    const auto half = runCalibrated(0.25f);
     INFO("threshold at 0.25: " << half.threshold);
     REQUIRE(half.threshold == static_cast<int>(std::lround(standard.threshold * 0.5)));
     REQUIRE(half.belowThreshold == 0);
