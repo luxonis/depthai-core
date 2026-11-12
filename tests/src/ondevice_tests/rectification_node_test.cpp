@@ -132,6 +132,20 @@ TEST_CASE("RVC4 StereoDepth rectification preserves color across backends and fo
     }
 }
 
+namespace {
+/** P1(0:3, 0:3) of cv::stereoRectify (CALIB_ZERO_DISPARITY) for two identical cameras 7.5 cm apart along x: the rectified camera
+ * Rectification uses with alpha scaling. */
+cv::Mat stereoRectifiedCamera(const cv::Mat& camera, const std::vector<float>& distortion, cv::Size size, float alpha, cv::Size outputSize) {
+    cv::Mat K, d(1, static_cast<int>(distortion.size()), CV_64F), R1, R2, P1, P2, Q, result;
+    camera.convertTo(K, CV_64F);
+    for(size_t i = 0; i < distortion.size(); ++i) d.at<double>(0, static_cast<int>(i)) = distortion[i];
+    const cv::Mat R = cv::Mat::eye(3, 3, CV_64F), T = (cv::Mat_<double>(3, 1) << -7.5, 0, 0);
+    cv::stereoRectify(K, d, K, d, size, R, T, R1, R2, P1, P2, Q, cv::CALIB_ZERO_DISPARITY, alpha, outputSize);
+    P1(cv::Rect(0, 0, 3, 3)).convertTo(result, CV_32F);
+    return result;
+}
+}  // namespace
+
 TEST_CASE("Rectification alpha scaling reaches device meshes and output intrinsics", "[Rectification][ondevice]") {
     const float alpha = GENERATE(0.f, 1.f);
     dai::Pipeline pipeline;
@@ -157,7 +171,7 @@ TEST_CASE("Rectification alpha scaling reaches device meshes and output intrinsi
         (side == 0 ? left : right)->send(frame);
     }
     const cv::Mat camera = (cv::Mat_<float>(3, 3) << 800, 0, 320, 0, 800, 200, 0, 0, 1);
-    const cv::Mat target = cv::getOptimalNewCameraMatrix(camera, distortion, pixels.size(), alpha);
+    const cv::Mat target = stereoRectifiedCamera(camera, distortion, pixels.size(), alpha, pixels.size());
     cv::Mat mapX, mapY, expected;
     cv::initUndistortRectifyMap(camera, distortion, cv::Mat::eye(3, 3, CV_32F), target, pixels.size(), CV_32FC1, mapX, mapY);
     cv::remap(pixels, expected, mapX, mapY, cv::INTER_LINEAR);

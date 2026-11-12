@@ -169,6 +169,20 @@ TEST_CASE("StereoDepth follows Rectification then Sync, with a true bypass when 
 }
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+namespace {
+/** P1(0:3, 0:3) of cv::stereoRectify (CALIB_ZERO_DISPARITY) for two identical cameras 7.5 cm apart along x: the rectified camera
+ * Rectification uses with alpha scaling. */
+cv::Mat stereoRectifiedCamera(const cv::Mat& camera, const std::vector<float>& distortion, cv::Size size, float alpha, cv::Size outputSize) {
+    cv::Mat K, d(1, static_cast<int>(distortion.size()), CV_64F), R1, R2, P1, P2, Q, result;
+    camera.convertTo(K, CV_64F);
+    for(size_t i = 0; i < distortion.size(); ++i) d.at<double>(0, static_cast<int>(i)) = distortion[i];
+    const cv::Mat R = cv::Mat::eye(3, 3, CV_64F), T = (cv::Mat_<double>(3, 1) << -7.5, 0, 0);
+    cv::stereoRectify(K, d, K, d, size, R, T, R1, R2, P1, P2, Q, cv::CALIB_ZERO_DISPARITY, alpha, outputSize);
+    P1(cv::Rect(0, 0, 3, 3)).convertTo(result, CV_32F);
+    return result;
+}
+}  // namespace
+
 TEST_CASE("Rectification preserves RGB and BGR formats through bypass and remapping", "[Rectification]") {
     const auto type = GENERATE(dai::ImgFrame::Type::RGB888i, dai::ImgFrame::Type::RGB888p, dai::ImgFrame::Type::BGR888i, dai::ImgFrame::Type::BGR888p);
     const auto alpha =
@@ -201,13 +215,13 @@ TEST_CASE("Rectification preserves RGB and BGR formats through bypass and remapp
             (side == 0 ? left : right)->send(frame);
         }
         const cv::Mat intrinsic = (cv::Mat_<float>(3, 3) << 80, 0, 32, 0, 80, 24, 0, 0, 1);
-        cv::Mat target = alpha ? cv::getOptimalNewCameraMatrix(intrinsic, distortion, pixels.size(), *alpha) : intrinsic.clone();
+        const cv::Size outputSize = resize ? cv::Size(32, 24) : pixels.size();
+        cv::Mat target = alpha ? stereoRectifiedCamera(intrinsic, distortion, pixels.size(), *alpha, outputSize) : intrinsic.clone();
         target.convertTo(target, CV_32F);
-        if(resize) {
+        if(resize && !alpha) {
             target.row(0) *= 0.5f;
             target.row(1) *= 0.5f;
         }
-        const cv::Size outputSize = resize ? cv::Size(32, 24) : pixels.size();
         cv::Mat mapX, mapY, expected;
         cv::initUndistortRectifyMap(intrinsic, distortion, cv::Mat::eye(3, 3, CV_32F), target, outputSize, CV_32FC1, mapX, mapY);
         cv::remap(pixels, expected, mapX, mapY, cv::INTER_LINEAR);

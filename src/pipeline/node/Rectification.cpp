@@ -95,6 +95,23 @@ std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1,
     return std::make_pair(cv_R1, cv_R2);
 }
 
+/** P1(0:3, 0:3) of cv::stereoRectify with CALIB_ZERO_DISPARITY, the given alpha and output size (CV_32FC1). */
+cv::Mat rectifiedCameraMatrix(cv::Mat M1, cv::Mat d1, cv::Mat M2, cv::Mat d2, cv::Size imageSize, cv::Mat R, cv::Mat T, float alpha, cv::Size outputSize) {
+    cv::Mat R1, R2, P1, P2, Q;
+    cv::Mat _cv_M1, _cv_M2, _cv_d1, _cv_d2, _cv_R, _cv_T;
+    M1.convertTo(_cv_M1, CV_64FC1);
+    M2.convertTo(_cv_M2, CV_64FC1);
+    d1.convertTo(_cv_d1, CV_64FC1);
+    d2.convertTo(_cv_d2, CV_64FC1);
+    R.convertTo(_cv_R, CV_64FC1);
+    T.convertTo(_cv_T, CV_64FC1);
+    _cv_T = _cv_T.t();
+    cv::stereoRectify(_cv_M1, _cv_d1, _cv_M2, _cv_d2, imageSize, _cv_R, _cv_T, R1, R2, P1, P2, Q, cv::CALIB_ZERO_DISPARITY, alpha, outputSize);
+    cv::Mat result;
+    P1(cv::Rect(0, 0, 3, 3)).convertTo(result, CV_32FC1);
+    return result;
+}
+
 std::string matToString(const cv::Mat& mat) {
     std::ostringstream oss;
     oss << mat;
@@ -249,11 +266,10 @@ void Rectification::run() {
                    || input2ImgTransformation.getDistortionModel() != CameraModel::Perspective) {
                     throw std::invalid_argument("Rectification alphaScaling requires perspective cameras");
                 }
-                cv::Mat target = cv::getOptimalNewCameraMatrix(cv_M1, cv_d1, imageSize, *properties.alphaScaling);
-                target.convertTo(target, CV_32FC1);
-                target.row(0) *= static_cast<float>(output1FrameWidth) / input1Frame->getWidth();
-                target.row(1) *= static_cast<float>(output1FrameHeight) / input1Frame->getHeight();
-                targetM1 = dai::matrix::cvMatToMatrix3x3(target);
+                // The rectified camera of cv::stereoRectify (CALIB_ZERO_DISPARITY, this alpha, the output size): shared fx and cx
+                // for both outputs, the same rectified camera as the RVC4 StereoDepth warp with StereoDepth::setAlphaScaling.
+                targetM1 = dai::matrix::cvMatToMatrix3x3(rectifiedCameraMatrix(
+                    cv_M1, cv_d1, cv_M2, cv_d2, imageSize, cv_R, cv_T, *properties.alphaScaling, cv::Size(output1FrameWidth, output1FrameHeight)));
             }
 
             targetM2 = targetM1;  // TODO alignment target
