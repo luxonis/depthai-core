@@ -241,7 +241,7 @@ TEST_CASE("ToFStereoFusion STEREO_NETWORK keeps producing depth when the ToF lea
         ++frames;
     }
     REQUIRE(frames >= MIN_FRAMES);
-    REQUIRE(logs.contains("vendor-unwrap frames without phases"));
+    REQUIRE(logs.contains("the ToF sends vendor-unwrap frames"));
 
     // Back to the fusion depth mode.
     auto fusionMode = std::make_shared<ToFConfig>(*standard);
