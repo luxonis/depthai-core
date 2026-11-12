@@ -216,6 +216,22 @@ void FsyncController::applyPendingRole() {
     }
 }
 
+namespace {
+
+PinUnavailable describeBusyPin() {
+    auto pins = aux::readConnector();
+    if(const auto* read = std::get_if<std::vector<aux::Pin>>(&pins)) {
+        return aux::busyFsyncPin(*read);
+    }
+    int err = std::get<int>(pins);
+    if(err != ENOENT) {
+        DAI_INFO("Cannot read the aux connector to name the holder of the FSYNC pin: {} ({})", strerror(err), err);
+    }
+    return PinUnavailable{PinProblem::Busy};
+}
+
+}  // namespace
+
 SetInfoResult FsyncController::writeConfig(uint32_t configReg) {
     std::unique_lock<std::recursive_mutex> lock(mtx);
     if(stmFd < 0) {
@@ -229,7 +245,7 @@ SetInfoResult FsyncController::writeConfig(uint32_t configReg) {
         if(configReg != FSYNC_STM_CONFIG_MASTER_MODE_WITH_INPUT) {
             bool linked = aux::fsyncLinkedToConnector();
             if(auto problem = classifySetInfoError(err, linked, linked && aux::connectorBound())) {
-                return PinUnavailable{*problem};
+                return *problem == PinProblem::Busy ? describeBusyPin() : PinUnavailable{*problem};
             }
         }
         m_ioctl_failure = true;

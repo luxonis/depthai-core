@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sys/types.h>
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -17,10 +19,25 @@ uint32_t constexpr FSYNC_STM_CONFIG_SLAVE_MODE = 2;
 
 enum class PinProblem { Busy, ConnectorNotReady, ConnectorFailed };
 
+struct ProcessHolder {
+    pid_t pid;
+    std::string comm;  // "" when /proc/<pid>/comm cannot be read
+};
+struct KernelHolder {
+    std::string name;
+};
+struct LineHolder {
+    std::string line;
+    std::string consumer;  // "" when unknown
+};
+using Holder = std::variant<ProcessHolder, KernelHolder, LineHolder>;
+
 struct Applied {};
 // The aux connector did not give fsync-stm the FSYNC pin, so the STM stays in CONFIG 0
 struct PinUnavailable {
     PinProblem problem;
+    std::string pinLabel;          // "" when the connector cannot be read
+    std::optional<Holder> holder;  // Busy only, empty when the connector shows no holder
 };
 struct ControllerFailure {
     int err;

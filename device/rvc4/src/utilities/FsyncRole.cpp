@@ -61,10 +61,32 @@ std::optional<PinProblem> classifySetInfoError(int err, bool linked, bool bound)
     }
 }
 
+namespace {
+
+struct HolderText {
+    std::string operator()(const ProcessHolder& holder) const {
+        std::string text = "is held by process " + std::to_string(holder.pid);
+        return holder.comm.empty() ? text : text + " (" + holder.comm + ")";
+    }
+    std::string operator()(const KernelHolder& holder) const {
+        return "is held by kernel driver " + holder.name;
+    }
+    std::string operator()(const LineHolder& holder) const {
+        std::string text = "is in use as GPIO line " + holder.line;
+        return holder.consumer.empty() ? text : text + " by \"" + holder.consumer + "\"";
+    }
+};
+
+}  // namespace
+
 std::string pinReason(const PinUnavailable& unavailable) {
     switch(unavailable.problem) {
         case PinProblem::Busy:
-            return "the FSYNC pin is busy";
+            if(unavailable.pinLabel.empty()) {
+                return "the FSYNC pin is busy";
+            }
+            return "connector pin " + unavailable.pinLabel + " (FSYNC) "
+                   + (unavailable.holder ? std::visit(HolderText{}, *unavailable.holder) : "is busy");
         case PinProblem::ConnectorNotReady:
             return "the aux connector driver has not started yet";
         case PinProblem::ConnectorFailed:
