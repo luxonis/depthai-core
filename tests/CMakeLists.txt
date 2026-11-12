@@ -1053,6 +1053,9 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     dai_add_test(align_coverage_test src/ondevice_tests/align_coverage_test.cpp)
     target_include_directories(align_coverage_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src)
     dai_set_test_labels(align_coverage_test ondevice rvc2_all rvc4 ci)
+    # Its ImageAlign cases alone, for RVC2NG, which has no device-side Align.
+    dai_add_tagged_test(align_coverage_image_align_test align_coverage_test image-align)
+    dai_set_test_labels(align_coverage_image_align_test ondevice)
 endif()
 
 # Align device execution test (device-side Align is only available on RVC4)

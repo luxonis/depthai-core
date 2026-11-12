@@ -50,25 +50,49 @@ void requireAlignedFrameMetadata(const dai::ImgFrame& aligned, const dai::ImgFra
     }
 }
 
+struct CameraSockets {
+    dai::CameraBoardSocket left, right, alignTo;
+};
+
+/** CAM_B and CAM_C aligned to CAM_A. A device without CAM_C aligns its calibrated stereo pair to the right camera. */
+CameraSockets cameraSockets(dai::Device& device) {
+    const auto connected = device.getConnectedCameras();
+    if(std::find(connected.begin(), connected.end(), dai::CameraBoardSocket::CAM_C) != connected.end()) {
+        return {dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_A};
+    }
+    const auto calibration = device.readCalibration();
+    const auto left = calibration.getStereoLeftCameraId(), right = calibration.getStereoRightCameraId();
+    if(left == right) SKIP("Needs CAM_C or a calibrated stereo pair");
+    return {left, right, right};
+}
+
 void runImageAlignTest(bool useDepth, bool runOnHost, dai::ImgResizeMode resizeMode) {
     dai::Pipeline p;
-    auto rgbCam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto leftCam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto rightCam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    auto& device = *p.getDefaultDevice();
+    const auto sockets = cameraSockets(device);
+    const bool rvc2ng = device.getPlatform() == dai::Platform::RVC2NG;
+    // RVC2NG's Camera cannot undistort yet, so there the target keeps the lens distortion that the aligned frame drops.
+    const bool undistort = !rvc2ng;
+    // RVC2NG's Camera outputs NV16 by default, which the host node does not align.
+    const auto inputType = rvc2ng ? std::optional<dai::ImgFrame::Type>(dai::ImgFrame::Type::NV12) : std::nullopt;
+    auto rgbCam = p.create<dai::node::Camera>()->build(sockets.alignTo);
+    auto leftCam = p.create<dai::node::Camera>()->build(sockets.left);
+    auto rightCam = sockets.right == sockets.alignTo ? rgbCam : p.create<dai::node::Camera>()->build(sockets.right);
     std::shared_ptr<dai::node::StereoDepth> stereo;
     auto align = p.create<dai::node::ImageAlign>();
-    auto* rgbOut = rgbCam->requestOutput({1280, 640}, std::nullopt, resizeMode, std::nullopt, true);
-    auto* leftOut = leftCam->requestOutput({1280, 800}, std::nullopt);
-    auto* rightOut = rightCam->requestOutput({1280, 800}, std::nullopt);
+    auto* rgbOut = rgbCam->requestOutput({1280, 640}, std::nullopt, resizeMode, std::nullopt, undistort);
+    auto* leftOut = leftCam->requestOutput({1280, 800}, inputType);
 
     if(useDepth) {
         stereo = p.create<dai::node::StereoDepth>();
         leftOut->link(stereo->left);
-        rightOut->link(stereo->right);
+        rightCam->requestOutput({1280, 800}, std::nullopt)->link(stereo->right);
         stereo->depth.link(align->input);
     } else {
         leftOut->link(align->input);
-        rightOut->createOutputQueue();  // TODO remove once left&rgb only streaming on RVC4 is supported
+        if(sockets.right != sockets.alignTo) {
+            rightCam->requestOutput({1280, 800}, std::nullopt)->createOutputQueue();  // TODO remove once left&rgb only streaming on RVC4 is supported
+        }
     }
     rgbOut->link(align->inputAlignTo);
 
@@ -86,7 +110,11 @@ void runImageAlignTest(bool useDepth, bool runOnHost, dai::ImgResizeMode resizeM
 
     auto alignToFrame = alignToQueue->get<dai::ImgFrame>();
     REQUIRE(alignToFrame != nullptr);
-    const auto alignToIntrinsics = alignToFrame->transformation.getIntrinsicMatrix();
+    // The aligned frame is the target camera without lens distortion, which an undistorted target has already dropped.
+    auto expectedTransformation = alignToFrame->transformation;
+    if(!undistort) {
+        expectedTransformation.setDistortionCoefficients(std::vector<float>(expectedTransformation.getDistortionCoefficients().size(), 0.0f));
+    }
 
     constexpr size_t N = 20;
     for(size_t i = 0; i < N; ++i) {
@@ -96,7 +124,7 @@ void runImageAlignTest(bool useDepth, bool runOnHost, dai::ImgResizeMode resizeM
         auto inputFrame = passthroughQueue->get<dai::ImgFrame>();
         REQUIRE(inputFrame != nullptr);
         requireInputMetadata(*aligned, *inputFrame);
-        REQUIRE(aligned->transformation.isAlignedTo(alignToFrame->transformation));
+        REQUIRE(aligned->transformation.isAlignedTo(expectedTransformation));
         REQUIRE(aligned->getInstanceNum() == alignToFrame->getInstanceNum());
     }
     p.stop();
