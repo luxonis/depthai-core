@@ -161,8 +161,10 @@ void ObjectTracker::run() {
             detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
             spatialData.reserve(detections.size());
 
-            ImgTransformation detectionsTransformation = (inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation)
-                                                             .value_or(inputDetectionImg->transformation);
+            // inputDetectionImg is read only when the detections have no transformation, so it is null otherwise
+            const auto& detectionsOwnTransformation = inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation;
+            ImgTransformation detectionsTransformation =
+                detectionsOwnTransformation.has_value() ? *detectionsOwnTransformation : inputDetectionImg->transformation;
 
             if(!detectionsTransformation.isValid()) {
                 throw std::runtime_error("ImgTransformation must be set on either inputDetections or inputDetectionFrame");

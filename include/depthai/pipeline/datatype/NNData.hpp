@@ -6,6 +6,7 @@
 #include <iterator>
 #include <limits>
 #include <optional>
+#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
@@ -37,6 +38,7 @@
     #include "xtensor/containers/xadapt.hpp"
     #include "xtensor/containers/xarray.hpp"
     #include "xtensor/misc/xmanipulation.hpp"
+    #include "xtensor/views/xstrided_view.hpp"
 #endif
 #if defined(_ON_DEF)
     #define ON _ON_DEF
@@ -299,13 +301,36 @@ class NNData : public Buffer, public ProtoSerializable {
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType, const TensorInfo::StorageOrder order) {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
-        // if(dataType==dai::TensorInfo::DataType::FP32) std::cout<<"FP32\n";
-        // else if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
-        // else if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
-        // else if(dataType==dai::TensorInfo::DataType::I8) std::cout<<"I8\n";
-        // else if(dataType==dai::TensorInfo::DataType::U8F) std::cout<<"U8F\n";
-        // else if(dataType==dai::TensorInfo::DataType::FP64) std::cout<<"FP64\n";
-        // else std::cout<<"Unsupported type\n";
+        TensorInfo info;
+        info.name = name;
+        info.dataType = dataType;
+        info.numDimensions = tensor.dimension();
+        info.order = order;
+        for(const auto dimension : tensor.shape()) {
+            if(dimension > std::numeric_limits<unsigned int>::max()) {
+                throw std::overflow_error("Tensor dimension exceeds TensorInfo capacity");
+            }
+            info.dims.push_back(static_cast<unsigned int>(dimension));
+        }
+
+        const auto dataTypeSize = static_cast<size_t>(info.getDataTypeSize());
+        if(dataTypeSize == 0) throw std::invalid_argument("Unsupported tensor datatype");
+        size_t sConvertedData = dataTypeSize;
+        info.strides.resize(info.dims.size());
+        // Compute contiguous byte strides and total size before allocating or copying.
+        for(size_t i = info.dims.size(); i > 0; --i) {
+            if(sConvertedData > std::numeric_limits<unsigned int>::max()) {
+                throw std::overflow_error("Tensor byte stride exceeds TensorInfo capacity");
+            }
+            info.strides[i - 1] = static_cast<unsigned int>(sConvertedData);
+            const auto dimension = info.dims[i - 1];
+            if(dimension != 0 && sConvertedData > std::numeric_limits<size_t>::max() / dimension) {
+                throw std::overflow_error("Tensor byte size exceeds addressable capacity");
+            }
+            sConvertedData *= dimension;
+        }
+        info.validateStorageOrder();
+        const auto tensorSize = sConvertedData / dataTypeSize;
 
         // Check if data is vector type of data
         if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
@@ -314,87 +339,57 @@ class NNData : public Buffer, public ProtoSerializable {
         }
         auto vecData = std::dynamic_pointer_cast<VectorMemory>(data);
 
-        // Get size in bytes of the converted tensor data, u8 for integral and fp16 for floating point
-        // const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
-        size_t sConvertedData = tensor.size();
-        switch(dataType) {
-            case dai::TensorInfo::DataType::FP64:
-                sConvertedData *= 8;
-                break;
-            case dai::TensorInfo::DataType::FP32:
-            case dai::TensorInfo::DataType::INT:
-                sConvertedData *= 4;
-                break;
-            case dai::TensorInfo::DataType::U16F:
-            case dai::TensorInfo::DataType::FP16:
-                sConvertedData *= 2;
-                break;
-            case dai::TensorInfo::DataType::U8F:
-            case dai::TensorInfo::DataType::I8:
-                break;
+        // Align the tensor and check the full allocation, including existing data.
+        const auto padding = (DATA_ALIGNMENT - vecData->size() % DATA_ALIGNMENT) % DATA_ALIGNMENT;
+        const auto available = vecData->max_size() - vecData->size();
+        if(padding > available || sConvertedData > available - padding) {
+            throw std::length_error("Tensor data exceeds buffer capacity");
         }
-
-        // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
-        size_t remainder = std::distance(vecData->begin(), vecData->end()) % DATA_ALIGNMENT;
-        if(remainder > 0) {
-            vecData->insert(vecData->end(), DATA_ALIGNMENT - remainder, 0);
+        const auto offset = vecData->size() + padding;
+        if(offset > std::numeric_limits<unsigned int>::max()) {
+            throw std::overflow_error("Tensor offset exceeds TensorInfo capacity");
         }
-
-        // Then get offset to beginning of data
-        size_t offset = std::distance(vecData->begin(), vecData->end());
-
-        // Reserve space
+        info.offset = static_cast<unsigned int>(offset);
         vecData->resize(offset + sConvertedData);
 
         // Convert data to appropriate data type and write to data
-        if(dataType == dai::TensorInfo::DataType::I8) {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                vecData->data()[i + offset] = (int8_t)tensor.data()[i];
+        const auto copyValues = [&](auto value) {
+            if(dataType == dai::TensorInfo::DataType::I8) {
+                for(size_t i = 0; i < tensorSize; ++i, ++value) {
+                    vecData->data()[i + offset] = (int8_t)*value;
+                }
+            } else if(dataType == dai::TensorInfo::DataType::U16F) {
+                for(size_t i = 0; i < tensorSize; ++i, ++value) {
+                    *(uint16_t*)(&vecData->data()[2 * i + offset]) = (uint16_t)*value;
+                }
+            } else if(dataType == dai::TensorInfo::DataType::FP16) {
+                for(size_t i = 0; i < tensorSize; ++i, ++value) {
+                    *(uint16_t*)(&vecData->data()[2 * i + offset]) = fp32_to_fp16(*value);
+                }
+            } else if(dataType == dai::TensorInfo::DataType::FP32) {
+                for(size_t i = 0; i < tensorSize; ++i, ++value) {
+                    *(float*)(&vecData->data()[4 * i + offset]) = (float)*value;
+                }
+            } else if(dataType == dai::TensorInfo::DataType::INT) {
+                for(size_t i = 0; i < tensorSize; ++i, ++value) {
+                    *(int32_t*)(&vecData->data()[4 * i + offset]) = (int32_t)*value;
+                }
+            } else if(dataType == dai::TensorInfo::DataType::U8F) {
+                for(size_t i = 0; i < tensorSize; ++i, ++value) {
+                    vecData->data()[i + offset] = (uint8_t)*value;
+                }
+            } else if(dataType == dai::TensorInfo::DataType::FP64) {
+                for(size_t i = 0; i < tensorSize; ++i, ++value) {
+                    *(double*)(&vecData->data()[8 * i + offset]) = (double)*value;
+                }
             }
-        } else if(dataType == dai::TensorInfo::DataType::U16F) {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(uint16_t*)(&vecData->data()[2 * i + offset]) = (uint16_t)tensor.data()[i];
-            }
-        } else if(dataType == dai::TensorInfo::DataType::FP16) {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(uint16_t*)(&vecData->data()[2 * i + offset]) = fp32_to_fp16(tensor.data()[i]);
-            }
-        } else if(dataType == dai::TensorInfo::DataType::FP32) {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(float*)(&vecData->data()[4 * i + offset]) = (float)tensor.data()[i];
-            }
-        } else if(dataType == dai::TensorInfo::DataType::INT) {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(int32_t*)(&vecData->data()[4 * i + offset]) = (int32_t)tensor.data()[i];
-            }
-        } else if(dataType == dai::TensorInfo::DataType::U8F) {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                vecData->data()[i + offset] = (uint8_t)tensor.data()[i];
-            }
-        } else if(dataType == dai::TensorInfo::DataType::FP64) {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(double*)(&vecData->data()[8 * i + offset]) = (double)tensor.data()[i];
-            }
-        }
-
-        // Add entry in tensors
-        TensorInfo info;
-        info.name = name;
-        info.offset = static_cast<unsigned int>(offset);
-        info.dataType = dataType;
-        info.numDimensions = tensor.dimension();
-        info.order = order;
-        for(uint32_t i = 0; i < tensor.dimension(); i++) {
-            info.dims.push_back(tensor.shape()[i]);
-            info.strides.push_back(tensor.strides()[i] * info.getDataTypeSize());
-        }
-
-        // Validate storage order - past this point, the tensor shape and storage order should be correct
-        try {
-            info.validateStorageOrder();
-        } catch(...) {
-            vecData->resize(offset);  // Resize vector back to its size prior to adding tensor
-            throw;
+        };
+        // Check actual strides: a static row-major layout tag can still carry custom strides.
+        if(xt::do_strides_match(tensor.shape(), tensor.strides(), xt::layout_type::row_major, true)) {
+            copyValues(tensor.data());
+        } else {
+            const auto source = xt::strided_view(tensor, tensor.shape(), typename xt::xarray<_Ty>::strides_type(tensor.strides()));
+            copyValues(source.template cbegin<xt::layout_type::row_major>());
         }
 
         tensors.push_back(info);

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "depthai/utility/RecordReplay.hpp"
 #include "mcap/mcap.hpp"
 #ifdef DEPTHAI_ENABLE_MP4V2

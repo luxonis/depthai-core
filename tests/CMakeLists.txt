@@ -326,6 +326,36 @@ include(CMakeParseArguments)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
+# Almost every test is one source file that includes catch2 and depthai.hpp. All tests reuse one
+# precompiled header, so these headers are parsed once and not once per test.
+option(DEPTHAI_TESTS_PCH "Share one precompiled header between the tests" ON)
+if(DEPTHAI_TESTS_PCH)
+    set(DEPTHAI_TESTS_PCH_TARGET depthai_tests_pch)
+    file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${DEPTHAI_TESTS_PCH_TARGET}.cpp" CONTENT "")
+    # An executable (main comes from Catch2WithMain), so that its PIE flags match the tests that reuse its header.
+    add_executable(${DEPTHAI_TESTS_PCH_TARGET} "${CMAKE_CURRENT_BINARY_DIR}/${DEPTHAI_TESTS_PCH_TARGET}.cpp")
+    add_default_flags(${DEPTHAI_TESTS_PCH_TARGET} LEAN)
+    set(_pch_depthai_target depthai::core)
+    if(NOT DEPTHAI_MERGED_TARGET AND TARGET depthai::opencv)
+        set(_pch_depthai_target depthai::opencv)
+    endif()
+    target_link_libraries(${DEPTHAI_TESTS_PCH_TARGET} PRIVATE ${_pch_depthai_target} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
+    target_precompile_headers(${DEPTHAI_TESTS_PCH_TARGET} PRIVATE
+        <catch2/catch_all.hpp>
+        <depthai/depthai.hpp>
+        <algorithm>
+        <chrono>
+        <memory>
+        <optional>
+        <string>
+        <thread>
+        <vector>
+    )
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${DEPTHAI_TESTS_PCH_TARGET})
+    endif()
+endif()
+
 # Function for adding new tests
 function(dai_add_test test_name test_src)
     # Parse arguments
@@ -334,6 +364,9 @@ function(dai_add_test test_name test_src)
     # Create test executable
     add_executable(${test_name} ${test_src})
     add_default_flags(${test_name} LEAN)
+    if(DEPTHAI_TESTS_PCH AND (NOT DAT_CXX_STANDARD OR DAT_CXX_STANDARD STREQUAL "17") AND NOT DAT_CONFORMING)
+        target_precompile_headers(${test_name} REUSE_FROM ${DEPTHAI_TESTS_PCH_TARGET})
+    endif()
 
     # Set compiler C++ standard if specified
     if(DAT_CXX_STANDARD)
@@ -485,6 +518,10 @@ dai_set_test_labels(xlink_in_host_test onhost ci)
 dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
 dai_set_test_labels(multi_device_pipeline_test onhost)
 
+# Public NNArchive head serialization (no downloaded model required)
+dai_add_test(nn_archive_head_test src/onhost_tests/nn_archive/head_test.cpp)
+dai_set_test_labels(nn_archive_head_test onhost ci)
+
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
@@ -595,6 +632,11 @@ dai_set_test_labels(pipeline_debugging_host_test onhost ci)
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
 dai_set_test_labels(nndata_test onhost ci)
 
+if(DEPTHAI_XTENSOR_SUPPORT)
+    dai_add_test(nndata_strides_device_test src/ondevice_tests/nndata_strides_device_test.cpp)
+    dai_set_test_labels(nndata_strides_device_test ondevice rvc2_all rvc4 ci)
+endif()
+
 #ImgDetections tests
 dai_add_test(imgdetections_test src/onhost_tests/pipeline/datatype/imgdetections_test.cpp)
 dai_set_test_labels(imgdetections_test onhost ci)
@@ -649,9 +691,14 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
 endif()
 ### On-device tests ###########################################################
 
+# Sustained device load test (nightly only)
+dai_add_test(stress_test src/ondevice_tests/stress_test.cpp)
+dai_set_test_labels(stress_test ondevice rvc2_all rvc4 rvc4rgb ci_nightly noreplayci)
+set_tests_properties(stress_test PROPERTIES TIMEOUT 600)
+
 # Camera stream restart test
 dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
-dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)  # Replay ignores camera stop/start controls
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
@@ -663,7 +710,7 @@ target_include_directories(telemetry_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/incl
 target_link_libraries(telemetry_test PRIVATE httplib::httplib)
 target_compile_definitions(telemetry_test PRIVATE DEPTHAI_TELEMETRY_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_test_child>")
 add_dependencies(telemetry_test telemetry_test_child)
-dai_set_test_labels(telemetry_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(telemetry_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)  # A replayed camera starts no sensor, so no sensor-mode event
 
 # Telemetry redirect test across multiple devices
 dai_add_test(telemetry_multi_device_test src/ondevice_tests/telemetry_multi_device_test.cpp)
@@ -819,7 +866,7 @@ if(DEPTHAI_BUILD_BETA)
 
     # One RVC2 device with a RAM-only calibration whose chain root is not the lowest socket.
     dai_add_test(multi_device_calibration_origin_test src/ondevice_tests/multi_device_calibration_origin_test.cpp)
-    dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci)
+    dai_set_test_labels(multi_device_calibration_origin_test ondevice rvc2_all ci noreplayci)  # Replayed frames keep their recorded extrinsics
 
     dai_add_test(beta_parser_config_test src/onhost_tests/beta_parser_config_test.cpp)
     dai_set_test_labels(beta_parser_config_test onhost ci)
@@ -914,7 +961,7 @@ endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
     target_compile_definitions(img_transformation_test PRIVATE TRANSFORMATION_TEST_DATA="${img_transformations_test_data}")
-    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
+    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci noreplayci)  # Replayed frames have no extrinsics device ID
 endif()
 
 
@@ -962,6 +1009,13 @@ dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 # Align test
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
 dai_set_test_labels(align_node_test ondevice rvc4 ci)
+
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    # Shared ImageAlign/Align bounds checks and synthetic rotated depth coverage.
+    dai_add_test(align_coverage_test src/ondevice_tests/align_coverage_test.cpp)
+    target_include_directories(align_coverage_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src)
+    dai_set_test_labels(align_coverage_test ondevice rvc2_all rvc4 ci)
+endif()
 
 # Align device execution test (device-side Align is only available on RVC4)
 dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)
@@ -1012,7 +1066,7 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci noreplayci)
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
-dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
+dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci noreplayci) # Many RVC2 devices do not have an IMU which supports the whole test suite; replayed IMU data skips the runtime calibration
 
 # ObjectTracker tests
 if(DEPTHAI_HAVE_OPENCV_SUPPORT)
