@@ -140,6 +140,7 @@
   "dai::beta::LocalCalibrationOrigin::originRule": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",
   "dai::beta::MultiDeviceCalibrationHandler::validateLocalOrigin(conststd::string&,constLocalCalibrationOrigin&)const": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",
   "dai::beta::describeLocalCalibration(conststd::optional<EepromData>&,Platform)": "Internal host/firmware local-origin validation contract for multi-device calibration; Python gets the same check through Pipeline.setMultiDeviceCalibration.",
+  "dai::kLuxonisMarkerIdMax": "Exposed as the module attribute depthai.LUXONIS_MARKER_ID_MAX (m.attr assignment, which the checker does not see).",
   "dai::markerTypeFromString(conststd::string&)": "Python has the MarkerType enum itself; string conversion is C++/JSON-only.",
   "dai::matrix::rebaseTransformation(conststd::array<std::array<float,4>,4>&,conststd::array<std::array<float,4>,4>&)": "Internal 4x4 matrix helper behind ImgTransformation.rebaseExtrinsics, which is bound; numpy covers this in Python.",
   "dai::nn_archive::v1::from_json(constnlohmann::json&,Head&)": "C++ nlohmann JSON ADL hook; Python serialization is exposed through Head pickle support.",

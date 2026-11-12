@@ -326,6 +326,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("height", &Rect::height);
 
     markerType.value("ARUCO", MarkerType::ARUCO).value("LUXONIS", MarkerType::LUXONIS);
+    m.attr("LUXONIS_MARKER_ID_MAX") = kLuxonisMarkerIdMax;
 
     arucoDictionary.value("DICT_4X4_50", ArucoDictionary::DICT_4X4_50)
         .value("DICT_4X4_100", ArucoDictionary::DICT_4X4_100)
