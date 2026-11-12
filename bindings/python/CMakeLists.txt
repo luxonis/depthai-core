@@ -309,6 +309,17 @@ else()
     if(DEPTHAI_LINK_GC_SECTIONS AND COMMAND gc_unused_sections)
         gc_unused_sections(${TARGET_NAME})
     endif()
+    # The module is glue code between Python and depthai-core, so build it with -O2, not with the -O3
+    # of CMAKE_CXX_FLAGS_RELEASE. -O3 duplicates code (loop unswitching/peeling, function cloning)
+    # in each binding, which makes the module ~6% larger (x7 in the wheel). In the measured binding
+    # paths (ImgFrame, MessageQueue, getters) the speed difference was within the noise (~5%).
+    # Also a link option: with LTO, some compilers (Clang) take the level from the link command.
+    if(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:-O2>")
+        target_link_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:-O2>")
+        # NNData numpy <-> tensor conversion is a hot loop: keep -O3 for it (with -O2 it is ~8% slower)
+        set_property(SOURCE src/pipeline/datatype/NNDataBindings.cpp APPEND PROPERTY COMPILE_OPTIONS "$<$<CONFIG:Release>:-O3>")
+    endif()
 endif()
 if(DEPTHAI_UNITY_BUILD)
     set_target_properties(${TARGET_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
