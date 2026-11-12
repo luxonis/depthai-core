@@ -40,6 +40,6 @@ struct ChipTemperatureRVC4 {
     float average;
 };
 
-DEPTHAI_SERIALIZE_EXT(ChipTemperatureRVC4, cpuss, gpuss, mdmss, video, ddr, camera, average);
+DEPTHAI_SERIALIZE_EXT_DECL(ChipTemperatureRVC4, cpuss, gpuss, mdmss, video, ddr, camera, average);
 
 }  // namespace dai

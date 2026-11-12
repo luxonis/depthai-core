@@ -25,7 +25,9 @@ struct SCRFDParserProperties : PropertiesSerializable<Properties, SCRFDParserPro
     ~SCRFDParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SCRFDParserProperties, outputLayerNames, initialConfig, inputSize, featStrideFpn, numAnchors, labelNames);
+DEPTHAI_SERIALIZE_EXT_DECL(SCRFDParserProperties, outputLayerNames, initialConfig, inputSize, featStrideFpn, numAnchors, labelNames);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::SCRFDParserProperties>;

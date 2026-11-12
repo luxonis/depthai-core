@@ -628,7 +628,7 @@ class NNData : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, tensors, batchSize, transformation);
+    DEPTHAI_SERIALIZE_DECL(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, tensors, batchSize, transformation);
 };
 
 }  // namespace dai

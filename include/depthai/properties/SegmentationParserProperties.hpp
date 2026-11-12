@@ -23,6 +23,8 @@ struct SegmentationParserProperties : PropertiesSerializable<Properties, Segment
     ~SegmentationParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SegmentationParserProperties, labels, networkOutputName, classesInOneLayer, backgroundClass);
+DEPTHAI_SERIALIZE_EXT_DECL(SegmentationParserProperties, labels, networkOutputName, classesInOneLayer, backgroundClass);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::SegmentationParserProperties>;

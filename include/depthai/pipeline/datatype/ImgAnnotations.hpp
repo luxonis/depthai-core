@@ -17,7 +17,7 @@ struct CircleAnnotation {
     Color outlineColor;
 };
 
-DEPTHAI_SERIALIZE_EXT(CircleAnnotation, position, diameter, thickness, fillColor, outlineColor);
+DEPTHAI_SERIALIZE_EXT_DECL(CircleAnnotation, position, diameter, thickness, fillColor, outlineColor);
 
 enum class PointsAnnotationType : std::uint8_t { UNKNOWN = 0, POINTS = 1, LINE_LOOP = 2, LINE_STRIP = 3, LINE_LIST = 4 };
 
@@ -30,7 +30,7 @@ struct PointsAnnotation {
     float thickness = 1.0f;
 };
 
-DEPTHAI_SERIALIZE_EXT(PointsAnnotation, type, points, outlineColor, outlineColors, fillColor, thickness);
+DEPTHAI_SERIALIZE_EXT_DECL(PointsAnnotation, type, points, outlineColor, outlineColors, fillColor, thickness);
 
 struct TextAnnotation {
     Point2f position;
@@ -39,14 +39,14 @@ struct TextAnnotation {
     Color textColor;
     Color backgroundColor;
 };
-DEPTHAI_SERIALIZE_EXT(TextAnnotation, position, text, fontSize, textColor, backgroundColor);
+DEPTHAI_SERIALIZE_EXT_DECL(TextAnnotation, position, text, fontSize, textColor, backgroundColor);
 struct ImgAnnotation {
     std::vector<CircleAnnotation> circles;
     std::vector<PointsAnnotation> points;
     std::vector<TextAnnotation> texts;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImgAnnotation, circles, points, texts);
+DEPTHAI_SERIALIZE_EXT_DECL(ImgAnnotation, circles, points, texts);
 
 /**
  * ImgAnnotations message. Carries annotations for an image.
@@ -92,7 +92,7 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, annotations, transformation);
+    DEPTHAI_SERIALIZE_DECL(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, annotations, transformation);
 };
 
 }  // namespace dai

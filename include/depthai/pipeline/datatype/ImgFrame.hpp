@@ -748,7 +748,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         unsigned int p2Offset;  // Offset to second plane
         unsigned int p3Offset;  // Offset to third plane
 
-        DEPTHAI_SERIALIZE(Specs, type, width, height, stride, bytesPP, p1Offset, p2Offset, p3Offset);
+        DEPTHAI_SERIALIZE_DECL(Specs, type, width, height, stride, bytesPP, p1Offset, p2Offset, p3Offset);
     };
     struct CameraSettings {
         int32_t exposureTimeUs = 0;
@@ -761,7 +761,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         float fps = -1.0f;
         std::optional<float> sensorTemperatureC = std::nullopt;
 
-        DEPTHAI_SERIALIZE(
+        DEPTHAI_SERIALIZE_DECL(
             CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw, fsync, sensorMode, fps, sensorTemperatureC);
     };
 
@@ -774,7 +774,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ImgTransformation transformation;
 
    public:
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
+    DEPTHAI_SERIALIZE_DECL(
+        ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 
 }  // namespace dai

@@ -57,7 +57,7 @@ class DynamicCalibrationControl : public Buffer {
             explicit Calibrate(bool force = false, bool keepCameraCenters = true) : force(force), keepCameraCenters(keepCameraCenters) {}
             bool force = false;             ///< Force calibration even when unnecessary.
             bool keepCameraCenters = true;  ///< Keep the position of the cameras.
-            DEPTHAI_SERIALIZE(Calibrate, force, keepCameraCenters);
+            DEPTHAI_SERIALIZE_DECL(Calibrate, force, keepCameraCenters);
         };
 
         /**
@@ -67,7 +67,7 @@ class DynamicCalibrationControl : public Buffer {
         struct ComputeCalibrationMetrics {
             explicit ComputeCalibrationMetrics(dai::CalibrationHandler& calibration) : calibration(calibration) {}
             dai::CalibrationHandler calibration;
-            DEPTHAI_SERIALIZE(ComputeCalibrationMetrics, calibration);
+            DEPTHAI_SERIALIZE_DECL(ComputeCalibrationMetrics, calibration);
         };
 
         /**
@@ -76,7 +76,7 @@ class DynamicCalibrationControl : public Buffer {
         struct CalibrationQuality {
             explicit CalibrationQuality(bool force = false) : force(force) {}
             bool force = false;  ///< Force check even if previous quality is valid.
-            DEPTHAI_SERIALIZE(CalibrationQuality, force);
+            DEPTHAI_SERIALIZE_DECL(CalibrationQuality, force);
         };
 
         /**
@@ -93,7 +93,7 @@ class DynamicCalibrationControl : public Buffer {
             float calibrationPeriod = 5.0f;  ///< Seconds between calibration cycles.
             bool keepCameraCenters = true;   ///< Keep the position of the cameras.
 
-            DEPTHAI_SERIALIZE(StartCalibration, loadImagePeriod, calibrationPeriod, keepCameraCenters);
+            DEPTHAI_SERIALIZE_DECL(StartCalibration, loadImagePeriod, calibrationPeriod, keepCameraCenters);
         };
 
         /**
@@ -117,7 +117,7 @@ class DynamicCalibrationControl : public Buffer {
 
             CalibrationHandler calibration;  ///< Calibration data to apply.
             bool flash;
-            DEPTHAI_SERIALIZE(ApplyCalibration, calibration, flash);
+            DEPTHAI_SERIALIZE_DECL(ApplyCalibration, calibration, flash);
         };
 
         /**
@@ -133,7 +133,7 @@ class DynamicCalibrationControl : public Buffer {
             explicit SetPerformanceMode(PerformanceMode performanceMode) : performanceMode(performanceMode) {}
 
             PerformanceMode performanceMode;  ///< Desired performance mode.
-            DEPTHAI_SERIALIZE(SetPerformanceMode, performanceMode);
+            DEPTHAI_SERIALIZE_DECL(SetPerformanceMode, performanceMode);
         };
     };
 
@@ -258,10 +258,7 @@ class DynamicCalibrationControl : public Buffer {
         return std::make_shared<DynamicCalibrationControl>(Commands::SetPerformanceMode{mode});
     }
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = this->getDatatype();
-    }
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::DynamicCalibrationControl;

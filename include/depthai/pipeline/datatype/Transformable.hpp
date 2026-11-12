@@ -33,7 +33,7 @@ class Transformable {
      */
     void setTransformation(const ImgTransformation& transformation);
 
-    DEPTHAI_SERIALIZE(Transformable, transformation);
+    DEPTHAI_SERIALIZE_DECL(Transformable, transformation);
 };
 
 template <class Derived>
@@ -94,7 +94,7 @@ class TransformableBuffer : public Buffer, public Transformable {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(TransformableBuffer, sequenceNum, ts, tsDevice, tsSystem, Transformable::transformation);
+    DEPTHAI_SERIALIZE_DECL(TransformableBuffer, sequenceNum, ts, tsDevice, tsSystem, Transformable::transformation);
 };
 
 }  // namespace dai

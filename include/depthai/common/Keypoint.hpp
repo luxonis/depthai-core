@@ -38,7 +38,7 @@ struct Keypoint {
         imageCoordinates.y = remappedPoint.y;
     }
 
-    DEPTHAI_SERIALIZE(dai::Keypoint, imageCoordinates, confidence, label, labelName);
+    DEPTHAI_SERIALIZE_DECL(dai::Keypoint, imageCoordinates, confidence, label, labelName);
 };
 
 struct KeypointsList : KeypointsListT<Keypoint> {
@@ -100,7 +100,7 @@ struct KeypointsList : KeypointsListT<Keypoint> {
         return transformedKeypoints;
     }
 
-    DEPTHAI_SERIALIZE(KeypointsList, keypoints, edges);
+    DEPTHAI_SERIALIZE_DECL(KeypointsList, keypoints, edges);
 };
 
 }  // namespace dai

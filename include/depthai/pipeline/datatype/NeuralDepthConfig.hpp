@@ -34,7 +34,7 @@ class NeuralDepthConfig : public Buffer {
          * A multiplier of 1000 effectively means depth unit in millimeter.
          */
         float customDepthUnitMultiplier = 1000.f;
-        DEPTHAI_SERIALIZE(AlgorithmControl, depthUnit, customDepthUnitMultiplier);
+        DEPTHAI_SERIALIZE_DECL(AlgorithmControl, depthUnit, customDepthUnitMultiplier);
     };
 
     struct PostProcessing {
@@ -67,7 +67,7 @@ class NeuralDepthConfig : public Buffer {
          */
         TemporalFilter temporalFilter;
 
-        DEPTHAI_SERIALIZE(PostProcessing, confidenceThreshold, edgeThreshold, thresholdFilter, temporalFilter);
+        DEPTHAI_SERIALIZE_DECL(PostProcessing, confidenceThreshold, edgeThreshold, thresholdFilter, temporalFilter);
     };
 
     /**
@@ -123,7 +123,7 @@ class NeuralDepthConfig : public Buffer {
     PostProcessing postProcessing;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
-    DEPTHAI_SERIALIZE(NeuralDepthConfig, algorithmControl, postProcessing);
+    DEPTHAI_SERIALIZE_DECL(NeuralDepthConfig, algorithmControl, postProcessing);
 };
 
 }  // namespace dai

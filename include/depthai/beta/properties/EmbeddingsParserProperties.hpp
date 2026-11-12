@@ -16,7 +16,9 @@ struct EmbeddingsParserProperties : PropertiesSerializable<Properties, Embedding
     ~EmbeddingsParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(EmbeddingsParserProperties, outputLayerName);
+DEPTHAI_SERIALIZE_EXT_DECL(EmbeddingsParserProperties, outputLayerName);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::EmbeddingsParserProperties>;

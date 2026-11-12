@@ -281,3 +281,36 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_INTRUSIVE(Type, __VA_ARGS__)) \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_DISPLAY(Type))                                     \
     DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(Type, __VA_ARGS__))
+
+#define DEPTHAI_SERIALIZE_FIELD_NAME(v1) #v1,
+#define DEPTHAI_SERIALIZE_FIELD_NAMES(Type, ...)                                                                                                        \
+    const char* const* depthaiSerializeFieldNames(const Type*) {                                                                                        \
+        static constexpr const char* names[] = {DEPTHAI_NLOHMANN_JSON_EXPAND(DEPTHAI_NLOHMANN_JSON_PASTE(DEPTHAI_SERIALIZE_FIELD_NAME, __VA_ARGS__))}; \
+        return names;                                                                                                                                   \
+    }
+
+#define DEPTHAI_SERIALIZE_OPTIONAL_EXT_DECL(Type, ...)                               \
+    void to_json(nlohmann::json&, const Type&);                                      \
+    void from_json(const nlohmann::json&, Type&);                                    \
+    inline DEPTHAI_DEFERRED_EXPAND(DEPTHAI_SERIALIZE_FIELD_NAMES(Type, __VA_ARGS__)) \
+    DEPTHAI_DEFERRED_EXPAND(NOP_EXTERNAL_STRUCTURE(Type, __VA_ARGS__))
+
+#define DEPTHAI_SERIALIZE_OPTIONAL_DECL(Type, ...)                                   \
+    friend void to_json(nlohmann::json&, const Type&);                               \
+    friend void from_json(const nlohmann::json&, Type&);                             \
+    friend DEPTHAI_DEFERRED_EXPAND(DEPTHAI_SERIALIZE_FIELD_NAMES(Type, __VA_ARGS__)) \
+    DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(Type, __VA_ARGS__))
+
+#define DEPTHAI_SERIALIZE_EXT_DECL(Type, ...)                                        \
+    void to_json(nlohmann::json&, const Type&);                                      \
+    void from_json(const nlohmann::json&, Type&);                                    \
+    inline DEPTHAI_DEFERRED_EXPAND(DEPTHAI_SERIALIZE_FIELD_NAMES(Type, __VA_ARGS__)) \
+    DEPTHAI_DEFERRED_EXPAND(NOP_EXTERNAL_STRUCTURE(Type, __VA_ARGS__))
+
+#define DEPTHAI_SERIALIZE_DECL(Type, ...)                                            \
+    friend void to_json(nlohmann::json&, const Type&);                               \
+    friend void from_json(const nlohmann::json&, Type&);                             \
+    friend DEPTHAI_DEFERRED_EXPAND(DEPTHAI_SERIALIZE_FIELD_NAMES(Type, __VA_ARGS__)) \
+    std::string str() const;                                                         \
+    DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(Type, __VA_ARGS__))
+// clang-format on

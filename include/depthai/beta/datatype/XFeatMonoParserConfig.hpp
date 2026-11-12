@@ -49,7 +49,7 @@ class XFeatMonoParserConfig : public Buffer {
         return DatatypeEnum::XFeatMonoParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(XFeatMonoParserConfig, maxKeypoints);
+    DEPTHAI_SERIALIZE_DECL(XFeatMonoParserConfig, maxKeypoints);
 };
 
 }  // namespace beta

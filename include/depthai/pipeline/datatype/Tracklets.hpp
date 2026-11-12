@@ -72,7 +72,7 @@ struct Tracklet {
      */
     void transform(const ImgTransformation& source, const ImgTransformation& target, LengthUnit lengthUnit = LengthUnit::MILLIMETER);
 
-    DEPTHAI_SERIALIZE(Tracklet, roi, id, label, age, status, srcImgDetection, spatialCoordinates, velocity, speed);
+    DEPTHAI_SERIALIZE_DECL(Tracklet, roi, id, label, age, status, srcImgDetection, spatialCoordinates, velocity, speed);
 };
 
 /**
@@ -128,7 +128,7 @@ class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
         return DatatypeEnum::Tracklets;
     }
 
-    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, ts, tsDevice, tsSystem, sequenceNum, unit);
+    DEPTHAI_SERIALIZE_DECL(Tracklets, tracklets, transformation, ts, tsDevice, tsSystem, sequenceNum, unit);
 };
 
 }  // namespace dai

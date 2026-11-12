@@ -10,8 +10,6 @@
 
 namespace dai {
 
-StitchingProperties::~StitchingProperties() = default;
-
 namespace node {
 
 Stitching::Stitching() = default;

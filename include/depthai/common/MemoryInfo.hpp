@@ -15,6 +15,6 @@ struct MemoryInfo {
     int64_t total;
 };
 
-DEPTHAI_SERIALIZE_EXT(MemoryInfo, remaining, used, total);
+DEPTHAI_SERIALIZE_EXT_DECL(MemoryInfo, remaining, used, total);
 
 }  // namespace dai
