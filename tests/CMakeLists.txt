@@ -664,6 +664,10 @@ dai_set_test_labels(tofconfig_device_test ondevice rvc2_all rvc4 ci)
 dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
 dai_set_test_labels(pointclouddata_test onhost ci)
 
+# SystemInformationRVC4 serialization compatibility
+dai_add_test(systeminformationrvc4_test src/onhost_tests/pipeline/datatype/systeminformationrvc4_test.cpp)
+dai_set_test_labels(systeminformationrvc4_test onhost ci)
+
 # PointCloud node tests
 dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
 dai_set_test_labels(point_cloud_test onhost ci)
