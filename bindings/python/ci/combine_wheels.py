@@ -211,6 +211,21 @@ def _update_wheel_file(dist_info_dir: str, combined_infos: list[WheelInfo]):
         f.writelines(new_lines)
 
 
+def _replace_needed(lib_path: str, name_map: dict[str, str]):
+    """Replace all DT_NEEDED names of name_map in one patchelf call.
+
+    Each patchelf call that adds names to .dynstr writes a new copy of .dynstr and leaves the old
+    copy in the file as zero bytes. libdepthaicore has a .dynstr of ~10 MB and ~10 bundled
+    dependencies, so one call per name added ~100 MB to the installed file.
+    patchelf ignores the pairs whose old name is not in DT_NEEDED.
+    """
+    args = []
+    for old_name, new_name in name_map.items():
+        args += ["--replace-needed", old_name, new_name]
+    if args:
+        subprocess.run(["patchelf", *args, lib_path], check=True)
+
+
 def _combine_wheels_linux(input_folder, output_folder, strip):
     """
     Each wheel is expected to have the following structure:
@@ -338,14 +353,10 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
             # Relink all libraries
             libs = os.listdir(os.path.join(wheel_extract_dir, libs_folder))
             for lib in libs:  # for each library, relink it to the new name
-                lib_path = os.path.join(wheel_extract_dir, libs_folder, lib)
-                for old_name, new_name in name_map.items():
-                    subprocess.run(["patchelf", "--replace-needed", old_name, new_name, lib_path], check=True)
+                _replace_needed(os.path.join(wheel_extract_dir, libs_folder, lib), name_map)
 
             # Relink the cpython library
-            for old_name, new_name in name_map.items():
-                cpython_lib_path = os.path.join(wheel_extract_dir, cpython_lib)
-                subprocess.run(["patchelf", "--replace-needed", old_name, new_name, cpython_lib_path], check=True)
+            _replace_needed(os.path.join(wheel_extract_dir, cpython_lib), name_map)
 
             # Strip debug symbols for all libraries
             if strip:
