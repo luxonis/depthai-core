@@ -39,21 +39,6 @@ namespace dai {
 namespace gate {
 
 namespace {
-    uint32_t constexpr FSYNC_STM_CONFIG_MASTER_MODE_WITH_INPUT = 0;
-    uint32_t constexpr FSYNC_STM_CONFIG_MASTER_MODE_WITH_OUTPUT = 1;
-    uint32_t constexpr FSYNC_STM_CONFIG_SLAVE_MODE = 2;
-
-    uint32_t convertRoleToConfig(ExternalFrameSyncRole &role) {
-        switch(role) {
-        case ExternalFrameSyncRole::SLAVE:
-            return FSYNC_STM_CONFIG_SLAVE_MODE;
-        case ExternalFrameSyncRole::MASTER:
-            return FSYNC_STM_CONFIG_MASTER_MODE_WITH_OUTPUT;
-        default:
-            throw std::invalid_argument("Cannot convert role " + dai::toString(role) + " to register value!");
-        }
-    }
-
     uint32_t constexpr FSYNC_STM_FPS_FIXED_POINT = 16;
     uint32_t constexpr FSYNC_STM_FPS_FIXED_POINT_SCALE = (1UL << FSYNC_STM_FPS_FIXED_POINT);
 
@@ -124,8 +109,6 @@ FsyncController::FsyncController()
 :
     dotProjector("ir_dot", "IR dot projector", mtx),
     floodLight("ir_flood", "IR flood light", mtx),
-    m_role(ExternalFrameSyncRole::AUTO_DETECT),
-    m_roleSetExplicitly(false),
     stmFd(-1),
     m_ioctl_failure(false),
     m_disabled(false),
@@ -151,9 +134,6 @@ FsyncController::FsyncController()
         // FAST STATION CAMERA fsync stm was not brought up, since they use only one camera and no external fsync.
         // We therefore disable fsync controller for FAST STATION CAMERA devices.
         m_disabled = true;
-
-        // Set role so we don't leak AUTO_DETECT
-        m_role = dai::ExternalFrameSyncRole::MASTER;
         DAI_INFO("FSYNC controller is not supported on OAK4-S R1 and R3 devices.");
         return;
     }
@@ -181,7 +161,7 @@ FsyncController::FsyncController()
         m_supportsExternalFrameSyncMode = true;
     }
 
-    setExternalFrameSyncRole(dai::ExternalFrameSyncRole::AUTO_DETECT, false);
+    setExternalFrameSyncRole(dai::ExternalFrameSyncRole::AUTO_DETECT);
 
     if (m_supportsExternalFrameSyncMode) {
         // We need to turn off external fsync output when we finish.
@@ -203,54 +183,47 @@ void FsyncController::addFsyncConsumer(dai::CameraBoardSocket socket)
     m_fsyncConsumers.emplace(socket);
 }
 
-void FsyncController::setExternalFrameSyncRole(dai::ExternalFrameSyncRole role, bool setExplicit) {
-    struct fsync_stm_ioctl_info_data infoData = {0};
-
-    if (role == dai::ExternalFrameSyncRole::AUTO_DETECT) {
-        m_roleSetExplicitly = false;
-        if (!m_supportsExternalFrameSyncMode) {
-            m_role = ExternalFrameSyncRole::MASTER;
-        } else {
-            auto ret = getM8State();
-            
-            if(ret == std::nullopt) {
-                DAI_WARN("Failed to determine if the device is running as a slave or master, assuming master.");
-                m_role = ExternalFrameSyncRole::MASTER;
-            } else if (ret == M8ConnectorState::DISCONNECTED) {
-                m_role = ExternalFrameSyncRole::MASTER;
-            } else if (ret == M8ConnectorState::CONNECTED) {
-                m_role = ExternalFrameSyncRole::SLAVE;
-            } else {
-                throw std::runtime_error("Illegal M8 state detected!");
-            }
-        }
-
-    } else if (role == dai::ExternalFrameSyncRole::MASTER)
-    {
-        m_role = role;
-        m_roleSetExplicitly = setExplicit;
-    } else if (role == dai::ExternalFrameSyncRole::SLAVE)
-    {
-        if (!m_supportsExternalFrameSyncMode) {
-            DAI_WARN("This OS version doesn't support external Fsync slave mode. Please update your OS.");
-            DAI_WARN("External frame sync role set to MASTER.");
-            role = dai::ExternalFrameSyncRole::MASTER;
-        }
-        m_roleSetExplicitly = setExplicit;
-        m_role = role;
-    } else {
-        throw std::invalid_argument("Invalid external frame sync role specified.");
-    }
-
+void FsyncController::setExternalFrameSyncRole(dai::ExternalFrameSyncRole role) {
     std::unique_lock<std::recursive_mutex> lock(mtx);
-    if (stmFd >= 0) {
-        infoData.config_reg = convertRoleToConfig(m_role);
-        auto ret = ioctl(stmFd, SET_INFO, &infoData);
-        if(ret != 0) {
-            m_ioctl_failure = true;
-            DAI_ERROR("Failed to write info to the fsync-stm device: {} ({})", strerror(errno), errno);
+
+    std::optional<M8ConnectorState> m8State;
+    if(role == ExternalFrameSyncRole::AUTO_DETECT && m_supportsExternalFrameSyncMode) {
+        m8State = getM8State();
+        if(!m8State) {
+            DAI_WARN("Failed to determine if the device is running as a slave or master, assuming master.");
         }
     }
+    ExternalFrameSyncRole resolved = resolveRole(role, m_supportsExternalFrameSyncMode, m8State);
+    if(role == ExternalFrameSyncRole::SLAVE && resolved != ExternalFrameSyncRole::SLAVE) {
+        DAI_WARN("This OS version doesn't support external Fsync slave mode. Please update your OS.");
+        DAI_WARN("External frame sync role set to MASTER.");
+    }
+
+    SetInfoResult result = Applied{};
+    if(stmFd >= 0) {
+        struct fsync_stm_ioctl_info_data infoData = {0};
+        infoData.config_reg = configFor(resolved);
+        if(ioctl(stmFd, SET_INFO, &infoData) != 0) {
+            int err = errno;
+            m_ioctl_failure = true;
+            DAI_ERROR("Failed to write info to the fsync-stm device: {} ({})", strerror(err), err);
+            result = ControllerFailure{err};
+        }
+    }
+    m_roleState = RoleState{role, resolved, result};
+}
+
+dai::ExternalFrameSyncRole FsyncController::getExternalFrameSyncRole() const {
+    std::unique_lock<std::recursive_mutex> lock(mtx);
+    if(m_roleState) {
+        return effectiveRole(*m_roleState);
+    }
+    return resolveRole(ExternalFrameSyncRole::AUTO_DETECT, m_supportsExternalFrameSyncMode, getM8State());
+}
+
+bool FsyncController::externalRoleForced() const {
+    std::unique_lock<std::recursive_mutex> lock(mtx);
+    return m_roleState && gate::externalRoleForced(*m_roleState);
 }
 
 FsyncController& FsyncController::getInstance() {
@@ -293,7 +266,7 @@ void FsyncController::registerChannelForExposureUpdates(int id) {
 }
 
 void FsyncController::setFps(int id, float fps) {
-    if(m_role == ExternalFrameSyncRole::SLAVE) {
+    if(getExternalFrameSyncRole() == ExternalFrameSyncRole::SLAVE) {
         std::unique_lock<std::recursive_mutex> lock(mtx);
         DAI_CHECK_V(stmFd >= 0, "Failed to open the fsync-stm device");
 

@@ -429,6 +429,7 @@ set(DEPTHAI_COMMON_SOURCES
     src/utilities/GpuAvailability.cpp
     src/utilities/RectangleRemapUtils.cpp
     src/utilities/FsyncController.cpp
+    src/utilities/FsyncRole.cpp
     src/pipeline/PipelineBuilder.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/XLinkIn.cpp

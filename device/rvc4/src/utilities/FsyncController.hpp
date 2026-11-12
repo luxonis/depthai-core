@@ -13,6 +13,7 @@
 
 // project
 #include "depthai/common/ExternalFrameSyncRoles.hpp"
+#include "utilities/FsyncRole.hpp"
 
 // #define FSYNC_DONT_WRITE
 
@@ -66,8 +67,7 @@ class FsyncController {
     // config count, to be updated only under `mtx` lock
     int configCount = 0;
     float fps = -1;  // All pins have the same FPS (except ADIM on leds has 10x higher)
-    dai::ExternalFrameSyncRole m_role;
-    bool m_roleSetExplicitly;
+    std::optional<RoleState> m_roleState;
     std::set<dai::CameraBoardSocket> m_fsyncConsumers;
     int stmFd;
     bool m_ioctl_failure;
@@ -147,11 +147,9 @@ class FsyncController {
      *       This detection relies on the state of one GPIO pin which is pulled low only on slave devices when the M8 connector is connected.
      * WARNING: This function must be called before any calls to setFps() or start().
      */
-    void setExternalFrameSyncRole(dai::ExternalFrameSyncRole role, bool setExplicit);
+    void setExternalFrameSyncRole(dai::ExternalFrameSyncRole role);
 
-    bool isExternalFrameSyncRoleSetExplicitly() const {
-        return m_roleSetExplicitly;
-    }
+    bool externalRoleForced() const;
 
     void addFsyncConsumer(dai::CameraBoardSocket socket);
 
@@ -178,9 +176,7 @@ class FsyncController {
     FsyncControllerLed dotProjector;
     FsyncControllerLed floodLight;
 
-    dai::ExternalFrameSyncRole getExternalFrameSyncRole() const {
-        return m_role;
-    }
+    dai::ExternalFrameSyncRole getExternalFrameSyncRole() const;
 
     /**
      * Query the STM if there is a valid signal present on the external frame sync input pin.

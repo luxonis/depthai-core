@@ -574,7 +574,7 @@ std::function<std::tuple<bool, std::string>()> waitForDeviceReady = []() -> std:
 std::function<std::tuple<bool, std::string>(dai::ExternalFrameSyncRole)> setExternalFrameSyncRole =
 [](dai::ExternalFrameSyncRole role) -> std::tuple<bool, std::string> {
     try {
-        dai::gate::FsyncController::getInstance().setExternalFrameSyncRole(role, true);
+        dai::gate::FsyncController::getInstance().setExternalFrameSyncRole(role);
     } catch (const std::exception& ex) {
         return {false, ex.what()};
     }

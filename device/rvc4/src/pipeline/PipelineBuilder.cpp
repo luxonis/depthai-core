@@ -101,7 +101,7 @@ void validateFsync1() {
 
 void validateFsync2() {
     auto numFsyncConsumers = FsyncController::getInstance().getNumFsyncConsumers();
-    auto isExternalFsyncExplicit = FsyncController::getInstance().isExternalFrameSyncRoleSetExplicitly();
+    auto isExternalFsyncExplicit = FsyncController::getInstance().externalRoleForced();
     auto isExternalStrobeEnabled = FsyncController::getInstance().getExternalStrobeEnable();
     auto fsyncOk = FsyncController::getInstance().isOk();
 
