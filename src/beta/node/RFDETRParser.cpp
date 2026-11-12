@@ -23,8 +23,6 @@
 namespace dai {
 namespace beta {
 
-RFDETRParserProperties::~RFDETRParserProperties() = default;
-
 namespace node {
 
 RFDETRParser::RFDETRParser(std::unique_ptr<Properties> props)

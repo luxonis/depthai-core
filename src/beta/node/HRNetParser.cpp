@@ -19,8 +19,6 @@
 namespace dai {
 namespace beta {
 
-HRNetParserProperties::~HRNetParserProperties() = default;
-
 namespace node {
 
 HRNetParser::HRNetParser(std::unique_ptr<Properties> props)

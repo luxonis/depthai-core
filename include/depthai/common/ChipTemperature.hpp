@@ -32,6 +32,6 @@ struct ChipTemperature {
     float average;
 };
 
-DEPTHAI_SERIALIZE_EXT(ChipTemperature, css, mss, upa, dss, average);
+DEPTHAI_SERIALIZE_EXT_DECL(ChipTemperature, css, mss, upa, dss, average);
 
 }  // namespace dai

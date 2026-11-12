@@ -70,7 +70,7 @@ struct IMUReport {
         return sequence;
     }
 };
-DEPTHAI_SERIALIZE_EXT(IMUReport, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT_DECL(IMUReport, sequence, accuracy, timestamp, tsDevice, tsSystem);
 
 /**
  * @brief Accelerometer
@@ -82,7 +82,7 @@ struct IMUReportAccelerometer : public IMUReport {
     float y = 0;
     float z = 0;
 };
-DEPTHAI_SERIALIZE_EXT(IMUReportAccelerometer, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT_DECL(IMUReportAccelerometer, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
 
 /**
  * @brief Gyroscope
@@ -94,7 +94,7 @@ struct IMUReportGyroscope : public IMUReport {
     float y = 0;
     float z = 0;
 };
-DEPTHAI_SERIALIZE_EXT(IMUReportGyroscope, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT_DECL(IMUReportGyroscope, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
 
 /**
  * @brief Magnetic field
@@ -106,7 +106,7 @@ struct IMUReportMagneticField : public IMUReport {
     float y = 0;
     float z = 0;
 };
-DEPTHAI_SERIALIZE_EXT(IMUReportMagneticField, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT_DECL(IMUReportMagneticField, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
 
 /**
  * @brief Rotation Vector with Accuracy
@@ -120,7 +120,7 @@ struct IMUReportRotationVectorWAcc : public IMUReport {
     float real = 0;                   /**< @brief Quaternion component, real */
     float rotationVectorAccuracy = 0; /**< @brief Accuracy estimate [radians], 0 means no estimate */
 };
-DEPTHAI_SERIALIZE_EXT(IMUReportRotationVectorWAcc, i, j, k, real, rotationVectorAccuracy, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT_DECL(IMUReportRotationVectorWAcc, i, j, k, real, rotationVectorAccuracy, sequence, accuracy, timestamp, tsDevice, tsSystem);
 
 #if 0
 
@@ -224,7 +224,7 @@ struct IMUPacket {
 #endif
 };
 
-DEPTHAI_SERIALIZE_EXT(IMUPacket, acceleroMeter, gyroscope, magneticField, rotationVector);
+DEPTHAI_SERIALIZE_EXT_DECL(IMUPacket, acceleroMeter, gyroscope, magneticField, rotationVector);
 
 /**
  * IMUData message. Carries normalized detection results
@@ -264,7 +264,7 @@ class IMUData : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, packets);
+    DEPTHAI_SERIALIZE_DECL(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, packets);
 };
 
 }  // namespace dai

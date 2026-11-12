@@ -3,7 +3,6 @@
 #include <chrono>
 #include <memory>
 
-#include "depthai/device/Device.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
@@ -13,6 +12,7 @@ class async_logger;
 }  // namespace spdlog
 
 namespace dai {
+class Device;
 
 class DeviceNode : public ThreadedNode {
    protected:

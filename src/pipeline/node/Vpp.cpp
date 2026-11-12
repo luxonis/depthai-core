@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/Vpp.hpp"
 
+#include "depthai/device/Device.hpp"
 #include "depthai/pipeline/datatype/VppConfig.hpp"
 #include "utility/Logging.hpp"
 

@@ -42,6 +42,8 @@ def parse(source, keep_conditionals=False):
         r'|//[^\n]*|/\*[\s\S]*?\*/|\[\[[\s\S]*?\]\]'
         r'|' + directive + r'(?:[^\n]*\\\n)*[^\n]*'
         r'|\bDEPTHAI_(?:BEGIN|END)_SUPPRESS_DEPRECATION_WARNING\b'
+        # Explicit instantiation declarations declare no API, and tree-sitter-cpp cannot parse them.
+        r'|\bextern\s+template\b[^;]*;'
     )
     source = re.sub(pattern, lambda m: m[0] if m[0][0] in "\"'" else re.sub(r"[^\n]", " ", m[0]), source, flags=re.M)
     return PARSER.parse(source.encode()).root_node

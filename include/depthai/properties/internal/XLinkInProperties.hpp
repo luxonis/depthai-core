@@ -29,7 +29,9 @@ struct XLinkInProperties : PropertiesSerializable<Properties, XLinkInProperties>
     ~XLinkInProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(XLinkInProperties, streamName, maxDataSize, numFrames);
+DEPTHAI_SERIALIZE_EXT_DECL(XLinkInProperties, streamName, maxDataSize, numFrames);
 
 }  // namespace internal
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::internal::XLinkInProperties>;

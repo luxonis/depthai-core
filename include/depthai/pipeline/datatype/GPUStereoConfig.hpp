@@ -36,7 +36,7 @@ class GPUStereoConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(GPUStereoConfig, confidenceThreshold);
+    DEPTHAI_SERIALIZE_DECL(GPUStereoConfig, confidenceThreshold);
 };
 
 }  // namespace dai

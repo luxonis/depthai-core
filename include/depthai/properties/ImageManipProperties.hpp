@@ -52,6 +52,8 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     ~ImageManipProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, maxPoolSize, backend, performanceMode);
+DEPTHAI_SERIALIZE_EXT_DECL(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, maxPoolSize, backend, performanceMode);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ImageManipProperties>;

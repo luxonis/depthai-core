@@ -183,7 +183,7 @@ struct SpatialImgDetection {
      */
     void transform(const ImgTransformation& source, const ImgTransformation& target, LengthUnit lengthUnit = LengthUnit::MILLIMETER);
 
-    DEPTHAI_SERIALIZE(
+    DEPTHAI_SERIALIZE_DECL(
         SpatialImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints, spatialCoordinates, boundingBoxMapping);
 };
 
@@ -255,7 +255,7 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(
+    DEPTHAI_SERIALIZE_DECL(
         SpatialImgDetections, sequenceNum, ts, tsDevice, tsSystem, detections, transformation, segmentationMaskWidth, segmentationMaskHeight, unit);
 };
 

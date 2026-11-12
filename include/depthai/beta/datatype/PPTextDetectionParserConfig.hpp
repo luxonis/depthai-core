@@ -77,7 +77,7 @@ class PPTextDetectionParserConfig : public Buffer {
         return DatatypeEnum::PPTextDetectionParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(PPTextDetectionParserConfig, confidenceThreshold, maskThreshold, maxDetections);
+    DEPTHAI_SERIALIZE_DECL(PPTextDetectionParserConfig, confidenceThreshold, maskThreshold, maxDetections);
 };
 
 }  // namespace beta

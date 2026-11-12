@@ -34,6 +34,8 @@ struct ThermalProperties : PropertiesSerializable<Properties, ThermalProperties>
     ~ThermalProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ThermalProperties, initialConfig, numFramesPool, boardSocket, fps);
+DEPTHAI_SERIALIZE_EXT_DECL(ThermalProperties, initialConfig, numFramesPool, boardSocket, fps);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ThermalProperties>;

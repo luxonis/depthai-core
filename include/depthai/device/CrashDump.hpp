@@ -131,7 +131,7 @@ class CrashDumpRVC2 final : public CrashDump {
                 std::string fileName;
                 std::string functionName;
                 uint32_t line = 0;
-                DEPTHAI_SERIALIZE(AssertContext, fileName, functionName, line);
+                DEPTHAI_SERIALIZE_DECL(AssertContext, fileName, functionName, line);
             };
 
             AssertContext assertContext;
@@ -140,14 +140,14 @@ class CrashDumpRVC2 final : public CrashDump {
                 uint32_t trapNumber = 0;
                 uint32_t trapAddress = 0;
                 std::string trapName;
-                DEPTHAI_SERIALIZE(TrapContext, trapNumber, trapAddress, trapName);
+                DEPTHAI_SERIALIZE_DECL(TrapContext, trapNumber, trapAddress, trapName);
             };
 
             TrapContext trapContext;
 
             uint32_t errorId = 0;
 
-            DEPTHAI_SERIALIZE(ErrorSourceInfo, assertContext, trapContext, errorId);
+            DEPTHAI_SERIALIZE_DECL(ErrorSourceInfo, assertContext, trapContext, errorId);
         };
 
         ErrorSourceInfo errorSourceInfo;
@@ -166,12 +166,12 @@ class CrashDumpRVC2 final : public CrashDump {
                 uint32_t calledTarget = 0;
                 uint32_t framePointer = 0;
                 std::string context;
-                DEPTHAI_SERIALIZE(CallstackContext, callSite, calledTarget, framePointer, context);
+                DEPTHAI_SERIALIZE_DECL(CallstackContext, callSite, calledTarget, framePointer, context);
             };
 
             std::vector<CallstackContext> callStack;
 
-            DEPTHAI_SERIALIZE(ThreadCallstack, threadId, threadName, threadStatus, stackBottom, stackTop, stackPointer, instructionPointer, callStack);
+            DEPTHAI_SERIALIZE_DECL(ThreadCallstack, threadId, threadName, threadStatus, stackBottom, stackTop, stackPointer, instructionPointer, callStack);
         };
 
         std::vector<ThreadCallstack> threadCallstack;
@@ -183,14 +183,14 @@ class CrashDumpRVC2 final : public CrashDump {
         uint64_t timerRaw = 0;
         /// Platform-specific crash/status flags captured with the report.
         uint64_t statusFlags = 0;
-        DEPTHAI_SERIALIZE(CrashReport, processor, errorSource, crashedThreadId, errorSourceInfo, threadCallstack, prints, uptimeNs, timerRaw, statusFlags);
+        DEPTHAI_SERIALIZE_DECL(CrashReport, processor, errorSource, crashedThreadId, errorSourceInfo, threadCallstack, prints, uptimeNs, timerRaw, statusFlags);
     };
 
     struct CrashReportCollection {
         std::vector<CrashReport> crashReports;
         std::string depthaiCommitHash;
         std::string deviceId;
-        DEPTHAI_SERIALIZE(CrashReportCollection, crashReports, depthaiCommitHash, deviceId);
+        DEPTHAI_SERIALIZE_DECL(CrashReportCollection, crashReports, depthaiCommitHash, deviceId);
     };
 
     CrashDumpRVC2() = default;

@@ -11,6 +11,8 @@ struct AutoCalibrationProperties : PropertiesSerializable<Properties, AutoCalibr
     ~AutoCalibrationProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(AutoCalibrationProperties, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(AutoCalibrationProperties, initialConfig);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::AutoCalibrationProperties>;

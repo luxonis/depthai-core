@@ -24,6 +24,8 @@ struct BenchmarkOutProperties : PropertiesSerializable<Properties, BenchmarkOutP
     ~BenchmarkOutProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(BenchmarkOutProperties, numMessages, fps);
+DEPTHAI_SERIALIZE_EXT_DECL(BenchmarkOutProperties, numMessages, fps);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::BenchmarkOutProperties>;

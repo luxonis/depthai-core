@@ -37,6 +37,8 @@ struct FeatureTrackerProperties : PropertiesSerializable<Properties, FeatureTrac
     ~FeatureTrackerProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(FeatureTrackerProperties, initialConfig, numShaves, numMemorySlices);
+DEPTHAI_SERIALIZE_EXT_DECL(FeatureTrackerProperties, initialConfig, numShaves, numMemorySlices);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::FeatureTrackerProperties>;

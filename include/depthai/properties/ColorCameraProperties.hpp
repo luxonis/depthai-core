@@ -25,7 +25,7 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
         int32_t vertNumerator = 0;
         int32_t vertDenominator = 0;
 
-        DEPTHAI_SERIALIZE(IspScale, horizNumerator, horizDenominator, vertNumerator, vertDenominator);
+        DEPTHAI_SERIALIZE_DECL(IspScale, horizNumerator, horizDenominator, vertNumerator, vertDenominator);
     };
 
     /**
@@ -215,40 +215,42 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
     ~ColorCameraProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ColorCameraProperties,
-                      initialControl,
-                      boardSocket,
-                      cameraName,
-                      imageOrientation,
-                      previewType,
-                      previewHeight,
-                      previewWidth,
-                      videoWidth,
-                      videoHeight,
-                      stillWidth,
-                      stillHeight,
-                      mockIspWidth,
-                      mockIspHeight,
-                      resolution,
-                      fps,
-                      isp3aFps,
-                      sensorCropX,
-                      sensorCropY,
-                      previewKeepAspectRatio,
-                      ispScale,
-                      numFramesPoolRaw,
-                      numFramesPoolIsp,
-                      numFramesPoolVideo,
-                      numFramesPoolPreview,
-                      numFramesPoolStill,
-                      warpMeshSource,
-                      warpMeshUri,
-                      warpMeshWidth,
-                      warpMeshHeight,
-                      calibAlpha,
-                      warpMeshStepWidth,
-                      warpMeshStepHeight,
-                      eventFilter,
-                      rawPacked);
+DEPTHAI_SERIALIZE_EXT_DECL(ColorCameraProperties,
+                           initialControl,
+                           boardSocket,
+                           cameraName,
+                           imageOrientation,
+                           previewType,
+                           previewHeight,
+                           previewWidth,
+                           videoWidth,
+                           videoHeight,
+                           stillWidth,
+                           stillHeight,
+                           mockIspWidth,
+                           mockIspHeight,
+                           resolution,
+                           fps,
+                           isp3aFps,
+                           sensorCropX,
+                           sensorCropY,
+                           previewKeepAspectRatio,
+                           ispScale,
+                           numFramesPoolRaw,
+                           numFramesPoolIsp,
+                           numFramesPoolVideo,
+                           numFramesPoolPreview,
+                           numFramesPoolStill,
+                           warpMeshSource,
+                           warpMeshUri,
+                           warpMeshWidth,
+                           warpMeshHeight,
+                           calibAlpha,
+                           warpMeshStepWidth,
+                           warpMeshStepHeight,
+                           eventFilter,
+                           rawPacked);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ColorCameraProperties>;

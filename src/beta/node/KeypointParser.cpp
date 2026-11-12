@@ -19,8 +19,6 @@
 namespace dai {
 namespace beta {
 
-KeypointParserProperties::~KeypointParserProperties() = default;
-
 namespace node {
 
 NNArchive KeypointParser::createNNArchive(NNModelDescription& modelDesc) {
