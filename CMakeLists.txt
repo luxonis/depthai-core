@@ -717,8 +717,15 @@ if(DEPTHAI_UNITY_BUILD)
         src/rtabmap/RTABMapConversions.cpp
         src/rtabmap/RTABMapSLAM.cpp
         src/rtabmap/RTABMapVIO.cpp
+        # Each holds the json, libnop and properties code of many types.
+        ${DEPTHAI_SERIALIZATION_SOURCES}
+        src/utility/serialization/Beta.cpp
         PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
     )
+endif()
+if(MSVC)
+    # MSVC error C1128 in Debug builds: the serialization sources have more sections than the default object format allows.
+    set_property(SOURCE ${DEPTHAI_SERIALIZATION_SOURCES} src/utility/serialization/Beta.cpp APPEND PROPERTY COMPILE_OPTIONS /bigobj)
 endif()
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
