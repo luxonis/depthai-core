@@ -1132,6 +1132,14 @@ dai_add_test(camera_sensor_geometry_test src/ondevice_tests/pipeline/node/camera
 dai_set_test_labels(camera_sensor_geometry_test ondevice rvc2_all ci noreplayci)
 set_property(TEST camera_sensor_geometry_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
+if(DEPTHAI_ENABLE_PROTOBUF AND DEPTHAI_OPENCV_SUPPORT)
+    dai_add_test(camera_replay_geometry_test src/ondevice_tests/pipeline/node/camera_replay_geometry_test.cpp)
+    dai_set_test_labels(camera_replay_geometry_test ondevice rvc2_all ci noreplayci)
+    target_include_directories(camera_replay_geometry_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include/depthai)
+    target_link_libraries(camera_replay_geometry_test PRIVATE messages)
+    set_property(TEST camera_replay_geometry_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
+endif()
+
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
 set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
