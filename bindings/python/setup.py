@@ -303,6 +303,10 @@ class CMakeBuild(build_ext):
         cmake_args += ['-DPIP_TEMP_LIB_FOLDER=' + os.path.abspath(os.path.join(self.build_temp, cfg))]
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
+        # Do not export the symbols of the static dependencies from depthai-core (Linux)
+        cmake_args += ['-DDEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS=ON']
+        # Remove unused code from depthai-core (Linux); needs the option above to remove much
+        cmake_args += ['-DDEPTHAI_LINK_GC_SECTIONS=ON']
         build_args += ['--config', cfg]
         if not self.debug:
             rootDirectory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
