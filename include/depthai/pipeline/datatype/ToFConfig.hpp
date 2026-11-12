@@ -73,6 +73,15 @@ class ToFConfig : public Buffer {
     std::optional<bool> enablePhaseUnwrapping;
 
     /**
+     * Publish intermediate S5K63D depth updates using previous-stack frequency history.
+     * Enabled by default to preserve the existing output cadence. Set false to publish
+     * only depth using both frequency pairs from the current stack.
+     * Applies when phase unwrapping is enabled; burst mode always suppresses intermediate updates.
+     * Other sensors are unaffected. Supports initialConfig and runtime inputConfig.
+     */
+    bool enableIntermediateDepth = true;
+
+    /**
      * Construct ToFConfig message.
      */
     ToFConfig() = default;
@@ -107,7 +116,8 @@ class ToFConfig : public Buffer {
                       enableWiggleCorrection,
                       enablePhaseUnwrapping,
                       phaseUnwrappingLevel,
-                      phaseUnwrapErrorThreshold);
+                      phaseUnwrapErrorThreshold,
+                      enableIntermediateDepth);
 };
 
 }  // namespace dai
