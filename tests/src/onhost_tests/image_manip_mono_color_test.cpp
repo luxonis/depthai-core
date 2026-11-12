@@ -99,5 +99,5 @@ TEST_CASE("ImageManip rejects invalid mono source views before writing color out
     ColorChangeH conversion;
     conversion.build(srcSpecs, dstSpecs, inputType, outputType);
     REQUIRE_THROWS_AS(conversion.apply(src, dst), std::runtime_error);
-    REQUIRE(std::all_of(dst->getData().begin(), dst->getData().end(), [](uint8_t value) { return value == sentinel; }));
+    REQUIRE(std::all_of(dst->getData().begin(), dst->getData().end(), [sentinel](uint8_t value) { return value == sentinel; }));
 }
