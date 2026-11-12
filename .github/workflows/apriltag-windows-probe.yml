@@ -76,7 +76,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Remove only the Windows AprilTag feature gate in the SDK checkout
         run: |
-          python -c "from pathlib import Path; p=Path('sdk/cmake/depthaiOptions.cmake'); s=p.read_text(); old='if(WIN32)\n    message(STATUS \"AprilTag node is not supported on Windows\")\n    set(DEPTHAI_HAS_APRIL_TAG OFF)\nendif()'; assert old in s; p.write_text(s.replace(old, '# Windows feature gate removed for diagnosis only'))"
+          python probe.py enable
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           git -C sdk diff -- cmake/depthaiOptions.cmake
       - name: Configure complete SDK with host AprilTag enabled

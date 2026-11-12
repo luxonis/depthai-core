@@ -9,3 +9,9 @@ if sys.argv[1] == 'gate':
     pathlib.Path('gate-result.txt').write_text(result.stdout)
     print(result.stdout)
     sys.exit(result.returncode)
+elif sys.argv[1] == 'enable':
+    options = pathlib.Path('sdk/cmake/depthaiOptions.cmake')
+    original = options.read_text()
+    gate = 'if(WIN32)\n    message(STATUS "AprilTag node is not supported on Windows")\n    set(DEPTHAI_HAS_APRIL_TAG OFF)\nendif()'
+    assert original.count(gate) == 1
+    options.write_text(original.replace(gate, '# Windows feature gate removed for diagnosis only'))
