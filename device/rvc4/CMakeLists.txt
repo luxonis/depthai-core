@@ -143,6 +143,30 @@ include_directories(BEFORE
     "${DEPTHAI_DEVICE_BINARY_DIR}"
 )
 
+# Private Qualcomm/ST module sources (licensee-only code; not part of the public repository): the private repository
+# depthai-device-vendor-fw. Default: the environment variable DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR, then a sibling checkout named
+# depthai-device-vendor-fw.
+set(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "$ENV{DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}" CACHE PATH "Path to the checkout of the private module (repository depthai-device-vendor-fw)")
+if(NOT DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/../depthai-device-vendor-fw/CMakeLists.txt")
+    get_filename_component(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../depthai-device-vendor-fw" ABSOLUTE)
+endif()
+message(STATUS "Private module source dir: '${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}'")
+
+# STMicroelectronics VD55H1 ToF processing (ST SLA0106 library + Qualcomm depth-map wrapper).
+# Available only when the private module carries the wrapper; without it the ToF node reports an error.
+if(EXISTS "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}/depthmapwrapper-vd55h1/CMakeLists.txt")
+    set(_tof_default ON)
+else()
+    set(_tof_default OFF)
+endif()
+option(DEPTHAI_DEVICE_TOF_VD55H1 "Build the VD55H1 ToF depth processing (needs the private depthmapwrapper-vd55h1)" ${_tof_default})
+message(STATUS "ToF VD55H1 processing: ${DEPTHAI_DEVICE_TOF_VD55H1}")
+# Without the wrapper the core library compiles the stub of the ToF sensor pipeline (see the private module section)
+set(DEPTHAI_DEVICE_TOF_SOURCES src/pipeline/node/ToF/tofVD55H1.cpp)
+if(NOT DEPTHAI_DEVICE_TOF_VD55H1)
+    list(APPEND DEPTHAI_DEVICE_TOF_SOURCES src/pipeline/node/ToF/tofVD55H1Stub.cpp)
+endif()
+
 # Add dependencies
 add_subdirectory("external")
 
@@ -322,7 +346,7 @@ set(DEPTHAI_PLATFORM_SOURCES
     src/pipeline/node/ImageAlign/ImageAlign.cpp
     src/pipeline/node/ToF/ToF.cpp
     src/pipeline/node/ToF/BleedingFilter.cpp
-    src/pipeline/node/ToF/tofVD55H1.cpp
+    ${DEPTHAI_DEVICE_TOF_SOURCES}
 
     # Camera
     src/camera/CameraSensor.cpp
@@ -676,6 +700,25 @@ set(DEPTHAI_DEVICE_DSP_SKELS
 
 target_link_libraries(depthai-device-core PRIVATE pipeline.node.IMU)
 
+# ---------------------------------------------------------------------
+# Private module: licensee-only Qualcomm/ST code behind the public interfaces
+# ---------------------------------------------------------------------
+if(DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR)
+    add_subdirectory("${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}" "${DEPTHAI_DEVICE_BINARY_DIR}/depthai-device-rvc4-vendor")
+    # One direction only: the core library uses the implementations of the private module, and the module
+    # compiles against depthai-device-accel-api.
+    target_link_libraries(depthai-device-core PRIVATE depthai-device-rvc4-vendor)
+    # The IMU node library uses the SensorDirectChannel implementation of the private module.
+    target_link_libraries(pipeline.node.IMU PRIVATE depthai-device-rvc4-vendor)
+    # VD55H1 ToF sensor pipeline: the separate archive of the private module when it is built with the ST wrapper
+    if(DEPTHAI_DEVICE_TOF_VD55H1)
+        target_link_libraries(depthai-device-core PRIVATE depthai-device-rvc4-vendor-tof)
+    endif()
+else()
+    message(FATAL_ERROR "DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR is not set and no sibling depthai-device-vendor-fw checkout was found. "
+                        "The private module is required to build the firmware.")
+endif()
+
 # Create final version
 set(DEPTHAI_DEVICE_KB_FINAL_VERSION "${PROJECT_VERSION}")
 
@@ -776,6 +819,7 @@ add_custom_command(TARGET ${TARGET_DEVICE_EXECUTABLE} POST_BUILD
         --vcpkg-root "${DEPTHAI_DEVICE_VCPKG_ROOT}"
         --install-root "${CMAKE_BINARY_DIR}/vcpkg_installed"
         --license-input "${DEPTHAI_DEVICE_SOURCE_DIR}/LICENSE.fwp"
+        --private-module-root "${DEPTHAI_DEVICE_RVC4_VENDOR_SOURCE_DIR}"
         --license-output "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp-LICENSE"
         --spdx-output "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.spdx.json"
         --cyclonedx-output "$<TARGET_FILE_DIR:${TARGET_DEVICE_EXECUTABLE}>/depthai-device-rvc4-fwp.cdx.json"
