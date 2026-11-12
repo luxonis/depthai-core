@@ -33,10 +33,16 @@ dai::CalibrationHandler calibration() {
 }
 
 struct Scene {
-    std::vector<uint8_t> left = std::vector<uint8_t>(WIDTH * HEIGHT), right = std::vector<uint8_t>(WIDTH * HEIGHT, 0);
-    Scene() {
+    std::vector<uint8_t> left, right;
+    explicit Scene(dai::Pipeline& pipeline) {
+        // RVC4 stereo reads complete 32-row blocks, so there the storage is padded to whole blocks while the frames
+        // stay HEIGHT rows tall.
+        const bool rvc4 = pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC4;
+        const unsigned rows = rvc4 ? (HEIGHT + 31) / 32 * 32 : HEIGHT;
+        left.assign(WIDTH * rows, 0);
+        right.assign(WIDTH * rows, 0);
         std::mt19937 random(7);
-        for(auto& pixel : left) pixel = random() & 255;
+        for(unsigned i = 0; i < WIDTH * HEIGHT; ++i) left[i] = random() & 255;
         for(unsigned y = 0; y < HEIGHT; ++y)
             for(unsigned x = 0; x + SHIFT < WIDTH; ++x) right[y * WIDTH + x] = left[y * WIDTH + x + SHIFT];
     }
@@ -110,7 +116,7 @@ TEST_CASE("StereoDepth presets produce correct depth from host frames", "[stereo
     auto left = stereo->left.createInputQueue(), right = stereo->right.createInputQueue();
     auto disparities = stereo->disparity.createOutputQueue(), depths = stereo->depth.createOutputQueue();
     pipeline.start();
-    const Scene scene;
+    const Scene scene(pipeline);
     for(int sequence = 1; sequence <= 3; ++sequence) {
         CAPTURE(sequence);
         const auto outputs = process(*left, *right, *disparities, *depths, scene, sequence);
@@ -151,23 +157,36 @@ TEST_CASE("StereoDepth keeps running after rejecting a runtime config", "[stereo
     auto disparities = stereo->disparity.createOutputQueue(), depths = stereo->depth.createOutputQueue();
     auto applied = stereo->outConfig.createOutputQueue();
     pipeline.start();
-    const Scene scene;
+    const Scene scene(pipeline);
     process(*left, *right, *disparities, *depths, scene, 1);
     REQUIRE(applied->get<dai::StereoDepthConfig>() != nullptr);
 
-    // Each config carries a distinct depth limit, so outConfig shows which one a frame used. The device consumes
-    // configs in order: once the valid 2 m limit is in use, the rejected 1 m one was already seen.
+    // Each config carries a distinct depth limit, so outConfig shows which one a frame used.
+    const auto previousRange = stereo->initialConfig->postProcessing.thresholdFilter.maxRange;
+    const auto previousThreshold = stereo->initialConfig->costMatching.confidenceThreshold;
+    REQUIRE(previousRange > EXPECTED_MM);
     auto rejected = std::make_shared<dai::StereoDepthConfig>(*stereo->initialConfig);
     rejected->setConfidenceThreshold(200);
     rejected->postProcessing.thresholdFilter.maxRange = 1000;
+    configs->send(rejected);
+    // Configs and frames travel on separate queues, and the device reads at most one config per frame. Two frames give
+    // the rejected config time to arrive and be read; the frames after it still use the previous config.
+    for(int sequence = 2; sequence <= 3; ++sequence) {
+        CAPTURE(sequence);
+        const auto outputs = process(*left, *right, *disparities, *depths, scene, sequence);
+        const auto used = applied->get<dai::StereoDepthConfig>();
+        REQUIRE(used != nullptr);
+        REQUIRE(used->postProcessing.thresholdFilter.maxRange == previousRange);
+        REQUIRE(used->costMatching.confidenceThreshold == previousThreshold);
+        REQUIRE(depthAccuracy(*outputs.depth).second > 0.5);
+    }
+
+    // The device consumes configs in order: once the valid 2 m limit is in use, the rejected 1 m one was already seen.
     auto accepted = std::make_shared<dai::StereoDepthConfig>(*stereo->initialConfig);
     accepted->postProcessing.thresholdFilter.maxRange = 2000;
-    configs->send(rejected);
     configs->send(accepted);
-    const auto previousRange = stereo->initialConfig->postProcessing.thresholdFilter.maxRange;
-    REQUIRE(previousRange > EXPECTED_MM);
     bool appliedValid = false;
-    for(int sequence = 2; sequence <= 40 && !appliedValid; ++sequence) {
+    for(int sequence = 4; sequence <= 40 && !appliedValid; ++sequence) {
         CAPTURE(sequence);
         const auto outputs = process(*left, *right, *disparities, *depths, scene, sequence);
         const auto used = applied->get<dai::StereoDepthConfig>();
@@ -175,7 +194,7 @@ TEST_CASE("StereoDepth keeps running after rejecting a runtime config", "[stereo
         const auto maxRange = used->postProcessing.thresholdFilter.maxRange;
         CAPTURE(maxRange, previousRange);
         REQUIRE((maxRange == previousRange || maxRange == 2000));
-        REQUIRE(used->costMatching.confidenceThreshold == stereo->initialConfig->costMatching.confidenceThreshold);
+        REQUIRE(used->costMatching.confidenceThreshold == previousThreshold);
         // The scene is 2.8 m away, so the 2 m limit removes all of it and the previous config keeps most of it.
         const double valid = depthAccuracy(*outputs.depth).second;
         if(maxRange == 2000)
