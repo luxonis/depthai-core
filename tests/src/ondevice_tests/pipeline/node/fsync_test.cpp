@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <chrono>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -76,7 +77,8 @@ std::shared_ptr<dai::Device> makeRvc4DeviceOrSkip() {
 std::map<dai::CameraBoardSocket, std::shared_ptr<dai::ImgFrame>> collectOneFramePerCamera(const std::vector<CameraRequest>& requests,
                                                                                           const std::vector<dai::CameraBoardSocket>& expectedSlaveSockets,
                                                                                           const std::vector<dai::StereoPair>& stereoPairs,
-                                                                                          std::shared_ptr<dai::Device> device) {
+                                                                                          std::shared_ptr<dai::Device> device,
+                                                                                          const std::function<void()>& afterStart = {}) {
     dai::Pipeline pipeline(std::move(device));
     std::map<dai::CameraBoardSocket, std::shared_ptr<dai::MessageQueue>> queues;
     std::shared_ptr<dai::node::Sync> sync = nullptr;
@@ -111,6 +113,9 @@ std::map<dai::CameraBoardSocket, std::shared_ptr<dai::ImgFrame>> collectOneFrame
         syncQueue = sync->out.createOutputQueue(4, false);
     }
     pipeline.start();
+    if(afterStart) {
+        afterStart();
+    }
 
     if(syncQueue != nullptr) {
         for(int i = 0; i < 5; ++i) {
@@ -121,26 +126,23 @@ std::map<dai::CameraBoardSocket, std::shared_ptr<dai::ImgFrame>> collectOneFrame
         for(int i = 0; i < 20; ++i) {
             auto syncedFrames = syncQueue->get<dai::MessageGroup>();
             REQUIRE(syncedFrames != nullptr);
-            std::vector<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> slaveTimestamps;
+            std::map<dai::CameraBoardSocket, std::chrono::steady_clock::time_point> slaveTimestamps;
             for(const auto socket : expectedSlaveSockets) {
                 auto frame = syncedFrames->get<dai::ImgFrame>(dai::toString(socket));
                 REQUIRE(frame != nullptr);
-                slaveTimestamps.push_back(frame->getTimestampDevice());
+                slaveTimestamps.emplace(socket, frame->getTimestampDevice());
             }
 
-            const auto [minIt, maxIt] = std::minmax_element(slaveTimestamps.begin(), slaveTimestamps.end());
-            auto threshold = RVC4_THRESHOLDS.all;
-            const bool expectedPairIsStereo = std::find_if(stereoPairs.begin(),
-                                                           stereoPairs.end(),
-                                                           [&](const auto& pair) {
-                                                               return (pair.left == expectedSlaveSockets[0] && pair.right == expectedSlaveSockets[1])
-                                                                      || (pair.left == expectedSlaveSockets[1] && pair.right == expectedSlaveSockets[0]);
-                                                           })
-                                              != stereoPairs.end();
-            if(expectedSlaveSockets.size() == 2 && expectedPairIsStereo) {
-                threshold = RVC4_THRESHOLDS.leftRight;
+            const auto [minIt, maxIt] =
+                std::minmax_element(slaveTimestamps.begin(), slaveTimestamps.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
+            REQUIRE((maxIt->second - minIt->second) <= RVC4_THRESHOLDS.all);
+            for(const auto& pair : stereoPairs) {
+                if(slaveTimestamps.count(pair.left) != 0 && slaveTimestamps.count(pair.right) != 0) {
+                    CAPTURE(dai::toString(pair.left), dai::toString(pair.right));
+                    const auto [first, last] = std::minmax(slaveTimestamps.at(pair.left), slaveTimestamps.at(pair.right));
+                    REQUIRE((last - first) <= RVC4_THRESHOLDS.leftRight);
+                }
             }
-            REQUIRE((*maxIt - *minIt) <= threshold);
         }
     }
 
@@ -299,6 +301,34 @@ TEST_CASE("Test Fsync with different FPS values", "[fsync]") {
     auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f);
     CAPTURE(fps);
     testFsyncIntegrated(fps);
+}
+
+TEST_CASE("STANDALONE keeps on-board frame sync", "[fsync][standalone]") {
+    auto device = makeRvc4DeviceOrSkip();
+    const auto [applied, reason] = device->setExternalFrameSyncRole(dai::ExternalFrameSyncRole::STANDALONE);
+    CAPTURE(reason);
+    REQUIRE(applied);
+    REQUIRE(reason.empty());
+    REQUIRE(device->getExternalFrameSyncRole() == dai::ExternalFrameSyncRole::STANDALONE);
+
+    std::vector<CameraRequest> requests;
+    std::vector<dai::CameraBoardSocket> sockets;
+    std::vector<CameraExpectation> expectations;
+    const auto connected = device->getConnectedCameras();
+    for(const auto socket : {dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C}) {
+        if(std::find(connected.begin(), connected.end(), socket) != connected.end()) {
+            requests.push_back({socket, 30.0f, dai::CameraControl::FrameSyncMode::AUTO});
+            sockets.push_back(socket);
+            expectations.push_back({socket, dai::ImgFrame::Fsync::INPUT, 30.0f});
+        }
+    }
+    REQUIRE_FALSE(requests.empty());
+
+    // The pipeline closes the device when it stops, so the role is read while it runs
+    const auto frames = collectOneFramePerCamera(requests, sockets, device->getStereoPairs(), device, [&device]() {
+        REQUIRE(device->getExternalFrameSyncRole() == dai::ExternalFrameSyncRole::STANDALONE);
+    });
+    requireExpectedMetadata(frames, expectations);
 }
 
 TEST_CASE("Fsync metadata state selection", "[fsync][metadata]") {
