@@ -51,7 +51,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def_readonly("inputImage", &ImageManip::inputImage, DOC(dai, node, ImageManip, inputImage))
         .def_readonly("out", &ImageManip::out, DOC(dai, node, ImageManip, out))
         .def_readonly("initialConfig", &ImageManip::initialConfig, DOC(dai, node, ImageManip, initialConfig))
-        .def("setRunOnHost", &ImageManip::setRunOnHost, DOC(dai, node, ImageManip, setRunOnHost))
+        .def("setRunOnHost", &ImageManip::setRunOnHost, py::arg("runOnHost") = true, DOC(dai, node, ImageManip, setRunOnHost))
         .def("setBackend", &ImageManip::setBackend, DOC(dai, node, ImageManip, setBackend))
         .def("setPerformanceMode", &ImageManip::setPerformanceMode, DOC(dai, node, ImageManip, setPerformanceMode))
         .def("setNumFramesPool", &ImageManip::setNumFramesPool, DOC(dai, node, ImageManip, setNumFramesPool))

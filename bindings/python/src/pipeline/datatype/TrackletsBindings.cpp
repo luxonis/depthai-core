@@ -21,7 +21,7 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
     // py::class_<RawTracklets, RawBuffer, std::shared_ptr<RawTracklets>> rawTacklets(m, "RawTracklets", DOC(dai, RawTracklets));
     py::class_<Tracklet> tracklet(m, "Tracklet", DOC(dai, Tracklet));
     py::enum_<Tracklet::TrackingStatus> trackletTrackingStatus(tracklet, "TrackingStatus", DOC(dai, Tracklet, TrackingStatus));
-    py::class_<Tracklets, Py<Tracklets>, Buffer, Transformable, std::shared_ptr<Tracklets>> tracklets(m, "Tracklets", DOC(dai, Tracklets));
+    py::class_<Tracklets, Py<Tracklets>, Buffer, Transformable, py::smart_holder> tracklets(m, "Tracklets", DOC(dai, Tracklets));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -38,7 +38,14 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     tracklet.def(py::init<>())
-        .def("__repr__", &Tracklet::str)
+        .def("transform",
+             &dai::Tracklet::transform,
+             py::arg("source"),
+             py::arg("target"),
+             py::arg("lengthUnit") = LengthUnit::MILLIMETER,
+             DOC(dai, Tracklet, transform));
+
+    tracklet.def("__repr__", &Tracklet::str)
         .def_readwrite("roi", &Tracklet::roi)
         .def_readwrite("id", &Tracklet::id)
         .def_readwrite("label", &Tracklet::label)

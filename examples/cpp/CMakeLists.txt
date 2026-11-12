@@ -16,6 +16,10 @@ target_link_libraries(utility ${OpenCV_LIBS})
 set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
+    # vcpkg dependencies are built without ASan: protobuf containers then give false container-overflow
+    # reports (inline code from instrumented objects annotates memory that libprotobuf.a then writes)
+    # TODO: remove when the vcpkg dependencies are built with ASan
+    "ASAN_OPTIONS=detect_container_overflow=0"
     "RUNNING_AS_TEST=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=20000"
@@ -24,6 +28,37 @@ set(test_env
     )
 
 set(TOP_CPP_EXAMPLES_CMAKE_DIR ${CMAKE_CURRENT_LIST_DIR})
+
+# Almost every example is one source file that includes depthai.hpp and opencv.hpp. All examples
+# reuse one precompiled header, so these headers are parsed once and not once per example.
+option(DEPTHAI_EXAMPLES_PCH "Share one precompiled header between the examples" ON)
+if(DEPTHAI_EXAMPLES_PCH)
+    set(DEPTHAI_EXAMPLES_PCH_TARGET depthai_examples_pch)
+    file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${DEPTHAI_EXAMPLES_PCH_TARGET}.cpp" CONTENT "int main() { return 0; }\n")
+    # An executable, so that its PIE flags match the examples that reuse its header.
+    add_executable(${DEPTHAI_EXAMPLES_PCH_TARGET} "${CMAKE_CURRENT_BINARY_DIR}/${DEPTHAI_EXAMPLES_PCH_TARGET}.cpp")
+    add_default_flags(${DEPTHAI_EXAMPLES_PCH_TARGET} LEAN)
+    set(_pch_depthai_target depthai::core)
+    if(NOT DEPTHAI_MERGED_TARGET)
+        set(_pch_depthai_target depthai::opencv)
+    endif()
+    target_link_libraries(${DEPTHAI_EXAMPLES_PCH_TARGET} PRIVATE utility ${_pch_depthai_target} ${OpenCV_LIBS} Threads::Threads argparse::argparse)
+    set_target_properties(${DEPTHAI_EXAMPLES_PCH_TARGET} PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    target_precompile_headers(${DEPTHAI_EXAMPLES_PCH_TARGET} PRIVATE
+        <depthai/depthai.hpp>
+        <opencv2/opencv.hpp>
+        <atomic>
+        <chrono>
+        <csignal>
+        <iostream>
+        <memory>
+        <string>
+        <vector>
+    )
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${DEPTHAI_EXAMPLES_PCH_TARGET})
+    endif()
+endif()
 
 # Regexes for example test failure
 set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\\\[warning\\\\];\\\\[error\\\\];\\\\[critical\\\\]")
@@ -37,6 +72,9 @@ function(dai_add_example example_name example_src enable_test use_pcl)
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
+    if(DEPTHAI_EXAMPLES_PCH)
+        target_precompile_headers(${example_name} REUSE_FROM ${DEPTHAI_EXAMPLES_PCH_TARGET})
+    endif()
     set(DEPTHAI_TARGET depthai::core)
     if(use_pcl AND NOT DEPTHAI_MERGED_TARGET)
         set(DEPTHAI_TARGET depthai::all)
@@ -184,3 +222,5 @@ endif()
 if(DEPTHAI_BUILD_BETA AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_subdirectory(MultiDeviceCalibration)
 endif()
+
+add_subdirectory(MultiDevice)

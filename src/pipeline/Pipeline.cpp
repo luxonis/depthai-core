@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "common/ExternalFrameSyncRoles.hpp"
+#include "depthai/beta/device/LocalCalibrationOrigin.hpp"
 #include "depthai/beta/device/MultiDeviceCalibrationHandler.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "device/Platform.hpp"
@@ -175,7 +176,7 @@ nlohmann::json makeTelemetryNodePropertiesJson(const nlohmann::json& properties)
     return nlohmann::json::object();
 }
 
-void emitTelemetryNodeCreatedEvents(const Pipeline& pipeline, const nlohmann::json& telemetrySchema) {
+void emitTelemetryNodeCreatedEvents(const PipelineImpl& pipeline, const nlohmann::json& telemetrySchema) {
     for(const auto& node : telemetrySchema.at("nodes")) {
         const auto& nodeInfo = node.at(1);
         dai::utility::Telemetry::getInstance().event(pipeline,
@@ -374,27 +375,15 @@ void PipelineImpl::applyMultiDeviceCalibration(const std::optional<std::vector<M
     if(handler.has_value()) {
         for(size_t i = 0; i < devices.size(); ++i) {
             const auto& deviceId = deviceIds[i];
-            const auto localSocket = handler->getDeviceSocket(deviceId);
-            if(!localSocket.has_value()) {
+            if(!handler->getDeviceSocket(deviceId).has_value()) {
                 continue;
             }
-            if(!isCalibrationDataAvailable(devices[i])) {
-                throw std::runtime_error(fmt::format("Multi-device calibration requires local calibration data for device '{}'.", deviceId));
+            std::optional<EepromData> calibration;
+            if(isCalibrationDataAvailable(devices[i])) {
+                calibration = getCalibrationData(devices[i]).getEepromData();
             }
-            const auto calibration = getCalibrationData(devices[i]);
-            if(!calibration.hasCameraCalibration(*localSocket)) {
-                throw std::runtime_error(
-                    fmt::format("Multi-device calibration requires local calibration socket {} on device '{}'.", toString(*localSocket), deviceId));
-            }
-            CameraBoardSocket discoveredOrigin = CameraBoardSocket::AUTO;
-            calibration.getExtrinsicsToOrigin(*localSocket, false, discoveredOrigin);
-            if(discoveredOrigin != *localSocket) {
-                throw std::runtime_error(
-                    fmt::format("Multi-device calibration local origin mismatch for device '{}': graph expects socket {}, local calibration resolves to {}.",
-                                deviceId,
-                                toString(*localSocket),
-                                toString(discoveredOrigin)));
-            }
+            // The origin rule follows the device platform so this check matches the firmware's own.
+            handler->validateLocalOrigin(deviceId, beta::describeLocalCalibration(calibration, devices[i]->getPlatform()));
         }
     }
 
@@ -1799,13 +1788,15 @@ void PipelineImpl::start() {
             pipelineDevices.push_back(device);
         }
     }
-    // Add pointer to the pipeline to every device before device-side startup, so that
-    // device-side telemetry can resolve the pipeline and a disconnect during another
-    // device's (slow) startup still finds the pipeline for reconnection.
+    // Add pointer to the pipeline to every device before device-side startup, so that a
+    // disconnect during another device's (slow) startup still finds the pipeline for
+    // reconnection. Device-side telemetry gets a copy of the pipeline telemetry ID: it runs on
+    // device threads, which must not own the pipeline.
     {
         const auto weak = std::weak_ptr<PipelineImpl>(shared_from_this());
         for(const auto& device : pipelineDevices) {
             device->pipelinePtr = weak;
+            device->setActiveTelemetryPipelineId(telemetryPipelineId);
         }
     }
 
@@ -1827,6 +1818,10 @@ void PipelineImpl::start() {
                 masterDevices.push_back(d);
             } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
                 slaveDevices.push_back(d);
+            } else if(role == dai::ExternalFrameSyncRole::AUTO_DETECT) {
+                // This should not happen, but bugs on depthai-device can
+                // leak this role. treat them as independent masters
+                masterDevices.push_back(d);
             } else {
                 throw std::runtime_error("Unknown external frame sync role");
             }
@@ -1933,10 +1928,9 @@ void PipelineImpl::start() {
 
     telemetryPipelineStartedAt = std::chrono::steady_clock::now();
 
-    const auto pipeline = Pipeline(shared_from_this());
     const auto telemetrySchema = makeTelemetrySchemaJson(getPipelineSchema(SerializationType::JSON, false));
-    emitTelemetryNodeCreatedEvents(pipeline, telemetrySchema);
-    dai::utility::Telemetry::getInstance().event(pipeline,
+    emitTelemetryNodeCreatedEvents(*this, telemetrySchema);
+    dai::utility::Telemetry::getInstance().event(*this,
                                                  "depthai_pipeline_start",
                                                  nlohmann::json{
                                                      {"host_only", isHostOnly()},

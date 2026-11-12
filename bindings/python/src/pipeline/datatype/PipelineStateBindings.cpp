@@ -22,7 +22,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
     py::class_<NodeState::QueueStats> nodeStateQueueStats(nodeState, "QueueStats", DOC(dai, NodeState, QueueStats));
     py::class_<NodeState::InputQueueState> nodeStateInputQueueState(nodeState, "InputQueueState", DOC(dai, NodeState, InputQueueState));
     py::class_<NodeState::OutputQueueState> nodeStateOutputQueueState(nodeState, "OutputQueueState", DOC(dai, NodeState, OutputQueueState));
-    py::class_<PipelineState, Py<PipelineState>, Buffer, std::shared_ptr<PipelineState>> pipelineState(m, "PipelineState", DOC(dai, PipelineState));
+    py::class_<PipelineState, Py<PipelineState>, Buffer, py::smart_holder> pipelineState(m, "PipelineState", DOC(dai, PipelineState));
 
     py::enum_<NodeState::InputQueueState::State>(nodeStateInputQueueState, "State", DOC(dai, NodeState, InputQueueState, State))
         .value("IDLE", NodeState::InputQueueState::State::IDLE)
@@ -105,6 +105,8 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
 
     // Message
     pipelineState.def(py::init<>())
+        .def_readwrite("configSequenceNum", &dai::PipelineState::configSequenceNum, DOC(dai, PipelineState, configSequenceNum))
         .def("__repr__", &PipelineState::str)
+        .def("toJson", &PipelineState::toJson, DOC(dai, PipelineState, toJson))
         .def_readwrite("nodeStates", &PipelineState::nodeStates, DOC(dai, PipelineState, nodeStates));
 }

@@ -1,24 +1,15 @@
 #pragma once
 
-#include "depthai/beta/datatype/ImgDetectionsFilterConfig.hpp"
-#include "depthai/properties/Properties.hpp"
+// Compatibility header. ImgDetectionsFilterProperties moved out of the beta namespace in v3.12:
+// include "depthai/properties/ImgDetectionsFilterProperties.hpp" and use dai::ImgDetectionsFilterProperties.
+
+#include "depthai/properties/ImgDetectionsFilterProperties.hpp"
 
 namespace dai {
 namespace beta {
 
-/**
- * Properties for ImgDetectionsFilter.
- */
-struct ImgDetectionsFilterProperties : PropertiesSerializable<Properties, ImgDetectionsFilterProperties> {
-    /**
-     * Configuration used until a message is received on inputConfig.
-     */
-    ImgDetectionsFilterConfig initialConfig;
-
-    ~ImgDetectionsFilterProperties() override;
-};
-
-DEPTHAI_SERIALIZE_EXT(ImgDetectionsFilterProperties, initialConfig);
+using ImgDetectionsFilterProperties [[deprecated("dai::beta::ImgDetectionsFilterProperties moved to dai::ImgDetectionsFilterProperties")]] =
+    dai::ImgDetectionsFilterProperties;
 
 }  // namespace beta
 }  // namespace dai

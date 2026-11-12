@@ -67,19 +67,22 @@ def test_multiple_producers_and_consumers():
 
     sent_count = 0
     received_count = 0
+    count_lock = threading.Lock()
 
     def producer():
         nonlocal sent_count
         for _ in range(num_messages_per_producer):
             msg = Buffer()
             queue.send(msg)
-            sent_count += 1
+            with count_lock:
+                sent_count += 1
 
     def consumer():
         nonlocal received_count
         for _ in range(num_messages_per_consumer):
             msg = queue.get()
-            received_count += 1
+            with count_lock:
+                received_count += 1
 
     producers = [threading.Thread(target=producer) for _ in range(num_producers)]
     consumers = [threading.Thread(target=consumer) for _ in range(num_consumers)]

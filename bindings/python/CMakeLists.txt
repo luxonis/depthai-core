@@ -39,6 +39,26 @@ option(DEPTHAI_PYTHON_ENABLE_TESTS "Enable tests" OFF)
 option(DEPTHAI_PYTHON_ENABLE_EXAMPLES "Enable examples" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCSTRINGS "Generate docstrings from header files if module 'pybind11_mkdoc' available" ON)
 option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
+option(DEPTHAI_PYTHON_GIL_FREE "Declare Python bindings safe to run with the GIL disabled" OFF)
+include(CMakeDependentOption)
+cmake_dependent_option(DEPTHAI_PYTHON_TEST_GIL_DISABLED
+    "Run Python tests and examples with PYTHON_GIL=0 and verify GIL state"
+    OFF "DEPTHAI_PYTHON_GIL_FREE" OFF)
+option(DEPTHAI_PYTHON_TEST_SKIP_MISSING_DEPENDENCIES "Skip examples whose optional Python dependencies are unavailable" OFF)
+set(DEPTHAI_PYTHON_TEST_EXTRA_PATH "" CACHE PATH "Additional Python module directory for tests and examples (e.g. an OpenCV python_loader)")
+set(DEPTHAI_PYTHON_TEST_ENVIRONMENT "")
+if(DEPTHAI_PYTHON_TEST_GIL_DISABLED)
+    execute_process(
+        COMMAND ${PYTHON_EXECUTABLE} -c "import sysconfig; print(sysconfig.get_config_var('Py_GIL_DISABLED') == 1)"
+        OUTPUT_VARIABLE DEPTHAI_PYTHON_IS_FREE_THREADED
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+    if(NOT DEPTHAI_PYTHON_IS_FREE_THREADED STREQUAL "True")
+        message(FATAL_ERROR "DEPTHAI_PYTHON_TEST_GIL_DISABLED requires a free-threaded Python interpreter")
+    endif()
+    set(DEPTHAI_PYTHON_TEST_ENVIRONMENT "PYTHON_GIL=0" "DEPTHAI_REQUIRE_GIL_DISABLED=1")
+endif()
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
@@ -74,6 +94,8 @@ set(SOURCE_LIST
 
     src/pipeline/node/ColorCameraBindings.cpp
     src/pipeline/node/CameraBindings.cpp
+    src/pipeline/node/HostCameraBindings.cpp
+    src/pipeline/node/DisplayBindings.cpp
     src/pipeline/node/MonoCameraBindings.cpp
     src/pipeline/node/StereoDepthBindings.cpp
     src/pipeline/node/NeuralNetworkBindings.cpp
@@ -108,6 +130,8 @@ set(SOURCE_LIST
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
     src/pipeline/node/StitchingBindings.cpp
+    src/pipeline/datatype/ImgDetectionsFilterConfigBindings.cpp
+    src/pipeline/node/ImgDetectionsFilterBindings.cpp
     src/pipeline/node/AlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
@@ -205,7 +229,6 @@ if(DEPTHAI_BUILD_BETA)
         src/beta/node/FastSAMParserBindings.cpp
         src/beta/node/HRNetParserBindings.cpp
         src/beta/node/ImageOutputParserBindings.cpp
-        src/beta/node/ImgDetectionsFilterBindings.cpp
         src/beta/node/KeypointParserBindings.cpp
         src/beta/node/LaneDetectionParserBindings.cpp
         src/beta/node/MapOutputParserBindings.cpp
@@ -259,10 +282,32 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Add files for python module
+# Only the module entry point needs the GIL declaration switch.
+set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    "DEPTHAI_PYTHON_GIL_FREE=$<BOOL:${DEPTHAI_PYTHON_GIL_FREE}>")
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     add_library(${TARGET_NAME} ${SOURCE_LIST})
 else()
+    # pybind11 adds -flto to Release builds, and GCC then runs all LTO code generation of the module
+    # in one process ("using serial compilation of 128 LTRANS jobs"). -flto=auto runs it in parallel.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10 AND NOT MINGW
+       AND NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+        set(DEPTHAI_PYTHON_GCC_PARALLEL_LTO ON)
+    endif()
     pybind11_add_module(${TARGET_NAME} ${SOURCE_LIST})
+    if(DEPTHAI_PYTHON_GCC_PARALLEL_LTO)
+        target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto;-fno-fat-lto-objects>")
+        target_link_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto>")
+    endif()
+endif()
+if(DEPTHAI_UNITY_BUILD)
+    set_target_properties(${TARGET_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # HostNodeBindings.cpp has a file-scope using-directive. NNDataBindings.cpp must define
+    # FORCE_IMPORT_ARRAY before its first include.
+    set_source_files_properties(src/pipeline/node/HostNodeBindings.cpp src/pipeline/datatype/NNDataBindings.cpp
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
 endif()
 
 if(WIN32)
@@ -448,13 +493,15 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE} "-c" "${version_command}"
 
 
 string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
-target_compile_definitions(${TARGET_NAME}
-    PRIVATE
-        DEPTHAI_PYTHON_VERSION="${DEPTHAI_PYTHON_VERSION}"
-        DEPTHAI_PYTHON_COMMIT_HASH="${BUILD_COMMIT}"
-        DEPTHAI_PYTHON_COMMIT_DATETIME="${BUILD_COMMIT_DATETIME}"
-        DEPTHAI_PYTHON_BUILD_DATETIME="${BUILD_DATETIME}"
+# Only py_bindings.cpp uses these values. As target definitions, a new BUILD_DATETIME at each configure
+# would compile all binding sources again.
+set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    "DEPTHAI_PYTHON_VERSION=\"${DEPTHAI_PYTHON_VERSION}\""
+    "DEPTHAI_PYTHON_COMMIT_HASH=\"${BUILD_COMMIT}\""
+    "DEPTHAI_PYTHON_COMMIT_DATETIME=\"${BUILD_COMMIT_DATETIME}\""
+    "DEPTHAI_PYTHON_BUILD_DATETIME=\"${BUILD_DATETIME}\""
 )
+set_source_files_properties(src/py_bindings.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
 # ASAN Settings as we are building and using shared library
 if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
@@ -466,13 +513,15 @@ if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
         execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so OUTPUT_VARIABLE LIBSTDCXX_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
     endif()
     # Set preload env variable
+    # detect_container_overflow=0: vcpkg dependencies are built without ASan, see test_env in tests/CMakeLists.txt
+    # TODO: remove detect_container_overflow=0 when the vcpkg dependencies are built with ASan
     if(APPLE)
-        set(ASAN_ENVIRONMENT_VARS "DYLD_INSERT_LIBRARIES=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0")
+        set(ASAN_ENVIRONMENT_VARS "DYLD_INSERT_LIBRARIES=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0:detect_container_overflow=0")
     elseif(UNIX)
         if(LIBSTDCXX_PATH)
-            set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}:${LIBSTDCXX_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0")
+            set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}:${LIBSTDCXX_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0:detect_container_overflow=0")
         else()
-            set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0")
+            set(ASAN_ENVIRONMENT_VARS "LD_PRELOAD=${LIBASAN_PATH}" "ASAN_OPTIONS=leak_check_at_exit=0:detect_container_overflow=0")
         endif()
     endif()
     # UBSan reports have no stack trace by default

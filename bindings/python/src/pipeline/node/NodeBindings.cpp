@@ -26,39 +26,30 @@
 
 #include "pybind11/stl_bind.h"
 
-std::unordered_map<std::thread::id, std::stack<dai::Pipeline*>> implicitPipelines;
-std::unordered_map<std::thread::id, std::stack<bool>> pipelineCreateNodeGuards;
+thread_local std::stack<dai::Pipeline*> implicitPipelines;
+thread_local std::stack<bool> pipelineCreateNodeGuards;
 dai::Pipeline* getImplicitPipeline() {
-    auto rv = implicitPipelines.find(std::this_thread::get_id());
-    if(rv == implicitPipelines.end() || rv->second.empty()) throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
-    return rv->second.top();
+    if(implicitPipelines.empty()) throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
+    return implicitPipelines.top();
 }
 void setImplicitPipeline(dai::Pipeline* pipeline) {
-    auto stack = implicitPipelines.find(std::this_thread::get_id());
-    if(stack == implicitPipelines.end()) {
-        stack = implicitPipelines.emplace(std::this_thread::get_id(), std::stack<dai::Pipeline*>{}).first;
-    }
-    stack->second.push(pipeline);
+    implicitPipelines.push(pipeline);
 }
 void delImplicitPipeline() {
-    implicitPipelines[std::this_thread::get_id()].pop();
+    if(!implicitPipelines.empty()) {
+        implicitPipelines.pop();
+    }
 }
 void setCreatingNodeFromPipelineCreate() {
-    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
-    if(stack == pipelineCreateNodeGuards.end()) {
-        stack = pipelineCreateNodeGuards.emplace(std::this_thread::get_id(), std::stack<bool>{}).first;
-    }
-    stack->second.push(true);
+    pipelineCreateNodeGuards.push(true);
 }
 void delCreatingNodeFromPipelineCreate() {
-    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
-    if(stack != pipelineCreateNodeGuards.end() && !stack->second.empty()) {
-        stack->second.pop();
+    if(!pipelineCreateNodeGuards.empty()) {
+        pipelineCreateNodeGuards.pop();
     }
 }
 bool isCreatingNodeFromPipelineCreate() {
-    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
-    return stack != pipelineCreateNodeGuards.end() && !stack->second.empty();
+    return !pipelineCreateNodeGuards.empty();
 }
 
 // Map of python node classes and call to pipeline to create it
@@ -67,6 +58,32 @@ std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::
 py::handle daiNodeModule;
 py::handle daiNodeInternalModule;
 py::handle daiBetaNodeModule;
+
+#ifdef DEPTHAI_HAVE_BETA
+// A name that moved out of a beta module in v3.12. The name stays the same, only the module changes.
+struct MovedBetaName {
+    const char* name;
+    py::handle newModule;
+    const char* newModulePath;
+};
+
+// Resolves the old beta names with a module-level __getattr__ (PEP 562). Python calls it only when the
+// normal lookup fails, so it does not touch the names that the module has. Each use of an old name gives
+// a DeprecationWarning with the new location.
+static void addMovedBetaNames(py::handle oldModule, std::string oldModulePath, std::vector<MovedBetaName> movedNames) {
+    oldModule.attr("__getattr__") = py::cpp_function(
+        [oldModulePath = std::move(oldModulePath), movedNames = std::move(movedNames)](const std::string& name) -> py::object {
+            for(const auto& moved : movedNames) {
+                if(name != moved.name) continue;
+                const std::string message = oldModulePath + "." + name + " is deprecated, use " + moved.newModulePath + "." + name + " instead";
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, message.c_str(), 1) < 0) throw py::error_already_set();
+                return py::getattr(moved.newModule, moved.name);
+            }
+            throw py::attribute_error("module '" + oldModulePath + "' has no attribute '" + name + "'");
+        },
+        py::arg("name"));
+}
+#endif
 
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const std::shared_ptr<dai::Device>& device)>>>
 NodeBindings::getNodeCreateMap() {
@@ -154,6 +171,8 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
 
 void bind_benchmark(pybind11::module& m, void* pCallstack);
 void bind_colorcamera(pybind11::module& m, void* pCallstack);
+void bind_hostcamera(pybind11::module& m, void* pCallstack);
+void bind_display(pybind11::module& m, void* pCallstack);
 void bind_camera(pybind11::module& m, void* pCallstack);
 void bind_monocamera(pybind11::module& m, void* pCallstack);
 void bind_stereodepth(pybind11::module& m, void* pCallstack);
@@ -187,6 +206,7 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
 void bind_imagealign(pybind11::module& m, void* pCallstack);
 void bind_stitching(pybind11::module& m, void* pCallstack);
+void bind_imgdetectionsfilter(pybind11::module& m, void* pCallstack);
 void bind_align(pybind11::module& m, void* pCallstack);
 void bind_rgbd(pybind11::module& m, void* pCallstack);
 void bind_rectification(pybind11::module& m, void* pCallstack);
@@ -204,7 +224,6 @@ void bind_beta_embeddingsparser(pybind11::module& m, void* pCallstack);
 void bind_beta_fastsamparser(pybind11::module& m, void* pCallstack);
 void bind_beta_hrnetparser(pybind11::module& m, void* pCallstack);
 void bind_beta_imageoutputparser(pybind11::module& m, void* pCallstack);
-void bind_beta_imgdetectionsfilter(pybind11::module& m, void* pCallstack);
 void bind_beta_keypointparser(pybind11::module& m, void* pCallstack);
 void bind_beta_lanedetectionparser(pybind11::module& m, void* pCallstack);
 void bind_beta_mapoutputparser(pybind11::module& m, void* pCallstack);
@@ -269,11 +288,14 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_sync);
     callstack.push_front(bind_messagedemux);
     callstack.push_front(bind_hostnode);
+    callstack.push_front(bind_hostcamera);
+    callstack.push_front(bind_display);
     callstack.push_front(bind_record);
     callstack.push_front(bind_imagefilters);
     callstack.push_front(bind_replay);
     callstack.push_front(bind_imagealign);
     callstack.push_front(bind_stitching);
+    callstack.push_front(bind_imgdetectionsfilter);
     callstack.push_front(bind_align);
     callstack.push_front(bind_rgbd);
     callstack.push_front(bind_rectification);
@@ -291,7 +313,6 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_beta_fastsamparser);
     callstack.push_front(bind_beta_hrnetparser);
     callstack.push_front(bind_beta_imageoutputparser);
-    callstack.push_front(bind_beta_imgdetectionsfilter);
     callstack.push_front(bind_beta_keypointparser);
     callstack.push_front(bind_beta_lanedetectionparser);
     callstack.push_front(bind_beta_mapoutputparser);
@@ -332,6 +353,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
 #ifdef DEPTHAI_HAVE_BETA
     daiBetaNodeModule = m.def_submodule("beta", "Experimental APIs").def_submodule("node", "Experimental nodes");
+    // v3.10 names of the classes that left beta in v3.12
+    addMovedBetaNames(
+        daiBetaNodeModule, "depthai.beta.node", {{"Stitching", daiNodeModule, "depthai.node"}, {"ImgDetectionsFilter", daiNodeModule, "depthai.node"}});
+    addMovedBetaNames(m.def_submodule("beta"),
+                      "depthai.beta",
+                      {{"StitchingProperties", m, "depthai"}, {"ImgDetectionsFilterProperties", m, "depthai"}, {"ImgDetectionsFilterConfig", m, "depthai"}});
 #endif
 
     // XLink bridge structures
@@ -341,9 +368,9 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         daiNodeInternalModule, "XLinkOutBridge", DOC(dai, node, internal, XLinkOutBridge));
 
     // Properties
-    py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));
+    py::class_<Node, py::smart_holder> pyNode(m, "Node", DOC(dai, Node));
 
-    py::class_<Node::Input, MessageQueue, std::shared_ptr<Node::Input>> pyInput(pyNode, "Input", DOC(dai, Node, Input));
+    py::class_<Node::Input, MessageQueue, py::smart_holder> pyInput(pyNode, "Input", DOC(dai, Node, Input));
     py::enum_<Node::Input::Type> nodeInputType(pyInput, "Type");
     py::class_<Node::Output, std::shared_ptr<Node::Output>> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
     py::enum_<Node::Output::Type> nodeOutputType(pyOutput, "Type");
@@ -351,8 +378,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Node::DatatypeHierarchy> nodeDatatypeHierarchy(pyNode, "DatatypeHierarchy", DOC(dai, Node, DatatypeHierarchy));
 
     py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
-    pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send), py::call_guard<py::gil_scoped_release>());
-    pyInputQueue.def("trySend", &InputQueue::trySend, py::arg("msg"), DOC(dai, InputQueue, trySend));
+    pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), py::call_guard<py::gil_scoped_release>(), DOC(dai, InputQueue, send));
+    pyInputQueue.def("trySend", &InputQueue::trySend, py::arg("msg"), py::call_guard<py::gil_scoped_release>(), DOC(dai, InputQueue, trySend));
 
     // Node::Id bindings
     py::class_<Node::Id>(pyNode, "Id", "Node identificator. Unique for every node on a single Pipeline");
@@ -364,11 +391,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     bindNodeMap<Node::OutputMap>(pyNode, "OutputMap");
 
     //     // NodeGroup
-    py::class_<NodeGroup, Node, std::shared_ptr<NodeGroup>> pyNodeGroup(m, "NodeGroup", DOC(dai, NodeGroup));
+    py::class_<NodeGroup, Node, py::smart_holder> pyNodeGroup(m, "NodeGroup", DOC(dai, NodeGroup));
 
     // // Threaded & Device nodes
-    py::class_<ThreadedNode, Node, std::shared_ptr<ThreadedNode>> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
-    py::class_<DeviceNode, ThreadedNode, std::shared_ptr<DeviceNode>> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
+    py::class_<ThreadedNode, Node, py::smart_holder> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
+    py::class_<DeviceNode, ThreadedNode, py::smart_holder> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
 
     using BlockPipelineEvent = dai::utility::PipelineEventDispatcherInterface::BlockPipelineEvent;
 
@@ -376,7 +403,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         m, "BlockPipelineEvent", DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent));
 
     // Device Nodegroup
-    py::class_<DeviceNodeGroup, DeviceNode, std::shared_ptr<DeviceNodeGroup>> pyDeviceNodeGroup(m, "DeviceNodeGroup", DOC(dai, DeviceNodeGroup));
+    py::class_<DeviceNodeGroup, DeviceNode, py::smart_holder> pyDeviceNodeGroup(m, "DeviceNodeGroup", DOC(dai, DeviceNodeGroup));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -404,13 +431,13 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("descendants", &Node::DatatypeHierarchy::descendants);
 
     // XLink internal node bindings
-    py::class_<node::internal::XLinkIn, DeviceNode, std::shared_ptr<node::internal::XLinkIn>> pyXLinkIn(
+    py::class_<node::internal::XLinkIn, DeviceNode, py::smart_holder> pyXLinkIn(
         daiNodeInternalModule, "XLinkIn", DOC(dai, node, internal, XLinkIn));
-    py::class_<node::internal::XLinkOut, DeviceNode, std::shared_ptr<node::internal::XLinkOut>> pyXLinkOut(
+    py::class_<node::internal::XLinkOut, DeviceNode, py::smart_holder> pyXLinkOut(
         daiNodeInternalModule, "XLinkOut", DOC(dai, node, internal, XLinkOut));
-    py::class_<node::internal::XLinkInHost, Node, std::shared_ptr<node::internal::XLinkInHost>> pyXLinkInHost(
+    py::class_<node::internal::XLinkInHost, Node, py::smart_holder> pyXLinkInHost(
         daiNodeInternalModule, "XLinkInHost", DOC(dai, node, internal, XLinkInHost));
-    py::class_<node::internal::XLinkOutHost, Node, std::shared_ptr<node::internal::XLinkOutHost>> pyXLinkOutHost(
+    py::class_<node::internal::XLinkOutHost, Node, py::smart_holder> pyXLinkOutHost(
         daiNodeInternalModule, "XLinkOutHost", DOC(dai, node, internal, XLinkOutHost));
 
     // XLink bridge bindings
@@ -471,6 +498,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("types") = Node::InputDescription{}.types,
              py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
              py::keep_alive<1, 0>())
+        .def("getGroup", &dai::Node::Input::getGroup, DOC(dai, Node, Input, getGroup))
+        .def("setGroup", &dai::Node::Input::setGroup, py::arg("group"), DOC(dai, Node, Input, setGroup))
+        .def("getType", &dai::Node::Input::getType, DOC(dai, Node, Input, getType))
+        .def("isConnected", &dai::Node::Input::isConnected, DOC(dai, Node, Input, isConnected))
         .def_readwrite("possibleDatatypes", &Node::Input::possibleDatatypes, DOC(dai, Node, Input, possibleDatatypes))
         .def("getParent",
              static_cast<const Node& (Node::Input::*)() const>(&Node::Input::getParent),
@@ -518,6 +549,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("group") = Node::OutputDescription{}.group,
              py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
              py::keep_alive<1, 0>())
+        .def("getGroup", &dai::Node::Output::getGroup, DOC(dai, Node, Output, getGroup))
+        .def("setGroup", &dai::Node::Output::setGroup, py::arg("group"), DOC(dai, Node, Output, setGroup))
+        .def("getType", &dai::Node::Output::getType, DOC(dai, Node, Output, getType))
+        .def("setName", &dai::Node::Output::setName, py::arg("name"), DOC(dai, Node, Output, setName))
         .def("getPossibleDatatypes", &Node::Output::getPossibleDatatypes, DOC(dai, Node, Output, getPossibleDatatypes))
         .def("setPossibleDatatypes", &Node::Output::setPossibleDatatypes, py::arg("types"), DOC(dai, Node, Output, setPossibleDatatypes))
         .def(
@@ -551,7 +586,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())
         .def("getName", &Node::Output::getName, DOC(dai, Node, Output, getName))
-        .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend))
+        .def("trySend", &Node::Output::trySend, py::arg("msg"), py::call_guard<py::gil_scoped_release>(), DOC(dai, Node, Output, trySend))
         .def("getXLinkBridge", &Node::Output::getXLinkBridge, DOC(dai, Node, Output, getXLinkBridge));
 
     nodeConnection.def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))
@@ -561,7 +596,37 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("inputName", &Node::Connection::inputName, DOC(dai, Node, Connection, inputName))
         .def_readwrite("inputGroup", &Node::Connection::inputGroup, DOC(dai, Node, Connection, inputGroup));
 
-    pyNode.def_readonly("id", &Node::id, DOC(dai, Node, id))
+    pyNode.def("getAlias", &dai::Node::getAlias, DOC(dai, Node, getAlias))
+        .def("setAlias", &dai::Node::setAlias, py::arg("alias"), DOC(dai, Node, setAlias))
+        .def("getInputRef",
+             py::overload_cast<const std::string&>(&dai::Node::getInputRef),
+             py::arg("name"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, getInputRef))
+        .def("getInputRef",
+             py::overload_cast<const std::string&, const std::string&>(&dai::Node::getInputRef),
+             py::arg("group"),
+             py::arg("name"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, getInputRef))
+        .def("getOutputRef",
+             py::overload_cast<const std::string&>(&dai::Node::getOutputRef),
+             py::arg("name"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, getOutputRef))
+        .def("getOutputRef",
+             py::overload_cast<const std::string&, const std::string&>(&dai::Node::getOutputRef),
+             py::arg("group"),
+             py::arg("name"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, getOutputRef))
+        .def("getInputMapRef", &dai::Node::getInputMapRef, py::arg("group"), py::return_value_policy::reference_internal, DOC(dai, Node, getInputMapRef))
+        .def("getOutputMapRef", &dai::Node::getOutputMapRef, py::arg("group"), py::return_value_policy::reference_internal, DOC(dai, Node, getOutputMapRef))
+        .def("isSourceNode", &dai::Node::isSourceNode, DOC(dai, Node, isSourceNode))
+        .def("getAllNodes", &dai::Node::getAllNodes, DOC(dai, Node, getAllNodes))
+        .def("runOnHost", &dai::Node::runOnHost, DOC(dai, Node, runOnHost))
+        .def("isBuiltInNode", &dai::Node::isBuiltInNode, DOC(dai, Node, isBuiltInNode))
+        .def_readonly("id", &Node::id, DOC(dai, Node, id))
         .def("getName", &Node::getName, DOC(dai, Node, getName))
         .def("getOutputs", &Node::getOutputs, DOC(dai, Node, getOutputs))
         .def("getInputs", &Node::getInputs, DOC(dai, Node, getInputs))

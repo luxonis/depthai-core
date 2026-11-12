@@ -7,7 +7,8 @@ import pytest
 
 
 @pytest.mark.parametrize("curl_enabled", ["ON", "OFF"])
-def test_model_zoo_registration_requires_curl(tmp_path, curl_enabled):
+@pytest.mark.parametrize("gil_free", ["ON", "OFF"])
+def test_model_zoo_registration_requires_curl(tmp_path, curl_enabled, gil_free):
     """Keep HTTP regressions out of builds that do not provide model-zoo I/O."""
     script = tmp_path / "check_registration.cmake"
     # Evaluate the real registration file. Stub only its build-target commands;
@@ -20,6 +21,12 @@ function(add_custom_target)
 endfunction()
 function(target_link_libraries)
 endfunction()
+function(target_compile_definitions)
+endfunction()
+function(add_test)
+endfunction()
+function(set_tests_properties)
+endfunction()
 include("${TEST_DIRECTORY}/CMakeLists.txt")
 foreach(test_list IN ITEMS PYBIND11_TEST_FILES PYBIND11_PYTEST_FILES)
     if(DEPTHAI_ENABLE_CURL)
@@ -29,8 +36,18 @@ foreach(test_list IN ITEMS PYBIND11_TEST_FILES PYBIND11_PYTEST_FILES)
     elseif("model_zoo_gil_test.py" IN_LIST ${test_list})
         message(FATAL_ERROR "Model-zoo test registered without libcurl")
     endif()
+    if("api_binding_device_test.py" IN_LIST ${test_list})
+        message(FATAL_ERROR "Device binding tests must remain disabled pending HIL validation")
+    endif()
     if(NOT "nn_archive_gil_test.py" IN_LIST ${test_list})
         message(FATAL_ERROR "Archive test must not depend on libcurl")
+    endif()
+    if(DEPTHAI_PYTHON_GIL_FREE)
+        if(NOT "freethreading_test.py" IN_LIST ${test_list})
+            message(FATAL_ERROR "Free-threading tests missing from GIL-free build")
+        endif()
+    elseif("freethreading_test.py" IN_LIST ${test_list})
+        message(FATAL_ERROR "Free-threading tests registered without a GIL-free build")
     endif()
 endforeach()
 ''')
@@ -38,6 +55,7 @@ endforeach()
         [
             "cmake",
             f"-DDEPTHAI_ENABLE_CURL={curl_enabled}",
+            f"-DDEPTHAI_PYTHON_GIL_FREE={gil_free}",
             f"-DTEST_DIRECTORY={Path(__file__).resolve().parent}",
             "-P", str(script),
         ],

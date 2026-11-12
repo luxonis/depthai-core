@@ -18,7 +18,7 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
 
     // py::class_<RawFeatureTrackerConfig, RawBuffer, std::shared_ptr<RawFeatureTrackerConfig>> rawFeatureTrackerConfig(m, "RawFeatureTrackerConfig", DOC(dai,
     // RawFeatureTrackerConfig));
-    py::class_<FeatureTrackerConfig, Py<FeatureTrackerConfig>, Buffer, std::shared_ptr<FeatureTrackerConfig>> featureTrackerConfig(
+    py::class_<FeatureTrackerConfig, Py<FeatureTrackerConfig>, Buffer, py::smart_holder> featureTrackerConfig(
         m, "FeatureTrackerConfig", DOC(dai, FeatureTrackerConfig));
     py::class_<FeatureTrackerConfig::CornerDetector> cornerDetector(featureTrackerConfig, "CornerDetector", DOC(dai, FeatureTrackerConfig, CornerDetector));
     py::enum_<FeatureTrackerConfig::CornerDetector::Type> cornerDetectorType(cornerDetector, "Type", DOC(dai, FeatureTrackerConfig, CornerDetector, Type));
@@ -117,6 +117,9 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
 
     // Message
     featureTrackerConfig.def(py::init<>())
+        .def_readwrite("cornerDetector", &dai::FeatureTrackerConfig::cornerDetector, DOC(dai, FeatureTrackerConfig, cornerDetector))
+        .def_readwrite("featureMaintainer", &dai::FeatureTrackerConfig::featureMaintainer, DOC(dai, FeatureTrackerConfig, featureMaintainer))
+        .def_readwrite("motionEstimator", &dai::FeatureTrackerConfig::motionEstimator, DOC(dai, FeatureTrackerConfig, motionEstimator))
         .def("__repr__", &FeatureTrackerConfig::str)
         // .def(py::init<std::shared_ptr<FeatureTrackerConfig>>())
 
