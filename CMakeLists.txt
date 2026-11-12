@@ -877,6 +877,7 @@ include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version 
 include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
 include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
+include(DepthaiDeviceRvc4LocalFwp)          # local depthai-device-rvc4 fwp in place of the pinned one
 include(DepthaiVisualizerDownloader)        # depthai-visualizer downloader
 include(DepthaiVisualizerLicense)           # depthai-visualizer license extraction and verification
 
@@ -953,23 +954,33 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
 endif()
 
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
-    if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
-        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
-    elseif(DEPTHAI_SANITIZE)
-        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
-    endif()
+    if(DEPTHAI_DEVICE_RVC4_FWP_PATH)
+        # A local firmware package (for example a build of device/rvc4) in place of the pinned package
+        DepthaiDeviceRvc4LocalFwp(
+            "${DEPTHAI_DEVICE_RVC4_FWP_PATH}"
+            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+            DEPTHAI_DEVICE_RVC4_VERSION                       # In: pinned version, out: version of the local package
+            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+        )
+    else()
+        if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
+            string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
+        elseif(DEPTHAI_SANITIZE)
+            string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
+        endif()
 
-    # Add device-RVC4 FW
-    DepthaiDeviceDownloader(
-        "depthai-device-rvc4"
-        "luxonis-rvc4-snapshot-local"
-        "luxonis-rvc4-release-local"
-        "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
-        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
-        DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
-        "${DEPTHAI_DEVICE_RVC4_MATURITY}"                # Maturity
-        "${DEPTHAI_DEVICE_RVC4_VERSION}"
-    )
+        # Add device-RVC4 FW
+        DepthaiDeviceDownloader(
+            "depthai-device-rvc4"
+            "luxonis-rvc4-snapshot-local"
+            "luxonis-rvc4-release-local"
+            "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
+            "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+            DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+            "${DEPTHAI_DEVICE_RVC4_MATURITY}"                # Maturity
+            "${DEPTHAI_DEVICE_RVC4_VERSION}"
+        )
+    endif()
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
 endif()
 

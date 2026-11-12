@@ -112,6 +112,16 @@ Then run any `depthai-core` example or your own application. `depthai-core` logs
 uploads your package to the device and starts it. Build the host library and the firmware from the same commit, so
 that the pipeline schema matches.
 
+To put your package into the host library, in place of the pinned package, configure the host build with the path:
+
+```bash
+cmake -S . -B build -D DEPTHAI_DEVICE_RVC4_FWP_PATH=$PWD/device/rvc4/build_docker_arm64_rvc4/RelWithDebInfo/depthai-device-rvc4-fwp.tar.xz
+```
+
+The library (and a Python wheel that you build from it) then contains your firmware and needs no environment
+variable. The version of the embedded firmware is `<version>+local.<hash of the package>`. A new package changes
+the version and the host library is compiled again, so use the environment variable while you iterate.
+
 ## Testing
 
 The on-device tests of `depthai-core` (`tests/` at the repository root, label `rvc4`) run against a firmware
