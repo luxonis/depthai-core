@@ -5,7 +5,7 @@
 void bind_beta_mlsdparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::MLSDParserConfig, Py<beta::MLSDParserConfig>, Buffer, std::shared_ptr<beta::MLSDParserConfig>> config(
+    py::class_<beta::MLSDParserConfig, Py<beta::MLSDParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "MLSDParserConfig", DOC(dai, beta, MLSDParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

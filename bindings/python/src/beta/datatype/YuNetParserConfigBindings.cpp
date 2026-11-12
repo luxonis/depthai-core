@@ -5,7 +5,7 @@
 void bind_beta_yunetparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::YuNetParserConfig, Py<beta::YuNetParserConfig>, Buffer, std::shared_ptr<beta::YuNetParserConfig>> config(
+    py::class_<beta::YuNetParserConfig, Py<beta::YuNetParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "YuNetParserConfig", DOC(dai, beta, YuNetParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;
