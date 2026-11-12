@@ -35,6 +35,7 @@ jobs:
       rvc2_protocol: "all"
       test_label: "ci|ci_nightly"
       luxonis_os_versions_to_test: "['1.44.0']"
+      luxonis_os_versions_to_test_ffc: "['1.44.0']"
       luxonis_os_versions_to_test_usb: "['1.44.0']"
       usb_link_speed_sanity: true
     secrets:

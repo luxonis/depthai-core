@@ -651,12 +651,12 @@ endif()
 
 # Sustained device load test (nightly only)
 dai_add_test(stress_test src/ondevice_tests/stress_test.cpp)
-dai_set_test_labels(stress_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci_nightly noreplayci)
+dai_set_test_labels(stress_test ondevice rvc2_all rvc4 rvc4rgb ci_nightly noreplayci)
 set_tests_properties(stress_test PROPERTIES TIMEOUT 600)
 
 # Camera stream restart test
 dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
-dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci noreplayci)  # Replay ignores camera stop/start controls
+dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)  # Replay ignores camera stop/start controls
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
@@ -696,16 +696,16 @@ endif()
 
 # Vpp node tests
 dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
-dai_set_test_labels(vpp_test ondevice rvc4 rvc4ffc ci)
+dai_set_test_labels(vpp_test ondevice rvc4 ci)
 
 # GPUStereo node (device execution) test
 dai_add_test(gpu_stereo_device_test src/ondevice_tests/gpu_stereo_node_test.cpp)
-dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 rvc4ffc ci)
+dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 
 # Dynamic calibration tests
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
-    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 rvc4ffc ci)
+    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
     target_compile_definitions(
         dynamic_calibration_test
         PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}"
@@ -727,7 +727,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 endif()
 
 dai_add_test(spatial_location_calculator_test src/ondevice_tests/pipeline/node/spatial_location_calculator_test.cpp)
-dai_set_test_labels(spatial_location_calculator_test ondevice rvc2_all rvc4 rvc4ffc ci)
+dai_set_test_labels(spatial_location_calculator_test ondevice rvc2_all rvc4 ci)
 
 # Color camera test
 dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
@@ -739,7 +739,7 @@ dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
 
 # Pipeline debugging tests
 dai_add_test(pipeline_debugging_rvc4_test src/ondevice_tests/pipeline_debugging_rvc4_test.cpp)
-dai_set_test_labels(pipeline_debugging_rvc4_test rvc4 rvc4ffc ci)
+dai_set_test_labels(pipeline_debugging_rvc4_test rvc4 ci)
 target_compile_definitions(pipeline_debugging_rvc4_test PRIVATE VIDEO_PATH="${construction_vest}")
 dai_add_test(pipeline_debugging_rvc2_test src/ondevice_tests/pipeline_debugging_rvc2_test.cpp)
 dai_set_test_labels(pipeline_debugging_rvc2_test rvc2 ci)
@@ -786,13 +786,13 @@ dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 rvc4ffc ci)
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
 dai_add_test(pointcloud_gpu_test src/ondevice_tests/pointcloud_gpu_test.cpp)
-dai_set_test_labels(pointcloud_gpu_test ondevice rvc4 rvc4ffc)
+dai_set_test_labels(pointcloud_gpu_test ondevice rvc4)
 dai_add_test(pointcloud_multi_stream_device_test src/ondevice_tests/pointcloud_multi_stream_device_test.cpp)
 dai_set_test_labels(pointcloud_multi_stream_device_test ondevice rvc4 rvc4ffc ci)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
-dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 rvc4ffc ci)
+dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
 
 # Input/Output naming test
 dai_add_test(input_output_naming_test src/ondevice_tests/input_output_naming_test.cpp)
@@ -848,11 +848,11 @@ dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
 dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
-dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 rvc4ffc ci)
+dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
 
 # Depth algorithm selection (on-device)
 dai_add_test(depth_algorithm_selection_test src/ondevice_tests/pipeline/node/depth_algorithm_selection_test.cpp)
-dai_set_test_labels(depth_algorithm_selection_test ondevice rvc2_all rvc4 rvc4ffc ci)
+dai_set_test_labels(depth_algorithm_selection_test ondevice rvc2_all rvc4 ci)
 
 # Detection network test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -902,11 +902,11 @@ dai_set_test_labels(segmentation_parser_test ondevice rvc4 rvc4ffc ci)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
-dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 rvc4ffc ci)
+dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 
 dai_add_test(neural_network_nnarchive_behavior_test src/ondevice_tests/pipeline/node/neural_network_nnarchive_behavior_test.cpp)
 target_link_libraries(neural_network_nnarchive_behavior_test PRIVATE LibArchive::LibArchive liblzma::liblzma BZip2::BZip2)
-dai_set_test_labels(neural_network_nnarchive_behavior_test ondevice rvc4 rvc4ffc ci)
+dai_set_test_labels(neural_network_nnarchive_behavior_test ondevice rvc4 ci)
 
 # NeuralNetwork node test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -919,7 +919,7 @@ endif()
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
     target_compile_definitions(img_transformation_test PRIVATE TRANSFORMATION_TEST_DATA="${img_transformations_test_data}")
-    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)  # Replayed frames have no extrinsics device ID
+    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci noreplayci)  # Replayed frames have no extrinsics device ID
 endif()
 
 
@@ -943,7 +943,7 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 rvc4ffc ci)
 
 # Fsync test
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
-dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 rvc4ffc ci noreplayci)
+dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci noreplayci)
 
 # Multi-device frame sync test (External and PTP)
 dai_add_test(multi_device_fsync_test src/onhost_tests/multi_device_fsync_test.cpp)
@@ -962,17 +962,17 @@ dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4ffc rvc4rgb ci)
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
-dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 rvc4ffc ci)
+dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
 # Align test
 dai_add_test(align_node_test src/ondevice_tests/align_node_test.cpp)
-dai_set_test_labels(align_node_test ondevice rvc4 rvc4ffc ci)
+dai_set_test_labels(align_node_test ondevice rvc4 ci)
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     # Shared ImageAlign/Align bounds checks and synthetic rotated depth coverage.
     dai_add_test(align_coverage_test src/ondevice_tests/align_coverage_test.cpp)
     target_include_directories(align_coverage_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src)
-    dai_set_test_labels(align_coverage_test ondevice rvc2_all rvc4 rvc4ffc ci)
+    dai_set_test_labels(align_coverage_test ondevice rvc2_all rvc4 ci)
 endif()
 
 # Align device execution test (device-side Align is only available on RVC4)
@@ -989,11 +989,11 @@ dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4ffc rvc4rgb ci)
 
 # StereoDepth test
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
-dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 rvc4ffc ci)
+dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
 # Pixel geometry regression: synthetic inputs through on-device stereo and alignment.
 dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
-dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 rvc4ffc ci)
+dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
 
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -1075,12 +1075,12 @@ dai_set_test_labels(xlink_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
 
 # runtime_calibration_test test
 dai_add_test(runtime_calibration_test src/ondevice_tests/runtime_calibration_test.cpp)
-dai_set_test_labels(runtime_calibration_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
+dai_set_test_labels(runtime_calibration_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # NeuralDepth test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_depth_node_test src/ondevice_tests/neural_depth_node_test.cpp)
-    dai_set_test_labels(neural_depth_node_test ondevice rvc4 rvc4ffc ci noreplayci)
+    dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci noreplayci)
     target_compile_definitions(neural_depth_node_test PRIVATE
         NEURAL_REPLAY_PATH="${neural_depth_recording}"
         NEURAL_CALIBRATION_PATH="${test_calib}"
@@ -1091,7 +1091,7 @@ endif()
 
 # NeuralAssistedStereo test
 dai_add_test(neural_assisted_stereo_node_test src/ondevice_tests/pipeline/node/neural_assisted_stereo_node_test.cpp)
-dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 rvc4ffc ci)
+dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
 
 # Gate tests
 dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
@@ -1099,7 +1099,7 @@ dai_set_test_labels(gate_node_test ondevice rvc4 rvc4ffc rvc2_all ci noreplayci)
 
 # AutoCalibration test
 dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
-dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc4ffc rvc2_all ci)
+dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)

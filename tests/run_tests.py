@@ -247,7 +247,11 @@ if __name__ == "__main__":
         },
         {
             "name": "RVC4 - FFC",
-            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
+            "env": {
+                "DEPTHAI_PLATFORM": "rvc4",
+                "DEPTHAI_PROTOCOL": "tcpip",
+                "DEPTHAI_AUTOCALIBRATION": "OFF",
+            },
             "labels": ["rvc4ffc"],
         },
         {
