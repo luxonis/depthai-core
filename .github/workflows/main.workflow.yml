@@ -194,7 +194,8 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-24.04]
+        # Pin the image to match integration jobs and vcpkg cache warming.
+        os: [macos-15, ubuntu-24.04]
         cmake: ['3.22.x', '4.0.x']
         include:
           # The Windows 2025 image uses VS 2026, which requires CMake 4.2+.
@@ -203,7 +204,7 @@ jobs:
             cache-saver: true
           # One job per OS saves the 'core-tests' vcpkg binary cache.
           # vcpkg uses its own CMake on Linux/macOS, so both CMake matrix entries have the same package ABIs.
-          - os: macos-latest
+          - os: macos-15
             cmake: '3.22.x'
             cache-saver: true
           - os: ubuntu-24.04
@@ -228,7 +229,7 @@ jobs:
         fallback-families: core
 
     - name: Install dependencies
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-15'
       run: |
         brew install opencv@4
 
@@ -269,7 +270,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-2025, ubuntu-24.04]
+        os: [macos-15, windows-2025, ubuntu-24.04]
         build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
@@ -277,7 +278,7 @@ jobs:
         include:
           # One job per OS saves the 'core' vcpkg binary cache.
           # The default triplets build Debug and Release of every port, so both build types share the ABIs.
-          - os: macos-latest
+          - os: macos-15
             build-type: Release
             cache-saver: true
           - os: windows-2025
@@ -308,7 +309,7 @@ jobs:
         fallback-families: core-tests
 
     - name: Install dependencies
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-15'
       run: |
         brew install opencv@4
 
