@@ -656,6 +656,10 @@ dai_set_test_labels(imgdetections_test onhost ci)
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
 dai_set_test_labels(imgframe_test onhost ci)
 
+# ToF configuration transport tests
+dai_add_test(tofconfig_device_test src/ondevice_tests/tofconfig_device_test.cpp)
+dai_set_test_labels(tofconfig_device_test ondevice rvc2_all rvc4 ci)
+
 # PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
 dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
 dai_set_test_labels(pointclouddata_test onhost ci)
@@ -1059,6 +1063,10 @@ dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 # Pixel geometry regression: synthetic inputs through on-device stereo and alignment.
 dai_add_test(stereo_depth_alignment_test src/ondevice_tests/stereo_depth_alignment_test.cpp)
 dai_set_test_labels(stereo_depth_alignment_test ondevice rvc2_all rvc4 ci)
+
+# Shared color-conversion implementation, including RVC4's CPU fallback.
+dai_add_test(image_manip_mono_color_test src/onhost_tests/image_manip_mono_color_test.cpp)
+dai_set_test_labels(image_manip_mono_color_test onhost ci)
 
 # ImageManip test
 if(DEPTHAI_FETCH_ARTIFACTS)

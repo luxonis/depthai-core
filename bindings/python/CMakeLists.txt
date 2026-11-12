@@ -300,6 +300,26 @@ else()
         target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto;-fno-fat-lto-objects>")
         target_link_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto>")
     endif()
+    # When depthai-core hides the symbols of its static dependencies, the module links its own copy
+    # of the few that it uses (spdlog, zlib). Do not export these copies from the module either.
+    if(DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS AND COMMAND exclude_archive_libs_symbols)
+        exclude_archive_libs_symbols(${TARGET_NAME})
+    endif()
+    # Removes most of the unused static OpenCV code that the module links
+    if(DEPTHAI_LINK_GC_SECTIONS AND COMMAND gc_unused_sections)
+        gc_unused_sections(${TARGET_NAME})
+    endif()
+    # The module is glue code between Python and depthai-core, so build it with -O2, not with the -O3
+    # of CMAKE_CXX_FLAGS_RELEASE. -O3 duplicates code (loop unswitching/peeling, function cloning)
+    # in each binding, which makes the module ~6% larger (x7 in the wheel). In the measured binding
+    # paths (ImgFrame, MessageQueue, getters) the speed difference was within the noise (~5%).
+    # Also a link option: with LTO, some compilers (Clang) take the level from the link command.
+    if(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:-O2>")
+        target_link_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:-O2>")
+        # NNData numpy <-> tensor conversion is a hot loop: keep -O3 for it (with -O2 it is ~8% slower)
+        set_property(SOURCE src/pipeline/datatype/NNDataBindings.cpp APPEND PROPERTY COMPILE_OPTIONS "$<$<CONFIG:Release>:-O3>")
+    endif()
 endif()
 if(DEPTHAI_UNITY_BUILD)
     set_target_properties(${TARGET_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
@@ -312,11 +332,15 @@ endif()
 
 if(WIN32)
     # Copy dlls to target directory - Windows only
+    # Do not copy the Python interpreter DLL (python3XX.dll): the interpreter that imports the module
+    # has already loaded it, so a copy next to the module is never used.
+    set(DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX "(^|[/\\\\])python3[0-9]*t?(_d)?\\.dll$")
     # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
     if(CMAKE_VERSION VERSION_LESS "3.21")
         file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        list(FILTER depthai_dll_libraries EXCLUDE REGEX "${DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX}")
     else()
-        set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${TARGET_NAME}>")
+        set(depthai_dll_libraries "$<FILTER:$<TARGET_RUNTIME_DLLS:${TARGET_NAME}>,EXCLUDE,${DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX}>")
     endif()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND
         "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${TARGET_NAME}>>"
