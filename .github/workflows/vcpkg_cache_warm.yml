@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest, windows-2025]
+        os: [ubuntu-24.04, macos-15, windows-2025]
         family: [core, core-tests]
     runs-on: ${{ matrix.os }}
     steps:
@@ -94,8 +94,8 @@ jobs:
             family: py-pytest
           - os: windows-2025
             family: wheel
-          - os: macos-14
-            family: wheel-macos-14
+          - os: macos-15
+            family: wheel-macos-15
           - os: macos-15-intel
             family: wheel-macos-15-intel
     runs-on: ${{ matrix.os }}
