@@ -111,11 +111,14 @@ void ToFStereoFusion::buildStereoNetwork(const std::shared_ptr<dai::node::Camera
         tof->tofBaseNode.phase.link((*tofSync)->inputs["tofPhase"]);
     }
 
-    // The network replaces the zoo model set in buildInternal(); the user provides it with neuralNetwork->setModelPath().
+    // The network ships with the RVC4 firmware and replaces the zoo model set in buildInternal(); a model the user sets with
+    // neuralNetwork->setModelPath() takes precedence. Network I/O as dma-bufs (one per tensor), registered with SNPE: the
+    // device pre- and post-processing read and write them in place.
     neuralNetwork->properties.deviceModel.reset();
-    // Network I/O as dma-bufs (one per tensor), registered with SNPE: the device pre- and post-processing read and write
-    // them in place.
-    neuralNetwork->setBackendProperties({{"output_tensors", "disp_low,head9,conf"}, {"output_memory", "dma_buf"}, {"register_dma_buf", "true"}});
+    neuralNetwork->setBackendProperties({{"firmware_model", "TOF_STEREO_FUSION_1024x640.dlc"},
+                                         {"output_tensors", "disp_low,head9,conf"},
+                                         {"output_memory", "dma_buf"},
+                                         {"register_dma_buf", "true"}});
 }
 
 std::shared_ptr<ToFStereoFusion> ToFStereoFusion::build(const std::shared_ptr<dai::node::Camera>& left,

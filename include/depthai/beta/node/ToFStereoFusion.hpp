@@ -24,8 +24,8 @@ namespace dai::beta::node {
  * Two fusion models are available (setModel()):
  * - ALPHA_BLEND (default): NeuralDepth is aligned to the ToF and a small network blends the two per pixel. Output in the ToF view.
  * - STEREO_NETWORK: the rectified stereo pair and ToF planes (ToF reprojected into the rectified-left view) go into one network,
- *   whose disparity is composed with the ToF on the device. Output in the rectified-left view. The network is not in the model zoo;
- *   set it with neuralNetwork->setModelPath() before starting the pipeline. The stereo pair is rectified by a Rectification
+ *   whose disparity is composed with the ToF on the device. Output in the rectified-left view. The network ships with the RVC4
+ *   firmware; neuralNetwork->setModelPath() replaces it. The stereo pair is rectified by a Rectification
  *   subnode on the EVA warp (Backend::HW) with alpha scaling 0, the geometry the networks are trained on. Each stereo frame is
  *   fused with the newest ToF frame already processed (at most 100 ms older; usually one ToF frame period, as the ToF processing
  *   takes longer than the stereo path), so the ToF does not add to the latency.
@@ -109,7 +109,8 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
      * Set the size of the rectified stereo pair for the STEREO_NETWORK model. Call before build().
      *
      * The size must match the network input: at least 512x256, width a multiple of 128, height a multiple of 32.
-     * The cameras are scaled, not cropped, so the field of view does not change. Defaults to 1280x800.
+     * The cameras are scaled, not cropped, so the field of view does not change. Defaults to 1024x640, the network
+     * shipped with the firmware.
      *
      * @param width Width in pixels.
      * @param height Height in pixels.
@@ -159,7 +160,7 @@ class ToFStereoFusion : public DeviceNodeCRTP<DeviceNode, ToFStereoFusion, ToFSt
     void buildInternal() override;
     void buildStereoNetwork(const std::shared_ptr<dai::node::Camera>& left, const std::shared_ptr<dai::node::Camera>& right, float fps);
 
-    std::pair<uint32_t, uint32_t> networkInputSize{1280, 800};
+    std::pair<uint32_t, uint32_t> networkInputSize{1024, 640};
     std::unique_ptr<Subnode<dai::node::Sync>> pairSync;
     std::unique_ptr<Subnode<dai::node::MessageDemux>> pairDemux;
     std::unique_ptr<Subnode<dai::node::Rectification>> rectification;

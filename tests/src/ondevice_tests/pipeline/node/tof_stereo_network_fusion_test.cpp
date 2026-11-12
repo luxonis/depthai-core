@@ -68,6 +68,7 @@ TEST_CASE("ToFStereoFusion STEREO_NETWORK wires rectification and the ToF fusion
     REQUIRE_FALSE(fusion->neuralNetwork->properties.deviceModel.has_value());
     REQUIRE(fusion->neuralNetwork->properties.backendProperties.at("output_tensors") == "disp_low,head9,conf");
     REQUIRE(fusion->neuralNetwork->properties.backendProperties.at("output_memory") == "dma_buf");
+    REQUIRE(fusion->neuralNetwork->properties.backendProperties.at("firmware_model") == "TOF_STEREO_FUSION_1024x640.dlc");
 }
 
 TEST_CASE("ToFStereoFusion STEREO_NETWORK with the vendor ToF confidence keeps the standard ToF mode", "[ToFStereoFusion]") {
