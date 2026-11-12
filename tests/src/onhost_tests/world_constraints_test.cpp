@@ -341,6 +341,11 @@ TEST_CASE("DynamicCalibration detects marker centers through DCL", "[WorldConstr
     auto small = whiteImage(320, 240);
     drawMarker37(small, 40, 40, 3);
     REQUIRE(markerCenters(small, constraints).empty());
+    std::map<int32_t, double> tooSmall;
+    REQUIRE(dai::node::DclUtils::detectConfiguredMarkers(small, constraints, &tooSmall).value.empty());
+    REQUIRE(tooSmall.size() == 1);
+    REQUIRE(tooSmall.at(37) > 0.0);
+    REQUIRE(tooSmall.at(37) < dai::node::DclUtils::kMinMarkerSizePx);
     auto bigEnough = whiteImage(320, 240);
     drawMarker37(bigEnough, 40, 40, 6);
     REQUIRE(markerCenters(bigEnough, constraints).count(37) == 1);

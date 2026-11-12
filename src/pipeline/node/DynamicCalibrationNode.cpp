@@ -477,7 +477,9 @@ double DclUtils::markerSizePx(MarkerType type, const dcl::MarkerDetection& detec
     return 0.0;
 }
 
-dcl::Result<std::map<int32_t, dcl::MarkerDetection>> DclUtils::detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints) {
+dcl::Result<std::map<int32_t, dcl::MarkerDetection>> DclUtils::detectConfiguredMarkers(const dcl::ImageData& image,
+                                                                                       const WorldConstraints& constraints,
+                                                                                       std::map<int32_t, double>* tooSmall) {
     using Found = std::map<int32_t, dcl::MarkerDetection>;
     auto detections = dcl::detectMarkers(image, toDclMarkerSpec(constraints));
     if(!detections.passed()) {
@@ -487,8 +489,15 @@ dcl::Result<std::map<int32_t, dcl::MarkerDetection>> DclUtils::detectConfiguredM
     const auto wanted = constraints.referencedMarkerIds();
     std::set<int32_t> ambiguous;
     for(const auto& detection : detections.value) {
-        if(!std::binary_search(wanted.begin(), wanted.end(), detection.id) || ambiguous.count(detection.id) != 0
-           || markerSizePx(constraints.markerType, detection) < kMinMarkerSizePx) {
+        if(!std::binary_search(wanted.begin(), wanted.end(), detection.id) || ambiguous.count(detection.id) != 0) {
+            continue;
+        }
+        const auto sizePx = markerSizePx(constraints.markerType, detection);
+        if(sizePx < kMinMarkerSizePx) {
+            if(tooSmall) {
+                auto& recorded = (*tooSmall)[detection.id];
+                recorded = std::max(recorded, sizePx);
+            }
             continue;
         }
         // A marker id that appears more than once in one image is ambiguous: drop it.
@@ -1009,7 +1018,19 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     if(properties.worldConstraints) {
         MarkerObservationSet observations;
         for(size_t idx = 0; idx < images.size(); ++idx) {
-            auto detected = DclUtils::detectConfiguredMarkers(images[idx].second, *properties.worldConstraints);
+            std::map<int32_t, double> tooSmall;
+            auto detected = DclUtils::detectConfiguredMarkers(images[idx].second, *properties.worldConstraints, &tooSmall);
+            for(const auto& [markerId, sizePx] : tooSmall) {
+                // Once per marker: a configured marker that is seen but too small is otherwise a silent loss of constraints.
+                if(markerSizeWarningIssued.insert(markerId).second) {
+                    logger->warn(
+                        "Marker {} is only {:.0f} px across in {}, below the {:.0f} px minimum, and is ignored: move the camera closer or print it larger",
+                        markerId,
+                        sizePx,
+                        toString(connectedSensors[idx].socket),
+                        DclUtils::kMinMarkerSizePx);
+                }
+            }
             if(!detected.passed()) {
                 if(!markerDetectionWarningIssued) {
                     logger->warn("Marker detection failed, world constraints are not applied: {}", detected.errorMessage());

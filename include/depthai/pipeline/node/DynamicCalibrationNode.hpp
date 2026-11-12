@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <map>
 #include <optional>
+#include <set>
 
 #include "depthai/common/WorldConstraints.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
@@ -259,6 +260,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     // When the marker detector rejects an image, issue a warning once
     bool markerDetectionWarningIssued = false;
+    // Configured markers already reported as too small to use
+    std::set<int32_t> markerSizeWarningIssued;
 };
 
 }  // namespace node

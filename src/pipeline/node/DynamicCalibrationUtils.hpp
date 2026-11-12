@@ -59,9 +59,12 @@ struct DclUtils {
     static double markerSizePx(MarkerType type, const dcl::MarkerDetection& detection);
 
     /// The configured markers found in one image, keyed by marker id. Markers outside the configuration, smaller than
-    /// kMinMarkerSizePx and ids that appear more than once in the image are dropped. Fails when the detector rejects
-    /// the image.
-    static dcl::Result<std::map<int32_t, dcl::MarkerDetection>> detectConfiguredMarkers(const dcl::ImageData& image, const WorldConstraints& constraints);
+    /// kMinMarkerSizePx and ids that appear more than once in the image are dropped. tooSmall, when given, receives
+    /// the configured markers dropped for their size together with that size in pixels. Fails when the detector
+    /// rejects the image.
+    static dcl::Result<std::map<int32_t, dcl::MarkerDetection>> detectConfiguredMarkers(const dcl::ImageData& image,
+                                                                                        const WorldConstraints& constraints,
+                                                                                        std::map<int32_t, double>* tooSmall = nullptr);
 
     /// The shape of a detection, as kept in a MarkerObservationSet.
     static MarkerOutline toMarkerOutline(const dcl::MarkerDetection& detection);
