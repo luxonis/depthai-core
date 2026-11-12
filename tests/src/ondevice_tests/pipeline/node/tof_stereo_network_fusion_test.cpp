@@ -10,7 +10,6 @@
 #include "depthai/pipeline/node/Rectification.hpp"
 
 using namespace dai;
-using Model = beta::ToFStereoFusionProperties::Model;
 
 namespace {
 
@@ -44,7 +43,7 @@ std::shared_ptr<T> findNode(const Node& parent) {
 
 }  // namespace
 
-TEST_CASE("ToFStereoFusion STEREO_NETWORK wires rectification and the ToF fusion mode instead of NeuralDepth", "[ToFStereoFusion]") {
+TEST_CASE("ToFStereoFusion wires rectification and the ToF fusion mode instead of NeuralDepth", "[ToFStereoFusion]") {
     const auto device = std::make_shared<Device>();
     if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) SKIP("needs an RVC4 device with a ToF sensor");
 
@@ -52,11 +51,10 @@ TEST_CASE("ToFStereoFusion STEREO_NETWORK wires rectification and the ToF fusion
     auto left = pipeline.create<node::Camera>()->build(CameraBoardSocket::CAM_B, std::nullopt, 30.0f);
     auto right = pipeline.create<node::Camera>()->build(CameraBoardSocket::CAM_C, std::nullopt, 30.0f);
     auto fusion = pipeline.create<beta::node::ToFStereoFusion>();
-    REQUIRE_THROWS_AS(fusion->setNetworkInputSize(1000, 640), std::invalid_argument);
-    REQUIRE_THROWS_AS(fusion->setNetworkInputSize(1024, 650), std::invalid_argument);
-    fusion->setModel(Model::STEREO_NETWORK).setNetworkInputSize(1024, 640);
-    REQUIRE(fusion->getModel() == Model::STEREO_NETWORK);
+    // The network shipped with the firmware is selected at creation, so a later setModelPath() replaces it.
+    REQUIRE(fusion->neuralNetwork->properties.backendProperties.at("firmware_model") == "TOF_STEREO_FUSION_1024x640.dlc");
     fusion->build(left, right);
+    REQUIRE_THROWS_AS(fusion->build(left, right), std::logic_error);
 
     REQUIRE(countNodes<node::NeuralDepth>(*fusion) == 0);
     REQUIRE(countNodes<node::Rectification>(*fusion) == 1);
@@ -64,23 +62,10 @@ TEST_CASE("ToFStereoFusion STEREO_NETWORK wires rectification and the ToF fusion
     REQUIRE(rectification != nullptr);
     REQUIRE(rectification->properties.backend == node::Rectification::Backend::HW);
     REQUIRE(rectification->properties.alphaScaling == std::optional<float>(0.0f));
-    REQUIRE(fusion->tof->tofBaseNode.initialConfig->depthMode == ToFConfig::DepthMode::FUSION);
+    // A linked phase output selects the ToF fusion depth mode.
+    REQUIRE_FALSE(fusion->tof->tofBaseNode.phase.getConnections().empty());
     REQUIRE_FALSE(fusion->neuralNetwork->properties.deviceModel.has_value());
     REQUIRE(fusion->neuralNetwork->properties.backendProperties.at("output_tensors") == "disp_low,head9,conf");
     REQUIRE(fusion->neuralNetwork->properties.backendProperties.at("output_memory") == "dma_buf");
     REQUIRE(fusion->neuralNetwork->properties.backendProperties.at("firmware_model") == "TOF_STEREO_FUSION_1024x640.dlc");
-}
-
-TEST_CASE("ToFStereoFusion STEREO_NETWORK with the vendor ToF confidence keeps the standard ToF mode", "[ToFStereoFusion]") {
-    const auto device = std::make_shared<Device>();
-    if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) SKIP("needs an RVC4 device with a ToF sensor");
-
-    Pipeline pipeline(device);
-    auto left = pipeline.create<node::Camera>()->build(CameraBoardSocket::CAM_B, std::nullopt, 30.0f);
-    auto right = pipeline.create<node::Camera>()->build(CameraBoardSocket::CAM_C, std::nullopt, 30.0f);
-    auto fusion = pipeline.create<beta::node::ToFStereoFusion>();
-    fusion->setModel(Model::STEREO_NETWORK).setToFConfidenceScale(beta::ToFStereoFusionProperties::ToFConfidenceScale::VENDOR);
-    fusion->build(left, right);
-
-    REQUIRE(fusion->tof->tofBaseNode.initialConfig->depthMode == ToFConfig::DepthMode::STANDARD);
 }

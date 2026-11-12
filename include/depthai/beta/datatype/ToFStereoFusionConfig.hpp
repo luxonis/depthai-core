@@ -7,11 +7,17 @@
 namespace dai::beta {
 
 struct ToFStereoFusionConfig {
+    /**
+     * Confidence threshold in [0, 1], mapped to a threshold on the published u8 confidence: the default 0.5 maps to the
+     * calibrated default of the network, other values proportionally (0 keeps every pixel). Depth is kept where the
+     * confidence is at or above the mapped threshold.
+     */
     float confidenceThreshold = 0.5f;
 
     /** Crop depth and confidence to the largest rectangle in the geometric overlap.
      * Uses viewing directions (projection at infinity), independent of measured depth.
      * Recomputed when input transformations or dimensions change; empty overlap throws.
+     * Not supported by the stereo network fusion: the output is in the rectified-left view and is never cropped.
      */
     bool cropToOverlap = false;
 
@@ -31,6 +37,12 @@ struct ToFStereoFusionConfig {
         return *this;
     }
 
+    /**
+     * Set the confidence threshold, see confidenceThreshold.
+     *
+     * @param threshold Threshold in [0, 1]; 0.5 (default) is the calibrated default of the network.
+     * @return This configuration for chaining.
+     */
     ToFStereoFusionConfig& setConfidenceThreshold(float threshold) {
         if(threshold < 0.0f || threshold > 1.0f) throw std::invalid_argument("confidence threshold must be between 0 and 1");
         confidenceThreshold = threshold;

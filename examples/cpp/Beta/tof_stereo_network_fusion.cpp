@@ -1,4 +1,4 @@
-// ToF + stereo fusion with the STEREO_NETWORK model: one network takes the rectified stereo pair and the ToF reprojected into
+// ToF + stereo fusion: one network takes the rectified stereo pair and the ToF reprojected into
 // the rectified-left view, and the device composes its disparity with the ToF. The network ships with the RVC4 firmware.
 #include <opencv2/opencv.hpp>
 #include <optional>
@@ -10,7 +10,6 @@ int main() {
     auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, 30.0f);
     auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, 30.0f);
     auto fusion = pipeline.create<dai::beta::node::ToFStereoFusion>();
-    fusion->setModel(dai::beta::node::ToFStereoFusion::Properties::Model::STEREO_NETWORK);
     fusion->build(left, right);
 
     auto depthQueue = fusion->depth.createOutputQueue();

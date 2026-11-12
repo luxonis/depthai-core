@@ -1,23 +1,20 @@
-// Behavioural on-device tests of the ToFStereoFusion STEREO_NETWORK model: depth frames must arrive, from the requested
-// backend, with the rectified geometry the networks are trained on, and keep arriving when the ToF leaves the fusion depth
-// mode.
+// Behavioural on-device tests of ToFStereoFusion: depth frames must arrive from the GPU backend, with the rectified geometry
+// the network is trained on, and with the calibrated confidence of the network shipped with the firmware.
 //
-// The network is not in the model zoo, so the tests need it from the environment and skip without it:
+// By default the tests use the network shipped with the RVC4 firmware. To test another network instead:
 //   DEPTHAI_TEST_TOF_STEREO_NETWORK_MODEL  path of the network (.dlc) on the host
 //   DEPTHAI_TEST_TOF_STEREO_NETWORK_UDO    registration library of its custom operators on the device (optional)
-//   DEPTHAI_TEST_TOF_STEREO_NETWORK_SIZE   network input size, e.g. 1280x800 (default) or 1024x640
 #include <algorithm>
-#include <atomic>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>
-#include <cstdio>
 #include <cstdlib>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -27,7 +24,6 @@
 
 using namespace dai;
 using Fusion = beta::node::ToFStereoFusion;
-using FusionBackend = beta::ToFStereoFusionProperties::Backend;
 
 namespace {
 
@@ -54,26 +50,22 @@ struct PipelineStopGuard {
     PipelineStopGuard& operator=(const PipelineStopGuard&) = delete;
 };
 
-struct ModelSetup {
+// The network shipped with the firmware takes 1024x640.
+constexpr uint32_t NETWORK_WIDTH = 1024;
+constexpr uint32_t NETWORK_HEIGHT = 640;
+
+/** A user network from the environment; nullopt: the network shipped with the firmware. */
+struct UserModel {
     std::string model;
     std::string udo;
-    uint32_t width = 1280;
-    uint32_t height = 800;
 };
 
-std::optional<ModelSetup> modelFromEnvironment() {
+std::optional<UserModel> modelFromEnvironment() {
     const char* model = std::getenv("DEPTHAI_TEST_TOF_STEREO_NETWORK_MODEL");
     if(!model || !*model) return std::nullopt;
-    ModelSetup setup;
+    UserModel setup;
     setup.model = model;
     if(const char* udo = std::getenv("DEPTHAI_TEST_TOF_STEREO_NETWORK_UDO")) setup.udo = udo;
-    if(const char* size = std::getenv("DEPTHAI_TEST_TOF_STEREO_NETWORK_SIZE")) {
-        unsigned width = 0, height = 0;
-        if(std::sscanf(size, "%ux%u", &width, &height) == 2) {
-            setup.width = width;
-            setup.height = height;
-        }
-    }
     return setup;
 }
 
@@ -91,21 +83,37 @@ class LogCollector {
         return false;
     }
 
+    /** The integer after the first occurrence of text, or -1. */
+    int numberAfter(const std::string& text) {
+        std::lock_guard<std::mutex> lock(mutex);
+        for(const auto& line : lines) {
+            const auto at = line.find(text);
+            if(at != std::string::npos) return std::atoi(line.c_str() + at + text.size());
+        }
+        return -1;
+    }
+    void clear() {
+        std::lock_guard<std::mutex> lock(mutex);
+        lines.clear();
+    }
+
    private:
     std::mutex mutex;
     std::vector<std::string> lines;
 };
 
-std::shared_ptr<Fusion> buildFusion(Pipeline& pipeline, const ModelSetup& setup, FusionBackend backend) {
+std::shared_ptr<Fusion> buildFusion(Pipeline& pipeline, const std::optional<UserModel>& user) {
     auto left = pipeline.create<node::Camera>()->build(CameraBoardSocket::CAM_B, std::nullopt, 30.0f);
     auto right = pipeline.create<node::Camera>()->build(CameraBoardSocket::CAM_C, std::nullopt, 30.0f);
-    auto fusion = pipeline.create<Fusion>();
-    fusion->setModel(Fusion::Properties::Model::STEREO_NETWORK).setNetworkInputSize(setup.width, setup.height).setBackend(backend);
-    fusion->build(left, right);
-    fusion->neuralNetwork->setModelPath(setup.model);
-    std::map<std::string, std::string> backendProperties{{"output_tensors", "disp_low,head9,conf"}, {"output_memory", "dma_buf"}, {"register_dma_buf", "true"}};
-    if(!setup.udo.empty()) backendProperties["udo_package"] = setup.udo;
-    fusion->neuralNetwork->setBackendProperties(backendProperties);
+    auto fusion = pipeline.create<Fusion>()->build(left, right);
+    if(user) {
+        fusion->neuralNetwork->setModelPath(user->model);
+        if(!user->udo.empty()) {
+            auto backendProperties = fusion->neuralNetwork->properties.backendProperties;
+            backendProperties["udo_package"] = user->udo;
+            fusion->neuralNetwork->setBackendProperties(backendProperties);
+        }
+    }
     return fusion;
 }
 
@@ -137,9 +145,8 @@ float expectedRectifiedFx(const CalibrationHandler& calibration, uint32_t width,
 
 }  // namespace
 
-TEST_CASE("ToFStereoFusion STEREO_NETWORK outputs depth from the GPU backend with the trained rectification", "[ToFStereoFusion][behaviour]") {
-    const auto setup = modelFromEnvironment();
-    if(!setup) SKIP("set DEPTHAI_TEST_TOF_STEREO_NETWORK_MODEL (and _UDO, _SIZE) to the fusion network");
+TEST_CASE("ToFStereoFusion outputs depth from the GPU backend with the trained rectification", "[ToFStereoFusion][behaviour]") {
+    const auto user = modelFromEnvironment();
     const auto device = std::make_shared<Device>();
     if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) SKIP("needs an RVC4 device with a ToF sensor");
     if(!device->hasGPU()) SKIP("needs a device with a GPU");
@@ -149,7 +156,7 @@ TEST_CASE("ToFStereoFusion STEREO_NETWORK outputs depth from the GPU backend wit
     device->addLogCallback([&logs](LogMessage message) { logs.add(message); });
 
     Pipeline pipeline(device);
-    auto fusion = buildFusion(pipeline, *setup, FusionBackend::GPU);
+    auto fusion = buildFusion(pipeline, user);
     auto depthQueue = fusion->depth.createOutputQueue(8, false);
 
     PipelineStopGuard guard(pipeline);
@@ -160,8 +167,8 @@ TEST_CASE("ToFStereoFusion STEREO_NETWORK outputs depth from the GPU backend wit
     REQUIRE_FALSE(timedOut);
     REQUIRE(first != nullptr);
     REQUIRE(first->getType() == ImgFrame::Type::RAW16);
-    REQUIRE(first->getWidth() == setup->width);
-    REQUIRE(first->getHeight() == setup->height);
+    REQUIRE(first->getWidth() == NETWORK_WIDTH);
+    REQUIRE(first->getHeight() == NETWORK_HEIGHT);
 
     size_t frames = 0, validPixels = 0, pixels = 0;
     std::vector<double> frameValid;
@@ -195,60 +202,97 @@ TEST_CASE("ToFStereoFusion STEREO_NETWORK outputs depth from the GPU backend wit
     REQUIRE(logs.contains("STEREO_NETWORK backend GPU"));
     REQUIRE_FALSE(logs.contains("GPU backend unavailable"));
     REQUIRE_FALSE(logs.contains("unexpected network output layout"));
+    // The node read the network's inputs.
+    REQUIRE(logs.contains("STEREO_NETWORK network inputs: "));
+    REQUIRE_FALSE(logs.contains("cannot read the network inputs"));
 
     // Rectified with alpha 0 (the training geometry), not with the left input intrinsics.
     const auto intrinsics = first->transformation.getIntrinsicMatrix();
-    const float expectedFx = expectedRectifiedFx(device->readCalibration(), setup->width, setup->height);
+    const float expectedFx = expectedRectifiedFx(device->readCalibration(), NETWORK_WIDTH, NETWORK_HEIGHT);
     INFO("depth fx " << intrinsics[0][0] << ", expected (alpha 0) " << expectedFx);
     REQUIRE(std::abs(intrinsics[0][0] - expectedFx) < 0.01f * expectedFx);
 }
 
-TEST_CASE("ToFStereoFusion STEREO_NETWORK keeps producing depth when the ToF leaves the fusion depth mode", "[ToFStereoFusion][behaviour]") {
-    const auto setup = modelFromEnvironment();
-    if(!setup) SKIP("set DEPTHAI_TEST_TOF_STEREO_NETWORK_MODEL (and _UDO, _SIZE) to the fusion network");
+namespace {
+
+struct ConfidenceRun {
+    int threshold = -1;  // the u8 threshold the device logged
+    size_t pairs = 0, depthPixels = 0, belowThreshold = 0;
+};
+
+/** Runs the firmware network with the given threshold and counts the depth pixels whose published confidence is below the u8
+ * threshold the device logged. */
+ConfidenceRun runCalibrated(const std::shared_ptr<Device>& device, LogCollector& logs, float threshold) {
+    logs.clear();
+    Pipeline pipeline(device);
+    auto fusion = buildFusion(pipeline, std::nullopt);
+    fusion->initialConfig->setConfidenceThreshold(threshold);
+    auto depthQueue = fusion->depth.createOutputQueue(8, false);
+    auto confidenceQueue = fusion->confidence.createOutputQueue(8, false);
+
+    PipelineStopGuard guard(pipeline);
+    pipeline.start();
+    bool timedOut = false;
+    REQUIRE(depthQueue->get<ImgFrame>(FIRST_FRAME_TIMEOUT, timedOut) != nullptr);
+    REQUIRE_FALSE(timedOut);
+    ConfidenceRun run;
+    run.threshold = logs.numberAfter("calibrated confidence, threshold ");
+    std::map<int64_t, std::shared_ptr<ImgFrame>> depths, confidences;
+    const auto start = std::chrono::steady_clock::now();
+    while(std::chrono::steady_clock::now() - start < RUN_TIME) {
+        for(const auto& frame : depthQueue->tryGetAll<ImgFrame>()) depths[frame->getSequenceNum()] = frame;
+        for(const auto& frame : confidenceQueue->tryGetAll<ImgFrame>()) confidences[frame->getSequenceNum()] = frame;
+        for(auto it = depths.begin(); it != depths.end();) {
+            const auto match = confidences.find(it->first);
+            if(match == confidences.end()) {
+                ++it;
+                continue;
+            }
+            const auto* depth = reinterpret_cast<const uint16_t*>(it->second->getData().data());
+            const auto* confidence = match->second->getData().data();
+            const size_t count = static_cast<size_t>(it->second->getWidth()) * it->second->getHeight();
+            REQUIRE(match->second->getType() == ImgFrame::Type::RAW8);
+            REQUIRE(static_cast<size_t>(match->second->getWidth()) * match->second->getHeight() == count);
+            for(size_t i = 0; i < count; ++i) {
+                if(depth[i] == 0) continue;
+                ++run.depthPixels;
+                if(static_cast<int>(confidence[i]) < run.threshold) ++run.belowThreshold;
+            }
+            ++run.pairs;
+            confidences.erase(match);
+            it = depths.erase(it);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    return run;
+}
+
+}  // namespace
+
+TEST_CASE("ToFStereoFusion publishes the calibrated confidence of the network shipped with the firmware", "[ToFStereoFusion][behaviour]") {
+    if(modelFromEnvironment()) SKIP("a user network has no confidence calibration on the device");
     const auto device = std::make_shared<Device>();
     if(device->getPlatform() != Platform::RVC4 || !deviceHasTofSensor(device)) SKIP("needs an RVC4 device with a ToF sensor");
 
     LogCollector logs;
-    device->setLogLevel(LogLevel::WARN);
+    device->setLogLevel(LogLevel::INFO);
     device->addLogCallback([&logs](LogMessage message) { logs.add(message); });
 
-    Pipeline pipeline(device);
-    auto fusion = buildFusion(pipeline, *setup, FusionBackend::AUTO);
-    auto depthQueue = fusion->depth.createOutputQueue(8, false);
-    auto tofConfigQueue = fusion->tof->tofBaseNode.inputConfig.createInputQueue();
+    // The default threshold maps to the calibrated default of the network.
+    const auto standard = runCalibrated(device, logs, beta::ToFStereoFusionConfig{}.confidenceThreshold);
+    INFO("threshold " << standard.threshold << ", pairs " << standard.pairs << ", depth pixels " << standard.depthPixels << ", below "
+                      << standard.belowThreshold);
+    REQUIRE_FALSE(logs.contains("no valid confidence calibration"));
+    REQUIRE(standard.threshold > 0);
+    REQUIRE(standard.pairs >= MIN_FRAMES / 2);
+    REQUIRE(standard.depthPixels > 0);
+    // Every pixel with depth passed the threshold; near-range ToF pixels publish at least the threshold.
+    REQUIRE(standard.belowThreshold == 0);
 
-    PipelineStopGuard guard(pipeline);
-    REQUIRE_NOTHROW(pipeline.start());
-
-    bool timedOut = false;
-    REQUIRE(depthQueue->get<ImgFrame>(FIRST_FRAME_TIMEOUT, timedOut) != nullptr);
-    REQUIRE_FALSE(timedOut);
-
-    // The vendor unwrap: the same state as the fusion mode falling back on a device without a GPU.
-    auto standard = std::make_shared<ToFConfig>(*fusion->tof->tofBaseNode.initialConfig);
-    standard->setDepthMode(ToFConfig::DepthMode::STANDARD);
-    tofConfigQueue->send(standard);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    depthQueue->tryGetAll<ImgFrame>();
-
-    size_t frames = 0;
-    const auto start = std::chrono::steady_clock::now();
-    while(std::chrono::steady_clock::now() - start < RUN_TIME) {
-        const auto depth = depthQueue->get<ImgFrame>(std::chrono::seconds(2), timedOut);
-        INFO("depth frames after the switch to STANDARD: " << frames);
-        REQUIRE_FALSE(timedOut);  // a stall here is the phase/Sync starvation
-        ++frames;
-    }
-    REQUIRE(frames >= MIN_FRAMES);
-    REQUIRE(logs.contains("the ToF sends vendor-unwrap frames"));
-
-    // Back to the fusion depth mode.
-    auto fusionMode = std::make_shared<ToFConfig>(*standard);
-    fusionMode->setDepthMode(ToFConfig::DepthMode::FUSION);
-    tofConfigQueue->send(fusionMode);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    depthQueue->tryGetAll<ImgFrame>();
-    REQUIRE(depthQueue->get<ImgFrame>(std::chrono::seconds(5), timedOut) != nullptr);
-    REQUIRE_FALSE(timedOut);
+    // Other thresholds map proportionally.
+    const auto half = runCalibrated(device, logs, 0.25f);
+    INFO("threshold at 0.25: " << half.threshold);
+    REQUIRE(half.threshold == static_cast<int>(std::lround(standard.threshold * 0.5)));
+    REQUIRE(half.belowThreshold == 0);
+    REQUIRE(half.depthPixels >= standard.depthPixels / 2);
 }
