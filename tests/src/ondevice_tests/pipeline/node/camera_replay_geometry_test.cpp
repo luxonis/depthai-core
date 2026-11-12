@@ -208,7 +208,8 @@ TEST_CASE("Synthetic replay pixels agree with Camera output intrinsics", "[camer
     SyntheticRecording recording;
     recording.write();
     dai::Pipeline pipeline;
-    if(pipeline.getDefaultDevice()->getPlatform() != dai::Platform::RVC2) SKIP("RVC2 output geometry regression");
+    const auto platform = pipeline.getDefaultDevice()->getPlatform();
+    if(platform != dai::Platform::RVC2 && platform != dai::Platform::RVC4) SKIP("Requires RVC2 or RVC4");
     // Enable the modern undistortion path in this pipeline only. Older EEPROM
     // policy otherwise deliberately suppresses Camera output undistortion.
     auto calibration = pipeline.getDefaultDevice()->readCalibration().getEepromData();
