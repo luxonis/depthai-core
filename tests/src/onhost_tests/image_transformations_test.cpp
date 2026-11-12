@@ -757,6 +757,9 @@ TEST_CASE("Calibrated crops and binning preserve physical ray projections", "[ca
     CHECK(output.getIntrinsicMatrix()[0][0] == reference.intrinsics[0][0]);
     CHECK(output.getIntrinsicMatrix()[1][1] == reference.intrinsics[1][1]);
     output.addScale(reference.scaleX, reference.scaleY);
+    CHECK(output.getDistortionModel() == source.getDistortionModel());
+    CHECK(output.getDistortionCoefficients() == source.getDistortionCoefficients());
+    CHECK(output.getExtrinsics().isEqualExtrinsics(source.getExtrinsics()));
     checkOutputIntrinsics(output);
 
     // Independently calculated projections: k1=0.1, followed by the physical
