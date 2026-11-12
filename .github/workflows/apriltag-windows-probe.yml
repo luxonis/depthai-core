@@ -1,0 +1,81 @@
+name: AprilTag Windows diagnosis
+on:
+  push:
+    branches: ['diagnostics/apriltag-windows-20261112']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: 6fa128f2b6e1dd260ebfb30fdb1c38a191369812
+          path: vcpkg
+      - uses: actions/checkout@v4
+        with:
+          repository: luxonis/depthai-core
+          ref: v3.12.0
+          path: sdk
+      - uses: actions/checkout@v4
+        with:
+          repository: luxonis/XLink
+          ref: def3760e05dba906b40326fa4d94291e5a4fb929
+          path: xlink
+      - uses: actions/checkout@v4
+        with:
+          repository: luxonis/libnop
+          ref: ab842f51dc2eb13916dc98417c2186b78320ed10
+          path: libnop
+      - name: Verify the unmodified Windows feature gate
+        run: |
+          python probe.py gate
+      - name: Bootstrap pinned vcpkg
+        run: |
+          & ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Download and build AprilTag and required headers
+        run: |
+          & ./vcpkg/vcpkg.exe install apriltag nlohmann-json spdlog eigen3 --triplet x64-windows --overlay-triplets=./triplets --disable-metrics
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Configure MSVC probes
+        run: |
+          cmake -S . -B build -G 'Visual Studio 17 2022' -A x64 -DCMAKE_TOOLCHAIN_FILE="$pwd/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DVCPKG_OVERLAY_TRIPLETS="$pwd/triplets"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Compile and link standalone AprilTag detector
+        run: |
+          cmake --build build --config Release --target apriltag_smoke --parallel 4
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Run detector on a generated tag with one and two threads
+        run: |
+          & ./build/Release/apriltag_smoke.exe
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Compile unchanged DepthAI AprilTag.cpp with host support enabled
+        id: sdk_compile
+        continue-on-error: true
+        run: |
+          cmake --build build --config Release --target sdk_apriltag --parallel 4
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Repeat with only the MSVC math-constants definition added
+        if: steps.sdk_compile.outcome == 'failure'
+        run: |
+          cmake --build build --config Release --target sdk_apriltag_math_fix --parallel 4
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Save diagnosis outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apriltag-windows-probe
+          path: |
+            gate-result.txt
+            build/Release/apriltag_smoke.exe
+            build/CMakeCache.txt
+            vcpkg/buildtrees/apriltag/*.log
+            vcpkg/buildtrees/pthreads/*.log
