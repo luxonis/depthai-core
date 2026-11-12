@@ -352,7 +352,7 @@ parser.add_argument('-btimeout', '--boot-timeout', default=30000,
 parser.add_argument("-stereo", action="store_true", default=False,
                     help="Create a stereo depth node if the device has a stereo pair.")
 
-parser.add_argument('-fsyncrole', '--fsync-role', choices=['auto', 'master', 'slave'], default=None,
+parser.add_argument('-fsyncrole', '--fsync-role', choices=['auto', 'master', 'slave', 'standalone'], default=None,
                     help="Override the external frame sync role (RVC4). Useful when M8 auto-detect "
                     "selects slave but no external sync signal is present.")
 
@@ -582,6 +582,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             'auto': dai.ExternalFrameSyncRole.AUTO_DETECT,
             'master': dai.ExternalFrameSyncRole.MASTER,
             'slave': dai.ExternalFrameSyncRole.SLAVE,
+            'standalone': dai.ExternalFrameSyncRole.STANDALONE,
         }
         ok, err = device.setExternalFrameSyncRole(fsync_role_map[args.fsync_role])
         print(f"External frame sync role set to {args.fsync_role}: ok={ok}{'' if ok else ' err=' + err}")

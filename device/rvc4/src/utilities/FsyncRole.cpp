@@ -14,6 +14,8 @@ ExternalFrameSyncRole resolveRole(ExternalFrameSyncRole requested, bool supports
             return ExternalFrameSyncRole::MASTER;
         case ExternalFrameSyncRole::SLAVE:
             return supportsExternalSync ? ExternalFrameSyncRole::SLAVE : ExternalFrameSyncRole::MASTER;
+        case ExternalFrameSyncRole::STANDALONE:
+            return ExternalFrameSyncRole::STANDALONE;
         default:
             throw std::invalid_argument("Invalid external frame sync role specified.");
     }
@@ -25,6 +27,8 @@ uint32_t configFor(ExternalFrameSyncRole resolved) {
             return FSYNC_STM_CONFIG_MASTER_MODE_WITH_OUTPUT;
         case ExternalFrameSyncRole::SLAVE:
             return FSYNC_STM_CONFIG_SLAVE_MODE;
+        case ExternalFrameSyncRole::STANDALONE:
+            return FSYNC_STM_CONFIG_MASTER_MODE_WITH_INPUT;
         default:
             throw std::invalid_argument("Cannot convert role " + dai::toString(resolved) + " to register value!");
     }
