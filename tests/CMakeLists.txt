@@ -475,6 +475,10 @@ target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/includ
 target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
 target_compile_definitions(test_wrapper PRIVATE DEVICE_SEARCH_TIMEOUT_SECONDS=${DEPTHAI_TEST_DEVICE_SEARCH_TIMEOUT})
 
+add_executable(tcp_host_disconnect_test_child src/ondevice_tests/regression/tcp_host_disconnect_child.cpp)
+add_default_flags(tcp_host_disconnect_test_child LEAN)
+target_link_libraries(tcp_host_disconnect_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+
 add_executable(telemetry_test_child src/ondevice_tests/telemetry_test_child.cpp)
 add_default_flags(telemetry_test_child LEAN)
 target_link_libraries(telemetry_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
@@ -975,6 +979,14 @@ dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci noreplay
 
 dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
 dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# A killed PoE host must not leave queued system logs refreshing the watchdog.
+dai_add_test(tcp_host_disconnect_test src/ondevice_tests/regression/tcp_host_disconnect.cpp)
+target_include_directories(tcp_host_disconnect_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_compile_definitions(tcp_host_disconnect_test PRIVATE DEPTHAI_TCP_DISCONNECT_TEST_CHILD_PATH="$<TARGET_FILE:tcp_host_disconnect_test_child>")
+add_dependencies(tcp_host_disconnect_test tcp_host_disconnect_test_child)
+dai_set_test_labels(tcp_host_disconnect_test ondevice rvc2 poe ci noreplayci)
+set_tests_properties(tcp_host_disconnect_test PROPERTIES TIMEOUT 150)
 
 dai_add_test(regression_boot_test src/ondevice_tests/regression/boot.cpp)
 dai_set_test_labels(regression_boot_test ondevice rvc2 rvc4 usb ci noreplayci)
