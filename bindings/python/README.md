@@ -1,302 +1,63 @@
 # DepthAI Python Library
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![](https://img.shields.io/pypi/v/depthai.svg)](https://pypi.org/project/depthai/)
-[![Python Wheel CI](https://github.com/luxonis/depthai-python/actions/workflows/main.yml/badge.svg?branch=gen2_develop)](https://github.com/luxonis/depthai-python/actions/workflows/main.yml)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![PyPI](https://img.shields.io/pypi/v/depthai.svg)
+![Downloads](https://img.shields.io/pepy/dt/depthai)
 
-Python bindings for C++ depthai-core library
 
-## Documentation
+![Luxonis OAK camera](https://docs.luxonis.com/static/images/home-camera-animated.webp)
 
-Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/projects/api/en/latest/)
+Python bindings for the [DepthAI C++ SDK](https://github.com/luxonis/depthai-core),
+for building vision pipelines with Luxonis OAK cameras.
+
+This README describes **DepthAI v3**. For existing v2 applications, use
+`depthai<3` and the [v2 documentation](https://docs.luxonis.com/software/depthai/).
+See the [v2 to v3 porting guide](https://github.com/luxonis/depthai-core/blob/main/V2V3PortinGuide.md)
+when migrating.
 
 ## Installation
 
-Prebuilt wheels are available in [Luxonis repository](https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/)
-Make sure pip is upgraded
-```
-python3 -m pip install -U pip
-python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai
-```
-## Building from source
-
-### Dependencies
- - cmake >= 3.4
- - C++14 compiler (clang, gcc, msvc, ...)
- - Python3
-
-Along these, dependencies of depthai-core are also required
-See: [depthai-core dependencies](https://github.com/luxonis/depthai-core#dependencies)
-
-
-### Building
-
-The first time you build, the repository submodules need be initialized:
-```
-git submodule update --init --recursive
-
-# Tip: You can ask Git to do that automatically:
-git config submodule.recurse true
-```
-
-Later submodules also need to be updated.
-
-#### Local build with pip
-To build and install using pip:
-```
-cd dephai-core/bindings/python
-python3 -m pip install .
-```
-Add parameter `-v` to see the output of the building process.
-
-#### Wheel with pip
-To build a wheel, execute the following
-```
-cd depthai-core/bindings/python
-python3 -m pip wheel . -w wheelhouse --no-deps
-```
-
-#### Shared library
-> ℹ️ This is the recommended way when you are iterating as installing with pip is generally very slow for iteration.
-
-To build a shared library from source perform the following:
-```
-cd depthai-core
-cmake -H. -Bbuild -DDEPTHAI_BUILD_PYTHON=ON
-cmake --build build
-```
-> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
-> For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
-
-To specify custom Python executable to build for, use `cmake -H. -Bbuild -D PYTHON_EXECUTABLE=/full/path/to/python`.
-
-⚠️ **Important:** To run python code directly with the shared library, you need to set the `PYTHONPATH` environment variable to the directory containing the shared library.
-For example, on Linux:
-```
-export PYTHONPATH=$(pwd)/build/bindings/python
-# Confirm that the right shared library is loaded
-python3 -c "import depthai as dai; print(dai.__file__)"
-# It should print the path to the shared library, something like /path/to/depthai-core/build/bindings/python/depthai.cpython-38-x86_64-linux-gnu.so
-```
-> ℹ️ When using an IDE like VSCode, if you set the `PYTHONPATH` before opening the IDE, it will correctly resolve autocompletion without needing to do `pip install .`.
-
-#### Common issues
-
-* Many build fails due to missing dependencies. This also happens when submodules are missing or outdated (`git submodule update --recursive`).
-* If libraries and headers are not in standard places, or not on the search paths, CMake reports it cannot find what it needs (e.g. `libusb`). CMake can be hinted at where to look, for exmpale: `CMAKE_LIBRARY_PATH=/opt/local/lib CMAKE_INCLUDE_PATH=/opt/local/include pip install .`
-* Some distribution installers may not get the desired library. For example, an install on a RaspberryPi failed, missing `libusb`, as the default installation with APT led to v0.1.3 at the time, whereas the library here required v1.0.
-
-
-## Running tests
-
-### Checking new Python bindings without a build
-
-The Python workflow's precheck checks new public C++ declarations only on PR and
-PR-review events, before any requested wheel builds. It compares the PR base with
-the checkout.
-
-Run the same check locally from the repository root (including uncommitted files):
+Install the released package from PyPI in a Python 3.9 or newer environment:
 
 ```sh
-python -m pip install -r ci/requirements-binding-check.txt
-python ci/check_python_bindings.py --base "$(git merge-base origin/develop HEAD)"
-python -m unittest discover -s ci/tests -p 'test_python_bindings.py'
+python3 -m pip install --upgrade pip
+python3 -m pip install --upgrade depthai
 ```
 
-The check parses headers under `include/depthai` and binding sources listed in
-`bindings/python/CMakeLists.txt`. New public classes, enums, enum values, fields,
-constructors and functions in `dai` need a corresponding pybind11 registration.
-Private/protected members, anonymous namespaces, `detail`/`internal`/`impl` namespaces,
-and `internal`/`test` header directories are excluded. Existing omissions are not
-reported. Adding an overload or changing parameter types requires a change to
-that function's binding registration, even if its name is already bound.
-Each new overload needs a distinct registration: parameter types from
-`py::overload_cast`, `py::init`, and explicit function-pointer `static_cast`s are
-matched against the declaration. Disambiguating an old overload does not cover a
-new one. Unresolved explicit casts need an exception; wrappers with unknown
-signatures count once. Python aliases of the same callable do not count as
-additional overloads. An intentional shared dispatcher needs exact exceptions
-for the additional overloads it covers.
+Verify the installed version and discover connected devices:
 
-For an intentional C++-only API or a binding the checker cannot recognize, add the
-exact key from the diagnostic to `ci/python_binding_exceptions.json`, with a
-nonempty reason, for example:
-
-```json
-{
-  "dai::Example::nativeHandle()const": "C++ integration only; exposes a native handle."
-}
+```sh
+python3 -c "import depthai as dai; print(dai.__version__); print(dai.Device.getAllAvailableDevices())"
 ```
 
-Exceptions cover only that declaration, not its whole class or future overloads.
-Keys are literal, including `*` in pointer parameter types; wildcard matching is
-never performed. Keep exceptions narrow and review them alongside the API change.
 
-The exception list covers deprecated ColorCamera/MonoCamera APIs and properties,
-internal pipeline schemas and event aggregation, and CameraControl strobe fields
-and nested types pending RVC4 validation. Existing deprecated bindings remain
-available. New overloads still require a binding or a reviewed exact exception.
 
-`tests/api_binding_device_test.py` is retained as a TODO for validation on both
-RVC2 and RVC4 and HIL integration. It is excluded from the compiled pytest target
-and unconditionally skipped during direct pytest runs until that work is done.
+Run all camera streams of a connected OAK device. `cam_test` uses OpenCV,
+so install it first:
 
-This is a source-level guard, not proof of runtime coverage. It recognizes
-`py::class_`, `py::enum_`, `ADD_NODE*`, direct member bindings and common lambda
-wrappers that access the typed bound instance directly. Enum values are matched
-by their C++ target within the owning enum, including unqualified and
-namespace-qualified unscoped enumerators, regardless of their Python name.
-Signature matching is textual; type aliases and wrapper conversions may need
-exceptions. The check
-does not expand arbitrary macros, resolve template instantiations, check
-aliases/operators, verify callstack registration, or prove runtime overload
-coverage. Header access specifiers are tracked separately in each conditional
-branch; declarations public in any parsed branch are checked. Newly encountered
-syntax that produces parser errors fails the precheck. Build and runtime tests
-remain necessary.
-
-### Running the compiled tests
-
-To run the tests build the library with the following options
-```
-git submodule update --init --recursive
-cmake -H. -Bbuild -D DEPTHAI_PYTHON_ENABLE_TESTS=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON
-cmake --build build
+```sh
+python3 -m pip install opencv-python
+depthai cam_test
 ```
 
-Then navigate to `build` folder and run `ctest`
-```
-cd build
-ctest
-```
+## Next steps
 
-To test a specific example/test with a custom timeout (in seconds) use following:
-```
-TEST_TIMEOUT=0 ctest -R "01_rgb_preview" --verbose
-```
-If `TEST_TIMEOUT=0`, the test will run until stopped or it ends.
+- [DepthAI v3 documentation](https://docs.luxonis.com/software-v3/depthai/): guides, API reference and node descriptions
+- [Python examples](https://github.com/luxonis/depthai-core/tree/main/examples/python): short examples for each node and feature
+- [OAK examples](https://github.com/luxonis/oak-examples): complete applications that you can run and change
+- [Model Zoo](https://models.luxonis.com/): ready-to-use neural network models for OAK cameras
+- [depthai-nodes](https://github.com/luxonis/depthai-nodes): Python host nodes, such as parsers for Model Zoo models
 
-## Tested platforms
+## Need help?
 
-- Windows 10, Windows 11
-- Ubuntu 18.04, 20.04, 22.04;
-- Raspbian 10;
-- macOS 10.14.6, 10.15.4;
+Ask [Luxonis Chat](https://support.luxonis.com/) or the [forum](https://discuss.luxonis.com/),
+or open a [GitHub issue](https://github.com/luxonis/depthai-core/issues).
 
-### Building documentation
+## Luxonis MCP server
 
-- **Using [Docker](https://docs.docker.com/) (with [Docker Compose](https://docs.docker.com/compose/install/))**
+Connect your AI coding agent to the [Luxonis MCP server](https://mcp.luxonis.com) at
+`https://mcp.luxonis.com/mcp`. It gives the agent current Luxonis documentation,
+examples and model information. For setup steps, see the
+[Luxonis Agent Toolkit](https://docs.luxonis.com/software-v3/agent-tools/agent-skills/).
 
-     ```
-     cd docs
-     sudo docker-compose build
-     sudo docker-compose up
-     ```
-
-     > ℹ️ You can leave out the `sudo` if you have added your user to the `docker` group (or are using rootless docker).
-     Then open [http://localhost:8000](http://localhost:8000).
-
-     This docker container will watch changes in the `docs/source` directory and rebuild the docs automatically
-
-- **Linux**
-
-     First, please install the required [dependencies](#Dependencies)
-
-     Then run the following commands to build the docs website
-
-     ```
-     python3 -m pip install -U pip
-     python3 -m pip install -r docs/requirements.txt
-     cmake -H. -Bbuild -D DEPTHAI_BUILD_DOCS=ON -D DEPTHAI_PYTHON_BUILD_DOCS=ON
-     cmake --build build --target sphinx
-     python3 -m http.server --bind 0.0.0.0 8000 --directory build/docs/sphinx
-     ```
-
-     Then open [http://localhost:8000](http://localhost:8000).
-
-     This will build documentation based on current sources, so if some new changes will be made, run this command
-     in a new terminal window to update the website source
-
-     ```
-     cmake --build build --target sphinx
-     ```
-
-     Then refresh your page - it should load the updated website that was just built
-
-## Troubleshooting
-
-### Relocation link error
-
-Build failure on Ubuntu 18.04 ("relocation ..." link error) with gcc 7.4.0 (default) - [**issue #3**](https://github.com/luxonis/depthai-api/issues/3)
-   - the solution was to upgrade gcc to version 8:
-
-         sudo apt install g++-8
-         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 70
-         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 70
-### Hunter
-Hunter is a CMake-only dependency manager for C/C++ projects.
-
-If you are stuck with error message which mentions external libraries (subdirectory of `.hunter`) like the following:
-```
-/usr/bin/ld: /home/[user]/.hunter/_Base/062a19a/ccfed35/a84a713/Install/lib/liblzma.a(stream_flags_decoder.c.o): warning: relocation against `lzma_footer_magic' in read-only section `.text'
-```
-
-Try erasing the **Hunter** **cache** folder.
-
-Linux/MacOS:
-```
-rm -r ~/.hunter
-```
-Windows:
-```
-del C:/.hunter
-```
-or
-```
-del C:/[user]/.hunter
-```
-
-### LTO - link time optimization
-
-If following message appears:
-```
-lto1: internal compiler error: in add_symbol_to_partition_1, at lto/lto-partition.c:152
-Please submit a full bug report,
-with preprocessed source if appropriate.
-See <file:///usr/share/doc/gcc-10/README.Bugs> for instructions.
-lto-wrapper: fatal error: /usr/bin/c++ returned 1 exit status
-compilation terminated.
-/usr/bin/ld: error: lto-wrapper failed
-collect2: error: ld returned 1 exit status
-make[2]: *** [CMakeFiles/depthai.dir/build.make:227: depthai.cpython-38-x86_64-linux-gnu.so] Error 1
-make[1]: *** [CMakeFiles/Makefile2:98: CMakeFiles/depthai.dir/all] Error 2
-make: *** [Makefile:130: all] Error 2
-```
-
-One fix is to update linker: (In case you are on Ubuntu 20.04: `/usr/bin/ld --version`: 2.30)
-```
-# Add to the end of /etc/apt/sources.list:
-
-echo "deb http://ro.archive.ubuntu.com/ubuntu groovy main" >> /etc/apt/sources.list
-
-# Replace ro with your countries local cache server (check the content of the file to find out which is)
-# Not mandatory, but faster
-
-sudo apt update
-sudo apt install binutils
-
-# Should upgrade to 2.35.1
-# Check version:
-/usr/bin/ld --version
-# Output should be: GNU ld (GNU Binutils for Ubuntu) 2.35.1
-# Revert /etc/apt/sources.list to previous state (comment out line) to prevent updating other packages.
-sudo apt update
-```
-
-Another option is to use **clang** compiler:
-```
-sudo apt install clang-10
-mkdir build && cd build
-CC=clang-10 CXX=clang++-10 cmake ..
-cmake --build . --parallel
-```
+**Happy building!**

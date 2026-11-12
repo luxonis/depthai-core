@@ -92,9 +92,15 @@ def test_p1_public_api(_case):
 
 
 @pytest.mark.parametrize("_case", ["P-2[control]"])
-def test_p2_beta_node_removed(_case):
-    if hasattr(dai, "beta"):
-        assert not hasattr(dai.beta.node, "ImgDetectionsFilter")
+def test_p2_beta_names_are_deprecated_aliases(_case):
+    if not hasattr(dai, "beta"):
+        pytest.skip("depthai is built without the beta API")
+    with pytest.warns(DeprecationWarning, match=r"use depthai\.node\.ImgDetectionsFilter"):
+        assert dai.beta.node.ImgDetectionsFilter is dai.node.ImgDetectionsFilter
+    with pytest.warns(DeprecationWarning, match=r"use depthai\.ImgDetectionsFilterConfig"):
+        assert dai.beta.ImgDetectionsFilterConfig is dai.ImgDetectionsFilterConfig
+    with pytest.warns(DeprecationWarning, match=r"use depthai\.ImgDetectionsFilterProperties"):
+        assert dai.beta.ImgDetectionsFilterProperties is dai.ImgDetectionsFilterProperties
 
 
 @pytest.mark.parametrize("_case", ["P-3[CF-1]"])

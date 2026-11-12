@@ -33,7 +33,7 @@ namespace node {
  * On RVC4 this prefers NeuralDepth when available; on other platforms it uses ToF when a ToF sensor is
  * connected, otherwise StereoDepth.
  *
- * Use build() to pin algorithm, FPS, or resolution before the first depth() / confidence() access.
+ * Use build() to pin algorithm, FPS, or resolution before the first output access or hasRectifiedOutputs() call.
  * Use setAlignTo() to align depth to another camera output.
  */
 class Depth : public DeviceNodeGroup {
@@ -88,7 +88,7 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Set stereo camera FPS for stereo-based backends.
-     * Must be called before first depth() or confidence() access.
+     * Must be called before first output access or hasRectifiedOutputs() call.
      * @param fps Requested FPS; uses Camera default if not set
      */
     std::shared_ptr<Depth> build(std::optional<float> fps = std::nullopt);
@@ -132,8 +132,35 @@ class Depth : public DeviceNodeGroup {
     Node::Output& confidence();
 
     /**
+     * Resolve AUTO and report whether the selected backend exposes a rectified stereo pair.
+     * Returns false for TOF, without changing backend selection or creating stereo cameras.
+     * Like depth(), this wires the graph and locks build()/setAlgorithm()/setConfig()/setAlignTo().
+     * Requires the node to be attached to a pipeline with a device.
+     */
+    bool hasRectifiedOutputs();
+
+    /**
+     * Left rectified image used by the selected stereo-based backend.
+     * Resolves AUTO and wires the graph on first access. Throws for TOF; use
+     * hasRectifiedOutputs() when stereo images are optional. To require them,
+     * select a stereo-based algorithm explicitly before accessing any output.
+     *
+     * These are the backend's rectified inputs, not aligned to setAlignTo().
+     * Their size/format and timing follow the backend; depth postprocessing may
+     * change depth resolution. For TOF_STEREO_FUSION these belong to the neural
+     * stereo branch, while fused depth is in the ToF sensor's frame.
+     */
+    Node::Output& rectifiedLeft();
+
+    /**
+     * Right rectified image used by the selected stereo-based backend.
+     * Has the same availability and geometry contract as rectifiedLeft().
+     */
+    Node::Output& rectifiedRight();
+
+    /**
      * Align depth output to another image source.
-     * Must be called before first depth() or confidence() access.
+     * Must be called before first output access or hasRectifiedOutputs() call.
      * Only depth() is aligned; confidence() stays in the backend frame.
      * @param alignTo Output to align depth to
      */
@@ -189,7 +216,7 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Get the algorithm actually wired (AUTO resolved).
-     * Valid after first depth() access.
+     * Valid after first output access or hasRectifiedOutputs() call.
      */
     [[nodiscard]] Algorithm getResolvedAlgorithm() const {
         return resolved_.algorithm;
@@ -249,6 +276,8 @@ class Depth : public DeviceNodeGroup {
 
     Node::Output* depthOut_{nullptr};
     Node::Output* confidenceOut_{nullptr};
+    Node::Output* rectifiedLeftOut_{nullptr};
+    Node::Output* rectifiedRightOut_{nullptr};
 
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;

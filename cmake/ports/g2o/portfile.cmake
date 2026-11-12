@@ -11,6 +11,19 @@ vcpkg_from_github(
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" BUILD_LGPL_SHARED_LIBS)
 file(REMOVE "${SOURCE_PATH}/cmake_modules/FindBLAS.cmake")
 
+# Without /proc/cpuinfo (macOS), g2o enables every SSE flag. Newer Apple clang
+# rejects these flags on arm64, so turn them off for non-x86 targets.
+set(G2O_SSE_OPTIONS "")
+if(NOT VCPKG_TARGET_ARCHITECTURE MATCHES "^(x86|x64)$")
+    set(G2O_SSE_OPTIONS
+        -DDISABLE_SSE2=ON
+        -DDISABLE_SSE3=ON
+        -DDISABLE_SSE4_1=ON
+        -DDISABLE_SSE4_2=ON
+        -DDISABLE_SSE4_A=ON
+    )
+endif()
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
@@ -19,6 +32,7 @@ vcpkg_cmake_configure(
         -DG2O_BUILD_APPS=OFF
 		-DG2O_USE_OPENGL=OFF
         -DG2O_USE_CSPARSE=OFF
+        ${G2O_SSE_OPTIONS}
 )
 
 vcpkg_cmake_install()

@@ -1345,8 +1345,8 @@ pybind11
 ~~~~~~~~
 
 License: BSD-3-Clause
-Version: luxonis-smart-holder
-Source: https://github.com/luxonis/pybind11/tree/f760e2b984b66be2cfa202c93da9d341a557fb5d
+Version: 3.2.0-dev-218a429500#1
+Source: https://github.com/pybind/pybind11/tree/218a429500971f5030eda1855c870637a62aabdb
 
 Copyright (c) 2016 Wenzel Jakob <wenzel.jakob@epfl.ch>, All rights reserved.
 

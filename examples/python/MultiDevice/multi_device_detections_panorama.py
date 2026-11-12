@@ -52,7 +52,11 @@ with dai.Pipeline(createImplicitDevice=False) as pipeline:
         device = pipeline.addDevice(dai.DeviceInfo(identifier))
         camera = pipeline.create(dai.node.Camera, device).build(dai.CameraBoardSocket.CAM_A, sensorFps=FPS)
         model = dai.NNModelDescription(args.model, platform=device.getPlatformAsString())
-        network = pipeline.create(dai.node.DetectionNetwork, device).build(camera, model, fps=FPS)
+        # Detect on undistorted frames: corners mapped from a distorted input do not stay a rectangle.
+        networkInput = dai.ImgFrameCapability()
+        networkInput.fps.fixed(FPS)
+        networkInput.enableUndistortion = True
+        network = pipeline.create(dai.node.DetectionNetwork, device).build(camera, model, networkInput)
         key = f"cam{index}"
         network.out.link(detectionSync.inputs[key])
         # MessageDemux accepts Buffer outputs; declare the concrete type for the typed filter inputs.

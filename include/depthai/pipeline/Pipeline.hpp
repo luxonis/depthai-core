@@ -44,12 +44,17 @@ enum class PipelineAutoCalibrationMode : int {
     CONTINUOUS = 2,
 };
 
+namespace utility {
+class Telemetry;
+}  // namespace utility
+
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
     friend class Node::Input;
     friend class DeviceBase;
     friend class utility::PipelineImplHelper;
+    friend class utility::Telemetry;  // reads telemetryPipelineId and defaultDevice
 
    public:
     PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
