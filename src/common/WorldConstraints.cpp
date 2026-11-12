@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -61,12 +62,27 @@ bool isKnownSocket(CameraBoardSocket socket) {
     return socket >= CameraBoardSocket::CAM_A && socket <= CameraBoardSocket::CAM_J;
 }
 
+/// An integer that fits int32_t. Throws std::invalid_argument for anything else, including integers that would be
+/// narrowed (nlohmann::json does not range-check get<T>()).
+int32_t int32FromJson(const nlohmann::json& value, const std::string& what) {
+    if(!value.is_number_integer()) {
+        throw std::invalid_argument("WorldConstraints: " + what + " must be an integer, got " + value.dump());
+    }
+    const auto wide = value.get<int64_t>();
+    if(value.is_number_unsigned() ? value.get<uint64_t>() > static_cast<uint64_t>(std::numeric_limits<int32_t>::max())
+                                  : (wide < std::numeric_limits<int32_t>::min() || wide > std::numeric_limits<int32_t>::max())) {
+        throw std::invalid_argument("WorldConstraints: " + what + " is out of range: " + value.dump());
+    }
+    return static_cast<int32_t>(wide);
+}
+
 /// A socket given as its number, its name ("CAM_B") or the letter alone ("b"), in any case. Throws std::invalid_argument otherwise.
 CameraBoardSocket socketFromJson(const nlohmann::json& value) {
     if(value.is_number_integer()) {
-        const auto socket = static_cast<CameraBoardSocket>(value.get<int32_t>());
+        const auto number = int32FromJson(value, "socket");
+        const auto socket = static_cast<CameraBoardSocket>(number);
         if(!isKnownSocket(socket)) {
-            throw std::invalid_argument("WorldConstraints: unknown socket " + std::to_string(value.get<int32_t>()));
+            throw std::invalid_argument("WorldConstraints: unknown socket " + std::to_string(number));
         }
         return socket;
     }
@@ -125,10 +141,10 @@ float lengthUnitToMeters(const nlohmann::json& json) {
 
 /// A marker id, which must be a non-negative integer. Throws std::invalid_argument otherwise.
 int32_t markerIdFromJson(const nlohmann::json& value) {
-    if(!value.is_number_integer() || value.get<int64_t>() < 0) {
+    if(!value.is_number_integer() || (!value.is_number_unsigned() && value.get<int64_t>() < 0)) {
         throw std::invalid_argument("WorldConstraints: marker ids must be non-negative integers, got " + value.dump());
     }
-    return value.get<int32_t>();
+    return int32FromJson(value, "marker id");
 }
 
 /// An array of marker ids, each checked by markerIdFromJson(). Throws std::invalid_argument for anything but an array.
@@ -208,15 +224,15 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
     WorldConstraints constraints;
     if(json.contains("markerType")) {
         const auto& type = json.at("markerType");
-        constraints.markerType = type.is_string() ? markerTypeFromString(type.get<std::string>()) : static_cast<MarkerType>(type.get<int32_t>());
+        constraints.markerType = type.is_string() ? markerTypeFromString(type.get<std::string>()) : static_cast<MarkerType>(int32FromJson(type, "markerType"));
     }
     for(const char* key : {"arucoDictionary", "dictionary"}) {
         if(!json.contains(key)) {
             continue;
         }
         const auto& dictionary = json.at(key);
-        constraints.arucoDictionary =
-            dictionary.is_string() ? arucoDictionaryFromString(dictionary.get<std::string>()) : static_cast<ArucoDictionary>(dictionary.get<int32_t>());
+        constraints.arucoDictionary = dictionary.is_string() ? arucoDictionaryFromString(dictionary.get<std::string>())
+                                                             : static_cast<ArucoDictionary>(int32FromJson(dictionary, "arucoDictionary"));
         break;
     }
     const float toMeters = lengthUnitToMeters(json);
@@ -225,8 +241,9 @@ WorldConstraints WorldConstraints::parseJson(const nlohmann::json& json) {
     }
     if(json.contains("maxObservationSets")) {
         const auto& sets = json.at("maxObservationSets");
-        if(!sets.is_number_integer() || sets.get<int64_t>() < 1) {
-            throw std::invalid_argument("WorldConstraints: maxObservationSets must be a positive integer, got " + sets.dump());
+        if(!sets.is_number_integer() || (!sets.is_number_unsigned() && sets.get<int64_t>() < 1)
+           || sets.get<uint64_t>() > std::numeric_limits<uint32_t>::max()) {
+            throw std::invalid_argument("WorldConstraints: maxObservationSets must be a positive integer that fits 32 bits, got " + sets.dump());
         }
         constraints.maxObservationSets = sets.get<uint32_t>();
     }
@@ -402,6 +419,14 @@ void WorldConstraints::validate() const {
     }
     if(toString(arucoDictionary) == "UNKNOWN") {
         throw std::invalid_argument("WorldConstraints: unknown arucoDictionary " + std::to_string(static_cast<int32_t>(arucoDictionary)));
+    }
+    if(markerType == MarkerType::LUXONIS) {
+        for(const auto id : referencedMarkerIds()) {
+            if(id > kLuxonisMarkerIdMax) {
+                throw std::invalid_argument("WorldConstraints: Luxonis Marker ids are 0.." + std::to_string(kLuxonisMarkerIdMax) + ", got "
+                                            + std::to_string(id));
+            }
+        }
     }
 }
 

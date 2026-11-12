@@ -294,6 +294,16 @@ std::optional<WorldConstraints> DynamicCalibration::getWorldConstraints() const 
     return properties.worldConstraints;
 }
 
+void DynamicCalibration::warnMetricReferenceMissing(const std::string& reason) {
+    // Once at warning level per node instance, then at debug: the calibration keeps running every load period.
+    if(!metricReferenceWarningIssued) {
+        logger->warn("Marker constraints are configured but cannot be applied yet ({}), calibrating without a metric reference", reason);
+        metricReferenceWarningIssued = true;
+    } else {
+        logger->debug("Marker constraints not applied: {}", reason);
+    }
+}
+
 const DynamicCalibration::ConnectedSensor* DynamicCalibration::findConnectedSensor(CameraBoardSocket socket) const {
     const auto it = std::find_if(connectedSensors.begin(), connectedSensors.end(), [socket](const ConnectedSensor& sensor) { return sensor.socket == socket; });
     return it != connectedSensors.end() ? &(*it) : nullptr;
@@ -845,8 +855,13 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                      summary.pointDistances,
                      summary.sensorDistances,
                      summary.markerSizes);
+        if(summary.pointDistances + summary.sensorDistances + summary.markerSizes == 0) {
+            // Points without a measurement between them carry no metric information; say so instead of calibrating silently.
+            worldConstraints = dcl::WorldConstraints();
+            warnMetricReferenceMissing("the markers seen by two cameras have no configured distance or size between them");
+        }
     } else if(properties.worldConstraints) {
-        logger->debug("Marker constraints configured but no marker was seen by two cameras yet, calibrating without a metric reference");
+        warnMetricReferenceMissing("no configured marker has been seen by two cameras yet");
     }
 
     auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(
@@ -1015,6 +1030,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
         images.emplace_back(sensor.sensorDcl, DclUtils::cvMatToImageData(cvFrame));
     }
 
+    // Collected now, kept only when DCL accepts the image set below.
+    std::optional<MarkerObservationSet> pendingObservations;
     if(properties.worldConstraints) {
         MarkerObservationSet observations;
         for(size_t idx = 0; idx < images.size(); ++idx) {
@@ -1054,10 +1071,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
         }
         logger->trace("Markers seen by at least two cameras in this image set: {}", usableMarkers);
         if(usableMarkers > 0) {
-            markerObservations.push_back(std::move(observations));
-            while(markerObservations.size() > properties.worldConstraints->maxObservationSets) {
-                markerObservations.pop_front();
-            }
+            pendingObservations = std::move(observations);
         }
     }
 
@@ -1065,6 +1079,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     if(!loadResult.passed()) {
         logger->trace("Failed to load synced image set: {}", loadResult.errorMessage());
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
+    }
+    if(pendingObservations) {
+        markerObservations.push_back(std::move(*pendingObservations));
+        while(markerObservations.size() > properties.worldConstraints->maxObservationSets) {
+            markerObservations.pop_front();
+        }
     }
 
     return DynamicCalibration::ErrorCode::OK;

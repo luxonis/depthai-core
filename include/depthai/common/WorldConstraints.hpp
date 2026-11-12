@@ -51,8 +51,10 @@ ArucoDictionary arucoDictionaryFromString(const std::string& name);
  */
 enum class MarkerType : int32_t {
     ARUCO = 0,    ///< ArUco / AprilTag markers of one dictionary; the reference point is the marker center.
-    LUXONIS = 1,  ///< Luxonis markers, IDs 0-5; the reference point is the marker center.
+    LUXONIS = 1,  ///< Luxonis markers, IDs 0..kLuxonisMarkerIdMax; the reference point is the marker center.
 };
+/// Largest id a Luxonis Marker can carry.
+constexpr int32_t kLuxonisMarkerIdMax = 5;
 /// Name of the enumerator, "ARUCO" or "LUXONIS"; "UNKNOWN" for a value outside the enumeration.
 std::string toString(MarkerType type);
 /// The marker type named like the enumerator, matched regardless of case. Throws std::invalid_argument otherwise.
@@ -141,7 +143,8 @@ struct WorldConstraints {
     std::vector<CameraBoardSocket> referencedSockets() const;
     /// Throws std::invalid_argument when a distance or size is not positive, a distance refers to the same marker
     /// twice, a marker has two sizes, an entry names a marker outside markerIds (when markerIds is given) or the
-    /// AUTO socket, maxObservationSets is 0, or markerType / arucoDictionary is not one of the enumerators.
+    /// AUTO socket, maxObservationSets is 0, markerType / arucoDictionary is not one of the enumerators, or a
+    /// LUXONIS configuration refers to a marker id above kLuxonisMarkerIdMax.
     void validate() const;
 
     DEPTHAI_SERIALIZE(WorldConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, markerSizes, maxObservationSets);

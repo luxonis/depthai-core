@@ -134,6 +134,31 @@ TEST_CASE("WorldConstraints rejects malformed input", "[WorldConstraints]") {
                       std::invalid_argument);
     REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": 2.5, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
                       std::invalid_argument);
+    // Integers that do not fit the destination type are rejected instead of being narrowed (4294967296 would become 0).
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerDistances": [{"markers": [4294967296, 2], "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markers": [2147483648], "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"socketDistances": [{"marker": 1, "socket": 4294967296, "distance": 1}]})"), std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": 4294967296, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"arucoDictionary": 4294967296, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"maxObservationSets": 4294967296, "markerDistances": [{"markers": [1, 2], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markers": [0, 2147483647], "markerDistances": [{"markers": [2147483647, 0], "distance": 1}]})").markerIds[1]
+            == 2147483647);
+    // Luxonis Markers only carry ids 0..kLuxonisMarkerIdMax.
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markerDistances": [{"markers": [6, 7], "distance": 1}]})"),
+                      std::invalid_argument);
+    REQUIRE_THROWS_AS(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markers": [0, 9]})"), std::invalid_argument);
+    REQUIRE(WorldConstraints::fromJsonString(R"({"markerType": "luxonis", "markerDistances": [{"markers": [0, 5], "distance": 1}]})").markerType
+            == dai::MarkerType::LUXONIS);
+    {
+        dai::WorldConstraints luxonisSizes;
+        luxonisSizes.markerType = dai::MarkerType::LUXONIS;
+        luxonisSizes.markerSizes = {{6, 0.1f}};
+        REQUIRE_THROWS_AS(luxonisSizes.validate(), std::invalid_argument);
+    }
     REQUIRE(WorldConstraints::fromJsonString(R"({"maxObservationSets": 3, "arucoDictionary": 4, "markerDistances": [{"markers": [1, 2], "distance": 1}]})")
                 .maxObservationSets
             == 3);

@@ -262,6 +262,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool markerDetectionWarningIssued = false;
     // Configured markers already reported as too small to use
     std::set<int32_t> markerSizeWarningIssued;
+    // A calibration without any applicable marker constraint has been reported
+    bool metricReferenceWarningIssued = false;
+    /// Reports a calibration that runs without its configured metric reference: once as a warning, then at debug level.
+    void warnMetricReferenceMissing(const std::string& reason);
 };
 
 }  // namespace node
