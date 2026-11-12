@@ -67,3 +67,9 @@ The same five cameras projected onto the pavement; no camera sees the ground dir
 The host Sync node matches host-clock timestamps within two frame periods. This is software synchronization;
 use hardware synchronization if scene motion requires simultaneous exposures. Both examples stop if a device
 is permanently lost. Press `q` in the preview window to exit.
+
+## Mixed-platform trigger capture
+
+[`mixed_platform_capture/`](mixed_platform_capture/) puts an OAK4 (RVC4) and RVC2 cameras in one pipeline.
+The OAK4 detects a fist and triggers one capture on each RVC2 camera. It runs on the host or as a standalone
+app on the OAK4 (`oakapp.toml`). See its [README](mixed_platform_capture/README.md).
