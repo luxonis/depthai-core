@@ -26,8 +26,13 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    auto backend = m.attr("ImageManipProperties").attr("Backend");
+    imageAlignProperties.attr("Backend") = backend;
+    imageAlign.attr("Backend") = backend;
+
     // Properties
-    imageAlignProperties.def_readwrite("initialConfig", &ImageAlignProperties::initialConfig, DOC(dai, ImageAlignProperties, initialConfig))
+    imageAlignProperties.def_readwrite("backend", &ImageAlignProperties::backend, DOC(dai, ImageAlignProperties, backend))
+        .def_readwrite("initialConfig", &ImageAlignProperties::initialConfig, DOC(dai, ImageAlignProperties, initialConfig))
         .def_readwrite("numFramesPool", &ImageAlignProperties::numFramesPool, DOC(dai, ImageAlignProperties, numFramesPool))
         .def_readwrite("numShaves", &ImageAlignProperties::numShaves, DOC(dai, ImageAlignProperties, numShaves))
         .def_readwrite("warpHwIds", &ImageAlignProperties::warpHwIds, DOC(dai, ImageAlignProperties, warpHwIds))
@@ -49,6 +54,8 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
         .def("setInterpolation", &ImageAlign::setInterpolation, py::arg("interp"), DOC(dai, node, ImageAlign, setInterpolation))
         .def("setNumShaves", &ImageAlign::setNumShaves, py::arg("numShaves"), DOC(dai, node, ImageAlign, setNumShaves))
         .def("setNumFramesPool", &ImageAlign::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, ImageAlign, setNumFramesPool))
+        .def("setBackend", &ImageAlign::setBackend, py::arg("backend"), py::return_value_policy::reference_internal, DOC(dai, node, ImageAlign, setBackend))
+        .def("getBackend", &ImageAlign::getBackend, DOC(dai, node, ImageAlign, getBackend))
         .def("setRunOnHost", &ImageAlign::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ImageAlign, setRunOnHost))
         .def("runOnHost", &ImageAlign::runOnHost, DOC(dai, node, ImageAlign, runOnHost));
 

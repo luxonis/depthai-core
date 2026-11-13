@@ -13,6 +13,7 @@
 
 #include "common/ImgTransformations.hpp"
 #include "depthai/device/Device.hpp"
+#include "depthai/utility/ImageAlignDepth.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/AprilTags.hpp"
 #include "pipeline/datatype/DatatypeEnum.hpp"
@@ -143,6 +144,10 @@ ImgTransformation extractTransformationFromBuffer(const std::shared_ptr<Buffer>&
 }
 
 struct ImgFrameRunState {
+    bool inputIsDepth = false;
+    std::array<float, 65536> depthShiftLut{};
+    std::vector<float> rectifiedRayZ, alignedDepthScales;
+    float alignedDepthOffset = 0.0f;
     bool degenerateStereoTransform = false;
     bool rotationOnlyDegenerateTransform = false;
     std::array<std::array<float, 3>, 3> inputIntrinsics = {};
@@ -242,65 +247,39 @@ void updateShiftFactor(ImgFrameRunState& state, uint16_t staticDepthPlane) {
     state.shiftFactor = nextShiftFactor;
 }
 
-void shiftDepthImg(const ImgFrame& input,
-                   ImgFrame& output,
-                   const std::array<std::array<float, 3>, 3>& inputIntrinsics,
-                   const std::array<std::array<float, 4>, 4>& inputToAlignExtrinsics) {
-    int depthLut[65536];
-
+void shiftDepthImg(ImgFrame& input, ImgFrame& output, const ImgFrameRunState& state) {
     const int width = input.getWidth();
     const int height = input.getHeight();
-
-    const uint16_t* plane = reinterpret_cast<const uint16_t*>(input.getData().data());
-    uint16_t* alignedPlane = reinterpret_cast<uint16_t*>(output.getData().data());
-
-    const size_t lineLength = static_cast<size_t>(width) * sizeof(uint16_t);
-
-    const float shiftX = inputToAlignExtrinsics[0][3];
-    const float inputFx = inputIntrinsics[0][0];
-    const float shiftXPreComputed = shiftX * inputFx;
-
-    depthLut[0] = 0;
-    for(int i = 1; i < 65536; i++) {
-        depthLut[i] = static_cast<int>(std::round(shiftXPreComputed / static_cast<float>(i)));
-    }
-
-    for(int i = 0; i < height; i++) {
-        const uint16_t* currentLine = plane + static_cast<size_t>(width) * i;
-        uint16_t* alignedLine = alignedPlane + static_cast<size_t>(width) * i;
-
-        memset(alignedLine, 0, lineLength);
-
-        if(shiftX > 0) {
-            for(int j = width - 1; j >= 0; j--) {
-                uint16_t depth = currentLine[j];
-                if(depth == 0) continue;
-                if(depthLut[depth] == 0) {
-                    alignedLine[j] = depth;
-                    continue;
+    const auto source = input.getFrame();
+    auto destination = output.getFrame();
+    const bool shiftPositive = state.inputToAlignExtrinsics[0][3] > 0;
+    // Rows are independent; keep small frames on the calling thread.
+    cv::parallel_for_(
+        cv::Range(0, height),
+        [&](const cv::Range& rows) {
+            for(int y = rows.start; y < rows.end; ++y) {
+                const auto* row = source.ptr<uint16_t>(y);
+                auto* aligned = destination.ptr<uint16_t>(y);
+                std::fill_n(aligned, width, 0);
+                for(int x = shiftPositive ? width - 1 : 0; x >= 0 && x < width; x += shiftPositive ? -1 : 1) {
+                    const uint16_t depth = row[x];
+                    if(depth == 0) continue;
+                    const float rayZ = state.rectifiedRayZ[static_cast<size_t>(y) * width + x];
+                    if(rayZ == 0.0f) continue;
+                    const float projectedX = x + state.depthShiftLut[depth] * rayZ;
+                    if(!(projectedX > -1.5f && projectedX < width + 0.5f)) continue;
+                    const int u = projectedX >= 0.5f ? static_cast<int>(projectedX + 0.5f) : (projectedX <= -0.5f ? -1 : 0);
+                    if(u == x) {
+                        aligned[x] = depth;
+                        continue;
+                    }
+                    for(const int column : {u, u + (shiftPositive ? 1 : -1)}) {
+                        if(column >= 0 && column < width) aligned[column] = depth;
+                    }
                 }
-
-                int shifted = j + depthLut[depth];
-
-                if(shifted >= 0 && shifted < width) alignedLine[shifted] = depth;
-                if(shifted + 1 >= 0 && shifted + 1 < width) alignedLine[shifted + 1] = depth;
             }
-        } else {
-            for(int j = 0; j < width; j++) {
-                uint16_t depth = currentLine[j];
-                if(depth == 0) continue;
-                if(depthLut[depth] == 0) {
-                    alignedLine[j] = depth;
-                    continue;
-                }
-
-                int shifted = j + depthLut[depth];
-
-                if(shifted >= 0 && shifted < width) alignedLine[shifted] = depth;
-                if(shifted - 1 >= 0 && shifted - 1 < width) alignedLine[shifted - 1] = depth;
-            }
-        }
-    }
+        },
+        std::max(1.0, static_cast<double>(width) * height / 65536.0));
 }
 
 void remapNv12(const cv::Mat& inputNv12, cv::Mat& outputNv12, const cv::Mat& mapX, const cv::Mat& mapY, int interpolation, const cv::Scalar& bgColor) {
@@ -444,23 +423,29 @@ std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame& inputImg,
     remapFrame(inputImg, *rectified, state.mapX1, state.mapY1);
 
     auto warp2Input = rectified;
-    if(inputFrameType == ImgFrame::Type::RAW16 && state.staticDepthPlane == 0 && !state.degenerateStereoTransform) {
+    if(state.inputIsDepth && !isSegmentationMask && state.staticDepthPlane == 0 && !state.degenerateStereoTransform) {
         auto shifted = makeRemapTarget(inputImg, rectifiedWidth, rectifiedHeight, frameSize);
-        shiftDepthImg(*rectified, *shifted, state.inputIntrinsics, state.inputToAlignExtrinsics);
+        shiftDepthImg(*rectified, *shifted, state);
         warp2Input = shifted;
     }
 
     // warp2: rectify into the align camera frame
     auto alignedImg = makeRemapTarget(inputImg, state.alignWidth, state.alignHeight, outFrameSize);
     remapFrame(*warp2Input, *alignedImg, state.mapX2, state.mapY2);
+    if(state.inputIsDepth && !isSegmentationMask) {
+        auto frame = alignedImg->getFrame();
+        impl::imageAlignConvertDepth(frame.data, frame.cols, frame.rows, frame.step, state.alignedDepthScales.data(), state.alignedDepthOffset);
+    }
 
     return alignedImg;
 }
 
 ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform,
                                               const ImgTransformation& alignToTransform,
-                                              spdlog::async_logger& logger) {
+                                              spdlog::async_logger& logger,
+                                              bool inputIsDepth) {
     ImgFrameRunState state;
+    state.inputIsDepth = inputIsDepth;
     try {
         state.inputIntrinsics = inputTransform.getIntrinsicMatrix();
         std::array<std::array<float, 3>, 3> alignSourceIntrinsics = alignToTransform.getIntrinsicMatrix();
@@ -547,6 +532,24 @@ ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTran
         targetCamMatrix.at<float>(0, 2) -= bounds.x;
         targetCamMatrix.at<float>(1, 2) -= bounds.y;
         cv::initUndistortRectifyMap(inputIntrinsicsMat, inputDistortion, rectificationR1, targetCamMatrix, meshSize, CV_32FC1, state.mapX1, state.mapY1);
+
+        if(inputIsDepth) {
+            cv::Mat sourceZFromRectifiedPixel = rectificationR1.t() * targetCamMatrix.inv();
+            cv::Mat sourceZFromAlignedPixel = rotation.t() * alignIntrinsicsMat.inv();
+            cv::Mat sourceTranslation = rotation.t() * translationMat.t();
+            state.alignedDepthOffset = sourceTranslation.at<float>(2);
+            state.rectifiedRayZ = impl::imageAlignDepthScales(
+                meshSize.width,
+                meshSize.height,
+                {sourceZFromRectifiedPixel.at<float>(2, 0), sourceZFromRectifiedPixel.at<float>(2, 1), sourceZFromRectifiedPixel.at<float>(2, 2)},
+                false);
+            state.alignedDepthScales = impl::imageAlignDepthScales(
+                alignWidth,
+                alignHeight,
+                {sourceZFromAlignedPixel.at<float>(2, 0), sourceZFromAlignedPixel.at<float>(2, 1), sourceZFromAlignedPixel.at<float>(2, 2)});
+            const float shift = state.inputToAlignExtrinsics[0][3] * state.inputIntrinsics[0][0];
+            for(size_t depth = 1; depth < state.depthShiftLut.size(); ++depth) state.depthShiftLut[depth] = shift / static_cast<float>(depth);
+        }
 
         meshSize = cv::Size(alignWidth, alignHeight);
 
@@ -719,11 +722,12 @@ void Align::run() {
             !initialized || !alignToTransform.isEqualTransformation(newAlignToTransform) || !inputTransform.isEqualTransformation(newInputTransform);
 
         if(isFrameLikeDatatype(inputDatatype)) {
-            if(!runStateValid || transformChanged) {
+            const bool inputIsDepth = inputDatatype == DatatypeEnum::ImgFrame && castInput<ImgFrame>(inputMsg)->getType() == ImgFrame::Type::RAW16;
+            if(!runStateValid || transformChanged || runState.inputIsDepth != inputIsDepth) {
                 if(runStateValid) {
                     logger->info("Input or alignTo transformation changed, updating rectification maps.");
                 }
-                runState = prepareRectificationMatrices(newInputTransform, newAlignToTransform, *logger);
+                runState = prepareRectificationMatrices(newInputTransform, newAlignToTransform, *logger, inputIsDepth);
                 runStateValid = true;
                 warnedAboutDistortion = false;
             }
