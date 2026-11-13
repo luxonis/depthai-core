@@ -1132,6 +1132,14 @@ dai_add_test(camera_sensor_geometry_test src/ondevice_tests/pipeline/node/camera
 dai_set_test_labels(camera_sensor_geometry_test ondevice rvc2_all rvc4 ci noreplayci)
 set_property(TEST camera_sensor_geometry_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
+# Extended sensor coverage is a nightly opt-in, sharing the same executable.
+add_test(NAME camera_sensor_geometry_extended_test COMMAND camera_sensor_geometry_test)
+dai_set_test_labels(camera_sensor_geometry_extended_test ondevice rvc2_all rvc4 ci_nightly noreplayci)
+set_tests_properties(camera_sensor_geometry_extended_test PROPERTIES
+    ENVIRONMENT "${test_env};DEPTHAI_AUTOCALIBRATION=OFF;DEPTHAI_GEOMETRY_EXTENDED=1"
+    SKIP_RETURN_CODE 4)
+
+
 if(DEPTHAI_ENABLE_PROTOBUF AND DEPTHAI_OPENCV_SUPPORT)
     dai_add_test(camera_replay_geometry_test src/ondevice_tests/pipeline/node/camera_replay_geometry_test.cpp)
     dai_set_test_labels(camera_replay_geometry_test ondevice rvc2_all rvc4 ci noreplayci)

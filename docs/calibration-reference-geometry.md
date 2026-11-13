@@ -35,3 +35,17 @@ auto K = frame->getTransformation().getIntrinsicMatrix();
 
 The firmware change corrects metadata for affected readouts without changing
 image pixels or the generic CalibrationHandler API contract.
+
+## Extended hardware coverage
+
+`camera_sensor_geometry_extended_test` runs in the nightly HIL selection. It
+exercises every distinct advertised resolution, sensor type, HDR and HFR variant
+using the existing Camera API, including sensor readouts above 16 MP. Large
+readouts use smaller output streams to bound host bandwidth. Half-size YUV output
+is tested only when its dimensions are even. Each failure is retained while the
+extended run continues to assess the remaining modes.
+
+For an explicit device/firmware selection, the same coverage can be run with
+`DEPTHAI_GEOMETRY_EXTENDED=1` and the `camera_sensor_geometry_test` executable.
+These tests cover geometry at supported selected frame rates, not every FPS,
+exposure setting or possible combination of application nodes.
