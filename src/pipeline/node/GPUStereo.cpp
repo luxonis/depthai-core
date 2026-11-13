@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <stdexcept>
 
+#include "depthai/device/Device.hpp"
+
 namespace dai {
 namespace node {
 
@@ -36,6 +38,9 @@ void GPUStereo::buildInternal() {
         auto platform = device->getPlatform();
         if(platform != Platform::RVC4) {
             throw std::runtime_error("GPUStereo node is only supported on RVC4 devices.");
+        }
+        if(!device->isGpuStereoSupported()) {
+            throw std::runtime_error("GPUStereo node requires an RVC4 device with a GPU.");
         }
     }
 

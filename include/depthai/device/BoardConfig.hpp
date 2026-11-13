@@ -164,33 +164,33 @@ struct BoardConfig {
     std::unordered_map<std::string, Extrinsics> defaultImuExtr;
 };
 
-DEPTHAI_SERIALIZE_EXT(BoardConfig::USB, vid, pid, flashBootedVid, flashBootedPid, maxSpeed, productName, manufacturer);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::Network, mtu, xlinkTcpNoDelay, forceEnable);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::GPIO, mode, direction, level, pull, drive, schmitt, slewFast);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::UART, tmp);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::Camera, name, sensorType, orientation);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::IMU, bus, interrupt, wake, csGpio, boot, reset);
-DEPTHAI_SERIALIZE_EXT(BoardConfig::UVC, cameraName, width, height, frameType, enable);
-DEPTHAI_SERIALIZE_EXT(BoardConfig,
-                      usb,
-                      network,
-                      sysctl,
-                      watchdogTimeoutMs,
-                      watchdogInitialDelayMs,
-                      gpio,
-                      uart,
-                      pcieInternalClock,
-                      usb3PhyInternalClock,
-                      emmc,
-                      logPath,
-                      logSizeMax,
-                      logVerbosity,
-                      logDevicePrints,
-                      nonExclusiveMode,
-                      camera,
-                      imu,
-                      uvc,
-                      defaultImuExtr,
-                      eepromData);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::USB, vid, pid, flashBootedVid, flashBootedPid, maxSpeed, productName, manufacturer);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::Network, mtu, xlinkTcpNoDelay, forceEnable);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::GPIO, mode, direction, level, pull, drive, schmitt, slewFast);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::UART, tmp);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::Camera, name, sensorType, orientation);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::IMU, bus, interrupt, wake, csGpio, boot, reset);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::UVC, cameraName, width, height, frameType, enable);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig,
+                           usb,
+                           network,
+                           sysctl,
+                           watchdogTimeoutMs,
+                           watchdogInitialDelayMs,
+                           gpio,
+                           uart,
+                           pcieInternalClock,
+                           usb3PhyInternalClock,
+                           emmc,
+                           logPath,
+                           logSizeMax,
+                           logVerbosity,
+                           logDevicePrints,
+                           nonExclusiveMode,
+                           camera,
+                           imu,
+                           uvc,
+                           defaultImuExtr,
+                           eepromData);
 
 }  // namespace dai

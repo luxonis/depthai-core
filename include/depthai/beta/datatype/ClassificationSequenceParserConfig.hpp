@@ -80,7 +80,7 @@ class ClassificationSequenceParserConfig : public Buffer {
         return DatatypeEnum::ClassificationSequenceParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(ClassificationSequenceParserConfig, ignoredIndexes, removeDuplicates, concatenateClasses);
+    DEPTHAI_SERIALIZE_DECL(ClassificationSequenceParserConfig, ignoredIndexes, removeDuplicates, concatenateClasses);
 };
 
 }  // namespace beta

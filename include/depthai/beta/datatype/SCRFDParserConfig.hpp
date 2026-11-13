@@ -77,7 +77,7 @@ class SCRFDParserConfig : public Buffer {
         return DatatypeEnum::SCRFDParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(SCRFDParserConfig, confidenceThreshold, iouThreshold, maxDetections);
+    DEPTHAI_SERIALIZE_DECL(SCRFDParserConfig, confidenceThreshold, iouThreshold, maxDetections);
 };
 
 }  // namespace beta

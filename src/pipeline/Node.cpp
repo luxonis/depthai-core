@@ -1,8 +1,5 @@
-#include <spdlog/spdlog.h>
-
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
-#include <thread>
 
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -746,23 +743,12 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
 }
 
 void Node::stopPipeline() {
-    try {
-        auto pipeline = getParentPipeline();
-        // stopPipeline() is only called from host node threads. Hand shutdown off to a
-        // helper thread so PipelineImpl teardown never tries to join the current node thread.
-        std::thread([pipeline = std::move(pipeline)]() mutable {
-            try {
-                pipeline.stop();
-            } catch(const std::exception& ex) {
-                spdlog::error("Pipeline stop failed in detached shutdown thread: {}", ex.what());
-            } catch(...) {
-                spdlog::error("Pipeline stop failed in detached shutdown thread with an unknown exception");
-            }
-        }).detach();
-    } catch(const std::exception& e) {
-        if(e.what() != std::string("Pipeline is null")) {
-            throw;
-        }
+    // Called from host node threads and from pipeline tasks. The stop runs on a thread of the
+    // pipeline that holds no reference to it and that wait() (also called by run()), start() and
+    // the pipeline destructor join - so no teardown runs after run() or main() has returned.
+    auto impl = parent.lock();
+    if(impl != nullptr) {
+        impl->stopAsync();
     }
 }
 

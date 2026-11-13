@@ -18,7 +18,9 @@ struct PPTextDetectionParserProperties : PropertiesSerializable<Properties, PPTe
     ~PPTextDetectionParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(PPTextDetectionParserProperties, outputLayerName, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(PPTextDetectionParserProperties, outputLayerName, initialConfig);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::PPTextDetectionParserProperties>;

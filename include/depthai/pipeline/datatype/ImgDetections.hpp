@@ -175,7 +175,7 @@ struct ImgDetection {
      */
     void transform(const ImgTransformation& source, const ImgTransformation& target);
 
-    DEPTHAI_SERIALIZE(ImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints);
+    DEPTHAI_SERIALIZE_DECL(ImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints);
 };
 
 /**
@@ -242,7 +242,7 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
-    DEPTHAI_SERIALIZE(ImgDetections, sequenceNum, ts, tsDevice, tsSystem, detections, transformation, segmentationMaskWidth, segmentationMaskHeight);
+    DEPTHAI_SERIALIZE_DECL(ImgDetections, sequenceNum, ts, tsDevice, tsSystem, detections, transformation, segmentationMaskWidth, segmentationMaskHeight);
 };
 
 }  // namespace dai

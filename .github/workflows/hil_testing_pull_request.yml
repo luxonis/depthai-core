@@ -5,7 +5,7 @@ name: DepthAI Core HIL Testing PR
 on:
   workflow_dispatch:
   pull_request:
-    types: [synchronize, labeled]
+    types: [labeled]
 
 permissions:
   actions: read

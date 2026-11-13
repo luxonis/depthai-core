@@ -49,7 +49,7 @@ class HRNetParserConfig : public Buffer {
         return DatatypeEnum::HRNetParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(HRNetParserConfig, scoreThreshold);
+    DEPTHAI_SERIALIZE_DECL(HRNetParserConfig, scoreThreshold);
 };
 
 }  // namespace beta

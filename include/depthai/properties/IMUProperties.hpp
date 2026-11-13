@@ -193,7 +193,7 @@ struct IMUSensorConfig {
 
     IMUSensor sensorId = IMUSensor::ACCELEROMETER_CALIBRATED;
 };
-DEPTHAI_SERIALIZE_EXT(IMUSensorConfig, sensitivityEnabled, sensitivityRelative, changeSensitivity, reportRate, sensorId);
+DEPTHAI_SERIALIZE_EXT_DECL(IMUSensorConfig, sensitivityEnabled, sensitivityRelative, changeSensitivity, reportRate, sensorId);
 
 struct IMUProperties : PropertiesSerializable<Properties, IMUProperties> {
     /* Enabled IMU sensors */
@@ -211,6 +211,8 @@ struct IMUProperties : PropertiesSerializable<Properties, IMUProperties> {
     ~IMUProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(IMUProperties, imuSensors, batchReportThreshold, maxBatchReports, enableFirmwareUpdate);
+DEPTHAI_SERIALIZE_EXT_DECL(IMUProperties, imuSensors, batchReportThreshold, maxBatchReports, enableFirmwareUpdate);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::IMUProperties>;

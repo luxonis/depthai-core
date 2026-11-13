@@ -25,7 +25,9 @@ struct SuperAnimalParserProperties : PropertiesSerializable<Properties, SuperAni
     ~SuperAnimalParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SuperAnimalParserProperties, outputLayerName, scaleFactor, nKeypoints, initialConfig, labelNames, edges);
+DEPTHAI_SERIALIZE_EXT_DECL(SuperAnimalParserProperties, outputLayerName, scaleFactor, nKeypoints, initialConfig, labelNames, edges);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::SuperAnimalParserProperties>;

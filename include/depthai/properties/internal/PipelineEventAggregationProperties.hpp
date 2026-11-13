@@ -17,6 +17,8 @@ struct PipelineEventAggregationProperties : PropertiesSerializable<Properties, P
     ~PipelineEventAggregationProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(PipelineEventAggregationProperties, aggregationWindowSize, statsUpdateIntervalMs, eventWaitWindow, traceOutput);
+DEPTHAI_SERIALIZE_EXT_DECL(PipelineEventAggregationProperties, aggregationWindowSize, statsUpdateIntervalMs, eventWaitWindow, traceOutput);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::PipelineEventAggregationProperties>;

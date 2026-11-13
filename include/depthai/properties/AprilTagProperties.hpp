@@ -21,6 +21,8 @@ struct AprilTagProperties : PropertiesSerializable<Properties, AprilTagPropertie
     ~AprilTagProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(AprilTagProperties, initialConfig, inputConfigSync);
+DEPTHAI_SERIALIZE_EXT_DECL(AprilTagProperties, initialConfig, inputConfigSync);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::AprilTagProperties>;

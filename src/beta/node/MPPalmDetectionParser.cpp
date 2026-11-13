@@ -21,8 +21,6 @@
 namespace dai {
 namespace beta {
 
-MPPalmDetectionParserProperties::~MPPalmDetectionParserProperties() = default;
-
 namespace node {
 
 MPPalmDetectionParser::MPPalmDetectionParser(std::unique_ptr<Properties> props)

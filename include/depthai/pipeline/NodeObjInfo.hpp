@@ -30,6 +30,6 @@ struct NodeObjInfo {
     std::unordered_map<std::tuple<std::string, std::string>, NodeIoInfo, IoInfoKey> ioInfo;
 };
 
-DEPTHAI_SERIALIZE_EXT(NodeObjInfo, id, parentId, name, alias, deviceId, deviceNode, builtInNode, properties, logLevel, ioInfo);
+DEPTHAI_SERIALIZE_EXT_DECL(NodeObjInfo, id, parentId, name, alias, deviceId, deviceNode, builtInNode, properties, logLevel, ioInfo);
 
 }  // namespace dai

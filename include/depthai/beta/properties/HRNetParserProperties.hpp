@@ -22,7 +22,9 @@ struct HRNetParserProperties : PropertiesSerializable<Properties, HRNetParserPro
     ~HRNetParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(HRNetParserProperties, outputLayerName, initialConfig, labelNames, edges);
+DEPTHAI_SERIALIZE_EXT_DECL(HRNetParserProperties, outputLayerName, initialConfig, labelNames, edges);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::HRNetParserProperties>;
