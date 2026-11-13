@@ -319,6 +319,9 @@ void AutoCalibration::buildInternal() {
     if(initialConfig->dataConfidenceThreshold < 0.0) {
         initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
     }
+    // AutoCalibration runs on the host, so its DynamicCalibration subnode has to stay on the host as well, whatever
+    // the platform default of the subnode is.
+    dynamicCalibration->setRunOnHost(true);
 }
 
 /**

@@ -33,6 +33,7 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
         .def_readonly("inputControl", &DynamicCalibration::inputControl, DOC(dai, node, DynamicCalibration, inputControl))
         .def_property_readonly(
             "sync", [](DynamicCalibration& node) { return &(*node.sync); }, py::return_value_policy::reference_internal)
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         .def_property_readonly(
             "inputs", [](DynamicCalibration& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
@@ -41,6 +42,7 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
             "right", [](DynamicCalibration& node) { return &node.right; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "rgb", [](DynamicCalibration& node) { return &node.rgb; }, py::return_value_policy::reference_internal)
+#endif
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
         .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost));
 
