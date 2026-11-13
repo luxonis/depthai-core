@@ -35,7 +35,7 @@ with dai.Pipeline(device) as pipeline:
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
 
-    align = pipeline.create(dai.node.ImageAlign)
+    align = pipeline.create(dai.node.Align)
     stereo.depth.link(align.input)
     detNN.passthrough.link(align.inputAlignTo)
 

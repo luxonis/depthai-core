@@ -34,7 +34,7 @@ left = pipeline.create(dai.node.Camera).build(LEFT_SOCKET)
 right = pipeline.create(dai.node.Camera).build(RIGHT_SOCKET)
 stereo = pipeline.create(dai.node.NeuralDepth)
 sync = pipeline.create(dai.node.Sync)
-align = pipeline.create(dai.node.ImageAlign)
+align = pipeline.create(dai.node.Align)
 
 sync.setSyncThreshold(timedelta(seconds=1/(2*FPS)))
 
@@ -47,6 +47,11 @@ stereo.depth.link(align.input)
 rgbOut.link(align.inputAlignTo)
 rgbOut.link(sync.inputs["rgb"])
 align.outputAligned.link(sync.inputs["depth_aligned"])
+
+# Avoid retaining frame pools while waiting for matching timestamps.
+for name in ("rgb", "depth_aligned"):
+    sync.inputs[name].setBlocking(False)
+    sync.inputs[name].setMaxSize(1)
 
 queue = sync.out.createOutputQueue()
 

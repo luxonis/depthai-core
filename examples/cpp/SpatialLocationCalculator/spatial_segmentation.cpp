@@ -104,7 +104,7 @@ int main() {
         monoLeft->requestFullResolutionOutput()->link(stereo->left);
         monoRight->requestFullResolutionOutput()->link(stereo->right);
 
-        auto align = pipeline.create<dai::node::ImageAlign>();
+        auto align = pipeline.create<dai::node::Align>();
         stereo->depth.link(align->input);
         detectionNetwork->passthrough.link(align->inputAlignTo);
 

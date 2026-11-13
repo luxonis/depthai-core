@@ -87,6 +87,7 @@ int main() {
     auto thermalCam = pipeline.create<dai::node::Thermal>()->build(thermalSocket, FPS);
 
     auto sync = pipeline.create<dai::node::Sync>();
+    // Thermal.temperature is FP16, which Align cannot process on the host yet.
     auto align = pipeline.create<dai::node::ImageAlign>();
 
     auto camRgbOut = camRgb->requestOutput(COLOR_RESOLUTION, std::nullopt, dai::ImgResizeMode::CROP, FPS, true);
