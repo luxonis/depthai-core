@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -13,7 +14,6 @@
 #include <utility>
 #include <vector>
 
-#include "../../../helpers/CameraGeometryDevice.hpp"
 #include "depthai/depthai.hpp"
 
 TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-sensor-geometry]") {
@@ -25,8 +25,10 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
     dai::CalibrationHandler calibration;
     dai::Platform platform;
     {
-        const auto selectedDevice = dai::test::openGeometryDevice();
-        auto& device = *selectedDevice;
+        const auto [found, selectedDeviceInfo] = dai::Device::getAnyAvailableDevice();
+        REQUIRE(found);
+        REQUIRE((selectedDeviceInfo.state != X_LINK_BOOTED || selectedDeviceInfo.protocol == X_LINK_LOCAL_SHDMEM));
+        dai::Device device(selectedDeviceInfo);
         platform = device.getPlatform();
         if(platform != dai::Platform::RVC2 && platform != dai::Platform::RVC4) SKIP("Requires RVC2 or RVC4");
         deviceInfo = device.getDeviceInfo();
@@ -300,7 +302,10 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
 }
 
 TEST_CASE("RVC4 preserves calibration from a processed full-FOV readout", "[camera-resized-calibration-compatibility]") {
-    auto device = dai::test::openGeometryDevice();
+    const auto [found, deviceInfo] = dai::Device::getAnyAvailableDevice();
+    REQUIRE(found);
+    REQUIRE((deviceInfo.state != X_LINK_BOOTED || deviceInfo.protocol == X_LINK_LOCAL_SHDMEM));
+    auto device = std::make_shared<dai::Device>(deviceInfo);
     if(device->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 calibration compatibility regression");
     for(const auto& camera : device->getConnectedCameraFeatures()) {
         const auto physicalFov = [&](const dai::CameraSensorConfig& mode) {

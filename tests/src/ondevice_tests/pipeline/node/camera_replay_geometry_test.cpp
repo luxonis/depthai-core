@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
@@ -17,7 +18,6 @@
 #include <utility>
 #include <vector>
 
-#include "../../../helpers/CameraGeometryDevice.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "depthai/schemas/ImgFrame.pb.h"
@@ -208,7 +208,10 @@ void checkPixels(dai::ImgFrame& frame, const OutputCase& output) {
 TEST_CASE("Synthetic replay pixels agree with Camera output intrinsics", "[camera-replay-geometry]") {
     SyntheticRecording recording;
     recording.write();
-    dai::Pipeline pipeline(dai::test::openGeometryDevice());
+    const auto [found, deviceInfo] = dai::Device::getAnyAvailableDevice();
+    REQUIRE(found);
+    REQUIRE((deviceInfo.state != X_LINK_BOOTED || deviceInfo.protocol == X_LINK_LOCAL_SHDMEM));
+    dai::Pipeline pipeline(std::make_shared<dai::Device>(deviceInfo));
     const auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform != dai::Platform::RVC2 && platform != dai::Platform::RVC4) SKIP("Requires RVC2 or RVC4");
     // Enable the modern undistortion path in this pipeline only. Older EEPROM
