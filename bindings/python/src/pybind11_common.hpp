@@ -14,6 +14,7 @@
 #include <pybind11/stl/filesystem.h>
 
 #include <cstdint>
+#include <depthai/common/CameraStats.hpp>
 #include <depthai/common/Point2f.hpp>
 #include <pybind11_json/pybind11_json.hpp>
 #include <stack>
@@ -24,6 +25,7 @@
 
 PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::Point2f>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::CameraStats>);
 
 namespace py = pybind11;
 

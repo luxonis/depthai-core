@@ -241,7 +241,7 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
     #pragma warning(disable : 4003)
 #endif
 
-#define DEPTHAI_NLOHMANN_JSON_OPTIONAL_TO(v1) nlohmann::to_json(nlohmann_json_j[#v1], nlohmann_json_t.v1);
+#define DEPTHAI_NLOHMANN_JSON_OPTIONAL_TO(v1) nlohmann_json_j[#v1] = nlohmann_json_t.v1;
 #define DEPTHAI_NLOHMANN_JSON_OPTIONAL_FROM(v1) \
     if(nlohmann_json_j.contains(#v1)) nlohmann_json_j[#v1].get_to(nlohmann_json_t.v1);
 #define DEPTHAI_NLOHMANN_DEFINE_TYPE_OPTIONAL_NON_INTRUSIVE(Type, ...)                                              \
