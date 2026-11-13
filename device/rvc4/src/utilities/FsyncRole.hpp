@@ -59,9 +59,11 @@ bool externalRoleForced(const RoleState& state);
  * Classify a failed SET_INFO of CONFIG 1 or 2.
  * @param linked The fsync-stm node links to an enabled aux connector.
  * @param bound The aux connector driver is bound.
- * @return The pin problem, or std::nullopt for a controller failure.
+ * @param config CONFIG read back after the failure, std::nullopt when the read failed.
+ * @return The pin problem, or std::nullopt for a controller failure. A pin problem needs CONFIG 0,
+ *         because an I2C error can fail SET_INFO after the STM took CONFIG 1 or 2.
  */
-std::optional<PinProblem> classifySetInfoError(int err, bool linked, bool bound);
+std::optional<PinProblem> classifySetInfoError(int err, bool linked, bool bound, std::optional<uint32_t> config);
 
 std::string pinReason(const PinUnavailable& unavailable);
 std::optional<std::string> autoWarning(const RoleState& state);

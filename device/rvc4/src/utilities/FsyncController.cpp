@@ -230,6 +230,14 @@ PinUnavailable describeBusyPin() {
     return PinUnavailable{PinProblem::Busy};
 }
 
+std::optional<uint32_t> readConfig(int stmFd) {
+    struct fsync_stm_ioctl_info_data info = {0};
+    if(ioctl(stmFd, GET_INFO, &info) != 0) {
+        return std::nullopt;
+    }
+    return info.config_reg;
+}
+
 }  // namespace
 
 SetInfoResult FsyncController::writeConfig(uint32_t configReg) {
@@ -244,7 +252,7 @@ SetInfoResult FsyncController::writeConfig(uint32_t configReg) {
         // CONFIG 0 never asks the aux connector for the FSYNC pin
         if(configReg != FSYNC_STM_CONFIG_MASTER_MODE_WITH_INPUT) {
             bool linked = aux::fsyncLinkedToConnector();
-            if(auto problem = classifySetInfoError(err, linked, linked && aux::connectorBound())) {
+            if(auto problem = classifySetInfoError(err, linked, linked && aux::connectorBound(), readConfig(stmFd))) {
                 return *problem == PinProblem::Busy ? describeBusyPin() : PinUnavailable{*problem};
             }
         }

@@ -44,8 +44,8 @@ bool externalRoleForced(const RoleState& state) {
     return state.requested == ExternalFrameSyncRole::MASTER || state.requested == ExternalFrameSyncRole::SLAVE;
 }
 
-std::optional<PinProblem> classifySetInfoError(int err, bool linked, bool bound) {
-    if(!linked) {
+std::optional<PinProblem> classifySetInfoError(int err, bool linked, bool bound, std::optional<uint32_t> config) {
+    if(!linked || config != FSYNC_STM_CONFIG_MASTER_MODE_WITH_INPUT) {
         return std::nullopt;
     }
     switch(err) {
