@@ -171,29 +171,33 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
                     if(extendedCoverage) {
                         while(config.width / outputDivisor > 1280 || config.height / outputDivisor > 960) outputDivisor *= 2;
                     }
+                    int outputWidth = config.width / outputDivisor;
+                    int outputHeight = config.height / outputDivisor;
+                    if(extendedCoverage) {
+                        outputWidth = std::max(2, outputWidth - outputWidth % 2);
+                        outputHeight = std::max(2, outputHeight - outputHeight % 2);
+                    }
                     if(extendedCoverage) {
                         std::cout << "GEOMETRY_MODE socket=" << static_cast<int>(camera.socket) << " sensor=" << camera.sensorName
                                   << " readout=" << config.width << "x" << config.height << " fov=" << fov.x << "," << fov.y << "," << fov.width << ","
                                   << fov.height << " hdr=" << config.hdr << " hfr=" << config.hfr << " modeSizedCalibration=" << calibrateAtReadoutMode
-                                  << " outputDivisor=" << outputDivisor << std::endl;
+                                  << " outputDivisor=" << outputDivisor << " output=" << outputWidth << "x" << outputHeight << std::endl;
                     }
                     // Exercise an explicit native-sized stream independently of the
                     // ISP scaler chosen for the other requested outputs.
                     auto nativeQueue = cameraNode
-                                           ->requestOutput({static_cast<std::uint32_t>(config.width / outputDivisor),
-                                                            static_cast<std::uint32_t>(config.height / outputDivisor)},
+                                           ->requestOutput({static_cast<std::uint32_t>(outputWidth), static_cast<std::uint32_t>(outputHeight)},
                                                            std::nullopt,
                                                            dai::ImgResizeMode::STRETCH,
                                                            streamFps,
                                                            false)
                                            ->createOutputQueue(1, false);
                     auto ispQueue = cameraNode->requestIspOutput(streamFps)->createOutputQueue(1, false);
-                    const bool testResize = config.width % (4 * outputDivisor) == 0 && config.height % (4 * outputDivisor) == 0;
+                    const bool testResize = outputWidth % 4 == 0 && outputHeight % 4 == 0;
                     std::shared_ptr<dai::MessageQueue> resizedQueue;
                     if(testResize) {
                         resizedQueue = cameraNode
-                                           ->requestOutput({static_cast<std::uint32_t>(config.width / (2 * outputDivisor)),
-                                                            static_cast<std::uint32_t>(config.height / (2 * outputDivisor))},
+                                           ->requestOutput({static_cast<std::uint32_t>(outputWidth / 2), static_cast<std::uint32_t>(outputHeight / 2)},
                                                            std::nullopt,
                                                            dai::ImgResizeMode::STRETCH,
                                                            streamFps,
@@ -204,59 +208,63 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
 
                     auto expectedFullK = fullK;
                     bool calibrationUpdated = false;
-                    auto checkFrame = [&](const std::shared_ptr<dai::MessageQueue>& queue, std::optional<float> outputScale, const char* outputPath) {
-                        CAPTURE(outputPath);
-                        bool timedOut = false;
-                        auto frame = queue->get<dai::ImgFrame>(std::chrono::seconds(extendedCoverage ? 60 : 15), timedOut);
-                        REQUIRE_FALSE(timedOut);
-                        REQUIRE(frame != nullptr);
-                        const auto updateDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(extendedCoverage ? 60 : 15);
-                        while(calibrationUpdated && std::fabs(frame->getTransformation().getSourceIntrinsicMatrix()[0][0] - fullK[0][0]) < 1.0f) {
-                            REQUIRE(std::chrono::steady_clock::now() < updateDeadline);
-                            frame = queue->get<dai::ImgFrame>(std::chrono::seconds(extendedCoverage ? 60 : 15), timedOut);
+                    auto checkFrame =
+                        [&](const std::shared_ptr<dai::MessageQueue>& queue, std::optional<std::pair<int, int>> expectedSize, const char* outputPath) {
+                            CAPTURE(outputPath);
+                            bool timedOut = false;
+                            auto frame = queue->get<dai::ImgFrame>(std::chrono::seconds(extendedCoverage ? 60 : 15), timedOut);
                             REQUIRE_FALSE(timedOut);
                             REQUIRE(frame != nullptr);
-                        }
-                        if(outputScale) {
-                            REQUIRE(frame->getWidth() == static_cast<int>(config.width * *outputScale));
-                            REQUIRE(frame->getHeight() == static_cast<int>(config.height * *outputScale));
-                        } else {
-                            REQUIRE(frame->getWidth() > 0);
-                            REQUIRE(frame->getHeight() > 0);
-                            REQUIRE(static_cast<std::int64_t>(frame->getWidth()) * config.height
-                                    == static_cast<std::int64_t>(frame->getHeight()) * config.width);
-                        }
-                        const auto transform = frame->getTransformation();
-                        const auto actualK = transform.getIntrinsicMatrix();
-                        auto expectedK = expectedFullK;
-                        expectedK[0][2] -= fov.x;
-                        expectedK[1][2] -= fov.y;
-                        // A crop translates the principal point; binning/scaling also
-                        // changes focal lengths. Output resizing composes afterwards.
-                        for(size_t column = 0; column < 3; ++column) {
-                            expectedK[0][column] *= frame->getWidth() / fov.width;
-                            expectedK[1][column] *= frame->getHeight() / fov.height;
-                        }
-                        CAPTURE(frame->getWidth(), frame->getHeight(), actualK, expectedK);
-                        for(size_t row = 0; row < 3; ++row) {
-                            for(size_t column = 0; column < 3; ++column) {
-                                CHECK(actualK[row][column] == Catch::Approx(expectedK[row][column]).margin(0.01f));
+                            const auto updateDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(extendedCoverage ? 60 : 15);
+                            while(calibrationUpdated && std::fabs(frame->getTransformation().getSourceIntrinsicMatrix()[0][0] - fullK[0][0]) < 1.0f) {
+                                REQUIRE(std::chrono::steady_clock::now() < updateDeadline);
+                                frame = queue->get<dai::ImgFrame>(std::chrono::seconds(extendedCoverage ? 60 : 15), timedOut);
+                                REQUIRE_FALSE(timedOut);
+                                REQUIRE(frame != nullptr);
                             }
-                        }
-                        CHECK(transform.getDistortionModel() == dai::CameraModel::Perspective);
-                        CHECK(transform.getDistortionCoefficients() == distortion);
-                        if(expectedPose) {
-                            const auto actualPose = transform.getExtrinsics().getTransformationMatrix();
-                            for(size_t row = 0; row < 4; ++row) {
-                                for(size_t column = 0; column < 4; ++column) {
-                                    CHECK(actualPose[row][column] == Catch::Approx((*expectedPose)[row][column]).margin(0.001f));
+                            if(expectedSize) {
+                                REQUIRE(frame->getWidth() == expectedSize->first);
+                                REQUIRE(frame->getHeight() == expectedSize->second);
+                            } else {
+                                REQUIRE(frame->getWidth() > 0);
+                                REQUIRE(frame->getHeight() > 0);
+                                REQUIRE(static_cast<std::int64_t>(frame->getWidth()) * config.height
+                                        == static_cast<std::int64_t>(frame->getHeight()) * config.width);
+                            }
+                            const auto transform = frame->getTransformation();
+                            const auto actualK = transform.getIntrinsicMatrix();
+                            auto expectedK = expectedFullK;
+                            expectedK[0][2] -= fov.x;
+                            expectedK[1][2] -= fov.y;
+                            // A crop translates the principal point; binning/scaling also
+                            // changes focal lengths. Output resizing composes afterwards.
+                            for(size_t column = 0; column < 3; ++column) {
+                                expectedK[0][column] *= frame->getWidth() / fov.width;
+                                expectedK[1][column] *= frame->getHeight() / fov.height;
+                            }
+                            CAPTURE(frame->getWidth(), frame->getHeight(), actualK, expectedK);
+                            for(size_t row = 0; row < 3; ++row) {
+                                for(size_t column = 0; column < 3; ++column) {
+                                    CHECK(actualK[row][column] == Catch::Approx(expectedK[row][column]).margin(0.01f));
                                 }
                             }
-                        }
-                    };
-                    checkFrame(ispQueue, platform == dai::Platform::RVC4 || extendedCoverage ? std::nullopt : std::make_optional(1.0f), "ISP");
-                    checkFrame(nativeQueue, 1.0f / outputDivisor, "native-sized request");
-                    if(resizedQueue) checkFrame(resizedQueue, 0.5f / outputDivisor, "half-sized request");
+                            CHECK(transform.getDistortionModel() == dai::CameraModel::Perspective);
+                            CHECK(transform.getDistortionCoefficients() == distortion);
+                            if(expectedPose) {
+                                const auto actualPose = transform.getExtrinsics().getTransformationMatrix();
+                                for(size_t row = 0; row < 4; ++row) {
+                                    for(size_t column = 0; column < 4; ++column) {
+                                        CHECK(actualPose[row][column] == Catch::Approx((*expectedPose)[row][column]).margin(0.001f));
+                                    }
+                                }
+                            }
+                        };
+                    checkFrame(
+                        ispQueue,
+                        platform == dai::Platform::RVC4 || extendedCoverage ? std::nullopt : std::make_optional(std::make_pair(config.width, config.height)),
+                        "ISP");
+                    checkFrame(nativeQueue, std::make_pair(outputWidth, outputHeight), "native-sized request");
+                    if(resizedQueue) checkFrame(resizedQueue, std::make_pair(outputWidth / 2, outputHeight / 2), "half-sized request");
                     if(platform == dai::Platform::RVC4 && !calibrateAtReadoutMode && isCalibrationMode(config) && isCropped(config)) {
                         // Changed focal length distinguishes fresh metadata from queued
                         // frames; all K entries catch a missing readout crop on updates.
@@ -269,8 +277,9 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
                         device->setCalibration(updatedCalibration);
                         calibrationUpdated = true;
                         checkFrame(ispQueue, std::nullopt, "ISP after runtime calibration");
-                        checkFrame(nativeQueue, 1.0f / outputDivisor, "native-sized request after runtime calibration");
-                        if(resizedQueue) checkFrame(resizedQueue, 0.5f / outputDivisor, "half-sized request after runtime calibration");
+                        checkFrame(nativeQueue, std::make_pair(outputWidth, outputHeight), "native-sized request after runtime calibration");
+                        if(resizedQueue)
+                            checkFrame(resizedQueue, std::make_pair(outputWidth / 2, outputHeight / 2), "half-sized request after runtime calibration");
                     }
                     ++testedModes;
                     if(fov.x != 0 || fov.y != 0 || fov.width != camera.width || fov.height != camera.height) ++testedCroppedModes;
