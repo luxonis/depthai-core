@@ -242,6 +242,11 @@ void addPoolsForAutoCalibration(const std::shared_ptr<Camera>& camera, int addit
 }
 
 std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Camera>& cameraLeft, const std::shared_ptr<Camera>& cameraRight) {
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    (void)cameraLeft;
+    (void)cameraRight;
+    throw std::runtime_error("AutoCalibration::build is only available on the host");
+#else
     if(!cameraLeft || !cameraRight) {
         throw std::invalid_argument("AutoCalibration::build requires non-null camera pointers");
     }
@@ -271,6 +276,7 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
     gate->initialConfig->fps = GATE_FPS_DEFAULT;
     dynamicCalibration->syncInput.setMaxSize(1);
     return std::static_pointer_cast<AutoCalibration>(shared_from_this());
+#endif
 }
 
 /**
@@ -319,6 +325,9 @@ void AutoCalibration::buildInternal() {
     if(initialConfig->dataConfidenceThreshold < 0.0) {
         initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
     }
+    // AutoCalibration runs on the host, so its DynamicCalibration subnode has to stay on the host as well, whatever
+    // the platform default of the subnode is.
+    dynamicCalibration->setRunOnHost(true);
 }
 
 /**
