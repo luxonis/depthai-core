@@ -1,67 +1,46 @@
-import depthai as dai
+import math
 from typing import Tuple
+
+import depthai as dai
+
+# MediaPipe hand region: the palm box scaled up and moved toward the fingers, in palm sizes.
+HAND_SCALE = 2.6
+HAND_SHIFT = 0.5
+
+
+def hand_region(palm: dai.RotatedRect) -> dai.RotatedRect:
+    """The square, rotated region around the whole hand that the hand landmark model expects."""
+    side = max(palm.size.width, palm.size.height)
+    angle = math.radians(palm.angle)
+    shift = HAND_SHIFT * palm.size.height
+    center = dai.Point2f(palm.center.x + shift * math.sin(angle), palm.center.y - shift * math.cos(angle))
+    return dai.RotatedRect(center, dai.Size2f(side * HAND_SCALE, side * HAND_SCALE), palm.angle)
 
 
 class ProcessDetections(dai.node.HostNode):
-    """A host node for processing a list of detections in a two-stage pipeline.
-    The node iterates over a list of detections and sends a dai.MessageGroup with
-    a list of ImageManipConfig objects that can be executed by the ImageManip node.
+    """Turns palm detections into one ImageManip crop config per hand.
 
-    Before use, the target size need to be set with the set_target_size method.
-    Attributes
-    ----------
-    detections_input : dai.Input
-        The input message for the detections.
-    config_output : dai.Output
-        The output message for the ImageManipConfig objects packed in a MessageGroup.
-    padding: float
-        The padding factor to enlarge the bounding box a little bit.
-
+    Each crop is the rotated hand region, so the hand landmark model gets an upright hand.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.detections_input = self.createInput()
         self.config_output = self.createOutput()
-        self.padding = 0.1
-        self._target_h = None
-        self._target_w = None
+        self._target_size = (224, 224)
 
-    def build(
-        self,
-        detections_input: dai.Node.Output,
-        padding: float,
-        target_size: Tuple[int, int],
-    ) -> "ProcessDetections":
-        self.padding = padding
-        self._target_w = target_size[0]
-        self._target_h = target_size[1]
+    def build(self, detections_input: dai.Node.Output, target_size: Tuple[int, int]) -> "ProcessDetections":
+        self._target_size = target_size
         self.link_args(detections_input)
         return self
 
     def process(self, img_detections: dai.Buffer) -> None:
         assert isinstance(img_detections, dai.ImgDetections)
-        detections = img_detections.detections
-
         configs_group = dai.MessageGroup()
-        for i, detection in enumerate(detections):
+        for i, detection in enumerate(img_detections.detections):
             cfg = dai.ImageManipConfig()
-            detection: dai.ImgDetection = detection
-            rect = detection.getBoundingBox()
-
-            new_rect = dai.RotatedRect()
-            new_rect.center.x = rect.center.x
-            new_rect.center.y = rect.center.y
-            new_rect.size.width = rect.size.width + self.padding * 2
-            new_rect.size.height = rect.size.height + self.padding * 2
-            new_rect.angle = 0
-
-            cfg.addCropRotatedRect(new_rect, normalizedCoords=True)
-            cfg.setOutputSize(
-                self._target_w,
-                self._target_h,
-                dai.ImageManipConfig.ResizeMode.STRETCH,
-            )
+            cfg.addCropRotatedRect(hand_region(detection.getBoundingBox()), normalizedCoords=True)
+            cfg.setOutputSize(*self._target_size, dai.ImageManipConfig.ResizeMode.STRETCH)
             cfg.setReusePreviousImage(False)
             cfg.setTimestamp(img_detections.getTimestamp())
             cfg.setSequenceNum(img_detections.getSequenceNum())

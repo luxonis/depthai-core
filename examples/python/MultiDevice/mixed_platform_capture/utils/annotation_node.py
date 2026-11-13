@@ -1,149 +1,85 @@
+import math
+from typing import List, Tuple
+
 import depthai as dai
-from depthai_nodes import GatheredData, SECONDARY_COLOR
-from depthai.beta import Predictions, Keypoints
+from depthai.beta import Keypoints, Predictions
+from depthai_nodes import SECONDARY_COLOR, GatheredData
 from depthai_nodes.utils import AnnotationHelper
-from typing import List
+
 from utils.gesture_recognition import recognize_gesture
+from utils.process import hand_region
+
+FIST_FRAMES = 5  # frames in a row with a fist before the trigger fires
+OPEN_FRAMES = 15  # frames in a row without a fist before the next trigger can fire
 
 
 class AnnotationNode(dai.node.HostNode):
+    """Draws the hands, labels their gesture and sends a trigger when a fist appears."""
+
     def __init__(self) -> None:
         super().__init__()
-        self.gathered_data = self.createInput()
-        self.out_detections = self.createOutput()
-        self.out_pose_annotations = self.createOutput(
-            possibleDatatypes=[
-                dai.Node.DatatypeHierarchy(dai.DatatypeEnum.ImgAnnotations, True)
-            ]
-        )
+        self.out_pose_annotations = self.createOutput(possibleDatatypes=[dai.Node.DatatypeHierarchy(dai.DatatypeEnum.ImgAnnotations, True)])
         self.out_fist = self.createOutput()
         self.confidence_threshold = 0.5
-        self.padding_factor = 0.1
-        self.connection_pairs = [[]]
-        self.fist_shown = False
+        self.connection_pairs: List[List[int]] = []
+        self.armed = True
+        self.streak = 0
 
-    def build(
-        self,
-        gathered_data: dai.Node.Output,
-        video: dai.Node.Output,
-        confidence_threshold: float,
-        padding_factor: float,
-        connections_pairs: List[List[int]],
-    ) -> "AnnotationNode":
+    def build(self, gathered_data: dai.Node.Output, confidence_threshold: float, connections_pairs: List[List[int]]) -> "AnnotationNode":
         self.confidence_threshold = confidence_threshold
-        self.padding_factor = padding_factor
         self.connection_pairs = connections_pairs
-        self.link_args(gathered_data, video)
+        self.link_args(gathered_data)
         return self
 
-    def process(self, gathered_data: dai.Buffer, video_message: dai.ImgFrame) -> None:
+    def process(self, gathered_data: dai.Buffer) -> None:
         assert isinstance(gathered_data, GatheredData)
+        detections: dai.ImgDetections = gathered_data.reference_data
+        annotations = AnnotationHelper()
+        fist_shown = False
 
-        detections_message: dai.ImgDetections = gathered_data.reference_data
-        detections_list: List[dai.ImgDetection] = detections_message.detections
-
-        new_dets = dai.ImgDetections()
-        new_dets.setTransformation(video_message.getTransformation())
-
-        annotation_helper = AnnotationHelper()
-        det_list = []
-        gestures = []
-
-        for ix, detection in enumerate(detections_list):
+        for ix, detection in enumerate(detections.detections):
             keypoints_msg: Keypoints = gathered_data.items[ix]["0"]
             confidence_msg: Predictions = gathered_data.items[ix]["1"]
-            handness_msg: Predictions = gathered_data.items[ix]["2"]
-
-            hand_confidence = confidence_msg.getFirstPrediction()
-            handness = handness_msg.getFirstPrediction()
-
-            if hand_confidence < self.confidence_threshold:
+            handedness_msg: Predictions = gathered_data.items[ix]["2"]
+            if confidence_msg.getFirstPrediction() < self.confidence_threshold:
                 continue
 
-            width = detection.getBoundingBox().size.width
-            height = detection.getBoundingBox().size.height
+            rect = hand_region(detection.getBoundingBox())
+            points = [to_frame(rect, kp.imageCoordinates.x, kp.imageCoordinates.y) for kp in keypoints_msg.getKeypoints()]
+            gesture = recognize_gesture(points)
+            fist_shown |= gesture == "FIST"
 
-            xmin = detection.getBoundingBox().center.x - width / 2
-            xmax = detection.getBoundingBox().center.x + width / 2
-            ymin = detection.getBoundingBox().center.y - height / 2
-            ymax = detection.getBoundingBox().center.y + height / 2
+            color = dai.Color(1.0, 0.2, 0.2, 1.0) if gesture == "FIST" else SECONDARY_COLOR
+            for a, b in self.connection_pairs:
+                annotations.draw_line(pt1=points[a], pt2=points[b], color=color, thickness=2)
+            annotations.draw_points(points=points, color=color, thickness=4)
+            hand = "Left" if handedness_msg.getFirstPrediction() < 0.5 else "Right"
+            label_y = max(rect.center.y - rect.size.height / 2 - 0.03, 0.02)
+            annotations.draw_text(text=f"{hand} {gesture}", position=(rect.center.x - 0.06, label_y), color=color, size=28)
 
-            padding = self.padding_factor
-
-            slope_x = (xmax + padding) - (xmin - padding)
-            slope_y = (ymax + padding) - (ymin - padding)
-
-            new_det = dai.ImgDetection()
-            rotated_rect = detection.getBoundingBox()
-            new_det.setBoundingBox(
-                dai.RotatedRect(
-                    rotated_rect.center,
-                    dai.Size2f(
-                        rotated_rect.size.width + 2 * padding,
-                        rotated_rect.size.height + 2 * padding,
-                    ),
-                    rotated_rect.angle,
-                )
-            )
-            new_det.label = 0
-            new_det.labelName = "Hand"
-            new_det.confidence = detection.confidence
-            det_list.append(new_det)
-
-            xs = []
-            ys = []
-
-            for kp in keypoints_msg.getKeypoints():
-                x = min(max(xmin - padding + slope_x * kp.imageCoordinates.x, 0.0), 1.0)
-                y = min(max(ymin - padding + slope_y * kp.imageCoordinates.y, 0.0), 1.0)
-                xs.append(x)
-                ys.append(y)
-
-            for connection in self.connection_pairs:
-                pt1_ix, pt2_ix = connection
-                annotation_helper.draw_line(
-                    pt1=(xs[pt1_ix], ys[pt1_ix]),
-                    pt2=(xs[pt2_ix], ys[pt2_ix]),
-                )
-
-            keypoints = [[kpt[0], kpt[1]] for kpt in zip(xs, ys)]
-
-            gesture = recognize_gesture(keypoints)
-            gestures.append(gesture)
-
-            text = "Left" if handness < 0.5 else "Right"
-            text += f" {gesture}"
-
-            text_x = detection.getBoundingBox().center.x - 0.05
-            text_y = detection.getBoundingBox().center.y - height / 2 - 0.10
-
-            annotation_helper.draw_text(
-                text=text,
-                position=(text_x, text_y),
-                color=SECONDARY_COLOR,
-                size=32,
-            )
-
-            annotation_helper.draw_points(
-                points=keypoints, color=SECONDARY_COLOR, thickness=2
-            )
-
-        new_dets.detections = det_list
-        new_dets.setTimestamp(detections_message.getTimestamp())
-        new_dets.setSequenceNum(detections_message.getSequenceNum())
-        self.out_detections.send(new_dets)
-
-        annotations = annotation_helper.build(
-            timestamp=detections_message.getTimestamp(),
-            sequence_num=detections_message.getSequenceNum(),
-        )
-
-        self.out_pose_annotations.send(annotations)
-
-        fist_shown = "FIST" in gestures
-        if fist_shown and not self.fist_shown:
+        self.out_pose_annotations.send(annotations.build(timestamp=detections.getTimestamp(), sequence_num=detections.getSequenceNum()))
+        if self._fist_started(fist_shown):
             trigger = dai.Buffer()
-            trigger.setTimestamp(detections_message.getTimestamp())
-            trigger.setSequenceNum(detections_message.getSequenceNum())
+            trigger.setTimestamp(detections.getTimestamp())
+            trigger.setSequenceNum(detections.getSequenceNum())
             self.out_fist.send(trigger)
-        self.fist_shown = fist_shown
+
+    def _fist_started(self, fist_shown: bool) -> bool:
+        """Armed: count fist frames and fire at FIST_FRAMES. Fired: count frames without a fist and re-arm at OPEN_FRAMES."""
+        self.streak = self.streak + 1 if fist_shown == self.armed else 0
+        if self.armed and self.streak >= FIST_FRAMES:
+            self.armed, self.streak = False, 0
+            return True
+        if not self.armed and self.streak >= OPEN_FRAMES:
+            self.armed, self.streak = True, 0
+        return False
+
+
+def to_frame(rect: dai.RotatedRect, u: float, v: float) -> Tuple[float, float]:
+    """Map a keypoint from the rotated hand crop (0..1) back to the normalized frame."""
+    dx = (u - 0.5) * rect.size.width
+    dy = (v - 0.5) * rect.size.height
+    angle = math.radians(rect.angle)
+    x = rect.center.x + dx * math.cos(angle) - dy * math.sin(angle)
+    y = rect.center.y + dx * math.sin(angle) + dy * math.cos(angle)
+    return (min(max(x, 0.0), 1.0), min(max(y, 0.0), 1.0))
