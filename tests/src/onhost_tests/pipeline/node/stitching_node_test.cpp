@@ -98,9 +98,15 @@ std::shared_ptr<dai::ImgFrame> composeCalibratedPanorama(const std::vector<cv::M
     }
     auto output = stitching->out.createOutputQueue();
 
+    std::vector<std::shared_ptr<dai::ImgFrame>> inputFrames;
+    std::vector<std::vector<uint8_t>> originalPixels;
     pipeline.start();
     for(size_t i = 0; i < images.size(); ++i) {
-        inputs[i]->send(toCalibratedFrame(images[i], yaws[i], 1, pitches[i]));
+        auto frame = toCalibratedFrame(images[i], yaws[i], 1, pitches[i]);
+        const auto pixels = frame->getData();
+        originalPixels.emplace_back(pixels.begin(), pixels.end());
+        inputFrames.push_back(frame);
+        inputs[i]->send(frame);
     }
     bool timedOut = false;
     auto panorama = output->get<dai::ImgFrame>(std::chrono::seconds(2), timedOut);
@@ -108,6 +114,9 @@ std::shared_ptr<dai::ImgFrame> composeCalibratedPanorama(const std::vector<cv::M
 
     REQUIRE_FALSE(timedOut);
     REQUIRE(panorama != nullptr);
+    for(size_t i = 0; i < inputFrames.size(); ++i) {
+        REQUIRE(std::equal(originalPixels[i].begin(), originalPixels[i].end(), inputFrames[i]->getData().begin()));
+    }
     return panorama;
 }
 

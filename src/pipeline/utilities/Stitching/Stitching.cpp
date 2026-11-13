@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/Stitching.hpp"
 
+#include "utility/ImgFrameView.hpp"
+
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_HAVE_OPENCV_STITCHING)
 
     #include <algorithm>
@@ -525,11 +527,15 @@ void Stitching::run() {
             DAI_CHECK_V(frame != nullptr, "Stitching input {} did not receive an ImgFrame", name);
             if(first == nullptr) first = frame;
 
-            auto image = frame->getCvFrame();
+            const auto image = (currentProperties.mode == Mode::PLANAR_PROJECTION || currentProperties.useInputCalibration) ? utility::getCvFrameView(*frame)
+                                                                                                                            : frame->getCvFrame();
             if(image.channels() == 1) {
-                cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
+                cv::Mat bgr;
+                cv::cvtColor(image, bgr, cv::COLOR_GRAY2BGR);
+                images.push_back(std::move(bgr));
+            } else {
+                images.push_back(image);
             }
-            images.push_back(std::move(image));
             transformations.push_back(frame->getTransformation());
         }
 

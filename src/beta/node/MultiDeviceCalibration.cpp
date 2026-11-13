@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "beta/node/MultiDeviceCalibrationUtils.hpp"
+#include "utility/ImgFrameView.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/calib3d.hpp>
@@ -399,7 +400,7 @@ bool MultiDeviceCalibration::initializeCycle(const std::shared_ptr<MessageGroup>
             error = "the first synchronized group is missing " + camera.inputName;
             return false;
         }
-        const auto image = frame->getCvFrame();
+        const auto image = frame->getFrame();
         if(image.empty()) {
             error = "the first synchronized group contains an empty image for " + camera.inputName;
             return false;
@@ -442,7 +443,7 @@ bool MultiDeviceCalibration::loadCompleteGroup(const std::shared_ptr<MessageGrou
             error = "synchronized group is incomplete";
             return false;
         }
-        const auto image = frame->getCvFrame();
+        const auto image = utility::getCvFrameView(*frame);
         if(image.empty()) {
             error = "synchronized group contains an empty image for " + camera.inputName;
             return false;
@@ -671,7 +672,7 @@ void MultiDeviceCalibration::run() {
         bool complete = true;
         for(const auto& camera : pimpl->cameras) {
             const auto frame = group->get<ImgFrame>(camera.inputName);
-            if(!frame || frame->getCvFrame().empty()) {
+            if(!frame || frame->getFrame().empty()) {
                 complete = false;
                 break;
             }
