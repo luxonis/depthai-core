@@ -222,12 +222,13 @@ void StereoDepth::setRvc2ngProfilePreset(PresetMode mode) {
     // The RVC2 tuning, without what RVC2NG lacks and rejects: matching confidence and the filters that use it, penalty
     // tuning by edge and smoothness, a speckle region size, and SHAVEs.
     setRvc2ProfilePreset(mode);
-    // RVC2 runs its median, spatial and temporal filters on SHAVEs. RVC2NG runs them on the CPU, where together they
-    // take longer than a frame interval at 1280x800, so its presets leave them off. Decimation stays, as it reduces the
-    // work after it. Enabling the filters in initialConfig still runs them.
+    // RVC2 runs its median, spatial, temporal and decimation filters on SHAVEs. RVC2NG has none of them in hardware, so
+    // its presets leave them off and keep only the filters the stereo matcher runs. Enabling a filter in initialConfig
+    // still runs it on the CPU.
     initialConfig->setMedianFilter(MedianFilter::MEDIAN_OFF);
     initialConfig->postProcessing.spatialFilter.enable = false;
     initialConfig->postProcessing.temporalFilter.enable = false;
+    initialConfig->postProcessing.decimationFilter.decimationFactor = 1;
     const StereoDepthConfig defaults;
     initialConfig->costMatching.confidenceThreshold = defaults.costMatching.confidenceThreshold;
     initialConfig->confidenceMetrics = defaults.confidenceMetrics;

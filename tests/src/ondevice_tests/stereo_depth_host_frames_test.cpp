@@ -107,11 +107,12 @@ TEST_CASE("StereoDepth presets produce correct depth from host frames", "[stereo
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     stereo->setDefaultProfilePreset(preset);
     if(rvc2ng(pipeline)) {
-        // RVC2NG runs these filters on the CPU, so its presets leave them off.
+        // RVC2NG has these filters only on the CPU, so its presets leave them off.
         const auto& filters = stereo->initialConfig->postProcessing;
         REQUIRE(filters.median == dai::StereoDepthConfig::MedianFilter::MEDIAN_OFF);
         REQUIRE_FALSE(filters.spatialFilter.enable);
         REQUIRE_FALSE(filters.temporalFilter.enable);
+        REQUIRE(filters.decimationFilter.decimationFactor == 1);
     }
     auto left = stereo->left.createInputQueue(), right = stereo->right.createInputQueue();
     auto disparities = stereo->disparity.createOutputQueue(), depths = stereo->depth.createOutputQueue();
