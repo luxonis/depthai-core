@@ -92,14 +92,15 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
                     readoutK[1][column] *= calibrationMode.height / calibrationFov.height;
                 }
                 if(platform == dai::Platform::RVC4) {
-                    // Native cropped calibration is explicit. Unlabelled RVC4
-                    // records retain their historical full-FOV interpretation.
-                    localCalibration.setCameraIntrinsicsFromSensorCrop(
-                        camera.socket, readoutK, calibrationMode.width, calibrationMode.height, camera.width, camera.height, calibrationFov);
-                } else {
-                    // Preserve the existing RVC2 native-calibration convention.
-                    localCalibration.setCameraIntrinsics(camera.socket, readoutK, calibrationMode.width, calibrationMode.height);
+                    // Preserve the established interpretation of smaller RVC4
+                    // calibration records: a processed image from the full
+                    // sensor reference, using the legacy resize/crop rules.
+                    // Matching native-mode dimensions does not prove capture FOV.
+                    auto fullReference = calibration;
+                    fullReference.setCameraIntrinsics(camera.socket, fullK, camera.width, camera.height);
+                    readoutK = fullReference.getCameraIntrinsics(camera.socket, calibrationMode.width, calibrationMode.height);
                 }
+                localCalibration.setCameraIntrinsics(camera.socket, readoutK, calibrationMode.width, calibrationMode.height);
             } else {
                 localCalibration.setCameraIntrinsics(camera.socket, fullK, camera.width, camera.height);
             }
@@ -215,24 +216,14 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
             checkFrame(nativeQueue, 1.0f, "native-sized request");
             if(resizedQueue) checkFrame(resizedQueue, 0.5f, "half-sized request");
             if(platform == dai::Platform::RVC4 && !calibrateAtReadoutMode && isCalibrationMode(config) && isCropped(config)) {
-                // Change physical calibration at runtime using an explicit native
-                // capture ROI. Changed focal length distinguishes fresh metadata
-                // from queued frames; checking all K entries then catches a
-                // missing readout crop on the update path.
+                // Changed focal length distinguishes fresh metadata from queued
+                // frames; all K entries catch a missing readout crop on updates.
                 expectedFullK[0][0] += 123;
                 expectedFullK[1][1] += 77;
                 expectedFullK[0][2] += 7;
                 expectedFullK[1][2] -= 5;
-                auto updatedK = expectedFullK;
-                updatedK[0][2] -= calibrationFov.x;
-                updatedK[1][2] -= calibrationFov.y;
-                for(size_t column = 0; column < 3; ++column) {
-                    updatedK[0][column] *= calibrationMode.width / calibrationFov.width;
-                    updatedK[1][column] *= calibrationMode.height / calibrationFov.height;
-                }
                 auto updatedCalibration = localCalibration;
-                updatedCalibration.setCameraIntrinsicsFromSensorCrop(
-                    camera.socket, updatedK, calibrationMode.width, calibrationMode.height, camera.width, camera.height, calibrationFov);
+                updatedCalibration.setCameraIntrinsics(camera.socket, expectedFullK, camera.width, camera.height);
                 device->setCalibration(updatedCalibration);
                 calibrationUpdated = true;
                 checkFrame(ispQueue, std::nullopt, "ISP after runtime calibration");

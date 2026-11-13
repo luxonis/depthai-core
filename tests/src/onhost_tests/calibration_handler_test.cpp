@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <cmath>
 #include <depthai/device/CalibrationHandler.hpp>
@@ -1801,75 +1800,4 @@ TEST_CASE("CBA calibration handler requires exactly one cameraData entry", "[CBA
     data.cameraData[CameraBoardSocket::CAM_C] = dai::CameraInfo{};
 
     REQUIRE_THROWS_WITH(CBACalibrationHandler(data), Catch::Matchers::ContainsSubstring("exactly one cameraData entry"));
-}
-
-TEST_CASE("Explicit calibration crop preserves provenance and existing calibration fields", "[calibration-sensor-crop]") {
-    CalibrationHandler calibration;
-    const auto socket = CameraBoardSocket::CAM_A;
-    const std::vector<float> distortion = {0.1f, -0.02f, 0.001f, -0.002f, 0.003f};
-    calibration.setCameraIntrinsics(socket, {{500, 0, 960}, {0, 550, 540}, {0, 0, 1}}, 1920, 1080);
-    calibration.setDistortionCoefficients(socket, distortion);
-    calibration.setCameraType(socket, CameraModel::Perspective);
-    calibration.setCameraIntrinsics(CameraBoardSocket::CAM_B, {{500, 0, 960}, {0, 550, 540}, {0, 0, 1}}, 1920, 1080);
-    calibration.setCameraExtrinsics(socket, CameraBoardSocket::CAM_B, {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {2, 3, 4});
-    const auto before = calibration.eepromToJson();
-    // Identical image dimensions can represent distinct physical FOVs.
-    // Include skew and off-center principal point to exercise the entire K row.
-    const std::vector<std::vector<float>> measured = {{240, 3, 968.88f}, {0, 264, 534.48f}, {0, 0, 1}};
-    auto legacy = calibration;
-    legacy.setCameraIntrinsics(socket, measured, 1920, 1080);
-    auto processed = calibration;
-    processed.setCameraIntrinsicsFromSensorCrop(socket, measured, 1920, 1080, 8000, 6000, Rect(0, 750, 8000, 4500));
-    auto native = calibration;
-    native.setCameraIntrinsicsFromSensorCrop(socket, measured, 1920, 1080, 8000, 6000, Rect(160, 840, 7680, 4320));
-    const auto [processedK, width, height] = processed.getDefaultIntrinsics(socket);
-    REQUIRE(width == 8000);
-    REQUIRE(height == 6000);
-    REQUIRE(processedK[0][0] == Catch::Approx(1000));
-    REQUIRE(processedK[0][1] == Catch::Approx(12.5));
-    REQUIRE(processedK[1][1] == Catch::Approx(1100));
-    REQUIRE(processedK[0][2] == Catch::Approx(4037));
-    REQUIRE(processedK[1][2] == Catch::Approx(2977));
-    REQUIRE(std::get<0>(native.getDefaultIntrinsics(socket))[0][0] == Catch::Approx(960));
-    REQUIRE(std::get<0>(legacy.getDefaultIntrinsics(socket)) == measured);
-    REQUIRE(std::get<1>(legacy.getDefaultIntrinsics(socket)) == 1920);
-    const auto roundTrip = CalibrationHandler(processed.eepromToJson().get<EepromData>());
-    // cameraData is serialized from an unordered_map as an array; ordering can
-    // change after a round trip with multiple cameras.
-    const auto orderedJson = [](const CalibrationHandler& handler) {
-        auto data = handler.eepromToJson();
-        auto& cameras = data["cameraData"];
-        std::sort(
-            cameras.begin(), cameras.end(), [](const nlohmann::json& left, const nlohmann::json& right) { return left[0].get<int>() < right[0].get<int>(); });
-        return data;
-    };
-    REQUIRE(orderedJson(roundTrip) == orderedJson(processed));
-    REQUIRE(roundTrip.getDistortionCoefficients(socket) == processed.getDistortionCoefficients(socket));
-    REQUIRE(roundTrip.getDistortionModel(socket) == CameraModel::Perspective);
-    // Only K and its reference dimensions may change.
-    auto expected = calibration.getEepromData();
-    expected.cameraData.at(socket).intrinsicMatrix = processedK;
-    expected.cameraData.at(socket).width = 8000;
-    expected.cameraData.at(socket).height = 6000;
-    REQUIRE(processed.eepromToJson() == CalibrationHandler(expected).eepromToJson());
-    REQUIRE(calibration.eepromToJson() == before);
-
-    SECTION("Unequal scale and off-center ROI") {
-        calibration.setCameraIntrinsicsFromSensorCrop(socket, {{100, 2, 30}, {0, 200, 40}, {0, 0, 1}}, 100, 100, 1000, 800, Rect(10, 20, 200, 400));
-        const auto k = std::get<0>(calibration.getDefaultIntrinsics(socket));
-        REQUIRE(k == std::vector<std::vector<float>>{{200, 4, 70}, {0, 800, 180}, {0, 0, 1}});
-    }
-    SECTION("Invalid geometry leaves the handler unchanged") {
-        for(const auto& roi : {Rect(-1, 0, 100, 100),
-                               Rect(0, 0, 0, 100),
-                               Rect(7900, 0, 200, 100),
-                               Rect(0, 0, std::numeric_limits<float>::infinity(), 100),
-                               Rect(0, std::numeric_limits<float>::quiet_NaN(), 100, 100)}) {
-            REQUIRE_THROWS_AS(calibration.setCameraIntrinsicsFromSensorCrop(socket, measured, 1920, 1080, 8000, 6000, roi), std::runtime_error);
-            REQUIRE(calibration.eepromToJson() == before);
-        }
-        REQUIRE_THROWS(calibration.setCameraIntrinsicsFromSensorCrop(socket, measured, 0, 1080, 8000, 6000, Rect(0, 0, 100, 100)));
-        REQUIRE_THROWS(calibration.setCameraIntrinsicsFromSensorCrop(socket, measured, 1920, 1080, 70000, 6000, Rect(0, 0, 100, 100)));
-        REQUIRE_THROWS(calibration.setCameraIntrinsicsFromSensorCrop(socket, {}, 1920, 1080, 8000, 6000, Rect(0, 0, 100, 100)));
-    }
 }
