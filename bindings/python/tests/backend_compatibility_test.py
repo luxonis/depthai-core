@@ -43,3 +43,19 @@ def test_original_image_manip_enum_works_with_both_nodes():
                 assert point_cloud.setBackend(backend) is point_cloud
                 expected = dai.ImageManipProperties.Backend.GPU if backend == dai.ImageManipProperties.Backend.AUTO else backend
                 assert point_cloud.getBackend() == expected
+
+
+def test_image_align_backend_aliases_and_selection():
+    assert dai.ImageAlignProperties.Backend is dai.Backend
+    assert dai.node.ImageAlign.Backend is dai.Backend
+    with dai.Pipeline(False) as pipeline:
+        align = pipeline.create(dai.node.ImageAlign)
+        assert align.getBackend() == dai.Backend.AUTO
+        align.setRunOnHost(True)
+        for backend in (dai.Backend.CPU, dai.Backend.GPU, dai.Backend.AUTO):
+            assert align.setBackend(backend) is align
+            assert align.getBackend() == backend
+            assert align.runOnHost()
+        with pytest.raises(ValueError):
+            align.setBackend(dai.Backend.HW)
+        assert align.getBackend() == dai.Backend.AUTO
