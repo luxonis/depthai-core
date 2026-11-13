@@ -1,6 +1,7 @@
 """Behavioral tests for the debugging helpers; no SDK import, build or device."""
 
 import hashlib
+import gzip
 import io
 import json
 import os
@@ -11,6 +12,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import unittest
 
 SCRIPTS = Path(__file__).resolve().parents[3] / ".agents/skills/depthai-debugger/scripts"
@@ -32,9 +34,9 @@ class HelpersTest(unittest.TestCase):
             cwd=self.root, env=env, capture_output=True, text=True, timeout=20,
         )
 
-    def archive(self, filename, members, mode="w"):
+    def archive(self, filename, members, mode="w", format=tarfile.PAX_FORMAT):
         path = self.root / filename
-        with tarfile.open(path, mode) as archive:
+        with tarfile.open(path, mode, format=format) as archive:
             for name, data in members:
                 info = name if isinstance(name, tarfile.TarInfo) else tarfile.TarInfo(name)
                 info.size = len(data)
@@ -154,6 +156,47 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(manifest["returncode"], -signal.SIGTERM)
         self.assertEqual(manifest["termination_actions"], ["interrupt", "terminate"])
 
+    @unittest.skipUnless(os.name == "posix", "POSIX process groups")
+    def test_capture_stops_workers_after_parent_exits(self):
+        pid_file = self.root / "worker.pid"
+        heartbeat = self.root / "heartbeat"
+        worker = (
+            "import os, signal, time\n"
+            "from pathlib import Path\n"
+            "signal.signal(signal.SIGINT, signal.SIG_IGN)\n"
+            f"Path({str(pid_file)!r}).write_text(str(os.getpid()))\n"
+            f"with open({str(heartbeat)!r}, 'ab', buffering=0) as output:\n"
+            "    while True:\n"
+            "        output.write(b'x')\n"
+            "        time.sleep(0.02)\n"
+        )
+        parent = (
+            "import subprocess, sys, time\n"
+            f"subprocess.Popen([sys.executable, '-c', {worker!r}])\n"
+            "time.sleep(30)\n"
+        )
+        output = self.root / "run"
+        try:
+            result = self.run_script(
+                "capture_run.py", "--output-dir", output, "--timeout", "2", "--grace", "0.1",
+                "--", sys.executable, "-c", parent,
+            )
+            self.assertEqual(result.returncode, 124, result.stderr)
+            self.assertTrue(pid_file.exists(), "worker never started")
+            manifest = json.loads((output / "manifest.json").read_text())
+            self.assertFalse(manifest["child_still_running"])
+            size = heartbeat.stat().st_size
+            time.sleep(0.15)
+            self.assertEqual(heartbeat.stat().st_size, size, "orphan worker is still running")
+            self.assertIn("terminate", manifest["termination_actions"])
+            self.assertIn("process_group_present", manifest)
+        finally:
+            if pid_file.exists():
+                try:
+                    os.kill(int(pid_file.read_text()), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+
     @unittest.skipUnless(os.name == "posix", "POSIX signal behavior")
     def test_capture_signal_exit_retains_raw_status(self):
         output = self.root / "run"
@@ -263,9 +306,63 @@ class HelpersTest(unittest.TestCase):
     def test_nested_archive_uses_same_size_budget(self):
         inner = self.archive("inner.tar.gz", [("core.1", b"x" * 4096)], "w:gz")
         artifact = self.archive("outer.tar", [("crash_dump.tar.gz", inner.read_bytes())])
-        result, report, _ = self.inspect(artifact, "--max-bytes", str(inner.stat().st_size + 4095))
+        total_expanded = artifact.stat().st_size + len(gzip.decompress(inner.read_bytes()))
+        result, report, _ = self.inspect(artifact, "--max-bytes", str(total_expanded - 1))
         self.assertEqual(result.returncode, 2)
         self.assertIn("max-bytes", report["error"])
+        result, report, _ = self.inspect(
+            artifact, "--max-bytes", str(total_expanded), directory="exact-budget",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(report["content"]["kind"], "rvc4_archive")
+
+    def test_pax_metadata_obeys_budget_in_both_archive_layers(self):
+        member = tarfile.TarInfo("stdout.log")
+        member.pax_headers = {"comment": "x" * (1024 * 1024)}
+        inner = self.archive("pax.tar.gz", [(member, b"x")], "w:gz")
+        outer = self.archive("outer.tar", [("crash_dump.tar.gz", inner.read_bytes())])
+        for index, artifact in enumerate((inner, outer)):
+            with self.subTest(layer=index):
+                result, report, _ = self.inspect(
+                    artifact, "--max-bytes", str(64 * 1024), directory=f"pax-{index}",
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("max-bytes", report["error"])
+
+    def test_gnu_longname_obeys_budget(self):
+        artifact = self.archive(
+            "longname.tar.gz", [("x" * (128 * 1024), b"x")],
+            "w:gz", format=tarfile.GNU_FORMAT,
+        )
+        result, report, _ = self.inspect(artifact, "--max-bytes", str(64 * 1024))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("max-bytes", report["error"])
+
+    def test_compressed_archives_with_small_pax_headers_remain_supported(self):
+        for index, mode in enumerate(("w", "w:gz", "w:bz2", "w:xz")):
+            with self.subTest(mode=mode):
+                member = tarfile.TarInfo("metadata.json")
+                member.pax_headers = {"comment": "preserved metadata"}
+                artifact = self.archive(
+                    f"compressed-{index}.tar", [
+                        (member, b'{"platform":"RVC2"}'),
+                        ("crash_reports.json", b'{"crashReports":[{}]}'),
+                    ], mode,
+                )
+                result, report, _ = self.inspect(
+                    artifact, "--max-bytes", str(64 * 1024), directory=f"compression-{index}",
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(report["content"]["kind"], "rvc2_archive")
+
+    def test_corrupt_compression_is_reported_as_failed_inspection(self):
+        for index, signature in enumerate((b"\x1f\x8b", b"BZh", b"\xfd7zXZ\x00")):
+            with self.subTest(signature=signature):
+                artifact = self.root / f"broken-{index}.tar"
+                artifact.write_bytes(signature + b"invalid")
+                result, report, _ = self.inspect(artifact, directory=f"broken-{index}")
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(report["status"], "failed")
 
     def test_corrupt_artifact_and_conflicting_platform(self):
         corrupt = self.root / "broken.tar"

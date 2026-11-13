@@ -17,7 +17,7 @@ def stop_process(process, grace):
     """Interrupt our child/group, escalating only if it does not finish."""
     actions = []
     for phase, wait in (("interrupt", grace), ("terminate", 5), ("kill", 5)):
-        if process.poll() is not None:
+        if os.name != "posix" and process.poll() is not None:
             break
         try:
             if os.name == "posix":
@@ -34,11 +34,28 @@ def stop_process(process, grace):
             break
         except OSError as error:
             actions.append(phase + ": " + str(error))
-        try:
-            process.wait(timeout=wait)
+        if phase == "kill":
+            try:
+                process.wait(timeout=wait)
+            except subprocess.TimeoutExpired:
+                pass
             break
-        except subprocess.TimeoutExpired:
-            continue
+        deadline = time.monotonic() + wait
+        while True:
+            process.poll()  # Reap the leader before checking the group.
+            if os.name == "posix":
+                try:
+                    os.killpg(process.pid, 0)
+                except ProcessLookupError:
+                    return actions
+                except PermissionError:
+                    pass  # The group still exists, but cannot be signalled.
+            elif process.returncode is not None:
+                return actions
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(0.05, remaining))
     return actions
 
 
@@ -101,6 +118,15 @@ def main():
     finally:
         manifest["returncode"] = process.poll() if process is not None else None
         manifest["child_still_running"] = process is not None and process.poll() is None
+        manifest["process_group_present"] = None
+        if process is not None and os.name == "posix":
+            try:
+                os.killpg(process.pid, 0)
+                manifest["process_group_present"] = True
+            except ProcessLookupError:
+                manifest["process_group_present"] = False
+            except PermissionError:
+                manifest["process_group_present"] = True
         manifest["ended_utc"] = datetime.now(timezone.utc).isoformat()
         manifest["elapsed_seconds"] = time.monotonic() - started
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

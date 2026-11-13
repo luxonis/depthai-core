@@ -58,15 +58,22 @@ some combine build/deploy/run and some core helpers select the current build.
 Use the exact executable, separate `.debug` file, matching sysroot/shared
 libraries and source mappings.
 
-For an authorized attach to an existing selected PID:
+For an authorized attach to an existing selected PID, run the matching cross-GDB
+on the workstation/SDK container and carry its protocol over SSH stdio:
 
-```bash
-# Device shell: choose an available local port and tunnel it to the debugger.
-gdbserver --attach localhost:2345 PID
+```text
+(gdb) file /path/to/matching/depthai-device-rvc4
+(gdb) set sysroot /path/to/matching/sysroot
+(gdb) target remote | ssh -T user@device gdbserver --attach - PID
 ```
 
-On the workstation/SDK container, connect the matching cross-GDB through the
-established tunnel and collect all-thread stacks, registers and module mappings.
+Replace the SSH target and PID with the selected device/process. This opens no
+GDB TCP listener. As the [GDB manual](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Server.html)
+explains, the hostname in a TCP endpoint such as `localhost:2345` is ignored by
+gdbserver; that spelling does not restrict its listener to loopback.
+
+Collect all-thread stacks, registers and module mappings. Detach explicitly when
+finished to resume the attached process, and restore any supervisor changes.
 Launching under gdbserver is a different experiment: preserve firmware environment,
 working directory and library paths, and avoid a competing Gate-owned process.
 

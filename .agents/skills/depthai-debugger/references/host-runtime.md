@@ -38,16 +38,19 @@ collector in the same environment to record relevant settings.
 
 This helper is for noninteractive reproductions: stdin is closed and output goes
 to the log file. Use direct terminal/debugger capture when input or a TTY is part
-of the failure. Its manifest reports if the child remains alive after attempted
-termination; check descendants and device state separately.
+of the failure. Its manifest reports the immediate child's status separately from
+`process_group_present` on POSIX. The latter is conservative: unreaped zombies
+can keep a group present. Descendants that leave the group are outside that check;
+inspect device state separately.
 
 Prefer frame/iteration bounds and normal pipeline closure. Optional
 `--timeout SECONDS --grace SECONDS` first requests interruption, then termination
 if needed. Allow time for crash retrieval. Timeout/interruption remains reported
-even if the child subsequently exits zero. On POSIX, signals go to a new process
-group. On Windows, console interruption is attempted; fallback termination may
-be abrupt and descendants are not guaranteed to terminate. A stopped host does
-not prove device session cleanup; inspect that before rerunning.
+even if the child subsequently exits zero. On POSIX, escalation targets the new
+process group even after its leader exits. On Windows, console interruption is
+attempted; fallback termination may be abrupt and descendants are not guaranteed
+to terminate. A stopped host does not prove device session cleanup; inspect that
+before rerunning.
 
 ## Python exceptions and hangs
 

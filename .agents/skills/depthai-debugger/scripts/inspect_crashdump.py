@@ -2,8 +2,12 @@
 """Inspect crash artifacts offline; extract only recognized SDK payloads."""
 
 import argparse
+import bz2
+from contextlib import ExitStack
+import gzip
 import hashlib
 import json
+import lzma
 from pathlib import Path, PurePosixPath
 import shutil
 import struct
@@ -12,6 +16,22 @@ import tarfile
 
 JSON_LIMIT = 8 * 1024 * 1024
 PAYLOADS = {"metadata.json", "extra.json", "crash_reports.json", "crash_dump.tar.gz"}
+
+
+class LimitedReader:
+    """Bound decompressed reads before tarfile parses extension headers."""
+
+    def __init__(self, stream, budget):
+        self.stream = stream
+        self.budget = budget
+
+    def read(self, size=-1):
+        limit = self.budget["expanded_bytes"] + 1
+        data = self.stream.read(limit if size < 0 else min(size, limit))
+        self.budget["expanded_bytes"] -= len(data)
+        if self.budget["expanded_bytes"] < 0:
+            raise ValueError("archive exceeds --max-bytes (including headers and nested streams)")
+        return data
 
 
 def fingerprint(path):
@@ -28,7 +48,15 @@ def inspect_tar(path, output, budget, nested=False):
     result = {"kind": "unknown_archive", "members": [], "warnings": []}
     seen = set()
     documents = {}
-    with tarfile.open(path, "r|*") as archive:
+    with ExitStack() as stack:
+        stream = stack.enter_context(path.open("rb"))
+        signature = stream.read(6)
+        stream.seek(0)
+        for magic, opener in ((b"\x1f\x8b", gzip.open), (b"BZh", bz2.open), (b"\xfd7zXZ\x00", lzma.open)):
+            if signature.startswith(magic):
+                stream = stack.enter_context(opener(stream, "rb"))
+                break
+        archive = stack.enter_context(tarfile.open(fileobj=LimitedReader(stream, budget), mode="r|"))
         for member in archive:
             name = PurePosixPath(member.name)
             if name.is_absolute() or ".." in name.parts or "\\" in member.name or ":" in member.name:
@@ -110,7 +138,7 @@ def main():
     parser.add_argument("artifact", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True, help="New directory; parent must exist")
     parser.add_argument("--symbol-file", type=Path, action="append", default=[], help="Hash only; does not establish a symbol match")
-    parser.add_argument("--max-bytes", type=int, default=512 * 1024 * 1024, help="Total declared archive member bytes, including nested members (default: 512 MiB)")
+    parser.add_argument("--max-bytes", type=int, default=512 * 1024 * 1024, help="Limit payload and decompressed tar bytes across all layers, including headers/padding (default: 512 MiB)")
     args = parser.parse_args()
     if args.max_bytes <= 0:
         parser.error("--max-bytes must be positive")
@@ -153,10 +181,11 @@ def main():
                     shutil.copyfileobj(source, target)
         else:
             report["content"] = inspect_tar(
-                args.artifact, args.output_dir, {"bytes": args.max_bytes, "members": 4096},
+                args.artifact, args.output_dir,
+                {"bytes": args.max_bytes, "expanded_bytes": args.max_bytes, "members": 4096},
             )
         report["status"] = "inspected"
-    except (OSError, ValueError, tarfile.TarError, EOFError) as error:
+    except (OSError, ValueError, tarfile.TarError, EOFError, lzma.LZMAError) as error:
         report.update(status="failed", error=str(error))
         result = 2
     (args.output_dir / "inspection.json").write_text(

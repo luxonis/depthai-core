@@ -35,9 +35,11 @@ the nested RVC4 archive without extracting arbitrary files or executing a decode
 It checks candidate `core.*` file headers: a filename alone does not establish
 an ELF core. Header recognition is not full structural validation of a core.
 It rejects traversal, links, duplicate members and over-budget archives.
-`--max-bytes` controls the total declared member-byte budget, including nested
-members; large cores can require a deliberate increase. JSON has a separate
-small bound. Partial outputs on error are not a successful inspection.
+`--max-bytes` limits both declared payload sizes and decompressed tar bytes read
+across all layers, including metadata headers and padding. The decompressed read
+limit applies before tarfile parses PAX/GNU extension headers. Large cores can
+require a deliberate increase. Raw tar, gzip, bzip2 and xz are supported; JSON has
+a separate small bound. Partial outputs on error are not a successful inspection.
 
 Supplied symbol hashes establish identity only: `symbol_match` remains
 `not_verified`. Compare build IDs, preserved build artifacts and firmware
