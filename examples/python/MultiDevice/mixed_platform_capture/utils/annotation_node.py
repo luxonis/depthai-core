@@ -76,10 +76,13 @@ class AnnotationNode(dai.node.HostNode):
 
 
 def to_frame(rect: dai.RotatedRect, u: float, v: float) -> Tuple[float, float]:
-    """Map a keypoint from the rotated hand crop (0..1) back to the normalized frame."""
+    """Map a keypoint from the rotated hand crop (0..1) back to the normalized frame.
+
+    A keypoint out of the frame (for example 1.02) is kept as it is: it is still normalized.
+    """
     dx = (u - 0.5) * rect.size.width
     dy = (v - 0.5) * rect.size.height
     angle = math.radians(rect.angle)
     x = rect.center.x + dx * math.cos(angle) - dy * math.sin(angle)
     y = rect.center.y + dx * math.sin(angle) + dy * math.cos(angle)
-    return (min(max(x, 0.0), 1.0), min(max(y, 0.0), 1.0))
+    return (x, y)

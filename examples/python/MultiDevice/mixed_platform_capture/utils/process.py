@@ -9,12 +9,17 @@ HAND_SHIFT = 0.5
 
 
 def hand_region(palm: dai.RotatedRect) -> dai.RotatedRect:
-    """The square, rotated region around the whole hand that the hand landmark model expects."""
+    """The square, rotated region around the whole hand that the hand landmark model expects.
+
+    Near the frame edge the region goes out of the frame (center < 0 or > 1, side > 1). These
+    values are still normalized, so set the flag: without it depthai guesses from the values.
+    """
     side = max(palm.size.width, palm.size.height)
     angle = math.radians(palm.angle)
     shift = HAND_SHIFT * palm.size.height
-    center = dai.Point2f(palm.center.x + shift * math.sin(angle), palm.center.y - shift * math.cos(angle))
-    return dai.RotatedRect(center, dai.Size2f(side * HAND_SCALE, side * HAND_SCALE), palm.angle)
+    center = dai.Point2f(x=palm.center.x + shift * math.sin(angle), y=palm.center.y - shift * math.cos(angle), normalized=True)
+    size = dai.Size2f(width=side * HAND_SCALE, height=side * HAND_SCALE, normalized=True)
+    return dai.RotatedRect(center, size, palm.angle)
 
 
 class ProcessDetections(dai.node.HostNode):
