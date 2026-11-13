@@ -29,7 +29,6 @@
 #include "depthai/utility/RecordingStore.hpp"
 #include "depthai/utility/span.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
-#include "utility/RecordH264Cut.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -103,6 +102,8 @@ struct RecordHostState {
     std::int32_t statusSequence = 0;
     std::int32_t maxFramesLimit = -1;
     std::int32_t maxDurationLimit = -1;
+    std::int32_t maxSizeKbLimit = -1;
+    std::uint64_t segmentBytes = 0;
     std::int32_t framesInSegment = 0;
     std::int32_t skipped = 0;
     std::int64_t firstSeq = -1;
@@ -122,12 +123,8 @@ struct RecordHostState {
     std::unique_ptr<utility::VideoRecorder> video;
     std::unique_ptr<utility::ByteRecorder> metadata;
     // H.264 files start on an IDR. Frames before that IDR are not written.
-    // maxFrames and maxDurationMs open the next segment on a later IDR instead
-    // of stopping. The host cannot ask the device encoder for that IDR.
+    // The host cannot ask the device encoder for that IDR.
     bool waitingForIdr = false;
-    bool splitArmed = false;
-    bool avcMode = false;
-    bool finishing = false;
     std::vector<std::uint8_t> h264Sps;
     std::vector<std::uint8_t> h264Pps;
 
@@ -503,43 +500,9 @@ struct RecordHostState {
         incoming.clear();
     }
 
-    void armSplit() {
-        if(splitArmed || !avcMode || framesInSegment < 1) return;
-        const bool framesDue = utility::h264FrameCutDue(framesInSegment, maxFramesLimit);
-        const bool timeDue = utility::h264DurationCutDue(segmentStart, std::chrono::steady_clock::now(), maxDurationLimit, static_cast<double>(node.resolved.fps));
-        if(!framesDue && !timeDue) return;
-        splitArmed = true;
-    }
-
-    void rollSegment() {
-        const auto frames = maxFramesLimit;
-        const auto duration = maxDurationLimit;
-        std::string closeFailure;
-        const bool mp4Ok = closeFilesQuiet(&closeFailure);
-        if(!closeFailure.empty()) {
-            if(videoOpened) closeFailure += mp4Ok ? "; mp4 close succeeded" : "; mp4 close failed";
-            fail(closeFailure);
-        }
-        writeMarker("closed");
-        publish(RecordStatus::State::STOPPED, "", false);
-        ++segmentIndex;
-        phase = Phase::Recording;
-        segmentStart = std::chrono::steady_clock::now();
-        maxFramesLimit = frames;
-        maxDurationLimit = duration;
-        framesInSegment = 0;
-        skipped = 0;
-        firstSeq = -1;
-        lastSeq = -1;
-        haveLast = false;
-        rateWarned = false;
-        videoShapeSet = false;
-        videoOpened = false;
-        filesOpen = false;
-        waitingForIdr = false;
-        splitArmed = false;
-        writeMarker("open");
-        publish(RecordStatus::State::STARTED, "", false);
+    bool sizeReached() const {
+        if(maxSizeKbLimit <= 0) return false;
+        return segmentBytes >= static_cast<std::uint64_t>(maxSizeKbLimit) * 1024ULL;
     }
 
     void dropUndecodablePretrigger() {
@@ -551,7 +514,6 @@ struct RecordHostState {
             waitingForIdr = pending.empty();
             return;
         }
-        avcMode = true;
         std::deque<HeldFrame> kept;
         bool seenIdr = false;
         for(auto& held : pending) {
@@ -577,12 +539,14 @@ struct RecordHostState {
         return std::chrono::steady_clock::now() >= segmentStart + std::chrono::milliseconds(maxDurationLimit);
     }
 
-    void beginSegment(std::int32_t maxFrames, std::int32_t maxDurationMs) {
+    void beginSegment(std::int32_t maxFrames, std::int32_t maxDurationMs, std::int32_t maxSizeKb) {
         ++segmentIndex;
         phase = Phase::Recording;
         segmentStart = std::chrono::steady_clock::now();
         maxFramesLimit = maxFrames;
         maxDurationLimit = maxDurationMs;
+        maxSizeKbLimit = maxSizeKb;
+        segmentBytes = 0;
         framesInSegment = 0;
         skipped = 0;
         firstSeq = -1;
@@ -593,15 +557,18 @@ struct RecordHostState {
         videoOpened = false;
         filesOpen = false;
         stopRequested = false;
-        if(maxFrames >= 0) {
+        if(maxFrames > 0) {
             while(static_cast<std::int32_t>(pretrigger.size()) > maxFrames) dropOldestIdle();
+        }
+        if(maxSizeKb > 0) {
+            const auto budget = static_cast<std::uint64_t>(maxSizeKb) * 1024ULL;
+            while(pretrigger.size() > 1 && preBytes > budget) dropOldestIdle();
         }
         pending = std::move(pretrigger);
         pretrigger.clear();
         preBytes = 0;
         pretriggerRemaining = pending.size();
         incoming.clear();
-        splitArmed = false;
         dropUndecodablePretrigger();
         writeMarker("open");
         publish(RecordStatus::State::STARTED, "", false);
@@ -625,6 +592,7 @@ struct RecordHostState {
         stopRequested = false;
         maxFramesLimit = -1;
         maxDurationLimit = -1;
+        maxSizeKbLimit = -1;
         pretriggerRemaining = 0;
         videoShapeSet = false;
     }
@@ -642,8 +610,16 @@ struct RecordHostState {
         pending.pop_front();
         if(pretriggerRemaining > 0) --pretriggerRemaining;
         const bool avc = isAvc(held.message);
-        if(avc) avcMode = true;
         const bool idr = avc && utility::EncodedVideoRecorder::containsIdr(held.message->getData());
+        // A limit is an automatic stop. The frame that arrives after the
+        // duration is not written, and recording stays idle until the next start.
+        if(pastDuration(held.received)) {
+            closeSegment();
+            logger->debug("Record idle frame {}", held.message->getSequenceNum());
+            pushIdle(held);
+            moveRestToIdle();
+            return;
+        }
         if(waitingForIdr) {
             if(!avc) {
                 waitingForIdr = false;
@@ -655,26 +631,9 @@ struct RecordHostState {
                 waitingForIdr = false;
             }
         }
-        const bool hardFrames = maxFramesLimit >= 0 && framesInSegment >= maxFramesLimit;
-        const bool hardTime = pastDuration(held.received);
-        // A limit rolls H.264 onto the next IDR. Frames before that IDR stay in
-        // this segment, even when that carries it past the limit.
-        if(avc && idr && framesInSegment > 0 && (splitArmed || hardFrames || hardTime) && !stopRequested && !finishing) {
-            rollSegment();
-        } else if(hardTime && !avc) {
-            closeSegment();
-            logger->debug("Record idle frame {}", held.message->getSequenceNum());
-            pushIdle(held);
-            moveRestToIdle();
-            return;
-        }
-        if(avc && framesInSegment > 0 && (hardFrames || hardTime)) {
-            logger->debug("Record kept frame {} past the segment limit", held.message->getSequenceNum());
-        }
         writeFrame(held);
-        if(avc)
-            armSplit();
-        else if(maxFramesLimit >= 0 && framesInSegment >= maxFramesLimit) {
+        segmentBytes += held.bytes;
+        if((maxFramesLimit > 0 && framesInSegment >= maxFramesLimit) || sizeReached()) {
             closeSegment();
             moveRestToIdle();
             return;
@@ -703,11 +662,11 @@ struct RecordHostState {
             logger->warn("Record start ignored");
             return;
         }
-        if(control->maxFrames == 0 || control->maxDurationMs == 0) {
+        if(control->maxFrames == 0 || control->maxDurationMs == 0 || control->maxSizeKb == 0) {
             logger->warn("Record limit of 0 ignored");
             return;
         }
-        beginSegment(control->maxFrames, control->maxDurationMs);
+        beginSegment(control->maxFrames, control->maxDurationMs, control->maxSizeKb);
     }
 
     void flushPending() {
@@ -733,10 +692,7 @@ struct RecordHostState {
             pushIdle(held);
             return;
         }
-        // Video frames are queued even after the duration limit. H.264 may still
-        // be waiting for the IDR that opens the next segment, and MJPEG closes
-        // from writeOne so this frame is not written into the closed segment.
-        if(pastDuration(received) && node.resolved.format != RecordFormat::VIDEO) {
+        if(pastDuration(received)) {
             closeSegment();
             logger->debug("Record idle frame {}", message->getSequenceNum());
             pushIdle(held);
@@ -748,7 +704,6 @@ struct RecordHostState {
     void onPipelineStop() {
         if(fatal) return;
         if(phase == Phase::Recording) {
-            finishing = true;
             flushPending();
             closeSegment();
         } else {
@@ -762,7 +717,7 @@ struct RecordHostState {
 #ifndef DEPTHAI_ENABLE_PROTOBUF
         fail("RecordVideo requires protobuf support");
 #endif
-        if(!node.resolved.waitForTrigger) beginSegment(-1, -1);
+        if(!node.resolved.waitForTrigger) beginSegment(-1, -1, -1);
         while(node.mainLoop() && !fatal) {
             try {
                 drainControls();
@@ -776,9 +731,7 @@ struct RecordHostState {
                     continue;
                 }
                 if(durationReached()) {
-                    // Armed H.264 keeps the segment open until the split IDR, or until
-                    // stop. Closing here would discard the frames still to come.
-                    if(!(avcMode && splitArmed && framesInSegment > 0)) closeSegment();
+                    closeSegment();
                     continue;
                 }
                 // Take a frame only after the controls already queued have been applied.

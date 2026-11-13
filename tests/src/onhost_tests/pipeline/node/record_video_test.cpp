@@ -86,13 +86,16 @@ bool fileContains(const std::filesystem::path& path, const std::string& text) {
 }  // namespace
 
 TEST_CASE("RecordControl and RecordStatus round-trip") {
-    auto control = dai::RecordControl::start(4, 250);
+    REQUIRE(dai::RecordControl::start(4, 250)->maxSizeKb == -1);
+    REQUIRE(dai::RecordControl::stop()->maxSizeKb == -1);
+    auto control = dai::RecordControl::start(4, 250, 8);
     control->setSequenceNum(7);
     dai::RecordControl restoredControl;
     dai::utility::deserialize(dai::utility::serialize(*control), restoredControl);
     REQUIRE(restoredControl.command == dai::RecordControl::Command::START);
     REQUIRE(restoredControl.maxFrames == 4);
     REQUIRE(restoredControl.maxDurationMs == 250);
+    REQUIRE(restoredControl.maxSizeKb == 8);
     REQUIRE(restoredControl.getSequenceNum() == 7);
     REQUIRE(restoredControl.getDatatype() == dai::DatatypeEnum::RecordControl);
 
@@ -344,6 +347,7 @@ TEST_CASE("RecordVideo limit of 0 ignores the whole start") {
     auto status = record->status.createOutputQueue(16, true);
     pipeline.start();
     control->send(dai::RecordControl::start(0, -1));
+    control->send(dai::RecordControl::start(-1, -1, 0));
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
     REQUIRE_FALSE(record->getStatus().has_value());
     control->send(dai::RecordControl::start(-1, -1));
@@ -791,13 +795,13 @@ TEST_CASE("RecordVideo drops H264 pre-trigger frames before the first IDR") {
     pipeline.stop();
 }
 
-TEST_CASE("RecordVideo opens the next H264 segment on an IDR near maxFrames") {
+TEST_CASE("RecordVideo stops H264 at maxFrames until the next start") {
     TempDir dir;
     dai::Pipeline pipeline(false);
     auto record = pipeline.create<dai::node::RecordVideo>();
     record->setFormat(dai::RecordFormat::VIDEO);
     record->setOutputDirectory(dir.path);
-    record->setRecordingName("idrroll");
+    record->setRecordingName("idrstop");
     record->setStreamName("enc");
     record->setWaitForTrigger(true);
     record->setPreTriggerFrames(0);
@@ -806,28 +810,115 @@ TEST_CASE("RecordVideo opens the next H264 segment on an IDR near maxFrames") {
     auto control = record->inputControl.createInputQueue();
     auto status = record->status.createOutputQueue(8, true);
     pipeline.start();
-    control->send(dai::RecordControl::start(4, -1));
+    control->send(dai::RecordControl::start(3, -1));
     auto started = readStatuses(status, 1, std::chrono::seconds(2));
     REQUIRE(started.size() == 1);
     REQUIRE(started[0]->segment == 0);
-    for(std::int64_t sequence = 0; sequence <= 5; ++sequence) input->send(makeAvc(sequence, sequence % 5 == 0));
-    waitForFile(dir.path / "idrroll" / "enc_s1.mp4");
+    for(std::int64_t sequence = 0; sequence <= 5; ++sequence) input->send(makeAvc(sequence, true));
+    auto stopped = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(stopped.size() == 1);
+    REQUIRE(stopped[0]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(stopped[0]->segment == 0);
+    REQUIRE(stopped[0]->frameCount == 3);
+    REQUIRE(stopped[0]->firstSequenceNum == 0);
+    REQUIRE(stopped[0]->lastSequenceNum == 2);
+    REQUIRE(stopped[0]->skippedFrames == 0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    REQUIRE(record->getStatus()->segment == 0);
+    REQUIRE(record->getStatus()->frameCount == 3);
+    REQUIRE(std::filesystem::is_regular_file(dir.path / "idrstop" / "enc.mp4"));
+    REQUIRE_FALSE(std::filesystem::exists(dir.path / "idrstop" / "enc_s1.mp4"));
+    control->send(dai::RecordControl::start());
+    auto restarted = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(restarted.size() == 1);
+    REQUIRE(restarted[0]->state == dai::RecordStatus::State::STARTED);
+    REQUIRE(restarted[0]->segment == 1);
+    input->send(makeAvc(6, true));
+    waitForFile(dir.path / "idrstop" / "enc_s1.mp4");
     control->send(dai::RecordControl::stop());
-    auto rest = readStatuses(status, 3, std::chrono::seconds(2));
-    REQUIRE(rest.size() == 3);
-    REQUIRE(rest[0]->state == dai::RecordStatus::State::STOPPED);
-    REQUIRE(rest[0]->segment == 0);
-    REQUIRE(rest[0]->frameCount == 5);
-    REQUIRE(rest[0]->firstSequenceNum == 0);
-    REQUIRE(rest[0]->lastSequenceNum == 4);
-    REQUIRE(rest[0]->skippedFrames == 0);
-    REQUIRE(rest[1]->state == dai::RecordStatus::State::STARTED);
-    REQUIRE(rest[1]->segment == 1);
-    REQUIRE(rest[2]->state == dai::RecordStatus::State::STOPPED);
-    REQUIRE(rest[2]->segment == 1);
-    REQUIRE(rest[2]->frameCount == 1);
-    REQUIRE(rest[2]->firstSequenceNum == 5);
-    REQUIRE(rest[2]->lastSequenceNum == 5);
-    REQUIRE(std::filesystem::is_regular_file(dir.path / "idrroll" / "enc.mp4"));
+    auto again = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(again.size() == 1);
+    REQUIRE(again[0]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(again[0]->segment == 1);
+    REQUIRE(again[0]->frameCount == 1);
+    REQUIRE(again[0]->firstSequenceNum == 6);
+    REQUIRE(again[0]->lastSequenceNum == 6);
+    pipeline.stop();
+}
+
+TEST_CASE("RecordVideo stops when the written payload reaches maxSizeKb") {
+    TempDir dir;
+    dai::Pipeline pipeline(false);
+    auto record = pipeline.create<dai::node::RecordVideo>();
+    record->setFormat(dai::RecordFormat::RAW_FRAMES);
+    record->setOutputDirectory(dir.path);
+    record->setRecordingName("sized");
+    record->setWaitForTrigger(true);
+    record->setPreTriggerFrames(0);
+    auto input = record->input.createInputQueue();
+    auto control = record->inputControl.createInputQueue();
+    auto status = record->status.createOutputQueue(8, true);
+    pipeline.start();
+    // 16x16 NV12 is 384 bytes. 1024 bytes keeps the frame that crosses it: 3 frames.
+    control->send(dai::RecordControl::start(-1, -1, 1));
+    auto started = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(started.size() == 1);
+    for(std::int64_t sequence = 0; sequence < 5; ++sequence) input->send(makeFrame(sequence, 16, 16, 1));
+    auto stopped = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(stopped.size() == 1);
+    REQUIRE(stopped[0]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(stopped[0]->segment == 0);
+    REQUIRE(stopped[0]->frameCount == 3);
+    REQUIRE(stopped[0]->firstSequenceNum == 0);
+    REQUIRE(stopped[0]->lastSequenceNum == 2);
+    const auto frames = dir.path / "sized" / "frames";
+    REQUIRE(std::filesystem::is_regular_file(frames / "frames_00000000.dai"));
+    REQUIRE(std::filesystem::is_regular_file(frames / "frames_00000002.dai"));
+    REQUIRE_FALSE(std::filesystem::exists(frames / "frames_00000003.dai"));
+    control->send(dai::RecordControl::start());
+    auto restarted = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(restarted.size() == 1);
+    REQUIRE(restarted[0]->segment == 1);
+    input->send(makeFrame(5, 16, 16, 1));
+    waitForFile(frames / "frames_00000005.dai");
+    control->send(dai::RecordControl::stop());
+    auto again = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(again.size() == 1);
+    REQUIRE(again[0]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(again[0]->segment == 1);
+    REQUIRE(again[0]->frameCount == 1);
+    REQUIRE(again[0]->firstSequenceNum == 5);
+    pipeline.stop();
+}
+
+TEST_CASE("RecordVideo keeps the newest pre-trigger frames that fit maxSizeKb") {
+    TempDir dir;
+    dai::Pipeline pipeline(false);
+    auto record = pipeline.create<dai::node::RecordVideo>();
+    record->setFormat(dai::RecordFormat::RAW_FRAMES);
+    record->setOutputDirectory(dir.path);
+    record->setRecordingName("presize");
+    record->setWaitForTrigger(true);
+    record->setPreTriggerFrames(8);
+    auto input = record->input.createInputQueue();
+    auto control = record->inputControl.createInputQueue();
+    auto status = record->status.createOutputQueue(8, true);
+    pipeline.start();
+    for(std::int64_t sequence = 0; sequence < 5; ++sequence) input->send(makeFrame(sequence, 16, 16, 1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    control->send(dai::RecordControl::start(-1, -1, 1));
+    auto started = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(started.size() == 1);
+    input->send(makeFrame(5, 16, 16, 1));
+    auto stopped = readStatuses(status, 1, std::chrono::seconds(2));
+    REQUIRE(stopped.size() == 1);
+    REQUIRE(stopped[0]->state == dai::RecordStatus::State::STOPPED);
+    REQUIRE(stopped[0]->frameCount == 3);
+    REQUIRE(stopped[0]->firstSequenceNum == 3);
+    REQUIRE(stopped[0]->lastSequenceNum == 5);
+    const auto frames = dir.path / "presize" / "frames";
+    REQUIRE_FALSE(std::filesystem::exists(frames / "frames_00000002.dai"));
+    REQUIRE(std::filesystem::is_regular_file(frames / "frames_00000003.dai"));
+    REQUIRE(std::filesystem::is_regular_file(frames / "frames_00000005.dai"));
     pipeline.stop();
 }

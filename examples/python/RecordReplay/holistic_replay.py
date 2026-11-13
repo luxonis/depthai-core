@@ -13,33 +13,36 @@ args = parser.parse_args()
 # On RVC2 the recording is extracted and replayed on the host.
 # Video and metadata counts must match. recording.tar from CI does not (119 vs 140).
 with dai.Pipeline(True) as pipeline:
+    device = pipeline.getDefaultDevice()
     pipeline.enableHolisticReplay(args.source)
 
     # Define source and output
     camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     camRgbOut = camRgb.requestOutput((600, 400), fps = 30)
 
-    imu = pipeline.create(dai.node.IMU)
-    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500);
-    imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400);
-    imu.setBatchReportThreshold(100)
+    imu_name = device.getConnectedIMU()
+    if (imu_name is not None and imu_name != ""):
+        imu = pipeline.create(dai.node.IMU)
+        imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500)
+        imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400)
+        imu.setBatchReportThreshold(100)
+        imuQueue = imu.out.createOutputQueue()
 
     videoQueue = camRgbOut.createOutputQueue()
-    imuQueue = imu.out.createOutputQueue()
 
     # Connect to device and start pipeline
     pipeline.start()
     while pipeline.isRunning():
         videoIn : dai.ImgFrame = videoQueue.get()
-        imuData : dai.IMUData = imuQueue.get()
+        if (imu_name is not None and imu_name != ""):
+            imuData : dai.IMUData = imuQueue.get()
+            for packet in imuData.packets:
+                print(f"IMU Accelerometer: {packet.acceleroMeter}")
+                print(f"IMU Gyroscope: {packet.gyroscope}")
 
         # Get BGR frame from NV12 encoded video frame to show with opencv
         # Visualizing the frame on slower hosts might have overhead
         cv2.imshow("video", videoIn.getCvFrame())
-
-        for packet in imuData.packets:
-            print(f"IMU Accelerometer: {packet.acceleroMeter}")
-            print(f"IMU Gyroscope: {packet.gyroscope}")
 
         if cv2.waitKey(1) == ord('q'):
             break

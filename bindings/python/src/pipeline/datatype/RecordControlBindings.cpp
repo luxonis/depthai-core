@@ -20,9 +20,16 @@ void bind_record_control(pybind11::module& m, void* pCallstack) {
         .def_readwrite("command", &RecordControl::command, DOC(dai, RecordControl, command))
         .def_readwrite("maxFrames", &RecordControl::maxFrames, DOC(dai, RecordControl, maxFrames))
         .def_readwrite("maxDurationMs", &RecordControl::maxDurationMs, DOC(dai, RecordControl, maxDurationMs))
+        .def_readwrite("maxSizeKb", &RecordControl::maxSizeKb, DOC(dai, RecordControl, maxSizeKb))
         .def_static("start", py::overload_cast<>(&RecordControl::start), DOC(dai, RecordControl, start))
         .def_static(
             "start", py::overload_cast<std::int32_t, std::int32_t>(&RecordControl::start), "maxFrames"_a, "maxDurationMs"_a, DOC(dai, RecordControl, start, 2))
+        .def_static("start",
+                    py::overload_cast<std::int32_t, std::int32_t, std::int32_t>(&RecordControl::start),
+                    "maxFrames"_a,
+                    "maxDurationMs"_a,
+                    "maxSizeKb"_a,
+                    DOC(dai, RecordControl, start, 3))
         .def_static("stop", &RecordControl::stop, DOC(dai, RecordControl, stop))
         .def("getDatatype", &RecordControl::getDatatype, DOC(dai, RecordControl, getDatatype));
 }

@@ -23,15 +23,22 @@ dai_add_example(replay_to_processing replay_to_processing.cpp OFF OFF)
 
 dai_add_example(replay_imu replay_imu.cpp OFF OFF)
 
+# The example takes the recording path as an argument. The fetched recording.tar is the
+# CI sample (119 video frames and 140 metadata messages); ReplayVideo rejects that pair.
+dai_add_example(holistic_replay holistic_replay.cpp OFF OFF)
 if(DEPTHAI_FETCH_ARTIFACTS)
-    # recording.tar has 119 video frames and 140 metadata messages. ReplayVideo rejects that pair.
-    dai_add_example(holistic_replay holistic_replay.cpp OFF OFF)
     target_compile_definitions(holistic_replay PRIVATE RECORDING_PATH="${recording_path}")
 endif()
 
 dai_add_example(record_video record_video.cpp OFF OFF)
 
 dai_add_example(holistic_record holistic_record.cpp OFF OFF)
+
+dai_add_example(record_basic record_basic.cpp OFF OFF)
+
+dai_add_example(record_naming record_naming.cpp OFF OFF)
+
+dai_add_example(record_start_stop record_start_stop.cpp OFF OFF)
 
 dai_add_example(record_encoded record_encoded.cpp OFF OFF)
 
