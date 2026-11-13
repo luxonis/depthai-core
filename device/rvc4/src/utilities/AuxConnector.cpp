@@ -158,14 +158,10 @@ std::string readComm(pid_t pid) {
     return comm;
 }
 
-std::string lineConsumer(const GpioLineRef& line) {
-    auto chip = findChip(line.chip);
-    if(!chip) {
-        return "";
-    }
-    FileDescriptor chipFd(open(chip->c_str(), O_RDONLY | O_CLOEXEC));
+std::string lineConsumer(const std::filesystem::path& chip, uint32_t offset) {
+    FileDescriptor chipFd(open(chip.c_str(), O_RDONLY | O_CLOEXEC));
     gpio_v2_line_info lineInfo{};
-    lineInfo.offset = line.offset;
+    lineInfo.offset = offset;
     if(chipFd.fd < 0 || ioctl(chipFd.fd, GPIO_V2_GET_LINEINFO_IOCTL, &lineInfo) != 0) {
         return "";
     }
@@ -186,7 +182,8 @@ std::optional<gate::Holder> holderOf(const Pin& pin) {
         return gate::KernelHolder{kernel->name};
     }
     if(pin.state.lineRequested) {
-        return gate::LineHolder{linePrefix + pin.label, pin.gpio ? lineConsumer(*pin.gpio) : ""};
+        auto chip = pin.gpio ? findChip(pin.gpio->chip) : std::nullopt;
+        return gate::LineHolder{linePrefix + pin.label, chip ? lineConsumer(*chip, pin.gpio->offset) : ""};
     }
     return std::nullopt;
 }
@@ -220,6 +217,17 @@ std::string nameOf(const std::map<uint32_t, std::string>& names, uint32_t id) {
 }
 
 }  // namespace
+
+std::optional<std::string> connectorHintForTlmm(int tlmm, const std::string& consumer) {
+    const std::string tlmmName = "TLMM " + std::to_string(tlmm);
+    if(consumer == "aux-connector") {
+        return tlmmName + " is a control line of the aux connector";
+    }
+    if(consumer.size() > linePrefix.size() && consumer.compare(0, linePrefix.size(), linePrefix) == 0) {
+        return tlmmName + " is connector pin " + consumer.substr(linePrefix.size()) + ", use GPIO.setup(\"" + consumer + "\")";
+    }
+    return std::nullopt;
+}
 
 gate::PinUnavailable busyFsyncPin(const std::vector<Pin>& pins) {
     auto pin = findPinWithFunction(pins, AUX_FUNC_FSYNC);

@@ -84,7 +84,9 @@ std::string readComm(pid_t pid);
 /**
  * @return The consumer of a requested line, "" when the line has none or cannot be read.
  */
-std::string lineConsumer(const GpioLineRef& line);
+std::string lineConsumer(const std::filesystem::path& chip, uint32_t offset);
+
+std::optional<std::string> connectorHintForTlmm(int tlmm, const std::string& consumer);
 
 /**
  * Describe the FSYNC pin of a connector whose FSYNC pin fsync-stm could not acquire.

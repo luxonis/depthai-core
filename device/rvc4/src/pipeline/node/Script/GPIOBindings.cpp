@@ -256,7 +256,15 @@ void bind(py::module_ m) {
             auto direction = toDirection(dir);
             auto bias = toBias(pud);
             gpioHandleMap.erase(gpio);
-            gpioHandleMap.emplace(gpio, dai::gpio::Line(GPIO_CHIP_PATH, gpio, direction, bias, "depthai-device"));
+            try {
+                gpioHandleMap.emplace(gpio, dai::gpio::Line(GPIO_CHIP_PATH, gpio, direction, bias, "depthai-device"));
+            } catch(const std::exception& error) {
+                auto hint = dai::aux::connectorHintForTlmm(gpio, dai::aux::lineConsumer(GPIO_CHIP_PATH, gpio));
+                if(!hint) {
+                    throw;
+                }
+                throw std::runtime_error(std::string(error.what()) + ". " + *hint);
+            }
             return 0;
         },
         py::arg("gpio"),
