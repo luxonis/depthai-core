@@ -60,6 +60,8 @@ enum USBRequestID_t {
     GET_VERSION,
     GET_STATE,
     GET_FILE,
+    // 12 is the discovery request, which XLink sends itself.
+    GET_FILE_RAW = 13,
 };
 
 struct USBRequest_t {
@@ -701,11 +703,11 @@ DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
     return sessionState;
 }
 
-std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl, std::string& filename) {
-    return impl->getFile(fileUrl, filename);
+std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl, std::string& filename, bool rawFile) {
+    return impl->getFile(fileUrl, filename, rawFile);
 }
 
-std::optional<std::vector<uint8_t>> DeviceGate::HTTPImpl::getFile(const std::string& fileUrl, std::string& filename) {
+std::optional<std::vector<uint8_t>> DeviceGate::HTTPImpl::getFile(const std::string& fileUrl, std::string& filename, bool /*rawFile*/) {
     // Send a GET request to the server
     if(auto res = pimpl->cli->Get(fileUrl.c_str())) {
         if(res->status == 200) {
@@ -725,10 +727,10 @@ std::optional<std::vector<uint8_t>> DeviceGate::HTTPImpl::getFile(const std::str
     }
 }
 
-std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::string& fileUrl, std::string& filename) {
+std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::string& fileUrl, std::string& filename, bool rawFile) {
     std::lock_guard<std::mutex> lock(mtx);
     USBRequest_t request;
-    request.RequestNum = GET_FILE;
+    request.RequestNum = rawFile ? GET_FILE_RAW : GET_FILE;
     request.RequestSize = fileUrl.size();
     if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
         return std::nullopt;
@@ -746,14 +748,24 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
         return std::nullopt;
     }
 
-    std::vector<uint8_t> respBuffer;
-    respBuffer.resize(request.RequestSize + 1);
+    // The JSON answer is parsed as text and needs the terminator
+    std::vector<uint8_t> respBuffer(static_cast<size_t>(request.RequestSize) + (rawFile ? 0 : 1));
     for(uint32_t offset = 0; offset < request.RequestSize; offset += gateReadChunkSize) {
         const uint32_t chunkSize = std::min(gateReadChunkSize, request.RequestSize - offset);
         if(XLinkGateRead(deviceInfo.name.c_str(), &respBuffer[offset], static_cast<int>(chunkSize), timeout) == X_LINK_ERROR) {
             spdlog::warn("File download not successful - transfer stopped after {} of {} bytes", offset, request.RequestSize);
             return std::nullopt;
         }
+    }
+
+    if(rawFile) {
+        auto fileData = gatewire::parseRawFile(std::move(respBuffer), filename);
+        if(!fileData) {
+            spdlog::warn("File download not successful - the {} byte response does not hold a filename and a file", request.RequestSize);
+            return std::nullopt;
+        }
+        spdlog::debug("File download successful. Filename: {}", filename);
+        return fileData;
     }
 
     respBuffer[request.RequestSize] = '\0';
@@ -801,9 +813,12 @@ std::optional<DeviceGate::CrashDump> DeviceGate::getCrashDump() {
         return std::nullopt;
     }
 
+    // Gates before 0.1.0 answer a file over USB as a JSON list of numbers
+    const bool rawFile = currentVersion >= Version(0, 1, 0);
+
     std::string url = fmt::format("{}/{}/core_dump", sessionsEndpoint, sessionId);
     std::string filename;
-    auto fileData = DeviceGate::getFile(url, filename);
+    auto fileData = DeviceGate::getFile(url, filename, rawFile);
     if(fileData) {
         return CrashDump{std::move(*fileData), filename};
     }

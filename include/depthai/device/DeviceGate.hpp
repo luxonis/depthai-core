@@ -71,7 +71,8 @@ class DeviceGate {
         virtual SessionState getState(std::string sessionId) = 0;
         virtual Version getVersion() = 0;
         virtual VersionInfo getAllVersion() = 0;
-        virtual std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) = 0;
+        // rawFile: over USB, ask for the binary transfer instead of the JSON one
+        virtual std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename, bool rawFile) = 0;
     };
 
     class USBImpl : public GateImpl {
@@ -87,7 +88,7 @@ class DeviceGate {
         SessionState getState(std::string sessionId) override;
         Version getVersion() override;
         VersionInfo getAllVersion() override;
-        std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) override;
+        std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename, bool rawFile) override;
 
        private:
         DeviceInfo deviceInfo;
@@ -109,7 +110,7 @@ class DeviceGate {
         SessionState getState(std::string sessionId) override;
         Version getVersion() override;
         VersionInfo getAllVersion() override;
-        std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) override;
+        std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename, bool rawFile) override;
 
        private:
         // pimpl
@@ -123,7 +124,7 @@ class DeviceGate {
 
     std::thread stateMonitoringThread;
 
-    std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
+    std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename, bool rawFile);
 
     // state of the session
     std::atomic_bool sessionCreated{false};
