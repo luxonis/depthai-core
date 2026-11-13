@@ -4,9 +4,10 @@ name: BOM tests dispatch
 # link to that run in the job summary. It does not wait for the result: a BOM run can take longer than the
 # 6 h job limit of GitHub-hosted runners (6 h 51 min on 2026-10-22, with 84 min in the queue). The BOM
 # tests install the wheels that upload-wheels-to-ak (python-main.yml) published, so call it only after that
-# job passed. Callers:
-#   - python-main.yml, for pushes to main, release branches and tags.
-#   - hil_testing_nightly.yml, for the nightly develop build, at the same time as the HIL tests.
+# job passed (in the same run or in an earlier run of the same commit). Callers:
+#   - python-main.yml, for pushes to main, release branches and tags, and for the nightly develop build
+#     (hil_testing_nightly.yml with build_and_bom) when all wheels are uploaded.
+#   - hil_testing_nightly.yml with bom, for a night without a new develop commit (its wheels are uploaded already).
 
 on:
   workflow_call:
