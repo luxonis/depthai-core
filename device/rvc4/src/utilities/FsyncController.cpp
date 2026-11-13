@@ -227,11 +227,11 @@ void FsyncController::applyPendingRole() {
 namespace {
 
 PinUnavailable describeBusyPin() {
-    auto pins = aux::readConnector();
-    if(const auto* read = std::get_if<std::vector<aux::Pin>>(&pins)) {
-        return aux::busyFsyncPin(*read);
+    auto connector = aux::readConnector();
+    if(const auto* read = std::get_if<aux::Connector>(&connector)) {
+        return aux::busyFsyncPin(read->pins);
     }
-    int err = std::get<int>(pins);
+    int err = std::get<int>(connector);
     if(err != ENOENT) {
         DAI_INFO("Cannot read the aux connector to name the holder of the FSYNC pin: {} ({})", strerror(err), err);
     }

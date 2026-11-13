@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "utilities/FsyncRole.hpp"
+#include "utilities/GpioLine.hpp"
 
 namespace dai {
 namespace aux {
@@ -51,9 +52,16 @@ struct PinState {
 struct Pin {
     uint32_t index;
     std::string label;
+    uint32_t fixed;
     std::vector<uint32_t> functions;  // AUX_FUNC_*, empty on a fixed pin
+    uint32_t gpioPullCaps;
     std::optional<GpioLineRef> gpio;
     PinState state;
+};
+
+struct Connector {
+    std::vector<Pin> pins;
+    uint32_t detect;
 };
 
 Pin parsePin(const aux_pin_info& info, const aux_pin_state& state);
@@ -61,9 +69,9 @@ std::optional<Pin> findPinWithFunction(const std::vector<Pin>& pins, uint32_t fu
 
 /**
  * Read every pin of the connector once, without taking a lock.
- * @return The pins in index order, or the errno of the first call that failed.
+ * @return The connector, or the errno of the first call that failed.
  */
-std::variant<std::vector<Pin>, int> readConnector(const std::filesystem::path& device = "/dev/aux-connector");
+std::variant<Connector, int> readConnector(const std::filesystem::path& device = "/dev/aux-connector");
 
 /**
  * @return The name in /proc/<pid>/comm, "" when it cannot be read.
@@ -80,6 +88,14 @@ std::string lineConsumer(const GpioLineRef& line);
  * @return Busy with the pin's label and its holder, as far as the connector and /proc show them.
  */
 gate::PinUnavailable busyFsyncPin(const std::vector<Pin>& pins);
+
+struct GpioPlan {
+    uint32_t pin;
+    uint32_t pull;
+    GpioLineRef line;
+};
+
+std::variant<GpioPlan, std::string> planGpio(const std::string& name, gpio::Bias bias, const std::variant<Connector, int>& connector);
 
 }  // namespace aux
 }  // namespace dai

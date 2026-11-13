@@ -10,6 +10,7 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <system_error>
 
 namespace dai {
@@ -45,6 +46,10 @@ struct FileDescriptor {
     }
 };
 
+bool hasFunction(const Pin& pin, uint32_t function) {
+    return std::find(pin.functions.begin(), pin.functions.end(), function) != pin.functions.end();
+}
+
 }  // namespace
 
 bool fsyncLinkedToConnector(const std::filesystem::path& deviceTree) {
@@ -70,9 +75,12 @@ bool connectorBound(const std::filesystem::path& device) {
 }
 
 Pin parsePin(const aux_pin_info& info, const aux_pin_state& state) {
-    Pin pin{info.pin, fixedString(info.label), {}, std::nullopt, {NoOwner{}, (state.flags & AUX_PIN_FLAG_LINE) != 0}};
+    Pin pin{info.pin, fixedString(info.label), info.fixed, {}, 0, std::nullopt, {NoOwner{}, (state.flags & AUX_PIN_FLAG_LINE) != 0}};
     for(uint32_t i = 0; i < std::min<uint32_t>(info.nfuncs, AUX_MAX_PIN_FUNCS); i++) {
         pin.functions.push_back(info.funcs[i].function);
+        if(info.funcs[i].function == AUX_FUNC_GPIO) {
+            pin.gpioPullCaps = info.funcs[i].pulls;
+        }
     }
     if(info.gpio.chip[0] != '\0') {
         pin.gpio = GpioLineRef{fixedString(info.gpio.chip), info.gpio.offset};
@@ -92,16 +100,14 @@ Pin parsePin(const aux_pin_info& info, const aux_pin_state& state) {
 }
 
 std::optional<Pin> findPinWithFunction(const std::vector<Pin>& pins, uint32_t function) {
-    auto pin = std::find_if(pins.begin(), pins.end(), [function](const Pin& candidate) {
-        return std::find(candidate.functions.begin(), candidate.functions.end(), function) != candidate.functions.end();
-    });
+    auto pin = std::find_if(pins.begin(), pins.end(), [function](const Pin& candidate) { return hasFunction(candidate, function); });
     if(pin == pins.end()) {
         return std::nullopt;
     }
     return *pin;
 }
 
-std::variant<std::vector<Pin>, int> readConnector(const std::filesystem::path& device) {
+std::variant<Connector, int> readConnector(const std::filesystem::path& device) {
     FileDescriptor connector(open(device.c_str(), O_RDONLY | O_CLOEXEC));
     if(connector.fd < 0) {
         return errno;
@@ -116,7 +122,7 @@ std::variant<std::vector<Pin>, int> readConnector(const std::filesystem::path& d
     if(ioctl(connector.fd, AUX_IOC_STATE, &state) != 0) {
         return errno;
     }
-    std::vector<Pin> pins;
+    Connector read{{}, state.detect};
     for(uint32_t index = 0; index < std::min<uint32_t>(info.npins, AUX_MAX_PINS); index++) {
         aux_pin_info pinInfo{};
         pinInfo.size = sizeof(pinInfo);
@@ -124,9 +130,9 @@ std::variant<std::vector<Pin>, int> readConnector(const std::filesystem::path& d
         if(ioctl(connector.fd, AUX_IOC_PIN_INFO, &pinInfo) != 0) {
             return errno;
         }
-        pins.push_back(parsePin(pinInfo, state.pins[index]));
+        read.pins.push_back(parsePin(pinInfo, state.pins[index]));
     }
-    return pins;
+    return read;
 }
 
 std::string readComm(pid_t pid) {
@@ -159,22 +165,112 @@ std::string lineConsumer(const GpioLineRef& line) {
     return "";
 }
 
+namespace {
+
+const std::string linePrefix = "aux-";
+
+std::optional<gate::Holder> holderOf(const Pin& pin) {
+    if(const auto* process = std::get_if<ProcessOwner>(&pin.state.owner)) {
+        return gate::ProcessHolder{process->pid, readComm(process->pid)};
+    }
+    if(const auto* kernel = std::get_if<KernelOwner>(&pin.state.owner)) {
+        return gate::KernelHolder{kernel->name};
+    }
+    if(pin.state.lineRequested) {
+        return gate::LineHolder{linePrefix + pin.label, pin.gpio ? lineConsumer(*pin.gpio) : ""};
+    }
+    return std::nullopt;
+}
+
+const std::map<uint32_t, std::string> functionNames = {
+    {AUX_FUNC_GPIO, "gpio"},
+    {AUX_FUNC_UART_RX, "uart-rx"},
+    {AUX_FUNC_UART_TX, "uart-tx"},
+    {AUX_FUNC_I2C_SDA, "i2c-sda"},
+    {AUX_FUNC_I2C_SCL, "i2c-scl"},
+    {AUX_FUNC_FSYNC, "fsync"},
+    {AUX_FUNC_STROBE, "strobe"},
+    {AUX_FUNC_DETECT, "detect"},
+};
+
+const std::map<uint32_t, std::string> fixedRoleNames = {
+    {AUX_FIXED_USB_DP, "usb-dp"},
+    {AUX_FIXED_USB_DN, "usb-dn"},
+    {AUX_FIXED_POWER_OUT, "power-out"},
+    {AUX_FIXED_GND, "gnd"},
+    {AUX_FIXED_DC_IN, "dc-in"},
+    {AUX_FIXED_CAN_H, "can-h"},
+    {AUX_FIXED_CAN_L, "can-l"},
+    {AUX_FIXED_IGNITION, "ignition"},
+    {AUX_FIXED_NC, "nc"},
+};
+
+std::string nameOf(const std::map<uint32_t, std::string>& names, uint32_t id) {
+    auto name = names.find(id);
+    return name == names.end() ? std::to_string(id) : name->second;
+}
+
+}  // namespace
+
 gate::PinUnavailable busyFsyncPin(const std::vector<Pin>& pins) {
-    gate::PinUnavailable busy{gate::PinProblem::Busy, "", std::nullopt};
     auto pin = findPinWithFunction(pins, AUX_FUNC_FSYNC);
     if(!pin) {
-        return busy;
+        return {gate::PinProblem::Busy, "", std::nullopt};
     }
-    busy.pinLabel = pin->label;
-    if(const auto* process = std::get_if<ProcessOwner>(&pin->state.owner)) {
-        busy.holder = gate::ProcessHolder{process->pid, readComm(process->pid)};
-    } else if(const auto* kernel = std::get_if<KernelOwner>(&pin->state.owner)) {
-        busy.holder = gate::KernelHolder{kernel->name};
-    } else if(pin->state.lineRequested) {
-        // The connector's gpiochip names each line aux-<label>
-        busy.holder = gate::LineHolder{"aux-" + pin->label, pin->gpio ? lineConsumer(*pin->gpio) : ""};
+    return {gate::PinProblem::Busy, pin->label, holderOf(*pin)};
+}
+
+std::variant<GpioPlan, std::string> planGpio(const std::string& name, gpio::Bias bias, const std::variant<Connector, int>& connector) {
+    auto refuse = [&name](const std::string& reason) { return "Cannot set up \"" + name + "\": " + reason; };
+    if(name.size() <= linePrefix.size() || name.compare(0, linePrefix.size(), linePrefix) != 0) {
+        return refuse("a connector pin is named \"aux-<label>\", such as \"aux-1\"");
     }
-    return busy;
+    const std::string label = name.substr(linePrefix.size());
+    if(bias == gpio::Bias::PullDown) {
+        return refuse("connector pins have no pull-down");
+    }
+    if(const int* err = std::get_if<int>(&connector)) {
+        return refuse(*err == ENOENT ? "this device has no aux connector driver" : "cannot read /dev/aux-connector: " + std::string(std::strerror(*err)));
+    }
+
+    const Connector& read = std::get<Connector>(connector);
+    auto pin = std::find_if(read.pins.begin(), read.pins.end(), [&label](const Pin& candidate) { return candidate.label == label; });
+    if(pin == read.pins.end()) {
+        return refuse("no pin " + label + " on this board");
+    }
+    if(pin->fixed != AUX_FIXED_NONE) {
+        return refuse("pin " + label + " is a fixed pin (" + nameOf(fixedRoleNames, pin->fixed) + ")");
+    }
+    if(!pin->gpio) {
+        std::string functions;
+        for(uint32_t function : pin->functions) {
+            functions += (functions.empty() ? "" : ", ") + nameOf(functionNames, function);
+        }
+        return refuse("pin " + label + " has no function gpio, its functions are " + functions);
+    }
+
+    // Pins without a choice keep the board's pull, which PIN_INFO does not always list
+    uint32_t pull = AUX_PULL_DEFAULT;
+    if(bias == gpio::Bias::PullUp && pin->gpioPullCaps != 0) {
+        if(!(pin->gpioPullCaps & AUX_PULL_CAP_UP)) {
+            return refuse("pin " + label + " has no pull-up as gpio");
+        }
+        pull = AUX_PULL_UP;
+    } else if(bias == gpio::Bias::Disabled && (pin->gpioPullCaps & AUX_PULL_CAP_OFF)) {
+        pull = AUX_PULL_OFF;
+    }
+
+    if(auto holder = holderOf(*pin)) {
+        std::string reason = "pin " + label + " " + gate::holderText(*holder);
+        if(std::holds_alternative<gate::KernelHolder>(*holder) && hasFunction(*pin, AUX_FUNC_FSYNC)) {
+            reason += ". Set the external frame sync role to STANDALONE to use pin " + label + " as GPIO";
+        }
+        return refuse(reason);
+    }
+    if(read.detect == AUX_DETECT_0 && hasFunction(*pin, AUX_FUNC_DETECT)) {
+        return refuse("pin " + label + " is busy: something is attached to DET. Unplug it to use pin " + label + " as GPIO");
+    }
+    return GpioPlan{pin->index, pull, *pin->gpio};
 }
 
 }  // namespace aux

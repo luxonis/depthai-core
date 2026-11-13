@@ -69,6 +69,7 @@ bool externalRoleForced(const RoleState& state);
  */
 std::optional<PinProblem> classifySetInfoError(int err, bool linked, bool bound, std::optional<uint32_t> config);
 
+std::string holderText(const Holder& holder);
 std::string pinReason(const PinUnavailable& unavailable);
 std::optional<std::string> autoWarning(const RoleState& state);
 std::optional<std::string> setRoleError(const RoleState& state);
