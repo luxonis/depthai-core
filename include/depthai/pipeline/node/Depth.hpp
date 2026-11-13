@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -250,12 +251,16 @@ class Depth : public DeviceNodeGroup {
 
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
+    static std::vector<Algorithm> getSupportedAlgorithmsWithModels(const std::shared_ptr<Device>& device, std::optional<std::vector<DeviceModelZoo>> models);
+
+    // Keep selection independent of a live device and use the cached OS version to choose FPS limits.
     static Selection selectBackend(Platform platform,
                                    std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                    float targetFps,
                                    const std::vector<Algorithm>& supportedAlgorithms,
                                    const std::vector<DeviceModelZoo>& modelFilter = {},
-                                   bool requireFpsAndResolutionMatch = false);
+                                   bool requireFpsAndResolutionMatch = false,
+                                   const std::optional<Version>& osVersion = std::nullopt);
 
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
 

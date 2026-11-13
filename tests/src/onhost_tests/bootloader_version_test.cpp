@@ -1,6 +1,8 @@
 #include <catch2/catch_all.hpp>
 #include <depthai/device/Version.hpp>
 
+#include "utility/DeviceOSVersion.hpp"
+
 using Version = dai::Version;
 
 TEST_CASE("Version parsing") {
@@ -110,4 +112,19 @@ TEST_CASE("Version copy and move semantics") {
     REQUIRE(v5.toString() == "1.2.3");
 
     // Destructor is implicitly tested by scope exit
+}
+
+TEST_CASE("Device OS version parsing preserves release semantics", "[DeviceOSVersion]") {
+    for(const auto* version : {"1.46.0", "1.47.0-rc.1", "1.47.0+build"}) {
+        const auto parsed = dai::utility::parseDeviceOSVersion(version);
+        REQUIRE(parsed.has_value());
+        REQUIRE(parsed->toString() == version);
+    }
+    const auto prefixed = dai::utility::parseDeviceOSVersion("r851-1.47.0");
+    REQUIRE(prefixed.has_value());
+    REQUIRE(*prefixed == Version(1, 47, 0));
+    for(const auto* version : {"", "unknown", "custom", "1.46", "r-1.47.0", "rx-1.47.0", "1.47.0garbage"}) {
+        CAPTURE(version);
+        REQUIRE_FALSE(dai::utility::parseDeviceOSVersion(version));
+    }
 }
