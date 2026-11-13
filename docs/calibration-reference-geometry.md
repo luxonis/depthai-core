@@ -36,6 +36,64 @@ auto K = frame->getTransformation().getIntrinsicMatrix();
 The firmware change corrects metadata for affected readouts without changing
 image pixels or the generic CalibrationHandler API contract.
 
+## Before/after projection example
+
+An IMX214 hardware capture with released DepthAI 3.12.0 selected the native
+3840×2160 readout at (184, 480) within the 4208×3120 sensor. That unscaled crop
+must retain focal length and subtract its origin from the principal point.
+The recorded native-readout metadata instead contained the intrinsics for a
+resized image. An explicit crop of the full readout already returned the
+expected intrinsics on the same released version.
+
+| Parameter | Before: native readout | After: corrected build | Expected from full readout |
+| --- | ---: | ---: | ---: |
+| fx | 2724.1130 | 2985.1738 | 2985.1738 |
+| fy | 2723.8677 | 2984.9050 | 2984.9050 |
+| cx | 1936.2173 | 1937.7715 | 1937.7715 |
+| cy | 1125.9661 | 1130.3711 | 1130.3711 |
+
+The focal error is -8.745% relative to the expected focal length, not a
+percentage of incorrectly calibrated devices or a calibration-target residual.
+The matrices come from saved before/after hardware captures during development;
+the final published replacement separately passed full/native-reference tests.
+
+![Ideal-ray projections using recorded IMX214 intrinsics](assets/camera-native-crop-before-after.png)
+
+The landmarks in this figure are synthetic ideal rays. Their reference pixels
+are computed by projection into the full image followed by subtraction of the
+physical crop origin. No lens distortion is simulated. For a ray (X/Z, Y/Z) =
+(0.3, 0), the expected pixel is (2833.324, 1130.371); old metadata projects it
+to (2753.451, 1125.966), a 79.994-pixel displacement. Corrected metadata matches
+the crop expectation to the shown precision. This is a coordinate-mapping
+demonstration, not an independent measurement of physical target accuracy.
+
+Reproduce the figure and numeric table without a camera:
+
+```sh
+python -m pip install numpy matplotlib
+python docs/calibration-native-crop-example.py
+```
+
+The recorded inputs are in [calibration-native-crop-example.json](calibration-native-crop-example.json).
+The script also demonstrates why a projection/unprojection round trip using
+the same incorrect K can pass: K and its inverse cancel. A visually normal
+image, resize-only pixel mapping, or such a round trip does not establish
+correct camera rays. Projections between independently calibrated cameras,
+undistortion, alignment and metric 3D can expose a mismatch when the affected
+metadata is used. A focal-length percentage does not directly describe the
+resulting pixel, depth or extrinsics error.
+
+Existing production calibration records are not rewritten by this fix. A
+calibration fit can have a low residual in its own capture coordinates while
+its later conversion to another sensor readout is wrong. The tested full/native
+RVC2 references require no recalibration for this mapping fix. This does not
+certify every historical production record: capture FOV, stored dimensions and
+the consuming firmware path still need to agree. In particular, dimensions
+alone cannot resolve unknown capture provenance on RVC4. Earlier synthetic
+RVC4 results that assumed native-crop semantics for reduced calibration records
+are not evidence that all such production records were incorrectly calibrated;
+the final implementation preserves their historical interpretation.
+
 ## Extended hardware coverage
 
 `camera_sensor_geometry_extended_test` runs in the nightly HIL selection. It

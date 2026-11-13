@@ -1,0 +1,68 @@
+{
+  "description": "Recorded IMX214 intrinsics; the figure computes ideal pinhole projections, not measured target reprojection residuals.",
+  "sensor": "IMX214",
+  "full_size": [
+    4208,
+    3120
+  ],
+  "readout_xywh": [
+    184,
+    480,
+    3840,
+    2160
+  ],
+  "before_source": "Released DepthAI 3.12.0 hardware capture",
+  "after_source": "Corrected development firmware hardware capture during initial investigation; final published replacement separately passed full/native reference regressions.",
+  "full_K": [
+    [
+      2985.173828125,
+      0.0,
+      2121.771484375
+    ],
+    [
+      0.0,
+      2984.905029296875,
+      1610.37109375
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "before_K": [
+    [
+      2724.113037109375,
+      0.0,
+      1936.21728515625
+    ],
+    [
+      0.0,
+      2723.86767578125,
+      1125.966064453125
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "after_K": [
+    [
+      2985.173828125,
+      0.0,
+      1937.771484375
+    ],
+    [
+      0.0,
+      2984.905029296875,
+      1130.37109375
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "distortion_note": "The calculation uses ideal/undistorted rays to isolate crop/intrinsics mapping; it does not measure lens distortion or calibration accuracy."
+}
