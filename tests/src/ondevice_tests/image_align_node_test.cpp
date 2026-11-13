@@ -411,6 +411,16 @@ void requireSyntheticPixels(const dai::ImgFrame& expected, const dai::ImgFrame& 
             const auto targetK = expected.transformation.getIntrinsicMatrix();
             const auto rotation = source->transformation.getRotationMatrixTo(expected.transformation);
             const auto translation = source->transformation.getTranslationVectorTo(expected.transformation, false, dai::LengthUnit::MILLIMETER);
+            const float rayX = (x - targetK[0][2]) / targetK[0][0];
+            const float rayY = (y - targetK[1][2]) / targetK[1][1];
+            // Intersect the output ray with each candidate's source-Z plane. Comparing
+            // Z at the projected source ray would penalize the allowed pixel displacement.
+            const float normalDotRay = rotation[0][2] * rayX + rotation[1][2] * rayY + rotation[2][2];
+            const float normalDotTranslation = rotation[0][2] * translation[0] + rotation[1][2] * translation[1] + rotation[2][2] * translation[2];
+            if(!std::isfinite(normalDotRay) || normalDotRay <= 1e-6f) {
+                ++unmatched;
+                continue;
+            }
             bool foundExpected = wanted == 0, foundActual = got == 0;
             for(unsigned int v = 0; v < source->getHeight() && (!foundExpected || !foundActual); ++v) {
                 for(unsigned int u = 0; u < source->getWidth() && (!foundExpected || !foundActual); ++u) {
@@ -425,8 +435,10 @@ void requireSyntheticPixels(const dai::ImgFrame& expected, const dai::ImgFrame& 
                     const float dx = targetK[0][0] * targetX / targetZ + targetK[0][2] - x;
                     const float dy = targetK[1][1] * targetY / targetZ + targetK[1][2] - y;
                     if(dx * dx + dy * dy > 4.0f) continue;
-                    foundExpected |= std::abs(targetZ - wanted) <= 3.0f;
-                    foundActual |= std::abs(targetZ - got) <= 3.0f;
+                    const float outputRayZ = (z + normalDotTranslation) / normalDotRay;
+                    if(!(outputRayZ >= 0.5f && outputRayZ < 65535.5f)) continue;
+                    foundExpected |= std::abs(outputRayZ - wanted) <= 3.0f;
+                    foundActual |= std::abs(outputRayZ - got) <= 3.0f;
                 }
             }
             if(!foundExpected || !foundActual) ++unmatched;
@@ -600,7 +612,49 @@ TEST_CASE("Test ImageAlign synthetic depth to image host device parity") {
 }
 
 TEST_CASE("ImageAlign synthetic depth comparison across host backend preferences") {
-    requireSyntheticBackendParity(true);
+    SECTION("Backend parity") {
+        requireSyntheticBackendParity(true);
+    }
+    SECTION("Rounded occlusion winners use the output ray") {
+        constexpr int width = 320, height = 240, stride = (width + 8) * 2;
+        const float angle = 10.0f * 3.14159265358979323846f / 180.0f;
+        const float c = std::cos(angle), s = std::sin(angle);
+        const std::array<std::array<float, 3>, 3> k = {{{320, 0, 159.5f}, {0, 320, 119.5f}, {0, 0, 1}}};
+        const dai::ImgTransformation sourceTransform(
+            width,
+            height,
+            k,
+            dai::CameraModel::Perspective,
+            {},
+            dai::Extrinsics({{c, 0, s}, {0, 1, 0}, {-s, 0, c}}, {75, 0, 50}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER));
+        const dai::ImgTransformation targetTransform(
+            width,
+            height,
+            k,
+            dai::CameraModel::Perspective,
+            {},
+            dai::Extrinsics({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER));
+        auto source = makeRuntimeTransformationFrame(sourceTransform, dai::CameraBoardSocket::CAM_B, dai::ImgFrame::Type::RAW16, 0);
+        source->setStride(stride);
+        std::vector<uint8_t> pixels(height * stride, 0);
+        const auto setDepth = [](auto& data, size_t offset, uint16_t depth) {
+            data[offset] = static_cast<uint8_t>(depth);
+            data[offset + 1] = static_cast<uint8_t>(depth >> 8);
+        };
+        setDepth(pixels, 40 * stride + 103 * 2, 7589);
+        setDepth(pixels, 40 * stride + 104 * 2, 7746);
+        source->setData(std::move(pixels));
+        auto expected = makeRuntimeTransformationFrame(targetTransform, dai::CameraBoardSocket::CAM_A, dai::ImgFrame::Type::RAW16, 0);
+        auto actual = makeRuntimeTransformationFrame(targetTransform, dai::CameraBoardSocket::CAM_A, dai::ImgFrame::Type::RAW16, 0);
+        pixels.assign(width * height * 2, 0);
+        // These neighboring source samples project within two pixels of (164, 42).
+        // Their source-Z planes intersect that output ray at 7750.080 and 7909.108 mm.
+        setDepth(pixels, (42 * width + 164) * 2, 7750);
+        expected->setData(pixels);
+        setDepth(pixels, (42 * width + 164) * 2, 7909);
+        actual->setData(std::move(pixels));
+        requireSyntheticPixels(*expected, *actual, source.get());
+    }
 }
 
 TEST_CASE("RVC2 ImageAlign rejects explicit device backend preferences") {
