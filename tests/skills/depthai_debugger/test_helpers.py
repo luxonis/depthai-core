@@ -156,6 +156,52 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(manifest["returncode"], -signal.SIGTERM)
         self.assertEqual(manifest["termination_actions"], ["interrupt", "terminate"])
 
+    @unittest.skipUnless(os.name == "posix", "POSIX signal behavior")
+    def test_capture_repeated_interrupt_during_cleanup(self):
+        for initial in ("interrupt", "timeout"):
+            with self.subTest(initial=initial):
+                pid_file = self.root / f"{initial}.pid"
+                interrupted = self.root / f"{initial}.interrupted"
+                child = (
+                    "import os, signal, time\n"
+                    "from pathlib import Path\n"
+                    f"signal.signal(signal.SIGINT, lambda *_: Path({str(interrupted)!r}).touch())\n"
+                    f"Path({str(pid_file)!r}).write_text(str(os.getpid()))\n"
+                    "time.sleep(30)\n"
+                )
+                output = self.root / initial
+                timeout = ["--timeout", "1"] if initial == "timeout" else []
+                capture = subprocess.Popen(
+                    [sys.executable, str(SCRIPTS / "capture_run.py"),
+                     "--output-dir", str(output), "--grace", "1", *timeout,
+                     "--", sys.executable, "-c", child],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                )
+                try:
+                    for ready in (pid_file, interrupted):
+                        deadline = time.monotonic() + 5
+                        while not ready.exists() and capture.poll() is None and time.monotonic() < deadline:
+                            time.sleep(0.01)
+                        self.assertTrue(ready.exists(), f"did not reach {ready.name}")
+                        if ready == interrupted or initial == "interrupt":
+                            capture.send_signal(signal.SIGINT)
+                    _, stderr = capture.communicate(timeout=5)
+                    self.assertEqual(capture.returncode, 124 if timeout else 130, stderr)
+                    manifest = json.loads((output / "manifest.json").read_text())
+                    self.assertFalse(manifest["child_still_running"])
+                    self.assertIn("terminate", manifest["termination_actions"])
+                    with self.assertRaises(ProcessLookupError):
+                        os.kill(int(pid_file.read_text()), 0)
+                finally:
+                    if pid_file.exists():
+                        try:
+                            os.kill(int(pid_file.read_text()), signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                    if capture.poll() is None:
+                        capture.kill()
+                    capture.communicate(timeout=5)
+
     @unittest.skipUnless(os.name == "posix", "POSIX process groups")
     def test_capture_stops_workers_after_parent_exits(self):
         pid_file = self.root / "worker.pid"
@@ -188,6 +234,16 @@ class HelpersTest(unittest.TestCase):
             size = heartbeat.stat().st_size
             time.sleep(0.15)
             self.assertEqual(heartbeat.stat().st_size, size, "orphan worker is still running")
+            worker_pid = int(pid_file.read_text())
+            status = subprocess.run(
+                ["ps", "-p", str(worker_pid), "-o", "stat="],
+                capture_output=True, text=True, timeout=5,
+            )
+            self.assertIn(status.returncode, (0, 1), status.stderr)
+            self.assertFalse(status.stderr.strip(), status.stderr)
+            # An unreaped zombie is dead; kill(pid, 0) alone cannot distinguish it.
+            state = status.stdout.strip()
+            self.assertTrue(not state or state.startswith(("Z", "X")), f"worker {worker_pid} is alive: {state}")
             self.assertIn("terminate", manifest["termination_actions"])
             self.assertIn("process_group_present", manifest)
         finally:
@@ -223,6 +279,22 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(report["content"]["kind"], "rvc2_json")
         self.assertEqual(report["content"]["firmware_commit"], "firmware-identity")
         self.assertEqual((output / "crash_reports.json").read_bytes(), artifact.read_bytes())
+
+    def test_excessive_json_nesting_is_reported_as_failed_inspection(self):
+        nested = "[" * 20000 + "0" + "]" * 20000
+        document = ('{"crashReports":[],"extra":' + nested + "}").encode()
+        legacy = self.root / "deep.json"
+        legacy.write_bytes(document)
+        archive = self.archive("deep.tar", [("metadata.json", document)])
+        # Some Python versions decode this depth but fail while encoding the report.
+        metadata = ('{"extra":' + "[" * 2000 + "0" + "]" * 2000 + "}").encode()
+        encoding = self.archive("deep-encoding.tar", [("metadata.json", metadata)])
+        for index, artifact in enumerate((legacy, archive, encoding)):
+            with self.subTest(format=index):
+                result, report, _ = self.inspect(artifact, directory=f"deep-{index}")
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(report["status"], "failed")
+                self.assertIn("recursion", report["error"].lower())
 
     def test_sdk_rvc2_preserves_host_and_firmware_identity(self):
         artifact = self.archive("rvc2.tar", [

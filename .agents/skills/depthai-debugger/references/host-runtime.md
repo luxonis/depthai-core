@@ -26,8 +26,12 @@ binary merely to identify it.
 
 ## Capture the reproduction
 
+Verify the upload controls in [controls and compatibility](controls-and-compatibility.md)
+for the loaded SDK before running this example.
+
 ```bash
-DEPTHAI_LEVEL=debug python3 .agents/skills/depthai-debugger/scripts/capture_run.py \
+DEPTHAI_LEVEL=debug DEPTHAI_TELEMETRY=0 DEPTHAI_DISABLE_FEEDBACK=1 \
+python3 .agents/skills/depthai-debugger/scripts/capture_run.py \
   --output-dir /tmp/depthai-host-run -- python3 -u /path/to/repro.py
 ```
 
@@ -51,6 +55,8 @@ process group even after its leader exits. On Windows, console interruption is
 attempted; fallback termination may be abrupt and descendants are not guaranteed
 to terminate. A stopped host does not prove device session cleanup; inspect that
 before rerunning.
+Further Ctrl-C presses are ignored while cleanup completes, then the previous
+signal handler is restored.
 
 ## Python exceptions and hangs
 

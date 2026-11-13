@@ -17,9 +17,11 @@ Where supported, request without clearing when preservation is necessary.
 The existing crash example deliberately crashes a device. Read it for callback
 usage; do not run it as a passive collector.
 
-RVC2 `getState()` captures live state in crash-dump form, temporarily halting
-execution. It can disturb the pipeline and the API recommends closing afterward.
-It is RVC2-only. Select it deliberately for an authorized stalled-device snapshot.
+RVC2-only `getState()` captures live state in crash-dump form, temporarily halting
+execution. It replaces collected crash reports with the live snapshot and then
+clears the device's cached crash evidence. Retrieve and persist any existing crash
+dump before requesting a snapshot. This can disturb the pipeline and the API
+recommends closing afterward. Select it deliberately for an authorized snapshot.
 
 ## Offline inspection
 

@@ -75,12 +75,20 @@ The Python 3.9+ helpers use the standard library and do not build or contact
 devices themselves. `capture_run.py` executes exactly the command supplied, which
 can have device or network effects; inspect that command first.
 
+Before running the reproduction below, verify the loaded SDK's supported upload
+controls using [controls and compatibility](references/controls-and-compatibility.md).
+At the checked revision, `DEPTHAI_DISABLE_FEEDBACK=1` prevents crash uploads;
+`DEPTHAI_TELEMETRY=0` separately disables telemetry. Set both before starting
+the child.
+
 ```bash
 # Local inventory; does not import depthai or initialize XLink.
+debug_evidence_dir="$(mktemp -d "${TMPDIR:-/tmp}/depthai-debug.XXXXXX")" || exit 1
 python3 .agents/skills/depthai-debugger/scripts/collect_context.py \
-  --output /tmp/depthai-context.json
+  --output "$debug_evidence_dir/context.json"
 
 # New output directory; use the interpreter and reproduction you selected.
+DEPTHAI_TELEMETRY=0 DEPTHAI_DISABLE_FEEDBACK=1 \
 python3 .agents/skills/depthai-debugger/scripts/capture_run.py \
   --output-dir /tmp/depthai-run -- python3 -u /path/to/repro.py
 

@@ -15,48 +15,52 @@ import time
 
 def stop_process(process, grace):
     """Interrupt our child/group, escalating only if it does not finish."""
-    actions = []
-    for phase, wait in (("interrupt", grace), ("terminate", 5), ("kill", 5)):
-        if os.name != "posix" and process.poll() is not None:
-            break
-        try:
-            if os.name == "posix":
-                sig = {"interrupt": signal.SIGINT, "terminate": signal.SIGTERM, "kill": signal.SIGKILL}[phase]
-                os.killpg(process.pid, sig)
-            elif phase == "interrupt":
-                process.send_signal(signal.CTRL_BREAK_EVENT)
-            elif phase == "terminate":
-                process.terminate()
-            else:
-                process.kill()
-            actions.append(phase)
-        except ProcessLookupError:
-            break
-        except OSError as error:
-            actions.append(phase + ": " + str(error))
-        if phase == "kill":
-            try:
-                process.wait(timeout=wait)
-            except subprocess.TimeoutExpired:
-                pass
-            break
-        deadline = time.monotonic() + wait
-        while True:
-            process.poll()  # Reap the leader before checking the group.
-            if os.name == "posix":
-                try:
-                    os.killpg(process.pid, 0)
-                except ProcessLookupError:
-                    return actions
-                except PermissionError:
-                    pass  # The group still exists, but cannot be signalled.
-            elif process.returncode is not None:
-                return actions
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
+    previous_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    try:
+        actions = []
+        for phase, wait in (("interrupt", grace), ("terminate", 5), ("kill", 5)):
+            if os.name != "posix" and process.poll() is not None:
                 break
-            time.sleep(min(0.05, remaining))
-    return actions
+            try:
+                if os.name == "posix":
+                    sig = {"interrupt": signal.SIGINT, "terminate": signal.SIGTERM, "kill": signal.SIGKILL}[phase]
+                    os.killpg(process.pid, sig)
+                elif phase == "interrupt":
+                    process.send_signal(signal.CTRL_BREAK_EVENT)
+                elif phase == "terminate":
+                    process.terminate()
+                else:
+                    process.kill()
+                actions.append(phase)
+            except ProcessLookupError:
+                break
+            except OSError as error:
+                actions.append(phase + ": " + str(error))
+            if phase == "kill":
+                try:
+                    process.wait(timeout=wait)
+                except subprocess.TimeoutExpired:
+                    pass
+                break
+            deadline = time.monotonic() + wait
+            while True:
+                process.poll()  # Reap the leader before checking the group.
+                if os.name == "posix":
+                    try:
+                        os.killpg(process.pid, 0)
+                    except ProcessLookupError:
+                        return actions
+                    except PermissionError:
+                        pass  # The group still exists, but cannot be signalled.
+                elif process.returncode is not None:
+                    return actions
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                time.sleep(min(0.05, remaining))
+        return actions
+    finally:
+        signal.signal(signal.SIGINT, previous_handler)
 
 
 def main():

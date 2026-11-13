@@ -185,11 +185,14 @@ def main():
                 {"bytes": args.max_bytes, "expanded_bytes": args.max_bytes, "members": 4096},
             )
         report["status"] = "inspected"
-    except (OSError, ValueError, tarfile.TarError, EOFError, lzma.LZMAError) as error:
+        report_json = json.dumps(report, indent=2)
+    except (OSError, ValueError, RecursionError, tarfile.TarError, EOFError, lzma.LZMAError) as error:
+        report.pop("content", None)  # Deep metadata may also fail during encoding.
         report.update(status="failed", error=str(error))
+        report_json = json.dumps(report, indent=2)
         result = 2
     (args.output_dir / "inspection.json").write_text(
-        json.dumps(report, indent=2) + "\n", encoding="utf-8",
+        report_json + "\n", encoding="utf-8",
     )
     print(args.output_dir / "inspection.json")
     return result

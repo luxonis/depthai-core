@@ -19,8 +19,9 @@ platform, transport, sensor configuration, and failure phase. Also record:
 Run the local collector using the intended Python environment:
 
 ```bash
+debug_evidence_dir="$(mktemp -d "${TMPDIR:-/tmp}/depthai-debug.XXXXXX")" || exit 1
 python3 .agents/skills/depthai-debugger/scripts/collect_context.py \
-  --repo . --build-dir build --output /tmp/depthai-context.json
+  --repo . --build-dir build --output "$debug_evidence_dir/context.json"
 ```
 
 Optional repeated `--related-repo /path/to/repo` and `--artifact /path/to/file`

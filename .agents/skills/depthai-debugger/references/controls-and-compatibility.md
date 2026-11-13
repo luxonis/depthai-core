@@ -52,7 +52,9 @@ At baseline:
   use the actual saved-path log.
 - `DEPTHAI_CRASHDUMP=0` disables automatic collection.
 - `DEPTHAI_CRASHDUMP_TIMEOUT` is in milliseconds; a nonpositive value disables
-  automatic collection. Positive values bound retrieval.
+  automatic collection. Positive values set the retrieval deadline. For Gate
+  collection in `waitForGateAndCollectCrashDump()`, this deadline starts after
+  the fixed five-second delay following session end; that delay is additional.
 - `DEPTHAI_DISABLE_CRASHDUMP_COLLECTION=1` suppresses upload in
   `LogCollection.cpp` **after** local archive creation. Despite its name, it
   preserves local capture in this revision.
@@ -62,8 +64,8 @@ At baseline:
 For an authorized reproduction with local evidence only:
 
 ```bash
-mkdir -p /tmp/depthai-crash-evidence
-DEPTHAI_LEVEL=debug DEPTHAI_CRASHDUMP=/tmp/depthai-crash-evidence \
+debug_crash_dir="$(mktemp -d "${TMPDIR:-/tmp}/depthai-crash.XXXXXX")" || exit 1
+DEPTHAI_LEVEL=debug DEPTHAI_CRASHDUMP="$debug_crash_dir" \
 DEPTHAI_TELEMETRY=0 DEPTHAI_DISABLE_FEEDBACK=1 \
 python3 -u /path/to/repro.py
 ```
