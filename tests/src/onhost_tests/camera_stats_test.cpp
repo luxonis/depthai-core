@@ -38,6 +38,10 @@ TEST_CASE("Camera statistics preserve unavailable values and 64-bit counters", "
     std::vector<uint8_t> bytes;
     std::vector<dai::CameraStats> actual;
 
+    SECTION("JSON representation") {
+        REQUIRE(dai::utility::serialize<dai::SerializationType::JSON>(expected, bytes));
+        REQUIRE(dai::utility::deserialize<dai::SerializationType::JSON>(bytes.data(), bytes.size(), actual));
+    }
     SECTION("RPC JSON MessagePack representation") {
         REQUIRE(dai::utility::serialize<dai::SerializationType::JSON_MSGPACK>(expected, bytes));
         REQUIRE(dai::utility::deserialize<dai::SerializationType::JSON_MSGPACK>(bytes.data(), bytes.size(), actual));
@@ -53,6 +57,32 @@ TEST_CASE("Camera statistics preserve unavailable values and 64-bit counters", "
     REQUIRE(actual[0].halDeviceErrors == 0);
     REQUIRE_FALSE(actual[0].completedCaptures.has_value());
     REQUIRE(actual[0].halRequestErrors.value() > std::numeric_limits<uint32_t>::max());
+}
+
+TEST_CASE("Camera statistics tolerate missing RPC fields", "[camera-stats]") {
+    const nlohmann::json payload{{"socket", dai::CameraBoardSocket::CAM_D},
+                                 {"cameraId", 7},
+                                 {"status", dai::CameraStats::Status::AVAILABLE},
+                                 {"sessionId", "capture-session"},
+                                 {"timestampNs", 123},
+                                 {"completedCaptures", 0},
+                                 {"halDeviceErrors", nullptr}};
+    const auto bytes = nlohmann::json::to_msgpack(nlohmann::json::array({payload}));
+    std::vector<dai::CameraStats> decoded;
+    REQUIRE(dai::utility::deserialize<dai::SerializationType::JSON_MSGPACK>(bytes.data(), bytes.size(), decoded));
+    REQUIRE(decoded.size() == 1);
+    REQUIRE(decoded[0].socket == dai::CameraBoardSocket::CAM_D);
+    REQUIRE(decoded[0].cameraId == 7);
+    REQUIRE(decoded[0].status == dai::CameraStats::Status::AVAILABLE);
+    REQUIRE(decoded[0].sessionId == "capture-session");
+    REQUIRE(decoded[0].timestampNs == 123);
+    REQUIRE(decoded[0].completedCaptures == 0);
+    REQUIRE_FALSE(decoded[0].halDeviceErrors.has_value());
+    REQUIRE_FALSE(decoded[0].halRequestErrors.has_value());
+    REQUIRE_FALSE(decoded[0].cslTimestampNs.has_value());
+    REQUIRE_FALSE(decoded[0].cslErrorEvents.has_value());
+    REQUIRE_FALSE(decoded[0].sensorStreamOffFailureEvents.has_value());
+    REQUIRE(decoded[0].cslSessionId.empty());
 }
 
 TEST_CASE("Camera statistics lifecycle states survive RPC serialization", "[camera-stats]") {

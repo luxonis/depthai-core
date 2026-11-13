@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Poll two physical sensors. See examples/CameraStats.md for counter coverage and deltas."""
+"""Poll two physical sensors. See include/depthai/common/CameraStats.hpp for counter coverage and delta rules."""
 
 import argparse
 import time

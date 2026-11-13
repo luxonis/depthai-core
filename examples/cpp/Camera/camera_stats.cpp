@@ -2,6 +2,7 @@
 #include <chrono>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -25,7 +26,13 @@ int main(int argc, char** argv) {
     }
     if(sockets[0] == sockets[1]) return 1;
     const auto duration = std::chrono::seconds(argc == 4 ? std::stoi(argv[3]) : 30);
-    dai::Pipeline pipeline;
+    if(duration.count() <= 0) {
+        std::cerr << "Duration must be positive\n";
+        return 1;
+    }
+    dai::DeviceInfo deviceInfo;
+    deviceInfo.platform = X_LINK_RVC4;
+    dai::Pipeline pipeline(std::make_shared<dai::Device>(deviceInfo));
     auto device = pipeline.getDefaultDevice();
     std::vector<std::shared_ptr<dai::MessageQueue>> queues;
     for(const auto socket : sockets) {
