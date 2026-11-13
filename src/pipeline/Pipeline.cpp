@@ -2177,10 +2177,17 @@ void PipelineImpl::stop() {
         telemetryPipelineStartedAt.reset();
     }
 
-    // Stops the pipeline execution
+    // Stops the pipeline execution. A node that fails to stop is logged and skipped: the other nodes,
+    // the queues and the devices below must still be stopped, or run() and wait() never return
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
-            node->stop();
+            try {
+                node->stop();
+            } catch(const std::exception& ex) {
+                Logging::getInstance().logger.error("Failed to stop node {} (id {}): {}", node->getName(), node->id, ex.what());
+            } catch(...) {
+                Logging::getInstance().logger.error("Failed to stop node {} (id {}): unknown exception", node->getName(), node->id);
+            }
         }
     }
 

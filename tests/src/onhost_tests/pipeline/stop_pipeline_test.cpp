@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 
 #include "depthai/depthai.hpp"
@@ -57,6 +58,20 @@ class SlowStopNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, SlowStopN
         *destroyed = true;
     }
 };
+
+// Its onStop() throws, like a user node with a bug
+class ThrowingStopNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, ThrowingStopNode> {
+   public:
+    constexpr static const char* NAME = "ThrowingStopNode";
+    void run() override {
+        while(mainLoop()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+    void onStop() override {
+        throw std::runtime_error("onStop() fails on purpose");
+    }
+};
 }  // namespace
 
 TEST_CASE("stopPipeline() from a node thread: run() returns once the stop has completed") {
@@ -77,6 +92,20 @@ TEST_CASE("stopPipeline() from a pipeline task: run() returns once the stop has 
     {
         dai::Pipeline p(false);
         p.create<TaskStopNode>();
+        destroyed = p.create<SlowStopNode>()->destroyed;
+        p.run();
+        REQUIRE_FALSE(p.isRunning());
+    }
+    REQUIRE(*destroyed);
+}
+
+TEST_CASE("stopPipeline() with a node whose onStop() throws: run() returns once the stop has completed") {
+    std::shared_ptr<std::atomic<bool>> destroyed;
+    {
+        dai::Pipeline p(false);
+        // Created first, so it is stopped first: the stop must go on to the other nodes, and its own thread must still exit
+        p.create<ThrowingStopNode>();
+        p.create<SelfStopNode>();
         destroyed = p.create<SlowStopNode>()->destroyed;
         p.run();
         REQUIRE_FALSE(p.isRunning());
