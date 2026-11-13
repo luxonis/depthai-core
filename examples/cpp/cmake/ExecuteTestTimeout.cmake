@@ -15,6 +15,11 @@ list(REMOVE_AT arguments 0)
 
 message(STATUS "arguments: ${arguments}")
 
+# Name the executed command in the messages below
+if(NOT PATH_TO_TEST_EXECUTABLE)
+    list(GET arguments 0 PATH_TO_TEST_EXECUTABLE)
+endif()
+
 # Check if ENV variable TEST_TIMEOUT is set and use that rather than TIMEOUT_SECONDS
 if(DEFINED ENV{TEST_TIMEOUT} AND NOT DEFINED FORCE_TIMEOUT_SECONDS)
     message(STATUS "Overriding timeout: ${TIMEOUT_SECONDS} with $ENV{TEST_TIMEOUT}")
@@ -36,7 +41,11 @@ endif()
 
 message(STATUS "After process executed, ${PATH_TO_TEST_EXECUTABLE} produced the following exit code: ${error_variable}")
 
-if(error_variable MATCHES "timeout" OR error_variable EQUAL 128 OR error_variable EQUAL 124 OR error_variable EQUAL 9)
+if(error_variable MATCHES "timeout")
+    # The examples run in test_wrapper, which stops them after its own (shorter) timeout.
+    # Reaching this timeout means that the command hung, which must not be reported as success.
+    message(FATAL_ERROR "${PATH_TO_TEST_EXECUTABLE} did not finish within ${TIMEOUT_SECONDS} seconds (${error_variable})")
+elseif(error_variable EQUAL 128 OR error_variable EQUAL 124 OR error_variable EQUAL 9)
     # Okay
 elseif(NOT error_variable)
     # return code == 0, also okay
@@ -44,7 +53,7 @@ elseif(error_variable EQUAL 125)
     message(STATUS "No device available, ${PATH_TO_TEST_EXECUTABLE} skipped")
 elseif(error_variable EQUAL 133 OR error_variable MATCHES "Child killed")
     # sigkill, return fatal error but mark the issue
-    message(FATAL_ERROR "${PATH_TO_TEST_EXECUTABLE} had to be forcefully killed after 5 additional seconds after SIGINT")
+    message(FATAL_ERROR "${PATH_TO_TEST_EXECUTABLE} had to be forcefully killed because it did not stop after SIGINT")
 else()
     # not timeout and error code != 0, not okay
     message(FATAL_ERROR "${PATH_TO_TEST_EXECUTABLE} produced an error (${error_variable}) while running")
