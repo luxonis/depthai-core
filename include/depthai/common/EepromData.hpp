@@ -27,6 +27,13 @@ struct EepromData {
     StereoRectification stereoRectificationData;
     Extrinsics imuExtrinsics;
     Extrinsics housingExtrinsics;
+    /**
+     * Legacy field retained for compatibility with serialized calibration data.
+     *
+     * On RVC2, Device::flashCalibration() does not persist this field and
+     * Device::readCalibration() returns it as an empty vector (an empty list in Python).
+     * This field is not supported for custom user data storage on RVC2.
+     */
     std::vector<uint8_t> miscellaneousData;
     bool stereoUseSpecTranslation{true};
     bool stereoEnableDistortionCorrection{false};
