@@ -83,8 +83,10 @@ int main(int argc, char** argv) {
                 if(current.socket != sockets[0] && current.socket != sockets[1]) continue;
                 const auto old = previous.find(current.socket);
                 // Counter presence determines validity, including HAL errors in UNAVAILABLE snapshots.
-                const bool sameSession = old != previous.end() && !current.sessionId.empty() && old->second.sessionId == current.sessionId
-                                         && current.timestampNs > old->second.timestampNs;
+                const bool sameHalSession = old != previous.end() && !current.sessionId.empty() && old->second.sessionId == current.sessionId
+                                            && current.timestampNs > old->second.timestampNs;
+                const bool sameCslSession = old != previous.end() && !current.cslSessionId.empty() && current.cslSessionId == old->second.cslSessionId
+                                            && current.cslTimestampNs && old->second.cslTimestampNs && *current.cslTimestampNs > *old->second.cslTimestampNs;
                 std::cout << current.socket << " status=" << statuses.at(static_cast<size_t>(current.status)) << " session=" << current.sessionId
                           << " cslSession=" << current.cslSessionId << " timestampNs=" << current.timestampNs << '\n';
                 for(const auto& [name, member] : counters) {
@@ -98,10 +100,7 @@ int main(int argc, char** argv) {
                     const bool csl = member != &dai::CameraStats::completedCaptures && member != &dai::CameraStats::halDeviceErrors
                                      && member != &dai::CameraStats::halRequestErrors && member != &dai::CameraStats::halResultErrors
                                      && member != &dai::CameraStats::halBufferErrors;
-                    if(sameSession && old->second.*member
-                       && (!csl
-                           || (!current.cslSessionId.empty() && current.cslSessionId == old->second.cslSessionId && current.cslTimestampNs
-                               && old->second.cslTimestampNs && *current.cslTimestampNs > *old->second.cslTimestampNs))) {
+                    if((csl ? sameCslSession : sameHalSession) && old->second.*member) {
                         // uint64_t subtraction implements the documented modulo-2^64 delta.
                         std::cout << " delta=" << (*value - *(old->second.*member));
                     }

@@ -75,11 +75,17 @@ with pipeline:
                     continue
                 old = previous.get(current.socket)
                 # Counter presence determines validity, including HAL errors in UNAVAILABLE snapshots.
-                sameSession = (
+                sameHalSession = (
                     old is not None
                     and bool(current.sessionId)
                     and old.sessionId == current.sessionId
                     and current.timestampNs > old.timestampNs
+                )
+                sameCslSession = (
+                    old is not None
+                    and bool(current.cslSessionId) and current.cslSessionId == old.cslSessionId
+                    and current.cslTimestampNs is not None and old.cslTimestampNs is not None
+                    and current.cslTimestampNs > old.cslTimestampNs
                 )
                 if old is None or old.sessionId != current.sessionId:
                     print(f"{current.socket.name}: new session {current.sessionId}", flush=True)
@@ -89,15 +95,8 @@ with pipeline:
                     text = f"{name}={value if value is not None else 'unavailable'}"
                     csl = name != "completedCaptures" and not name.startswith("hal")
                     if (
-                        sameSession and value is not None and getattr(old, name) is not None
-                        and (
-                            not csl
-                            or (
-                                bool(current.cslSessionId) and current.cslSessionId == old.cslSessionId
-                                and current.cslTimestampNs is not None and old.cslTimestampNs is not None
-                                and current.cslTimestampNs > old.cslTimestampNs
-                            )
-                        )
+                        (sameCslSession if csl else sameHalSession)
+                        and value is not None and getattr(old, name) is not None
                     ):
                         delta = (value - getattr(old, name)) & ((1 << 64) - 1)
                         text += f" (+{delta})"
