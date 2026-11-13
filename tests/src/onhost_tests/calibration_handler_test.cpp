@@ -1809,6 +1809,8 @@ TEST_CASE("Explicit calibration crop preserves provenance and existing calibrati
     calibration.setCameraIntrinsics(socket, {{500, 0, 960}, {0, 550, 540}, {0, 0, 1}}, 1920, 1080);
     calibration.setDistortionCoefficients(socket, distortion);
     calibration.setCameraType(socket, CameraModel::Perspective);
+    calibration.setCameraIntrinsics(CameraBoardSocket::CAM_B, {{500, 0, 960}, {0, 550, 540}, {0, 0, 1}}, 1920, 1080);
+    calibration.setCameraExtrinsics(socket, CameraBoardSocket::CAM_B, {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {2, 3, 4});
     const auto before = calibration.eepromToJson();
     // Identical image dimensions can represent distinct physical FOVs.
     // Include skew and off-center principal point to exercise the entire K row.
