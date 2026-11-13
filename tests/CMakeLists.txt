@@ -602,6 +602,10 @@ dai_set_test_labels(bootloader_config_test onhost ci)
 dai_add_test(crash_dump_serialization_test src/onhost_tests/crash_dump_serialization_test.cpp)
 dai_set_test_labels(crash_dump_serialization_test onhost ci)
 
+# External frame sync role RPC values and names
+dai_add_test(external_frame_sync_role_test src/onhost_tests/external_frame_sync_role_test.cpp)
+dai_set_test_labels(external_frame_sync_role_test onhost ci)
+
 # Environment test
 dai_add_test(env_test src/onhost_tests/utility/env_test.cpp)
 dai_set_test_labels(env_test onhost ci)
