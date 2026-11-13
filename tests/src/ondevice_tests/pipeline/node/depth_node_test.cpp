@@ -33,8 +33,7 @@ struct DepthTestAccess {
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {},
                                                                     const std::optional<Version>& osVersion = std::nullopt,
                                                                     bool strict = false) {
-        const auto selection =
-            Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict, Depth::usesOptimizedNeuralModels(osVersion));
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict, osVersion);
         return {selection.algorithm, selection.config};
     }
 

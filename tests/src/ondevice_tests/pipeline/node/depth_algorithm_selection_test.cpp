@@ -16,15 +16,16 @@ using dai::node::StereoDepth;
 namespace dai::node {
 
 struct DepthTestAccess {
-    static bool optimized(const std::optional<dai::Version>& version) {
-        return Depth::usesOptimizedNeuralModels(version);
+    static DeviceModelZoo modelForOS(const std::optional<dai::Version>& version) {
+        const auto selection = Depth::selectBackend(Platform::RVC4, std::make_pair(640u, 400u), 30.f, {Depth::Algorithm::NEURAL}, {}, true, version);
+        return std::get<DeviceModelZoo>(selection.config);
     }
     static std::pair<Depth::Algorithm, Depth::Config> selectOptimized(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                       float fps,
                                                                       const std::vector<Depth::Algorithm>& algorithms,
                                                                       const std::vector<DeviceModelZoo>& models = {},
                                                                       bool strict = false) {
-        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, fps, algorithms, models, strict, true);
+        const auto selection = Depth::selectBackend(Platform::RVC4, resolution, fps, algorithms, models, strict, dai::Version(1, 47, 0));
         return {selection.algorithm, selection.config};
     }
     // Test the optional-output contract without connecting a device or building a backend.
@@ -231,14 +232,14 @@ TEST_CASE("Depth rectified access forwards backend outputs and locks configurati
 }
 
 TEST_CASE("Depth optimized neural profile requires a recognized released OS", "[Depth][FpsProfile]") {
-    REQUIRE_FALSE(dai::node::DepthTestAccess::optimized(std::nullopt));
+    REQUIRE(dai::node::DepthTestAccess::modelForOS(std::nullopt) == DeviceModelZoo::NEURAL_DEPTH_576X360);
     for(const auto* version : {"1.46.0", "1.47.0", "1.46.1", "1.100.0", "2.0.0", "1.47.0+build", "1.47.0-rc.1"}) {
         INFO(version);
-        REQUIRE(dai::node::DepthTestAccess::optimized(dai::Version(version)));
+        REQUIRE(dai::node::DepthTestAccess::modelForOS(dai::Version(version)) == DeviceModelZoo::NEURAL_DEPTH_864X540);
     }
     for(const auto* version : {"1.45.99", "1.46.0-rc.1"}) {
         INFO(version);
-        REQUIRE_FALSE(dai::node::DepthTestAccess::optimized(dai::Version(version)));
+        REQUIRE(dai::node::DepthTestAccess::modelForOS(dai::Version(version)) == DeviceModelZoo::NEURAL_DEPTH_576X360);
     }
 }
 
@@ -327,7 +328,7 @@ TEST_CASE("Depth optimized neural profiles honor every advertised FPS and tensor
 }
 
 TEST_CASE("Depth pre-1.46 OS keeps the legacy model selected at 640x400@30", "[Depth][FpsProfile][adversarial]") {
-    REQUIRE_FALSE(dai::node::DepthTestAccess::optimized(dai::Version("1.45.99")));
+    REQUIRE(dai::node::DepthTestAccess::modelForOS(dai::Version("1.45.99")) == DeviceModelZoo::NEURAL_DEPTH_576X360);
     const auto legacy = select(std::make_pair(640u, 400u), 30.f);
     REQUIRE(legacy.algorithm == Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(legacy.config) == DeviceModelZoo::NEURAL_DEPTH_576X360);
