@@ -1017,6 +1017,136 @@ class StereoConfigHandlerRVC4:
         StereoConfigHandlerRVC4.config = config
 
 
+class StereoConfigHandlerRVC2NG:
+    """Controls for exactly the settings RVC2NG runs, in its ranges. RVC2NG rejects a config that changes any other
+    setting, and this example sends its whole config on every change, so the others have no control here."""
+
+    config = None
+    newConfig = False
+    window = None
+
+    # Trackbar, the config fields it sets, its range, and the config value of one step.
+    sliders = [
+        ("LR-check threshold", ["algorithmControl.leftRightCheckThreshold"], 0, 255, 1),
+        ("Subpixel fractional bits", ["algorithmControl.subpixelFractionalBits"], 3, 5, 1),
+        ("Disparity shift", ["algorithmControl.disparityShift"], 0, 255, 1),
+        ("Center alignment shift factor", ["algorithmControl.centerAlignmentShiftFactor"], 0, 100, 0.01),
+        ("Invalidate edge pixels", ["algorithmControl.numInvalidateEdgePixels"], 0, 100, 1),
+        # One P1 and one P2 for both directions, with P1 < P2.
+        ("Cost aggregation P1", ["costAggregation.horizontalPenaltyCostP1", "costAggregation.verticalPenaltyCostP1"], 0, 254, 1),
+        ("Cost aggregation P2", ["costAggregation.horizontalPenaltyCostP2", "costAggregation.verticalPenaltyCostP2"], 1, 255, 1),
+        ("Speckle filter difference threshold", ["postProcessing.speckleFilter.differenceThreshold"], 0, 15, 1),
+        ("Temporal filter alpha", ["postProcessing.temporalFilter.alpha"], 0, 100, 0.01),
+        ("Temporal filter delta", ["postProcessing.temporalFilter.delta"], 0, 100, 1),
+        ("Spatial filter alpha", ["postProcessing.spatialFilter.alpha"], 0, 100, 0.01),
+        ("Spatial filter delta", ["postProcessing.spatialFilter.delta"], 0, 100, 1),
+        ("Spatial filter hole filling radius", ["postProcessing.spatialFilter.holeFillingRadius"], 0, 16, 1),
+        ("Spatial filter number of iterations", ["postProcessing.spatialFilter.numIterations"], 0, 4, 1),
+        ("Threshold filter min range", ["postProcessing.thresholdFilter.minRange"], 0, 65, 1000),
+        ("Threshold filter max range", ["postProcessing.thresholdFilter.maxRange"], 0, 65, 1000),
+        ("Decimation factor", ["postProcessing.decimationFilter.decimationFactor"], 1, 4, 1),
+    ]
+
+    # Key, what it changes, the config field, and the values it steps through. A 7x7 median runs as 5x5, so it has no
+    # entry.
+    keys = {
+        "m": ("median filter", "postProcessing.median", [dai.MedianFilter.MEDIAN_OFF, dai.MedianFilter.KERNEL_3x3, dai.MedianFilter.KERNEL_5x5]),
+        "w": ("spatial filter", "postProcessing.spatialFilter.enable", [False, True]),
+        "t": ("temporal filter", "postProcessing.temporalFilter.enable", [False, True]),
+        "r": ("temporal persistency", "postProcessing.temporalFilter.persistencyMode",
+              list(dai.StereoDepthConfig.PostProcessing.TemporalFilter.PersistencyMode.__members__.values())),
+        "s": ("speckle filter", "postProcessing.speckleFilter.enable", [False, True]),
+        "n": ("decimation mode", "postProcessing.decimationFilter.decimationMode",
+              list(dai.StereoDepthConfig.PostProcessing.DecimationFilter.DecimationMode.__members__.values())),
+        "a": ("depth alignment", "algorithmControl.depthAlign",
+              [dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_RIGHT,
+               dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT,
+               dai.StereoDepthConfig.AlgorithmControl.DepthAlign.CENTER]),
+        "1": ("left-right check", "algorithmControl.enableLeftRightCheck", [False, True]),
+        "2": ("subpixel", "algorithmControl.enableSubpixel", [False, True]),
+        "3": ("extended disparity", "algorithmControl.enableExtended", [False, True]),
+    }
+
+    def get(field):
+        value = StereoConfigHandlerRVC2NG.config
+        for name in field.split("."):
+            value = getattr(value, name)
+        return value
+
+    def set(field, value):
+        *parents, name = field.split(".")
+        owner = StereoConfigHandlerRVC2NG.config
+        for parent in parents:
+            owner = getattr(owner, parent)
+        setattr(owner, name, value)
+        StereoConfigHandlerRVC2NG.newConfig = True
+
+    def position(slider):
+        name, fields, low, high, step = slider
+        return min(max(round(StereoConfigHandlerRVC2NG.get(fields[0]) / step), low), high)
+
+    def setTrackbar(name, position):
+        cv2.setTrackbarPos(name, StereoConfigHandlerRVC2NG.window, position)
+
+    def trackbarChanged(slider, position):
+        name, fields, low, high, step = slider
+        if position == StereoConfigHandlerRVC2NG.position(slider):
+            return
+        for field in fields:
+            StereoConfigHandlerRVC2NG.set(field, position * step)
+        get = StereoConfigHandlerRVC2NG.get
+        if name == "Cost aggregation P1" and position >= get("costAggregation.horizontalPenaltyCostP2"):
+            StereoConfigHandlerRVC2NG.setTrackbar("Cost aggregation P2", position + 1)
+        if name == "Cost aggregation P2" and position <= get("costAggregation.horizontalPenaltyCostP1"):
+            StereoConfigHandlerRVC2NG.setTrackbar("Cost aggregation P1", position - 1)
+        # RVC2NG does not combine extended disparity with a disparity shift.
+        if name == "Disparity shift" and position > 0 and get("algorithmControl.enableExtended"):
+            print("Extended disparity off, as it does not combine with a disparity shift")
+            StereoConfigHandlerRVC2NG.set("algorithmControl.enableExtended", False)
+
+    def handleKeypress(key, stereoDepthConfigInQueue):
+        if key >= 0 and chr(key & 0xFF) in StereoConfigHandlerRVC2NG.keys:
+            what, field, values = StereoConfigHandlerRVC2NG.keys[chr(key & 0xFF)]
+            current = StereoConfigHandlerRVC2NG.get(field)
+            value = values[(values.index(current) + 1) % len(values) if current in values else 0]
+            print(f"Changing {what} to {getattr(value, 'name', value)} from {getattr(current, 'name', current)}")
+            StereoConfigHandlerRVC2NG.set(field, value)
+            if field == "algorithmControl.enableExtended" and value and StereoConfigHandlerRVC2NG.get("algorithmControl.disparityShift"):
+                print("Disparity shift 0, as it does not combine with extended disparity")
+                StereoConfigHandlerRVC2NG.setTrackbar("Disparity shift", 0)
+        StereoConfigHandlerRVC2NG.sendConfig(stereoDepthConfigInQueue)
+
+    def sendConfig(stereoDepthConfigInQueue):
+        if StereoConfigHandlerRVC2NG.newConfig:
+            StereoConfigHandlerRVC2NG.newConfig = False
+            stereoDepthConfigInQueue.send(StereoConfigHandlerRVC2NG.config)
+
+    def registerWindow(stream):
+        StereoConfigHandlerRVC2NG.window = stream
+        cv2.namedWindow(stream, cv2.WINDOW_NORMAL)
+        for slider in StereoConfigHandlerRVC2NG.sliders:
+            name, fields, low, high, step = slider
+            cv2.createTrackbar(name, stream, StereoConfigHandlerRVC2NG.position(slider), high,
+                               lambda position, slider=slider: StereoConfigHandlerRVC2NG.trackbarChanged(slider, position))
+            cv2.setTrackbarMin(name, stream, low)
+
+    def __init__(self, config):
+        for key, (what, field, values) in StereoConfigHandlerRVC2NG.keys.items():
+            print(f"Control {what} using the '{key}' key.")
+        if evaluation_mode:
+            print("Switch between images using '[' and ']' keys.")
+        StereoConfigHandlerRVC2NG.config = config
+        # Core's default penalties, 250 and 500, are outside RVC2NG's range and select its matcher's own, 24 and 96.
+        # The sliders start from those, and so does the config, which matches the same.
+        defaults = dai.StereoDepthConfig().costAggregation
+        if config.costAggregation.horizontalPenaltyCostP2 == defaults.horizontalPenaltyCostP2:
+            config.costAggregation.horizontalPenaltyCostP1 = config.costAggregation.verticalPenaltyCostP1 = 24
+            config.costAggregation.horizontalPenaltyCostP2 = config.costAggregation.verticalPenaltyCostP2 = 96
+        # CENTER alignment shifts by half the disparity while the factor is unset.
+        if config.algorithmControl.centerAlignmentShiftFactor is None:
+            config.algorithmControl.centerAlignmentShiftFactor = 0.5
+
+
 # StereoDepth initial config options.
 outDepth = True  # Disparity by default
 outConfidenceMap = False  # Output disparity confidence map
@@ -1082,9 +1212,13 @@ stereo.setExtendedDisparity(extended)
 stereo.setSubpixel(subpixel)
 stereo.initialConfig.setSubpixelFractionalBits(4)
 
-stereo.initialConfig.costMatching.disparityWidth = dai.StereoDepthConfig.CostMatching.DisparityWidth.DISPARITY_64
+platform = pipeline.getDefaultDevice().getPlatform()
 
-stereo.initialConfig.setConfidenceThreshold(127)
+# RVC2NG's matcher has a fixed search width and outputs no confidence, so it rejects both settings.
+if platform != dai.Platform.RVC2NG:
+    stereo.initialConfig.costMatching.disparityWidth = dai.StereoDepthConfig.CostMatching.DisparityWidth.DISPARITY_64
+
+    stereo.initialConfig.setConfidenceThreshold(127)
 stereo.initialConfig.setLeftRightCheckThreshold(4)
 
 # Switching depthAlign mode at runtime is not supported while aligning to a specific camera is enabled
@@ -1096,13 +1230,13 @@ stereo.setRuntimeModeSwitch(True)
 
 currentConfig = stereo.initialConfig
 
-platform = pipeline.getDefaultDevice().getPlatform()
-
 if platform == dai.Platform.RVC2:
     StereoConfigHandler = StereoConfigHandlerRVC2
 elif platform == dai.Platform.RVC4:
     StereoConfigHandler = StereoConfigHandlerRVC4
     currentConfig.confidenceMetrics = stereo.initialConfig.confidenceMetrics
+elif platform == dai.Platform.RVC2NG:
+    StereoConfigHandler = StereoConfigHandlerRVC2NG
 else:
     StereoConfigHandler = StereoConfigHandlerRVC2
 
@@ -1332,7 +1466,7 @@ if evaluation_mode:
     # Get the current timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     # Create the filename with the timestamp
-    filename = f"stereo_middleburry_{'RVC2' if platform == dai.Platform.RVC2 else 'RVC4'}_{timestamp}.csv"
+    filename = f"stereo_middleburry_{platform.name}_{timestamp}.csv"
     # Write the dictionary to a CSV file (append mode)
     file_exists = False
 
