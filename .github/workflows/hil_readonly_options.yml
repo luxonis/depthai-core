@@ -1,0 +1,45 @@
+name: HIL read-only option inspection
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect_options:
+    runs-on: [self-hosted, testbed-runner]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read installed argument definitions without invoking HIL
+        env:
+          HIL_INSTALL_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+        run: |
+          source scripts/hil/prepare_hil_framework.sh "$HIL_INSTALL_TOKEN"
+          python - <<'PY'
+          import ast, importlib.metadata, json, re
+          distribution = importlib.metadata.distribution('hil-framework')
+          options = []
+          for item in distribution.files or []:
+              if not str(item).endswith('.py') or 'hil_framework' not in str(item):
+                  continue
+              path = distribution.locate_file(item)
+              try:
+                  tree = ast.parse(path.read_text())
+              except (OSError, SyntaxError, UnicodeError):
+                  continue
+              for node in ast.walk(tree):
+                  if not isinstance(node, ast.Call):
+                      continue
+                  flags = [x.value for x in node.args if isinstance(x, ast.Constant) and isinstance(x.value, str) and x.value.startswith('--')]
+                  if not flags:
+                      continue
+                  help_text = ''
+                  for keyword in node.keywords:
+                      if keyword.arg == 'help' and isinstance(keyword.value, ast.Constant) and isinstance(keyword.value.value, str):
+                          help_text = keyword.value.value
+                  text = ' '.join(flags) + ' ' + help_text
+                  if not re.search(r'os|skip|prepare|setup|init|destruct|reset|update|provision|reserv', text, re.I):
+                      continue
+                  help_text = re.sub(r'https?://\S+|\b(?:\d{1,3}\.){3}\d{1,3}\b', '[redacted address]', help_text)
+                  options.append({'flags': flags, 'help': help_text})
+          print(json.dumps({'package_version': distribution.version, 'options': options}, indent=2))
+          PY
