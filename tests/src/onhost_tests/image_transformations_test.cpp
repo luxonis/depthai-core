@@ -3,6 +3,7 @@
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "depthai/utility/Serialization.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
@@ -11,10 +12,12 @@
 #endif
 #define CATCH_CONFIG_MAIN
 
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <iostream>
 #include <limits>
+#include <numeric>
 #include <thread>
 
 #include "depthai/depthai.hpp"
@@ -693,4 +696,149 @@ TEST_CASE("ImageManip CropRotated maps the requested rectangle to the output") {
     }
     REQUIRE(imageCorners == expected);
     REQUIRE(srcCorners.size() == 1);
+}
+
+namespace {
+
+using GeometryMatrix = std::array<std::array<float, 3>, 3>;
+
+struct CalibrationReferenceCase {
+    const char* name;
+    unsigned int width;
+    unsigned int height;
+    GeometryMatrix intrinsics;
+    int cropX;
+    int cropY;
+    int cropWidth;
+    int cropHeight;
+    float scaleX;
+    float scaleY;
+};
+
+// One physical 640x480 sensor, represented by five calibration image grids.
+// The cropped reference starts off-center at (40,24); binning may differ per axis.
+const std::array<CalibrationReferenceCase, 5> CALIBRATION_REFERENCES = {{
+    {"full", 640, 480, {{{800, 0, 347}, {0, 900, 219}, {0, 0, 1}}}, 96, 80, 320, 240, 0.5f, 0.25f},
+    {"cropped", 512, 384, {{{800, 0, 307}, {0, 900, 195}, {0, 0, 1}}}, 56, 56, 320, 240, 0.5f, 0.25f},
+    {"binned", 320, 240, {{{400, 0, 173.5f}, {0, 450, 109.5f}, {0, 0, 1}}}, 48, 40, 160, 120, 1.0f, 0.5f},
+    {"cropped and binned", 256, 192, {{{400, 0, 153.5f}, {0, 450, 97.5f}, {0, 0, 1}}}, 28, 28, 160, 120, 1.0f, 0.5f},
+    {"2x4 binning", 320, 120, {{{400, 0, 173.5f}, {0, 225, 54.75f}, {0, 0, 1}}}, 48, 20, 160, 60, 1.0f, 1.0f},
+}};
+
+const GeometryMatrix OUTPUT_INTRINSICS = {{{400, 0, 125.5f}, {0, 225, 34.75f}, {0, 0, 1}}};
+
+dai::ImgTransformation makeCalibrationReference(const CalibrationReferenceCase& reference, dai::CameraModel model) {
+    dai::Extrinsics pose({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {1, 2, 3}, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::CENTIMETER);
+    pose.toDeviceId = "geometry-reference";
+    return dai::ImgTransformation(reference.width, reference.height, reference.intrinsics, model, {0.1f, 0, 0, 0, 0, 0, 0, 0}, pose);
+}
+
+void checkOutputIntrinsics(const dai::ImgTransformation& transformation) {
+    REQUIRE(transformation.getSize() == std::make_pair(size_t{160}, size_t{60}));
+    const auto actual = transformation.getIntrinsicMatrix();
+    for(size_t row = 0; row < 3; ++row) {
+        for(size_t column = 0; column < 3; ++column) {
+            CHECK(actual[row][column] == Catch::Approx(OUTPUT_INTRINSICS[row][column]).margin(1e-4f));
+        }
+    }
+}
+
+}  // namespace
+
+TEST_CASE("Calibrated crops and binning preserve physical ray projections", "[calibration-geometry]") {
+    const auto index = GENERATE(0, 1, 2, 3, 4);
+    const auto& reference = CALIBRATION_REFERENCES[index];
+    CAPTURE(reference.name);
+    const auto source = makeCalibrationReference(reference, dai::CameraModel::Perspective);
+    const auto fullSensor = makeCalibrationReference(CALIBRATION_REFERENCES.front(), dai::CameraModel::Perspective);
+    auto output = source;
+    output.addCrop(reference.cropX, reference.cropY, reference.cropWidth, reference.cropHeight);
+    // A pure pixel crop translates the principal point and preserves focal lengths.
+    CHECK(output.getIntrinsicMatrix()[0][0] == reference.intrinsics[0][0]);
+    CHECK(output.getIntrinsicMatrix()[1][1] == reference.intrinsics[1][1]);
+    output.addScale(reference.scaleX, reference.scaleY);
+    CHECK(output.getDistortionModel() == source.getDistortionModel());
+    CHECK(output.getDistortionCoefficients() == source.getDistortionCoefficients());
+    CHECK(output.getExtrinsics().isEqualExtrinsics(source.getExtrinsics()));
+    checkOutputIntrinsics(output);
+
+    // Independently calculated projections: k1=0.1, followed by the physical
+    // sensor crop (96,80,320,240) and a nonuniform resize to 160x60.
+    const std::array<dai::Point3f, 4> points = {{{-200, -100, 1000}, {-100, -50, 500}, {0, 0, 1000}, {50, -25, 1000}}};
+    const std::array<dai::Point2f, 4> expected = {{{45.1f, 12.1375f}, {45.1f, 12.1375f}, {125.5f, 34.75f}, {145.50625f, 29.123242f}}};
+    for(size_t i = 0; i < points.size(); ++i) {
+        const auto projected = output.project3DPoint(points[i]);
+        CHECK(projected.x == Catch::Approx(expected[i].x).margin(1e-3f));
+        CHECK(projected.y == Catch::Approx(expected[i].y).margin(1e-3f));
+        // Cross-reference remapping must also work when the source calibration
+        // grid differs from the full-sensor frame's grid.
+        const auto sensorPixel = fullSensor.project3DPoint(points[i]);
+        const auto remapped = fullSensor.remapPointTo(output, sensorPixel);
+        CHECK(remapped.x == Catch::Approx(expected[i].x).margin(1e-3f));
+        CHECK(remapped.y == Catch::Approx(expected[i].y).margin(1e-3f));
+    }
+}
+
+TEST_CASE("Frame transport preserves calibration after crop and binning", "[calibration-geometry]") {
+    const auto index = GENERATE(0, 1, 2, 3, 4);
+    const auto model = GENERATE(dai::CameraModel::Perspective, dai::CameraModel::Fisheye);
+    const auto& reference = CALIBRATION_REFERENCES[index];
+    CAPTURE(reference.name, model);
+    auto transformation = makeCalibrationReference(reference, model);
+    transformation.addCrop(reference.cropX, reference.cropY, reference.cropWidth, reference.cropHeight);
+    transformation.addScale(reference.scaleX, reference.scaleY);
+
+    dai::ImgFrame frame;
+    frame.setType(dai::ImgFrame::Type::GRAY8);
+    frame.setSize(160, 60);
+    frame.setSourceSize(reference.width, reference.height);
+    frame.setTransformation(transformation);
+    frame.setSequenceNum(17);
+    std::vector<std::uint8_t> pixels(160 * 60);
+    std::iota(pixels.begin(), pixels.end(), std::uint8_t{0});
+    frame.setData(pixels);
+    REQUIRE(frame.validateTransformations());
+
+    auto checkReceived = [&](dai::ImgFrame& received) {
+        CHECK(received.getWidth() == 160);
+        CHECK(received.getHeight() == 60);
+        CHECK(received.getSequenceNum() == 17);
+        CHECK(received.getType() == dai::ImgFrame::Type::GRAY8);
+        const auto result = received.getTransformation();
+        CHECK(result.getSourceSize() == std::make_pair(size_t{reference.width}, size_t{reference.height}));
+        checkOutputIntrinsics(result);
+        CHECK(result.getSourceIntrinsicMatrix() == reference.intrinsics);
+        CHECK(result.getDistortionModel() == model);
+        CHECK(result.getDistortionCoefficients() == transformation.getDistortionCoefficients());
+        CHECK(result.getExtrinsics().isEqualExtrinsics(transformation.getExtrinsics()));
+        CHECK(result.getExtrinsics().toCameraSocket == dai::CameraBoardSocket::CAM_A);
+        CHECK(result.getExtrinsics().toDeviceId == "geometry-reference");
+        CHECK(received.validateTransformations());
+    };
+
+    SECTION("Device stream framing") {
+        const auto metadata = dai::StreamMessageParser::serializeMetadata(frame);
+        auto packetBytes = pixels;
+        packetBytes.insert(packetBytes.end(), metadata.begin(), metadata.end());
+        streamPacketDesc_t packet{};
+        packet.data = packetBytes.data();
+        packet.length = packetBytes.size();
+        packet.fd = -1;  // Inline transport payload, not shared-memory backing.
+        auto received = std::dynamic_pointer_cast<dai::ImgFrame>(dai::StreamMessageParser::parseMessage(&packet));
+        REQUIRE(received != nullptr);
+        checkReceived(*received);
+        const auto receivedPixels = received->getData();
+        REQUIRE(receivedPixels.size() == pixels.size());
+        CHECK(std::equal(receivedPixels.begin(), receivedPixels.end(), pixels.begin()));
+    }
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    SECTION("Protobuf metadata") {
+        const auto serialized = frame.serializeProto();
+        dai::proto::img_frame::ImgFrame message;
+        REQUIRE(message.ParseFromArray(serialized.data(), static_cast<int>(serialized.size())));
+        dai::ImgFrame received;
+        dai::utility::setProtoMessage(received, &message, false);
+        checkReceived(received);
+    }
+#endif
 }
