@@ -5,7 +5,6 @@
 
 // std
 #include <algorithm>
-#include <fstream>
 #include <limits>
 #include <mutex>
 #include <optional>
@@ -14,6 +13,7 @@
 // project
 #include "build/version.hpp"
 #include "device/Device.hpp"
+#include "device/GateWire.hpp"
 #include "utility/Environment.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Platform.hpp"
@@ -66,6 +66,18 @@ struct USBRequest_t {
     uint32_t RequestNum;
     uint32_t RequestSize;
 };
+
+struct FwPackage {
+    std::vector<uint8_t> data;
+    std::string sha256;
+};
+
+static FwPackage loadFwPackage(XLinkPlatform_t platform) {
+    FwPackage package;
+    package.data = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
+    package.sha256 = gatewire::sha256Hex(package.data);
+    return package;
+}
 
 class DeviceGate::HTTPImpl::Impl {
    public:
@@ -251,8 +263,10 @@ bool DeviceGate::HTTPImpl::createSession(
     std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) {
     lastError.clear();
 
+    const auto package = loadFwPackage(platform);
+
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
-                                        // {"fwp_checksum", fwpChecksum},
+                                        {"fwp_checksum", package.sha256},
                                         {"fwp_version", version},
                                         {"library_version", build::VERSION},
                                         {"protected", exclusive},
@@ -275,19 +289,9 @@ bool DeviceGate::HTTPImpl::createSession(
         bool fwpExists = resp["fwp_exists"].get<bool>();
 
         if(!fwpExists) {
-            std::vector<uint8_t> package;
-            std::string path;
-            if(!path.empty()) {
-                std::ifstream fwStream(path, std::ios::binary);
-                if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
-                package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
-            } else {
-                package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
-            }
-
             // TODO(themarpe) - Inefficient
             httplib::MultipartFormDataItems items = {
-                {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
+                {"file", std::string(package.data.begin(), package.data.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
             };
 
             std::string url = fmt::format("{}/{}/fwp", sessionsEndpoint, sessionId);
@@ -322,11 +326,10 @@ bool DeviceGate::USBImpl::createSession(
     std::lock_guard<std::mutex> lock(mtx);
     lastError.clear();
 
-    nlohmann::json createSessionBody = {{"name", "depthai_session"},
-                                        // {"fwp_checksum", fwpChecksum},
-                                        {"fwp_version", version},
-                                        {"library_version", build::VERSION},
-                                        {"protected", exclusive}};
+    const auto package = loadFwPackage(platform);
+
+    nlohmann::json createSessionBody = {
+        {"name", "depthai_session"}, {"fwp_checksum", package.sha256}, {"fwp_version", version}, {"library_version", build::VERSION}, {"protected", exclusive}};
 
     auto createSessionBodyStr = createSessionBody.dump();
     spdlog::debug("DeviceGate createSession: {}", createSessionBodyStr);
@@ -363,18 +366,8 @@ bool DeviceGate::USBImpl::createSession(
     bool fwpExists = resp["fwp_exists"].get<bool>();
 
     if(!fwpExists) {
-        std::vector<uint8_t> package;
-        std::string path;
-        if(!path.empty()) {
-            std::ifstream fwStream(path, std::ios::binary);
-            if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
-            package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
-        } else {
-            package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
-        }
-
         const auto sessionIdLen = static_cast<uint32_t>(sessionId.size());
-        const auto packageSize = static_cast<uint64_t>(package.size());
+        const auto packageSize = static_cast<uint64_t>(package.data.size());
         const auto payloadSize = static_cast<uint64_t>(sizeof(uint32_t)) + sessionIdLen + packageSize;
         if(payloadSize > std::numeric_limits<uint32_t>::max()) {
             lastError = fmt::format("DeviceGate upload fwp payload too large: {}", payloadSize);
@@ -395,8 +388,8 @@ bool DeviceGate::USBImpl::createSession(
                 return false;
             }
         }
-        if(!package.empty()) {
-            if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)package.data(), package.size(), timeout) == X_LINK_ERROR) {
+        if(!package.data.empty()) {
+            if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)package.data.data(), package.data.size(), timeout) == X_LINK_ERROR) {
                 return false;
             }
         }
@@ -762,6 +755,7 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
             return std::nullopt;
         }
     }
+
     respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
 

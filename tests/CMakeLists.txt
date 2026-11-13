@@ -602,6 +602,15 @@ dai_set_test_labels(bootloader_config_test onhost ci)
 dai_add_test(crash_dump_serialization_test src/onhost_tests/crash_dump_serialization_test.cpp)
 dai_set_test_labels(crash_dump_serialization_test onhost ci)
 
+# Gate client wire helpers test
+dai_add_test(gate_wire_test src/onhost_tests/gate_wire_test.cpp)
+dai_set_test_labels(gate_wire_test onhost ci)
+
+# Gate client create against a fake HTTP gate
+dai_add_test(device_gate_test src/onhost_tests/device_gate_test.cpp)
+target_link_libraries(device_gate_test PRIVATE httplib::httplib)
+dai_set_test_labels(device_gate_test onhost ci)
+
 # Environment test
 dai_add_test(env_test src/onhost_tests/utility/env_test.cpp)
 dai_set_test_labels(env_test onhost ci)

@@ -455,6 +455,7 @@ set(TARGET_CORE_SOURCES
     src/utility/LogCollection.cpp
     src/utility/OCVPorts.cpp
     src/device/DeviceGate.cpp
+    src/device/GateWire.cpp
     src/nn_archive/NNArchive.cpp
     src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/Zoo.cpp
@@ -1113,6 +1114,12 @@ if(DEPTHAI_ENABLE_CURL)
         cpr::cpr
     )
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_CURL)
+endif()
+
+# sha256 of the device firmware package for DeviceGate
+if(DEPTHAI_ENABLE_CURL OR DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE OpenSSL::Crypto)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_OPENSSL)
 endif()
 
 # Add compile & CMake definitions
