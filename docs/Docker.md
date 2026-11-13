@@ -7,7 +7,9 @@ amd64 and arm64 images from [ci/Dockerfile](../ci/Dockerfile).
 
 Release tags use the matching Git tag, such as `v3.x.y`; `latest` is updated by
 release-tag builds. Non-release builds use the full source commit as their tag.
-Choose an existing version tag from Docker Hub for repeatable deployments.
+Only commits published by that workflow have image tags. Choose a published v3
+tag from the [Docker Hub tags page](https://hub.docker.com/r/luxonis/depthai-library/tags)
+for repeatable deployments; Docker selects the host architecture automatically.
 
 ## Check the installed SDK
 
@@ -42,31 +44,50 @@ docker run --rm -it --network=host luxonis/depthai-library:<tag> \
   python3 -c "import depthai as dai; print(dai.Device.getAllAvailableDevices())"
 ```
 
-Combine the networking and USB options when using both transports. The host user
-must have permission to access the cameras; see the
-[Linux setup guide](https://docs.luxonis.com/software-v3/depthai/getting-started/).
+Combine the networking and USB options when using both transports. For USB access
+as a non-root container user, install the udev rules on the **host**; see the
+[Linux USB setup guide](https://docs.luxonis.com/hardware/platform/deploy/usb-deployment-guide#linux-udev-rules).
 These device-access commands target Linux Docker Engine. Docker Desktop on macOS
 or Windows runs a Linux VM and needs its own USB/network forwarding setup.
 
-## Use a project checkout
+## Build an application with the installed SDK
 
-Mount your project separately from the installed SDK. From your project root:
+Mount your application separately from the installed SDK. From your project root
+on Linux, run:
 
 ```sh
 docker run --rm -it --network=host \
+  --user "$(id -u):$(id -g)" \
   --mount type=bind,source="$PWD",target=/workspace \
   --workdir /workspace \
   luxonis/depthai-library:<tag> bash
 ```
 
-Inside the container, a CMake project can use `find_package(depthai CONFIG REQUIRED)`
-and link `depthai::core`; Python applications can import `depthai` directly.
-Add the USB options above if the project uses USB cameras.
+The user option keeps generated files owned by your host user. On SELinux hosts
+such as Fedora, replace the project mount with `--volume "$PWD:/workspace:Z"`
+to label the checkout for container access.
+
+Inside the container, a CMake application can use `find_package(depthai CONFIG REQUIRED)`
+and link `depthai::core`, as shown in the [integration guide](../README.md#using-find_package-for-integration).
+The SDK is installed under `/usr/local`, which CMake searches automatically.
+Configure and build your application in a separate directory from host builds:
+
+```sh
+cmake -S . -B build-docker -DCMAKE_BUILD_TYPE=Release
+cmake --build build-docker --parallel 2
+```
+
+Python applications can import `depthai` directly. Install any additional
+application dependencies separately. The image uses `opencv-python-headless`;
+examples that open GUI windows need a GUI-enabled OpenCV and display setup.
+Add the USB options above when starting the container if the application uses
+USB cameras.
 
 ## Build the SDK image from source
 
-The repository Dockerfile builds and installs the SDK and repairs the Python
-wheel. From the desired checkout:
+The repository Dockerfile builds and installs both the C++ SDK and Python bindings
+from your checkout, including any local changes, and repairs the Python wheel.
+From the depthai-core repository root:
 
 ```sh
 git submodule update --init --recursive
@@ -74,5 +95,7 @@ docker build -f ci/Dockerfile -t depthai-library:local .
 ```
 
 This performs a complete native build, so it takes longer than starting a
-published image. Files created in a bind mount keep the container user's
-ownership; choose a suitable container user when writing to your host checkout.
+published image and needs network access to download dependencies and firmware.
+Use `depthai-library:local` in place of `luxonis/depthai-library:<tag>` in the
+commands above to use the resulting image. The final image contains installed
+artifacts; the SDK source and its build directories stay in the builder stage.

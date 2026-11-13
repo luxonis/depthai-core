@@ -128,6 +128,9 @@ MacOS: `brew install pcl`
 Linux: `sudo apt install libpcl-dev`
 
 ## Using Python bindings
+
+To use Python bindings already installed in a container, see the [Docker guide](docs/Docker.md).
+
 Installing the latest pre-released version of the library can be done with:
 ```
 python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/ --pre -U depthai
