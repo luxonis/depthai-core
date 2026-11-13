@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.11.0" LANGUAGES CXX C)
+project(depthai VERSION "3.12.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -295,9 +295,19 @@ set(DEPTHAI_DEVICE_MANAGER_SOURCES
     src/bspatch/bspatch.c
 )
 
+# json conversions and str() of the types that the public headers declare with DEPTHAI_SERIALIZE*_DECL
+set(DEPTHAI_SERIALIZATION_SOURCES
+    src/utility/serialization/Common.cpp
+    src/utility/serialization/Datatypes.cpp
+    src/utility/serialization/Device.cpp
+    src/utility/serialization/Pipeline.cpp
+    src/utility/serialization/Properties.cpp
+)
+
 set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
+    ${DEPTHAI_SERIALIZATION_SOURCES}
     # sources shared with depthai::device-manager
     "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
@@ -454,11 +464,11 @@ list(APPEND TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgDetectionsFilterConfig.cpp
     src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
     src/pipeline/node/ImgDetectionsFilter.cpp
-    src/properties/ImgDetectionsFilterProperties.cpp
 )
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
+        src/utility/serialization/Beta.cpp
         src/beta/BetaNode.cpp
         src/beta/device/MultiDeviceCalibrationHandler.cpp
         src/beta/datatype/Classifications.cpp
@@ -637,6 +647,86 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # depthai::core and depthai::device-manager define the same symbols; make CMake refuse a consumer that links both
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY INTERFACE_DEPTHAI_FLAVOR "core")
 set_property(TARGET ${TARGET_CORE_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING DEPTHAI_FLAVOR)
+if(DEPTHAI_UNITY_BUILD)
+    set_target_properties(${TARGET_CORE_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # MSVC defines M_PI only when _USE_MATH_DEFINES is set before the first <cmath>. Sources define it
+    # themselves, which is too late when an earlier source of the batch included <cmath>.
+    if(MSVC)
+        target_compile_definitions(${TARGET_CORE_NAME} PRIVATE _USE_MATH_DEFINES=)
+    endif()
+    set_source_files_properties(
+        # These define file-local names that other sources also define, define macros, or have a
+        # file-scope using-directive.
+        src/beta/datatype/Classifications.cpp
+        src/beta/datatype/Keypoints.cpp
+        src/beta/datatype/Lines.cpp
+        src/beta/datatype/Predictions.cpp
+        src/beta/device/MultiDeviceCalibrationHandler.cpp
+        src/beta/node/FastSAMParser.cpp
+        src/beta/node/HRNetParser.cpp
+        src/beta/node/ImageOutputParser.cpp
+        src/beta/node/MLSDParser.cpp
+        src/beta/node/MapOutputParser.cpp
+        src/beta/node/MultiDeviceCalibration.cpp
+        src/beta/node/PPTextDetectionParser.cpp
+        src/beta/node/XFeatMonoParser.cpp
+        src/beta/node/XFeatStereoParser.cpp
+        src/beta/utilities/FastSAM/FastSAMUtils.cpp
+        src/beta/utilities/MLSD/MLSDUtils.cpp
+        src/beta/utilities/MediaPipe/MediaPipeUtils.cpp
+        src/beta/utilities/PPText/PPTextUtils.cpp
+        src/beta/utilities/RFDETR/RFDETRUtils.cpp
+        src/beta/utilities/SCRFD/SCRFDUtils.cpp
+        src/beta/utilities/YuNet/YuNetUtils.cpp
+        src/device/CalibrationHandler.cpp
+        src/device/DeviceBase.cpp
+        src/opencv/HolisticRecordReplay.cpp
+        src/pipeline/Pipeline.cpp
+        src/pipeline/node/Align.cpp
+        src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/node/ImageAlign.cpp
+        src/pipeline/node/Rectification.cpp
+        src/pipeline/node/Script.cpp
+        src/pipeline/node/internal/XLinkInHost.cpp
+        src/pipeline/node/internal/XLinkOutHost.cpp
+        src/utility/McapImpl.cpp
+        src/utility/OCVPorts.cpp
+        src/utility/ObjectTrackerImpl.cpp
+        src/utility/XLinkGlobalProfilingLogger.cpp
+        # httplib.h includes <resolv.h>, which defines the macro _res. Eigen uses _res as a name.
+        src/device/DeviceGate.cpp
+        src/modelzoo/Zoo.cpp
+        src/remote_connection/RemoteConnection.cpp
+        src/remote_connection/RemoteConnectionImpl.cpp
+        src/utility/EventsManager.cpp
+        src/utility/LogCollection.cpp
+        src/utility/StartupNotifications.cpp
+        src/utility/Telemetry.cpp
+        # windows.h defines the macro ERROR, and ImageManipImpl.hpp has an enumerator ERROR.
+        src/pipeline/datatype/ImgTransformations.cpp
+        src/pipeline/datatype/SpatialImgDetections.cpp
+        src/pipeline/node/ImageManip.cpp
+        src/pipeline/node/PointCloud.cpp
+        src/pipeline/utilities/Alignment/AlignmentUtilities.cpp
+        src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
+        src/pipeline/utilities/Stitching/PlanarStitcher.cpp
+        src/utility/ImageManipImpl.cpp
+        # These include large third-party headers (PCL, RTAB-Map, Basalt).
+        src/basalt/BasaltVIO.cpp
+        src/pcl/PointCloudData.cpp
+        src/rtabmap/RTABMapConversions.cpp
+        src/rtabmap/RTABMapSLAM.cpp
+        src/rtabmap/RTABMapVIO.cpp
+        # Each holds the json, libnop and properties code of many types.
+        ${DEPTHAI_SERIALIZATION_SOURCES}
+        src/utility/serialization/Beta.cpp
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
+endif()
+if(MSVC)
+    # MSVC error C1128 in Debug builds: the serialization sources have more sections than the default object format allows.
+    set_property(SOURCE ${DEPTHAI_SERIALIZATION_SOURCES} src/utility/serialization/Beta.cpp APPEND PROPERTY COMPILE_OPTIONS /bigobj)
+endif()
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
@@ -691,8 +781,11 @@ endif()
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
 
-if(DEPTHAI_VCPKG_INTERNAL_ONLY)
+if(DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS)
     exclude_archive_libs_symbols(${TARGET_CORE_NAME})
+endif()
+if(DEPTHAI_LINK_GC_SECTIONS)
+    gc_unused_sections(${TARGET_CORE_NAME})
 endif()
 
 # And clang-tidy and format
@@ -1506,6 +1599,20 @@ message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}
 # Configure build information (version, opencv, pcl support)
 set(DEPTHAI_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build/version.hpp")
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build")
+# About 70 sources include version.hpp through ErrorMacros.hpp. When only the time changed, keep the
+# BUILD_DATETIME of the existing header, so that a reconfigure does not compile them all again.
+if(EXISTS "${DEPTHAI_VERSION_HEADER}")
+    file(READ "${DEPTHAI_VERSION_HEADER}" _old_version_header)
+    if(_old_version_header MATCHES "BUILD_DATETIME = \"([^\"]*)\"")
+        set(_new_build_datetime "${BUILD_DATETIME}")
+        set(BUILD_DATETIME "${CMAKE_MATCH_1}")
+        configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.hpp.check")
+        file(READ "${CMAKE_CURRENT_BINARY_DIR}/version.hpp.check" _check_version_header)
+        if(NOT _check_version_header STREQUAL _old_version_header)
+            set(BUILD_DATETIME "${_new_build_datetime}")
+        endif()
+    endif()
+endif()
 configure_file(
     "${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in"
     "${DEPTHAI_VERSION_HEADER}"

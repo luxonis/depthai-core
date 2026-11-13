@@ -26,6 +26,8 @@ struct EdgeDetectorProperties : PropertiesSerializable<Properties, EdgeDetectorP
     ~EdgeDetectorProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(EdgeDetectorProperties, initialConfig, outputFrameSize, numFramesPool);
+DEPTHAI_SERIALIZE_EXT_DECL(EdgeDetectorProperties, initialConfig, outputFrameSize, numFramesPool);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::EdgeDetectorProperties>;

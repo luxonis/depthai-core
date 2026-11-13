@@ -3,6 +3,7 @@
 // libraries
 #include <optional>
 
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/utility/spimpl.h"
 
 // depthai

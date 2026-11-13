@@ -331,7 +331,7 @@ struct TensorInfo {
     float qpZp = 0;
 };
 
-DEPTHAI_SERIALIZE_EXT(TensorInfo, order, dataType, numDimensions, dims, strides, name, offset, quantization, qpScale, qpZp);
+DEPTHAI_SERIALIZE_EXT_DECL(TensorInfo, order, dataType, numDimensions, dims, strides, name, offset, quantization, qpScale, qpZp);
 
 inline std::ostream& operator<<(std::ostream& os, const TensorInfo::StorageOrder& so) {
     switch(so) {

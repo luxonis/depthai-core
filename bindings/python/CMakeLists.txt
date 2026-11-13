@@ -39,6 +39,26 @@ option(DEPTHAI_PYTHON_ENABLE_TESTS "Enable tests" OFF)
 option(DEPTHAI_PYTHON_ENABLE_EXAMPLES "Enable examples" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCSTRINGS "Generate docstrings from header files if module 'pybind11_mkdoc' available" ON)
 option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
+option(DEPTHAI_PYTHON_GIL_FREE "Declare Python bindings safe to run with the GIL disabled" OFF)
+include(CMakeDependentOption)
+cmake_dependent_option(DEPTHAI_PYTHON_TEST_GIL_DISABLED
+    "Run Python tests and examples with PYTHON_GIL=0 and verify GIL state"
+    OFF "DEPTHAI_PYTHON_GIL_FREE" OFF)
+option(DEPTHAI_PYTHON_TEST_SKIP_MISSING_DEPENDENCIES "Skip examples whose optional Python dependencies are unavailable" OFF)
+set(DEPTHAI_PYTHON_TEST_EXTRA_PATH "" CACHE PATH "Additional Python module directory for tests and examples (e.g. an OpenCV python_loader)")
+set(DEPTHAI_PYTHON_TEST_ENVIRONMENT "")
+if(DEPTHAI_PYTHON_TEST_GIL_DISABLED)
+    execute_process(
+        COMMAND ${PYTHON_EXECUTABLE} -c "import sysconfig; print(sysconfig.get_config_var('Py_GIL_DISABLED') == 1)"
+        OUTPUT_VARIABLE DEPTHAI_PYTHON_IS_FREE_THREADED
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+    if(NOT DEPTHAI_PYTHON_IS_FREE_THREADED STREQUAL "True")
+        message(FATAL_ERROR "DEPTHAI_PYTHON_TEST_GIL_DISABLED requires a free-threaded Python interpreter")
+    endif()
+    set(DEPTHAI_PYTHON_TEST_ENVIRONMENT "PYTHON_GIL=0" "DEPTHAI_REQUIRE_GIL_DISABLED=1")
+endif()
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
@@ -263,19 +283,65 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Add files for python module
+# Only the module entry point needs the GIL declaration switch.
+set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    "DEPTHAI_PYTHON_GIL_FREE=$<BOOL:${DEPTHAI_PYTHON_GIL_FREE}>")
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     add_library(${TARGET_NAME} ${SOURCE_LIST})
 else()
+    # pybind11 adds -flto to Release builds, and GCC then runs all LTO code generation of the module
+    # in one process ("using serial compilation of 128 LTRANS jobs"). -flto=auto runs it in parallel.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10 AND NOT MINGW
+       AND NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+        set(DEPTHAI_PYTHON_GCC_PARALLEL_LTO ON)
+    endif()
     pybind11_add_module(${TARGET_NAME} ${SOURCE_LIST})
+    if(DEPTHAI_PYTHON_GCC_PARALLEL_LTO)
+        target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto;-fno-fat-lto-objects>")
+        target_link_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release,MinSizeRel>:-flto=auto>")
+    endif()
+    # When depthai-core hides the symbols of its static dependencies, the module links its own copy
+    # of the few that it uses (spdlog, zlib). Do not export these copies from the module either.
+    if(DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS AND COMMAND exclude_archive_libs_symbols)
+        exclude_archive_libs_symbols(${TARGET_NAME})
+    endif()
+    # Removes most of the unused static OpenCV code that the module links
+    if(DEPTHAI_LINK_GC_SECTIONS AND COMMAND gc_unused_sections)
+        gc_unused_sections(${TARGET_NAME})
+    endif()
+    # The module is glue code between Python and depthai-core, so build it with -O2, not with the -O3
+    # of CMAKE_CXX_FLAGS_RELEASE. -O3 duplicates code (loop unswitching/peeling, function cloning)
+    # in each binding, which makes the module ~6% larger (x7 in the wheel). In the measured binding
+    # paths (ImgFrame, MessageQueue, getters) the speed difference was within the noise (~5%).
+    # Also a link option: with LTO, some compilers (Clang) take the level from the link command.
+    if(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        target_compile_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:-O2>")
+        target_link_options(${TARGET_NAME} PRIVATE "$<$<CONFIG:Release>:-O2>")
+        # NNData numpy <-> tensor conversion is a hot loop: keep -O3 for it (with -O2 it is ~8% slower)
+        set_property(SOURCE src/pipeline/datatype/NNDataBindings.cpp APPEND PROPERTY COMPILE_OPTIONS "$<$<CONFIG:Release>:-O3>")
+    endif()
+endif()
+if(DEPTHAI_UNITY_BUILD)
+    set_target_properties(${TARGET_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+    # HostNodeBindings.cpp has a file-scope using-directive. NNDataBindings.cpp must define
+    # FORCE_IMPORT_ARRAY before its first include.
+    set_source_files_properties(src/pipeline/node/HostNodeBindings.cpp src/pipeline/datatype/NNDataBindings.cpp
+        PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+    )
 endif()
 
 if(WIN32)
     # Copy dlls to target directory - Windows only
+    # Do not copy the Python interpreter DLL (python3XX.dll): the interpreter that imports the module
+    # has already loaded it, so a copy next to the module is never used.
+    set(DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX "(^|[/\\\\])python3[0-9]*t?(_d)?\\.dll$")
     # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
     if(CMAKE_VERSION VERSION_LESS "3.21")
         file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        list(FILTER depthai_dll_libraries EXCLUDE REGEX "${DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX}")
     else()
-        set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${TARGET_NAME}>")
+        set(depthai_dll_libraries "$<FILTER:$<TARGET_RUNTIME_DLLS:${TARGET_NAME}>,EXCLUDE,${DEPTHAI_PYTHON_INTERPRETER_DLL_REGEX}>")
     endif()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND
         "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${TARGET_NAME}>>"
@@ -452,13 +518,15 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE} "-c" "${version_command}"
 
 
 string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
-target_compile_definitions(${TARGET_NAME}
-    PRIVATE
-        DEPTHAI_PYTHON_VERSION="${DEPTHAI_PYTHON_VERSION}"
-        DEPTHAI_PYTHON_COMMIT_HASH="${BUILD_COMMIT}"
-        DEPTHAI_PYTHON_COMMIT_DATETIME="${BUILD_COMMIT_DATETIME}"
-        DEPTHAI_PYTHON_BUILD_DATETIME="${BUILD_DATETIME}"
+# Only py_bindings.cpp uses these values. As target definitions, a new BUILD_DATETIME at each configure
+# would compile all binding sources again.
+set_property(SOURCE src/py_bindings.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    "DEPTHAI_PYTHON_VERSION=\"${DEPTHAI_PYTHON_VERSION}\""
+    "DEPTHAI_PYTHON_COMMIT_HASH=\"${BUILD_COMMIT}\""
+    "DEPTHAI_PYTHON_COMMIT_DATETIME=\"${BUILD_COMMIT_DATETIME}\""
+    "DEPTHAI_PYTHON_BUILD_DATETIME=\"${BUILD_DATETIME}\""
 )
+set_source_files_properties(src/py_bindings.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
 # ASAN Settings as we are building and using shared library
 if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)

@@ -18,6 +18,8 @@ struct SystemLoggerProperties : PropertiesSerializable<Properties, SystemLoggerP
     ~SystemLoggerProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SystemLoggerProperties, rateHz);
+DEPTHAI_SERIALIZE_EXT_DECL(SystemLoggerProperties, rateHz);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::SystemLoggerProperties>;

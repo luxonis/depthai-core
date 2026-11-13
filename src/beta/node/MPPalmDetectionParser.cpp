@@ -21,8 +21,6 @@
 namespace dai {
 namespace beta {
 
-MPPalmDetectionParserProperties::~MPPalmDetectionParserProperties() = default;
-
 namespace node {
 
 MPPalmDetectionParser::MPPalmDetectionParser(std::unique_ptr<Properties> props)
@@ -290,7 +288,7 @@ void MPPalmDetectionParser::run() {
         }
         auto message = utilities::DetectionUtils::createDetectionMessage(detections.bboxes, detections.scores, detections.angles, labels, mappedLabelNames);
         if(nnData->transformation.has_value()) {
-            message->setTransformation(*nnData->transformation);
+            utilities::DetectionUtils::setTransformationAndBounds(*message, *nnData->transformation);
         }
         message->setBufferMetadataFrom(nnData);
 

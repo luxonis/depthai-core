@@ -45,6 +45,12 @@ option(DEPTHAI_INSTALL "Enable install target for depthai-core targets" ON)
 # ---------- Dependency Management -------------
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_VCPKG_INTERNAL_ONLY "Use VCPKG internally, but not for interface libraries" ON)
+# GNU ld only (-Wl,--exclude-libs=ALL). Without it, a shared depthai-core exports all symbols of
+# the static dependencies (PCL, RTAB-Map, OpenSSL, ...), which makes .dynsym/.dynstr large.
+option(DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS "Do not export the symbols of static libraries linked into depthai-core" ${DEPTHAI_VCPKG_INTERNAL_ONLY})
+# GNU ld only (-Wl,--gc-sections). Removes most code only together with
+# DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS, because the linker must keep all exported symbols.
+option(DEPTHAI_LINK_GC_SECTIONS "Remove unused code and data sections when depthai-core and the Python module are linked" OFF)
 
 set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT ON)
 if(DEPTHAI_VCPKG_INTERNAL_ONLY)
@@ -120,6 +126,14 @@ option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries i
 # ---------- Development Aids -------------------
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target" ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
+# clang-tidy must check the real sources, not the generated unity batches. Projects that add
+# depthai-core with add_subdirectory (for example the RVC4 firmware) keep their normal build.
+if(DEPTHAI_CLANG_TIDY OR NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(DEPTHAI_UNITY_BUILD_DEFAULT OFF)
+else()
+    set(DEPTHAI_UNITY_BUILD_DEFAULT ON)
+endif()
+option(DEPTHAI_UNITY_BUILD "Compile the core library and the Python bindings in batches of source files (unity build)" ${DEPTHAI_UNITY_BUILD_DEFAULT})
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
 # Local override paths

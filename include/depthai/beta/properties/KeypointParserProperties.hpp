@@ -25,7 +25,9 @@ struct KeypointParserProperties : PropertiesSerializable<Properties, KeypointPar
     ~KeypointParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(KeypointParserProperties, outputLayerName, scaleFactor, nKeypoints, scoreThreshold, labelNames, edges);
+DEPTHAI_SERIALIZE_EXT_DECL(KeypointParserProperties, outputLayerName, scaleFactor, nKeypoints, scoreThreshold, labelNames, edges);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::KeypointParserProperties>;

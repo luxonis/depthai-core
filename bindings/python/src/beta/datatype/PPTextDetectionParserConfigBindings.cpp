@@ -5,7 +5,7 @@
 void bind_beta_pptextdetectionparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::PPTextDetectionParserConfig, Py<beta::PPTextDetectionParserConfig>, Buffer, std::shared_ptr<beta::PPTextDetectionParserConfig>> config(
+    py::class_<beta::PPTextDetectionParserConfig, Py<beta::PPTextDetectionParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "PPTextDetectionParserConfig", DOC(dai, beta, PPTextDetectionParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

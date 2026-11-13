@@ -119,7 +119,7 @@ class Map2D : public Buffer, public TransformableCRTP<Map2D> {
         return DatatypeEnum::Map2D;
     }
 
-    DEPTHAI_SERIALIZE(Map2D, sequenceNum, ts, tsDevice, tsSystem, transformation, width, height);
+    DEPTHAI_SERIALIZE_DECL(Map2D, sequenceNum, ts, tsDevice, tsSystem, transformation, width, height);
 };
 
 }  // namespace beta

@@ -18,8 +18,6 @@
 namespace dai {
 namespace beta {
 
-XFeatStereoParserProperties::~XFeatStereoParserProperties() = default;
-
 namespace node {
 
 XFeatStereoParser::XFeatStereoParser(std::unique_ptr<Properties> props)

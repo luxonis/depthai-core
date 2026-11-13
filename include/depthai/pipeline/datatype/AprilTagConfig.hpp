@@ -117,7 +117,7 @@ class AprilTagConfig : public Buffer {
          */
         bool deglitch = false;
 
-        DEPTHAI_SERIALIZE(QuadThresholds, minClusterPixels, maxNmaxima, criticalDegree, maxLineFitMse, minWhiteBlackDiff, deglitch);
+        DEPTHAI_SERIALIZE_DECL(QuadThresholds, minClusterPixels, maxNmaxima, criticalDegree, maxLineFitMse, minWhiteBlackDiff, deglitch);
     };
 
     /**
@@ -125,18 +125,18 @@ class AprilTagConfig : public Buffer {
      */
     QuadThresholds quadThresholds;
 
-    DEPTHAI_SERIALIZE(AprilTagConfig,
-                      Buffer::sequenceNum,
-                      Buffer::ts,
-                      Buffer::tsDevice,
-                      Buffer::tsSystem,
-                      family,
-                      quadDecimate,
-                      quadSigma,
-                      refineEdges,
-                      decodeSharpening,
-                      maxHammingDistance,
-                      quadThresholds);
+    DEPTHAI_SERIALIZE_DECL(AprilTagConfig,
+                           Buffer::sequenceNum,
+                           Buffer::ts,
+                           Buffer::tsDevice,
+                           Buffer::tsSystem,
+                           family,
+                           quadDecimate,
+                           quadSigma,
+                           refineEdges,
+                           decodeSharpening,
+                           maxHammingDistance,
+                           quadThresholds);
 };
 
 }  // namespace dai

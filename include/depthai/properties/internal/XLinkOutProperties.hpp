@@ -36,7 +36,9 @@ struct XLinkOutProperties : PropertiesSerializable<Properties, XLinkOutPropertie
     ~XLinkOutProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly, packetSize, bytesPerSecondLimit);
+DEPTHAI_SERIALIZE_EXT_DECL(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly, packetSize, bytesPerSecondLimit);
 
 }  // namespace internal
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::internal::XLinkOutProperties>;

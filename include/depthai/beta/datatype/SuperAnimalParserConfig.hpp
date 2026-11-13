@@ -49,7 +49,7 @@ class SuperAnimalParserConfig : public Buffer {
         return DatatypeEnum::SuperAnimalParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(SuperAnimalParserConfig, scoreThreshold);
+    DEPTHAI_SERIALIZE_DECL(SuperAnimalParserConfig, scoreThreshold);
 };
 
 }  // namespace beta

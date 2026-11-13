@@ -27,12 +27,6 @@
 namespace dai {
 namespace nn_archive {
 namespace v1 {
-void from_json(const json& j, Metadata& x);
-void to_json(json& j, const Metadata& x);
-
-void from_json(const json& j, Head& x);
-void to_json(json& j, const Head& x);
-
 void from_json(const json& j, PreprocessingBlock& x);
 void to_json(json& j, const PreprocessingBlock& x);
 
@@ -56,69 +50,6 @@ void to_json(json& j, const DataType& x);
 
 void from_json(const json& j, InputType& x);
 void to_json(json& j, const InputType& x);
-
-inline void from_json(const json& j, Metadata& x) {
-    x.anchors = get_stack_optional<std::vector<std::vector<std::vector<double>>>>(j, "anchors");
-    x.classes = get_stack_optional<std::vector<std::string>>(j, "classes");
-    x.confThreshold = get_stack_optional<double>(j, "conf_threshold");
-    x.iouThreshold = get_stack_optional<double>(j, "iou_threshold");
-    x.maxDet = get_stack_optional<int64_t>(j, "max_det");
-    x.nClasses = get_stack_optional<int64_t>(j, "n_classes");
-    x.postprocessorPath = get_stack_optional<std::string>(j, "postprocessor_path");
-    x.isSoftmax = get_stack_optional<bool>(j, "is_softmax");
-    x.backgroundClass = get_stack_optional<bool>(j, "background_class");
-    x.boxesOutputs = get_stack_optional<std::string>(j, "boxes_outputs");
-    x.scoresOutputs = get_stack_optional<std::string>(j, "scores_outputs");
-    x.anglesOutputs = get_stack_optional<std::vector<std::string>>(j, "angles_outputs");
-    x.keypointsOutputs = get_stack_optional<std::vector<std::string>>(j, "keypoints_outputs");
-    x.maskOutputs = get_stack_optional<std::vector<std::string>>(j, "mask_outputs");
-    x.nKeypoints = get_stack_optional<int64_t>(j, "n_keypoints");
-    x.nPrototypes = get_stack_optional<int64_t>(j, "n_prototypes");
-    x.protosOutputs = get_stack_optional<std::string>(j, "protos_outputs");
-    x.subtype = get_stack_optional<std::string>(j, "subtype");
-    x.yoloOutputs = get_stack_optional<std::vector<std::string>>(j, "yolo_outputs");
-    x.strides = get_stack_optional<std::vector<int64_t>>(j, "strides");
-    x.extraParams = j;
-}
-
-inline void to_json(json& j, const Metadata& x) {
-    j = json::object();
-    j["anchors"] = x.anchors;
-    j["classes"] = x.classes;
-    j["conf_threshold"] = x.confThreshold;
-    j["iou_threshold"] = x.iouThreshold;
-    j["max_det"] = x.maxDet;
-    j["n_classes"] = x.nClasses;
-    j["postprocessor_path"] = x.postprocessorPath;
-    j["is_softmax"] = x.isSoftmax;
-    j["background_class"] = x.backgroundClass;
-    j["boxes_outputs"] = x.boxesOutputs;
-    j["scores_outputs"] = x.scoresOutputs;
-    j["angles_outputs"] = x.anglesOutputs;
-    j["keypoints_outputs"] = x.keypointsOutputs;
-    j["mask_outputs"] = x.maskOutputs;
-    j["n_keypoints"] = x.nKeypoints;
-    j["n_prototypes"] = x.nPrototypes;
-    j["protos_outputs"] = x.protosOutputs;
-    j["subtype"] = x.subtype;
-    j["yolo_outputs"] = x.yoloOutputs;
-    j["strides"] = x.strides;
-}
-
-inline void from_json(const json& j, Head& x) {
-    x.metadata = j.at("metadata").get<Metadata>();
-    x.name = get_stack_optional<std::string>(j, "name");
-    x.outputs = get_stack_optional<std::vector<std::string>>(j, "outputs");
-    x.parser = j.at("parser").get<std::string>();
-}
-
-inline void to_json(json& j, const Head& x) {
-    j = json::object();
-    j["metadata"] = x.metadata;
-    j["name"] = x.name;
-    j["outputs"] = x.outputs;
-    j["parser"] = x.parser;
-}
 
 inline void from_json(const json& j, PreprocessingBlock& x) {
     x.daiType = get_stack_optional<std::string>(j, "dai_type");

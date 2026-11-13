@@ -16,8 +16,6 @@
 namespace dai {
 namespace beta {
 
-ClassificationParserProperties::~ClassificationParserProperties() = default;
-
 namespace node {
 
 NNArchive ClassificationParser::createNNArchive(NNModelDescription& modelDesc) {

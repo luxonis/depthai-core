@@ -24,7 +24,7 @@ class ImageAlignConfig : public Buffer {
         return DatatypeEnum::ImageAlignConfig;
     }
 
-    DEPTHAI_SERIALIZE(ImageAlignConfig, staticDepthPlane);
+    DEPTHAI_SERIALIZE_DECL(ImageAlignConfig, staticDepthPlane);
 };
 
 }  // namespace dai

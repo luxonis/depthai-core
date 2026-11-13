@@ -60,17 +60,19 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
 
     ~NeuralNetworkProperties() override;
 };
-DEPTHAI_SERIALIZE_EXT(NeuralNetworkProperties,
-                      modelSource,
-                      blobSize,
-                      blobUri,
-                      modelUri,
-                      numFrames,
-                      numThreads,
-                      numNCEPerThread,
-                      numShavesPerThread,
-                      backend,
-                      backendProperties,
-                      deviceModel);
+DEPTHAI_SERIALIZE_EXT_DECL(NeuralNetworkProperties,
+                           modelSource,
+                           blobSize,
+                           blobUri,
+                           modelUri,
+                           numFrames,
+                           numThreads,
+                           numNCEPerThread,
+                           numShavesPerThread,
+                           backend,
+                           backendProperties,
+                           deviceModel);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::NeuralNetworkProperties>;

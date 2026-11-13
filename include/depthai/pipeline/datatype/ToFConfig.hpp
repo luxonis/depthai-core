@@ -73,6 +73,15 @@ class ToFConfig : public Buffer {
     std::optional<bool> enablePhaseUnwrapping;
 
     /**
+     * Publish intermediate S5K63D depth updates using previous-stack frequency history.
+     * Enabled by default to preserve the existing output cadence. Set false to publish
+     * only depth using both frequency pairs from the current stack.
+     * Applies when phase unwrapping is enabled; burst mode always suppresses intermediate updates.
+     * Other sensors are unaffected. Supports initialConfig and runtime inputConfig.
+     */
+    bool enableIntermediateDepth = true;
+
+    /**
      * Construct ToFConfig message.
      */
     ToFConfig() = default;
@@ -95,19 +104,20 @@ class ToFConfig : public Buffer {
      */
     void setProfilePreset(Profile profile);
 
-    DEPTHAI_SERIALIZE(ToFConfig,
-                      profile,
-                      median,
-                      enablePhaseShuffleTemporalFilter,
-                      enableBurstMode,
-                      enableDistortionCorrection,
-                      enableFPPNCorrection,
-                      enableOpticalCorrection,
-                      enableTemperatureCorrection,
-                      enableWiggleCorrection,
-                      enablePhaseUnwrapping,
-                      phaseUnwrappingLevel,
-                      phaseUnwrapErrorThreshold);
+    DEPTHAI_SERIALIZE_DECL(ToFConfig,
+                           profile,
+                           median,
+                           enablePhaseShuffleTemporalFilter,
+                           enableBurstMode,
+                           enableDistortionCorrection,
+                           enableFPPNCorrection,
+                           enableOpticalCorrection,
+                           enableTemperatureCorrection,
+                           enableWiggleCorrection,
+                           enablePhaseUnwrapping,
+                           phaseUnwrappingLevel,
+                           phaseUnwrapErrorThreshold,
+                           enableIntermediateDepth);
 };
 
 }  // namespace dai

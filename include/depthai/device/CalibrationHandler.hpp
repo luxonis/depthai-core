@@ -793,7 +793,7 @@ class CalibrationHandler {
                                              std::vector<float> translation,
                                              LengthUnit unit = LengthUnit::CENTIMETER);
 
-    DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
+    DEPTHAI_SERIALIZE_DECL(CalibrationHandler, eepromData);
     void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
     void validateIntrinsicsMatrix(CameraBoardSocket cameraId) const;
     friend dai::node::DclUtils;

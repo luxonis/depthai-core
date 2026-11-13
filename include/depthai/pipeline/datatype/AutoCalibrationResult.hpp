@@ -53,7 +53,7 @@ class AutoCalibrationResult : public Buffer {
     CalibrationHandler calibration;
 
     // clang-format off
-    DEPTHAI_SERIALIZE(AutoCalibrationResult,
+    DEPTHAI_SERIALIZE_DECL(AutoCalibrationResult,
                       dataConfidence,
                       calibrationConfidence,
                       passed,

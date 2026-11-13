@@ -17,6 +17,8 @@ struct SpatialDetectionNetworkProperties : PropertiesSerializable<Properties, Sp
     ~SpatialDetectionNetworkProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SpatialDetectionNetworkProperties, detectedBBScaleFactor, depthThresholds, calculationAlgorithm, stepSize);
+DEPTHAI_SERIALIZE_EXT_DECL(SpatialDetectionNetworkProperties, detectedBBScaleFactor, depthThresholds, calculationAlgorithm, stepSize);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::SpatialDetectionNetworkProperties>;

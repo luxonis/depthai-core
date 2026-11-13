@@ -5,7 +5,7 @@
 void bind_beta_xfeatstereoparserconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     auto betaModule = m.def_submodule("beta", "Experimental APIs");
-    py::class_<beta::XFeatStereoParserConfig, Py<beta::XFeatStereoParserConfig>, Buffer, std::shared_ptr<beta::XFeatStereoParserConfig>> config(
+    py::class_<beta::XFeatStereoParserConfig, Py<beta::XFeatStereoParserConfig>, Buffer, py::smart_holder> config(
         betaModule, "XFeatStereoParserConfig", DOC(dai, beta, XFeatStereoParserConfig));
 
     Callstack* callstack = (Callstack*)pCallstack;

@@ -15,6 +15,8 @@ struct GateProperties : PropertiesSerializable<Properties, GateProperties> {
     ~GateProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(GateProperties, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(GateProperties, initialConfig);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::GateProperties>;

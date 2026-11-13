@@ -42,24 +42,24 @@ struct DetectionParserOptions {
     std::vector<std::string> keypointLabelNames = {};
 };
 
-DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
-                      nnFamily,
-                      subtype,
-                      confidenceThreshold,
-                      decodingFamily,
-                      decodeKeypoints,
-                      decodeSegmentation,
-                      classes,
-                      classNames,
-                      coordinates,
-                      nKeypoints,
-                      strides,
-                      anchors,
-                      anchorMasks,
-                      outputNamesToUse,
-                      anchorsV2,
-                      iouThreshold,
-                      keypointEdges,
-                      keypointLabelNames);
+DEPTHAI_SERIALIZE_EXT_DECL(DetectionParserOptions,
+                           nnFamily,
+                           subtype,
+                           confidenceThreshold,
+                           decodingFamily,
+                           decodeKeypoints,
+                           decodeSegmentation,
+                           classes,
+                           classNames,
+                           coordinates,
+                           nKeypoints,
+                           strides,
+                           anchors,
+                           anchorMasks,
+                           outputNamesToUse,
+                           anchorsV2,
+                           iouThreshold,
+                           keypointEdges,
+                           keypointLabelNames);
 
 }  // namespace dai

@@ -21,6 +21,7 @@ import tree_sitter_cpp
 PARSER = Parser(Language(tree_sitter_cpp.language()))
 ROOT = Path(__file__).resolve().parents[1]
 EXCEPTIONS = "ci/python_binding_exceptions.json"
+INTERNAL_SCOPES = {"detail", "internal", "impl"}
 
 
 def walk(node):
@@ -41,6 +42,8 @@ def parse(source, keep_conditionals=False):
         r'|//[^\n]*|/\*[\s\S]*?\*/|\[\[[\s\S]*?\]\]'
         r'|' + directive + r'(?:[^\n]*\\\n)*[^\n]*'
         r'|\bDEPTHAI_(?:BEGIN|END)_SUPPRESS_DEPRECATION_WARNING\b'
+        # Explicit instantiation declarations declare no API, and tree-sitter-cpp cannot parse them.
+        r'|\bextern\s+template\b[^;]*;'
     )
     source = re.sub(pattern, lambda m: m[0] if m[0][0] in "\"'" else re.sub(r"[^\n]", " ", m[0]), source, flags=re.M)
     return PARSER.parse(source.encode()).root_node
@@ -113,7 +116,7 @@ def public_api(source, path):
         if node.type == "namespace_definition":
             name_node = node.child_by_field_name("name")
             name = name_node.text.decode() if name_node else ""
-            if name and not {"detail", "internal", "impl"}.intersection(name.split("::")):
+            if name and not INTERNAL_SCOPES.intersection(name.split("::")):
                 visit(node.child_by_field_name("body"), (*scope, name))
             return
         if node.type in ("class_specifier", "struct_specifier", "enum_specifier"):
@@ -126,6 +129,8 @@ def public_api(source, path):
                 if node.type == "enum_specifier":
                     visit(body, scope)
                 return
+            if node.type != "enum_specifier" and name.lower() in INTERNAL_SCOPES:
+                return  # Nested implementation types, such as PointCloud::Impl, are not public API.
             qualified = "::".join((*scope, name))
             symbol = Symbol(qualified, "", path, node.start_point.row + 1)
             symbols[symbol.key] = symbol
@@ -152,6 +157,8 @@ def public_api(source, path):
                 name = current.text.decode()
                 if not re.fullmatch(r"[A-Za-z_]\w*", name):
                     continue  # Operators and destructors need manual review.
+                if re.fullmatch(r"DEPTHAI_SERIALIZE\w*", name):
+                    continue  # Serialization member-list macros declare no API.
                 if function is not None:
                     if "delete_method_clause" in {c.type for c in node.named_children}:
                         continue

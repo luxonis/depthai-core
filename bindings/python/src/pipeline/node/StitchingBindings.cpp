@@ -12,10 +12,10 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     // Node and Properties declare upfront
     py::class_<StitchingProperties> stitchingProperties(m, "StitchingProperties", DOC(dai, StitchingProperties));
     auto stitchingNode = ADD_NODE(Stitching);
-    py::enum_<Stitching::Mode> stitchingMode(stitchingNode, "Mode", DOC(dai, StitchingProperties, Mode));
-    py::enum_<Stitching::SeamFinder> stitchingSeamFinder(stitchingNode, "SeamFinder", DOC(dai, StitchingProperties, SeamFinder));
-    py::class_<Stitching::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, StitchingProperties, Plane));
-    py::class_<Stitching::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, StitchingProperties, VirtualCamera));
+    py::enum_<StitchingProperties::Mode> stitchingMode(stitchingNode, "Mode", DOC(dai, StitchingProperties, Mode));
+    py::enum_<StitchingProperties::SeamFinder> stitchingSeamFinder(stitchingNode, "SeamFinder", DOC(dai, StitchingProperties, SeamFinder));
+    py::class_<StitchingProperties::Plane> stitchingPlane(stitchingNode, "Plane", DOC(dai, StitchingProperties, Plane));
+    py::class_<StitchingProperties::VirtualCamera> stitchingVirtualCamera(stitchingNode, "VirtualCamera", DOC(dai, StitchingProperties, VirtualCamera));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -30,33 +30,34 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    stitchingMode.value("PANORAMA", Stitching::Mode::PANORAMA).value("PLANAR_PROJECTION", Stitching::Mode::PLANAR_PROJECTION);
+    stitchingMode.value("PANORAMA", StitchingProperties::Mode::PANORAMA).value("PLANAR_PROJECTION", StitchingProperties::Mode::PLANAR_PROJECTION);
 
-    stitchingSeamFinder.value("NONE", Stitching::SeamFinder::NONE)
-        .value("VORONOI", Stitching::SeamFinder::VORONOI)
-        .value("DP_COLOR", Stitching::SeamFinder::DP_COLOR)
-        .value("DP_COLOR_GRAD", Stitching::SeamFinder::DP_COLOR_GRAD)
-        .value("GRAPHCUT_COLOR", Stitching::SeamFinder::GRAPHCUT_COLOR)
-        .value("GRAPHCUT_COLOR_GRAD", Stitching::SeamFinder::GRAPHCUT_COLOR_GRAD);
+    stitchingSeamFinder.value("NONE", StitchingProperties::SeamFinder::NONE)
+        .value("VORONOI", StitchingProperties::SeamFinder::VORONOI)
+        .value("DP_COLOR", StitchingProperties::SeamFinder::DP_COLOR)
+        .value("DP_COLOR_GRAD", StitchingProperties::SeamFinder::DP_COLOR_GRAD)
+        .value("GRAPHCUT_COLOR", StitchingProperties::SeamFinder::GRAPHCUT_COLOR)
+        .value("GRAPHCUT_COLOR_GRAD", StitchingProperties::SeamFinder::GRAPHCUT_COLOR_GRAD);
 
     stitchingPlane.def(py::init<>())
-        .def(py::init([](const Point3f& point, const Point3f& normal, LengthUnit unit) { return Stitching::Plane{point, normal, unit}; }),
+        .def(py::init([](const Point3f& point, const Point3f& normal, LengthUnit unit) { return StitchingProperties::Plane{point, normal, unit}; }),
              py::arg("point"),
              py::arg("normal"),
              py::arg("unit") = LengthUnit::CENTIMETER)
-        .def_readwrite("point", &Stitching::Plane::point, DOC(dai, StitchingProperties, Plane, point))
-        .def_readwrite("normal", &Stitching::Plane::normal, DOC(dai, StitchingProperties, Plane, normal))
-        .def_readwrite("unit", &Stitching::Plane::unit, DOC(dai, StitchingProperties, Plane, unit));
+        .def_readwrite("point", &StitchingProperties::Plane::point, DOC(dai, StitchingProperties, Plane, point))
+        .def_readwrite("normal", &StitchingProperties::Plane::normal, DOC(dai, StitchingProperties, Plane, normal))
+        .def_readwrite("unit", &StitchingProperties::Plane::unit, DOC(dai, StitchingProperties, Plane, unit));
 
     stitchingVirtualCamera.def(py::init<>())
-        .def_readwrite("pose", &Stitching::VirtualCamera::pose, DOC(dai, StitchingProperties, VirtualCamera, pose))
-        .def_readwrite("unit", &Stitching::VirtualCamera::unit, DOC(dai, StitchingProperties, VirtualCamera, unit))
-        .def_readwrite("intrinsics", &Stitching::VirtualCamera::intrinsics, DOC(dai, StitchingProperties, VirtualCamera, intrinsics))
-        .def_readwrite("width", &Stitching::VirtualCamera::width, DOC(dai, StitchingProperties, VirtualCamera, width))
-        .def_readwrite("height", &Stitching::VirtualCamera::height, DOC(dai, StitchingProperties, VirtualCamera, height));
+        .def_readwrite("pose", &StitchingProperties::VirtualCamera::pose, DOC(dai, StitchingProperties, VirtualCamera, pose))
+        .def_readwrite("unit", &StitchingProperties::VirtualCamera::unit, DOC(dai, StitchingProperties, VirtualCamera, unit))
+        .def_readwrite("intrinsics", &StitchingProperties::VirtualCamera::intrinsics, DOC(dai, StitchingProperties, VirtualCamera, intrinsics))
+        .def_readwrite("width", &StitchingProperties::VirtualCamera::width, DOC(dai, StitchingProperties, VirtualCamera, width))
+        .def_readwrite("height", &StitchingProperties::VirtualCamera::height, DOC(dai, StitchingProperties, VirtualCamera, height));
 
     stitchingProperties.def_readwrite("mode", &StitchingProperties::mode)
         .def_readwrite("cameraModel", &StitchingProperties::cameraModel)
+        .def_readwrite("numInputs", &StitchingProperties::numInputs)
         .def_readwrite("useInputCalibration", &StitchingProperties::useInputCalibration)
         .def_readwrite("continuous", &StitchingProperties::continuous)
         .def_readwrite("estimationFrames", &StitchingProperties::estimationFrames)
@@ -95,7 +96,10 @@ void bind_stitching(pybind11::module& m, void* pCallstack) {
         .def("runOnHost", &Stitching::runOnHost, DOC(dai, node, Stitching, runOnHost))
         .def("setMode", &Stitching::setMode, py::arg("mode"), DOC(dai, node, Stitching, setMode))
         .def("getMode", &Stitching::getMode, DOC(dai, node, Stitching, getMode))
-        .def("setPlane", static_cast<void (Stitching::*)(const Stitching::Plane&)>(&Stitching::setPlane), py::arg("plane"), DOC(dai, node, Stitching, setPlane))
+        .def("setPlane",
+             static_cast<void (Stitching::*)(const StitchingProperties::Plane&)>(&Stitching::setPlane),
+             py::arg("plane"),
+             DOC(dai, node, Stitching, setPlane))
         .def("setPlane",
              static_cast<void (Stitching::*)(const Point3f&, const Point3f&, LengthUnit)>(&Stitching::setPlane),
              py::arg("point"),

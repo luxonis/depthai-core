@@ -1424,6 +1424,8 @@ class DeviceBase {
     // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
+    // Keeps a copy of the telemetry ID of the started pipeline, for getActiveTelemetryPipelineId()
+    void setActiveTelemetryPipelineId(std::string telemetryPipelineId);
     // Last state reported to the pipeline (RUNNING while connected)
     std::atomic<DeviceState> pipelineDeviceState{DeviceState::RUNNING};
     std::atomic<bool> crashDumpHandled{false};

@@ -303,6 +303,10 @@ class CMakeBuild(build_ext):
         cmake_args += ['-DPIP_TEMP_LIB_FOLDER=' + os.path.abspath(os.path.join(self.build_temp, cfg))]
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
+        # Do not export the symbols of the static dependencies from depthai-core (Linux)
+        cmake_args += ['-DDEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS=ON']
+        # Remove unused code from depthai-core (Linux); needs the option above to remove much
+        cmake_args += ['-DDEPTHAI_LINK_GC_SECTIONS=ON']
         build_args += ['--config', cfg]
         if not self.debug:
             rootDirectory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -374,6 +378,8 @@ class CMakeBuild(build_ext):
         # Add additional cmake args from environment
         if 'CMAKE_ARGS' in os.environ:
             cmake_args += [os.environ['CMAKE_ARGS']]
+        if ("free-threading build" in sys.version):
+            cmake_args += ["-DDEPTHAI_PYTHON_GIL_FREE=ON"]
 
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
@@ -429,6 +435,7 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: 3.15",
         "Programming Language :: C++",
         "Programming Language :: Python :: Implementation :: CPython",
         "Topic :: Scientific/Engineering",

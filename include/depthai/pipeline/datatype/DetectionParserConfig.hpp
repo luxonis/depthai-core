@@ -33,7 +33,7 @@ class DetectionParserConfig : public Buffer {
         return DatatypeEnum::DetectionParserConfig;
     }
 
-    DEPTHAI_SERIALIZE(DetectionParserConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, confidenceThreshold, iouThreshold);
+    DEPTHAI_SERIALIZE_DECL(DetectionParserConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, confidenceThreshold, iouThreshold);
 };
 
 }  // namespace dai
