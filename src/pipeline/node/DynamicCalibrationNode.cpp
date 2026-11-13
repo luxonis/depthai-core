@@ -24,6 +24,8 @@
 #include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationTransforms.hpp"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+
+#include <ThreadControl.hpp>
 #include "utility/Telemetry.hpp"
 
 namespace dai {
@@ -282,6 +284,57 @@ bool DynamicCalibration::runOnHost() const {
     }
     // RVC4 firmware ships the dynamic calibration library, RVC2 does not.
     return !(device != nullptr && device->getPlatform() == Platform::RVC4);
+}
+
+void DynamicCalibration::setThreadPolicy(const DynamicCalibrationThreadPolicy& policy) {
+    properties.threadPolicy = policy;
+}
+
+DynamicCalibrationThreadPolicy DynamicCalibration::getThreadPolicy() const {
+    return properties.threadPolicy;
+}
+
+void DynamicCalibration::applyThreadPolicy() {
+    const DynamicCalibrationThreadPolicy& policy = properties.threadPolicy;
+    if(!policy.schedulerThreads && !policy.openCvThreads && !policy.niceness && !policy.cpuAffinity) {
+        return;
+    }
+    dcl::ThreadPolicy dclPolicy;
+    auto takeCount = [&](const std::optional<int32_t>& value, const char* name) -> std::optional<size_t> {
+        if(!value) return std::nullopt;
+        if(*value < 1) {
+            logger->error("DynamicCalibration thread policy: {} must be at least 1, got {}; ignoring it", name, *value);
+            return std::nullopt;
+        }
+        return static_cast<size_t>(*value);
+    };
+    dclPolicy.schedulerThreads = takeCount(policy.schedulerThreads, "schedulerThreads");
+    dclPolicy.openCvThreads = takeCount(policy.openCvThreads, "openCvThreads");
+    dclPolicy.niceness = policy.niceness;
+    if(policy.cpuAffinity) {
+        dclPolicy.cpuAffinity = std::vector<unsigned int>(policy.cpuAffinity->begin(), policy.cpuAffinity->end());
+    }
+    const dcl::Result<void> result = dcl::setThreadPolicy(dclPolicy);
+    if(!result.passed()) {
+        logger->error("DynamicCalibration thread policy rejected by the library: {}", result.errorMessage());
+        return;
+    }
+    if(result.errorCode != 0) {
+        logger->warn("DynamicCalibration thread policy: {}", result.errorMessage());
+    }
+    const dcl::ThreadPolicy applied = dcl::getThreadPolicy();
+    std::string cpus = "inherited";
+    if(applied.cpuAffinity) {
+        cpus = applied.cpuAffinity->empty() ? "all" : "";
+        for(unsigned int cpu : *applied.cpuAffinity) {
+            cpus += (cpus.empty() ? "" : ",") + std::to_string(cpu);
+        }
+    }
+    logger->info("DynamicCalibration thread policy applied: {} scheduler threads, {} OpenCV threads, nice {}, cpus {}",
+                 applied.schedulerThreads.value_or(0),
+                 applied.openCvThreads.value_or(0),
+                 applied.niceness ? std::to_string(*applied.niceness) : std::string("inherited"),
+                 cpus);
 }
 
 void DynamicCalibration::buildStage1() {
@@ -1098,6 +1151,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
 void DynamicCalibration::run() {
     // The firmware constructs the node without buildInternal(), so the DCL state is created here on the device.
     ensureInitialized();
+    applyThreadPolicy();
 
     auto& telemetryState = *pimplDCL->telemetryAggregateState;
     {

@@ -235,6 +235,19 @@ void AutoCalibration::setRunOnHost(bool runOnHost) {
     }
 }
 
+void AutoCalibration::setThreadPolicy(const DynamicCalibrationThreadPolicy& policy) {
+    if(dynamicCalibration.operator->() != nullptr) {
+        dynamicCalibration->setThreadPolicy(policy);
+    }
+}
+
+DynamicCalibrationThreadPolicy AutoCalibration::getThreadPolicy() const {
+    if(dynamicCalibration.operator->() != nullptr) {
+        return dynamicCalibration->getThreadPolicy();
+    }
+    return {};
+}
+
 void AutoCalibration::buildStage1() {
     if(dynamicCalibration.operator->() != nullptr) {
         dynamicCalibration->setRunOnHost(runOnHost());
