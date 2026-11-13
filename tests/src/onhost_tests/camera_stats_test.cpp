@@ -9,7 +9,8 @@ TEST_CASE("Camera statistics preserve unavailable values and 64-bit counters", "
     stats.socket = dai::CameraBoardSocket::CAM_D;
     stats.cameraId = 7;
     stats.status = dai::CameraStats::Status::AVAILABLE;
-    stats.sessionId = "capture-session/source-generation";
+    stats.sessionId = "capture-session";
+    stats.cslSessionId = "capture-session/source-generation";
     stats.timestampNs = (uint64_t{1} << 40) + 3;
     stats.cslTimestampNs = stats.timestampNs - 1;
     stats.completedCaptures = std::optional<uint64_t>{};
@@ -46,6 +47,9 @@ TEST_CASE("Camera statistics preserve unavailable values and 64-bit counters", "
         REQUIRE(dai::utility::deserialize<dai::SerializationType::LIBNOP>(bytes.data(), bytes.size(), actual));
     }
     REQUIRE(nlohmann::json(actual) == nlohmann::json(expected));
+    REQUIRE(actual[0].sessionId == stats.sessionId);
+    REQUIRE(actual[0].cslSessionId == stats.cslSessionId);
+    REQUIRE(actual[1].cslSessionId.empty());
     REQUIRE(actual[0].halDeviceErrors == 0);
     REQUIRE_FALSE(actual[0].completedCaptures.has_value());
     REQUIRE(actual[0].halRequestErrors.value() > std::numeric_limits<uint32_t>::max());

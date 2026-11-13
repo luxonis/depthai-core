@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
                 const bool sameSession = old != previous.end() && !current.sessionId.empty() && old->second.sessionId == current.sessionId
                                          && current.timestampNs > old->second.timestampNs;
                 std::cout << current.socket << " status=" << statuses.at(static_cast<size_t>(current.status)) << " session=" << current.sessionId
-                          << " timestampNs=" << current.timestampNs << '\n';
+                          << " cslSession=" << current.cslSessionId << " timestampNs=" << current.timestampNs << '\n';
                 for(const auto& [name, member] : counters) {
                     const auto value = current.*member;
                     std::cout << "  " << name << "=";
@@ -92,7 +92,9 @@ int main(int argc, char** argv) {
                                      && member != &dai::CameraStats::halRequestErrors && member != &dai::CameraStats::halResultErrors
                                      && member != &dai::CameraStats::halBufferErrors;
                     if(sameSession && old->second.*member
-                       && (!csl || (current.cslTimestampNs && old->second.cslTimestampNs && *current.cslTimestampNs > *old->second.cslTimestampNs))) {
+                       && (!csl
+                           || (!current.cslSessionId.empty() && current.cslSessionId == old->second.cslSessionId && current.cslTimestampNs
+                               && old->second.cslTimestampNs && *current.cslTimestampNs > *old->second.cslTimestampNs))) {
                         // uint64_t subtraction implements the documented modulo-2^64 delta.
                         std::cout << " delta=" << (*value - *(old->second.*member));
                     }

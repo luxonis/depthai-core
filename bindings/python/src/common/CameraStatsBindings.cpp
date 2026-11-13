@@ -23,6 +23,7 @@ void bind_camera_stats(pybind11::module& m, void* pCallstack) {
         .def_readwrite("cameraId", &CameraStats::cameraId, DOC(dai, CameraStats, cameraId))
         .def_readwrite("status", &CameraStats::status, DOC(dai, CameraStats, status))
         .def_readwrite("sessionId", &CameraStats::sessionId, DOC(dai, CameraStats, sessionId))
+        .def_readwrite("cslSessionId", &CameraStats::cslSessionId, DOC(dai, CameraStats, cslSessionId))
         .def_readwrite("timestampNs", &CameraStats::timestampNs, DOC(dai, CameraStats, timestampNs))
         .def_readwrite("cslTimestampNs", &CameraStats::cslTimestampNs, DOC(dai, CameraStats, cslTimestampNs))
         .def_readwrite("completedCaptures", &CameraStats::completedCaptures, DOC(dai, CameraStats, completedCaptures))

@@ -681,8 +681,9 @@ class DeviceBase {
     /**
      * Get cumulative camera-side health statistics for every discovered sensor.
      * Reads do not reset counters. Key results by physical socket and compute
-     * interval deltas only within one CameraStats::sessionId. Host queue discards
-     * are excluded. Sensors are sampled sequentially, with individual timestamps.
+     * HAL deltas within one CameraStats::sessionId and CSL deltas within one
+     * CameraStats::cslSessionId. Host queue discards are excluded. Sensors are
+     * sampled sequentially, with individual timestamps.
      * RVC2 returns UNSUPPORTED entries. RVC4 requires firmware implementing this
      * RPC; CSL counters additionally require the optional CamX statistics extension.
      * Unsupported or temporarily unavailable counters are empty, not zero.

@@ -17,10 +17,11 @@ namespace dai {
  * the CSL event total, without adding its cause counters or HAL notifications.
  *
  * Counters are unsigned 64-bit values and wrap modulo 2^64. Subtract only valid
- * samples with the same socket and sessionId, advancing timestamps, and fewer
- * than 2^64 events between samples. Establish a new baseline after any missing
- * reading. A session changes whenever a counter source resets, including runtime
- * restart or CamX stream restart; its identifier is opaque.
+ * samples with the same socket and source session identifier, advancing source
+ * timestamps, and fewer than 2^64 events between samples. Use sessionId for HAL
+ * counters and cslSessionId for CSL counters. Establish a new baseline for the
+ * affected counter after any missing reading. Session identifiers are opaque and
+ * change when their source resets; CSL availability does not change sessionId.
  *
  * INACTIVE retains the last session's counters and stop timestamp where possible.
  * Unverified physical socket mappings return AUTO and UNAVAILABLE.
@@ -40,7 +41,7 @@ struct CameraStats {
     std::int32_t cameraId = -1;
     /// Overall lifecycle/availability state.
     Status status = Status::UNAVAILABLE;
-    /// Opaque capture/counter-source session identifier; empty before any session.
+    /// Opaque HAL capture session identifier; empty before any session.
     std::string sessionId{};
     /// Device CLOCK_MONOTONIC snapshot time in nanoseconds, or retained stop time.
     std::uint64_t timestampNs = 0;
@@ -91,6 +92,8 @@ struct CameraStats {
     std::optional<std::uint64_t> csidPayloadCorruptionEvents = std::nullopt;
     /// CSL error messages with the sensor stream-off failure cause bit.
     std::optional<std::uint64_t> sensorStreamOffFailureEvents = std::nullopt;
+    /// Opaque CSL counter-source session identifier; empty if that source is unavailable.
+    std::string cslSessionId{};
 };
 
 DEPTHAI_SERIALIZE_EXT(CameraStats,
@@ -120,6 +123,7 @@ DEPTHAI_SERIALIZE_EXT(CameraStats,
                       icpSystemFailureEvents,
                       csidMissingEotEvents,
                       csidPayloadCorruptionEvents,
-                      sensorStreamOffFailureEvents);
+                      sensorStreamOffFailureEvents,
+                      cslSessionId);
 
 }  // namespace dai

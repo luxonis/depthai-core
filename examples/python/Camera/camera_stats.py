@@ -93,7 +93,8 @@ with pipeline:
                         and (
                             not csl
                             or (
-                                current.cslTimestampNs is not None and old.cslTimestampNs is not None
+                                bool(current.cslSessionId) and current.cslSessionId == old.cslSessionId
+                                and current.cslTimestampNs is not None and old.cslTimestampNs is not None
                                 and current.cslTimestampNs > old.cslTimestampNs
                             )
                         )

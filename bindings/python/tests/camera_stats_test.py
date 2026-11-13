@@ -11,14 +11,18 @@ def test_camera_stats_optionals_and_precision():
     assert stats.socket == dai.CameraBoardSocket.AUTO
     assert stats.completedCaptures is None
     assert stats.cslErrorEvents is None
+    assert stats.cslSessionId == ""
     stats.completedCaptures = 0
     stats.cslErrorEvents = (1 << 64) - 1
     stats.timestampNs = (1 << 53) + 1
     stats.sessionId = "test-session"
+    stats.cslSessionId = "test-csl-session"
     values = dai.VectorCameraStats([stats])
     assert values[0].completedCaptures == 0
     assert values[0].cslErrorEvents == (1 << 64) - 1
     assert values[0].timestampNs == (1 << 53) + 1
+    assert values[0].sessionId == "test-session"
+    assert values[0].cslSessionId == "test-csl-session"
     values[0].cslErrorEvents = None
     assert values[0].cslErrorEvents is None
 
