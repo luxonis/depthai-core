@@ -84,6 +84,7 @@ the child.
 ```bash
 # Local inventory; does not import depthai or initialize XLink.
 debug_evidence_dir="$(mktemp -d "${TMPDIR:-/tmp}/depthai-debug.XXXXXX")" || exit 1
+DEPTHAI_TELEMETRY=0 DEPTHAI_DISABLE_FEEDBACK=1 \
 python3 .agents/skills/depthai-debugger/scripts/collect_context.py \
   --output "$debug_evidence_dir/context.json"
 
