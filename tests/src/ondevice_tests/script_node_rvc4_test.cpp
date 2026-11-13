@@ -122,3 +122,40 @@ TEST_CASE("NNData roundtrip in Script node") {
         requireTensorInfoEqual(*expectedInfo, *actualInfo);
     }
 }
+TEST_CASE("Script GPIO refuses connector pins before changing them") {
+    dai::Pipeline pipeline;
+    auto script = pipeline.create<dai::node::Script>();
+    script->setScript(R"(
+import GPIO
+
+def refusal(name, **kwargs):
+    try:
+        GPIO.setup(name, GPIO.IN, **kwargs)
+    except Exception as error:
+        return str(error)
+    GPIO.release(name)
+    return "set up"
+
+for text in [refusal("aux-99"), refusal("aux-1", pud=GPIO.PULL_DOWN), refusal("1")]:
+    message = Buffer()
+    message.setData(list(text.encode()))
+    node.outputs["out"].send(message)
+)");
+    auto out = script->outputs["out"].createOutputQueue();
+    pipeline.start();
+
+    auto nextText = [&out]() {
+        bool hasTimedOut = false;
+        auto message = out->get<dai::Buffer>(std::chrono::seconds(10), hasTimedOut);
+        REQUIRE_FALSE(hasTimedOut);
+        REQUIRE(message != nullptr);
+        auto data = message->getData();
+        return std::string(data.begin(), data.end());
+    };
+
+    auto noPin = nextText();
+    INFO(noPin);
+    REQUIRE((noPin == "Cannot set up \"aux-99\": no pin 99 on this board" || noPin == "Cannot set up \"aux-99\": this device has no aux connector driver"));
+    REQUIRE(nextText() == "Cannot set up \"aux-1\": connector pins have no pull-down");
+    REQUIRE(nextText() == "Cannot set up \"1\": a connector pin is named \"aux-<label>\", such as \"aux-1\"");
+}
