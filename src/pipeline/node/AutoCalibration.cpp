@@ -63,8 +63,7 @@ constexpr int GATE_FPS_DEFAULT = 5;
 constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2;
 constexpr int PACKET_SIZE_DEFAULT = 100000;
 
-bool areLensesWide(const std::shared_ptr<Device>& device) {
-    auto handler = device->getCalibration();
+bool areLensesWide(const CalibrationHandler& handler) {
     auto eepromData = handler.getEepromData();
     const auto& hardwareConf = eepromData.hardwareConf;
     size_t start = 0;
@@ -147,6 +146,8 @@ AutoCalibration::~AutoCalibration() {
 }
 
 AutoCalibration::Properties& AutoCalibration::getProperties() {
+    // The config is edited through the shared pointer on the host; serialize the current state for the device.
+    properties.initialConfig = *initialConfig;
     return properties;
 }
 
@@ -229,6 +230,30 @@ void AutoCalibration::recordAggregateRotationDifference(
 
 void AutoCalibration::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
+    if(dynamicCalibration.operator->() != nullptr) {
+        dynamicCalibration->setRunOnHost(runOnHost);
+    }
+}
+
+void AutoCalibration::buildStage1() {
+    if(dynamicCalibration.operator->() != nullptr) {
+        dynamicCalibration->setRunOnHost(runOnHost());
+    }
+}
+
+std::shared_ptr<Device> AutoCalibration::requireDevice() const {
+    if(!device) {
+        throw std::runtime_error("AutoCalibration node does not have access to any device");
+    }
+    return device;
+}
+
+CalibrationHandler AutoCalibration::readCurrentCalibration() {
+    return requireDevice()->getCalibration();
+}
+
+Platform AutoCalibration::getPlatform() const {
+    return requireDevice()->getPlatform();
 }
 
 void addPoolsForAutoCalibration(const std::shared_ptr<Camera>& camera, int additionalPools) {
@@ -253,13 +278,14 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
 
     sync->setRunOnHost(false);
     gate->setRunOnHost(false);
+    dynamicCalibration->setRunOnHost(runOnHost());
     auto outputCameraLeft = cameraLeft->requestIspOutput();
     auto outputCameraRight = cameraRight->requestIspOutput();
     outputCameraLeft->link(left);
     outputCameraRight->link(right);
     sync->out.link(gate->input);
     gate->output.link(dynamicCalibration->syncInput);
-    if(device->getPlatform() == Platform::RVC2) {
+    if(getPlatform() == Platform::RVC2) {
         addPoolsForAutoCalibration(cameraLeft, 3);
         addPoolsForAutoCalibration(cameraRight, 3);
     }
@@ -279,14 +305,19 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
 #endif
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool AutoCalibration::runOnHost() const {
-    return runOnHostVar;
+    if(runOnHostVar) {
+        return *runOnHostVar;
+    }
+    // RVC4 firmware ships the dynamic calibration library, RVC2 does not.
+    return !(device != nullptr && device->getPlatform() == Platform::RVC4);
 }
 
 void AutoCalibration::postBuildStage() {
+    if(!runOnHost()) {
+        // The gated frames stay on the device, there is no link to throttle.
+        return;
+    }
     auto xlinkBridge = gate->output.getXLinkBridge();
     if(!xlinkBridge || !xlinkBridge->xLinkOut) {
         logger->warn("AutoCalibration: missing XLink bridge; skipping output throttling setup.");
@@ -314,8 +345,12 @@ std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(const std::
     return metricsQueue.get<dai::CalibrationMetrics>();
 }
 
-void AutoCalibration::buildInternal() {
+void AutoCalibration::ensureInitialized() {
     logger = pimpl->logger;
+    if(initialized) {
+        return;
+    }
+    initialized = true;
     telemetryAggregateState = std::make_shared<TelemetryAggregateState>();
     auto telemetryState = telemetryAggregateState;
     telemetryAggregateMetricsHandle = utility::Telemetry::getInstance().addAggregateMetrics([telemetryState](nlohmann::json& properties) {
@@ -323,11 +358,18 @@ void AutoCalibration::buildInternal() {
         appendTelemetryAggregateProperties(properties, *telemetryState);
     });
     if(initialConfig->dataConfidenceThreshold < 0.0) {
-        initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
+        try {
+            initialConfig->dataConfidenceThreshold = areLensesWide(readCurrentCalibration()) ? 0.65 : 0.85;
+        } catch(const std::exception& ex) {
+            logger->warn("AutoCalibration could not read the calibration to pick the data confidence threshold, using 0.85: {}", ex.what());
+            initialConfig->dataConfidenceThreshold = 0.85;
+        }
     }
-    // AutoCalibration runs on the host, so its DynamicCalibration subnode has to stay on the host as well, whatever
-    // the platform default of the subnode is.
-    dynamicCalibration->setRunOnHost(true);
+}
+
+void AutoCalibration::buildInternal() {
+    ensureInitialized();
+    dynamicCalibration->setRunOnHost(runOnHost());
 }
 
 /**
@@ -494,7 +536,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
 void AutoCalibration::runContinuousMode() {
     while(mainLoop()) {
         auto startTime = std::chrono::steady_clock::now();
-        const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+        const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(readCurrentCalibration()));
         auto endTime = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed = endTime - startTime;
         recordAggregateCycle(elapsed.count());
@@ -513,7 +555,7 @@ void AutoCalibration::runContinuousMode() {
 
 void AutoCalibration::runOnStartMode() {
     auto startTime = std::chrono::steady_clock::now();
-    const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+    const auto passed = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(readCurrentCalibration()));
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     recordAggregateCycle(elapsed.count());
@@ -564,7 +606,11 @@ bool AutoCalibration::validateIncomingData() {
 }
 
 void AutoCalibration::run() {
-    logger->info("{} running on {}.", this->getName(), runOnHostVar ? "host" : "device");
+    if(!initialized) {
+        // Constructed by the firmware from the serialized properties: take the config the host serialized.
+        *initialConfig = properties.initialConfig;
+    }
+    ensureInitialized();
     logger->info("AutoCalibration started to work!");
     if(!validateIncomingData()) {
         return;

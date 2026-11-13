@@ -12,6 +12,9 @@
 #include <depthai/properties/AutoCalibrationProperties.hpp>
 #include <map>
 #include <nlohmann/json.hpp>
+#include <optional>
+
+#include "depthai/device/Platform.hpp"
 
 namespace spdlog {
 class async_logger;
@@ -27,7 +30,11 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     Subnode<node::Gate> gate{*this, "gate"};
 
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    // The firmware instantiates the Sync subnode as a separate pipeline node, so the input map only
+    // exists on the host side of the node.
     InputMap& inputs = sync->inputs;
+#endif
 
     std::string leftInputName = "left";
     std::string rightInputName = "right";
@@ -46,16 +53,34 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void run() override;
 
+    /**
+     * Specify whether to run on host or device.
+     * By default, the node runs on the host on RVC2 and on the device on RVC4. The DynamicCalibration subnode follows
+     * the placement of the node, the Sync and Gate subnodes always run on the device.
+     */
     void setRunOnHost(bool runOnHost);
 
+    /**
+     * Whether the node runs on the host. Without an explicit setRunOnHost() call this is decided by the
+     * platform of the assigned device: RVC4 runs on the device, everything else on the host.
+     */
     bool runOnHost() const override;
 
     void buildInternal() override;
+
+    void buildStage1() override;
 
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::AutoCalibrationResult, false}}}}};
 
    protected:
     Properties& getProperties() override;
+
+    /**
+     * Calibration access used by the node. The host implementation goes through the dai::Device handle; the
+     * RVC4 firmware overrides these to use the device pipeline directly.
+     */
+    virtual CalibrationHandler readCurrentCalibration();
+    virtual Platform getPlatform() const;
 
    private:
     struct TelemetryAggregateState;
@@ -108,6 +133,10 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     std::shared_ptr<dai::CalibrationHandler> getNewCalibration(unsigned int maxNumIteration, Report& report);
 
     void loadData(unsigned int numImages);
+    /// Creates the logger and telemetry state and resolves config defaults. Runs from buildInternal() on the host and
+    /// from run() on the device, where the firmware constructs the node without calling buildInternal().
+    void ensureInitialized();
+    std::shared_ptr<Device> requireDevice() const;
 
     std::shared_ptr<dai::CalibrationMetrics> getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration);
 
@@ -120,8 +149,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     void recordAggregateValidationMetrics(double dataConfidence, double calibrationConfidence);
 
     void recordAggregateRotationDifference(const std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::vector<float>>& pairwiseRotationDifference);
-
-    AutoCalibrationProperties properties;
 
     // internal queues
     Output gateControlQueue{*this, {"gateControlQueue", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, false}}}}};
@@ -136,7 +163,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     Input gateOutput{*this, {"gateOutput", DEFAULT_GROUP, false, 1, {{DatatypeEnum::Buffer, true}}}};
 
-    bool runOnHostVar = true;
+    std::optional<bool> runOnHostVar;
+    bool initialized = false;
     std::shared_ptr<TelemetryAggregateState> telemetryAggregateState;
     std::uint64_t telemetryAggregateMetricsHandle = 0;
 
