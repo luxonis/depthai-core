@@ -251,8 +251,12 @@ class Depth : public DeviceNodeGroup {
 
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
 
-    static bool usesOptimizedNeuralModels(const std::string& osVersion);
+    static bool usesOptimizedNeuralModels(const std::optional<Version>& osVersion);
 
+    static std::vector<Algorithm> getSupportedAlgorithmsWithModels(const std::shared_ptr<Device>& device, std::optional<std::vector<DeviceModelZoo>> models);
+
+    // Keep selection independent of a live device. The OS-derived flag preserves conservative
+    // capacities for older/unknown OS versions and selects measured capacities on OS >= 1.46.
     static Selection selectBackend(Platform platform,
                                    std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                    float targetFps,

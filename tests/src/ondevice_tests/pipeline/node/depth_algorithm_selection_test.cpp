@@ -16,7 +16,7 @@ using dai::node::StereoDepth;
 namespace dai::node {
 
 struct DepthTestAccess {
-    static bool optimized(const std::string& version) {
+    static bool optimized(const std::optional<dai::Version>& version) {
         return Depth::usesOptimizedNeuralModels(version);
     }
     static std::pair<Depth::Algorithm, Depth::Config> selectOptimized(std::optional<std::pair<uint32_t, uint32_t>> resolution,
@@ -231,13 +231,14 @@ TEST_CASE("Depth rectified access forwards backend outputs and locks configurati
 }
 
 TEST_CASE("Depth optimized neural profile requires a recognized released OS", "[Depth][FpsProfile]") {
-    for(const auto* version : {"1.46.0", "1.47.0", "1.46.1", "1.100.0", "2.0.0", "r851-1.47.0", "1.47.0+build", "1.47.0-rc.1"}) {
+    REQUIRE_FALSE(dai::node::DepthTestAccess::optimized(std::nullopt));
+    for(const auto* version : {"1.46.0", "1.47.0", "1.46.1", "1.100.0", "2.0.0", "1.47.0+build", "1.47.0-rc.1"}) {
         INFO(version);
-        REQUIRE(dai::node::DepthTestAccess::optimized(version));
+        REQUIRE(dai::node::DepthTestAccess::optimized(dai::Version(version)));
     }
-    for(const auto* version : {"", "unknown", "custom", "1.45.99", "1.46.0-rc.1", "1.46", "r-1.47.0", "rx-1.47.0", "1.47.0garbage"}) {
+    for(const auto* version : {"1.45.99", "1.46.0-rc.1"}) {
         INFO(version);
-        REQUIRE_FALSE(dai::node::DepthTestAccess::optimized(version));
+        REQUIRE_FALSE(dai::node::DepthTestAccess::optimized(dai::Version(version)));
     }
 }
 
@@ -326,7 +327,7 @@ TEST_CASE("Depth optimized neural profiles honor every advertised FPS and tensor
 }
 
 TEST_CASE("Depth pre-1.46 OS keeps the legacy model selected at 640x400@30", "[Depth][FpsProfile][adversarial]") {
-    REQUIRE_FALSE(dai::node::DepthTestAccess::optimized("1.45.99"));
+    REQUIRE_FALSE(dai::node::DepthTestAccess::optimized(dai::Version("1.45.99")));
     const auto legacy = select(std::make_pair(640u, 400u), 30.f);
     REQUIRE(legacy.algorithm == Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(legacy.config) == DeviceModelZoo::NEURAL_DEPTH_576X360);
@@ -372,4 +373,11 @@ TEST_CASE("Depth never falls back to an unavailable backend", "[Depth][FpsProfil
     REQUIRE_THROWS(dai::node::DepthTestAccess::selectOptimized(std::nullopt, 30.f, {}));
     // Available EVA still provides the existing best-effort FPS fallback.
     REQUIRE(select(std::make_pair(640u, 400u), 100.f, kStereoOnly).algorithm == Depth::Algorithm::STEREO);
+}
+
+TEST_CASE("Pinned AUTO rejects stereo-only hardware below the requested FPS", "[Depth][FpsProfile]") {
+    const auto resolution = std::make_pair(640u, 400u);
+    const auto bestEffort = dai::node::DepthTestAccess::selectOptimized(resolution, 60.f, kStereoOnly);
+    REQUIRE(bestEffort.first == Depth::Algorithm::STEREO);
+    REQUIRE_THROWS_AS(dai::node::DepthTestAccess::selectOptimized(resolution, 60.f, kStereoOnly, {}, true), std::runtime_error);
 }

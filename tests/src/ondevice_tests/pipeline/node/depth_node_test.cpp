@@ -20,6 +20,7 @@
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
+#include "utility/DeviceOSVersion.hpp"
 
 using namespace dai;
 
@@ -30,9 +31,10 @@ struct DepthTestAccess {
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                                     const std::vector<DeviceModelZoo>& modelFilter = {},
-                                                                    const std::string& osVersion = {}) {
+                                                                    const std::optional<Version>& osVersion = std::nullopt,
+                                                                    bool strict = false) {
         const auto selection =
-            Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, false, Depth::usesOptimizedNeuralModels(osVersion));
+            Depth::selectBackend(Platform::RVC4, resolution, targetFps, supportedAlgorithms, modelFilter, strict, Depth::usesOptimizedNeuralModels(osVersion));
         return {selection.algorithm, selection.config};
     }
 
@@ -1003,8 +1005,8 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from size and fps") {
 
     auto depth = pipeline.create<node::Depth>();
     const auto supported = node::Depth::getSupportedAlgorithms(device);
-    const auto expected =
-        node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels(), device->getOSVersion());
+    const auto expected = node::DepthTestAccess::selectBackend(
+        std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels(), device->getDeviceOSVersion(), true);
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
     depth->build(node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32_t>{640, 400});
@@ -1043,7 +1045,7 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
 
     auto depth = pipeline.create<node::Depth>();
     const auto expected = node::DepthTestAccess::selectBackend(
-        std::make_pair(640u, 400u), 20.f, node::Depth::getSupportedAlgorithms(device), device->getSupportedDeviceModels(), device->getOSVersion());
+        std::make_pair(640u, 400u), 20.f, node::Depth::getSupportedAlgorithms(device), device->getSupportedDeviceModels(), device->getDeviceOSVersion());
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
     REQUIRE_NOTHROW((void)&depth->depth());
@@ -1086,25 +1088,41 @@ TEST_CASE("Depth FPS profiles wire and stream the selected backend", "[Depth][Fp
         float fps;
         node::Depth::Algorithm algorithm;
     };
-    for(const auto& c : std::vector<Case>{{640, 400, 30.f, node::Depth::Algorithm::AUTO},
-                                          {1280, 800, 30.f, node::Depth::Algorithm::AUTO},
-                                          {640, 400, 60.f, node::Depth::Algorithm::AUTO},
-                                          {640, 400, 30.f, node::Depth::Algorithm::NEURAL}}) {
+    const auto c = GENERATE(Case{640, 400, 30.f, node::Depth::Algorithm::AUTO},
+                            Case{1280, 800, 30.f, node::Depth::Algorithm::AUTO},
+                            Case{640, 400, 60.f, node::Depth::Algorithm::AUTO},
+                            Case{640, 400, 30.f, node::Depth::Algorithm::NEURAL});
+    {
         Pipeline pipeline;
         const auto device = requireDefaultDevice(pipeline);
         if(device->getPlatform() != Platform::RVC4) SKIP("Requires RVC4");
+        if(c.algorithm == node::Depth::Algorithm::NEURAL && !device->isNeuralDepthSupported()) SKIP("Requires NeuralDepth support");
         (void)requireFirstStereoPairForTest(device);
         const auto algorithms =
             c.algorithm == node::Depth::Algorithm::AUTO ? node::Depth::getSupportedAlgorithms(device) : std::vector{node::Depth::Algorithm::NEURAL};
-        const auto expected = node::DepthTestAccess::selectBackend(
-            std::make_pair(c.width, c.height), c.fps, algorithms, device->getSupportedDeviceModels(), device->getOSVersion());
+        const auto models = device->getSupportedDeviceModels();
+        const auto osVersion = device->getDeviceOSVersion();
+        std::optional<std::pair<node::Depth::Algorithm, node::Depth::Config>> expected;
+        std::string selectionError;
+        try {
+            expected = node::DepthTestAccess::selectBackend(
+                std::make_pair(c.width, c.height), c.fps, algorithms, models, osVersion, c.algorithm == node::Depth::Algorithm::AUTO);
+        } catch(const std::runtime_error& error) {
+            // Pinned AUTO requests must fail rather than silently accept a slower backend.
+            selectionError = error.what();
+        }
         const auto depth = pipeline.create<node::Depth>()->build(c.algorithm, c.fps, std::make_pair(c.width, c.height));
+        if(!expected) {
+            REQUIRE(c.algorithm == node::Depth::Algorithm::AUTO);
+            REQUIRE_THROWS_WITH(depth->depth(), selectionError);
+            return;
+        }
         const auto meter = pipeline.create<node::BenchmarkIn>();
         meter->setRunOnHost(false);
         meter->sendReportEveryNMessages(30);
         depth->depth().link(meter->input);
-        REQUIRE(depth->getResolvedAlgorithm() == expected.first);
-        REQUIRE(depth->getResolvedConfig() == expected.second);
+        REQUIRE(depth->getResolvedAlgorithm() == expected->first);
+        REQUIRE(depth->getResolvedConfig() == expected->second);
         const auto queue = meter->report.createOutputQueue(32, false);
         PipelineStopGuard guard(pipeline);
         pipeline.start();
@@ -1130,4 +1148,20 @@ TEST_CASE("Depth FPS profiles wire and stream the selected backend", "[Depth][Fp
         REQUIRE(fps >= static_cast<double>(c.fps) * 0.9);
         REQUIRE(fps <= static_cast<double>(c.fps) * 1.1);
     }
+}
+
+TEST_CASE("Device OS version cache survives close without RPC", "[Depth][DeviceOSVersionLive]") {
+    Pipeline pipeline;
+    const auto device = requireDefaultDevice(pipeline);
+    const auto cached = device->getDeviceOSVersion();
+    if(device->getPlatform() == Platform::RVC4) {
+        // Compare with an independent live RPC before closing the connection.
+        const auto raw = device->getOSVersion();
+        INFO("OS=" << raw);
+        REQUIRE(cached == utility::parseDeviceOSVersion(raw));
+    } else {
+        REQUIRE_FALSE(cached);
+    }
+    device->close();
+    for(int i = 0; i < 10; ++i) REQUIRE(device->getDeviceOSVersion() == cached);
 }

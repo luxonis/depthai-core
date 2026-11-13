@@ -574,10 +574,15 @@ void Depth::requireNotBuilt(const char* method) const {
 
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) {
     DAI_CHECK_V(device != nullptr, "Depth::getSupportedAlgorithms requires a device.");
+    return getSupportedAlgorithmsWithModels(device, std::nullopt);
+}
+
+std::vector<Depth::Algorithm> Depth::getSupportedAlgorithmsWithModels(const std::shared_ptr<Device>& device,
+                                                                      std::optional<std::vector<DeviceModelZoo>> models) {
     const bool hasStereoPair = !device->getStereoPairs().empty();
     const bool hasTof = cameraFeaturesIncludeTof(device->getConnectedCameraFeatures());
     const bool isRvc4 = device->getPlatform() == Platform::RVC4;
-    auto supportedModels = isRvc4 && hasStereoPair ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+    auto supportedModels = models ? std::move(*models) : (isRvc4 && hasStereoPair ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{});
     const bool hasNasModel = isModelSupportedByDevice(DEFAULT_NAS_NEURAL_MODEL, supportedModels);
     const bool hasFusionModels = isModelSupportedByDevice(DeviceModelZoo::NEURAL_DEPTH_MEDIUM, supportedModels)
                                  && isModelSupportedByDevice(DeviceModelZoo::TOF_NEURAL_FUSION_672X804, supportedModels);
@@ -616,32 +621,21 @@ std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_pt
     return supported;
 }
 
-bool Depth::usesOptimizedNeuralModels(const std::string& osVersion) {
-    // Some OS builds report a release prefix (e.g. r851-1.47.0).
-    auto version = osVersion;
-    if(version.size() > 1 && version.front() == 'r') {
-        const auto separator = version.find('-');
-        if(separator == std::string::npos || separator == 1 || version.find_first_not_of("0123456789", 1) != separator) return false;
-        version = version.substr(separator + 1);
-    }
-    try {
-        return Version(version) >= Version(1, 46, 0);
-    } catch(const std::invalid_argument&) {
-        return false;  // Unknown/custom OS strings must not overestimate throughput.
-    }
+bool Depth::usesOptimizedNeuralModels(const std::optional<Version>& osVersion) {
+    return osVersion && *osVersion >= Version(1, 46, 0);
 }
 
 Depth::Algorithm Depth::getDefaultAlgorithm(const std::shared_ptr<Device>& device) {
     DAI_CHECK_V(device != nullptr, "Depth::getDefaultAlgorithm requires a device.");
-    const auto supported = getSupportedAlgorithms(device);
     const auto platform = device->getPlatform();
     const bool isRvc4 = platform == Platform::RVC4;
+    const auto models = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+    const auto supported = getSupportedAlgorithmsWithModels(device, models);
     std::optional<std::pair<uint32_t, uint32_t>> resolution;
     if(!supportsAlgorithm(supported, Algorithm::TOF) || (isRvc4 && supportsAlgorithm(supported, Algorithm::STEREO))) {
         resolution = sizeFromDeviceFeatures(device, requireFirstStereoPair(device));
     }
-    const auto models = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
-    return selectBackend(platform, resolution, DEFAULT_TARGET_FPS, supported, models, false, isRvc4 && usesOptimizedNeuralModels(device->getOSVersion()))
+    return selectBackend(platform, resolution, DEFAULT_TARGET_FPS, supported, models, false, isRvc4 && usesOptimizedNeuralModels(device->getDeviceOSVersion()))
         .algorithm;
 }
 
@@ -707,7 +701,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     // getSupportedDeviceModels() is an RVC4-only RPC; on other platforms there is no model catalog.
     const auto supportedModels = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
-    const auto supported = getSupportedAlgorithms(device);
+    const auto supported = getSupportedAlgorithmsWithModels(device, supportedModels);
 
     if(configOverride_) {
         validateExplicitConfig(
@@ -743,7 +737,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     const auto pair = requireFirstStereoPair(device);
     const auto [left, right] = findCamerasForPair(pipeline, pair, device);
     const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
-    const bool optimizedNeuralModels = usesOptimizedNeuralModels(device->getOSVersion());
+    const bool optimizedNeuralModels = usesOptimizedNeuralModels(device->getDeviceOSVersion());
     const float targetFps = inputs.targetFps;
     const auto& resolution = inputs.resolution;
 

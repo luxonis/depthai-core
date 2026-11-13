@@ -353,6 +353,14 @@ class DeviceBase {
     std::string getOSVersion();
 
     /**
+     * Gets the parsed device OS version cached during initialization and refreshed on reconnect.
+     * Does not communicate with the device; remains available after close.
+     *
+     * @returns OS version, or nullopt for unsupported devices, failed reads or unrecognized versions.
+     */
+    std::optional<Version> getDeviceOSVersion() const;
+
+    /**
      * Checks if devices pipeline is already running
      *
      * @returns True if running, false otherwise
