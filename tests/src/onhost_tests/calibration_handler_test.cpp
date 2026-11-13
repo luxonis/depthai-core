@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <cmath>
 #include <depthai/device/CalibrationHandler.hpp>
@@ -1833,7 +1834,16 @@ TEST_CASE("Explicit calibration crop preserves provenance and existing calibrati
     REQUIRE(std::get<0>(legacy.getDefaultIntrinsics(socket)) == measured);
     REQUIRE(std::get<1>(legacy.getDefaultIntrinsics(socket)) == 1920);
     const auto roundTrip = CalibrationHandler(processed.eepromToJson().get<EepromData>());
-    REQUIRE(roundTrip.eepromToJson() == processed.eepromToJson());
+    // cameraData is serialized from an unordered_map as an array; ordering can
+    // change after a round trip with multiple cameras.
+    const auto orderedJson = [](const CalibrationHandler& handler) {
+        auto data = handler.eepromToJson();
+        auto& cameras = data["cameraData"];
+        std::sort(
+            cameras.begin(), cameras.end(), [](const nlohmann::json& left, const nlohmann::json& right) { return left[0].get<int>() < right[0].get<int>(); });
+        return data;
+    };
+    REQUIRE(orderedJson(roundTrip) == orderedJson(processed));
     REQUIRE(roundTrip.getDistortionCoefficients(socket) == processed.getDistortionCoefficients(socket));
     REQUIRE(roundTrip.getDistortionModel(socket) == CameraModel::Perspective);
     // Only K and its reference dimensions may change.
