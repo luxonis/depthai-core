@@ -265,7 +265,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     // Bind BoardConfig::Network
     boardConfigNetwork.def(py::init<>())
         .def_readwrite("mtu", &BoardConfig::Network::mtu)
-        .def_readwrite("xlinkTcpNoDelay", &BoardConfig::Network::xlinkTcpNoDelay);
+        .def_readwrite("xlinkTcpNoDelay", &BoardConfig::Network::xlinkTcpNoDelay)
+        .def_readwrite("forceEnable", &BoardConfig::Network::forceEnable);
 
     // GPIO Mode
     boardConfigGpioMode.value("ALT_MODE_0", BoardConfig::GPIO::ALT_MODE_0, DOC(dai, BoardConfig, GPIO, Mode, ALT_MODE_0))
@@ -352,6 +353,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("usb3PhyInternalClock", &BoardConfig::usb3PhyInternalClock, DOC(dai, BoardConfig, usb3PhyInternalClock))
         .def_readwrite("mipi4LaneRgb", &BoardConfig::mipi4LaneRgb, DOC(dai, BoardConfig, mipi4LaneRgb))
         .def_readwrite("emmc", &BoardConfig::emmc, DOC(dai, BoardConfig, emmc))
+        .def_readwrite("eepromData", &BoardConfig::eepromData, DOC(dai, BoardConfig, eepromData))
         .def_readwrite("logPath", &BoardConfig::logPath, DOC(dai, BoardConfig, logPath))
         .def_readwrite("logSizeMax", &BoardConfig::logSizeMax, DOC(dai, BoardConfig, logSizeMax))
         .def_readwrite("logVerbosity", &BoardConfig::logVerbosity, DOC(dai, BoardConfig, logVerbosity))
@@ -909,6 +911,27 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getXLinkChunkSize();
             },
             DOC(dai, DeviceBase, getXLinkChunkSize))
+        .def(
+            "getEthernetLinkSpeed",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getEthernetLinkSpeed();
+            },
+            "Get the current Ethernet link speed in Mbps")
+        .def(
+            "getEthernetLinkDuplex",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getEthernetLinkDuplex();
+            },
+            "Get whether the Ethernet link is full duplex")
+        .def(
+            "getEmmcMemorySize",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getEmmcMemorySize();
+            },
+            DOC(dai, DeviceBase, getEmmcMemorySize))
         .def(
             "setProperties",
             [](DeviceBase& d, const DeviceProperties& properties) {

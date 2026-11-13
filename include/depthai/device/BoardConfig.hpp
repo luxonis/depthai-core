@@ -8,6 +8,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
+#include "depthai/common/EepromData.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/common/optional.hpp"
@@ -34,6 +35,9 @@ struct BoardConfig {
 
     /// Network configuration
     struct Network {
+        /// Initialize Ethernet hardware while the device communicates over USB.
+        /// Used by production tests to inspect the physical link.
+        bool forceEnable = false;
         /// Network MTU, 0 is auto (usually 1500 for Ethernet) or forwarded
         /// from bootloader (not yet implemented there).
         /// Note: not advised to increase past 1500 for now
@@ -99,6 +103,10 @@ struct BoardConfig {
     /// eMMC config
     std::optional<bool> emmc;
 
+    /// Override EEPROM data in memory before RVC2 board and camera initialization.
+    /// Does not write to the physical EEPROM.
+    std::optional<EepromData> eepromData;
+
     /// log path
     std::optional<std::string> logPath;
 
@@ -157,7 +165,7 @@ struct BoardConfig {
 };
 
 DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::USB, vid, pid, flashBootedVid, flashBootedPid, maxSpeed, productName, manufacturer);
-DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::Network, mtu, xlinkTcpNoDelay);
+DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::Network, mtu, xlinkTcpNoDelay, forceEnable);
 DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::GPIO, mode, direction, level, pull, drive, schmitt, slewFast);
 DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::UART, tmp);
 DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig::Camera, name, sensorType, orientation);
@@ -182,6 +190,7 @@ DEPTHAI_SERIALIZE_EXT_DECL(BoardConfig,
                            camera,
                            imu,
                            uvc,
-                           defaultImuExtr);
+                           defaultImuExtr,
+                           eepromData);
 
 }  // namespace dai
