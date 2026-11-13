@@ -238,3 +238,79 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
     INFO("Checked " << testedModes << " sensor modes, including " << testedCroppedModes << " cropped modes");
     if(testedCroppedModes == 0) WARN("This device has no cropped sensor mode; only full-FOV controls were exercised");
 }
+
+TEST_CASE("RVC4 preserves calibration from a processed full-FOV readout", "[camera-resized-calibration-compatibility]") {
+    auto device = std::make_shared<dai::Device>();
+    if(device->getPlatform() != dai::Platform::RVC4) SKIP("RVC4 calibration compatibility regression");
+    for(const auto& camera : device->getConnectedCameraFeatures()) {
+        const auto physicalFov = [&](const dai::CameraSensorConfig& mode) {
+            auto fov = mode.fov;
+            if(fov.isNormalized()) fov = fov.denormalize(camera.width, camera.height);
+            return fov;
+        };
+        const auto cropped = std::find_if(camera.configs.begin(), camera.configs.end(), [&](const auto& mode) {
+            const auto fov = physicalFov(mode);
+            // A 16:9 calibration output can also be produced by cropping a
+            // full-FOV 4:3 readout, without selecting this native crop mode.
+            return (mode.type == dai::CameraSensorType::COLOR || mode.type == dai::CameraSensorType::MONO) && mode.width == 1920 && mode.height == 1080
+                   && fov.width > 0 && fov.height > 0 && fov.width < camera.width;
+        });
+        if(cropped == camera.configs.end()) continue;
+        const auto full = std::find_if(camera.configs.begin(), camera.configs.end(), [&](const auto& mode) {
+            const auto fov = physicalFov(mode);
+            return mode.width > 0 && mode.height > 0 && static_cast<std::int64_t>(mode.width) * mode.height <= 16000000 && fov.x == 0 && fov.y == 0
+                   && fov.width == camera.width && fov.height == camera.height;
+        });
+        if(full == camera.configs.end()) continue;
+        CAPTURE(camera.socket, camera.sensorName, camera.width, camera.height);
+        const std::vector<std::vector<float>> fullK = {{1000, 0, camera.width * .5f + 37}, {0, 1100, camera.height * .5f - 23}, {0, 0, 1}};
+        const float scale = std::max(static_cast<float>(cropped->width) / camera.width, static_cast<float>(cropped->height) / camera.height);
+        const float cropX = (camera.width - cropped->width / scale) * .5f;
+        const float cropY = (camera.height - cropped->height / scale) * .5f;
+        const auto nativeFov = physicalFov(*cropped);
+        if(std::fabs(nativeFov.x - cropX) < .01f && std::fabs(nativeFov.y - cropY) < .01f) continue;
+
+        // This K describes a normal CENTER_CROP Camera output from a full-FOV
+        // readout. Matching its dimensions to a native mode loses provenance.
+        auto outputCalibrationK = fullK;
+        outputCalibrationK[0][2] -= cropX;
+        outputCalibrationK[1][2] -= cropY;
+        for(size_t column = 0; column < 3; ++column) {
+            outputCalibrationK[0][column] *= scale;
+            outputCalibrationK[1][column] *= scale;
+        }
+        auto calibration = device->readCalibration();
+        calibration.setCameraIntrinsics(camera.socket, outputCalibrationK, cropped->width, cropped->height);
+        calibration.setDistortionCoefficients(camera.socket, std::vector<float>(14, 0));
+        calibration.setCameraType(camera.socket, dai::CameraModel::Perspective);
+        dai::Pipeline pipeline(device);
+        pipeline.setCalibrationData(calibration);
+        const auto cameraNode =
+            pipeline.create<dai::node::Camera>()->build(camera.socket,
+                                                        std::make_pair(static_cast<std::uint32_t>(full->width), static_cast<std::uint32_t>(full->height)),
+                                                        std::clamp(10.0f, full->minFps, full->maxFps));
+        const auto queue =
+            cameraNode
+                ->requestOutput(
+                    {static_cast<std::uint32_t>(full->width), static_cast<std::uint32_t>(full->height)}, std::nullopt, dai::ImgResizeMode::STRETCH, 1.0f, false)
+                ->createOutputQueue(1, false);
+        pipeline.start();
+        bool timedOut = false;
+        const auto frame = queue->get<dai::ImgFrame>(std::chrono::seconds(15), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(frame != nullptr);
+        REQUIRE(frame->getWidth() == full->width);
+        REQUIRE(frame->getHeight() == full->height);
+        auto expected = fullK;
+        for(size_t column = 0; column < 3; ++column) {
+            expected[0][column] *= static_cast<float>(full->width) / camera.width;
+            expected[1][column] *= static_cast<float>(full->height) / camera.height;
+        }
+        const auto actual = frame->getTransformation().getIntrinsicMatrix();
+        CAPTURE(actual, expected);
+        for(size_t row = 0; row < 3; ++row)
+            for(size_t column = 0; column < 3; ++column) CHECK(actual[row][column] == Catch::Approx(expected[row][column]).margin(.01f));
+        return;
+    }
+    SKIP("Requires a cropped mode whose dimensions also describe a distinct resized full-FOV output");
+}
