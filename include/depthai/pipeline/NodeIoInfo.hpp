@@ -17,6 +17,6 @@ struct NodeIoInfo {
     uint32_t id;
 };
 
-DEPTHAI_SERIALIZE_EXT(NodeIoInfo, group, name, type, blocking, queueSize, waitForMessage, id);
+DEPTHAI_SERIALIZE_EXT_DECL(NodeIoInfo, group, name, type, blocking, queueSize, waitForMessage, id);
 
 }  // namespace dai

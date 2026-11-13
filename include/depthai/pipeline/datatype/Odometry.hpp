@@ -55,7 +55,7 @@ class Odometry : public TransformData {
         return DatatypeEnum::Odometry;
     }
 
-    DEPTHAI_SERIALIZE(Odometry, sequenceNum, ts, tsDevice, tsSystem, transform, velocity);
+    DEPTHAI_SERIALIZE_DECL(Odometry, sequenceNum, ts, tsDevice, tsSystem, transform, velocity);
 };
 
 }  // namespace dai

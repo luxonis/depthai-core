@@ -27,7 +27,9 @@ struct YuNetParserProperties : PropertiesSerializable<Properties, YuNetParserPro
     ~YuNetParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(YuNetParserProperties, locOutputLayerName, confOutputLayerName, iouOutputLayerName, initialConfig, inputSize, labelNames);
+DEPTHAI_SERIALIZE_EXT_DECL(YuNetParserProperties, locOutputLayerName, confOutputLayerName, iouOutputLayerName, initialConfig, inputSize, labelNames);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::YuNetParserProperties>;

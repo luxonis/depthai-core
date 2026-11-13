@@ -55,7 +55,7 @@ struct SpatialLocations {
      */
     Point3f spatialCoordinates;
 };
-DEPTHAI_SERIALIZE_EXT(SpatialLocations, config, depthAverage, depthMode, depthMedian, depthMin, depthMax, depthAveragePixelCount, spatialCoordinates);
+DEPTHAI_SERIALIZE_EXT_DECL(SpatialLocations, config, depthAverage, depthMode, depthMedian, depthMin, depthMax, depthAveragePixelCount, spatialCoordinates);
 
 /**
  * SpatialLocationCalculatorData message. Carries spatial information (X,Y,Z) and their configuration parameters
@@ -81,7 +81,7 @@ class SpatialLocationCalculatorData : public Buffer {
         return DatatypeEnum::SpatialLocationCalculatorData;
     }
 
-    DEPTHAI_SERIALIZE(SpatialLocationCalculatorData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, spatialLocations);
+    DEPTHAI_SERIALIZE_DECL(SpatialLocationCalculatorData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, spatialLocations);
 };
 
 }  // namespace dai

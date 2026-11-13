@@ -38,6 +38,8 @@ struct WarpProperties : PropertiesSerializable<Properties, WarpProperties> {
     ~WarpProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(WarpProperties, outputWidth, outputHeight, outputFrameSize, numFramesPool, meshWidth, meshHeight, meshUri, warpHwIds, interpolation);
+DEPTHAI_SERIALIZE_EXT_DECL(WarpProperties, outputWidth, outputHeight, outputFrameSize, numFramesPool, meshWidth, meshHeight, meshUri, warpHwIds, interpolation);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::WarpProperties>;

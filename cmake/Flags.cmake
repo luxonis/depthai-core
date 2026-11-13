@@ -131,6 +131,19 @@ elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
     endif()
 endif()
 
+# Remove the unused code and data sections when the target is linked
+function(gc_unused_sections target)
+    if(WIN32)
+        # MSVC uses /OPT:REF in Release builds by default
+    elseif(APPLE)
+        # ld64 equivalent is -dead_strip (not tested yet)
+    elseif(UNIX)
+        target_link_options(${target} PRIVATE "-Wl,--gc-sections")
+    else()
+        message(FATAL_ERROR "Unexpected host, stopping build")
+    endif()
+endfunction()
+
 # Don't include symbols for the linked libraries
 function(exclude_archive_libs_symbols target)
     if(WIN32)

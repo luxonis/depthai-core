@@ -16,7 +16,7 @@ struct ImageFiltersProperties : PropertiesSerializable<Properties, ImageFiltersP
     ~ImageFiltersProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageFiltersProperties, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(ImageFiltersProperties, initialConfig);
 
 struct ToFDepthConfidenceFilterProperties : PropertiesSerializable<Properties, ToFDepthConfidenceFilterProperties> {
     /**
@@ -27,6 +27,9 @@ struct ToFDepthConfidenceFilterProperties : PropertiesSerializable<Properties, T
     ~ToFDepthConfidenceFilterProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ToFDepthConfidenceFilterProperties, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(ToFDepthConfidenceFilterProperties, initialConfig);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ImageFiltersProperties>;
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ToFDepthConfidenceFilterProperties>;

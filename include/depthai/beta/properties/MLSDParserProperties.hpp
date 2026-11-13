@@ -22,7 +22,9 @@ struct MLSDParserProperties : PropertiesSerializable<Properties, MLSDParserPrope
     ~MLSDParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MLSDParserProperties, outputLayerTPMap, outputLayerHeat, initialConfig, inputSize);
+DEPTHAI_SERIALIZE_EXT_DECL(MLSDParserProperties, outputLayerTPMap, outputLayerHeat, initialConfig, inputSize);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::MLSDParserProperties>;

@@ -11,6 +11,8 @@ struct ToFStereoFusionProperties : PropertiesSerializable<Properties, ToFStereoF
     ~ToFStereoFusionProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ToFStereoFusionProperties, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(ToFStereoFusionProperties, initialConfig);
 
 }  // namespace dai::beta
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::ToFStereoFusionProperties>;

@@ -19,6 +19,6 @@ struct LogMessage {
     std::string payload;
 };
 
-DEPTHAI_SERIALIZE_EXT(LogMessage, nodeIdName, level, time, colorRangeStart, colorRangeEnd, payload);
+DEPTHAI_SERIALIZE_EXT_DECL(LogMessage, nodeIdName, level, time, colorRangeStart, colorRangeEnd, payload);
 
 }  // namespace dai

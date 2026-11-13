@@ -1345,8 +1345,8 @@ pybind11
 ~~~~~~~~
 
 License: BSD-3-Clause
-Version: 3.2.0-dev-fdec8c350
-Source: https://github.com/pybind/pybind11/tree/97bf890db679505a14dfe547a5e77bb2bd05dc90
+Version: 3.2.0-dev-218a429500#1
+Source: https://github.com/pybind/pybind11/tree/218a429500971f5030eda1855c870637a62aabdb
 
 Copyright (c) 2016 Wenzel Jakob <wenzel.jakob@epfl.ch>, All rights reserved.
 

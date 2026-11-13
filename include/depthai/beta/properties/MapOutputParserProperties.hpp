@@ -18,7 +18,9 @@ struct MapOutputParserProperties : PropertiesSerializable<Properties, MapOutputP
     ~MapOutputParserProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MapOutputParserProperties, outputLayerName, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(MapOutputParserProperties, outputLayerName, initialConfig);
 
 }  // namespace beta
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::beta::MapOutputParserProperties>;
