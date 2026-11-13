@@ -529,6 +529,10 @@ dai_set_test_labels(xlink_in_host_test onhost ci)
 dai_add_test(multi_device_pipeline_test src/onhost_tests/pipeline/multi_device_pipeline_test.cpp)
 dai_set_test_labels(multi_device_pipeline_test onhost)
 
+# Node::stopPipeline() test (host only)
+dai_add_test(stop_pipeline_test src/onhost_tests/pipeline/stop_pipeline_test.cpp)
+dai_set_test_labels(stop_pipeline_test onhost ci)
+
 # Public NNArchive head serialization (no downloaded model required)
 dai_add_test(nn_archive_head_test src/onhost_tests/nn_archive/head_test.cpp)
 dai_set_test_labels(nn_archive_head_test onhost ci)
