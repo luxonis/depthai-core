@@ -80,7 +80,11 @@ function(add_python_example example_name python_script_path)
 
         # Adds test with 5 seconds timeout and bumps all python warnings to errors
         add_test(NAME ${example_name} COMMAND
-            ${CMAKE_COMMAND} -E env
+            cmake
+            -DFORCE_TIMEOUT_SECONDS=300
+            -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+            --
+            cmake -E env
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}${DEPTHAI_PYTHON_TEST_EXTRA_PATH}${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
             "DEPTHAI_SEARCH_TIMEOUT=20000"
@@ -89,9 +93,6 @@ function(add_python_example example_name python_script_path)
             ${ASAN_ENVIRONMENT_VARS}
             ${DEPTHAI_PYTHON_TEST_ENVIRONMENT}
 
-            ${CMAKE_COMMAND}
-            -DFORCE_TIMEOUT_SECONDS=300
-            -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
             $<TARGET_FILE:test_wrapper>
             40 # A timeout to terminate the test when sucessful
             ${PYTHON_EXECUTABLE}
@@ -144,15 +145,14 @@ if(DEPTHAI_PYTHON_TEST_EXAMPLES AND DEPTHAI_PYTHON_INSTALL_EXAMPLE_REQUIREMENTS)
 
     # Adds install requirements test with 5 minute timeout
     add_test(NAME install_requirements COMMAND
-        ${CMAKE_COMMAND} -E env
+        cmake -DFORCE_TIMEOUT_SECONDS=300 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake --
+        cmake -E env
         # PATH (dlls)
         "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         # ASAN in case of sanitizers
         ${ASAN_ENVIRONMENT_VARS}
-        ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=300 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
-
         # Actual script to run
         ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
     )

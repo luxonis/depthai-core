@@ -1,17 +1,15 @@
 cmake_minimum_required(VERSION 3.5)
 
-# Parse out arguments
+# Forward only arguments after the CMake option separator.
 foreach(_arg RANGE ${CMAKE_ARGC})
     if(append)
-        list(APPEND arguments "${CMAKE_ARGV${_arg}}")
-    endif()
-
-    if("${CMAKE_ARGV${_arg}}" STREQUAL "-P")
+        # Keep Windows PATH values in a single argument.
+        string(REPLACE ";" "\\;" _argument "${CMAKE_ARGV${_arg}}")
+        list(APPEND arguments "${_argument}")
+    elseif("${CMAKE_ARGV${_arg}}" STREQUAL "--")
         set(append true)
-        message(status "found -P")
     endif()
 endforeach()
-list(REMOVE_AT arguments 0)
 
 message(STATUS "arguments: ${arguments}")
 
