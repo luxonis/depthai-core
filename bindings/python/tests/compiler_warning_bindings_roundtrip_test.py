@@ -407,6 +407,14 @@ def test_system_information_rvc4_binding_roundtrip():
     system_information.processCpuAvgUsage = expected_process_cpu_avg
     system_information.cpuUsages = expected_cpu_usages
     system_information.chipTemperature = expected_chip_temperature
+    system_information.gpuUtilizationPercent = 23.5
+    system_information.dspHvxActivityPercent = 10.25
+    system_information.dspHmxActivityPercent = 4.75
+    system_information.dspQ6LoadKcps = 321.0
+    system_information.powerSystemWatts = 2.1
+    system_information.powerProcessorWatts = 1.2
+    system_information.powerPoeWatts = 0.7
+    system_information.powerTofWatts = 0.3
 
     assert normalize(system_information.ddrMemoryUsage) == normalize(expected_ddr)
     assert system_information.processMemoryUsage == 123456789
@@ -414,6 +422,14 @@ def test_system_information_rvc4_binding_roundtrip():
     assert normalize(system_information.processCpuAvgUsage) == normalize(expected_process_cpu_avg)
     assert normalize(system_information.cpuUsages) == normalize(expected_cpu_usages)
     assert normalize(system_information.chipTemperature) == normalize(expected_chip_temperature)
+    assert system_information.gpuUtilizationPercent == pytest.approx(23.5)
+    assert system_information.dspHvxActivityPercent == pytest.approx(10.25)
+    assert system_information.dspHmxActivityPercent == pytest.approx(4.75)
+    assert system_information.dspQ6LoadKcps == pytest.approx(321.0)
+    assert system_information.powerSystemWatts == pytest.approx(2.1)
+    assert system_information.powerProcessorWatts == pytest.approx(1.2)
+    assert system_information.powerPoeWatts == pytest.approx(0.7)
+    assert system_information.powerTofWatts == pytest.approx(0.3)
 
 
 def test_tracked_features_binding_roundtrip():
