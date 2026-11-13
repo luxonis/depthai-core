@@ -160,39 +160,6 @@ ImgTransformation panoramaTransformation(const cv::Rect& canvas, double scale, C
     return {static_cast<size_t>(canvas.width), static_cast<size_t>(canvas.height), intrinsics, model, {}, extrinsics};
 }
 
-/** Decorates OpenCV's matcher and scores a candidate by confidence weighted by geometrically consistent inliers. */
-class ScoringFeaturesMatcher : public cv::detail::FeaturesMatcher {
-   public:
-    explicit ScoringFeaturesMatcher(cv::Ptr<cv::detail::FeaturesMatcher> matcher)
-        : cv::detail::FeaturesMatcher(matcher->isThreadSafe()), matcher(std::move(matcher)) {}
-
-    void resetScore() {
-        std::lock_guard<std::mutex> lock(scoreMutex);
-        score = 0.0;
-    }
-
-    double getScore() const {
-        std::lock_guard<std::mutex> lock(scoreMutex);
-        return score;
-    }
-
-    void collectGarbage() override {
-        matcher->collectGarbage();
-    }
-
-   protected:
-    void match(const cv::detail::ImageFeatures& features1, const cv::detail::ImageFeatures& features2, cv::detail::MatchesInfo& matchesInfo) override {
-        (*matcher)(features1, features2, matchesInfo);
-        std::lock_guard<std::mutex> lock(scoreMutex);
-        score += std::max(0.0, matchesInfo.confidence) * static_cast<double>(std::max(0, matchesInfo.num_inliers));
-    }
-
-   private:
-    cv::Ptr<cv::detail::FeaturesMatcher> matcher;
-    mutable std::mutex scoreMutex;
-    double score = 0.0;
-};
-
 void appendMatrix(std::vector<double>& values, const cv::Mat& matrix) {
     cv::Mat flattened;
     matrix.reshape(1, 1).convertTo(flattened, CV_64F);
@@ -200,30 +167,63 @@ void appendMatrix(std::vector<double>& values, const cv::Mat& matrix) {
     values.insert(values.end(), begin, begin + flattened.total());
 }
 
-struct RegistrationCandidate {
-    RegistrationCandidate(double score, std::vector<cv::detail::CameraParams> cameras) : score(score), cameras(std::move(cameras)) {
-        for(const auto& camera : this->cameras) {
-            geometryKey.insert(geometryKey.end(), {camera.focal, camera.aspect, camera.ppx, camera.ppy});
-            appendMatrix(geometryKey, camera.R);
-            appendMatrix(geometryKey, camera.t);
-        }
-    }
-
-    bool isBetterThan(const RegistrationCandidate& other) const {
-        if(score != other.score) return score > other.score;
-        return std::lexicographical_compare(geometryKey.begin(), geometryKey.end(), other.geometryKey.begin(), other.geometryKey.end());
-    }
-
-    double score;
-    std::vector<cv::detail::CameraParams> cameras;
-    /// Deterministically selects one geometry when matching quality is exactly tied.
-    std::vector<double> geometryKey;
-};
-
 }  // namespace
 
 class Stitching::Impl {
    public:
+    /** Decorates OpenCV's matcher and scores a candidate by confidence weighted by geometrically consistent inliers. */
+    class ScoringFeaturesMatcher : public cv::detail::FeaturesMatcher {
+       public:
+        explicit ScoringFeaturesMatcher(cv::Ptr<cv::detail::FeaturesMatcher> matcher)
+            : cv::detail::FeaturesMatcher(matcher->isThreadSafe()), matcher(std::move(matcher)) {}
+
+        void resetScore() {
+            std::lock_guard<std::mutex> lock(scoreMutex);
+            score = 0.0;
+        }
+
+        double getScore() const {
+            std::lock_guard<std::mutex> lock(scoreMutex);
+            return score;
+        }
+
+        void collectGarbage() override {
+            matcher->collectGarbage();
+        }
+
+       protected:
+        void match(const cv::detail::ImageFeatures& features1, const cv::detail::ImageFeatures& features2, cv::detail::MatchesInfo& matchesInfo) override {
+            (*matcher)(features1, features2, matchesInfo);
+            std::lock_guard<std::mutex> lock(scoreMutex);
+            score += std::max(0.0, matchesInfo.confidence) * static_cast<double>(std::max(0, matchesInfo.num_inliers));
+        }
+
+       private:
+        cv::Ptr<cv::detail::FeaturesMatcher> matcher;
+        mutable std::mutex scoreMutex;
+        double score = 0.0;
+    };
+
+    struct RegistrationCandidate {
+        RegistrationCandidate(double score, std::vector<cv::detail::CameraParams> cameras) : score(score), cameras(std::move(cameras)) {
+            for(const auto& camera : this->cameras) {
+                geometryKey.insert(geometryKey.end(), {camera.focal, camera.aspect, camera.ppx, camera.ppy});
+                appendMatrix(geometryKey, camera.R);
+                appendMatrix(geometryKey, camera.t);
+            }
+        }
+
+        bool isBetterThan(const RegistrationCandidate& other) const {
+            if(score != other.score) return score > other.score;
+            return std::lexicographical_compare(geometryKey.begin(), geometryKey.end(), other.geometryKey.begin(), other.geometryKey.end());
+        }
+
+        double score;
+        std::vector<cv::detail::CameraParams> cameras;
+        /// Deterministically selects one geometry when matching quality is exactly tied.
+        std::vector<double> geometryKey;
+    };
+
     cv::Ptr<cv::Stitcher> stitcher;
     cv::Ptr<ScoringFeaturesMatcher> scoringMatcher;
     std::optional<RegistrationCandidate> bestCandidate;
@@ -731,7 +731,7 @@ void Stitching::run() {
                         continue;
                     }
 
-                    RegistrationCandidate candidate(impl->scoringMatcher->getScore(), impl->stitcher->cameras());
+                    Impl::RegistrationCandidate candidate(impl->scoringMatcher->getScore(), impl->stitcher->cameras());
                     if(!impl->bestCandidate.has_value() || candidate.isBetterThan(*impl->bestCandidate)) {
                         impl->bestCandidate = std::move(candidate);
                     }
