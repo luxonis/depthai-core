@@ -2,6 +2,7 @@
 
 #include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl/filesystem.h>
 #include <pybind11/stl_bind.h>
 
 #include <array>
@@ -46,6 +47,7 @@
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/common/WorldConstraints.hpp"
 #include "depthai/common/YoloDecodingFamily.hpp"
 
 // depthai
@@ -113,6 +115,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<RotatedRect> rotatedRect(m, "RotatedRect", DOC(dai, RotatedRect));
     py::class_<Rect> rect(m, "Rect", DOC(dai, Rect));
     py::class_<StereoPair> stereoPair(m, "StereoPair", DOC(dai, StereoPair));
+    py::enum_<ArucoDictionary> arucoDictionary(m, "ArucoDictionary", DOC(dai, ArucoDictionary));
+    py::enum_<MarkerType> markerType(m, "MarkerType", DOC(dai, MarkerType));
+    py::class_<WorldConstraints> worldConstraints(m, "WorldConstraints", DOC(dai, WorldConstraints));
+    py::class_<WorldConstraints::MarkerDistance> markerDistance(worldConstraints, "MarkerDistance", DOC(dai, WorldConstraints, MarkerDistance));
+    py::class_<WorldConstraints::MarkerSocketDistance> markerSocketDistance(
+        worldConstraints, "MarkerSocketDistance", DOC(dai, WorldConstraints, MarkerSocketDistance));
+    py::class_<WorldConstraints::MarkerSize> markerSize(worldConstraints, "MarkerSize", DOC(dai, WorldConstraints, MarkerSize));
+    py::class_<MarkerOutline> markerOutline(m, "MarkerOutline", DOC(dai, MarkerOutline));
+    py::class_<MarkerObservationSet> markerObservationSet(m, "MarkerObservationSet", DOC(dai, MarkerObservationSet));
     py::enum_<CameraExposureOffset> cameraExposureOffset(m, "CameraExposureOffset");
     py::class_<Color> color(m, "Color", DOC(dai, Color));
     py::enum_<Colormap> colormap(m, "Colormap", DOC(dai, Colormap));
@@ -313,6 +324,94 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("y", &Rect::y)
         .def_readwrite("width", &Rect::width)
         .def_readwrite("height", &Rect::height);
+
+    markerType.value("ARUCO", MarkerType::ARUCO).value("LUXONIS", MarkerType::LUXONIS);
+    m.attr("LUXONIS_MARKER_ID_MAX") = kLuxonisMarkerIdMax;
+
+    arucoDictionary.value("DICT_4X4_50", ArucoDictionary::DICT_4X4_50)
+        .value("DICT_4X4_100", ArucoDictionary::DICT_4X4_100)
+        .value("DICT_4X4_250", ArucoDictionary::DICT_4X4_250)
+        .value("DICT_4X4_1000", ArucoDictionary::DICT_4X4_1000)
+        .value("DICT_5X5_50", ArucoDictionary::DICT_5X5_50)
+        .value("DICT_5X5_100", ArucoDictionary::DICT_5X5_100)
+        .value("DICT_5X5_250", ArucoDictionary::DICT_5X5_250)
+        .value("DICT_5X5_1000", ArucoDictionary::DICT_5X5_1000)
+        .value("DICT_6X6_50", ArucoDictionary::DICT_6X6_50)
+        .value("DICT_6X6_100", ArucoDictionary::DICT_6X6_100)
+        .value("DICT_6X6_250", ArucoDictionary::DICT_6X6_250)
+        .value("DICT_6X6_1000", ArucoDictionary::DICT_6X6_1000)
+        .value("DICT_7X7_50", ArucoDictionary::DICT_7X7_50)
+        .value("DICT_7X7_100", ArucoDictionary::DICT_7X7_100)
+        .value("DICT_7X7_250", ArucoDictionary::DICT_7X7_250)
+        .value("DICT_7X7_1000", ArucoDictionary::DICT_7X7_1000)
+        .value("DICT_ARUCO_ORIGINAL", ArucoDictionary::DICT_ARUCO_ORIGINAL)
+        .value("DICT_APRILTAG_16h5", ArucoDictionary::DICT_APRILTAG_16h5)
+        .value("DICT_APRILTAG_25h9", ArucoDictionary::DICT_APRILTAG_25h9)
+        .value("DICT_APRILTAG_36h10", ArucoDictionary::DICT_APRILTAG_36h10)
+        .value("DICT_APRILTAG_36h11", ArucoDictionary::DICT_APRILTAG_36h11);
+
+    markerDistance.def(py::init<>())
+        .def(py::init([](int32_t markerA, int32_t markerB, float distanceMeters) {
+                 WorldConstraints::MarkerDistance distance;
+                 distance.markerA = markerA;
+                 distance.markerB = markerB;
+                 distance.distanceMeters = distanceMeters;
+                 return distance;
+             }),
+             py::arg("markerA"),
+             py::arg("markerB"),
+             py::arg("distanceMeters"))
+        .def_readwrite("markerA", &WorldConstraints::MarkerDistance::markerA)
+        .def_readwrite("markerB", &WorldConstraints::MarkerDistance::markerB)
+        .def_readwrite("distanceMeters", &WorldConstraints::MarkerDistance::distanceMeters);
+    markerSocketDistance.def(py::init<>())
+        .def(py::init([](int32_t marker, CameraBoardSocket socket, float distanceMeters) {
+                 WorldConstraints::MarkerSocketDistance distance;
+                 distance.marker = marker;
+                 distance.socket = socket;
+                 distance.distanceMeters = distanceMeters;
+                 return distance;
+             }),
+             py::arg("marker"),
+             py::arg("socket"),
+             py::arg("distanceMeters"))
+        .def_readwrite("marker", &WorldConstraints::MarkerSocketDistance::marker)
+        .def_readwrite("socket", &WorldConstraints::MarkerSocketDistance::socket)
+        .def_readwrite("distanceMeters", &WorldConstraints::MarkerSocketDistance::distanceMeters);
+    markerSize.def(py::init<>())
+        .def(py::init([](int32_t marker, float sizeMeters) {
+                 WorldConstraints::MarkerSize size;
+                 size.marker = marker;
+                 size.sizeMeters = sizeMeters;
+                 return size;
+             }),
+             py::arg("marker"),
+             py::arg("sizeMeters"))
+        .def_readwrite("marker", &WorldConstraints::MarkerSize::marker)
+        .def_readwrite("sizeMeters", &WorldConstraints::MarkerSize::sizeMeters);
+    worldConstraints.def(py::init<>())
+        .def_readwrite("markerType", &WorldConstraints::markerType, DOC(dai, WorldConstraints, markerType))
+        .def_readwrite("arucoDictionary", &WorldConstraints::arucoDictionary, DOC(dai, WorldConstraints, arucoDictionary))
+        .def_readwrite("markerIds", &WorldConstraints::markerIds, DOC(dai, WorldConstraints, markerIds))
+        .def_readwrite("markerDistances", &WorldConstraints::markerDistances, DOC(dai, WorldConstraints, markerDistances))
+        .def_readwrite("socketDistances", &WorldConstraints::socketDistances, DOC(dai, WorldConstraints, socketDistances))
+        .def_readwrite("markerSizes", &WorldConstraints::markerSizes, DOC(dai, WorldConstraints, markerSizes))
+        .def_readwrite("maxObservationSets", &WorldConstraints::maxObservationSets, DOC(dai, WorldConstraints, maxObservationSets))
+        .def_static("fromJson", &WorldConstraints::fromJsonString, py::arg("json"), DOC(dai, WorldConstraints, fromJsonString))
+        .def_static("fromFile", &WorldConstraints::fromFile, py::arg("path"), DOC(dai, WorldConstraints, fromFile))
+        .def(
+            "toJson", [](const WorldConstraints& constraints) { return constraints.toJson().dump(); }, DOC(dai, WorldConstraints, toJson))
+        .def("empty", &WorldConstraints::empty, DOC(dai, WorldConstraints, empty))
+        .def("referencedMarkerIds", &WorldConstraints::referencedMarkerIds, DOC(dai, WorldConstraints, referencedMarkerIds))
+        .def("referencedSockets", &WorldConstraints::referencedSockets, DOC(dai, WorldConstraints, referencedSockets))
+        .def("validate", &WorldConstraints::validate, DOC(dai, WorldConstraints, validate));
+    markerOutline.def(py::init<>())
+        .def_readwrite("corners", &MarkerOutline::corners, DOC(dai, MarkerOutline, corners))
+        .def_readwrite("outerEdge", &MarkerOutline::outerEdge, DOC(dai, MarkerOutline, outerEdge))
+        .def_readwrite("innerEdge", &MarkerOutline::innerEdge, DOC(dai, MarkerOutline, innerEdge));
+    markerObservationSet.def(py::init<>())
+        .def_readwrite("centers", &MarkerObservationSet::centers, DOC(dai, MarkerObservationSet, centers))
+        .def_readwrite("outlines", &MarkerObservationSet::outlines, DOC(dai, MarkerObservationSet, outlines));
 
     stereoPair.def(py::init<>())
         .def_readwrite("left", &StereoPair::left)

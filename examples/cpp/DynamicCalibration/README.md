@@ -82,6 +82,47 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 
 ---
 
+## 1c) Dynamic calibration with world constraints: a metric reference from markers in the scene
+
+**File:** `calibration_dynamic_world_constraints.cpp` (constraints file: `world_constraints.json`)
+
+**What it does:**
+- Loads a JSON description of fiducial markers in the scene (ArUco / AprilTag or Luxonis Markers, `markerType` selects the kind): measured distances between marker centers,
+  from marker centers to camera sockets, and marker sizes (`setWorldConstraintsFromFile`, also available on `AutoCalibration`)
+- Detects the markers in every loaded image set; their centers are collected together with the image features
+- Runs the calibration: image features fix the relative pose except for the **vergence**, the turn about the
+  axis perpendicular to the baseline and the optical axis, which moves image points along the epipolar lines
+  and so sets the depth scale almost unseen; the marker distances fix that turn. Camera centers and the
+  baseline length are never changed.
+- Prints the relative rotation change reported by the node
+
+```json
+{
+    "markerType": "aruco",
+    "arucoDictionary": "DICT_4X4_50",
+    "lengthUnit": "m",
+    "markers": [37, 43],
+    "markerDistances": [{"markers": [37, 43], "distance": 0.84}],
+    "socketDistances": [{"marker": 37, "socket": "CAM_A", "distance": 1.68}],
+    "markerSizes": [{"marker": 37, "size": 0.15}]
+}
+```
+
+Any of the three lists may be left out. `markerSizes` needs no tape measure in the scene: the printed size of a
+marker tells each camera how far away the marker is. The size of an ArUco marker is the length of a side of its
+black square, the size of a Luxonis Marker is the outer diameter of its ring.
+
+The same description can be handed to the implicit `AutoCalibration` node that a plain pipeline creates at
+build time, without creating any node: `pipeline.setAutoCalibrationWorldConstraintsFromFile("world_constraints.json")`
+(also `setAutoCalibrationWorldConstraints(const WorldConstraints&)` / `...FromJson`), together with
+`pipeline.setAutoCalibrationMode(dai::Pipeline::AutoCalibrationMode::CONTINUOUS)` or the `DEPTHAI_AUTOCALIBRATION` variable.
+
+A socket that is not an image input (`CAM_A` above with a `CAM_B`/`CAM_C` pair) is used through its current
+calibration. A marker counts when it is visible in at least two of the calibrated cameras in the same frame set and is at
+least 25 px across in each image; a marker with a known size is measured in every camera that sees it.
+
+---
+
 ## 2) Calibration **quality check** (legacy)
 
 **File idea:** `calibration_quality_dynamic.cpp`
@@ -187,6 +228,7 @@ Run:
 ```bash
 ./calibration_dynamic      # applies new calibration when ready
 ./calibration_dynamic_3_sensors  # calibrates CAM_A + CAM_B + CAM_C
+./calibration_dynamic_world_constraints --constraints world_constraints.json  # metric reference from markers in the scene
 ./calibration_quality_dynamic  # legacy quality-check flow
 ./calibration_integration   # runs calibration, inspects metrics, and applies when needed
 ```

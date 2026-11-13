@@ -25,6 +25,7 @@
 #include "depthai/common/StereoRectification.hpp"
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/common/Timestamp.hpp"
+#include "depthai/common/WorldConstraints.hpp"
 #include "depthai/log/LogMessage.hpp"
 #include "utility/serialization/SerializationDefine.hpp"
 
@@ -66,6 +67,12 @@ DEPTHAI_SERIALIZE_DEFINE(StereoPair)
 DEPTHAI_SERIALIZE_EXT_DEFINE(StereoRectification)
 DEPTHAI_SERIALIZE_EXT_DEFINE(TensorInfo)
 DEPTHAI_SERIALIZE_EXT_DEFINE(Timestamp)
+DEPTHAI_SERIALIZE_DEFINE(WorldConstraints::MarkerDistance)
+DEPTHAI_SERIALIZE_DEFINE(WorldConstraints::MarkerSocketDistance)
+DEPTHAI_SERIALIZE_DEFINE(WorldConstraints::MarkerSize)
+DEPTHAI_SERIALIZE_DEFINE(WorldConstraints)
+DEPTHAI_SERIALIZE_DEFINE(MarkerOutline)
+DEPTHAI_SERIALIZE_DEFINE(MarkerObservationSet)
 DEPTHAI_SERIALIZE_EXT_DEFINE(LogMessage)
 
 }  // namespace dai
