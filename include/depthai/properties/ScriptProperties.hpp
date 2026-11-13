@@ -28,6 +28,8 @@ struct ScriptProperties : PropertiesSerializable<Properties, ScriptProperties> {
     ~ScriptProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ScriptProperties, scriptUri, scriptName, processor);
+DEPTHAI_SERIALIZE_EXT_DECL(ScriptProperties, scriptUri, scriptName, processor);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ScriptProperties>;

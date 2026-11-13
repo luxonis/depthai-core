@@ -29,6 +29,8 @@ struct BenchmarkInProperties : PropertiesSerializable<Properties, BenchmarkInPro
     ~BenchmarkInProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(BenchmarkInProperties, reportEveryNMessages, attachLatencies, logReportsAsWarnings);
+DEPTHAI_SERIALIZE_EXT_DECL(BenchmarkInProperties, reportEveryNMessages, attachLatencies, logReportsAsWarnings);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::BenchmarkInProperties>;

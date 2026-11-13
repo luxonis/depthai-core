@@ -10,7 +10,9 @@
 #include <optional>
 #include <set>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/WorldConstraints.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
 

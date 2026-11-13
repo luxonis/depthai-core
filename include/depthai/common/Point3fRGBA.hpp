@@ -17,6 +17,6 @@ struct Point3fRGBA {
     uint8_t r = 0, g = 0, b = 0, a = 255;
 };
 
-DEPTHAI_SERIALIZE_EXT(Point3fRGBA, x, y, z, r, g, b, a);
+DEPTHAI_SERIALIZE_EXT_DECL(Point3fRGBA, x, y, z, r, g, b, a);
 
 }  // namespace dai

@@ -15,6 +15,8 @@ struct DeviceNodeGroupProperties : PropertiesSerializable<Properties, DeviceNode
     ~DeviceNodeGroupProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(DeviceNodeGroupProperties, dummy);
+DEPTHAI_SERIALIZE_EXT_DECL(DeviceNodeGroupProperties, dummy);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::DeviceNodeGroupProperties>;

@@ -95,7 +95,7 @@ struct WorldConstraints {
         int32_t markerA = -1;
         int32_t markerB = -1;
         float distanceMeters = 0.0f;
-        DEPTHAI_SERIALIZE(MarkerDistance, markerA, markerB, distanceMeters);
+        DEPTHAI_SERIALIZE_DECL(MarkerDistance, markerA, markerB, distanceMeters);
     };
 
     /// Distance between the reference point of a marker and the optical center of a camera socket. The socket may
@@ -104,14 +104,14 @@ struct WorldConstraints {
         int32_t marker = -1;
         CameraBoardSocket socket = CameraBoardSocket::AUTO;
         float distanceMeters = 0.0f;
-        DEPTHAI_SERIALIZE(MarkerSocketDistance, marker, socket, distanceMeters);
+        DEPTHAI_SERIALIZE_DECL(MarkerSocketDistance, marker, socket, distanceMeters);
     };
 
     /// Printed size of a marker: ARUCO the length of a side of the black square, LUXONIS the outer diameter of the ring.
     struct MarkerSize {
         int32_t marker = -1;
         float sizeMeters = 0.0f;
-        DEPTHAI_SERIALIZE(MarkerSize, marker, sizeMeters);
+        DEPTHAI_SERIALIZE_DECL(MarkerSize, marker, sizeMeters);
     };
 
     MarkerType markerType = MarkerType::ARUCO;
@@ -147,7 +147,7 @@ struct WorldConstraints {
     /// LUXONIS configuration refers to a marker id above kLuxonisMarkerIdMax.
     void validate() const;
 
-    DEPTHAI_SERIALIZE(WorldConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, markerSizes, maxObservationSets);
+    DEPTHAI_SERIALIZE_DECL(WorldConstraints, markerType, arucoDictionary, markerIds, markerDistances, socketDistances, markerSizes, maxObservationSets);
 
    private:
     /// fromJson() without the translation of nlohmann exceptions into std::invalid_argument.
@@ -164,7 +164,7 @@ struct MarkerOutline {
     std::vector<std::array<float, 2>> outerEdge;
     /// LUXONIS: points on the inner edge of the lens ring.
     std::vector<std::array<float, 2>> innerEdge;
-    DEPTHAI_SERIALIZE(MarkerOutline, corners, outerEdge, innerEdge);
+    DEPTHAI_SERIALIZE_DECL(MarkerOutline, corners, outerEdge, innerEdge);
 };
 
 /**
@@ -176,7 +176,7 @@ struct MarkerObservationSet {
     std::map<int32_t, std::map<CameraBoardSocket, std::array<float, 2>>> centers;
     /// Outline of each marker with a configured size in each camera that saw it.
     std::map<int32_t, std::map<CameraBoardSocket, MarkerOutline>> outlines;
-    DEPTHAI_SERIALIZE(MarkerObservationSet, centers, outlines);
+    DEPTHAI_SERIALIZE_DECL(MarkerObservationSet, centers, outlines);
 };
 
 }  // namespace dai

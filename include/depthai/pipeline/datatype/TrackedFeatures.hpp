@@ -46,7 +46,7 @@ struct TrackedFeature {
      */
     std::array<uint8_t, 32> descriptor = {0};
 };
-DEPTHAI_SERIALIZE_EXT(TrackedFeature, position, id, age, harrisScore, trackingError, descriptor);
+DEPTHAI_SERIALIZE_EXT_DECL(TrackedFeature, position, id, age, harrisScore, trackingError, descriptor);
 
 /**
  * TrackedFeatures message. Carries position (X, Y) of tracked features and their ID.
@@ -66,7 +66,7 @@ class TrackedFeatures : public Buffer {
         return DatatypeEnum::TrackedFeatures;
     }
 
-    DEPTHAI_SERIALIZE(TrackedFeatures, trackedFeatures, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem);
+    DEPTHAI_SERIALIZE_DECL(TrackedFeatures, trackedFeatures, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem);
 };
 
 }  // namespace dai

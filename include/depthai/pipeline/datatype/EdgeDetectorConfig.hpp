@@ -29,7 +29,7 @@ class EdgeDetectorConfig : public Buffer {
          */
         std::vector<std::vector<int>> sobelFilterVerticalKernel;
 
-        DEPTHAI_SERIALIZE(EdgeDetectorConfigData, sobelFilterHorizontalKernel, sobelFilterVerticalKernel);
+        DEPTHAI_SERIALIZE_DECL(EdgeDetectorConfigData, sobelFilterHorizontalKernel, sobelFilterVerticalKernel);
     };
 
     /**
@@ -53,7 +53,7 @@ class EdgeDetectorConfig : public Buffer {
         return DatatypeEnum::EdgeDetectorConfig;
     }
 
-    DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, config);
+    DEPTHAI_SERIALIZE_DECL(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, config);
 };
 
 }  // namespace dai

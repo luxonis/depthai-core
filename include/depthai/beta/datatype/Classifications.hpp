@@ -94,7 +94,7 @@ class Classifications : public Buffer, public TransformableCRTP<Classifications>
         return DatatypeEnum::Classifications;
     }
 
-    DEPTHAI_SERIALIZE(Classifications, sequenceNum, ts, tsDevice, tsSystem, transformation, classes, scores);
+    DEPTHAI_SERIALIZE_DECL(Classifications, sequenceNum, ts, tsDevice, tsSystem, transformation, classes, scores);
 };
 
 }  // namespace beta

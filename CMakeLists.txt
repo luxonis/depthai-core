@@ -295,9 +295,19 @@ set(DEPTHAI_DEVICE_MANAGER_SOURCES
     src/bspatch/bspatch.c
 )
 
+# json conversions and str() of the types that the public headers declare with DEPTHAI_SERIALIZE*_DECL
+set(DEPTHAI_SERIALIZATION_SOURCES
+    src/utility/serialization/Common.cpp
+    src/utility/serialization/Datatypes.cpp
+    src/utility/serialization/Device.cpp
+    src/utility/serialization/Pipeline.cpp
+    src/utility/serialization/Properties.cpp
+)
+
 set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
+    ${DEPTHAI_SERIALIZATION_SOURCES}
     # sources shared with depthai::device-manager
     "${DEPTHAI_DEVICE_MANAGER_SOURCES}"
     # sources
@@ -455,11 +465,11 @@ list(APPEND TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgDetectionsFilterConfig.cpp
     src/pipeline/utilities/ImgDetectionsFilter/ImgDetectionsFilterImpl.cpp
     src/pipeline/node/ImgDetectionsFilter.cpp
-    src/properties/ImgDetectionsFilterProperties.cpp
 )
 
 if(DEPTHAI_BUILD_BETA)
     list(APPEND TARGET_CORE_SOURCES
+        src/utility/serialization/Beta.cpp
         src/beta/BetaNode.cpp
         src/beta/device/MultiDeviceCalibrationHandler.cpp
         src/beta/datatype/Classifications.cpp
@@ -708,8 +718,15 @@ if(DEPTHAI_UNITY_BUILD)
         src/rtabmap/RTABMapConversions.cpp
         src/rtabmap/RTABMapSLAM.cpp
         src/rtabmap/RTABMapVIO.cpp
+        # Each holds the json, libnop and properties code of many types.
+        ${DEPTHAI_SERIALIZATION_SOURCES}
+        src/utility/serialization/Beta.cpp
         PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
     )
+endif()
+if(MSVC)
+    # MSVC error C1128 in Debug builds: the serialization sources have more sections than the default object format allows.
+    set_property(SOURCE ${DEPTHAI_SERIALIZATION_SOURCES} src/utility/serialization/Beta.cpp APPEND PROPERTY COMPILE_OPTIONS /bigobj)
 endif()
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
@@ -765,8 +782,11 @@ endif()
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
 
-if(DEPTHAI_VCPKG_INTERNAL_ONLY)
+if(DEPTHAI_EXCLUDE_ARCHIVE_LIBS_SYMBOLS)
     exclude_archive_libs_symbols(${TARGET_CORE_NAME})
+endif()
+if(DEPTHAI_LINK_GC_SECTIONS)
+    gc_unused_sections(${TARGET_CORE_NAME})
 endif()
 
 # And clang-tidy and format

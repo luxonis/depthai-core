@@ -104,20 +104,20 @@ class ToFConfig : public Buffer {
      */
     void setProfilePreset(Profile profile);
 
-    DEPTHAI_SERIALIZE(ToFConfig,
-                      profile,
-                      median,
-                      enablePhaseShuffleTemporalFilter,
-                      enableBurstMode,
-                      enableDistortionCorrection,
-                      enableFPPNCorrection,
-                      enableOpticalCorrection,
-                      enableTemperatureCorrection,
-                      enableWiggleCorrection,
-                      enablePhaseUnwrapping,
-                      phaseUnwrappingLevel,
-                      phaseUnwrapErrorThreshold,
-                      enableIntermediateDepth);
+    DEPTHAI_SERIALIZE_DECL(ToFConfig,
+                           profile,
+                           median,
+                           enablePhaseShuffleTemporalFilter,
+                           enableBurstMode,
+                           enableDistortionCorrection,
+                           enableFPPNCorrection,
+                           enableOpticalCorrection,
+                           enableTemperatureCorrection,
+                           enableWiggleCorrection,
+                           enablePhaseUnwrapping,
+                           phaseUnwrappingLevel,
+                           phaseUnwrapErrorThreshold,
+                           enableIntermediateDepth);
 };
 
 }  // namespace dai

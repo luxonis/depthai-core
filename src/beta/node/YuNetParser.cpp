@@ -24,8 +24,6 @@
 namespace dai {
 namespace beta {
 
-YuNetParserProperties::~YuNetParserProperties() = default;
-
 namespace node {
 
 YuNetParser::YuNetParser(std::unique_ptr<Properties> props)

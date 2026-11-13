@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -11,10 +12,23 @@
 
 TEST_CASE("RVC2 TCP device recovers after abrupt host exit") {
     using Clock = std::chrono::steady_clock;
-    const auto devices = dai::Device::getAllAvailableDevices();
-    const auto selected = std::find_if(
-        devices.begin(), devices.end(), [](const dai::DeviceInfo& info) { return info.protocol == X_LINK_TCP_IP && info.platform == X_LINK_MYRIAD_X; });
-    REQUIRE(selected != devices.end());
+    // The previous test can close the device just before this test starts. The PoE device then reboots and
+    // is not discoverable for some seconds, so wait for it, as dai::Device does (DEPTHAI_SEARCH_TIMEOUT).
+    std::optional<dai::DeviceInfo> selected;
+    const auto searchDeadline = Clock::now() + std::chrono::seconds(30);
+    while(true) {
+        try {
+            const auto devices = dai::Device::getAllAvailableDevices();
+            const auto found = std::find_if(
+                devices.begin(), devices.end(), [](const dai::DeviceInfo& info) { return info.protocol == X_LINK_TCP_IP && info.platform == X_LINK_MYRIAD_X; });
+            if(found != devices.end()) selected = *found;
+        } catch(const std::runtime_error&) {
+            // Explicit-IP discovery can fail while the device resets.
+        }
+        if(selected || Clock::now() >= searchDeadline) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    REQUIRE(selected.has_value());
     const auto id = selected->getDeviceId();
     CAPTURE(id);
 

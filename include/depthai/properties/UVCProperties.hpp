@@ -20,6 +20,8 @@ struct UVCProperties : PropertiesSerializable<Properties, UVCProperties> {
     ~UVCProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(UVCProperties, gpioInit, gpioStreamOn, gpioStreamOff);
+DEPTHAI_SERIALIZE_EXT_DECL(UVCProperties, gpioInit, gpioStreamOn, gpioStreamOff);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::UVCProperties>;

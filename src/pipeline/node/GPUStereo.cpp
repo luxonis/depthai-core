@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <stdexcept>
 
+#include "depthai/device/Device.hpp"
+
 namespace dai {
 namespace node {
 

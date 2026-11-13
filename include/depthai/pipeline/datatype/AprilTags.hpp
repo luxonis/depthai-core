@@ -57,7 +57,7 @@ struct AprilTag {
      */
     Point2f bottomLeft;
 };
-DEPTHAI_SERIALIZE_EXT(AprilTag, id, hamming, decisionMargin, topLeft, topRight, bottomRight, bottomLeft);
+DEPTHAI_SERIALIZE_EXT_DECL(AprilTag, id, hamming, decisionMargin, topLeft, topRight, bottomRight, bottomLeft);
 
 /**
  * AprilTags message.
@@ -101,7 +101,7 @@ class AprilTags : public Buffer, public TransformableCRTP<AprilTags> {
 
     std::vector<AprilTag> aprilTags;
 
-    DEPTHAI_SERIALIZE(AprilTags, sequenceNum, ts, tsDevice, tsSystem, transformation, aprilTags);
+    DEPTHAI_SERIALIZE_DECL(AprilTags, sequenceNum, ts, tsDevice, tsSystem, transformation, aprilTags);
 };
 
 }  // namespace dai

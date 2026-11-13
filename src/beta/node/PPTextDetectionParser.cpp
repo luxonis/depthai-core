@@ -19,8 +19,6 @@
 namespace dai {
 namespace beta {
 
-PPTextDetectionParserProperties::~PPTextDetectionParserProperties() = default;
-
 namespace node {
 
 PPTextDetectionParser::PPTextDetectionParser(std::unique_ptr<Properties> props)

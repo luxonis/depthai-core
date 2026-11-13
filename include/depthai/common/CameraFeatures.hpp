@@ -21,7 +21,7 @@ struct CameraSensorConfig {
     bool hdr = false;
     bool hfr = false;
 };
-DEPTHAI_SERIALIZE_EXT(CameraSensorConfig, width, height, minFps, maxFps, fov, type, hdr, hfr);
+DEPTHAI_SERIALIZE_EXT_DECL(CameraSensorConfig, width, height, minFps, maxFps, fov, type, hdr, hfr);
 
 /**
  * CameraFeatures structure
@@ -75,19 +75,19 @@ struct CameraFeatures {
 
     std::optional<CameraSensorConfig> calibrationResolution = std::nullopt;
 
-    DEPTHAI_SERIALIZE(CameraFeatures,
-                      socket,
-                      sensorName,
-                      width,
-                      height,
-                      orientation,
-                      supportedTypes,
-                      hasAutofocusIC,
-                      hasAutofocus,
-                      name,
-                      additionalNames,
-                      configs,
-                      calibrationResolution);
+    DEPTHAI_SERIALIZE_DECL(CameraFeatures,
+                           socket,
+                           sensorName,
+                           width,
+                           height,
+                           orientation,
+                           supportedTypes,
+                           hasAutofocusIC,
+                           hasAutofocus,
+                           name,
+                           additionalNames,
+                           configs,
+                           calibrationResolution);
 };
 
 }  // namespace dai

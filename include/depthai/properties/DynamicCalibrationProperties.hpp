@@ -22,6 +22,8 @@ struct DynamicCalibrationProperties : PropertiesSerializable<Properties, Dynamic
     ~DynamicCalibrationProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(DynamicCalibrationProperties, emptyBool, worldConstraints);
+DEPTHAI_SERIALIZE_EXT_DECL(DynamicCalibrationProperties, emptyBool, worldConstraints);
 
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::DynamicCalibrationProperties>;

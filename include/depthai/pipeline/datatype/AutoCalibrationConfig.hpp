@@ -94,7 +94,7 @@ struct AutoCalibrationConfig : public Buffer {
     bool flashCalibration = true;
 
     // clang-format off
-    DEPTHAI_SERIALIZE(AutoCalibrationConfig,
+    DEPTHAI_SERIALIZE_DECL(AutoCalibrationConfig,
                       mode,
                       sleepingTime,
                       calibrationConfidenceThreshold,

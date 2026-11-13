@@ -9,5 +9,7 @@ struct ImgDetectionsFilterProperties : PropertiesSerializable<Properties, ImgDet
     ImgDetectionsFilterConfig initialConfig = {};
     ~ImgDetectionsFilterProperties() override;
 };
-DEPTHAI_SERIALIZE_EXT(ImgDetectionsFilterProperties, initialConfig);
+DEPTHAI_SERIALIZE_EXT_DECL(ImgDetectionsFilterProperties, initialConfig);
 }  // namespace dai
+
+extern template struct dai::PropertiesSerializable<dai::Properties, dai::ImgDetectionsFilterProperties>;
