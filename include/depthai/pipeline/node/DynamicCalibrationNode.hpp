@@ -130,6 +130,14 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     Input& rgb = inputs[rgbInputName];
 
     /**
+     * Optional native ToF axial depth, in millimeters. Link together with ToF
+     * amplitude and a conventional camera image. Depth must share the amplitude
+     * socket, size and pixel model. Enables host-only metric edge refinement;
+     * existing image inputs continue to identify the camera sensors.
+     */
+    Input& tofDepth = inputs["tofDepth"];
+
+    /**
      * Specify whether to run on host or device
      * By default, the node will run on host on RVC2 and on device on RVC4.
      */

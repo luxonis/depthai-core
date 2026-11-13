@@ -247,6 +247,11 @@ class DynamicCalibration::Impl {
     dcl::DynamicCalibration dynCalibImpl;
     std::optional<CalibrationHandler> factoryCalibration;
     std::optional<bool> perpendicularOpticalAxis;
+    bool tofDepthMode = false;
+    std::size_t tofIndex = 0;
+    std::size_t cameraIndex = 0;
+    std::vector<dcl::TofCalibrationFrame> tofFrames;
+
     std::shared_ptr<DynamicCalibrationTelemetryAggregateState> telemetryAggregateState = std::make_shared<DynamicCalibrationTelemetryAggregateState>();
     utility::Telemetry::AggregateMetricsHandle telemetryAggregateMetricsHandle = 0;
 };
@@ -315,6 +320,8 @@ void DynamicCalibration::postBuildStage() {
     eraseIfUnused(leftInputName);
     eraseIfUnused(rightInputName);
     eraseIfUnused(rgbInputName);
+    if(tofDepth.isConnected() && !runOnHost()) throw std::runtime_error("ToF edge refinement requires setRunOnHost(true)");
+    eraseIfUnused("tofDepth");
 }
 
 std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToDcl(const CalibrationHandler& currentCalibration,
@@ -420,6 +427,31 @@ std::vector<float> distortionToVector(const dcl::distortion_t& dist) {
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+dcl::TofCalibrationFrame DclUtils::makeTofObservation(const cv::Mat& amplitude, const cv::Mat& depth, const cv::Mat& camera) {
+    if(amplitude.empty() || depth.empty() || camera.empty()) throw std::invalid_argument("ToF observations must not be empty");
+    if(depth.type() != CV_16UC1 || depth.size() != amplitude.size())
+        throw std::invalid_argument("ToF depth must be 16-bit millimeters at amplitude resolution");
+    if(amplitude.type() != CV_8UC1 && amplitude.type() != CV_16UC1) throw std::invalid_argument("ToF amplitude must be single-channel 8-bit or 16-bit");
+    cv::Mat normalized = amplitude;
+    if(amplitude.type() == CV_16UC1) {
+        // A few bright reflectors otherwise compress most ToF texture to near-black.
+        std::vector<std::uint16_t> samples;
+        samples.reserve(amplitude.total());
+        for(int y = 0; y < amplitude.rows; ++y)
+            samples.insert(samples.end(), amplitude.ptr<std::uint16_t>(y), amplitude.ptr<std::uint16_t>(y) + amplitude.cols);
+        const auto position = samples.begin() + static_cast<std::ptrdiff_t>((samples.size() - 1) * 99 / 100);
+        std::nth_element(samples.begin(), position, samples.end());
+        amplitude.convertTo(normalized, CV_8U, 255. / std::max<std::uint16_t>(1, *position));
+    }
+    dcl::TofCalibrationFrame observation;
+    observation.amplitude = cvMatToImageData(normalized);
+    observation.camera = cvMatToImageData(camera);
+    observation.depthMeters.reserve(depth.total());
+    for(int y = 0; y < depth.rows; ++y)
+        for(int x = 0; x < depth.cols; ++x) observation.depthMeters.push_back(depth.at<std::uint16_t>(y, x) * .001f);
+    return observation;
+}
+
 dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
     if(mat.empty()) {
         throw std::runtime_error("cv::Mat is empty");
@@ -514,7 +546,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     }
 
     std::vector<dcl::EdgeBaseline> keptBaselineEdges;
-    if(!keepCameraCenters) {
+    if(!pimplDCL->tofDepthMode && !keepCameraCenters) {
         if(connectedSensors.size() > 2) {
             keptBaselineEdges.reserve(socketsInHandler.size() > 0 ? socketsInHandler.size() - 1 : 0);
             for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
@@ -551,7 +583,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     // Have DCL fix the pair's otherwise unobservable orientation itself: the common optical axis is made
     // perpendicular to the baseline, so the rectified frame does not swing between calibrations. Modular
     // boards are exempt, since nothing guarantees their baseline is perpendicular to begin with.
-    if(!pimplDCL->perpendicularOpticalAxis) {
+    if(!pimplDCL->tofDepthMode && !pimplDCL->perpendicularOpticalAxis) {
         std::string productName;
         std::string boardName;
         try {
@@ -566,7 +598,32 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                       productName,
                       boardName);
     }
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges, *pimplDCL->perpendicularOpticalAxis);
+    // Select the solver internally; all calibration commands share result handling.
+    auto dclResult = [&]() -> dcl::Result<dcl::CameraCalibrationHandleList> {
+        if(!pimplDCL->tofDepthMode) {
+            return pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges, *pimplDCL->perpendicularOpticalAxis);
+        }
+        if(pimplDCL->tofFrames.size() < 16) return dcl::Result<dcl::CameraCalibrationHandleList>::error(FINDNEWCALIBRATION_NOT_ENOUGH_DATA);
+        const auto& tof = connectedSensors.at(pimplDCL->tofIndex);
+        const auto& camera = connectedSensors.at(pimplDCL->cameraIndex);
+        const auto tofModel =
+            DclUtils::convertDaiCalibrationToDcl(currentHandler, daiSocketBase, tof.socket, tof.intrinsics, tof.distortion, tof.distortionModel);
+        const auto cameraModel =
+            DclUtils::convertDaiCalibrationToDcl(currentHandler, daiSocketBase, camera.socket, camera.intrinsics, camera.distortion, camera.distortionModel);
+        auto pairResult = pimplDCL->dynCalibImpl.findNewCalibration(pimplDCL->tofFrames, *tofModel, *cameraModel);
+        if(!pairResult.passed()) return dcl::Result<dcl::CameraCalibrationHandleList>::error(pairResult.errorCode);
+        std::vector<std::shared_ptr<const dcl::CameraCalibrationHandle>> calibrations(connectedSensors.size());
+        calibrations[pimplDCL->tofIndex] = pairResult.value.newCalibration.first;
+        calibrations[pimplDCL->cameraIndex] = pairResult.value.newCalibration.second;
+        const auto& difference = *pairResult.value.calibrationDifference;
+        std::map<dcl::CameraSensorHandlePair, dcl::RotationChangePerAxis> rotationDifferences;
+        rotationDifferences[{tof.sensorDcl, camera.sensorDcl}] = {difference.rotationChange[0], difference.rotationChange[1], difference.rotationChange[2]};
+        return dcl::Result<dcl::CameraCalibrationHandleList>::ok({std::move(calibrations),
+                                                                  pairResult.value.dataConfidence,
+                                                                  difference.sampsonErrorNew,
+                                                                  difference.sampsonErrorCurrent,
+                                                                  std::move(rotationDifferences)});
+    }();
     if(!dclResult.passed()) {
         if(isExpectedCalibrationInfoMessage(dclResult.errorMessage())) {
             logger->info("Calibration failed: {}", dclResult.errorMessage());
@@ -585,6 +642,13 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     std::map<CameraBoardSocket, std::vector<std::vector<float>>> calibratedPoses;
     for(size_t idx = 0; idx < connectedSensors.size(); ++idx) {
         calibratedPoses.emplace(connectedSensors[idx].socket, DclUtils::calibrationHandleToTransform(dclResult.value.calibrations[idx]));
+    }
+
+    if(pimplDCL->tofDepthMode) {
+        // Metric ToF refinement fixes the remaining rig, including unobserved cameras.
+        for(const auto socket : socketsInHandler) {
+            if(!calibratedPoses.count(socket)) calibratedPoses.emplace(socket, DclUtils::computeBaseToSocketTransform(currentHandler, daiSocketBase, socket));
+        }
     }
 
     // Factory data is only needed to place cameras that DCL did not observe.
@@ -681,6 +745,36 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
         return DynamicCalibration::ErrorCode::EMPTY_IMAGE_QUEUE;
     }
 
+    if(pimplDCL->tofDepthMode) {
+        const auto amplitude = inSyncGroup->get<ImgFrame>(names.at(pimplDCL->tofIndex));
+        const auto camera = inSyncGroup->get<ImgFrame>(names.at(pimplDCL->cameraIndex));
+        const auto depth = inSyncGroup->get<ImgFrame>("tofDepth");
+        if(!amplitude || !camera || !depth) return ErrorCode::MISSING_IMAGE;
+        if(depth->getInstanceNum() != amplitude->getInstanceNum() || depth->getWidth() != amplitude->getWidth() || depth->getHeight() != amplitude->getHeight()
+           || depth->getTransformation().getDistortionModel() != amplitude->getTransformation().getDistortionModel()
+           || depth->getTransformation().getIntrinsicMatrix() != amplitude->getTransformation().getIntrinsicMatrix()
+           || depth->getTransformation().getDistortionCoefficients() != amplitude->getTransformation().getDistortionCoefficients()) {
+            logger->error("ToF depth must share the amplitude socket, size and pixel model");
+            return ErrorCode::MISSING_IMAGE;
+        }
+        for(const auto index : {pimplDCL->tofIndex, pimplDCL->cameraIndex}) {
+            const auto frame = inSyncGroup->get<ImgFrame>(names.at(index));
+            const auto& sensor = connectedSensors.at(index);
+            if(static_cast<int>(frame->getWidth()) != sensor.resolution.first || static_cast<int>(frame->getHeight()) != sensor.resolution.second
+               || matrix::matrix3x3ToVectorMatrix(frame->getTransformation().getIntrinsicMatrix()) != sensor.intrinsics
+               || frame->getTransformation().getDistortionCoefficients() != sensor.distortion
+               || frame->getTransformation().getDistortionModel() != sensor.distortionModel) {
+                logger->error("ToF calibration input pixel model changed during collection");
+                pimplDCL->tofFrames.clear();
+                return ErrorCode::MISSING_IMAGE;
+            }
+        }
+        auto observation = DclUtils::makeTofObservation(amplitude->getCvFrame(), depth->getCvFrame(), camera->getCvFrame());
+        if(pimplDCL->tofFrames.size() == 16) pimplDCL->tofFrames.erase(pimplDCL->tofFrames.begin());
+        pimplDCL->tofFrames.push_back(std::move(observation));
+        return ErrorCode::OK;
+    }
+
     dcl::DeviceImageList images;
     images.reserve(names.size());
 
@@ -715,6 +809,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 #endif
 
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
+    if(pimplDCL->tofDepthMode) {
+        auto coverage = std::make_shared<CoverageData>();
+        // Collection progress only: geometric acceptance belongs to the metric solver.
+        coverage->dataAcquired = std::min(100.f, 100.f * static_cast<float>(pimplDCL->tofFrames.size()) / 16.f);
+        coverageOutput.send(coverage);
+        return ErrorCode::OK;
+    }
+
     if(connectedSensors.size() < 2) {
         logger->error("DynamicCalibration requires at least 2 connected sensors.");
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
@@ -771,6 +873,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
     names.clear();
     names = inSyncGroup->getMessageNames();
+    pimplDCL->tofDepthMode = std::find(names.begin(), names.end(), "tofDepth") != names.end();
+    if(pimplDCL->tofDepthMode) {
+        if(!runOnHost()) throw std::runtime_error("Native ToF edge calibration currently requires setRunOnHost(true)");
+        names.erase(std::remove(names.begin(), names.end(), "tofDepth"), names.end());
+        pimplDCL->tofFrames.clear();
+    }
 
     connectedSensors.clear();
     connectedSensors.reserve(names.size());
@@ -845,6 +953,23 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
             leftQueueSocket = socket;
         } else if(name == rightInputName) {
             rightQueueSocket = socket;
+        }
+    }
+
+    if(pimplDCL->tofDepthMode) {
+        if(connectedSensors.size() != 2 || connectedSensors[0].socket == connectedSensors[1].socket)
+            throw std::invalid_argument("ToF refinement requires one amplitude image and one camera image from different sockets");
+        const auto depth = inSyncGroup->get<ImgFrame>("tofDepth");
+        if(!depth) throw std::invalid_argument("ToF depth input must contain ImgFrame messages");
+        const auto socket = static_cast<CameraBoardSocket>(depth->getInstanceNum());
+        const auto it = std::find_if(connectedSensors.begin(), connectedSensors.end(), [socket](const auto& sensor) { return sensor.socket == socket; });
+        if(it == connectedSensors.end()) throw std::runtime_error("ToF depth requires an amplitude image from the same socket");
+        pimplDCL->tofIndex = static_cast<std::size_t>(it - connectedSensors.begin());
+        pimplDCL->cameraIndex = pimplDCL->tofIndex == 0 ? 1 : 0;
+        if(leftQueueSocket && *leftQueueSocket != socket) {
+            const auto cameraIt =
+                std::find_if(connectedSensors.begin(), connectedSensors.end(), [this](const auto& sensor) { return sensor.socket == *leftQueueSocket; });
+            pimplDCL->cameraIndex = static_cast<std::size_t>(cameraIt - connectedSensors.begin());
         }
     }
 
@@ -941,6 +1066,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
             pimplDCL->telemetryAggregateState->totalCommands += 1;
             pimplDCL->telemetryAggregateState->applyCalibrationCommands += 1;
         }
+        pimplDCL->tofFrames.clear();
         calibrationHandler = c.calibration;
         setCalibration(calibrationHandler, c.flash);
         return ErrorCode::OK;
@@ -964,6 +1090,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
             pimplDCL->telemetryAggregateState->totalCommands += 1;
             pimplDCL->telemetryAggregateState->resetDataCommands += 1;
         }
+        pimplDCL->tofFrames.clear();
         for(size_t i = 0; i < connectedSensors.size(); ++i) {
             for(size_t j = i + 1; j < connectedSensors.size(); ++j) {
                 pimplDCL->dynCalibImpl.removeAllData(connectedSensors[i].sensorDcl, connectedSensors[j].sensorDcl);
