@@ -14,6 +14,7 @@ enum class Bias {
     Disabled,
     PullDown,
     PullUp,
+    AsIs,
 };
 
 class Line {

@@ -1,6 +1,7 @@
 #include "utilities/AuxConnector.hpp"
 
 #include <fcntl.h>
+#include <linux/aux-connector.h>
 #include <linux/gpio.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -48,6 +49,21 @@ struct FileDescriptor {
 
 bool hasFunction(const Pin& pin, uint32_t function) {
     return std::find(pin.functions.begin(), pin.functions.end(), function) != pin.functions.end();
+}
+
+std::optional<std::filesystem::path> findChip(const std::string& label) {
+    std::error_code ec;
+    for(std::filesystem::directory_iterator entry("/dev", ec), end; !ec && entry != end; entry.increment(ec)) {
+        if(entry->path().filename().string().rfind("gpiochip", 0) != 0) {
+            continue;
+        }
+        FileDescriptor chipFd(open(entry->path().c_str(), O_RDONLY | O_CLOEXEC));
+        gpiochip_info chip{};
+        if(chipFd.fd >= 0 && ioctl(chipFd.fd, GPIO_GET_CHIPINFO_IOCTL, &chip) == 0 && fixedString(chip.label) == label) {
+            return entry->path();
+        }
+    }
+    return std::nullopt;
 }
 
 }  // namespace
@@ -143,26 +159,19 @@ std::string readComm(pid_t pid) {
 }
 
 std::string lineConsumer(const GpioLineRef& line) {
-    std::error_code ec;
-    for(std::filesystem::directory_iterator entry("/dev", ec), end; !ec && entry != end; entry.increment(ec)) {
-        if(entry->path().filename().string().rfind("gpiochip", 0) != 0) {
-            continue;
-        }
-        FileDescriptor chipFd(open(entry->path().c_str(), O_RDONLY | O_CLOEXEC));
-        gpiochip_info chip{};
-        if(chipFd.fd < 0 || ioctl(chipFd.fd, GPIO_GET_CHIPINFO_IOCTL, &chip) != 0 || fixedString(chip.label) != line.chip) {
-            continue;
-        }
-        gpio_v2_line_info lineInfo{};
-        lineInfo.offset = line.offset;
-        if(ioctl(chipFd.fd, GPIO_V2_GET_LINEINFO_IOCTL, &lineInfo) != 0) {
-            return "";
-        }
-        std::string consumer = fixedString(lineInfo.consumer);
-        // gpiolib names the consumer of a request that gave none "?"
-        return consumer == "?" ? "" : consumer;
+    auto chip = findChip(line.chip);
+    if(!chip) {
+        return "";
     }
-    return "";
+    FileDescriptor chipFd(open(chip->c_str(), O_RDONLY | O_CLOEXEC));
+    gpio_v2_line_info lineInfo{};
+    lineInfo.offset = line.offset;
+    if(chipFd.fd < 0 || ioctl(chipFd.fd, GPIO_V2_GET_LINEINFO_IOCTL, &lineInfo) != 0) {
+        return "";
+    }
+    std::string consumer = fixedString(lineInfo.consumer);
+    // gpiolib names the consumer of a request that gave none "?"
+    return consumer == "?" ? "" : consumer;
 }
 
 namespace {
@@ -220,8 +229,12 @@ gate::PinUnavailable busyFsyncPin(const std::vector<Pin>& pins) {
     return {gate::PinProblem::Busy, pin->label, holderOf(*pin)};
 }
 
+std::string gpioSetupError(const std::string& name, const std::string& reason) {
+    return "Cannot set up \"" + name + "\": " + reason;
+}
+
 std::variant<GpioPlan, std::string> planGpio(const std::string& name, gpio::Bias bias, const std::variant<Connector, int>& connector) {
-    auto refuse = [&name](const std::string& reason) { return "Cannot set up \"" + name + "\": " + reason; };
+    auto refuse = [&name](const std::string& reason) { return gpioSetupError(name, reason); };
     if(name.size() <= linePrefix.size() || name.compare(0, linePrefix.size(), linePrefix) != 0) {
         return refuse("a connector pin is named \"aux-<label>\", such as \"aux-1\"");
     }
@@ -271,6 +284,57 @@ std::variant<GpioPlan, std::string> planGpio(const std::string& name, gpio::Bias
         return refuse("pin " + label + " is busy: something is attached to DET. Unplug it to use pin " + label + " as GPIO");
     }
     return GpioPlan{pin->index, pull, *pin->gpio};
+}
+
+GpioPins::~GpioPins() {
+    if(fd >= 0) {
+        close(fd);
+    }
+}
+
+std::variant<AcquiredLine, std::string> GpioPins::acquire(const std::string& name, gpio::Bias bias) {
+    auto plan = planGpio(name, bias, readConnector());
+    if(const auto* error = std::get_if<std::string>(&plan)) {
+        return *error;
+    }
+    const auto& request = std::get<GpioPlan>(plan);
+    const std::string pin = "pin " + name.substr(linePrefix.size());
+    auto chip = findChip(request.line.chip);
+    if(!chip) {
+        return gpioSetupError(name, "no gpiochip " + request.line.chip + " for " + pin);
+    }
+    if(fd < 0) {
+        fd = open("/dev/aux-connector", O_RDWR | O_CLOEXEC);
+        if(fd < 0) {
+            return gpioSetupError(name, "cannot open /dev/aux-connector: " + std::string(std::strerror(errno)));
+        }
+    }
+
+    aux_request acquire{};
+    acquire.size = sizeof(acquire);
+    acquire.pin = request.pin;
+    acquire.function = AUX_FUNC_GPIO;
+    acquire.direction = AUX_DIR_DEFAULT;
+    acquire.pull = request.pull;
+    if(ioctl(fd, AUX_IOC_ACQUIRE, &acquire) != 0) {
+        int err = errno;
+        if(err == EBUSY) {
+            auto whyBusy = planGpio(name, bias, readConnector());
+            if(const auto* error = std::get_if<std::string>(&whyBusy)) {
+                return *error;
+            }
+            return gpioSetupError(name, pin + " is busy");
+        }
+        return gpioSetupError(name, pin + ": " + std::strerror(err));
+    }
+    return AcquiredLine{request.pin, std::move(*chip), request.line.offset};
+}
+
+std::error_code GpioPins::release(uint32_t pin) {
+    aux_request release{};
+    release.size = sizeof(release);
+    release.pin = pin;
+    return ioctl(fd, AUX_IOC_RELEASE, &release) == 0 ? std::error_code() : std::error_code(errno, std::generic_category());
 }
 
 }  // namespace aux

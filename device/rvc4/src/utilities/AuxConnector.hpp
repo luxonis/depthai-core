@@ -1,17 +1,20 @@
 #pragma once
 
-#include <linux/aux-connector.h>
 #include <sys/types.h>
 
 #include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <system_error>
 #include <variant>
 #include <vector>
 
 #include "utilities/FsyncRole.hpp"
 #include "utilities/GpioLine.hpp"
+
+struct aux_pin_info;
+struct aux_pin_state;
 
 namespace dai {
 namespace aux {
@@ -96,6 +99,29 @@ struct GpioPlan {
 };
 
 std::variant<GpioPlan, std::string> planGpio(const std::string& name, gpio::Bias bias, const std::variant<Connector, int>& connector);
+
+std::string gpioSetupError(const std::string& name, const std::string& reason);
+
+struct AcquiredLine {
+    uint32_t pin;
+    std::filesystem::path chip;
+    uint32_t offset;
+};
+
+class GpioPins {
+   public:
+    GpioPins() = default;
+    GpioPins(const GpioPins&) = delete;
+    GpioPins& operator=(const GpioPins&) = delete;
+    ~GpioPins();
+
+    std::variant<AcquiredLine, std::string> acquire(const std::string& name, gpio::Bias bias);
+
+    std::error_code release(uint32_t pin);
+
+   private:
+    int fd = -1;
+};
 
 }  // namespace aux
 }  // namespace dai

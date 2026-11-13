@@ -1,4 +1,5 @@
 #include "GPIOBindings.hpp"
+#include "utilities/AuxConnector.hpp"
 #include "utilities/GpioLine.hpp"
 
 // std
@@ -7,7 +8,9 @@
 #include <condition_variable>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <thread>
+#include <variant>
 
 // pybind11
 #include <pybind11/chrono.h>
@@ -116,6 +119,15 @@ enum class Edge {
 
 std::unordered_map<int, dai::gpio::Line> gpioHandleMap;
 std::unordered_map<int, py::object> gpioCallbackMap;
+
+struct ConnectorLine {
+    uint32_t pin;
+    dai::gpio::Line line;
+};
+
+dai::aux::GpioPins connectorPins;
+std::unordered_map<std::string, ConnectorLine> connectorLineMap;
+
 std::thread interruptHandlerThread;
 
 std::condition_variable gpioCv;
@@ -124,6 +136,43 @@ std::mutex gpioMutex;
 // Max 256 GPIOs
 std::bitset<256> gpioEventMap;
 std::bitset<256> gpioEventCallbackMask;
+
+dai::gpio::Direction toDirection(Direction dir) {
+    switch(dir) {
+        case Direction::IN:
+            return dai::gpio::Direction::Input;
+        case Direction::OUT:
+            return dai::gpio::Direction::Output;
+        default:
+            throw std::runtime_error("Invalid direction set for gpio!");
+    }
+}
+
+dai::gpio::Bias toBias(PullDownUp pud) {
+    switch(pud) {
+        case PullDownUp::PULL_NONE:
+            return dai::gpio::Bias::Disabled;
+        case PullDownUp::PULL_DOWN:
+            return dai::gpio::Bias::PullDown;
+        case PullDownUp::PULL_UP:
+            return dai::gpio::Bias::PullUp;
+        default:
+            throw std::runtime_error("Invalid pull setting for gpio!");
+    }
+}
+
+bool releaseConnectorLine(const std::string& name) {
+    auto held = connectorLineMap.find(name);
+    if(held == connectorLineMap.end()) {
+        return false;
+    }
+    uint32_t pin = held->second.pin;
+    connectorLineMap.erase(held);
+    if(auto error = connectorPins.release(pin)) {
+        throw std::runtime_error("Cannot release \"" + name + "\": " + error.message());
+    }
+    return true;
+}
 
 // void gpioCallbackFunction(void * vgpio) {
 //     int gpio = (int) vgpio;
@@ -204,36 +253,36 @@ void bind(py::module_ m) {
         "setup",
         [](int gpio, Direction dir, PullDownUp pud, bool exclusive) -> int {
             (void)exclusive;
-
-            dai::gpio::Direction direction;
-            switch(dir) {
-                case Direction::IN:
-                    direction = dai::gpio::Direction::Input;
-                    break;
-                case Direction::OUT:
-                    direction = dai::gpio::Direction::Output;
-                    break;
-                default:
-                    throw std::runtime_error("Invalid direction set for gpio!");
-            }
-
-            dai::gpio::Bias bias;
-            switch(pud) {
-                case PullDownUp::PULL_NONE:
-                    bias = dai::gpio::Bias::Disabled;
-                    break;
-                case PullDownUp::PULL_DOWN:
-                    bias = dai::gpio::Bias::PullDown;
-                    break;
-                case PullDownUp::PULL_UP:
-                    bias = dai::gpio::Bias::PullUp;
-                    break;
-                default:
-                    throw std::runtime_error("Invalid pull setting for gpio!");
-            }
-
+            auto direction = toDirection(dir);
+            auto bias = toBias(pud);
             gpioHandleMap.erase(gpio);
             gpioHandleMap.emplace(gpio, dai::gpio::Line(GPIO_CHIP_PATH, gpio, direction, bias, "depthai-device"));
+            return 0;
+        },
+        py::arg("gpio"),
+        py::arg("dir") = Direction::IN,
+        py::arg("pud") = PullDownUp::PULL_NONE,
+        py::arg("exclusive") = false);
+
+    m.def(
+        "setup",
+        [](const std::string& name, Direction dir, PullDownUp pud, bool exclusive) -> int {
+            (void)exclusive;
+            auto direction = toDirection(dir);
+            auto bias = toBias(pud);
+            releaseConnectorLine(name);
+            auto acquired = connectorPins.acquire(name, bias);
+            if(const auto* error = std::get_if<std::string>(&acquired)) {
+                throw std::runtime_error(*error);
+            }
+            const auto& line = std::get<dai::aux::AcquiredLine>(acquired);
+            try {
+                connectorLineMap.emplace(
+                    name, ConnectorLine{line.pin, dai::gpio::Line(line.chip.string(), line.offset, direction, dai::gpio::Bias::AsIs, "depthai-device")});
+            } catch(const std::exception& error) {
+                connectorPins.release(line.pin);
+                throw std::runtime_error(dai::aux::gpioSetupError(name, error.what()));
+            }
             return 0;
         },
         py::arg("gpio"),
@@ -265,6 +314,22 @@ void bind(py::module_ m) {
             return gpioHandleMap.at(gpio).getValue();
         }
         return -1;
+    });
+
+    m.def("release", [](const std::string& name) -> int { return releaseConnectorLine(name) ? 0 : 1; });
+
+    m.def("write", [](const std::string& name, int value) -> int {
+        auto held = connectorLineMap.find(name);
+        if(held == connectorLineMap.end()) {
+            return 1;
+        }
+        held->second.line.setValue(value);
+        return 0;
+    });
+
+    m.def("read", [](const std::string& name) -> int {
+        auto held = connectorLineMap.find(name);
+        return held == connectorLineMap.end() ? -1 : held->second.line.getValue();
     });
 
     // m.def("waitInterruptEvent", [](int gpio){
