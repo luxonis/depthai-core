@@ -7,8 +7,6 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/DetectionParserConfig.hpp"
-#include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
-#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
@@ -51,6 +49,11 @@
 #include "depthai/pipeline/datatype/VppConfig.hpp"
 #include "utility/serialization/SerializationDefine.hpp"
 
+#ifndef RVC2_FW
+    #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
+    #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#endif
+
 namespace dai {
 
 DEPTHAI_SERIALIZE_DEFINE(AlignConfig)
@@ -68,6 +71,8 @@ DEPTHAI_SERIALIZE_DEFINE(CameraControl::StrobeTimings)
 DEPTHAI_SERIALIZE_DEFINE(CameraControl::StrobeConfig)
 DEPTHAI_SERIALIZE_DEFINE(CameraControl)
 DEPTHAI_SERIALIZE_DEFINE(DetectionParserConfig)
+// RVC2 firmware excludes the dynamic-calibration datatype implementations.
+#ifndef RVC2_FW
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::Calibrate)
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::ComputeCalibrationMetrics)
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationControl::Commands::CalibrationQuality)
@@ -80,6 +85,7 @@ DEPTHAI_SERIALIZE_DEFINE(CalibrationQuality)
 DEPTHAI_SERIALIZE_DEFINE(CalibrationMetrics)
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationResult::Data)
 DEPTHAI_SERIALIZE_DEFINE(DynamicCalibrationResult)
+#endif
 DEPTHAI_SERIALIZE_DEFINE(EdgeDetectorConfig::EdgeDetectorConfigData)
 DEPTHAI_SERIALIZE_DEFINE(EdgeDetectorConfig)
 DEPTHAI_SERIALIZE_DEFINE(EncodedFrame)
