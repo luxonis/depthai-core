@@ -11,6 +11,7 @@
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/Rect.hpp"
 #include "depthai/common/Size2f.hpp"
 
 namespace dai {
@@ -589,6 +590,33 @@ class CalibrationHandler {
      *
      */
     void setCameraIntrinsics(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& intrinsics, int width, int height);
+
+    /**
+     * Store intrinsics from a known sensor crop/scale in full-sensor pixel coordinates.
+     * Existing calibration records are never reinterpreted automatically. Use this
+     * when the calibration images' physical sensor ROI is known, including binning
+     * or software resizing. The full ROI is scaled to the supplied image size.
+     * Only axis-aligned crop/scale of distorted images is supported; undistorted,
+     * rectified, rotated and padded calibration images require separate handling.
+     * Distortion coefficients, camera model and extrinsics remain unchanged.
+     * This changes this handler only; it does not write device EEPROM.
+     * @param cameraId Camera socket.
+     * @param intrinsics 3x3 intrinsics measured in calibration-image pixels.
+     * @param imageWidth Calibration-image width in pixels.
+     * @param imageHeight Calibration-image height in pixels.
+     * @param sensorWidth Full physical sensor grid width in pixels.
+     * @param sensorHeight Full physical sensor grid height in pixels.
+     * @param sensorCrop Absolute physical sensor ROI represented by the complete
+     * calibration image. Coordinates are pixels, never normalized fractions.
+     * @throws std::runtime_error If the matrix, dimensions or ROI are invalid.
+     */
+    void setCameraIntrinsicsFromSensorCrop(CameraBoardSocket cameraId,
+                                           const std::vector<std::vector<float>>& intrinsics,
+                                           int imageWidth,
+                                           int imageHeight,
+                                           int sensorWidth,
+                                           int sensorHeight,
+                                           Rect sensorCrop);
 
     /**
      * Set the Camera Intrinsics object

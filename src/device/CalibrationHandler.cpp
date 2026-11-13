@@ -1062,6 +1062,33 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const s
     return;
 }
 
+void CalibrationHandler::setCameraIntrinsicsFromSensorCrop(CameraBoardSocket cameraId,
+                                                           const std::vector<std::vector<float>>& intrinsics,
+                                                           int imageWidth,
+                                                           int imageHeight,
+                                                           int sensorWidth,
+                                                           int sensorHeight,
+                                                           Rect sensorCrop) {
+    if(!isValidIntrinsicsMatrix(intrinsics)) throw std::runtime_error("Invalid intrinsic matrix");
+    if(imageWidth <= 0 || imageHeight <= 0 || sensorWidth <= 0 || sensorHeight <= 0 || sensorWidth > std::numeric_limits<uint16_t>::max()
+       || sensorHeight > std::numeric_limits<uint16_t>::max() || !std::isfinite(sensorCrop.x) || !std::isfinite(sensorCrop.y)
+       || !std::isfinite(sensorCrop.width) || !std::isfinite(sensorCrop.height) || sensorCrop.x < 0 || sensorCrop.y < 0 || sensorCrop.width <= 0
+       || sensorCrop.height <= 0 || sensorCrop.x + sensorCrop.width > sensorWidth || sensorCrop.y + sensorCrop.height > sensorHeight) {
+        throw std::runtime_error("Invalid calibration image, sensor dimensions or sensor crop");
+    }
+    auto canonical = intrinsics;
+    const float scaleX = sensorCrop.width / imageWidth;
+    const float scaleY = sensorCrop.height / imageHeight;
+    for(size_t column = 0; column < 3; ++column) {
+        canonical[0][column] = scaleX * intrinsics[0][column] + sensorCrop.x * intrinsics[2][column];
+        canonical[1][column] = scaleY * intrinsics[1][column] + sensorCrop.y * intrinsics[2][column];
+        if(!std::isfinite(canonical[0][column]) || !std::isfinite(canonical[1][column]) || !std::isfinite(canonical[2][column])) {
+            throw std::runtime_error("Nonfinite intrinsic matrix");
+        }
+    }
+    setCameraIntrinsics(cameraId, canonical, sensorWidth, sensorHeight);
+}
+
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& intrinsics, Size2f frameSize) {
     if(!isValidCalibrationDimension(frameSize.width) || !isValidCalibrationDimension(frameSize.height)) {
         throw std::runtime_error("Invalid calibration resolution entered!!");

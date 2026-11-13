@@ -225,6 +225,16 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setDeviceName", &CalibrationHandler::setDeviceName, py::arg("deviceName"), DOC(dai, CalibrationHandler, setDeviceName))
         .def("setProductName", &CalibrationHandler::setProductName, py::arg("productName"), DOC(dai, CalibrationHandler, setProductName))
 
+        .def("setCameraIntrinsicsFromSensorCrop",
+             &CalibrationHandler::setCameraIntrinsicsFromSensorCrop,
+             py::arg("cameraId"),
+             py::arg("intrinsics"),
+             py::arg("imageWidth"),
+             py::arg("imageHeight"),
+             py::arg("sensorWidth"),
+             py::arg("sensorHeight"),
+             py::arg("sensorCrop"),
+             DOC(dai, CalibrationHandler, setCameraIntrinsicsFromSensorCrop))
         .def("setCameraIntrinsics",
              py::overload_cast<CameraBoardSocket, const std::vector<std::vector<float>>&, Size2f>(&CalibrationHandler::setCameraIntrinsics),
              py::arg("cameraId"),

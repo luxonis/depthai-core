@@ -91,7 +91,15 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
                     readoutK[0][column] *= calibrationMode.width / calibrationFov.width;
                     readoutK[1][column] *= calibrationMode.height / calibrationFov.height;
                 }
-                localCalibration.setCameraIntrinsics(camera.socket, readoutK, calibrationMode.width, calibrationMode.height);
+                if(platform == dai::Platform::RVC4) {
+                    // Native cropped calibration is explicit. Unlabelled RVC4
+                    // records retain their historical full-FOV interpretation.
+                    localCalibration.setCameraIntrinsicsFromSensorCrop(
+                        camera.socket, readoutK, calibrationMode.width, calibrationMode.height, camera.width, camera.height, calibrationFov);
+                } else {
+                    // Preserve the existing RVC2 native-calibration convention.
+                    localCalibration.setCameraIntrinsics(camera.socket, readoutK, calibrationMode.width, calibrationMode.height);
+                }
             } else {
                 localCalibration.setCameraIntrinsics(camera.socket, fullK, camera.width, camera.height);
             }
@@ -207,8 +215,8 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
             checkFrame(nativeQueue, 1.0f, "native-sized request");
             if(resizedQueue) checkFrame(resizedQueue, 0.5f, "half-sized request");
             if(platform == dai::Platform::RVC4 && !calibrateAtReadoutMode && isCalibrationMode(config) && isCropped(config)) {
-                // Change both the coordinate grid and physical calibration at
-                // runtime. Changed focal length distinguishes fresh metadata
+                // Change physical calibration at runtime using an explicit native
+                // capture ROI. Changed focal length distinguishes fresh metadata
                 // from queued frames; checking all K entries then catches a
                 // missing readout crop on the update path.
                 expectedFullK[0][0] += 123;
@@ -223,7 +231,8 @@ TEST_CASE("Camera ISP intrinsics follow sensor readout geometry", "[camera-senso
                     updatedK[1][column] *= calibrationMode.height / calibrationFov.height;
                 }
                 auto updatedCalibration = localCalibration;
-                updatedCalibration.setCameraIntrinsics(camera.socket, updatedK, calibrationMode.width, calibrationMode.height);
+                updatedCalibration.setCameraIntrinsicsFromSensorCrop(
+                    camera.socket, updatedK, calibrationMode.width, calibrationMode.height, camera.width, camera.height, calibrationFov);
                 device->setCalibration(updatedCalibration);
                 calibrationUpdated = true;
                 checkFrame(ispQueue, std::nullopt, "ISP after runtime calibration");
