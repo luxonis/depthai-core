@@ -502,7 +502,7 @@ class CalibrationHandler {
      * @param boardRev Sets board revision id.
      * @param boardConf Sets board configuration id.
      * @param hardwareConf Sets hardware configuration id.
-     * @param batchName Sets batch name.
+     * @param batchName Deprecated and ignored. Pass an empty string; a nonempty value logs a warning.
      * @param batchTime Sets batch time (unix timestamp).
      * @param boardCustom Sets a custom board (Default empty string).
      */
@@ -525,7 +525,7 @@ class CalibrationHandler {
      * @param boardRev Sets board revision id.
      * @param boardConf Sets board configuration id.
      * @param hardwareConf Sets hardware configuration id.
-     * @param batchName Sets batch name. Not supported anymore
+     * @param batchName Deprecated and ignored. Pass an empty string; a nonempty value logs a warning.
      * @param batchTime Sets batch time (unix timestamp).
      * @param boardCustom Sets a custom board (Default empty string).
      */

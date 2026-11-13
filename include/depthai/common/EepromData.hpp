@@ -20,13 +20,24 @@ namespace dai {
 struct EepromData {
     uint32_t version = 7;
     std::string productName, boardCustom, boardName, boardRev, boardConf, hardwareConf, deviceName;
-    std::string batchName;  /// Deprecated, not used or stored
+    /**
+     * @deprecated Legacy field retained for compatibility with serialized calibration data.
+     * Not used or stored in EEPROM. Use an empty string.
+     */
+    std::string batchName;
     uint64_t batchTime{0};
     uint32_t boardOptions{0};
     std::unordered_map<CameraBoardSocket, CameraInfo> cameraData;
     StereoRectification stereoRectificationData;
     Extrinsics imuExtrinsics;
     Extrinsics housingExtrinsics;
+    /**
+     * Legacy field retained for compatibility with serialized calibration data.
+     *
+     * On RVC2, Device::flashCalibration() does not persist this field and
+     * Device::readCalibration() returns it as an empty vector (an empty list in Python).
+     * This field is not supported for custom user data storage on RVC2.
+     */
     std::vector<uint8_t> miscellaneousData;
     bool stereoUseSpecTranslation{true};
     bool stereoEnableDistortionCorrection{false};
