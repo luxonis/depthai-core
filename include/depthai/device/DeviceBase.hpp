@@ -897,6 +897,7 @@ class DeviceBase {
    private:
     // Saves the VPU crash dump to DEPTHAI_CRASHDUMP, returns true if the VPU crashed
     bool saveVpuCrashDump();
+    std::atomic<bool> vpuCrashSeen{false};
 
    protected:
     // protected functions

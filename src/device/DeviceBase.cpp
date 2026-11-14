@@ -522,7 +522,8 @@ void DeviceBase::closeImpl() {
     pimpl->logger.debug("Device about to be closed...");
 
     // The VPU crash dump is only reachable over RPC, so save it before the connection goes down
-    bool vpuCrashed = gate && saveVpuCrashDump();
+    // The caller may have already read (and cleared) the dump, so also check whether a crash was seen earlier
+    bool vpuCrashed = gate && (saveVpuCrashDump() || vpuCrashSeen);
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
@@ -1311,7 +1312,9 @@ dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
 }
 
 bool DeviceBase::hasCrashDump() {
-    return pimpl->rpcClient->call("hasCrashDump").as<bool>();
+    auto has = pimpl->rpcClient->call("hasCrashDump").as<bool>();
+    if(has) vpuCrashSeen = true;
+    return has;
 }
 
 ProfilingData DeviceBase::getProfilingData() {
