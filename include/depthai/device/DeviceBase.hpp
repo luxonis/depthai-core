@@ -894,6 +894,9 @@ class DeviceBase {
      */
     virtual void closeImpl();
 
+   private:
+    void saveVpuCrashDump();
+
    protected:
     // protected functions
     void init(OpenVINO::Version version);

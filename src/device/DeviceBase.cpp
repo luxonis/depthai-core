@@ -1,6 +1,8 @@
 #include "depthai/device/DeviceBase.hpp"
 
 // std
+#include <ctime>
+#include <fstream>
 #include <iostream>
 
 // shared
@@ -519,6 +521,9 @@ void DeviceBase::closeImpl() {
     auto t1 = steady_clock::now();
     pimpl->logger.debug("Device about to be closed...");
 
+    // The VPU crash dump is only reachable over RPC, so save it before the connection goes down
+    if(gate) saveVpuCrashDump();
+
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
     // always manage ownership because other threads (e.g. watchdog) are running and need to
@@ -555,6 +560,28 @@ void DeviceBase::closeImpl() {
         gate->waitForSessionEnd();
     }
     pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+}
+
+void DeviceBase::saveVpuCrashDump() {
+    auto crashDumpDir = utility::getEnv("DEPTHAI_CRASHDUMP");
+    if(crashDumpDir.empty()) return;
+    try {
+        if(!hasCrashDump()) return;
+        auto json = getCrashDump().serializeToJson().dump(2);
+        char timestamp[32];
+        auto now = std::time(nullptr);
+        std::strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", std::localtime(&now));
+        auto path = fmt::format("{}{}-vpu_crash_dump_{}.json", crashDumpDir, deviceInfo.getMxId(), timestamp);
+        std::ofstream file(path, std::ios::binary);
+        file << json;
+        if(file.good()) {
+            pimpl->logger.warn("VPU crash dump saved to {} - please report to developers", path);
+        } else {
+            pimpl->logger.error("Couldn't save the VPU crash dump to {}", path);
+        }
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("Couldn't get the VPU crash dump: {}", ex.what());
+    }
 }
 
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
