@@ -27,10 +27,6 @@ ToFStereoFusion::~ToFStereoFusion() = default;
 
 ToFStereoFusion::Properties& ToFStereoFusion::getProperties() {
     properties.initialConfig = *initialConfig;
-    // initialConfig is usually set after build(): check it when the pipeline is serialized.
-    if(properties.initialConfig.cropToOverlap) {
-        logger::warn("ToFStereoFusion: cropToOverlap is not supported; the output is the full rectified-left view");
-    }
     return properties;
 }
 

@@ -14,10 +14,11 @@ struct ToFStereoFusionConfig {
      */
     float confidenceThreshold = 0.5f;
 
-    /** Crop depth and confidence to the largest rectangle in the geometric overlap.
-     * Uses viewing directions (projection at infinity), independent of measured depth.
-     * Recomputed when input transformations or dimensions change; empty overlap throws.
-     * Not supported by the stereo network fusion: the output is in the rectified-left view and is never cropped.
+    /** Crop depth and confidence to the largest rectangle of the rectified-left view that the ToF field of view covers.
+     * Uses viewing directions (projection at infinity), independent of measured depth: at close range the ToF covers a few
+     * columns less on the side away from it (about 40 px at infinity and 86 px at 0.3 m of the 1024 px width on OAK4-LITE-TOF).
+     * The crop is added to the output transformation (shifted intrinsics). Recomputed when an input transformation or size
+     * changes; without an overlap the outputs stay uncropped (with a warning).
      */
     bool cropToOverlap = false;
 
@@ -30,7 +31,7 @@ struct ToFStereoFusionConfig {
      * @return This configuration for chaining.
      * @note Set on initialConfig before starting the pipeline. The crop is computed from the first
      * synchronized input pair and reused until either input transformation or dimensions change.
-     * If the geometric overlap is empty, the node throws an error while processing that pair.
+     * Without a geometric overlap the outputs stay uncropped and the node logs a warning.
      */
     ToFStereoFusionConfig& setCropToOverlap(bool enabled) {
         cropToOverlap = enabled;
