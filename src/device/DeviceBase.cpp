@@ -522,7 +522,7 @@ void DeviceBase::closeImpl() {
     pimpl->logger.debug("Device about to be closed...");
 
     // The VPU crash dump is only reachable over RPC, so save it before the connection goes down
-    if(gate) saveVpuCrashDump();
+    bool vpuCrashed = gate && saveVpuCrashDump();
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
@@ -557,16 +557,16 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated throgh gate, wait for the session to end
     if(gate) {
-        gate->waitForSessionEnd();
+        gate->waitForSessionEnd(vpuCrashed);
     }
     pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
-void DeviceBase::saveVpuCrashDump() {
+bool DeviceBase::saveVpuCrashDump() {
     auto crashDumpDir = utility::getEnv("DEPTHAI_CRASHDUMP");
-    if(crashDumpDir.empty()) return;
+    if(crashDumpDir.empty()) return false;
     try {
-        if(!hasCrashDump()) return;
+        if(!hasCrashDump()) return false;
         auto json = getCrashDump().serializeToJson().dump(2);
         char timestamp[32];
         auto now = std::time(nullptr);
@@ -579,9 +579,11 @@ void DeviceBase::saveVpuCrashDump() {
         } else {
             pimpl->logger.error("Couldn't save the VPU crash dump to {}", path);
         }
+        return true;
     } catch(const std::exception& ex) {
         pimpl->logger.debug("Couldn't get the VPU crash dump: {}", ex.what());
     }
+    return false;
 }
 
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and

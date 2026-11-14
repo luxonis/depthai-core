@@ -895,7 +895,8 @@ class DeviceBase {
     virtual void closeImpl();
 
    private:
-    void saveVpuCrashDump();
+    // Saves the VPU crash dump to DEPTHAI_CRASHDUMP, returns true if the VPU crashed
+    bool saveVpuCrashDump();
 
    protected:
     // protected functions
