@@ -561,7 +561,8 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT BUILD_SHARED_LIBS)
     dai_add_test(device_gate_usb_test src/onhost_tests/device_gate_usb_test.cpp)
-    target_link_options(device_gate_usb_test PRIVATE "-Wl,--wrap=XLinkGateRead" "-Wl,--wrap=XLinkGateWrite")
+    target_link_options(device_gate_usb_test PRIVATE "-Wl,--wrap=XLinkGateBegin" "-Wl,--wrap=XLinkGateEnd"
+                                                   "-Wl,--wrap=XLinkGateTransactionRead" "-Wl,--wrap=XLinkGateTransactionWrite")
     dai_set_test_labels(device_gate_usb_test onhost ci)
     set_tests_properties(device_gate_usb_test PROPERTIES TIMEOUT 5)
 endif()
