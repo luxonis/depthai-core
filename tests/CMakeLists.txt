@@ -561,7 +561,8 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT BUILD_SHARED_LIBS)
     dai_add_test(device_gate_usb_test src/onhost_tests/device_gate_usb_test.cpp)
-    target_link_options(device_gate_usb_test PRIVATE "-Wl,--wrap=XLinkGateRead" "-Wl,--wrap=XLinkGateWrite")
+    target_link_options(device_gate_usb_test PRIVATE "-Wl,--wrap=XLinkGateBegin" "-Wl,--wrap=XLinkGateEnd"
+                                                   "-Wl,--wrap=XLinkGateTransactionRead" "-Wl,--wrap=XLinkGateTransactionWrite")
     dai_set_test_labels(device_gate_usb_test onhost ci)
     set_tests_properties(device_gate_usb_test PROPERTIES TIMEOUT 5)
 endif()
@@ -1184,6 +1185,12 @@ dai_set_test_labels(video_encoder_latency_test ondevice rvc4 rvc4rgb ci noreplay
 
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_test.cpp)
+
+# Opt-in IMX378 payload qualification. Transport and device selection use the standard DepthAI environment.
+# DEPTHAI_TRANSFER_FPS, SECONDS and MIN_GBPS select matched-rate CPU trials; OUTPUT saves CSV and one NV12 frame.
+dai_add_test(camera_transfer_test src/ondevice_tests/camera_transfer_test.cpp)
+dai_set_test_labels(camera_transfer_test ondevice)
+set_tests_properties(camera_transfer_test PROPERTIES TIMEOUT 180)
 dai_set_test_labels(xlink_test ondevice rvc2_all rvc4 rvc4rgb ci smoke)
 
 # runtime_calibration_test test
@@ -1219,6 +1226,9 @@ dai_add_tagged_test(gate_node_grant_test gate_node_test grants)
 dai_add_tagged_test(sync_device_timestamp_test sync_test device-timestamp)
 dai_add_tagged_test(benchmark_report_test benchmark_test report)
 dai_add_tagged_test(benchmark_slow_close_test benchmark_test slow-close)
+dai_add_test(usb_receive_lifetime_test src/ondevice_tests/usb_receive_lifetime_test.cpp)
+dai_set_test_labels(usb_receive_lifetime_test ondevice usb rvc2 rvc4 rvc2ng ci noreplayci smoke)
+set_tests_properties(usb_receive_lifetime_test PROPERTIES TIMEOUT 90)
 dai_add_test(gate_shutdown_test src/ondevice_tests/gate_shutdown_test.cpp)
 target_include_directories(gate_shutdown_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
 dai_add_test(gate_rpc_test src/ondevice_tests/gate_rpc_test.cpp)
