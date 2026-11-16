@@ -69,7 +69,7 @@ static_assert(sizeof(UdpRpc) == sizeof(UdpMsg), "one packet size on the socket")
 // Synchronized start of a multi-device pipeline, keep in sync with the firmware (Timesync.hpp, CameraSensor.cpp)
 namespace sync_start {
 enum Method : uint16_t { ARM = 1, READY = 2, START_AT = 3 };
-enum Status : uint16_t { OK = 0, LATE = 1, STALE = 2 };
+enum Status : uint16_t { OK = 0, LATE = 1, STALE = 2, OLD_OS = 3 };
     #pragma pack(push, 1)
 struct Arm {  // host -> device before its pipeline starts: hold the cameras, the pipeline runs this many here
     uint32_t generation;
@@ -90,7 +90,7 @@ struct StartAt {  // host -> device: stream on at this host steady-clock time; a
 // depthai's PTP instance for TIME_PTP when the OS runs no PTP, keep in sync with the firmware (DaiPtp.cpp)
 namespace dai_ptp {
 enum Method : uint16_t { QUERY = 16, START = 17 };
-enum Status : uint16_t { OK = 0, OS_PTP = 1 };
+enum Status : uint16_t { OK = 0, OS_PTP = 1, OLD_OS = 2 };
 enum Os : uint8_t { OS_OFF = 0, OS_FRAMES = 1, OS_NO_FRAMES = 2 };  // /etc/luxonis-ptp.conf: no PTP, PTP for frames, PTP only
 enum Role : uint8_t { NONE = 0, MASTER = 1, SLAVE = 2 };
 enum State : uint8_t { STOPPED = 0, STARTING = 1, LOCKED = 2, FAILED = 3 };  // LOCKED: serving / slave within 1 us
