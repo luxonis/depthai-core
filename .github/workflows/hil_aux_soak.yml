@@ -5,6 +5,8 @@ run-name: Aux soak ${{ inputs.depthai_ref }} on ${{ inputs.os_versions }}, ${{ i
 # Each pass is its own job with its own testbed reservation. Never use "Re-run failed jobs" on a soak run:
 # the re-run replaces the failed attempt and hides the flake.
 on:
+  push:
+    branches: [ci/aux-soak-aux]
   workflow_dispatch:
     inputs:
       depthai_ref:
@@ -43,6 +45,7 @@ concurrency:
 
 jobs:
   plan:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     outputs:
       night: ${{ steps.plan.outputs.night }}
