@@ -1050,7 +1050,7 @@ endif()
 
 # Align device execution test (device-side Align is only available on RVC4)
 dai_add_test(align_node_device_test src/ondevice_tests/align_node_device_test.cpp)
-dai_set_test_labels(align_node_device_test ondevice rvc4 rvc4ffc ci)
+dai_set_test_labels(align_node_device_test ondevice rvc4 ci)
 
 # Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
@@ -1076,7 +1076,7 @@ dai_set_test_labels(image_manip_mono_color_test onhost ci)
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
     target_compile_definitions(image_manip_node_test PRIVATE LENNA_PATH="${lenna_png}")
-    dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 rvc4ffc rvc4rgb ci)
+    dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
     dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
     target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
@@ -1130,7 +1130,7 @@ dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 rvc4ffc ci noreplayci)
 
 dai_add_test(camera_test_rvc4 src/ondevice_tests/pipeline/node/camera_test_rvc4.cpp)
-dai_set_test_labels(camera_test_rvc4 ondevice rvc4 rvc4ffc ci noreplayci)
+dai_set_test_labels(camera_test_rvc4 ondevice rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 rvc4ffc ci_nightly noreplayci)
