@@ -140,9 +140,9 @@ bool withResponder(const void* device, F&& fn) {
 
 // Calls every device at once and waits for all; a reply is (status, payload), nullopt when there was none
 std::vector<std::optional<std::pair<uint16_t, TimesyncUdpResponder::RpcPayload>>> callAll(const std::vector<const void*>& devices,
-                                                                                           uint16_t method,
-                                                                                           const std::vector<TimesyncUdpResponder::RpcPayload>& payloads,
-                                                                                           std::chrono::milliseconds deadline) {
+                                                                                          uint16_t method,
+                                                                                          const std::vector<TimesyncUdpResponder::RpcPayload>& payloads,
+                                                                                          std::chrono::milliseconds deadline) {
     std::vector<std::optional<std::pair<uint16_t, TimesyncUdpResponder::RpcPayload>>> replies(devices.size());
     std::mutex mtx;
     std::condition_variable cv;
@@ -493,7 +493,8 @@ void TimesyncUdpResponder::run() {
             // Before the firmware opens its socket, a HELLO comes back as ICMP port unreachable, which the next send on
             // this connected socket reports instead of sending: send that one again
             if(!sendMsg(fd, hello, false) && errno == ECONNREFUSED) sendMsg(fd, hello, false);
-            nextHello = now + (now - start < HELLO_FAST_FOR ? duration_cast<steady_clock::duration>(HELLO_FAST) : duration_cast<steady_clock::duration>(HELLO_SLOW));
+            nextHello =
+                now + (now - start < HELLO_FAST_FOR ? duration_cast<steady_clock::duration>(HELLO_FAST) : duration_cast<steady_clock::duration>(HELLO_SLOW));
         }
         int timeoutMs = 100;
         if(!gotReq) timeoutMs = static_cast<int>(std::max<int64_t>(0, duration_cast<milliseconds>(nextHello - now).count()));
@@ -632,9 +633,7 @@ PtpGroup::Setup PtpGroup::setUp(const std::vector<const void*>& devices) {
     return setup;
 }
 
-void SyncStartGroup::begin(const void* pipeline,
-                           const std::vector<std::pair<const void*, uint16_t>>& devices,
-                           const std::vector<const void*>& ptpSlaves) {
+void SyncStartGroup::begin(const void* pipeline, const std::vector<std::pair<const void*, uint16_t>>& devices, const std::vector<const void*>& ptpSlaves) {
     end(pipeline);
     std::vector<std::pair<const void*, uint16_t>> candidates;  // with cameras and a UDP timesync
     for(const auto& d : devices) {
@@ -711,9 +710,8 @@ void SyncStartGroup::coordinate() {
     std::vector<const void*> targets;
     {
         std::unique_lock<std::mutex> lock(mtx);
-        const bool allReady = cv.wait_for(lock, SYNC_READY_TIMEOUT, [&] {
-            return stopping || std::all_of(members.begin(), members.end(), [](const Member& m) { return m.ready; });
-        });
+        const bool allReady = cv.wait_for(
+            lock, SYNC_READY_TIMEOUT, [&] { return stopping || std::all_of(members.begin(), members.end(), [](const Member& m) { return m.ready; }); });
         if(stopping) return;
         if(!allReady) logger::warn("Synchronized start: not every device reported its cameras ready, starting the others");
     }
@@ -751,15 +749,16 @@ void SyncStartGroup::coordinate() {
     const uint32_t gen = generation;
     for(const void* device : targets) {
         withResponder(device, [&](TimesyncUdpResponder& responder) {
-            responder.call(sync_start::START_AT, payload, SYNC_START_DEADLINE, [gen](bool replied, uint16_t status, const TimesyncUdpResponder::RpcPayload& reply) {
-                if(!replied) {
-                    logger::warn("Synchronized start {}: a device did not confirm the start time", gen);
-                } else if(status == sync_start::LATE) {
-                    int64_t lateNs = 0;
-                    memcpy(&lateNs, reply.data(), sizeof(lateNs));
-                    logger::warn("Synchronized start {}: a device got the start time {:.1f} ms late", gen, lateNs / 1e6);
-                }
-            });
+            responder.call(
+                sync_start::START_AT, payload, SYNC_START_DEADLINE, [gen](bool replied, uint16_t status, const TimesyncUdpResponder::RpcPayload& reply) {
+                    if(!replied) {
+                        logger::warn("Synchronized start {}: a device did not confirm the start time", gen);
+                    } else if(status == sync_start::LATE) {
+                        int64_t lateNs = 0;
+                        memcpy(&lateNs, reply.data(), sizeof(lateNs));
+                        logger::warn("Synchronized start {}: a device got the start time {:.1f} ms late", gen, lateNs / 1e6);
+                    }
+                });
         });
     }
     logger::debug("Synchronized start {}: {} devices stream on at host {} ns", gen, targets.size(), startNs);

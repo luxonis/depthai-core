@@ -116,9 +116,7 @@ class SyncStartGroup {
    public:
     // Arms the devices (DeviceBase, cameras on it) that have a UDP timesync for the pipeline's start and coordinates it
     // when there are at least two; replaces an earlier group of the pipeline
-    static void begin(const void* pipeline,
-                      const std::vector<std::pair<const void*, uint16_t>>& devices,
-                      const std::vector<const void*>& ptpSlaves = {});
+    static void begin(const void* pipeline, const std::vector<std::pair<const void*, uint16_t>>& devices, const std::vector<const void*>& ptpSlaves = {});
     // Ends the pipeline's group (before its devices close)
     static void end(const void* pipeline);
 
